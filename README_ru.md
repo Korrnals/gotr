@@ -20,9 +20,9 @@
 ### Скачать готовый бинарник одной командой (Linux/macOS)
 
 ```bash
-curl -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$$ (uname -s)- $$(uname -m) -o gotr && \
-chmod +x gotr && \
-sudo mv gotr /usr/local/bin/
+# Unix
+curl -s -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr && chmod +x gotr &&
+ sudo mv gotr /usr/local/bin/
 ```
 
 > [!TIP] Примечание
@@ -109,7 +109,7 @@ make build VERSION=test-123
 #### Вариант 1: Скачать готовый бинарник одной командой (PowerShell)
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/Korrnals/gotr/releases/latest/download/gotr-windows-amd64.exe -OutFile gotr.exe
+Invoke-WebRequest -Uri https://github.com/Korrnals/gotr/releases/latest/download/gotr.exe -OutFile gotr.exe
 # Делаем исполняемым (не обязательно на Windows, но для безопасности)
 # Перемещаем в директорию из PATH (например, C:\Windows или пользовательский bin)
 Move-Item gotr.exe C:\Windows\gotr.exe

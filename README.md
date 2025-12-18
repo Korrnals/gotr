@@ -20,9 +20,9 @@ Allows you to perform GET requests, export data to files, filter responses throu
 ### Download the finished binary with one command (Linux/macOS)
 
 ```bash
-curl -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$$ (uname -s)- $$(uname -m) -o gotr && \
-chmod +x gotr && \
-sudo mv gotr /usr/local/bin/
+# Unix
+curl -s -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr && chmod +x gotr &&
+ sudo mv gotr /usr/local/bin/
 ```
 
 > [!TIP] Note
@@ -109,7 +109,7 @@ For Windows:
 #### Option 1: Download a ready-made binary with one command (PowerShell)
 
 ```powershell
-Invoke-WebRequest -Uri https://github.com/Korrnals/gotr/releases/latest/download/gotr-windows-amd64.exe -OutFile gotr.exe
+Invoke-WebRequest -Uri https://github.com/Korrnals/gotr/releases/latest/download/gotr.exe -OutFile gotr.exe
 # Make it executable (not necessarily on Windows, but for security)
 # Move to a directory from PATH (for example, C:\Windows or user bin)
 Move-Item gotr.exe C:\Windows\gotr.exe

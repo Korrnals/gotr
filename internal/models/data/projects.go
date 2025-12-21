@@ -1,59 +1,59 @@
+// models/data/projects.go
 package data
 
-// Структура для 'get_project'
-type GetProject struct {
-	ID               int    `json:"id"`
-	Announcement     string `json:"announcement"`
-	CompletedOn      int    `json:"completed_on"`
-	DefaultRoleID    int    `json:"default_role_id"`
-	DefaultRole      string `json:"default_role"`
-	IsCompleted      bool   `json:"is_completed"`
-	Name             string `json:"name"`
-	ShowAnnouncement bool   `json:"show_announcement"`
-	SuiteMode        int    `json:"suite_mode"`
-	URL              string `json:"url"`
+import "encoding/json"
+
+// Project — основная структура для одного проекта (get_project / get_projects)
+type Project struct {
+	ID               int64  `json:"id"`
+	Name             string `json:"name,omitempty"`
+	Announcement     string `json:"announcement,omitempty"`
+	ShowAnnouncement bool   `json:"show_announcement,omitempty"`
+	SuiteMode        int    `json:"suite_mode,omitempty"` // 1 - single suite, 2 - multiple suites, 3 - baselines
+	URL              string `json:"url,omitempty"`
+	IsCompleted      bool   `json:"is_completed,omitempty"`
+	CompletedOn      int64  `json:"completed_on,omitempty"`
+	DefaultRoleID    int64  `json:"default_role_id,omitempty"`
+	CreatedBy        int64  `json:"created_by,omitempty"`
+	CreatedOn        int64  `json:"created_on,omitempty"`
+	UpdatedBy        int64  `json:"updated_by,omitempty"`
+	UpdatedOn        int64  `json:"updated_on,omitempty"`
 	Users            []struct {
-		ID            int `json:"id"`
-		GlobalRoleID  any `json:"global_role_id"`
-		GlobalRole    any `json:"global_role"`
-		ProjectRoleID any `json:"project_role_id"`
-		ProjectRole   any `json:"project_role"`
-	} `json:"users"`
-	Groups []any `json:"groups"`
+		ID            int64 `json:"id"`
+		GlobalRoleID  int64 `json:"global_role_id,omitempty"`
+		ProjectRoleID int64 `json:"project_role_id,omitempty"`
+	} `json:"users,omitempty"`
+	Groups []struct {
+		ID   int64  `json:"id"`
+		Name string `json:"name,omitempty"`
+	} `json:"groups,omitempty"`
+	CustomFields json.RawMessage `json:"custom_fields,omitempty"`
 }
 
-// Структура для 'get_projects'
+// GetProjectsResponse — ответ для get_projects
 type GetProjectsResponse struct {
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
-	Size   int `json:"size"`
-	Links  struct {
-		Next any `json:"next"`
-		Prev any `json:"prev"`
-	} `json:"_links"`
-	Projects []struct {
-		ID   int    `json:"id"`
-		Name string `json:"name"`
-	} `json:"projects"`
+	Pagination
+	Projects []Project `json:"projects"`
 }
 
-// Структура для 'add_project'
+// GetProjectResponse — ответ для get_project
+type GetProjectResponse struct {
+	Project
+}
+
+// AddProjectRequest — запрос для add_project
 type AddProjectRequest struct {
-	Name             string `json:"name"`
-	Announcement     string `json:"announcement"`
-	ShowAnnouncement bool   `json:"show_announcement"`
+	Name             string `json:"name"` // Обязательное — без omitempty
+	Announcement     string `json:"announcement,omitempty"`
+	ShowAnnouncement bool   `json:"show_announcement,omitempty"`
+	SuiteMode        int    `json:"suite_mode,omitempty"` // Опционально
 }
 
-// Структура для 'update_project'
-type UpdateProjectResponse struct {
-	Name             string `json:"name"`
-	Announcement     string `json:"announcement"`
-	ShowAnnouncement bool   `json:"show_announcement"`
-	DefaultRoleID    int    `json:"default_role_id"`
-	IsCompleted      bool   `json:"is_completed"`
-	Users            []struct {
-		UserID int `json:"user_id"`
-		RoleID any `json:"role_id"`
-	} `json:"users"`
-	Groups []any `json:"groups"`
+// UpdateProjectRequest — запрос для update_project
+type UpdateProjectRequest struct {
+	Name             string `json:"name,omitempty"`
+	Announcement     string `json:"announcement,omitempty"`
+	ShowAnnouncement bool   `json:"show_announcement,omitempty"`
+	IsCompleted      bool   `json:"is_completed,omitempty"`
+	SuiteMode        int    `json:"suite_mode,omitempty"`
 }

@@ -20,7 +20,8 @@ type ResponseData struct {
 	Duration   time.Duration       `json:"duration"`
 }
 
-// PrintResponse — красивый вывод ответа
+// PrintResponse — красивый вывод универсального (с типом interface{}) ответа
+// Чтение ЛЮБОГО ответа
 func (c *HTTPClient) ReadResponse(resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
 	// Считываем поток ответа (сырые данные) в переменную
 	bodyBytes, err := io.ReadAll(resp.Body)
@@ -58,6 +59,20 @@ func (c *HTTPClient) PrintResponseFromData(data ResponseData, outputFormat strin
     default: // table
         printTable(data)
     }
+}
+
+// ReadJSONResponse — универсальный метод для чтения ответа в любую структуру (не в interface{})
+func (c *HTTPClient) ReadJSONResponse(resp *http.Response, target any) error {
+    if resp.StatusCode != http.StatusOK {
+        body, _ := io.ReadAll(resp.Body)
+        return fmt.Errorf("ошибка API: %s, тело: %s", resp.Status, string(body))
+    }
+    defer resp.Body.Close()
+
+    if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+        return fmt.Errorf("ошибка декодирования: %w", err)
+    }
+    return nil
 }
 
 func printTable(data ResponseData) {

@@ -1,0 +1,29 @@
+// models/data/shared.go
+package data
+
+// Pagination — общая структура для пагинированных ответов
+type Pagination struct {
+	Offset int    `json:"offset"`
+	Limit  int    `json:"limit"`
+	Size   int    `json:"size"`
+	Links  struct {
+		Next string `json:"next,omitempty"`
+		Prev string `json:"prev,omitempty"`
+	} `json:"_links,omitempty"`
+}
+
+// Step — шаг кейса (custom_steps_separated)
+type Step struct {
+	Content        string `json:"content,omitempty"`
+	AdditionalInfo string `json:"additional_info,omitempty"`
+	Expected       string `json:"expected,omitempty"`
+	Refs           string `json:"refs,omitempty"`
+}
+
+// Label — метка кейса
+type Label struct {
+	ID        int64  `json:"id"`
+	Title     string `json:"title"`
+	CreatedBy string `json:"created_by"`
+	CreatedOn string `json:"created_on"`
+}

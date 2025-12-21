@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -31,7 +32,7 @@ func DebugPrint(format string, args ...interface{}) {
 	}
 }
 
-// Вспомогательная функция '' - для интерактивного ввода
+// Вспомогательная функция 'StringPrompt' - для интерактивного ввода
 func StringPrompt(q string) bool {
 	var s string
 	// Считываем строку в буфер
@@ -76,4 +77,14 @@ func OpenEditor(filepath string) error {
 
     // Запускаем
     return cmd.Run()
+}
+
+// UnixToTime конвертирует Unix timestamp в time.Time
+func UnixToTime(ts int64) time.Time {
+	return time.Unix(ts, 0)
+}
+
+// TimeToUnix конвертирует time.Time в Unix timestamp
+func TimeToUnix(t time.Time) int64 {
+	return t.Unix()
 }

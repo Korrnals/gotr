@@ -6,6 +6,7 @@ import (
 	"gotr/internal/client"
 	"gotr/internal/utils"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -29,7 +30,6 @@ var rootCmd = &cobra.Command{
         utils.DebugPrint("{rootCmd} - Запуск команды: %s", cmd.Use)
         utils.DebugPrint("{rootCmd} - Аргументы: %v", args)
         // Настройка Viper - поддержка env, флаговб конфигов
-        viper.SetEnvPrefix("testrail") // TESTRAIL_BASE_URL, TESTRAIL_USER и т.д.
         viper.AutomaticEnv()            // автоматически поддтягивать переменные из окружения
  
         // Маппим переменные окружения в переменные, которые будут использоваться в клиенте
@@ -42,7 +42,7 @@ var rootCmd = &cobra.Command{
 
         // Читаем значения (приоритет: флаги > env > default)
         if baseURL == "" {
-            return fmt.Errorf("base-url обязателен: укажите --base-url или TESTRAIL_BASE_URL (env)")
+            return fmt.Errorf("url обязателен: укажите --url или GOTR_TESTRAIL_BASE_URL (env)")
         }
         
         // [DEBUG] при переданом флаге `--debug` или `-d`
@@ -51,12 +51,15 @@ var rootCmd = &cobra.Command{
         utils.DebugPrint("{rootCmd} - insecure=%v", insecure)
 
         // Обработка пустых значений переменных
+        if baseURL == "" {
+            return fmt.Errorf("base_url обязателен: --url или TESTRAIL_BASE_URL (env)")
+        }
         if username == "" {
-			return fmt.Errorf("username обязателен: --username или TESTRAIL_USERNAME")
-		}
-		if apiKey == "" || password == "" {
-			return fmt.Errorf("api-key(или password) обязателен: --api-key (--password) или TESTRAIL_API_KEY (TESTRAIL_PASSWORD)")
-		}
+            return fmt.Errorf("username обязателен: --username или TESTRAIL_USERNAME")
+        }
+        if apiKey == "" {
+            return fmt.Errorf("api_key обязателен: --api-key или TESTRAIL_API_KEY")
+        }
 
         // [DEBUG] при переданом флаге `--debug` или `-d
         utils.DebugPrint("{rootCmd} - Подключение к %s как %s", baseURL, username)
@@ -93,10 +96,13 @@ func Execute() {
 
 // init — здесь подключаем все субкоманды
 func init() {
+    // Инициализация конфига
+    initConfig()
+    
     // Глобальные флаги
-	rootCmd.PersistentFlags().String("base-url", "", "Базовый URL TestRail (например, https://your-instance.testrail.io/")
+	rootCmd.PersistentFlags().String("url", "", "Базовый URL TestRail (например, https://your-instance.testrail.io/")
 	rootCmd.PersistentFlags().StringP("username", "u", "", "Email пользователя TestRail")
-    rootCmd.PersistentFlags().StringP("config", "c", "", "Путь к конфигурационному файлу")
+    rootCmd.PersistentFlags().BoolP("config", "c", false, "Создать дефолтный файл конфигурации (~/.gotr/config.yaml)")
 	rootCmd.PersistentFlags().StringP("api-key", "k", "", "API ключ TestRail")
 	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Пропустить проверку TLS сертификата")
 
@@ -112,18 +118,24 @@ func init() {
     rootCmd.PersistentFlags().BoolP("debug", "d", false, "Включить отладочный вывод (скрытый флаг)")
     rootCmd.PersistentFlags().MarkHidden("debug") // ← Эта строка скрывает флаг
 
-	// Привязываем флаги к Viper
-	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("base-url"))
+	// Привязываем флаги к Viper (чтобы viper знал их значения)
+	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
 	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))
+	viper.BindPFlag("password", rootCmd.PersistentFlags().Lookup("password"))
 	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
 	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure"))
+    // Вторичные флаги
     viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
     viper.BindPFlag("jq", rootCmd.PersistentFlags().Lookup("jq"))
     viper.BindPFlag("jq-filter", rootCmd.PersistentFlags().Lookup("jq-filter"))
     viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
     viper.BindPFlag("type", rootCmd.PersistentFlags().Lookup("type"))
 
+	// Defaults (если ничего не задано)
+	viper.SetDefault("base_url", "https://yourcompany.testrail.io/")
+
 	// Глобальные ПОДКОМАНДЫ:
+    rootCmd.AddCommand(configCmd) // Подключаем субкоманду list
     rootCmd.AddCommand(listCmd) // Подключаем субкоманду list
     rootCmd.AddCommand(getCmd)  // Подключаем субкоманду get
     rootCmd.AddCommand(addCmd)  // Подключаем субкоманду add
@@ -144,8 +156,40 @@ func init() {
 func GetClient(cmd *cobra.Command) *client.HTTPClient {
     val := cmd.Context().Value(httpClientKey)
     if val == nil {
-        fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --base-url")
+        fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
         os.Exit(1)
     }
     return val.(*client.HTTPClient)
+}
+
+func initConfig() {
+	// 1. Добавляем стандартные пути поиска
+	home, err := os.UserHomeDir()
+	if err != nil {
+		// Не паникуем — просто продолжаем без home-пути
+		fmt.Printf("Warning: cannot get user home directory: %v\n", err)
+	} else {
+		configDir := filepath.Join(home, ".gotr")
+		viper.AddConfigPath(configDir) // ~/.gotr
+	}
+
+	// Удобно для локального тестирования
+	viper.AddConfigPath(".") // текущая директория
+
+	// 2. Имя файла без расширения (viper сам попробует .yaml, .json и т.д.)
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml") // явно указываем yaml
+
+	// 3. Автоматический биндинг env-переменных
+	viper.SetEnvPrefix("testrail") // TESTRAIL_BASE_URL, TESTRAIL_USER и т.д.
+	viper.AutomaticEnv()
+
+	// 4. Читаем конфиг (если файла нет — просто продолжаем, это не ошибка)
+	if err := viper.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			// Если ошибка не "файл не найден" — можно залогировать
+			fmt.Printf("{rootCmd} - Config file error: %v\n", err)
+		}
+		// Файл не обязателен — используем defaults
+	}
 }

@@ -29,6 +29,7 @@ gotr
 *.old*
 .testrail/
 Notify.md
+Tech.md
 
 gotr-linux-amd64
 gotr-darwin-amd64

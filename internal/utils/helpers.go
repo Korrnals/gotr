@@ -4,18 +4,19 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"gotr/internal/models/data"
 	"log"
 	"os"
+	"os/exec"
+	"runtime"
 
 	"github.com/spf13/viper"
 )
 
-// Вспомогательная функция PrettyYAML - для форматированного вывода конфигурации Kubernetes
-func PrettyJSON(cfg *data.TestCase) error {
+// Вспомогательная функция PrettyYAML - для форматированного ответа
+func PrettyJSON(data interface{}) error {
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetEscapeHTML(true)
-	err := enc.Encode(cfg)
+	err := enc.Encode(data)
 	if err != nil {
 		return err
 	}
@@ -49,4 +50,30 @@ func StringPrompt(q string) bool {
 		}
 	}
 	return true
+}
+
+
+// OpenEditor открывает файл в редакторе по умолчанию
+func OpenEditor(filepath string) error {
+    editor := os.Getenv("EDITOR")
+    if editor == "" {
+        // Fallback в зависимости от ОС
+        if runtime.GOOS == "windows" {
+            editor = "notepad"
+        } else {
+            editor = "vi" // или "nano" — vim более универсальный
+        }
+        fmt.Printf("Переменная EDITOR не задана. Используется fallback: %s\n", editor)
+    }
+
+    // Создаём команду
+    cmd := exec.Command(editor, filepath)
+
+    // Привязываем stdin/stdout/stderr к терминалу
+    cmd.Stdin = os.Stdin
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+
+    // Запускаем
+    return cmd.Run()
 }

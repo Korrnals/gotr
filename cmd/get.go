@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // getCmd — основная команда для GET-запросов
@@ -57,6 +58,11 @@ func handleOutput(cmd *cobra.Command, data any, start time.Time) error {
 	jqEnabled, _ := cmd.Flags().GetBool("jq")
 	jqFilter, _ := cmd.Flags().GetString("jq-filter")
 	bodyOnly, _ := cmd.Flags().GetBool("body-only")
+
+	// Если jq не указан явно — берём из конфига
+	if !jqEnabled {
+		jqEnabled = viper.GetBool("jq_format")
+	}
 
 	if saveFile != "" {
 		var toSave []byte
@@ -440,10 +446,12 @@ var getSuiteCmd = &cobra.Command{
 }
 
 func init() {
+	// Добавляем подкоманды
 	getCmd.AddCommand(getCasesCmd)
 	getCmd.AddCommand(getCaseCmd)
 	getCmd.AddCommand(getCaseTypesCmd)
 	getCmd.AddCommand(getCaseFieldsCmd)
+	getCmd.AddCommand(getCaseHistoryCmd)
 	getCmd.AddCommand(getProjectsCmd)
 	getCmd.AddCommand(getProjectCmd)
 	getCmd.AddCommand(getSharedStepsCmd)
@@ -452,17 +460,20 @@ func init() {
 	getCmd.AddCommand(getSuitesCmd)
 	getCmd.AddCommand(getSuiteCmd)
 
+	// Локальные флаги — только для подкоманд get и их детей
 	for _, subCmd := range getCmd.Commands() {
-		subCmd.Flags().StringP("project-id", "p", "", "ID проекта (обязательно для cases, sharedsteps)")
 		subCmd.Flags().StringP("type", "t", "json", "Формат вывода: json, json-full, table")
 		subCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
 		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
-		subCmd.Flags().BoolP("jq", "j", false, "Использовать jq для фильтрации")
+		subCmd.Flags().BoolP("jq", "j", false, "Включить jq-форматирование (переопределяет конфиг jq_format)")
 		subCmd.Flags().String("jq-filter", "", "jq-фильтр")
 		subCmd.Flags().BoolP("body-only", "b", false, "Сохранить только тело ответа (без метаданных)")
 	}
 
+	// Специфичные флаги для отдельных подкоманд
 	getCasesCmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (обязательно для проектов в режиме multiple suites)")
 	getCasesCmd.Flags().Int64("section-id", 0, "ID секции (опционально)")
-	getCasesCmd.MarkFlagRequired("suite-id") // Cobra сам требует suite-id
+	getCasesCmd.MarkFlagRequired("suite-id")
+
+	getSharedStepsCmd.MarkFlagRequired("project-id") // если хочешь оставить жёсткое требование
 }

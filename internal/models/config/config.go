@@ -14,6 +14,7 @@ type ConfigData struct {
 	Username string `yaml:"username"`
 	APIKey   string `yaml:"api_key"`
 	Insecure bool   `yaml:"insecure"`
+	JqFormat bool   `yaml:"jq_format"`
 }
 
 // Config — представляет один конфиг-файл
@@ -47,6 +48,7 @@ func (c *Config) WithDefaults() *Config {
 		Username: "your-email@example.com",
 		APIKey:   "your_api_key_here",
 		Insecure: false,
+		JqFormat: false,
 	}
 	return c
 }

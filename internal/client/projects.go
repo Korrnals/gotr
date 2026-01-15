@@ -10,8 +10,8 @@ import (
 )
 
 // GetProjects получает список всех проектов.
-// Не требует параметров, возвращает пагинированный список.
-func (c *HTTPClient) GetProjects() (*data.GetProjectsResponse, error) {
+// Возвращает массив проектов (TestRail возвращает []Project напрямую).
+func (c *HTTPClient) GetProjects() (data.GetProjectsResponse, error) {
 	endpoint := "get_projects"
 	resp, err := c.Get(endpoint, nil)
 	if err != nil {
@@ -23,22 +23,22 @@ func (c *HTTPClient) GetProjects() (*data.GetProjectsResponse, error) {
 	if err := c.ReadJSONResponse(resp, &result); err != nil {
 		return nil, fmt.Errorf("ошибка декодирования ответа GetProjects: %w", err)
 	}
-	return &result, nil
+	return result, nil
 }
 
 // GetProject получает информацию о конкретном проекте по ID.
-// ID должен быть валидным числом.
-func (c *HTTPClient) GetProject(projectID string) (*data.GetProjectResponse, error) {
-	endpoint := fmt.Sprintf("get_project/%s", projectID)
+// ID — число (int64).
+func (c *HTTPClient) GetProject(projectID int64) (*data.GetProjectResponse, error) {
+	endpoint := fmt.Sprintf("get_project/%d", projectID)
 	resp, err := c.Get(endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetProject %s: %w", projectID, err)
+		return nil, fmt.Errorf("ошибка запроса GetProject %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
 	var result data.GetProjectResponse
 	if err := c.ReadJSONResponse(resp, &result); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования ответа GetProject %s: %w", projectID, err)
+		return nil, fmt.Errorf("ошибка декодирования ответа GetProject %d: %w", projectID, err)
 	}
 	return &result, nil
 }
@@ -67,10 +67,10 @@ func (c *HTTPClient) AddProject(req *data.AddProjectRequest) (*data.GetProjectRe
 }
 
 // UpdateProject обновляет существующий проект по ID.
-// Поддерживает частичные обновления (UpdateProjectRequest).
+// Поддерживает частичные обновления.
 // Требует прав администратора.
-func (c *HTTPClient) UpdateProject(projectID string, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
-	endpoint := fmt.Sprintf("update_project/%s", projectID)
+func (c *HTTPClient) UpdateProject(projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+	endpoint := fmt.Sprintf("update_project/%d", projectID)
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга UpdateProjectRequest: %w", err)
@@ -78,33 +78,32 @@ func (c *HTTPClient) UpdateProject(projectID string, req *data.UpdateProjectRequ
 
 	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса UpdateProject %s: %w", projectID, err)
+		return nil, fmt.Errorf("ошибка запроса UpdateProject %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
 	var result data.GetProjectResponse
 	if err := c.ReadJSONResponse(resp, &result); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования ответа UpdateProject %s: %w", projectID, err)
+		return nil, fmt.Errorf("ошибка декодирования ответа UpdateProject %d: %w", projectID, err)
 	}
 	return &result, nil
 }
 
 // DeleteProject удаляет проект по ID.
-// Удаление необратимо — все данные проекта (тесты, runs, результаты) теряются.
+// Удаление необратимо — все данные проекта теряются.
 // Требует прав администратора.
-// Возвращает nil при успехе (HTTP 200 OK).
-func (c *HTTPClient) DeleteProject(projectID string) error {
-	endpoint := fmt.Sprintf("delete_project/%s", projectID)
+// Возвращает nil при успехе.
+func (c *HTTPClient) DeleteProject(projectID int64) error {
+	endpoint := fmt.Sprintf("delete_project/%d", projectID)
 	resp, err := c.Post(endpoint, nil, nil)
 	if err != nil {
-		return fmt.Errorf("ошибка запроса DeleteProject %s: %w", projectID, err)
+		return fmt.Errorf("ошибка запроса DeleteProject %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("ошибка удаления проекта %s: %s, тело: %s", projectID, resp.Status, string(body))
+		return fmt.Errorf("ошибка удаления проекта %d: %s, тело: %s", projectID, resp.Status, string(body))
 	}
-
 	return nil
 }

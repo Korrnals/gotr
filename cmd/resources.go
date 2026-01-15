@@ -259,64 +259,10 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 // getAllShortEndpoints — возвращает список всех коротких эндпоинтов для ресурса (GET, POST, DELETE)
 func getAllShortEndpoints(resource string) []string {
 	var paths []testrailapi.APIPath
-		switch resource {
-		case "all":
-			paths = api.Paths()
-		case "cases":
-			paths = api.Cases.Paths()
-		case "casefields":
-			paths = api.CaseFields.Paths()
-		case "casetypes":
-			paths = api.CaseTypes.Paths()
-		case "configurations":
-			paths = api.Configurations.Paths()
-		case "projects":
-			paths = api.Projects.Paths()
-		case "priorities":
-			paths = api.Priorities.Paths()
-		case "runs":
-			paths = api.Runs.Paths()
-		case "tests":
-			paths = api.Tests.Paths()
-		case "suites":
-			paths = api.Suites.Paths()
-		case "sections":
-			paths = api.Sections.Paths()
-		case "statuses":
-			paths = api.Statuses.Paths()
-		case "milestones":
-			paths = api.Milestones.Paths()
-		case "plans":
-			paths = api.Plans.Paths()
-		case "results":
-			paths = api.Results.Paths()
-		case "resultfields":
-			paths = api.ResultFields.Paths()
-		case "reports":
-			paths = api.Reports.Paths()
-		case "attachments":
-			paths = api.Attachments.Paths()
-		case "users":
-			paths = api.Users.Paths()
-		case "roles":
-			paths = api.Roles.Paths()
-		case "templates":
-			paths = api.Templates.Paths()
-		case "groups":
-			paths = api.Groups.Paths()
-		case "sharedsteps":
-			paths = api.SharedSteps.Paths()
-		case "variables":
-			paths = api.Variables.Paths()
-		case "labels":
-			paths = api.Labels.Paths()
-		case "datasets":
-			paths = api.Datasets.Paths()
-		case "bdds":
-			paths = api.BDDs.Paths()
-		default:
-			return nil
-		}
+	paths = getResourcePaths(resource)
+	if paths == nil {
+        return nil
+    }
 
 	var endpoints []string
 	seen := make(map[string]bool)
@@ -422,4 +368,67 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 	}
 
 	return fullEndpoint, queryParams, nil
+}
+
+// getResourcePaths — возвращает пути для указанного ресурса
+// resource — имя ресурса ("projects", "cases" и т.д.)
+func getResourcePaths(resource string) []testrailapi.APIPath {
+    switch resource {
+    case "all":
+        return api.Paths()
+    case "cases":
+        return api.Cases.Paths()
+    case "casefields":
+        return api.CaseFields.Paths()
+    case "casetypes":
+        return api.CaseTypes.Paths()
+    case "configurations":
+        return api.Configurations.Paths()
+    case "projects":
+        return api.Projects.Paths()
+    case "priorities":
+        return api.Priorities.Paths()
+    case "runs":
+        return api.Runs.Paths()
+    case "tests":
+        return api.Tests.Paths()
+    case "suites":
+        return api.Suites.Paths()
+    case "sections":
+        return api.Sections.Paths()
+    case "statuses":
+        return api.Statuses.Paths()
+    case "milestones":
+        return api.Milestones.Paths()
+    case "plans":
+        return api.Plans.Paths()
+    case "results":
+        return api.Results.Paths()
+    case "resultfields":
+        return api.ResultFields.Paths()
+    case "reports":
+        return api.Reports.Paths()
+    case "attachments":
+        return api.Attachments.Paths()
+    case "users":
+        return api.Users.Paths()
+    case "roles":
+        return api.Roles.Paths()
+    case "templates":
+        return api.Templates.Paths()
+    case "groups":
+        return api.Groups.Paths()
+    case "sharedsteps":
+        return api.SharedSteps.Paths()
+    case "variables":
+        return api.Variables.Paths()
+    case "labels":
+        return api.Labels.Paths()
+    case "datasets":
+        return api.Datasets.Paths()
+    case "bdds":
+        return api.BDDs.Paths()
+    default:
+        return nil // или return []APIPath{} — пустой срез
+    }
 }

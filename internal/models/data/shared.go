@@ -3,9 +3,9 @@ package data
 
 // Pagination — общая структура для пагинированных ответов
 type Pagination struct {
-	Offset int    `json:"offset"`
-	Limit  int    `json:"limit"`
-	Size   int    `json:"size"`
+	Offset int64 `json:"offset"`
+	Limit  int64 `json:"limit"`
+	Size   int64 `json:"size"`
 	Links  struct {
 		Next string `json:"next,omitempty"`
 		Prev string `json:"prev,omitempty"`
@@ -20,10 +20,8 @@ type Step struct {
 	Refs           string `json:"refs,omitempty"`
 }
 
-// Label — метка кейса
+// Label — метка кейса (используется в Case.Labels)
 type Label struct {
-	ID        int64  `json:"id"`
-	Title     string `json:"title"`
-	CreatedBy string `json:"created_by"`
-	CreatedOn string `json:"created_on"`
+	ID   int64  `json:"id"`
+	Name string `json:"name"`
 }

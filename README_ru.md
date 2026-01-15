@@ -15,6 +15,18 @@
 - Поддержка query-параметров (suite_id, section_id и т.д.)
 - Полностью автономный бинарник — работает везде, где есть Go
 
+## Особенности (v2.0.0)
+
+- Полная поддержка GET-эндпоинтов TestRail API через подкоманды (projects, cases, sharedsteps, suites и т.д.).
+- Удобные подкоманды с позиционными аргументами (например, `gotr get project 30` вместо флагов).
+- Встроенный `jq` — фильтрация без установки внешней утилиты.
+- Экспорт данных в JSON-файлы (автоматическое именование или через `--output`).
+- Автодополнение подкоманд и флагов.
+- Гибкие флаги: `--quiet`, `--type`, `--jq`, `--project-id` и другие.
+- Поддержка фильтров (suite_id, section_id и т.д.).
+- Полностью автономный бинарник — работает везде, где есть Go.
+- Информативные подсказки и ошибки — сразу понятно, какой ID нужен и где его взять.
+
 ## Установка
 
 ### Скачать готовый бинарник одной командой (Linux/macOS)
@@ -163,7 +175,7 @@ export TESTRAIL_BASE_URL="https://your-company.testrail.io/"
 export TESTRAIL_USERNAME="your@email.com"
 export TESTRAIL_API_KEY="your_api_key"
 
-gotr get get_projects
+gotr get projects
 ```
 
 ### Через конфиг-файл (скоро)
@@ -176,37 +188,74 @@ gotr get get_projects
 ### Основные команды
 
 ```bash
-gotr get <endpoint> [id]                # GET-запрос
+gotr list <resource>                    # Список доступных эндпоинтов (для справки)
+gotr get <resource> [id]                # Получить данные (подкоманды вместо эндпоинтов)
 gotr export <resource> <endpoint> [id]  # Экспорт в файл
-gotr list <resource>                    # Список доступных эндпоинтов
 ```
+
+### Команда — `gotr get` с подкомандами
 
 ### Примеры
 
 #### Получить список проектов
 
 ```bash
-gotr get get_projects
-gotr get get_projects -t table          # в табличном виде
-gotr get get_projects -j                # с встроенным jq (форматирование)
-gotr get get_projects -j -f '.[] .name' # только имена проектов
+gotr get projects                          # все проекты
+gotr get projects -j '.[] .name'           # только имена через jq
+gotr get projects --type table             # табличный вид (если реализован)
+gotr get projects -o projects.json         # сохранить в файл
 ```
 
 #### Получить проект по ID
 
 ```bash
-gotr get get_project 30
-gotr get get_project --project-id 30    # через флаг
-gotr get get_project 30 -o project30.json  # сохранить в файл
+gotr get project 30                        # один проект (позиционный ID)
+gotr get project --project-id 30           # через флаг (для совместимости)
+gotr get project 30 -o project30.json      # сохранить в файл
 ```
 
-#### Получить кейсы с фильтрацией
+#### Получить тест-сюиты проекта
 
 ```bash
-gotr get get_cases 30 --suite-id 20069
-gotr get get_cases 30 --suite-id 20069 --section-id 10
-gotr get get_cases --project-id 30 --suite-id 20069
+gotr get suites 30                         # все сюиты проекта 30
+gotr get suite 20069                       # одна сюита по ID
 ```
+
+#### Получить кейсы проекта
+
+```bash
+gotr get cases 30 --suite-id 20069                  # кейсы проекта 30 в сюите 20069
+gotr get cases --project-id 30 --suite-id 20069      # через флаги
+gotr get cases 30 --suite-id 20069 --section-id 100 # с фильтром по секции
+gotr get case 12345                                 # один кейс по ID
+gotr get case-history 12345                         # история изменений кейса
+```
+
+#### Получить shared steps
+
+```bash
+gotr get sharedsteps 30                     # все shared steps проекта 30
+gotr get sharedstep 45678                   # один shared step по ID шага
+gotr get sharedstep-history 45678           # история изменений шага
+```
+
+#### Фильтрация и экспорт
+
+```bash
+gotr get projects -j '.[] | select(.is_completed == false).name'  # только незавершённые проекты
+gotr get cases 30 --suite-id 20069 -o cases.json                 # сохранить кейсы в файл
+gotr get projects --type json-full                               # полный ответ с метаданными
+gotr get cases 30 --suite-id 20069 -q                             # тихий режим (для скриптов)
+```
+
+#### Как получить нужные ID
+
+- **ID проекта**: `gotr get projects` или TestRail UI (раздел Projects)
+- **ID сюиты**: `gotr get suites <project-id>` или TestRail UI (раздел Suites)
+- **ID кейса**: `gotr get cases <project-id> --suite-id <suite-id>`
+- **ID shared step**: `gotr get sharedsteps <project-id>`
+
+---
 
 #### Экспорт данных
 
@@ -220,12 +269,15 @@ gotr export cases get_cases 30 --suite-id 20069 -o my_cases.json
 
 #### Автодополнение
 
-`gotr` поддерживает автодополнение ресурсов и эндпоинтов:
-
 ```bash
-gotr get <Tab><Tab>        # предложит эндпоинты
-gotr export cases <Tab>    # предложит эндпоинты для cases
+gotr completion bash > ~/.gotr-completion.bash
+source ~/.gotr-completion.bash
+# Для zsh:
+gotr completion zsh > ~/.gotr-completion.zsh
+source ~/.gotr-completion.zsh
 ```
+
+Теперь `gotr get <Tab><Tab>` покажет все подкоманды (`case`, `cases`, `project`, `projects`, `suite`, `suites`, `sharedstep`, `sharedsteps` и т.д.).
 
 ---
 ---
@@ -234,23 +286,21 @@ gotr export cases <Tab>    # предложит эндпоинты для cases
 
 ### Глобальные
 
-- `--base-url` — базовый URL TestRail
+- `--url` — базовый URL TestRail
 - `--username` / `-u` — email пользователя
 - `--api-key` / `-k` — API-ключ
-- `--config` / `-c` — путь к конфиг-файлу
 - `--insecure` / `-i` — пропустить проверку TLS
-- `--jq` / `-j` — вывод через встроенный jq
-- `--jq-filter` / `-f` — фильтр jq
-- `--quiet` / `-q` — подавить вывод на экран
-- `--type` / `-t` — формат вывода (json, json-full, table)
-- `--output` / `-o` — сохранить в файл
+- `--quiet` / `-q` — подавить вывод (полезно для скриптов)
+- `--type` / `-t` — формат: `json` (только тело), `json-full` (с метаданными), `table`
+- `--output` / `-o` — сохранить ответ в файл
+- `--jq` / `-j` — использовать встроенный jq
+- `--jq-filter` — фильтр jq (например, `.[] .name`)
 
-### Локальные (для get/export)
+### Для подкоманд `get`
 
-- `--project-id` / `-p` — ID проекта
-- `--suite-id` / `-s` — ID тест-сюиты
-- `--section-id` — ID секции
-- `--milestone-id` — ID milestone
+- `--project-id` / `-p` — ID проекта (для `cases`, `sharedsteps`, `suites`)
+- `--suite-id` / `-s` — ID тест-сюиты (обязательно для `cases`)
+- `--section-id` — ID секции (опционально для `cases`)
 
 ## Лицензия
 

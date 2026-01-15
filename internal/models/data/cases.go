@@ -1,9 +1,11 @@
 // models/data/cases.go
 package data
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
-// Case — основная структура для одного кейса (используется в get_case и в get_cases)
+// Case — основная структура одного кейса (используется в get_case и get_cases)
 type Case struct {
 	ID                   int64   `json:"id"`
 	Title                string  `json:"title,omitempty"`
@@ -21,28 +23,35 @@ type Case struct {
 	EstimateForecast     string  `json:"estimate_forecast,omitempty"`
 	SuiteID              int64   `json:"suite_id,omitempty"`
 	DisplayOrder         int     `json:"display_order,omitempty"`
-	IsDeleted            bool    `json:"is_deleted,omitempty"`
+	IsDeleted            int     `json:"is_deleted,omitempty"` // 1 = deleted, 0 = not deleted
 	CustomAutomationType int64   `json:"custom_automation_type,omitempty"`
 	CustomPreconds       string  `json:"custom_preconds,omitempty"`
 	CustomSteps          string  `json:"custom_steps,omitempty"`
 	CustomExpected       string  `json:"custom_expected,omitempty"`
-	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"`
+	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Step из shared.go
 	CustomMission        string  `json:"custom_mission,omitempty"`
 	CustomGoals          string  `json:"custom_goals,omitempty"`
-	Labels               []Label `json:"labels,omitempty"`
+	Labels               []Label `json:"labels,omitempty"` // Label из shared.go
 	// Для полностью кастомных полей (если TestRail вернёт неизвестное)
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"`
 }
 
-// GetCasesResponse — ответ для get_cases (пагинированный список кейсов)
-type GetCasesResponse struct {
-	Pagination
-	Cases []Case `json:"cases"`
-}
+// GetCasesResponse — ответ на get_cases (пагинированный список кейсов)
+type GetCasesResponse []Case
 
-// GetCaseResponse — ответ для get_case (один кейс)
-type GetCaseResponse struct {
-	Case
+// GetCaseResponse — ответ на get_case (один кейс напрямую)
+type GetCaseResponse Case
+
+// GetHistoryForCaseResponse — ответ на get_history_for_case
+type GetHistoryForCaseResponse struct {
+	Pagination
+	History []struct {
+		ID        int64    `json:"id"`
+		TypeID    int64    `json:"type_id"`
+		CreatedOn int64    `json:"created_on"`
+		UserID    int64    `json:"user_id"`
+		Changes   []Change `json:"changes"`
+	} `json:"history"`
 }
 
 // Change — изменение в истории
@@ -55,39 +64,31 @@ type Change struct {
 	NewValue int64  `json:"new_value,omitempty"`
 }
 
-// GetHistoryForCaseResponse — ответ для get_history_for_case
-type GetHistoryForCaseResponse struct {
-	Pagination
-	History []struct {
-		ID        int64    `json:"id"`
-		TypeID    int64    `json:"type_id"`
-		CreatedOn int64    `json:"created_on"`
-		UserID    int64    `json:"user_id"`
-		Changes   []Change `json:"changes"`
-	} `json:"history"`
-}
-
 // Request структуры //
 
 // AddCaseRequest — запрос для add_case
 type AddCaseRequest struct {
-	Title                string `json:"title"`
+	Title                string `json:"title"` // обязательно
 	SectionID            int64  `json:"section_id"`
 	TypeID               int64  `json:"type_id"`
 	PriorityID           int64  `json:"priority_id"`
 	Estimate             string `json:"estimate,omitempty"`
 	CustomPreconds       string `json:"custom_preconds,omitempty"`
-	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"`
-	// Добавь другие поля по необходимости (например, refs, milestone_id)
+	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Step из shared.go
+	Refs                 string `json:"refs,omitempty"`
+	MilestoneID          int64  `json:"milestone_id,omitempty"`
+	// Добавь другие поля по необходимости
 }
 
-// UpdateCaseRequest — запрос для update_case
+// UpdateCaseRequest — запрос для update_case (частичные обновления)
 type UpdateCaseRequest struct {
 	Title                string `json:"title,omitempty"`
 	PriorityID           int64  `json:"priority_id,omitempty"`
 	Estimate             string `json:"estimate,omitempty"`
 	CustomPreconds       string `json:"custom_preconds,omitempty"`
-	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"`
+	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Step из shared.go
+	Refs                 string `json:"refs,omitempty"`
+	MilestoneID          int64  `json:"milestone_id,omitempty"`
 	// ...
 }
 
@@ -114,8 +115,8 @@ type GetCaseTypesResponse []struct {
 type GetCaseFieldsResponse []struct {
 	Configs []struct {
 		Context struct {
-			IsGlobal   bool     `json:"is_global"`
-			ProjectIDs []int64  `json:"project_ids,omitempty"`
+			IsGlobal   bool    `json:"is_global"`
+			ProjectIDs []int64 `json:"project_ids,omitempty"`
 		} `json:"context"`
 		ID      string `json:"id"`
 		Options struct {
@@ -171,4 +172,15 @@ type AddCaseFieldResponse struct {
 	IsSystem     int    `json:"is_system"`
 	IncludeAll   int    `json:"include_all"`
 	TemplateIDs  []any  `json:"template_ids"`
+}
+
+// DiffCasesResponse — результат сравнения кейсов двух проектов
+type DiffCasesResponse struct {
+	OnlyInFirst  []Case `json:"only_in_first"`  // Есть только в pid1
+	OnlyInSecond []Case `json:"only_in_second"` // Есть только в pid2
+	DiffByField  []struct {
+		CaseID int64 `json:"case_id"`
+		First  Case  `json:"first"`
+		Second Case  `json:"second"`
+	} `json:"diff_by_field"` // Отличаются по полю
 }

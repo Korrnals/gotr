@@ -107,8 +107,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Пропустить проверку TLS сертификата")
 
     // jq флаги — глобальные, работают во всех подкомандах
-    rootCmd.PersistentFlags().BoolP("jq", "j", false, "Выводить через jq (по умолчанию весь JSON как jq .)")
-    rootCmd.PersistentFlags().StringP("jq-filter", "f", "", "Явный фильтр jq (переопределяет -j)")
+    rootCmd.PersistentFlags().StringP("jq", "j", "", "Явный фильтр jq (переопределяет -j)")
     rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Подавить вывод в консоль (полезно для скриптов и --save)")
  
     // Формат вывода (json по умолчанию — только тело)
@@ -127,7 +126,6 @@ func init() {
     // Вторичные флаги
     viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
     viper.BindPFlag("jq", rootCmd.PersistentFlags().Lookup("jq"))
-    viper.BindPFlag("jq-filter", rootCmd.PersistentFlags().Lookup("jq-filter"))
     viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
     viper.BindPFlag("type", rootCmd.PersistentFlags().Lookup("type"))
 
@@ -135,15 +133,17 @@ func init() {
 	viper.SetDefault("base_url", "https://yourcompany.testrail.io/")
 
 	// Глобальные ПОДКОМАНДЫ:
-    rootCmd.AddCommand(configCmd) // Подключаем субкоманду list
-    rootCmd.AddCommand(listCmd) // Подключаем субкоманду list
-    rootCmd.AddCommand(getCmd)  // Подключаем субкоманду get
-    rootCmd.AddCommand(addCmd)  // Подключаем субкоманду add
-    rootCmd.AddCommand(updateCmd) // Подключаем субкоманду update
-    rootCmd.AddCommand(deleteCmd) // Подключаем субкоманду delete
-    rootCmd.AddCommand(copyCmd)  // Подключаем субкоманду copy
-    rootCmd.AddCommand(exportCmd) // Подключаем субкоманду export
-    rootCmd.AddCommand(importCmd) // Подключаем субкоманду import
+    rootCmd.AddCommand(configCmd)   // Подключаем субкоманду list
+    rootCmd.AddCommand(listCmd)     // Подключаем субкоманду list
+    rootCmd.AddCommand(getCmd)      // Подключаем субкоманду get
+    rootCmd.AddCommand(addCmd)      // Подключаем субкоманду add
+    rootCmd.AddCommand(updateCmd)   // Подключаем субкоманду update
+    rootCmd.AddCommand(deleteCmd)   // Подключаем субкоманду delete
+    rootCmd.AddCommand(copyCmd)     // Подключаем субкоманду copy
+    rootCmd.AddCommand(exportCmd)   // Подключаем субкоманду export
+    rootCmd.AddCommand(importCmd)   // Подключаем субкоманду import
+    rootCmd.AddCommand(compareCmd)  // Подключаем субкоманду compare
+
 
     // Устанавливаем шаблон вывода версии
     rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date)

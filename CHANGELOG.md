@@ -5,6 +5,49 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 и проект использует [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [2.0.0] - 2026-01-15
+
+### Breaking Changes
+
+- Полная переработка команды `get`: переход на подкоманды вместо универсального подхода.
+  - Теперь `gotr get <resource>` с подкомандами: `cases`, `case`, `projects`, `project`, `sharedsteps`, `sharedstep`, `sharedstep-history`, `suites`, `suite`.
+  - Убраны старые универсальные вызовы (например, `gotr get get_cases 30`).
+- Все ID теперь строго типизированы как `int64` в методах клиента и структурах (было string в некоторых местах).
+- `get_cases` теперь требует `suite_id` (обязательно для проектов в режиме multiple suites).
+- Изменена структура ответов для некоторых эндпоинтов (например, `GetProjectsResponse`, `GetSharedStepsResponse` стали срезами вместо объектов с полем).
+
+### Added
+
+- Новые подкоманды в группе `get`:
+  - `gotr get case <case-id>` — получить один кейс по ID кейса.
+  - `gotr get case-history <case-id>` — получить историю изменений кейса.
+  - `gotr get sharedstep <step-id>` — получить один shared step по ID шага.
+  - `gotr get sharedstep-history <step-id>` — получить историю изменений shared step.
+  - `gotr get suites` — получить список тест-сюит проекта.
+  - `gotr get suite <suite-id>` — получить одну тест-сюиту по ID.
+- Поддержка **позиционных аргументов** для ID проекта в `cases`, `sharedsteps`, `suites`.
+- Явные и информативные подсказки в `Short` и `Long` для всех подкома# Changelog
+
+- Проверка обязательных параметров в `RunE` с понятными сообщениями об ошибках (например, про suite_id для cases).
+- Методы клиента для suites: `GetSuites`, `GetSuite`, `AddSuite`, `UpdateSuite`, `DeleteSuite`.
+
+### Changed
+
+- Улучшена обработка ошибок в клиенте: проверка StatusCode перед декодированием, информативные сообщения.
+- Все ответы на список (projects, cases, shared steps, suites) возвращают срез напрямую (массив), а не объект с полем.
+- Убраны лишние обёртки в структурах ответов (GetProjectResponse → Project, GetCaseResponse → Case и т.д.).
+- Подсказки в `help` теперь максимально понятные: указывают, какой ID нужен и где его взять.
+
+### Fixed
+
+- Исправлено декодирование массивов из API (projects, shared steps, cases).
+- Исправлена проблема с `MarkFlagRequired` — теперь позиционные аргументы работают без конфликта с обязательными флагами.
+- Исправлено поле `is_deleted` в Case (теперь int, так как API возвращает 0/1).
+
+---
+
 ## [2.0.0] - 2025-12-21
 
 ### Breaking Changes
@@ -38,6 +81,8 @@
 ### Removed
 
 - Старые env-переменные с префиксом `GOTR_`.
+
+---
 
 ## [1.0.0] - 2025-12-19 (предыдущий релиз)
 

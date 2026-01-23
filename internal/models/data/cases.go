@@ -68,16 +68,16 @@ type Change struct {
 
 // AddCaseRequest — запрос для add_case
 type AddCaseRequest struct {
-	Title                string `json:"title"` // обязательно
-	SectionID            int64  `json:"section_id"`
+	Title                string `json:"title"`      // обязательно
+	SectionID            int64  `json:"section_id"` // если нужно явно указывать
 	TypeID               int64  `json:"type_id"`
 	PriorityID           int64  `json:"priority_id"`
 	Estimate             string `json:"estimate,omitempty"`
 	CustomPreconds       string `json:"custom_preconds,omitempty"`
-	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Step из shared.go
+	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"`
 	Refs                 string `json:"refs,omitempty"`
 	MilestoneID          int64  `json:"milestone_id,omitempty"`
-	// Добавь другие поля по необходимости
+	TemplateID           int64  `json:"template_id,omitempty"`
 }
 
 // UpdateCaseRequest — запрос для update_case (частичные обновления)

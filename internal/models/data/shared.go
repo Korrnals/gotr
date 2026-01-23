@@ -18,6 +18,7 @@ type Step struct {
 	AdditionalInfo string `json:"additional_info,omitempty"`
 	Expected       string `json:"expected,omitempty"`
 	Refs           string `json:"refs,omitempty"`
+	SharedStepID   int64  `json:"shared_step_id,omitempty"`
 }
 
 // Label — метка кейса (используется в Case.Labels)

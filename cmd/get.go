@@ -474,6 +474,7 @@ func init() {
 	getCasesCmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (обязательно для проектов в режиме multiple suites)")
 	getCasesCmd.Flags().Int64("section-id", 0, "ID секции (опционально)")
 	getCasesCmd.MarkFlagRequired("suite-id")
+	getCasesCmd.MarkFlagRequired("suite-id")
 
 	getSharedStepsCmd.MarkFlagRequired("project-id") // если хочешь оставить жёсткое требование
 }

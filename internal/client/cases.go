@@ -134,6 +134,33 @@ func (c *HTTPClient) AddCase(sectionID int64, req *data.AddCaseRequest) (*data.C
 	return &result, nil
 }
 
+func (c *HTTPClient) AddCaseRequest(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка маршалинга AddCaseRequest: %w", err)
+	}
+
+	endpoint := fmt.Sprintf("add_case/%d", sectionID)
+	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка запроса AddCase в секции %d: %w", sectionID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API вернул %s при создании кейса в секции %d: %s",
+			resp.Status, sectionID, string(body))
+	}
+
+	var result data.Case
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("ошибка декодирования созданного кейса: %w", err)
+	}
+
+	return &result, nil
+}
+
 // UpdateCase обновляет существующий кейс.
 // Поддерживает частичные обновления.
 func (c *HTTPClient) UpdateCase(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {

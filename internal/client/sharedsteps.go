@@ -11,7 +11,7 @@ import (
 
 // GetSharedSteps получает список shared steps для проекта.
 // Возвращает все шаги (с пагинацией, если она есть).
-func (c *HTTPClient) GetSharedSteps(projectID int64) ([]data.SharedStep, error) {
+func (c *HTTPClient) GetSharedSteps(projectID int64) (data.GetSharedStepsResponse, error) {
 	endpoint := fmt.Sprintf("get_shared_steps/%d", projectID)
 	resp, err := c.Get(endpoint, nil)
 	if err != nil {
@@ -24,7 +24,7 @@ func (c *HTTPClient) GetSharedSteps(projectID int64) ([]data.SharedStep, error) 
 		return nil, fmt.Errorf("API вернул %s для проекта %d: %s", resp.Status, projectID, string(body))
 	}
 
-	var steps []data.SharedStep
+	var steps data.GetSharedStepsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&steps); err != nil {
 		return nil, fmt.Errorf("ошибка декодирования shared steps проекта %d: %w", projectID, err)
 	}
@@ -78,24 +78,26 @@ func (c *HTTPClient) GetSharedStepHistory(stepID int64) (*data.GetSharedStepHist
 	return &result, nil
 }
 
-// AddSharedStep создаёт новый shared step.
+// AddSharedStep создаёт новый shared step в указанном проекте.
 // Требует Title в запросе.
-func (c *HTTPClient) AddSharedStep(req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+func (c *HTTPClient) AddSharedStep(projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+	endpoint := fmt.Sprintf("add_shared_step/%d", projectID)
+
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddSharedStepRequest: %w", err)
 	}
 
-	endpoint := "add_shared_step"
 	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса AddSharedStep: %w", err)
+		return nil, fmt.Errorf("ошибка запроса AddSharedStep в проекте %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при создании shared step: %s", resp.Status, string(body))
+		return nil, fmt.Errorf("API вернул %s при создании shared step в проекте %d: %s",
+			resp.Status, projectID, string(body))
 	}
 
 	var result data.SharedStep

@@ -13,8 +13,8 @@ var compareCmd = &cobra.Command{
 	Long: `Сравнивает данные между двумя проектами по указанному полю.
 
 Примеры:
-  gotr compare cases --pid1 30 --pid2 31 --field title
-  gotr compare cases --pid1 30 --pid2 31 --field priority_id
+	gotr compare cases --pid1 30 --pid2 31 --field title
+	gotr compare cases --pid1 30 --pid2 31 --field priority_id
 `,
 	Args: cobra.MinimumNArgs(1), // resource обязателен
 	RunE: func(cmd *cobra.Command, args []string) error {

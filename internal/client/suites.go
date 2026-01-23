@@ -10,7 +10,7 @@ import (
 )
 
 // GetSuites получает список всех тест-сюит проекта.
-func (c *HTTPClient) GetSuites(projectID int64) ([]data.Suite, error) {
+func (c *HTTPClient) GetSuites(projectID int64) (data.GetSuitesResponse, error) {
 	endpoint := fmt.Sprintf("get_suites/%d", projectID)
 	resp, err := c.Get(endpoint, nil)
 	if err != nil {
@@ -23,7 +23,7 @@ func (c *HTTPClient) GetSuites(projectID int64) ([]data.Suite, error) {
 		return nil, fmt.Errorf("API вернул %s при получении сюит проекта %d: %s", resp.Status, projectID, string(body))
 	}
 
-	var suites []data.Suite
+	var suites data.GetSuitesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&suites); err != nil {
 		return nil, fmt.Errorf("ошибка декодирования сюит проекта %d: %w", projectID, err)
 	}

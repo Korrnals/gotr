@@ -17,22 +17,33 @@ import (
 var syncCasesCmd = &cobra.Command{
 	Use:   "cases",
 	Short: "Синхронизация тест-кейсов между сюитами",
-	Long: `Переносит кейсы из source suite в destination suite с заменой shared_step_id.
-Требует mapping из sync shared-steps (укажите --mapping-file).
-Поддерживает --dry-run и --output.
+	Long: `Полная процедура переноса тест-кейсов из одной сюиты в другую с поддержкой:
+	- замены ` + "`shared_step_id`" + ` по mapping-файлу,
+	- интерактивного подтверждения (или --approve),
+	- dry-run режима (без создания объектов),
+	- сохранения JSON-лога результата.
+
+Процесс команды (внутренние этапы):
+	1) Инициализация Migration (логирование, client, параметры)
+	2) Загрузка mapping (если указан --mapping-file)
+	3) Получение данных (Fetch) из source и target
+	4) Фильтрация дубликатов (по --compare-field)
+	5) Подтверждение (интерактивно или --approve)
+	6) Импорт (параллельно)
+	7) Сохранение логов и mapping
 
 Пример:
 	gotr sync cases --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --mapping-file mapping.json --dry-run
 
-Параметры:
---src-project      ID source проекта (обязательный)
---src-suite        ID source сюиты (обязательный)
---dst-project      ID destination проекта (обязательный)
---dst-suite        ID destination сюиты (обязательный)
---compare-field    Поле для поиска дубликатов (по умолчанию: title)
---mapping-file     Файл mapping для замены shared_step_id
---dry-run          Просмотр без импорта (по умолчанию: false)
---output           Дополнительный JSON файл с результатами
+Флаги:
+	--src-project      ID source проекта (обязательный)
+	--src-suite        ID source сюиты (обязательный)
+	--dst-project      ID destination проекта (обязательный)
+	--dst-suite        ID destination сюиты (обязательный)
+	--compare-field    Поле для поиска дубликатов (по умолчанию: title)
+	--mapping-file     Файл mapping для замены shared_step_id
+	--dry-run          Просмотр без импорта (по умолчанию: false)
+	--output           Дополнительный JSON файл с результатами
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := GetClient(cmd)
@@ -51,10 +62,7 @@ var syncCasesCmd = &cobra.Command{
 		}
 
 		// Директория для логов
-		logDir := ".testrail"
-		if err := os.MkdirAll(logDir, 0755); err != nil {
-			return fmt.Errorf("не удалось создать директорию %s: %w", logDir, err)
-		}
+		logDir := utils.LogDir()
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		logFile := filepath.Join(logDir, fmt.Sprintf("sync_cases_%s.json", timestamp))
 		// Если указан дополнительный файл вывода, используем его
@@ -62,15 +70,19 @@ var syncCasesCmd = &cobra.Command{
 			logFile = outputFile
 		}
 
-		// Загрузка mapping
-		sharedMapping := make(map[int64]int64)
+		// Создаём объект миграции
+		m, err := newMigration(client, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
+		if err != nil {
+			return err
+		}
+		defer m.Close()
+
+		// Если указан mapping-файл — загрузим в m.mapping
 		if mappingFile != "" {
-			var err error
-			sharedMapping, err = utils.LoadMapping(mappingFile)
-			if err != nil {
+			if err := m.LoadMappingFromFile(mappingFile); err != nil {
 				return fmt.Errorf("ошибка загрузки mapping: %w", err)
 			}
-			fmt.Printf("Загружен mapping: %d записей\n", len(sharedMapping))
+			fmt.Printf("Загружен mapping: %d записей\n", len(m.Mapping()))
 		} else {
 			fmt.Println("Warning: mapping не загружен — shared_step_id НЕ будут заменены")
 		}
@@ -82,34 +94,30 @@ var syncCasesCmd = &cobra.Command{
 
 		fmt.Println("Шаг 1/6: Получаем кейсы из source и target...")
 		mainBar.Increment()
-		sourceCases, err := client.GetCases(srcProject, srcSuite, 0)
-		if err != nil {
-			return err
-		}
-		targetCases, err := client.GetCases(dstProject, dstSuite, 0)
+		sourceCases, targetCases, err := m.FetchCasesData()
 		if err != nil {
 			return err
 		}
 
 		fmt.Println("Шаг 2/6: Проверяем дубликаты...")
 		mainBar.Increment()
-		targetMap := make(map[string]int64)
-		for _, t := range targetCases {
-			val := utils.GetFieldValue(t, compareField)
-			if val != "" {
-				targetMap[val] = t.ID
-			}
-		}
 
 		fmt.Println("Шаг 3/6: Фильтруем новые кейсы...")
 		mainBar.Increment()
-		var matches, filtered data.GetCasesResponse
-		for _, c := range sourceCases {
-			val := utils.GetFieldValue(c, compareField)
-			if _, exists := targetMap[val]; exists {
-				matches = append(matches, c)
-			} else {
-				filtered = append(filtered, c)
+		filtered, err := m.FilterCases(sourceCases, targetCases)
+		if err != nil {
+			return err
+		}
+
+		// Считаем совпадения (matches)
+		var matches data.GetCasesResponse
+		filteredIDs := make(map[int64]struct{})
+		for _, f := range filtered {
+			filteredIDs[f.ID] = struct{}{}
+		}
+		for _, s := range sourceCases {
+			if _, ok := filteredIDs[s.ID]; !ok {
+				matches = append(matches, s)
 			}
 		}
 
@@ -119,7 +127,7 @@ var syncCasesCmd = &cobra.Command{
 
 		if dryRun {
 			fmt.Println("\nDry-run: импорт НЕ выполнен (безопасно).")
-			saveLog(logFile, matches, filtered, nil, sharedMapping)
+			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
 
@@ -131,60 +139,20 @@ var syncCasesCmd = &cobra.Command{
 		confirm = strings.ToLower(strings.TrimSpace(confirm))
 		if confirm != "y" && confirm != "yes" {
 			fmt.Println("Отменено.")
-			saveLog(logFile, matches, filtered, nil, sharedMapping)
+			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
 
 		fmt.Println("Шаг 5/6: Импорт кейсов...")
 		mainBar.Increment()
-		importBar := pb.StartNew(len(filtered))
-		importBar.SetTemplateString(`{{counters . }} {{bar . | green}} {{percent . }}`)
-		defer importBar.Finish()
 
-		var importErrors []string
-		var createdIDs []int64
-		for _, c := range filtered {
-			newReq := &data.AddCaseRequest{
-				Title:                c.Title,
-				TypeID:               c.TypeID,
-				PriorityID:           c.PriorityID,
-				TemplateID:           c.TemplateID,
-				MilestoneID:          c.MilestoneID,
-				Refs:                 c.Refs,
-				CustomPreconds:       c.CustomPreconds,
-				CustomStepsSeparated: make([]data.Step, len(c.CustomStepsSeparated)),
-			}
-
-			for i, orig := range c.CustomStepsSeparated {
-				newStep := data.Step{
-					Content:        orig.Content,
-					AdditionalInfo: orig.AdditionalInfo,
-					Expected:       orig.Expected,
-					Refs:           orig.Refs,
-					SharedStepID:   orig.SharedStepID,
-				}
-
-				if orig.SharedStepID != 0 {
-					if newID, exists := sharedMapping[orig.SharedStepID]; exists {
-						newStep.SharedStepID = newID
-					}
-				}
-
-				newReq.CustomStepsSeparated[i] = newStep
-			}
-
-			created, err := client.AddCase(dstSuite, newReq)
-			if err != nil {
-				importErrors = append(importErrors, fmt.Sprintf("кейс %q: %v", c.Title, err))
-			} else {
-				createdIDs = append(createdIDs, created.ID)
-			}
-
-			importBar.Increment()
+		createdIDs, importErrors, err := m.ImportCasesReport(filtered, false)
+		if err != nil {
+			return err
 		}
 
 		mainBar.Increment()
-		fmt.Printf("\nИмпорт завершён: %d новых кейсов\n", len(filtered)-len(importErrors))
+		fmt.Printf("\nИмпорт завершён: %d новых кейсов\n", len(createdIDs))
 
 		if len(importErrors) > 0 {
 			fmt.Println("\nОшибки:")
@@ -193,7 +161,8 @@ var syncCasesCmd = &cobra.Command{
 			}
 		}
 
-		saveLog(logFile, matches, filtered, importErrors, sharedMapping)
+		// Сохраняем лог и mapping
+		saveLog(logFile, matches, filtered, importErrors, m.Mapping())
 
 		return nil
 	},
@@ -213,12 +182,6 @@ func saveLog(file string, matches, filtered data.GetCasesResponse, errors []stri
 }
 
 func init() {
-	syncCasesCmd.Flags().Int64("src-project", 0, "Source project ID")
-	syncCasesCmd.Flags().Int64("src-suite", 0, "Source suite ID")
-	syncCasesCmd.Flags().Int64("dst-project", 0, "Destination project ID")
-	syncCasesCmd.Flags().Int64("dst-suite", 0, "Destination suite ID")
-	syncCasesCmd.Flags().String("compare-field", "title", "Поле для дубликатов")
-	syncCasesCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
-	syncCasesCmd.Flags().String("output", "", "Дополнительный JSON")
-	syncCasesCmd.Flags().String("mapping-file", "", "Mapping файл для замены shared_step_id")
+	addSyncFlags(syncCasesCmd)
+	syncCmd.AddCommand(syncCasesCmd)
 }

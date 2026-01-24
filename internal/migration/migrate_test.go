@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// TestMigration_MigrateSuites проверяет поведение миграции для сущностей suites
 func TestMigration_MigrateSuites(t *testing.T) {
 	t.Run("Успешная миграция suites", func(t *testing.T) {
 		mock := &MockClient{
@@ -35,6 +36,7 @@ func TestMigration_MigrateSuites(t *testing.T) {
 	})
 }
 
+// TestMigration_MigrateSharedSteps проверяет миграцию общих шагов (shared steps)
 func TestMigration_MigrateSharedSteps(t *testing.T) {
 	t.Run("Миграция только неиспользуемых шагов", func(t *testing.T) {
 		mock := &MockClient{
@@ -63,6 +65,7 @@ func TestMigration_MigrateSharedSteps(t *testing.T) {
 	})
 }
 
+// TestMigration_MigrateSections проверяет поведение миграции для разделов (sections)
 func TestMigration_MigrateSections(t *testing.T) {
 	t.Run("Ошибка при получении данных sections", func(t *testing.T) {
 		mock := &MockClient{
@@ -77,6 +80,7 @@ func TestMigration_MigrateSections(t *testing.T) {
 	})
 }
 
+// TestMigration_MigrateCases проверяет миграцию тест-кейсов (cases)
 func TestMigration_MigrateCases(t *testing.T) {
 	t.Run("Успешная миграция кейсов", func(t *testing.T) {
 		mock := &MockClient{
@@ -96,6 +100,7 @@ func TestMigration_MigrateCases(t *testing.T) {
 	})
 }
 
+// TestMigration_MigrateFull проверяет последовательную полную миграцию (full flow)
 func TestMigration_MigrateFull(t *testing.T) {
 	t.Run("Остановка при ошибке на первом этапе (Suites)", func(t *testing.T) {
 		mock := &MockClient{

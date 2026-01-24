@@ -8,6 +8,7 @@ type testStruct struct {
 	hiddenField string // не должно находиться
 }
 
+// TestGetFieldValue проверяет корректность извлечения значения по имени поля
 func TestGetFieldValue(t *testing.T) {
 	obj := testStruct{
 		Title:       "Тестовый кейс",
@@ -15,6 +16,7 @@ func TestGetFieldValue(t *testing.T) {
 		hiddenField: "секрет",
 	}
 
+	// Набор случаев: точное имя, регистр, числовое поле и ошибки
 	tests := []struct {
 		name     string
 		field    string

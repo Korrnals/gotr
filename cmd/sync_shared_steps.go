@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"gotr/internal/migration"
+	"gotr/internal/utils"
 	"strings"
 
 	"github.com/cheggaaa/pb/v3"
@@ -12,6 +12,26 @@ import (
 var syncSharedStepsCmd = &cobra.Command{
 	Use:   "shared-steps",
 	Short: "Миграция общих шагов (shared steps)",
+	Long: `Перенос общих шагов (shared steps) из source проекта в destination проект.
+
+Процесс:
+	1) Получаем shared steps из source и target
+	2) Идентифицируем, какие шаги используются в suite (чтобы не переносить используемые)
+	3) Фильтруем дубликаты по --compare-field
+	4) Импортируем новые shared steps (параллельно)
+
+Пример:
+	gotr sync shared-steps --src-project 30 --src-suite 20069 --dst-project 31 --approve --save-mapping
+
+Флаги:
+	--src-project      ID проекта (обязательный)
+	--src-suite        ID сюиты (опционально/зависит от сценария)
+	--dst-project      ID destination проекта (обязательный)
+	--compare-field    Поле для поиска дубликатов (по умолчанию: title)
+	--approve          Автоматическое подтверждение импорта
+	--save-mapping     Сохранить mapping автоматически
+	--save-filtered    Сохранить filtered список автоматически
+`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := GetClient(cmd)
@@ -25,8 +45,10 @@ var syncSharedStepsCmd = &cobra.Command{
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 
-		logDir := ".testrail"
-		m, err := migration.NewMigration(client, srcProject, srcSuite, dstProject, 0, compareField, logDir)
+		// Директория для логов и инициализация миграции
+		logDir := utils.LogDir()
+		// Шаг 1) Инициализация объекта миграции (логирование, client, параметры)
+		m, err := newMigration(client, srcProject, srcSuite, dstProject, 0, compareField, logDir)
 		if err != nil {
 			return err
 		}
@@ -42,6 +64,7 @@ var syncSharedStepsCmd = &cobra.Command{
 			return err
 		}
 
+		// Шаг 2) Получение кейсов source для определения использования shared steps
 		mainBar.Increment()
 		sourceCases, err := m.Client.GetCases(srcProject, srcSuite, 0)
 		if err != nil {
@@ -52,6 +75,7 @@ var syncSharedStepsCmd = &cobra.Command{
 			caseIDsSet[c.ID] = struct{}{}
 		}
 
+		// Шаг 3) Фильтрация кандидатов (исключаем используемые и дубликаты)
 		mainBar.Increment()
 		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
 		if err != nil {
@@ -70,6 +94,7 @@ var syncSharedStepsCmd = &cobra.Command{
 			return nil
 		}
 
+		// Шаг 4) Подтверждение импорта
 		mainBar.Increment()
 		if !autoApprove {
 			fmt.Printf("Подтверждение импорта %d shared steps...\n", len(filtered))
@@ -82,6 +107,7 @@ var syncSharedStepsCmd = &cobra.Command{
 			}
 		}
 
+		// Шаг 5) Импорт
 		mainBar.Increment()
 		importBar := pb.StartNew(len(filtered))
 		importBar.SetTemplateString(`Импорт: {{counters . }} {{bar . | green}} {{percent . }}`)
@@ -92,6 +118,7 @@ var syncSharedStepsCmd = &cobra.Command{
 			return err
 		}
 
+		// Шаг 6) Сохранение mapping/filtered при запросе
 		mainBar.Increment()
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
@@ -120,15 +147,9 @@ var syncSharedStepsCmd = &cobra.Command{
 }
 
 func init() {
+	addSyncFlags(syncSharedStepsCmd)
 	syncCmd.AddCommand(syncSharedStepsCmd)
 
-	// Флаги как в cases + shared
-	syncSharedStepsCmd.Flags().Int64("src-project", 0, "Source project ID")
-	syncSharedStepsCmd.Flags().Int64("src-suite", 0, "Source suite ID")
-	syncSharedStepsCmd.Flags().Int64("dst-project", 0, "Destination project ID")
-	syncSharedStepsCmd.Flags().Int64("dst-suite", 0, "Destination suite ID")
-	syncSharedStepsCmd.Flags().String("compare-field", "title", "Поле для дубликатов")
-	syncSharedStepsCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
-	syncSharedStepsCmd.Flags().BoolP("approve", "y", false, "Автоматическое подтверждение")
-	syncSharedStepsCmd.Flags().BoolP("save-mapping", "m", false, "Автоматически сохранить mapping")
+	// Флаги специфичные для shared-steps
+	syncSharedStepsCmd.Flags().BoolP("save-filtered", "f", false, "Автоматически сохранить filtered список shared steps")
 }

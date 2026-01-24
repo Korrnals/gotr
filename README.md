@@ -15,6 +15,14 @@ Allows you to perform GET requests, export data to files, filter responses throu
 - Support for query parameters (suite_id, section_id, etc.)
 - Fully self-contained binary - works anywhere Go runs
 
+## What's new (2026-01-24)
+
+- **New `sync` subcommands:** `gotr sync suites` and `gotr sync sections` — синхронизация TestRail сущностей через поток Fetch → Filter → Import.
+- **Унификация флагов:** общий хелпер `addSyncFlags()` для всех команд `sync/*` (консистентный UX и документация флагов).
+- **Тестируемость:** введён небольшой seam `sync_helpers.go` (переменная `newMigration`) для подмены конструктора миграции в тестах.
+- **Тесты:** добавлены unit-тесты для `sync suites` и `sync sections`; тесты используют отдельную директорию логов `.testrail/logs/test_runs`.
+- **Документация и локализация:** улучшены `Long` описания команд и добавлены русские «Шаг» комментарии в потоках команд для понятности русскоязычных пользователей.
+
 ## Installation
 
 ### Download the finished binary with one command (Linux/macOS)

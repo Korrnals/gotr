@@ -7,6 +7,27 @@
 
 ---
 
+## [Unreleased] - 2026-01-24
+
+### Added
+
+- `gotr sync suites` — новая команда синхронизации suites: Fetch → Filter → Import.
+- `gotr sync sections` — новая команда синхронизации sections.
+- Общий хелпер `addSyncFlags()` для унификации флагов команд `sync/*`.
+- Unit-тесты для `sync suites` и `sync sections`.
+
+### Changed
+
+- Команды `sync/*` переведены на единый поток миграции (internal/migration) и теперь используют централизованную логику Fetch → Filter → Import.
+- Улучшены `Long` описания команд и добавлены русские комментарии-«Шаги» в коде команд для удобства русскоязычных пользователей.
+
+### Testing
+
+- В тестах используется отдельная папка логов: `.testrail/logs/test_runs`.
+- Введён тестовый seam `sync_helpers.go` (переменная `newMigration`) для инъекции мок-миграций в тестах.
+
+---
+
 ## [2.0.0] - 2026-01-15
 
 ### Breaking Changes

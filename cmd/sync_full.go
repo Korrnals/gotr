@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"gotr/internal/migration"
+	"gotr/internal/utils"
 
 	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
@@ -11,6 +11,16 @@ import (
 var syncFullCmd = &cobra.Command{
 	Use:   "full",
 	Short: "Полная миграция (shared-steps + cases за один проход)",
+	Long: `Выполняет полную миграцию: сначала переносит shared steps (формирует mapping), затем переносит cases.
+
+Процесс:
+	1) Перенос shared steps (Fetch → Filter → Import)
+	2) Перенос cases (Fetch → Filter → Import)
+	3) Сохранение mapping (если --save-mapping)
+
+Пример:
+	gotr sync full --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve --save-mapping
+`,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := GetClient(cmd)
@@ -24,8 +34,8 @@ var syncFullCmd = &cobra.Command{
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
-		logDir := ".testrail"
-		m, err := migration.NewMigration(client, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
+		logDir := utils.LogDir()
+		m, err := newMigration(client, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
 			return err
 		}
@@ -35,8 +45,9 @@ var syncFullCmd = &cobra.Command{
 		mainBar.SetTemplateString(`{{counters . }} {{bar . }} {{percent . }}`)
 		defer mainBar.Finish()
 
-		mainBar.Increment() // Этап 1: shared-steps
-		fmt.Println("Этап 1: Миграция shared steps...")
+		// Шаг 1) Миграция shared steps (Fetch → Filter → Import)
+		mainBar.Increment()
+		fmt.Println("Шаг 1/2: Миграция shared steps...")
 		if err := m.MigrateSharedSteps(dryRun || !autoApprove); err != nil { // если dry-run — без импорта
 			return err
 		}
@@ -46,8 +57,9 @@ var syncFullCmd = &cobra.Command{
 			return nil
 		}
 
-		mainBar.Increment() // Этап 2: cases
-		fmt.Println("Этап 2: Миграция cases...")
+		// Шаг 2) Миграция cases (Fetch → Filter → Import)
+		mainBar.Increment()
+		fmt.Println("Шаг 2/2: Миграция cases...")
 		if err := m.MigrateCases(dryRun); err != nil {
 			return err
 		}
@@ -62,15 +74,6 @@ var syncFullCmd = &cobra.Command{
 }
 
 func init() {
+	addSyncFlags(syncFullCmd)
 	syncCmd.AddCommand(syncFullCmd)
-
-	// Флаги как в cases + shared
-	syncFullCmd.Flags().Int64("src-project", 0, "Source project ID")
-	syncFullCmd.Flags().Int64("src-suite", 0, "Source suite ID")
-	syncFullCmd.Flags().Int64("dst-project", 0, "Destination project ID")
-	syncFullCmd.Flags().Int64("dst-suite", 0, "Destination suite ID")
-	syncFullCmd.Flags().String("compare-field", "title", "Поле для дубликатов")
-	syncFullCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
-	syncFullCmd.Flags().BoolP("approve", "y", false, "Автоматическое подтверждение")
-	syncFullCmd.Flags().BoolP("save-mapping", "m", false, "Автоматически сохранить mapping")
 }

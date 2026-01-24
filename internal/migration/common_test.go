@@ -2,9 +2,9 @@ package migration
 
 import (
 	"gotr/internal/models/data"
+	"gotr/internal/utils"
 	"os"
 	"path/filepath"
-	"runtime"
 	"testing"
 )
 
@@ -120,40 +120,15 @@ func getImportTestCases[T any]() []ImportTestCase[T] {
 	}
 }
 
-// getProjectRoot — возвращает корневую директорию проекта (где лежит go.mod)
-func getProjectRoot() string {
-	// 1. Получаем путь к текущему файлу теста
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		panic("не удалось получить путь к файлу теста")
-	}
-
-	// 2. Идем вверх по дереву папок, пока не найдем go.mod
-	dir := filepath.Dir(filename)
-	for {
-		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
-			return dir // Корень найден
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			panic("корень проекта (go.mod) не найден")
-		}
-		dir = parent
-	}
-}
-
 // logDir — директория для логов в тестах (создается, если не существует)
+// Использует `utils.LogDir()` и создаёт подпапку `test_runs` для изоляции логов тестов.
 func logDir() string {
-	// Теперь путь всегда вычисляется от корня, где лежит go.mod
-	rootDir := getProjectRoot()
-
-	logPath := filepath.Join(rootDir, ".testrail", "logs", "test_runs")
-
-	if err := os.MkdirAll(logPath, 0755); err != nil {
+	base := utils.LogDir()
+	testPath := filepath.Join(base, "test_runs")
+	if err := os.MkdirAll(testPath, 0755); err != nil {
 		panic(err)
 	}
-	return logPath
+	return testPath
 }
 
 // setupTestMigration использует оригинальный конструктор из types.go

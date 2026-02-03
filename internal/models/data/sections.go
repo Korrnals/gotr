@@ -3,13 +3,13 @@ package data
 
 // Section — структура секции TestRail
 type Section struct {
-	Depth        int64  `json:"depth"`
-	Description  string `json:"description"`
-	DisplayOrder int64  `json:"display_order"`
-	ID           int64  `json:"id"`
-	Name         string `json:"name"`
-	ParentID     int64  `json:"parent_id"`
-	SuiteID      int64  `json:"suite_id"`
+	Depth        int64  `json:"depth,omitempty"`         // Глубина вложенности
+	Description  string `json:"description,omitempty"`   // Описание секции
+	DisplayOrder int64  `json:"display_order,omitempty"` // Порядок отображения
+	ID           int64  `json:"id"`                      // Уникальный ID (обязательное)
+	Name         string `json:"name"`                    // Название секции (обязательное)
+	ParentID     int64  `json:"parent_id,omitempty"`     // ID родительской секции (0 если нет)
+	SuiteID      int64  `json:"suite_id,omitempty"`      // ID сьюты (может быть 0 для базовых)
 }
 
 // GetSectionsResponse — ответ get_sections (массив секций)

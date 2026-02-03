@@ -3,8 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"gotr/internal/utils"
-	"gotr/pkg/testrailapi"
+	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/pkg/testrailapi"
 	"sort"
 	"strings"
 
@@ -12,7 +12,7 @@ import (
 )
 
 // Глобальная инициализация TestRailAPI структур (Инициализируем один раз)
-var api = testrailapi.New() 
+var api = testrailapi.New()
 
 // Определяем свой собственный тип ключа (unexported — только внутри пакета cmd)
 type contextKey string
@@ -73,8 +73,8 @@ func init() {
 	ValidResources = resources
 }
 
-// extractEndpointName — надёжно извлекает имя после "/get_"
-func extractEndpointName(uri string) string {
+// extractGetEndpointName — надёжно извлекает имя после "/get_"
+func extractGetEndpointName(uri string) string {
 	// Находим позицию "/get_"
 	idx := strings.LastIndex(uri, "/get_")
 	if idx == -1 {
@@ -112,7 +112,7 @@ func getValidGetEndpoints() []string {
 		if p.Method != "GET" {
 			continue
 		}
-		name := extractEndpointName(p.URI)
+		name := extractGetEndpointName(p.URI)
 		if name != "" && !seen[name] {
 			seen[name] = true
 			names = append(names, name)
@@ -124,6 +124,198 @@ func getValidGetEndpoints() []string {
 	return names
 }
 
+// extractGetEndpointName — извлекает чистый эндпоинт с плейсхолдерами (без query и trailing слешей)
+func extractAllEndpointName(uri string) string {
+	// Убираем префикс "index.php?/api/v2/"
+	uri = strings.TrimPrefix(uri, "index.php?/api/v2/")
+
+	// Отрезаем query-параметры начиная с "&"
+	if qIdx := strings.Index(uri, "&"); qIdx != -1 {
+		uri = uri[:qIdx]
+	}
+
+	// Чистим trailing слеши и пробелы
+	uri = strings.Trim(uri, "/ ")
+
+	if uri == "" {
+		return ""
+	}
+
+	return uri
+}
+
+// Вспомогательня функция 'getResourceEndpoints' - получения списка 'endpoints' соответствующего ресурса
+func getResourceEndpoints(resource string, outputType string) ([]string, error) {
+	var paths []testrailapi.APIPath
+	switch resource {
+	case "all":
+		paths = api.Paths()
+	case "cases":
+		paths = api.Cases.Paths()
+	case "casefields":
+		paths = api.CaseFields.Paths()
+	case "casetypes":
+		paths = api.CaseTypes.Paths()
+	case "configurations":
+		paths = api.Configurations.Paths()
+	case "projects":
+		paths = api.Projects.Paths()
+	case "priorities":
+		paths = api.Priorities.Paths()
+	case "runs":
+		paths = api.Runs.Paths()
+	case "tests":
+		paths = api.Tests.Paths()
+	case "suites":
+		paths = api.Suites.Paths()
+	case "sections":
+		paths = api.Sections.Paths()
+	case "statuses":
+		paths = api.Statuses.Paths()
+	case "milestones":
+		paths = api.Milestones.Paths()
+	case "plans":
+		paths = api.Plans.Paths()
+	case "results":
+		paths = api.Results.Paths()
+	case "resultfields":
+		paths = api.ResultFields.Paths()
+	case "reports":
+		paths = api.Reports.Paths()
+	case "attachments":
+		paths = api.Attachments.Paths()
+	case "users":
+		paths = api.Users.Paths()
+	case "roles":
+		paths = api.Roles.Paths()
+	case "templates":
+		paths = api.Templates.Paths()
+	case "groups":
+		paths = api.Groups.Paths()
+	case "sharedsteps":
+		paths = api.SharedSteps.Paths()
+	case "variables":
+		paths = api.Variables.Paths()
+	case "labels":
+		paths = api.Labels.Paths()
+	case "datasets":
+		paths = api.Datasets.Paths()
+	case "bdds":
+		paths = api.BDDs.Paths()
+	default:
+		fmt.Printf("Неизвестный ресурс: %s\n\nДоступные ресурсы:\n", resource)
+		fmt.Println("  all, cases, casefields, casetypes, configurations, projects, priorities,")
+		fmt.Println("  runs, tests, suites, sections, statuses, milestones, plans, results,")
+		fmt.Println("  resultfields, reports, attachments, users, roles, templates, groups,")
+		fmt.Println("  sharedsteps, variables, labels, datasets, bdds")
+		return nil, nil
+	}
+
+	// Сортируем для красоты
+	sort.Slice(paths, func(i, j int) bool {
+		return paths[i].URI < paths[j].URI
+	})
+
+	var endpoints []string
+	switch outputType {
+	// Вывод в JSON — красиво и удобно для скриптов
+	case "json":
+		data, err := json.MarshalIndent(paths, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("ошибка формирования JSON: %w", err)
+		}
+		fmt.Println(string(data))
+		return nil, err
+	// Вывод 'Method + Endpoints'
+	case "short":
+		for _, p := range paths {
+			fmt.Printf("%s %s\n", p.Method, p.URI)
+		}
+		return nil, fmt.Errorf("ошибка формирования короткого списка ресурсов")
+	// Краткий вывод — только URI
+	case "list":
+		for _, p := range paths {
+			name := extractGetEndpointName(p.URI)
+			endpoints = append(endpoints, name)
+		}
+		return endpoints, fmt.Errorf("ошибка формирования списка ресурсов")
+	default:
+		fmt.Printf("Эндпоинты для %s (%d):\n\n", resource, len(paths))
+		for _, p := range paths {
+			fmt.Printf("  %s %s\n      %s\n", p.Method, p.URI, p.Description)
+			if len(p.Params) > 0 {
+				fmt.Print("      Параметры:\n")
+				for name, desc := range p.Params {
+					fmt.Printf("        - %s: %s\n", name, desc)
+				}
+			}
+			fmt.Println()
+		}
+	}
+
+	return endpoints, nil
+}
+
+// getAllShortEndpoints — возвращает список всех коротких эндпоинтов для ресурса (GET, POST, DELETE)
+func getAllShortEndpoints(resource string) []string {
+	var paths []testrailapi.APIPath
+	paths = getResourcePaths(resource)
+	if paths == nil {
+		return nil
+	}
+
+	var endpoints []string
+	seen := make(map[string]bool)
+	for _, p := range paths {
+		name := extractAllEndpointName(p.URI)
+		if name != "" && !seen[name] {
+			seen[name] = true
+			endpoints = append(endpoints, name)
+		}
+	}
+
+	sort.Strings(endpoints)
+	return endpoints
+}
+
+// Внешняя функция-обертка, которая возвращает ВСЕ ендпоинты конкретного ресурса
+var endpointsCache = make(map[string][]string)
+
+// GetEndpoints — возвращает все короткие эндпоинты для ресурса (с кэшированием)
+func GetEndpoints(resource string) []string {
+	if cached, ok := endpointsCache[resource]; ok {
+		return cached
+	}
+
+	var endpoints []string
+	if resource == "all" {
+		seen := make(map[string]bool)
+		for _, r := range ValidResources {
+			if r == "all" {
+				continue
+			}
+			resEndpoints := GetEndpoints(r) // рекурсия, но кэш спасает
+			for _, e := range resEndpoints {
+				if !seen[e] {
+					seen[e] = true
+					endpoints = append(endpoints, e)
+				}
+			}
+		}
+		sort.Strings(endpoints)
+	} else {
+		endpoints = getAllShortEndpoints(resource)
+		if endpoints == nil {
+			// Можно залогировать, но не возвращать ошибку — просто пустой срез
+			return nil
+		}
+	}
+
+	endpointsCache[resource] = endpoints
+	return endpoints
+}
+
+// Вспомогательная приватная функция 'replaceAllPlaceholders' - которая выполняет замену плейсхолдеров на соответствующие `_id“
 func replaceAllPlaceholders(uri, id string) string {
 	placeholders := []string{
 		"{project_id}", "{case_id}", "{run_id}", "{test_id}", "{section_id}",
@@ -135,118 +327,6 @@ func replaceAllPlaceholders(uri, id string) string {
 		uri = strings.ReplaceAll(uri, ph, id)
 	}
 	return uri
-}
-
-// Функция получения списка 'endpoints' соответствующего ресурса
-func getResourceEndpoints(resource string, outputType string) ([]string, error) {
-	var paths []testrailapi.APIPath
-		switch resource {
-		case "all":
-			paths = api.Paths()
-		case "cases":
-			paths = api.Cases.Paths()
-		case "casefields":
-			paths = api.CaseFields.Paths()
-		case "casetypes":
-			paths = api.CaseTypes.Paths()
-		case "configurations":
-			paths = api.Configurations.Paths()
-		case "projects":
-			paths = api.Projects.Paths()
-		case "priorities":
-			paths = api.Priorities.Paths()
-		case "runs":
-			paths = api.Runs.Paths()
-		case "tests":
-			paths = api.Tests.Paths()
-		case "suites":
-			paths = api.Suites.Paths()
-		case "sections":
-			paths = api.Sections.Paths()
-		case "statuses":
-			paths = api.Statuses.Paths()
-		case "milestones":
-			paths = api.Milestones.Paths()
-		case "plans":
-			paths = api.Plans.Paths()
-		case "results":
-			paths = api.Results.Paths()
-		case "resultfields":
-			paths = api.ResultFields.Paths()
-		case "reports":
-			paths = api.Reports.Paths()
-		case "attachments":
-			paths = api.Attachments.Paths()
-		case "users":
-			paths = api.Users.Paths()
-		case "roles":
-			paths = api.Roles.Paths()
-		case "templates":
-			paths = api.Templates.Paths()
-		case "groups":
-			paths = api.Groups.Paths()
-		case "sharedsteps":
-			paths = api.SharedSteps.Paths()
-		case "variables":
-			paths = api.Variables.Paths()
-		case "labels":
-			paths = api.Labels.Paths()
-		case "datasets":
-			paths = api.Datasets.Paths()
-		case "bdds":
-			paths = api.BDDs.Paths()
-		default:
-			fmt.Printf("Неизвестный ресурс: %s\n\nДоступные ресурсы:\n", resource)
-			fmt.Println("  all, cases, casefields, casetypes, configurations, projects, priorities,")
-			fmt.Println("  runs, tests, suites, sections, statuses, milestones, plans, results,")
-			fmt.Println("  resultfields, reports, attachments, users, roles, templates, groups,")
-			fmt.Println("  sharedsteps, variables, labels, datasets, bdds")
-			return nil, nil
-		}
-
-		// Сортируем для красоты
-		sort.Slice(paths, func(i, j int) bool {
-			return paths[i].URI < paths[j].URI
-		})
-
-		var endpoints []string
-		switch outputType {
-		// Вывод в JSON — красиво и удобно для скриптов
-		case "json" :
-            data, err := json.MarshalIndent(paths, "", "  ")
-            if err != nil {
-                return nil, fmt.Errorf("ошибка формирования JSON: %w", err)
-            }
-            fmt.Println(string(data))
-            return nil, err
-		// Вывод 'Method + Endpoints'
-		case "short":
-			for _, p := range paths {
-                fmt.Printf("%s %s\n", p.Method, p.URI)
-            }
-            return nil, fmt.Errorf("ошибка формирования короткого списка ресурсов")
-		// Краткий вывод — только URI
-		case "list":
-			for _, p := range paths {
-				name := extractEndpointName(p.URI)
-                endpoints = append(endpoints, name)
-            }
-            return endpoints, fmt.Errorf("ошибка формирования списка ресурсов")
-		default:
-			fmt.Printf("Эндпоинты для %s (%d):\n\n", resource, len(paths))
-			for _, p := range paths {
-				fmt.Printf("  %s %s\n      %s\n", p.Method, p.URI, p.Description)
-				if len(p.Params) > 0 {
-					fmt.Print("      Параметры:\n")
-					for name, desc := range p.Params {
-						fmt.Printf("        - %s: %s\n", name, desc)
-					}
-				}
-				fmt.Println()
-			}
-		}
-
-		return endpoints, nil
 }
 
 // buildRequestParams — собирает полный эндпоинт и query-параметры из флагов и позиционного ID
@@ -289,4 +369,67 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 	}
 
 	return fullEndpoint, queryParams, nil
+}
+
+// getResourcePaths — возвращает пути для указанного ресурса
+// resource — имя ресурса ("projects", "cases" и т.д.)
+func getResourcePaths(resource string) []testrailapi.APIPath {
+	switch resource {
+	case "all":
+		return api.Paths()
+	case "cases":
+		return api.Cases.Paths()
+	case "casefields":
+		return api.CaseFields.Paths()
+	case "casetypes":
+		return api.CaseTypes.Paths()
+	case "configurations":
+		return api.Configurations.Paths()
+	case "projects":
+		return api.Projects.Paths()
+	case "priorities":
+		return api.Priorities.Paths()
+	case "runs":
+		return api.Runs.Paths()
+	case "tests":
+		return api.Tests.Paths()
+	case "suites":
+		return api.Suites.Paths()
+	case "sections":
+		return api.Sections.Paths()
+	case "statuses":
+		return api.Statuses.Paths()
+	case "milestones":
+		return api.Milestones.Paths()
+	case "plans":
+		return api.Plans.Paths()
+	case "results":
+		return api.Results.Paths()
+	case "resultfields":
+		return api.ResultFields.Paths()
+	case "reports":
+		return api.Reports.Paths()
+	case "attachments":
+		return api.Attachments.Paths()
+	case "users":
+		return api.Users.Paths()
+	case "roles":
+		return api.Roles.Paths()
+	case "templates":
+		return api.Templates.Paths()
+	case "groups":
+		return api.Groups.Paths()
+	case "sharedsteps":
+		return api.SharedSteps.Paths()
+	case "variables":
+		return api.Variables.Paths()
+	case "labels":
+		return api.Labels.Paths()
+	case "datasets":
+		return api.Datasets.Paths()
+	case "bdds":
+		return api.BDDs.Paths()
+	default:
+		return nil // или return []APIPath{} — пустой срез
+	}
 }

@@ -1,0 +1,113 @@
+package sync
+
+import (
+	"fmt"
+	"github.com/Korrnals/gotr/internal/utils"
+
+	"github.com/cheggaaa/pb/v3"
+	"github.com/spf13/cobra"
+)
+
+var fullCmd = &cobra.Command{
+	Use:   "full",
+	Short: "Полная миграция (shared-steps + cases за один проход)",
+	Long: `Выполняет полную миграцию: сначала переносит shared steps (формирует mapping), затем переносит cases.
+
+Особенности:
+• Автоматический интерактивный выбор проектов и сьютов
+• Выполняет двухэтапную миграцию за один вызов
+• Сохраняет mapping автоматически (с --save-mapping)
+
+Примеры:
+	# Полностью интерактивный режим
+	gotr sync full
+
+	# Через флаги
+	gotr sync full --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve --save-mapping
+`,
+
+
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := getClientSafe(cmd)
+
+		srcProject, _ := cmd.Flags().GetInt64("src-project")
+		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
+		dstProject, _ := cmd.Flags().GetInt64("dst-project")
+		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
+		compareField, _ := cmd.Flags().GetString("compare-field")
+		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		autoApprove, _ := cmd.Flags().GetBool("approve")
+		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
+
+		var err error
+
+		// Интерактивный выбор source проекта
+		if srcProject == 0 {
+			srcProject, err = selectProjectInteractively(client, "Выберите SOURCE проект:")
+			if err != nil {
+				return err
+			}
+		}
+
+		// Интерактивный выбор source сьюта
+		if srcSuite == 0 {
+			srcSuite, err = selectSuiteInteractively(client, srcProject, "Выберите SOURCE сьют:")
+			if err != nil {
+				return err
+			}
+		}
+
+		// Интерактивный выбор destination проекта
+		if dstProject == 0 {
+			dstProject, err = selectProjectInteractively(client, "Выберите DESTINATION проект:")
+			if err != nil {
+				return err
+			}
+		}
+
+		// Интерактивный выбор destination сьюта
+		if dstSuite == 0 {
+			dstSuite, err = selectSuiteInteractively(client, dstProject, "Выберите DESTINATION сьют:")
+			if err != nil {
+				return err
+			}
+		}
+
+		logDir := utils.LogDir()
+		m, err := newMigration(client, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
+		if err != nil {
+			return err
+		}
+		defer m.Close()
+
+		mainBar := pb.StartNew(2) // 2 основных этапа: shared + cases
+		mainBar.SetTemplateString(`{{counters . }} {{bar . }} {{percent . }}`)
+		defer mainBar.Finish()
+
+		// Шаг 1) Миграция shared steps (Fetch → Filter → Import)
+		mainBar.Increment()
+		fmt.Println("Шаг 1/2: Миграция shared steps...")
+		if err := m.MigrateSharedSteps(dryRun || !autoApprove); err != nil { // если dry-run — без импорта
+			return err
+		}
+
+		if dryRun {
+			fmt.Println("Dry-run завершён")
+			return nil
+		}
+
+		// Шаг 2) Миграция cases (Fetch → Filter → Import)
+		mainBar.Increment()
+		fmt.Println("Шаг 2/2: Миграция cases...")
+		if err := m.MigrateCases(dryRun); err != nil {
+			return err
+		}
+
+		if autoSaveMapping {
+			m.ExportMapping(logDir)
+		}
+
+		fmt.Println("Полная миграция завершена!")
+		return nil
+	},
+}

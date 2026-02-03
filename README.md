@@ -1,276 +1,237 @@
-# gotr - CLI utility for TestRail API
+```
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║     ██████╗  ██████╗ ████████╗██████╗                    ║
+║    ██╔════╝ ██╔═══██╗╚══██╔══╝██╔══██╗                   ║
+║    ██║  ███╗██║   ██║   ██║   ██████╔╝                   ║
+║    ██║   ██║██║   ██║   ██║   ██╔══██╗                   ║
+║    ╚██████╔╝╚██████╔╝   ██║   ██║  ██║                   ║
+║     ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝                   ║
+║                                                          ║
+║           CLI Client for TestRail API v2                 ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+```
+
+# gotr — CLI Client for TestRail API
 
 [English](README.md) | [Русский](README_ru.md)
 
-`gotr` is a powerful and convenient command line tool for working with TestRail API v2.  
-Allows you to perform GET requests, export data to files, filter responses through the built-in `jq` and much more - without the need to install external dependencies.
+[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-## Features
+`gotr` is a powerful and convenient command-line utility for working with TestRail API v2.  
+It allows you to perform GET/POST requests, export/import data, synchronize entities between projects, manage test runs and results, filter responses through the built-in `jq`, and much more — without the need to install external dependencies.
 
-- Full support for TestRail API GET endpoints
-- Built-in `jq` - filtering without installing an external utility
-- Export data to JSON files (automatic naming or via `--output`)
-- Auto-completion of resources and endpoints
-- Flexible flags: `--quiet`, `--type`, `--jq`, `--project-id` and others
-- Support for query parameters (suite_id, section_id, etc.)
-- Fully self-contained binary - works anywhere Go runs
+> **Current Version: 2.3.0** — See [CHANGELOG](CHANGELOG.md) for details
 
-## Installation
+## 🙏 Acknowledgements
 
-### Download the finished binary with one command (Linux/macOS)
+This project uses the following amazing open-source libraries:
 
-```bash
-# Unix
-curl -s -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr && chmod +x gotr &&
- sudo mv gotr /usr/local/bin/
-```
+- **[spf13/cobra](https://github.com/spf13/cobra)** — CLI application framework
+- **[spf13/viper](https://github.com/spf13/viper)** — configuration and environment variables
+- **[cheggaaa/pb/v3](https://github.com/cheggaaa/pb)** — progress bars
+- **[go.uber.org/zap](https://github.com/uber-go/zap)** — high-performance logging
+- **[stretchr/testify](https://github.com/stretchr/testify)** — testing toolkit
+- **[embedded jq](https://github.com/itchyny/gojq)** — built-in jq utility for JSON filtering
 
-> [!TIP] Note
->
-> Replace ***latest*** with a specific version if necessary (for example, ***v1.0.0***).\
-> For Windows - download the .exe manually from Releases.
->
-> ***Binaries for Linux, macOS and Windows will be available in [Releases](https://github.com/Korrnals/gotr/releases).***
-
-### Option 1: From source (recommended)
+## 📁 Project Structure
 
 ```bash
-# Clone the repository
-git clone https://github.com/Korrnals/gotr.git
-cd gotr
-
-# Build the binary (optimized and compressed)
-go build -ldflags="-s -w" -o gotr
-
-# (Optional) Compress even more using UPX
-upx --best gotr
-
-# Move to PATH
-sudo mv gotr /usr/local/bin/
+gotr/
+├── cmd/                    # CLI commands
+│   ├── get/               # GET commands (cases, suites, projects, etc.)
+│   ├── sync/              # SYNC commands (data migration)
+│   ├── commands.go        # Centralized command registration
+│   ├── root.go            # Root command and configuration
+│   ├── config.go          # Config management commands
+│   ├── list.go            # List command
+│   └── ...                # Other commands
+├── docs/                   # Documentation
+│   ├── installation.md
+│   ├── configuration.md
+│   ├── get-commands.md
+│   ├── sync-commands.md
+│   └── ...
+├── embedded/               # Embedded utilities (jq)
+├── internal/               # Internal packages
+│   ├── client/            # HTTP client for TestRail API
+│   │   ├── cases.go       # Cases API methods
+│   │   ├── projects.go    # Projects API methods
+│   │   ├── sections.go    # Sections API methods
+│   │   ├── suites.go      # Suites API methods
+│   │   └── sharedsteps.go # Shared steps API methods
+│   ├── migration/         # Migration logic (sync)
+│   ├── models/            # Data structures
+│   │   └── data/          # API data models
+│   │       ├── cases.go       # Case models
+│   │       ├── results.go     # Result models (NEW in 2.3.0)
+│   │       ├── runs.go        # Run models (NEW in 2.3.0)
+│   │       ├── sections.go    # Section models
+│   │       ├── sharedsteps.go # Shared step models
+│   │       ├── statuses.go    # Status models (NEW in 2.3.0)
+│   │       ├── suites.go      # Suite models
+│   │       └── tests.go       # Test models (NEW in 2.3.0)
+│   └── utils/             # Utilities
+├── pkg/                    # Public packages
+│   └── testrailapi/       # API endpoint definitions
+├── main.go                 # Entry point
+├── go.mod                  # Go modules
+└── Makefile               # Build automation
 ```
 
-### Option 2: Install via Makefile (recommended for developers)
-
-**Makefile** makes it easy to build, test and install.
+## 🚀 Quick Start
 
 ```bash
-# Clone the repository
-git clone https://github.com/Korrnals/gotr.git
-cd gotr
+# Installation (Linux/macOS)
+curl -s -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr && chmod +x gotr && sudo mv gotr /usr/local/bin/
 
-# Build and install with one command
-make install
-
-# Other useful commands:
-make build # just build
-make test # run tests
-make compress # compress UPX (if installed)
-make build-compressed # build + compress
-make clean # clean
-make release # build for all platforms
-
-make install # will build an optimized binary and install it in /usr/local/bin (requires sudo).
-
-# If UPX is installed, use 
-make build-compressed # for minimum size (~3-5 MB).
-
-# Example of UPX compression for Windows package
-make compress BINARY_NAME=gotr.exe
+# Verify
+gotr --help
 ```
 
-**Build with version:**
+## ✨ Key Features
+
+- 📡 **Full TestRail API Support** — GET/POST requests to all endpoints
+- 🏃 **Test Runs & Results** — create runs, add results, close runs (NEW in 2.3.0)
+- 🔄 **Synchronization** — migrate cases, shared steps, suites, sections between projects
+- 🎯 **Interactive Mode** — no need to remember project and suite IDs
+- 📦 **Built-in jq** — filtering without installing external utilities
+- 💾 **Export/Import** — save and load data in JSON format
+- 🔧 **Flexible Configuration** — flags, env variables, config file
+- 🖥️ **Auto-completion** — bash/zsh/fish completion
+- 📊 **Progress Bars** — visual feedback for long operations
+
+## 📚 Documentation
+
+Detailed documentation is available in the [`docs/`](docs/) directory:
+
+- [Installation](docs/installation.md)
+- [Configuration](docs/configuration.md)
+- [GET Commands](docs/get-commands.md)
+- [SYNC Commands](docs/sync-commands.md)
+- [Interactive Mode](docs/interactive-mode.md)
+- [Other Commands](docs/other-commands.md)
+
+## 🎮 Usage Examples
+
+### Interactive Mode
 
 ```bash
-# No tag - version "dev"
-make build
-# gotr version - dev
+# Get cases — interactive selection of project and suite
+gotr get cases
 
-# Make a tag
-git tag v1.0.0
-make build
-# gotr version - v1.0.0
+# Sync cases — interactive selection of source and destination
+gotr sync cases
 
-# Explicitly indicate the version - priority is higher than the tag
-make build VERSION=test-123
-# gotr version - test-123
+# Full migration
+gotr sync full
 ```
 
----
-
-### Installation on Windows
-
-For Windows:
-
-- No sudo, manual installation in PATH.
-- Binary with .exe extension.
-- UPX works on Windows.
-- Curl one-liner - a little different (PowerShell or cmd).
-
-#### Option 1: Download a ready-made binary with one command (PowerShell)
-
-```powershell
-Invoke-WebRequest -Uri https://github.com/Korrnals/gotr/releases/latest/download/gotr.exe -OutFile gotr.exe
-# Make it executable (not necessarily on Windows, but for security)
-# Move to a directory from PATH (for example, C:\Windows or user bin)
-Move-Item gotr.exe C:\Windows\gotr.exe
-```
-
-#### Option 2: From source
-
-```powershell
-git clone https://github.com/Korrnals/gotr.git
-cd gotr
-go build -ldflags="-s -w" -o gotr.exe
-
-# (Optional) UPX compression
-upx --best gotr.exe
-
-# Move to PATH
-Move-Item gotr.exe C:\Windows\
-```
-
-#### Option 3: Via Makefile (requires Make for Windows, e.g. Chocolatey: choco install make)
-
-```powershell
-git clone https://github.com/Korrnals/gotr.git
-cd gotr
-make build # build gotr.exe
-make compress # compress UPX (if installed)
-# Manual installation:
-Copy-Item gotr.exe C:\Windows\
-```
-
-> [!TIP] Note
-> On **Windows** it is recommended to add the directory to **PATH** via "***Settings → System → About → Advanced system settings → Environment variables***".
-
-## Configuration
-
-`gotr` supports several authentication methods:
-
-### Through flags
+### Getting Data
 
 ```bash
-gotr --base-url https://your-company.testrail.io/ \
-     --username your@email.com \
-     --api-key your_api_key \
-     get get_projects
+# All projects
+gotr get projects
+
+# Project cases (with interactive suite selection)
+gotr get cases 30
+
+# Or with explicit suite ID
+gotr get cases 30 --suite-id 20069
+
+# All cases from all suites in project
+gotr get cases 30 --all-suites
+
+# Shared steps
+gotr get sharedsteps 30
 ```
 
-### Through environment variables
+### Synchronization
 
 ```bash
-export TESTRAIL_BASE_URL="https://your-company.testrail.io/"
-export TESTRAIL_USERNAME="your@email.com"
-export TESTRAIL_API_KEY="your_api_key"
+# Full migration (shared steps + cases)
+gotr sync full \
+  --src-project 30 --src-suite 20069 \
+  --dst-project 31 --dst-suite 19859 \
+  --approve --save-mapping
 
-gotr get get_projects
+# Shared steps only
+gotr sync shared-steps \
+  --src-project 30 --dst-project 31 \
+  --approve --save-mapping
+
+# Cases only (with mapping file)
+gotr sync cases \
+  --src-project 30 --src-suite 20069 \
+  --dst-project 31 --dst-suite 19859 \
+  --mapping-file mapping.json --approve
 ```
 
-### Via config file (coming soon)
-
----
----
-
-## Usage
-
-### Basic commands
+### Comparing Projects
 
 ```bash
-gotr get <endpoint> [id] # GET request
-gotr export <resource> <endpoint> [id] # Export to file
-gotr list <resource> # List of available endpoints
+# Compare cases between two projects
+gotr compare cases --pid1 30 --pid2 31 --field title
 ```
 
-### Examples
-
-#### Get list of projects
+### Filtering with jq
 
 ```bash
-gotr get get_projects
-gotr get get_projects -t table # in table form
-gotr get get_projects -j # with embedded jq (formatting)
-gotr get get_projects -j -f '.[].name' # project names only
+# Only id and name of projects
+gotr get projects --jq --jq-filter '.[] | {id: .id, name: .name}'
+
+# Pretty output with jq
+gotr get case 12345 --jq
 ```
 
-#### Get project by ID
+## ⚙️ Configuration
+
+Configuration priority (from highest to lowest):
+
+1. **Flags** (`--url`, `--username`, `--api-key`)
+2. **Env variables** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
+3. **Config file** (`~/.gotr/config.yaml`)
 
 ```bash
-gotr get get_project 30
-gotr get get_project --project-id 30 # via flag
-gotr get get_project 30 -o project30.json # save to file
+# Create config
+gotr config init
+
+# View config
+gotr config view
 ```
 
-#### Get cases with filtering
+## 🆕 What's New
 
-```bash
-gotr get get_cases 30 --suite-id 20069
-gotr get get_cases 30 --suite-id 20069 --section-id 10
-gotr get get_cases --project-id 30 --suite-id 20069
-```
+### 2026-02-03 — Interactive Mode
 
-#### Data export
+- **Interactive selection** for all `get` and `sync` commands — no need to remember IDs
+- **Auto-selection** when project has only one suite
+- **`--all-suites` flag** for getting cases from all suites
+- **Restructuring** of `cmd/` package — improved code organization
 
-```bash
-gotr export cases get_cases 30 --suite-id 20069
-# The file will be saved in .testrail/cases_30_*.json
+### 2026-01-24 — Sync Commands
 
-gotr export cases get_cases 30 --suite-id 20069 -o my_cases.json
-# Save to specified file
-```
+- New commands `sync suites` and `sync sections`
+- Unified flags for all `sync/*` commands
+- Unit tests for synchronization
 
-#### Autocompletion
+### 2026-01-15 — Get Commands v2.0
 
-`gotr` supports resource and endpoint completion:
+- Redesigned `get` command with subcommands
+- Positional arguments for IDs
+- Improved typing (int64)
 
-```bash
-gotr get <Tab><Tab> # will suggest endpoints
-gotr export cases <Tab> # will offer endpoints for cases
-```
+## 📦 Installation
 
----
----
+See [docs/installation.md](docs/installation.md)
 
-## Flags
+## 🤝 Contributing
 
-### Global
+Issues and Pull Requests are welcome!
 
-- `--base-url` — TestRail base URL
-- `--username` / `-u` — user email
-- `--api-key` / `-k` — API key
-- `--config` / `-c` — path to the config file
-- `--insecure` / `-i` - skip TLS check
-- `--jq` / `-j` - output via built-in jq
-- `--jq-filter` / `-f` - jq filter
-- `--quiet` / `-q` - suppress screen output
-- `--type` / `-t` — output format (json, json-full, table)
-- `--output` / `-o` - save to file
+## 📄 License
 
-### Local (for get/export)
-
-- `--project-id` / `-p` — project ID
-- `--suite-id` / `-s` — test suite ID
-- `--section-id` — section ID
-- `--milestone-id` — ID milestone
-
-## License
-
-MIT License - use, modify, distribute freely.
-
-## Authors
-
-- [Korrnals](https://github.com/Korrnals)
-
-## Acknowledgments
-
-- TestRail API
-- jqlang/jq - is an excellent tool for working with JSON
-- itchyny/gojq - inspiration for built-in jq
-- spf13/cobra - CLI basis
-- fatih/color — color output
-
----
-
-⭐ If the utility is useful, put a star on GitHub!  
-If you have ideas or bugs, open an issue or PR.
-
-Thanks for using `gotr`! 🚀
+MIT License — see [LICENSE](LICENSE)

@@ -30,8 +30,8 @@ gotr
 .testrail/
 Notify.md
 Tech.md
-AGENTS.md
 
+# Build artifacts
 gotr-linux-amd64
 gotr-darwin-amd64
 gotr.exe
@@ -41,3 +41,7 @@ gotr.exe
 !jq-macos-amd64
 !jq-windows-i386.exe.history/
 .history/
+
+# System development files (not for git)
+# Contains: API_ANALYSIS.md, API_AUDIT.md, CHECKLIST.md, PLAN.md, AGENTS.md
+.systems/

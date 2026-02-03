@@ -2,7 +2,7 @@
 package migration
 
 import (
-	"gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
 // FetchSharedStepsData — получает shared steps из source и target проектов

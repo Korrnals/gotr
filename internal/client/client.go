@@ -4,7 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/utils"
 	"io"
 	"net/http"
 	"net/url"

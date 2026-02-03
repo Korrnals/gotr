@@ -3,8 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"gotr/internal/utils"
-	"gotr/pkg/testrailapi"
+	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/pkg/testrailapi"
 	"sort"
 	"strings"
 

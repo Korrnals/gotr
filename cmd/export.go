@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"fmt"
-	"gotr/internal/utils"
 	"os"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 )
 
+// exportCmd — команда для экспорта данных
 var exportCmd = &cobra.Command{
 	Use:   "export <resource> <endpoint> [id]",
 	Short: "Экспорт данных из TestRail в JSON-файл",
@@ -88,27 +89,4 @@ var exportCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-func init() {
-	// Специфичные флаги для export
-	exportCmd.Flags().StringP("project-id", "p", "", "ID проекта (для эндпоинтов с {project_id})")
-	exportCmd.Flags().StringP("suite-id", "s", "", "ID тест-сюиты (для get_cases)")
-	exportCmd.Flags().String("section-id", "", "ID секции (для get_cases)")
-	exportCmd.Flags().String("milestone-id", "", "ID milestone (для get_runs)")
-
-	// Сохранение
-	exportCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (если указан)")
-
-	// Автодополнение
-	exportCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) == 0 {
-			return ValidResources, cobra.ShellCompDirectiveNoFileComp
-		}
-		if len(args) == 1 {
-			endpoints, _ := getResourceEndpoints(args[0], "list")
-			return endpoints, cobra.ShellCompDirectiveNoFileComp
-		}
-		return nil, cobra.ShellCompDirectiveDefault
-	}
 }

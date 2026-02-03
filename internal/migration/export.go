@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
 // ExportSharedSteps — экспортирует shared steps (filtered или все source)

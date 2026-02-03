@@ -2,8 +2,8 @@
 package migration
 
 import (
-	"gotr/internal/models/data"
-	"gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/utils"
 )
 
 // FilterSharedSteps — фильтрация shared steps по использованию в suite и дубликатам в target

@@ -1,8 +1,8 @@
 package migration
 
 import (
-	"gotr/internal/models/data"
-	"gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/utils"
 	"os"
 	"path/filepath"
 	"testing"

@@ -3,7 +3,7 @@ package migration
 
 import (
 	"fmt"
-	"gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"os"
 	"path/filepath"
 	"time"

@@ -1,4 +1,4 @@
-module gotr
+module github.com/Korrnals/gotr
 
 go 1.24.1
 

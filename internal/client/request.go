@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// ResponseData — структура для красивого вывода
+// ResponseData — для универсальных запросов (когда структура неизвестна).
 type ResponseData struct {
 	Status     string              `json:"status"`
 	StatusCode int                 `json:"status_code"`
@@ -20,7 +20,8 @@ type ResponseData struct {
 	Duration   time.Duration       `json:"duration"`
 }
 
-// PrintResponse — красивый вывод ответа
+// PrintResponse — красивый вывод универсального (с типом interface{}) ответа
+// Чтение ЛЮБОГО ответа
 func (c *HTTPClient) ReadResponse(resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
 	// Считываем поток ответа (сырые данные) в переменную
 	bodyBytes, err := io.ReadAll(resp.Body)
@@ -46,7 +47,21 @@ func (c *HTTPClient) ReadResponse(resp *http.Response, duration time.Duration, o
 	return data, nil
 }
 
-// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body)
+// ReadJSONResponse — универсальный метод для чтения ответа в любую структуру (не в interface{})
+func (c *HTTPClient) ReadJSONResponse(resp *http.Response, target any) error {
+    if resp.StatusCode != http.StatusOK {
+        body, _ := io.ReadAll(resp.Body)
+        return fmt.Errorf("ошибка API: %s, тело: %s", resp.Status, string(body))
+    }
+    defer resp.Body.Close()
+
+    if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+        return fmt.Errorf("ошибка декодирования: %w", err)
+    }
+    return nil
+}
+
+// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body), с нетипизированным телом ответа
 func (c *HTTPClient) PrintResponseFromData(data ResponseData, outputFormat string) {
     switch outputFormat {
     case "json":
@@ -60,22 +75,7 @@ func (c *HTTPClient) PrintResponseFromData(data ResponseData, outputFormat strin
     }
 }
 
-func printTable(data ResponseData) {
-	fmt.Printf("Status: %s (%d)\n", data.Status, data.StatusCode)
-	fmt.Printf("Duration: %v\n", data.Duration)
-	fmt.Printf("Timestamp: %s\n", data.Timestamp.Format(time.RFC3339))
-	fmt.Printf("\nHeaders:\n")
-	for k, v := range data.Headers {
-		for _, val := range v {
-			fmt.Printf("  %s: %s\n", k, val)
-		}
-	}
-	fmt.Printf("\nBody:\n")
-	jsonBody, _ := json.MarshalIndent(data.Body, "", "  ")
-	fmt.Println(string(jsonBody))
-}
-
-// SaveResponseToFile — сохранение ответа
+// SaveResponseToFile — сохранение не типизированного ответа
 func (c *HTTPClient) SaveResponseToFile(data ResponseData, filename string, outputFormat string) error {
 	var toSave []byte
     switch outputFormat {
@@ -94,4 +94,22 @@ func (c *HTTPClient) SaveResponseToFile(data ResponseData, filename string, outp
     fmt.Printf("Ответ сохранён в файл %s (формат: %s)\n", filename, outputFormat)
 
 	return nil
+}
+
+
+// Вспомогательные приватные функции //
+// 'printTable' - формирует таблицу ответа
+func printTable(data ResponseData) {
+	fmt.Printf("Status: %s (%d)\n", data.Status, data.StatusCode)
+	fmt.Printf("Duration: %v\n", data.Duration)
+	fmt.Printf("Timestamp: %s\n", data.Timestamp.Format(time.RFC3339))
+	fmt.Printf("\nHeaders:\n")
+	for k, v := range data.Headers {
+		for _, val := range v {
+			fmt.Printf("  %s: %s\n", k, val)
+		}
+	}
+	fmt.Printf("\nBody:\n")
+	jsonBody, _ := json.MarshalIndent(data.Body, "", "  ")
+	fmt.Println(string(jsonBody))
 }

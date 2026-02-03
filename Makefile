@@ -82,6 +82,21 @@ build-windows:
 # Полная сборка для всех платформ
 release: build-linux build-darwin build-windows
 
+# Сборка релизных бинарников со сжатием UPX
+release-compressed: clean
+	@echo "Сборка релизных бинарников v$(VERSION)..."
+	@echo "Linux amd64..."
+	@GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-linux-amd64
+	@if command -v upx >/dev/null 2>&1; then upx --best $(BINARY_NAME)-linux-amd64; fi
+	@echo "macOS amd64..."
+	@GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-amd64
+	@if command -v upx >/dev/null 2>&1; then upx --best --force-macos $(BINARY_NAME)-darwin-amd64; fi
+	@echo "Windows amd64..."
+	@GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-windows-amd64.exe
+	@if command -v upx >/dev/null 2>&1; then upx --best $(BINARY_NAME)-windows-amd64.exe; fi
+	@echo "Готово!"
+	@ls -lh $(BINARY_NAME)-*
+
 # Сборка + сжатие
 build-compressed: build compress
 

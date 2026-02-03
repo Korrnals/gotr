@@ -45,3 +45,8 @@ gotr.exe
 # System development files (not for git)
 # Contains: API_ANALYSIS.md, API_AUDIT.md, CHECKLIST.md, PLAN.md, AGENTS.md
 .systems/
+
+# Compressed binaries (for releases)
+*.gz
+*.zip
+*.tar

@@ -2,7 +2,7 @@ package sync
 
 import (
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/migration"
+	"github.com/Korrnals/gotr/internal/service/migration"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"testing"

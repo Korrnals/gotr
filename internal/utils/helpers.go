@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
@@ -208,4 +209,54 @@ func LogDir() string {
 		panic(err)
 	}
 	return logPath
+}
+
+// ParseID парсит строку в int64 (для ID из аргументов команд)
+func ParseID(s string) (int64, error) {
+	return strconv.ParseInt(s, 10, 64)
+}
+
+// SaveToFile сохраняет данные в JSON файл с форматированием
+func SaveToFile(filename string, data interface{}) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("ошибка сериализации: %w", err)
+	}
+	return os.WriteFile(filename, jsonData, 0644)
+}
+
+// OutputResult выводит данные в JSON и сохраняет в файл (если указан флаг --output)
+// Используется в CLI командах для стандартизации вывода
+func OutputResult(cmd *cobra.Command, data interface{}) error {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	output, _ := cmd.Flags().GetString("output")
+
+	// Сохранение в файл если указан флаг
+	if output != "" {
+		if err := SaveToFile(output, data); err != nil {
+			return err
+		}
+		if !quiet {
+			fmt.Printf("Ответ сохранён в %s\n", output)
+		}
+	}
+
+	// Вывод в консоль если не quiet режим
+	if !quiet {
+		pretty, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return fmt.Errorf("ошибка форматирования JSON: %w", err)
+		}
+		fmt.Println(string(pretty))
+	}
+
+	return nil
+}
+
+// PrintSuccess выводит сообщение об успехе (если не quiet режим)
+func PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	if !quiet {
+		fmt.Printf(format+"\n", args...)
+	}
 }

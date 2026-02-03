@@ -48,3 +48,5 @@ gotr.exe
 
 # Compressed binaries (for releases)
 *.gz
+*.zip
+*.tar

@@ -9,6 +9,84 @@
 
 ## [Unreleased]
 
+### Added
+
+#### Results API (Полная реализация)
+
+- **Новый client** `internal/client/results.go` с методами:
+  - `AddResult` — добавление результата для теста
+  - `AddResultForCase` — добавление результата для кейса в run
+  - `AddResults` — массовое добавление результатов (bulk)
+  - `AddResultsForCases` — массовое добавление для кейсов (bulk)
+  - `GetResults` — получение результатов для теста
+  - `GetResultsForRun` — получение всех результатов run
+  - `GetResultsForCase` — получение результатов для кейса в run
+
+#### Runs API (Полная реализация)
+
+- **Новый client** `internal/client/runs.go` с методами:
+  - `GetRun` — получение информации о run
+  - `GetRuns` — список runs проекта
+  - `AddRun` — создание нового run
+  - `UpdateRun` — обновление существующего run
+  - `CloseRun` — закрытие run
+  - `DeleteRun` — удаление run
+
+#### CLI команды для Results
+
+- **Новый пакет** `cmd/result/` с командами:
+  - `gotr result get <test-id>` — получить результаты
+  - `gotr result get-case <run-id> <case-id>` — получить результаты для кейса
+  - `gotr result add <test-id>` — добавить результат
+  - `gotr result add-case <run-id>` — добавить результат для кейса
+  - `gotr result add-bulk <run-id>` — массовое добавление из JSON-файла
+
+#### CLI команды для Runs
+
+- **Новый пакет** `cmd/run/` с командами:
+  - `gotr run get <run-id>` — получить информацию о run
+  - `gotr run list <project-id>` — список runs проекта
+  - `gotr run create <project-id>` — создать run
+  - `gotr run update <run-id>` — обновить run
+  - `gotr run close <run-id>` — закрыть run
+  - `gotr run delete <run-id>` — удалить run
+
+#### Service Layer (Архитектурное улучшение)
+
+- **Новый пакет** `internal/service/`:
+  - `RunService` — бизнес-логика для runs с валидацией
+  - `ResultService` — бизнес-логика для results с валидацией
+  - `internal/service/migration/` — перенесён из `internal/migration/`
+- **Валидация** в сервисах:
+  - Проверка ID > 0
+  - Проверка обязательных полей (name, suite_id, status_id)
+  - Валидация bulk-запросов (непустые массивы)
+- **Утилиты** в `internal/utils/helpers.go`:
+  - `ParseID` — парсинг ID
+  - `OutputResult` — вывод результата (JSON + сохранение в файл)
+  - `PrintSuccess` — вывод сообщений
+  - `SaveToFile` — сохранение данных в JSON-файл
+
+#### Архитектурная документация
+
+- **Системная документация** `.systems/ARCHITECTURE.md` (660 строк):
+  - Полное описание 4 слоёв архитектуры
+  - Таблицы разделения ответственности
+  - Полный перечень компонентов (22 команды, 3 сервиса, 40+ API методов)
+  - Примеры рефакторинга
+- **Пользовательская документация** `docs/architecture.md` (243 строки):
+  - Упрощённое описание архитектуры
+  - Примеры потоков данных
+  - Полный список команд
+
+#### Тесты
+
+- **Тесты для Service Layer**:
+  - `internal/service/run_test.go` — 6 тестов для валидации RunService
+  - `internal/service/result_test.go` — 9 тестов для валидации ResultService
+
+---
+
 ## [2.3.0] - 2026-02-03
 
 ### Added

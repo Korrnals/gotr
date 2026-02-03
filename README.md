@@ -1,9 +1,30 @@
+```
+╔══════════════════════════════════════════════════════════╗
+║                                                          ║
+║     ██████╗  ██████╗ ████████╗██████╗                    ║
+║    ██╔════╝ ██╔═══██╗╚══██╔══╝██╔══██╗                   ║
+║    ██║  ███╗██║   ██║   ██║   ██████╔╝                   ║
+║    ██║   ██║██║   ██║   ██║   ██╔══██╗                   ║
+║    ╚██████╔╝╚██████╔╝   ██║   ██║  ██║                   ║
+║     ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝                   ║
+║                                                          ║
+║           CLI Client for TestRail API v2                 ║
+║                                                          ║
+╚══════════════════════════════════════════════════════════╝
+```
+
 # gotr — CLI Client for TestRail API
 
 [English](README.md) | [Русский](README_ru.md)
 
+[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 `gotr` is a powerful and convenient command-line utility for working with TestRail API v2.  
-It allows you to perform GET requests, export data to files, synchronize entities between projects, filter responses through the built-in `jq`, and much more — without the need to install external dependencies.
+It allows you to perform GET/POST requests, export/import data, synchronize entities between projects, manage test runs and results, filter responses through the built-in `jq`, and much more — without the need to install external dependencies.
+
+> **Current Version: 2.3.0** — See [CHANGELOG](CHANGELOG.md) for details
 
 ## 🙏 Acknowledgements
 
@@ -37,10 +58,25 @@ gotr/
 ├── embedded/               # Embedded utilities (jq)
 ├── internal/               # Internal packages
 │   ├── client/            # HTTP client for TestRail API
+│   │   ├── cases.go       # Cases API methods
+│   │   ├── projects.go    # Projects API methods
+│   │   ├── sections.go    # Sections API methods
+│   │   ├── suites.go      # Suites API methods
+│   │   └── sharedsteps.go # Shared steps API methods
 │   ├── migration/         # Migration logic (sync)
 │   ├── models/            # Data structures
+│   │   └── data/          # API data models
+│   │       ├── cases.go       # Case models
+│   │       ├── results.go     # Result models (NEW in 2.3.0)
+│   │       ├── runs.go        # Run models (NEW in 2.3.0)
+│   │       ├── sections.go    # Section models
+│   │       ├── sharedsteps.go # Shared step models
+│   │       ├── statuses.go    # Status models (NEW in 2.3.0)
+│   │       ├── suites.go      # Suite models
+│   │       └── tests.go       # Test models (NEW in 2.3.0)
 │   └── utils/             # Utilities
 ├── pkg/                    # Public packages
+│   └── testrailapi/       # API endpoint definitions
 ├── main.go                 # Entry point
 ├── go.mod                  # Go modules
 └── Makefile               # Build automation
@@ -58,13 +94,15 @@ gotr --help
 
 ## ✨ Key Features
 
-- 📡 **Full TestRail API Support** — GET requests to all endpoints
+- 📡 **Full TestRail API Support** — GET/POST requests to all endpoints
+- 🏃 **Test Runs & Results** — create runs, add results, close runs (NEW in 2.3.0)
 - 🔄 **Synchronization** — migrate cases, shared steps, suites, sections between projects
 - 🎯 **Interactive Mode** — no need to remember project and suite IDs
 - 📦 **Built-in jq** — filtering without installing external utilities
-- 💾 **Export** — save data to JSON with automatic naming
+- 💾 **Export/Import** — save and load data in JSON format
 - 🔧 **Flexible Configuration** — flags, env variables, config file
 - 🖥️ **Auto-completion** — bash/zsh/fish completion
+- 📊 **Progress Bars** — visual feedback for long operations
 
 ## 📚 Documentation
 

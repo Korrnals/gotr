@@ -11,10 +11,17 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetSections — получает секции для suite в проекте (suite_id обязательно)
+// GetSections — получает секции для suite в проекте (suite_id обязательно для multi-suite проектов)
 func (c *HTTPClient) GetSections(projectID, suiteID int64) (data.GetSectionsResponse, error) {
-	endpoint := fmt.Sprintf("get_sections/%d&suite_id=%d", projectID, suiteID)
-	resp, err := c.Get(endpoint, nil)
+	endpoint := fmt.Sprintf("get_sections/%d", projectID)
+	
+	// Формируем query-параметры
+	query := make(map[string]string)
+	if suiteID != 0 {
+		query["suite_id"] = fmt.Sprintf("%d", suiteID)
+	}
+	
+	resp, err := c.Get(endpoint, query)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSections для проекта %d, suite %d: %w", projectID, suiteID, err)
 	}

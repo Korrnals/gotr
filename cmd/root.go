@@ -3,11 +3,11 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"gotr/internal/client"
-	"gotr/internal/utils"
 	"os"
 	"path/filepath"
 
+	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -38,7 +38,6 @@ var rootCmd = &cobra.Command{
 		password := viper.GetString("password")
 		apiKey := viper.GetString("api_key")
 		insecure := viper.GetBool("insecure")
-		jqFormat := viper.GetBool("jq_format")
 		debug := viper.GetBool("debug")
 
 		// Читаем значения (приоритет: флаги > env > default)
@@ -50,7 +49,6 @@ var rootCmd = &cobra.Command{
 		utils.DebugPrint("{rootCmd} - PersistentPreRunE запущен для команды:", cmd.Use)
 		utils.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
 		utils.DebugPrint("{rootCmd} - insecure=%v", insecure)
-		utils.DebugPrint("{rootCmd} - jqFormat=%v", jqFormat)
 
 		// Обработка пустых значений переменных
 		if baseURL == "" {
@@ -77,7 +75,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("не удалось создать клиент: %w", err)
 		}
 
-		// [DEBUG] при переданом флаге `--debug` или `-d
+		// [DEBUG] при переданом флаге `--debug` или `-d`
 		utils.DebugPrint("{rootCmd} - Клиент успешно создан и сохранён в контекст")
 
 		// Сохраняем клиент в контекст — будет доступен во всех субкомандах
@@ -91,46 +89,10 @@ var rootCmd = &cobra.Command{
 
 // Execute — вызывается из main.go
 func Execute() {
+	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date)
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}
-}
-
-// init — здесь подключаем все субкоманды
-func init() {
-	initConfig()
-
-	// Глобальные флаги — ТОЛЬКО подключение и базовая настройка
-	rootCmd.PersistentFlags().String("url", "", "Базовый URL TestRail")
-	rootCmd.PersistentFlags().StringP("username", "u", "", "Email пользователя TestRail")
-	rootCmd.PersistentFlags().StringP("api-key", "k", "", "API ключ TestRail")
-	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Пропустить проверку TLS сертификата")
-	rootCmd.PersistentFlags().BoolP("config", "c", false, "Создать дефолтный файл конфигурации")
-
-	// Скрытый debug
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Включить отладочный вывод")
-	rootCmd.PersistentFlags().MarkHidden("debug")
-
-	// Биндим к Viper
-	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
-	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))
-	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
-	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure"))
-	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
-
-	// Подключаем субкоманды
-	rootCmd.AddCommand(configCmd)
-	rootCmd.AddCommand(listCmd)
-	rootCmd.AddCommand(getCmd)
-	rootCmd.AddCommand(addCmd)
-	rootCmd.AddCommand(updateCmd)
-	rootCmd.AddCommand(deleteCmd)
-	rootCmd.AddCommand(copyCmd)
-	rootCmd.AddCommand(exportCmd)
-	rootCmd.AddCommand(importCmd)
-	rootCmd.AddCommand(compareCmd)
-
-	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date)
 }
 
 // GetClient — удобная функция для получения клиента из контекста

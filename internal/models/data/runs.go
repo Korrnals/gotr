@@ -60,13 +60,13 @@ type AddRunRequest struct {
 // UpdateRunRequest — запрос для update_run
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#updaterun
 type UpdateRunRequest struct {
-	Name        string  `json:"name,omitempty"`          // The name of the test run
-	Description string  `json:"description,omitempty"`   // The description of the test run
-	MilestoneID int64   `json:"milestone_id,omitempty"`  // The ID of the milestone
-	AssignedTo  int64   `json:"assignedto_id,omitempty"` // The ID of the user to assign to
-	IncludeAll  bool    `json:"include_all,omitempty"`   // True to include all test cases
+	Name        *string `json:"name,omitempty"`          // The name of the test run
+	Description *string `json:"description,omitempty"`   // The description of the test run
+	MilestoneID *int64  `json:"milestone_id,omitempty"`  // The ID of the milestone
+	AssignedTo  *int64  `json:"assignedto_id,omitempty"` // The ID of the user to assign to
+	IncludeAll  *bool   `json:"include_all,omitempty"`   // True to include all test cases
 	CaseIDs     []int64 `json:"case_ids,omitempty"`      // Array of case IDs to include
-	Refs        string  `json:"refs,omitempty"`          // A string of references/requirements
+	Refs        *string `json:"refs,omitempty"`          // A string of references/requirements
 }
 
 // CloseRunRequest — запрос для close_run

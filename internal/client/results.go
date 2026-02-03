@@ -174,3 +174,27 @@ func (c *HTTPClient) GetResultsForRun(runID int64) (data.GetResultsResponse, err
 
 	return results, nil
 }
+
+// GetResultsForCase получает результаты для кейса в ране
+// https://support.testrail.com/hc/en-us/articles/7077874763156-Results#getresultsforcase
+func (c *HTTPClient) GetResultsForCase(runID, caseID int64) (data.GetResultsResponse, error) {
+	endpoint := fmt.Sprintf("get_results_for_case/%d/%d", runID, caseID)
+	resp, err := c.Get(endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка запроса GetResultsForCase для рана %d, кейса %d: %w", runID, caseID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API вернул %s при получении результатов для рана %d, кейса %d: %s",
+			resp.Status, runID, caseID, string(body))
+	}
+
+	var results data.GetResultsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, fmt.Errorf("ошибка декодирования результатов: %w", err)
+	}
+
+	return results, nil
+}

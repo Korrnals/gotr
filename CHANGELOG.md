@@ -7,6 +7,38 @@
 
 ---
 
+## [Unreleased]
+
+## [2.3.0] - 2026-02-03
+
+### Added
+
+#### Модели для Results и Runs API
+
+- **Новые модели данных** в `internal/models/data/`:
+  - `results.go` — модели `Result`, `AddResultRequest`, `AddResultsRequest`, `AddResultsForCasesRequest`
+  - `runs.go` — модели `Run`, `AddRunRequest`, `UpdateRunRequest`, `CloseRunRequest`
+  - `tests.go` — модели `Test`, `UpdateTestRequest`
+  - `statuses.go` — модель `Status` с константами статусов
+- Подготовка к реализации Results и Runs API
+
+#### Исправления по результатам аудита
+
+- **Обновлены request-структуры** в `cases.go`:
+  - `AddCaseRequest` — добавлены поля `custom_steps` и `custom_expected` (текстовый формат)
+  - `UpdateCaseRequest` — добавлены поля `type_id`, `suite_id`, `section_id`, `template_id` для перемещения кейсов
+- **Исправлена модель `Section`** — добавлены `omitempty` к необязательным полям
+- **Удалён дубликат метода** `AddCaseRequest` из `internal/client/cases.go`
+- **Исправлен метод `GetSections`** — `suite_id` теперь передаётся как query-параметр
+
+#### Системные изменения
+
+- Создана директория `.systems/` для файлов разработки
+- Директория `.systems/` добавлена в `.gitignore`
+- Внедрено осознанное версионирование (Semantic Versioning)
+
+---
+
 ## [2.2.3] - 2026-02-03
 
 ### Added

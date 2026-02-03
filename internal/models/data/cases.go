@@ -74,7 +74,9 @@ type AddCaseRequest struct {
 	PriorityID           int64  `json:"priority_id"`
 	Estimate             string `json:"estimate,omitempty"`
 	CustomPreconds       string `json:"custom_preconds,omitempty"`
-	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"`
+	CustomSteps          string `json:"custom_steps,omitempty"`          // Текстовый формат шагов (альтернатива CustomStepsSeparated)
+	CustomExpected       string `json:"custom_expected,omitempty"`       // Ожидаемый результат (текстовый формат)
+	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Структурированные шаги
 	Refs                 string `json:"refs,omitempty"`
 	MilestoneID          int64  `json:"milestone_id,omitempty"`
 	TemplateID           int64  `json:"template_id,omitempty"`
@@ -83,13 +85,18 @@ type AddCaseRequest struct {
 // UpdateCaseRequest — запрос для update_case (частичные обновления)
 type UpdateCaseRequest struct {
 	Title                string `json:"title,omitempty"`
+	TypeID               int64  `json:"type_id,omitempty"`               // Для изменения типа кейса
 	PriorityID           int64  `json:"priority_id,omitempty"`
 	Estimate             string `json:"estimate,omitempty"`
 	CustomPreconds       string `json:"custom_preconds,omitempty"`
+	CustomSteps          string `json:"custom_steps,omitempty"`          // Текстовый формат шагов
+	CustomExpected       string `json:"custom_expected,omitempty"`       // Ожидаемый результат
 	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Step из shared.go
 	Refs                 string `json:"refs,omitempty"`
 	MilestoneID          int64  `json:"milestone_id,omitempty"`
-	// ...
+	SuiteID              int64  `json:"suite_id,omitempty"`              // Для перемещения между сьютами
+	SectionID            int64  `json:"section_id,omitempty"`            // Для перемещения между секциями
+	TemplateID           int64  `json:"template_id,omitempty"`           // Для изменения шаблона
 }
 
 // UpdateCasesRequest — запрос для bulk update_cases

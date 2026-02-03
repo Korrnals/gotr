@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"io"
 	"net/http"
 )

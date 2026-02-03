@@ -15,14 +15,14 @@ var completionCmd = &cobra.Command{
 	Long: `Генерирует скрипт автодополнения для указанной оболочки.
 
 Примеры:
-  source <(gotr completion bash)                  # временно для текущей сессии
-  gotr completion bash > /usr/local/etc/bash_completion.d/gotr  # навсегда (macOS/Linux)
+	source <(gotr completion bash)                  # временно для текущей сессии
+	gotr completion bash > /usr/local/etc/bash_completion.d/gotr  # навсегда (macOS/Linux)
 
 Zsh:
-  gotr completion zsh > "${fpath[1]}/_gotr"
+	gotr completion zsh > "${fpath[1]}/_gotr"
 
 Fish:
-  gotr completion fish > ~/.config/fish/completions/gotr.fish
+	gotr completion fish > ~/.config/fish/completions/gotr.fish
 `,
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
@@ -45,8 +45,4 @@ Fish:
 			_ = cmd.Root().GenPowerShellCompletion(os.Stdout)
 		}
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(completionCmd)
 }

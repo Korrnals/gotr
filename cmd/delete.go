@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// deleteCmd — команда для удаления ресурсов
 var deleteCmd = &cobra.Command{
 	Use:   "delete <endpoint> [args...]",
 	Short: "Выполнить POST-запрос (удаление ресурса)",

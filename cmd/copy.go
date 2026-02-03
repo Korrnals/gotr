@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// copyCmd — команда для копирования ресурсов
 var copyCmd = &cobra.Command{
 	Use:   "copy <src_project_id> [args... <resource>] <dest_project_id>",
 	Short: "Выполнить копирование из одного ресу",

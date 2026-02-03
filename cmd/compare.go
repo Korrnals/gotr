@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// compareCmd — команда для сравнения данных между проектами
 var compareCmd = &cobra.Command{
 	Use:   "compare <resource> [args...]",
 	Short: "Сравнение данных между проектами",
@@ -81,13 +82,4 @@ var compareCmd = &cobra.Command{
 
 		return nil
 	},
-}
-
-func init() {
-	compareCmd.Flags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
-	compareCmd.Flags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
-	compareCmd.Flags().String("field", "title", "Поле для сравнения (title, priority_id, custom_preconds и т.д.)")
-
-	// Регистрируем команду в root
-	rootCmd.AddCommand(compareCmd)
 }

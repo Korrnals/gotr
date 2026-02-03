@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/models/data"
 
 	"github.com/stretchr/testify/assert"
 )

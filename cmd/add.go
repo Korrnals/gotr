@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// addCmd — команда для создания ресурсов
 var addCmd = &cobra.Command{
 	Use:   "add <endpoint> [args...]",
 	Short: "Выполнить POST-запрос (создание ресурса)",

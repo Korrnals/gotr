@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// updateCmd — команда для обновления ресурсов
 var updateCmd = &cobra.Command{
 	Use:   "update <endpoint> [args...]",
 	Short: "Выполнить POST-запрос (обновление ресурса)",

@@ -2,7 +2,7 @@ package migration
 
 import (
 	"fmt"
-	"gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/utils"
 )
 
 // LoadMappingFromFile загружает mapping из файла и заполняет внутреннюю структуру m.mapping.

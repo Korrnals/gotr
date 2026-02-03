@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 
-	"gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
 // GetSections — получает секции для suite в проекте (suite_id обязательно)

@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"gotr/internal/models/config"
-	"gotr/internal/utils"
 	"os"
 
+	"github.com/Korrnals/gotr/internal/models/config"
+	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -26,8 +26,8 @@ var configCmd = &cobra.Command{
 	},
 }
 
-// initSubCmd — подкоманда "init" - создает дефолтный файл-конфигурации
-var initSubCmd = &cobra.Command{
+// configInitCmd — подкоманда "init" - создает дефолтный файл-конфигурации
+var configInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Создать дефолтный файл конфигурации",
 	Long: `Создаёт дефолтный файл конфигурации в ~/.gotr/config.yaml.
@@ -42,7 +42,6 @@ Default (config):
 	После создания обязательно отредактируйте файл, указав свои данные TestRail.`,
 
 	// ОТКЛЮЧАЕМ PersistentPreRunE для всей ветки config
-	// Это предотвращает создание клиента и проверку обязательных флагов
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Ничего не делаем — переопределяем родительский PersistentPreRunE
 	},
@@ -55,14 +54,13 @@ Default (config):
 	},
 }
 
-// pathSubCmd - подкоманда "path" - для получения пути текущего файла-конфигурации
-var pathSubCmd = &cobra.Command{
+// configPathCmd - подкоманда "path" - для получения пути текущего файла-конфигурации
+var configPathCmd = &cobra.Command{
 	Use:   "path",
 	Short: "Показать путь к текущему конфиг-файлу",
 	Long:  `Выводит путь к файлу конфигурации, который используется в данный момент.`,
 
 	// ОТКЛЮЧАЕМ PersistentPreRunE для всей ветки config
-	// Это предотвращает создание клиента и проверку обязательных флагов
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Ничего не делаем — переопределяем родительский PersistentPreRunE
 	},
@@ -83,14 +81,13 @@ var pathSubCmd = &cobra.Command{
 	},
 }
 
-// viewSubCmd - подкоманда "view" - для быстрого просмотра содержимого конфига
-var viewSubCmd = &cobra.Command{
+// configViewCmd - подкоманда "view" - для быстрого просмотра содержимого конфига
+var configViewCmd = &cobra.Command{
 	Use:   "view",
 	Short: "Показать содержимое текущего конфиг-файла",
 	Long:  "Выводит содержимое конфигурационного файла в читаемом виде.",
 
 	// ОТКЛЮЧАЕМ PersistentPreRunE для всей ветки config
-	// Это предотвращает создание клиента и проверку обязательных флагов
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		// Ничего не делаем — переопределяем родительский PersistentPreRunE
 	},
@@ -113,8 +110,8 @@ var viewSubCmd = &cobra.Command{
 	},
 }
 
-// editSubCmd - подкоманда "edit" - для быстрого редактирования содержимого конфига
-var editSubCmd = &cobra.Command{
+// configEditCmd - подкоманда "edit" - для быстрого редактирования содержимого конфига
+var configEditCmd = &cobra.Command{
 	Use:   "edit",
 	Short: "Открыть конфиг-файл в редакторе по умолчанию",
 	Long: `Открывает текущий конфигурационный файл в редакторе, указанном в переменной окружения EDITOR.
@@ -150,24 +147,4 @@ var editSubCmd = &cobra.Command{
 		fmt.Printf("Конфиг-файл открыт в редакторе: %s\n", used)
 		return nil
 	},
-}
-
-func init() {
-	// Добавляем подкоманды для команды 'config' (init, path, view, etc..)
-	configCmd.AddCommand(initSubCmd)
-	configCmd.AddCommand(pathSubCmd)
-	configCmd.AddCommand(viewSubCmd)
-	configCmd.AddCommand(editSubCmd)
-
-	// Добавляем команду config в корневую (это важно!)
-	rootCmd.AddCommand(configCmd)
-
-	// Автодополнение для "gotr config "
-	// Предлагаем только "init" как возможный аргумент
-	configCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) == 0 {
-			return []string{"init", "path", "view", "edit"}, cobra.ShellCompDirectiveNoFileComp
-		}
-		return nil, cobra.ShellCompDirectiveNoFileComp
-	}
 }

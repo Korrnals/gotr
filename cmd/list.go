@@ -41,19 +41,3 @@ var listCmd = &cobra.Command{
 		getResourceEndpoints(resource, "")
 	},
 }
-
-func init() {
-	// Можно добавить флаги, если нужно (например, --json)
-	// Флаги только для list:
-	listCmd.Flags().Bool("json", false, "Вывести в формате JSON")
-	listCmd.Flags().Bool("short", false, "Краткий вывод (только URI)")
-	// Если надо сделать флаг обязательным: listCmd.MarkFlagRequired("json")
-
-	// Включаем автодополнение для первого аргумента (ресурса)
-	listCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if len(args) == 0 {
-			return ValidResources, cobra.ShellCompDirectiveNoFileComp
-		}
-		return nil, cobra.ShellCompDirectiveDefault
-	}
-}

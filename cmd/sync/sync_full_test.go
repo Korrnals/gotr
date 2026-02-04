@@ -11,6 +11,8 @@ import (
 )
 
 // TestSyncFull_DryRun_NoAdds проверяет, что dry-run не вызывает создания сущностей
+testHTTPClientKey := "httpClient"
+
 func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	addShared := false
 	addCase := false
@@ -41,8 +43,9 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
+	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
 	cmd := fullCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
@@ -56,6 +59,8 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 }
 
 // TestSyncFull_AutoApprove_PerformsMigration проверяет, что при авто-подтверждении запускается полный процесс
+testHTTPClientKey := "httpClient"
+
 func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 	addShared := false
 	addCase := false
@@ -89,7 +94,8 @@ func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
 	cmd := fullCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
+	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")

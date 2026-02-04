@@ -7,9 +7,11 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 // RunService предоставляет методы для работы с test runs
@@ -40,37 +42,95 @@ func (s *RunService) GetByProject(projectID int64) (data.GetRunsResponse, error)
 
 // Create создаёт новый test run с валидацией параметров
 func (s *RunService) Create(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+	log.L().Info("creating test run",
+		zap.Int64("project_id", projectID),
+		zap.String("name", req.Name),
+		zap.Int64("suite_id", req.SuiteID),
+	)
+
 	if err := s.validateID(projectID, "project_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "project_id"), zap.Error(err))
 		return nil, err
 	}
 	if err := s.validateCreateRequest(req); err != nil {
+		log.L().Error("validation failed", zap.Error(err))
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
-	return s.client.AddRun(projectID, req)
+
+	run, err := s.client.AddRun(projectID, req)
+	if err != nil {
+		log.L().Error("failed to create run", zap.Int64("project_id", projectID), zap.Error(err))
+		return nil, err
+	}
+
+	log.L().Info("test run created",
+		zap.Int64("run_id", run.ID),
+		zap.Int64("project_id", run.ProjectID),
+		zap.String("name", run.Name),
+	)
+	return run, nil
 }
 
 // Update обновляет существующий test run с валидацией
 func (s *RunService) Update(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+	log.L().Info("updating test run", zap.Int64("run_id", runID))
+
 	if err := s.validateID(runID, "run_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "run_id"), zap.Error(err))
 		return nil, err
 	}
-	return s.client.UpdateRun(runID, req)
+
+	run, err := s.client.UpdateRun(runID, req)
+	if err != nil {
+		log.L().Error("failed to update run", zap.Int64("run_id", runID), zap.Error(err))
+		return nil, err
+	}
+
+	log.L().Info("test run updated",
+		zap.Int64("run_id", run.ID),
+		zap.String("name", run.Name),
+	)
+	return run, nil
 }
 
 // Close закрывает test run с валидацией ID
 func (s *RunService) Close(runID int64) (*data.Run, error) {
+	log.L().Info("closing test run", zap.Int64("run_id", runID))
+
 	if err := s.validateID(runID, "run_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "run_id"), zap.Error(err))
 		return nil, err
 	}
-	return s.client.CloseRun(runID)
+
+	run, err := s.client.CloseRun(runID)
+	if err != nil {
+		log.L().Error("failed to close run", zap.Int64("run_id", runID), zap.Error(err))
+		return nil, err
+	}
+
+	log.L().Info("test run closed",
+		zap.Int64("run_id", run.ID),
+		zap.Int64("completed_on", run.CompletedOn),
+	)
+	return run, nil
 }
 
 // Delete удаляет test run с валидацией ID
 func (s *RunService) Delete(runID int64) error {
+	log.L().Warn("deleting test run", zap.Int64("run_id", runID))
+
 	if err := s.validateID(runID, "run_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "run_id"), zap.Error(err))
 		return err
 	}
-	return s.client.DeleteRun(runID)
+
+	if err := s.client.DeleteRun(runID); err != nil {
+		log.L().Error("failed to delete run", zap.Int64("run_id", runID), zap.Error(err))
+		return err
+	}
+
+	log.L().Warn("test run deleted", zap.Int64("run_id", runID))
+	return nil
 }
 
 // Output выводит результат в JSON и сохраняет в файл (если указан --output)

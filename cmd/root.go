@@ -112,8 +112,8 @@ func initConfig() {
 		// Не паникуем — просто продолжаем без home-пути
 		fmt.Printf("Warning: cannot get user home directory: %v\n", err)
 	} else {
-		configDir := filepath.Join(home, ".gotr")
-		viper.AddConfigPath(configDir) // ~/.gotr
+		configDir := filepath.Join(home, ".gotr", "config")
+		viper.AddConfigPath(configDir) // ~/.gotr/config
 	}
 
 	// Удобно для локального тестирования

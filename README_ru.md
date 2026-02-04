@@ -176,7 +176,7 @@ gotr get case 12345 --jq
 
 1. **Флаги** (`--url`, `--username`, `--api-key`)
 2. **Env-переменные** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
-3. **Конфиг-файл** (`~/.gotr/config.yaml`)
+3. **Конфиг-файл** (`~/.gotr/config/default.yaml`)
 
 ```bash
 # Создать конфиг

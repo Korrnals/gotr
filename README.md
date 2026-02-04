@@ -193,7 +193,7 @@ Configuration priority (from highest to lowest):
 
 1. **Flags** (`--url`, `--username`, `--api-key`)
 2. **Env variables** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
-3. **Config file** (`~/.gotr/config.yaml`)
+3. **Config file** (`~/.gotr/config/default.yaml`)
 
 ```bash
 # Create config

@@ -16,6 +16,8 @@ import (
 
 // TestSyncSuites_DryRun_NoAddSuite проверяет поведение команды при режиме dry-run.
 // Ожидается, что в режиме dry-run не будет вызван метод AddSuite клиента.
+testHTTPClientKey := "httpClient"
+
 func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
 	// Подготавливаем мок-клиент: source содержит одну suite
 	addCalled := false
@@ -43,7 +45,8 @@ func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
 
 	// Готовим команду и устанавливаем флаги (dry-run = true)
 	cmd := suitesCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
+	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "true")
@@ -56,6 +59,8 @@ func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
 
 // TestSyncSuites_Confirm_TriggersAddSuite проверяет, что после интерактивного подтверждения
 // выполняется вызов AddSuite для создания необходимых suites в target.
+testHTTPClientKey := "httpClient"
+
 func TestSyncSuites_Confirm_TriggersAddSuite(t *testing.T) {
 	// Подготавливаем мок-клиент и отмечаем факт вызова AddSuite
 	addCalled := false

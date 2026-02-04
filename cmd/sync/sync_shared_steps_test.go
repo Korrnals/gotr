@@ -12,6 +12,8 @@ import (
 )
 
 // TestSyncSharedSteps_DryRun_NoAddSharedSteps проверяет, что dry-run не вызовет AddSharedStep
+testHTTPClientKey := "httpClient"
+
 func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 	addCalled := false
 	mock := &mockClient{
@@ -35,7 +37,8 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
 	cmd := sharedStepsCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
+	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "true")
@@ -46,6 +49,8 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 }
 
 // TestSyncSharedSteps_Confirm_TriggersAddSharedStep проверяет, что подтверждение запускает импорт shared steps
+testHTTPClientKey := "httpClient"
+
 func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 	addCalled := false
 	mock := &mockClient{
@@ -69,7 +74,8 @@ func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
 	cmd := sharedStepsCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
+	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "false")

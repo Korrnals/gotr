@@ -50,11 +50,20 @@ func SetGetClientForTests(fn GetClientFunc) {
 }
 
 // getClientSafe безопасно вызывает getClient с проверкой на nil
+// Fallback: берёт клиент из контекста (для тестов)
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
-	if getClient == nil {
-		return nil
+	if getClient != nil {
+		if c := getClient(cmd); c != nil {
+			return c
+		}
 	}
-	return getClient(cmd)
+	// Fallback для тестов - берём из контекста
+	if v := cmd.Context().Value(testHTTPClientKey); v != nil {
+		if c, ok := v.(*client.HTTPClient); ok {
+			return c
+		}
+	}
+	return nil
 }
 
 // Register регистрирует команду sync и все её подкоманды

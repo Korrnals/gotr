@@ -16,6 +16,8 @@ import (
 
 // TestSyncSections_DryRun_NoAddSection проверяет, что при режиме dry-run
 // реальные HTTP-вызовы к AddSection не выполняются.
+testHTTPClientKey := "httpClient"
+
 func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 	// Подготавливаем мок-клиент, который сигнализирует о существовании секции
 	addCalled := false
@@ -42,7 +44,8 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 
 	// Подготавливаем команду с флагами и dummy-клиентом в контексте
 	cmd := sectionsCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
+	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
@@ -57,6 +60,8 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 
 // TestSyncSections_Confirm_TriggersAddSection проверяет, что после интерактивного подтверждения
 // выполняется вызов AddSection для создания отсутствующих секций
+testHTTPClientKey := "httpClient"
+
 func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 	// Подготавливаем мок-клиент и отслеживаем вызов AddSection
 	addCalled := false

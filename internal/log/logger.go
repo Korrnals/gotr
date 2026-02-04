@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/paths"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -28,11 +29,11 @@ type Config struct {
 
 // DefaultConfig возвращает конфигурацию по умолчанию
 func DefaultConfig() Config {
-	homeDir, _ := os.UserHomeDir()
+	logsDir, _ := paths.LogsDirPath()
 	return Config{
 		Level:       "info",
 		JSONFormat:  false,
-		LogDir:      filepath.Join(homeDir, ".testrail", "logs"),
+		LogDir:      logsDir,
 		Development: false,
 	}
 }

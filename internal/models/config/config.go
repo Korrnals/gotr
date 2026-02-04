@@ -31,13 +31,14 @@ func New(path string) *Config {
 	}
 }
 
-// Default возвращает конфиг по стандартному пути
+// Default возвращает конфиг по стандартному пути (~/.gotr/config/default.yaml)
 func Default() (*Config, error) {
+	// Используем centralized paths
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
 	}
-	path := filepath.Join(home, ".gotr", "config.yaml")
+	path := filepath.Join(home, ".gotr", "config", "default.yaml")
 	return New(path), nil
 }
 

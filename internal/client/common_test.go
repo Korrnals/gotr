@@ -79,3 +79,8 @@ func (ms *mockServer) assertRequest(t *testing.T, expectedMethod, expectedPath s
 		t.Errorf("expected path %s, got %s", expectedPath, last.URL)
 	}
 }
+
+// ptr возвращает указатель на значение (хелпер для тестов)
+func ptr[T any](v T) *T {
+	return &v
+}

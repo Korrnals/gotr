@@ -319,8 +319,3 @@ func TestDeleteRun(t *testing.T) {
 		})
 	}
 }
-
-// ptr возвращает указатель на значение
-func ptr[T any](v T) *T {
-	return &v
-}

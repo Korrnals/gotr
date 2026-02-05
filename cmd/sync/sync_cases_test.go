@@ -12,13 +12,10 @@ import (
 )
 
 // TestSyncCases_DryRun_NoAddCase проверяет, что в режиме dry-run не вызывается AddCase
-// TODO: Тест требует рефакторинга - использует устаревшую архитектуру getClient
-
 func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
-	
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
 			if p == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
@@ -35,7 +32,7 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Создаём dummy клиент (как во втором тесте)
+	// Создаём dummy клиент для контекста
 	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
 	cmd := casesCmd
 	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
@@ -51,13 +48,10 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 }
 
 // TestSyncCases_Confirm_TriggersAddCase проверяет, что подтверждение запускает импорт кейсов
-// TODO: Тест требует рефакторинга - использует устаревшую архитектуру getClient
-
 func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
-	
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
 			if p == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
@@ -74,7 +68,7 @@ func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// ensure command has a client in context to avoid GetClient exit
+	// Создаём dummy клиент для контекста
 	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
 	cmd := casesCmd
 	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))

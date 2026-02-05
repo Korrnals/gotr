@@ -15,10 +15,10 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
 			if p == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
@@ -54,10 +54,10 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
 			if p == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil

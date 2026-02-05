@@ -14,11 +14,11 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncFull_DryRun_NoAdds(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	addShared := false
 	addCase := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
 			if p == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
@@ -64,11 +64,11 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	addShared := false
 	addCase := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
 			// Возвращаем shared steps только для исходного проекта (p == 1)
 			if p == 1 {

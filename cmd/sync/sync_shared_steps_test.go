@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -11,24 +10,41 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestSyncSharedSteps_DryRun_NoAddSharedSteps проверяет, что dry-run не вызовет AddSharedStep
-// testHTTPClientKey removed - tests skipped
+// resetSharedStepsFlags сбрасывает и пересоздаёт флаги для sharedStepsCmd
+func resetSharedStepsFlags() {
+	sharedStepsCmd.ResetFlags()
+	sharedStepsCmd.Flags().Int64("src-project", 0, "")
+	sharedStepsCmd.Flags().Int64("src-suite", 0, "")
+	sharedStepsCmd.Flags().Int64("dst-project", 0, "")
+	sharedStepsCmd.Flags().String("compare-field", "title", "")
+	sharedStepsCmd.Flags().Bool("dry-run", false, "")
+	sharedStepsCmd.Flags().Bool("approve", false, "")
+	sharedStepsCmd.Flags().Bool("save-mapping", false, "")
+	sharedStepsCmd.Flags().Bool("save-filtered", false, "")
+	sharedStepsCmd.Flags().String("output", "", "")
+}
 
+// TestSyncSharedSteps_DryRun_NoAddSharedSteps проверяет, что dry-run не вызовет AddSharedStep
 func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
-	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
-	
 	addCalled := false
-	mock := &migrationMock{
-		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
-			if p == 1 {
+
+	mock := &client.MockClient{
+		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
+		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+			if projectID == 1 {
+				return data.GetSuitesResponse{{ID: 10, Name: "Suite 1"}}, nil
+			}
+			return data.GetSuitesResponse{}, nil
+		},
+		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return data.GetCasesResponse{}, nil
 		},
-		addSharedStep: func(p int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
 			return &data.SharedStep{ID: 100, Title: r.Title}, nil
 		},
@@ -38,10 +54,11 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
+	resetSharedStepsFlags()
 	cmd := sharedStepsCmd
-	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10") // Явно указываем suite, чтобы избежать интерактивного выбора
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "true")
 
@@ -51,23 +68,20 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 }
 
 // TestSyncSharedSteps_Confirm_TriggersAddSharedStep проверяет, что подтверждение запускает импорт shared steps
-// testHTTPClientKey removed - tests skipped
-
 func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
-	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
-	
 	addCalled := false
-	mock := &migrationMock{
-		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
-			if p == 1 {
+
+	mock := &client.MockClient{
+		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return data.GetCasesResponse{}, nil
 		},
-		addSharedStep: func(p int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
 			return &data.SharedStep{ID: 100, Title: r.Title}, nil
 		},
@@ -77,14 +91,15 @@ func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
+	resetSharedStepsFlags()
 	cmd := sharedStepsCmd
-	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10") // Явно указываем suite, чтобы избежать интерактивного выбора
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "false")
 
-	// simulate stdin "y"
+	// simulate stdin "y" для подтверждения импорта
 	r, w, _ := os.Pipe()
 	_, _ = w.Write([]byte("y\n"))
 	_ = w.Close()

@@ -39,14 +39,20 @@
 - Рефакторинг `cmd/result/`, `cmd/run/`, `cmd/sync/` — использование `common.ClientAccessor`
 - Удалено дублирование `getClientSafe` из 3 пакетов
 
+### Fixed
+
+#### Унификация интерфейсов миграции
+
+- **Удалён дублирующий пакет** `internal/migration` (оставлен `internal/service/migration`)
+- **Унифицирован интерфейс** — `internal/service/migration` теперь использует `client.ClientInterface`
+- **Обновлён `MockClient`** — дефолтные возвращаемые значения предотвращают nil pointer dereference
+- **Рефакторинг sync тестов** — все 10 тестов переписаны с использованием `client.MockClient`
+- Убраны пропуски тестов (`t.Skip`) — все тесты проходят
+
 ### Changed
 
-- Версия обновлена до `2.5.0-dev` → `2.5.0`
-
-### Technical Debt
-
-- Sync тесты требуют рефакторинга команд для использования `ClientInterface` вместо `*HTTPClient`
-- После рефакторинга можно будет использовать `client.MockClient` для полноценного мокирования
+- **README.md** — реструктурировано описание, acknowledgements перенесены в конец
+- Версия обновлена до `2.5.0`
 
 ---
 

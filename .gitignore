@@ -50,3 +50,7 @@ gotr.exe
 *.gz
 *.zip
 *.tar
+
+**/dist/
+# Build artifacts
+dist/

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/models/config"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -14,7 +15,7 @@ import (
 
 var (
 	// Версия утилиты — заполняется при сборке через -ldflags
-	Version = "2.4.0-dev" // значение по умолчанию для локальной разработки
+	Version = "2.5.0" // значение по умолчанию для локальной разработки
 	Commit  = "unknown"
 	Date    = "unknown"
 )
@@ -29,8 +30,8 @@ var rootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		utils.DebugPrint("{rootCmd} - Запуск команды: %s", cmd.Use)
 		utils.DebugPrint("{rootCmd} - Аргументы: %v", args)
-		// Настройка Viper - поддержка env, флаговб конфигов
-		viper.AutomaticEnv() // автоматически поддтягивать переменные из окружения
+		// Настройка Viper - поддержка env, флагов, конфигов
+		viper.AutomaticEnv() // автоматически подтягивать переменные из окружения
 
 		// Маппим переменные окружения в переменные, которые будут использоваться в клиенте
 		baseURL := viper.GetString("base_url")
@@ -40,28 +41,21 @@ var rootCmd = &cobra.Command{
 		insecure := viper.GetBool("insecure")
 		debug := viper.GetBool("debug")
 
-		// Читаем значения (приоритет: флаги > env > default)
-		if baseURL == "" {
-			return fmt.Errorf("url обязателен: укажите --url или TESTRAIL_BASE_URL (env)")
-		}
-
-		// [DEBUG] при переданом флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - PersistentPreRunE запущен для команды:", cmd.Use)
+		// [DEBUG] при переданном флаге `--debug` или `-d`
+		utils.DebugPrint("{rootCmd} - PersistentPreRunE запущен для команды: %s", cmd.Use)
 		utils.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
 		utils.DebugPrint("{rootCmd} - insecure=%v", insecure)
 
-		// Обработка пустых значений переменных
-		if baseURL == "" {
-			return fmt.Errorf("base_url обязателен: --url или TESTRAIL_BASE_URL (env)")
-		}
-		if username == "" {
-			return fmt.Errorf("username обязателен: --username или TESTRAIL_USERNAME")
-		}
-		if apiKey == "" {
-			return fmt.Errorf("api_key обязателен: --api-key или TESTRAIL_API_KEY")
+		// Проверяем, что конфиг не пустой и не содержит дефолтных placeholder'ов
+		if config.IsDefaultValue(baseURL, config.DefaultBaseURL) ||
+			config.IsDefaultValue(username, config.DefaultUsername) ||
+			config.IsDefaultValue(apiKey, config.DefaultAPIKey) {
+			return fmt.Errorf("конфигурация не задана или содержит дефолтные значения\n" +
+				"Запустите 'gotr config init' для создания конфигурации,\n" +
+				"затем отредактируйте файл ~/.gotr/config/default.yaml")
 		}
 
-		// [DEBUG] при переданом флаге `--debug` или `-d
+		// [DEBUG] при переданном флаге `--debug` или `-d`
 		utils.DebugPrint("{rootCmd} - Подключение к %s как %s", baseURL, username)
 
 		// Создаём клиент с опциями
@@ -75,7 +69,7 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("не удалось создать клиент: %w", err)
 		}
 
-		// [DEBUG] при переданом флаге `--debug` или `-d`
+		// [DEBUG] при переданном флаге `--debug` или `-d`
 		utils.DebugPrint("{rootCmd} - Клиент успешно создан и сохранён в контекст")
 
 		// Сохраняем клиент в контекст — будет доступен во всех субкомандах
@@ -112,16 +106,16 @@ func initConfig() {
 		// Не паникуем — просто продолжаем без home-пути
 		fmt.Printf("Warning: cannot get user home directory: %v\n", err)
 	} else {
-		configDir := filepath.Join(home, ".gotr")
-		viper.AddConfigPath(configDir) // ~/.gotr
+		configDir := filepath.Join(home, ".gotr", "config")
+		viper.AddConfigPath(configDir) // ~/.gotr/config
 	}
 
 	// Удобно для локального тестирования
 	viper.AddConfigPath(".") // текущая директория
 
 	// 2. Имя файла без расширения (viper сам попробует .yaml, .json и т.д.)
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml") // явно указываем yaml
+	viper.SetConfigName("default") // ищем default.yaml (в ~/.gotr/config/)
+	viper.SetConfigType("yaml")    // явно указываем yaml
 
 	// 3. Автоматический биндинг env-переменных
 	viper.SetEnvPrefix("testrail") // TESTRAIL_BASE_URL, TESTRAIL_USER и т.д.

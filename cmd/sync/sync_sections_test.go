@@ -1,32 +1,41 @@
 package sync
 
 import (
-	"context"
 	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/service/migration"
 	"github.com/Korrnals/gotr/internal/models/data"
 
 	"github.com/stretchr/testify/assert"
 )
 
-// Используем общий mockClient из sync_common_test.go — не дублируем реализацию
+// resetSectionsFlags сбрасывает и пересоздаёт флаги для sectionsCmd
+func resetSectionsFlags() {
+	sectionsCmd.ResetFlags()
+	sectionsCmd.Flags().Int64("src-project", 0, "")
+	sectionsCmd.Flags().Int64("src-suite", 0, "")
+	sectionsCmd.Flags().Int64("dst-project", 0, "")
+	sectionsCmd.Flags().Int64("dst-suite", 0, "")
+	sectionsCmd.Flags().String("compare-field", "title", "")
+	sectionsCmd.Flags().Bool("dry-run", false, "")
+	sectionsCmd.Flags().Bool("approve", false, "")
+	sectionsCmd.Flags().Bool("save-mapping", false, "")
+}
 
 // TestSyncSections_DryRun_NoAddSection проверяет, что при режиме dry-run
 // реальные HTTP-вызовы к AddSection не выполняются.
 func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 	// Подготавливаем мок-клиент, который сигнализирует о существовании секции
 	addCalled := false
-	mock := &mockClient{
-		getSections: func(p, s int64) (data.GetSectionsResponse, error) {
-			if p == 1 {
+	mock := &client.MockClient{
+		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			if projectID == 1 {
 				return data.GetSectionsResponse{{ID: 11, Name: "Sec 1"}}, nil
 			}
 			return data.GetSectionsResponse{}, nil
 		},
-		addSection: func(p int64, r *data.AddSectionRequest) (*data.Section, error) {
+		AddSectionFunc: func(projectID int64, r *data.AddSectionRequest) (*data.Section, error) {
 			addCalled = true
 			return &data.Section{ID: 200, Name: r.Name}, nil
 		},
@@ -35,14 +44,12 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 	// Переопределяем фабрику миграции, чтобы она использовала наш мок-клиент
 	old := newMigration
 	defer func() { newMigration = old }()
-	newMigration = func(client migration.ClientInterface, srcProject, srcSuite, dstProject, dstSuite int64, compareField, logDir string) (*migration.Migration, error) {
-		tmp := t.TempDir()
-		return migration.NewMigration(mock, srcProject, srcSuite, dstProject, dstSuite, compareField, tmp)
-	}
+	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Подготавливаем команду с флагами и dummy-клиентом в контексте
+	// Подготавливаем команду с флагами и mock клиентом
+	resetSectionsFlags()
 	cmd := sectionsCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
@@ -60,14 +67,14 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 	// Подготавливаем мок-клиент и отслеживаем вызов AddSection
 	addCalled := false
-	mock := &mockClient{
-		getSections: func(p, s int64) (data.GetSectionsResponse, error) {
-			if p == 1 {
+	mock := &client.MockClient{
+		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			if projectID == 1 {
 				return data.GetSectionsResponse{{ID: 11, Name: "Sec 1"}}, nil
 			}
 			return data.GetSectionsResponse{}, nil
 		},
-		addSection: func(p int64, r *data.AddSectionRequest) (*data.Section, error) {
+		AddSectionFunc: func(projectID int64, r *data.AddSectionRequest) (*data.Section, error) {
 			addCalled = true
 			return &data.Section{ID: 200, Name: r.Name}, nil
 		},
@@ -76,15 +83,11 @@ func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 	// Переопределяем фабрику миграции на мок, чтобы избежать реальных сетевых вызовов
 	old := newMigration
 	defer func() { newMigration = old }()
-	newMigration = func(client migration.ClientInterface, srcProject, srcSuite, dstProject, dstSuite int64, compareField, logDir string) (*migration.Migration, error) {
-		tmp := t.TempDir()
-		return migration.NewMigration(mock, srcProject, srcSuite, dstProject, dstSuite, compareField, tmp)
-	}
+	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Устанавливаем dummy-клиент в контекст команды (чтобы GetClient не завершал процесс)
-	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
+	resetSectionsFlags()
 	cmd := sectionsCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")

@@ -7,9 +7,11 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 )
 
 // ResultService предоставляет методы для работы с результатами тестов
@@ -41,40 +43,115 @@ func (s *ResultService) GetForCase(runID, caseID int64) (data.GetResultsResponse
 	return s.client.GetResultsForCase(runID, caseID)
 }
 
+// GetForRun получает результаты для run ID
+func (s *ResultService) GetForRun(runID int64) (data.GetResultsResponse, error) {
+	if err := s.validateID(runID, "run_id"); err != nil {
+		return nil, err
+	}
+	return s.client.GetResultsForRun(runID)
+}
+
+// GetRunsForProject получает список runs для проекта (для интерактивного выбора)
+func (s *ResultService) GetRunsForProject(projectID int64) (data.GetRunsResponse, error) {
+	if err := s.validateID(projectID, "project_id"); err != nil {
+		return nil, err
+	}
+	return s.client.GetRuns(projectID)
+}
+
 // AddForTest добавляет результат для test с валидацией
 func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+	log.L().Info("adding result for test",
+		zap.Int64("test_id", testID),
+		zap.Int64("status_id", req.StatusID),
+	)
+
 	if err := s.validateID(testID, "test_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "test_id"), zap.Error(err))
 		return nil, err
 	}
 	if err := s.validateAddResultRequest(req); err != nil {
+		log.L().Error("validation failed", zap.Error(err))
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
-	return s.client.AddResult(testID, req)
+
+	result, err := s.client.AddResult(testID, req)
+	if err != nil {
+		log.L().Error("failed to add result", zap.Int64("test_id", testID), zap.Error(err))
+		return nil, err
+	}
+
+	log.L().Info("result added",
+		zap.Int64("result_id", result.ID),
+		zap.Int64("test_id", result.TestID),
+		zap.Int64("status_id", result.StatusID),
+	)
+	return result, nil
 }
 
 // AddForCase добавляет результат для case в run с валидацией
 func (s *ResultService) AddForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+	log.L().Info("adding result for case",
+		zap.Int64("run_id", runID),
+		zap.Int64("case_id", caseID),
+		zap.Int64("status_id", req.StatusID),
+	)
+
 	if err := s.validateID(runID, "run_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "run_id"), zap.Error(err))
 		return nil, err
 	}
 	if err := s.validateID(caseID, "case_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "case_id"), zap.Error(err))
 		return nil, err
 	}
 	if err := s.validateAddResultRequest(req); err != nil {
+		log.L().Error("validation failed", zap.Error(err))
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
-	return s.client.AddResultForCase(runID, caseID, req)
+
+	result, err := s.client.AddResultForCase(runID, caseID, req)
+	if err != nil {
+		log.L().Error("failed to add result", zap.Int64("run_id", runID), zap.Int64("case_id", caseID), zap.Error(err))
+		return nil, err
+	}
+
+	log.L().Info("result added",
+		zap.Int64("result_id", result.ID),
+		zap.Int64("run_id", runID),
+		zap.Int64("case_id", caseID),
+		zap.Int64("status_id", result.StatusID),
+	)
+	return result, nil
 }
 
 // AddResults добавляет несколько результатов (bulk) с валидацией
 func (s *ResultService) AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+	log.L().Info("adding bulk results",
+		zap.Int64("run_id", runID),
+		zap.Int("count", len(req.Results)),
+	)
+
 	if err := s.validateID(runID, "run_id"); err != nil {
+		log.L().Error("validation failed", zap.String("field", "run_id"), zap.Error(err))
 		return nil, err
 	}
 	if err := s.validateAddResultsRequest(req); err != nil {
+		log.L().Error("validation failed", zap.Error(err))
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
-	return s.client.AddResults(runID, req)
+
+	results, err := s.client.AddResults(runID, req)
+	if err != nil {
+		log.L().Error("failed to add bulk results", zap.Int64("run_id", runID), zap.Error(err))
+		return nil, err
+	}
+
+	log.L().Info("bulk results added",
+		zap.Int64("run_id", runID),
+		zap.Int("count", len(results)),
+	)
+	return results, nil
 }
 
 // AddResultsForCases добавляет результаты для кейсов (bulk) с валидацией

@@ -9,6 +9,49 @@
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-02-05
+
+### Added
+
+#### Интерактивный режим
+
+- **Команда** `gotr run list` — интерактивный выбор проекта при отсутствии аргументов
+- **Команда** `gotr result list` — интерактивный выбор проекта → test run
+- **Пакет** `internal/interactive/` — единый механизм интерактивного выбора
+
+#### Client Interface + Mock (Архитектурное улучшение)
+
+- **Пакет** `internal/client/interfaces.go` — полный композитный интерфейс:
+  - `ProjectsAPI` — 5 методов
+  - `CasesAPI` — 14 методов
+  - `SuitesAPI` — 5 методов
+  - `SectionsAPI` — 5 методов
+  - `SharedStepsAPI` — 6 методов
+  - `RunsAPI` — 6 методов
+  - `ResultsAPI` — 7 методов
+- **Пакет** `internal/client/mock.go` — полный `MockClient` (43 метода)
+- Проверка компиляции: `var _ ClientInterface = (*HTTPClient)(nil)`
+
+#### Общие утилиты (Рефакторинг)
+
+- **Пакет** `cmd/common/client.go` — `ClientAccessor` для единого доступа к HTTP клиенту
+- **Пакет** `cmd/common/flags.go` — общие функции парсинга флагов
+- Рефакторинг `cmd/result/`, `cmd/run/`, `cmd/sync/` — использование `common.ClientAccessor`
+- Удалено дублирование `getClientSafe` из 3 пакетов
+
+### Changed
+
+- Версия обновлена до `2.5.0-dev` → `2.5.0`
+
+### Technical Debt
+
+- Sync тесты требуют рефакторинга команд для использования `ClientInterface` вместо `*HTTPClient`
+- После рефакторинга можно будет использовать `client.MockClient` для полноценного мокирования
+
+---
+
+## [2.4.0] - 2026-02-04
+
 ### Added
 
 #### Results API (Полная реализация)

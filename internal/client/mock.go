@@ -133,7 +133,7 @@ func (m *MockClient) AddCase(sectionID int64, req *data.AddCaseRequest) (*data.C
 	if m.AddCaseFunc != nil {
 		return m.AddCaseFunc(sectionID, req)
 	}
-	return nil, nil
+	return &data.Case{ID: 999}, nil
 }
 
 func (m *MockClient) UpdateCase(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
@@ -234,7 +234,7 @@ func (m *MockClient) AddSuite(projectID int64, req *data.AddSuiteRequest) (*data
 	if m.AddSuiteFunc != nil {
 		return m.AddSuiteFunc(projectID, req)
 	}
-	return nil, nil
+	return &data.Suite{ID: 999}, nil
 }
 
 func (m *MockClient) UpdateSuite(suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
@@ -272,7 +272,7 @@ func (m *MockClient) AddSection(projectID int64, req *data.AddSectionRequest) (*
 	if m.AddSectionFunc != nil {
 		return m.AddSectionFunc(projectID, req)
 	}
-	return nil, nil
+	return &data.Section{ID: 999}, nil
 }
 
 func (m *MockClient) UpdateSection(sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
@@ -310,7 +310,7 @@ func (m *MockClient) AddSharedStep(projectID int64, req *data.AddSharedStepReque
 	if m.AddSharedStepFunc != nil {
 		return m.AddSharedStepFunc(projectID, req)
 	}
-	return nil, nil
+	return &data.SharedStep{ID: 999}, nil
 }
 
 func (m *MockClient) UpdateSharedStep(stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {

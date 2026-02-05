@@ -1,94 +1,144 @@
 # Архитектура gotr
 
 > Общее описание архитектуры CLI-утилиты gotr для пользователей  
-> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-04.
+> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-05 (v2.5.0).
 
 ## Что такое gotr
 
-`gotr` — это CLI-клиент для TestRail API v2, построенный по многослойной архитектуре. Это означает, что код организован в отдельные слои, каждый из которых отвечает за свою задачу.
+`gotr` — это CLI-клиент для TestRail API v2, построенный по многослойной архитектуре с чётким разделением ответственности между слоями.
 
 ## Общая схема
 
 ```
-┌─────────────────────────────────────┐
-│  Пользователь → CLI команды         │
-│  (cmd/*)                            │
-│  Парсинг аргументов, флагов         │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│  Service Layer                      │
-│  (internal/service/*)               │
-│  Бизнес-логика, валидация           │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│  Client Layer                       │
-│  (internal/client/*)                │
-│  HTTP запросы к TestRail API        │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│  TestRail API v2                    │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  CLI Layer (cmd/*)                                          │
+│  • Парсинг аргументов и флагов                              │
+│  • Интерактивный выбор (internal/interactive)               │
+│  • Вызов сервисов                                           │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  Service Layer (internal/service/*)                         │
+│  • Бизнес-логика                                            │
+│  • Валидация данных                                         │
+│  • Миграция данных (migration)                              │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  Client Layer (internal/client/*)                           │
+│  • HTTPClient — реальный клиент                             │
+│  • ClientInterface — абстракция для тестов                  │
+│  • MockClient — реализация для тестирования                 │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  TestRail API v2                                            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Слои подробно
 
 ### 1. CLI Layer (`cmd/`)
 
-**Что делает:** Принимает команды от пользователя и показывает результаты
+**Ответственность:** Принимает команды от пользователя, парсит аргументы, вызывает сервисы.
+
+**Структура:**
+```
+cmd/
+├── common/              # Общие компоненты
+│   ├── client.go       #   ClientAccessor — единый доступ к HTTP клиенту
+│   └── flags.go        #   Парсинг общих флагов
+├── get/                # GET команды
+├── result/             # Команды для работы с результатами
+├── run/                # Команды для работы с test runs
+├── sync/               # Команды миграции данных
+├── root.go             # Корневая команда
+└── commands.go         # Регистрация всех команд
+```
 
 **Пример:**
 ```bash
-gotr run get 12345
+gotr run get 12345 --jq
+# cmd/run/get.go → RunService.Get(12345) → вывод с jq-фильтром
 ```
-
-Здесь `run` — группа команд, `get` — команда, `12345` — аргумент
-
-**Где находится:**
-- `cmd/run/` — команды для работы с test runs
-- `cmd/result/` — команды для работы с результатами
-- `cmd/sync/` — команды для миграции данных
-- `cmd/get/` — GET-запросы к API
 
 ### 2. Service Layer (`internal/service/`)
 
-**Что делает:** Проверяет корректность данных и управляет бизнес-логикой
+**Ответственность:** Бизнес-логика, валидация, оркестрация операций.
 
-**Пример:** Перед созданием run проверяет, что:
-- ID проекта > 0
-- Название не пустое
-- Suite ID указан корректно
-
-**Сервисы:**
+**Компоненты:**
 - `RunService` — работа с test runs
 - `ResultService` — работа с результатами тестов
-- `migration` — миграция данных между проектами
+- `migration/` — миграция данных между проектами
+  - `types.go` — контекст миграции
+  - `fetch.go` — получение данных
+  - `filter.go` — фильтрация дубликатов
+  - `import.go` — импорт сущностей
+  - `export.go` — экспорт данных
+  - `mapping.go` — управление mapping ID
+
+**Валидация:**
+```go
+// Проверки перед созданием run:
+// - projectID > 0
+// - name не пустое
+// - suite_id > 0 (если указан)
+```
 
 ### 3. Client Layer (`internal/client/`)
 
-**Что делает:** Отправляет HTTP запросы к TestRail API
+**Ответственность:** HTTP-запросы к TestRail API.
 
-**API методы:**
-- `GetRun`, `AddRun`, `UpdateRun`, `CloseRun`, `DeleteRun`
-- `AddResult`, `GetResults`
-- `GetCases`, `AddCase`
-- `GetSuites`, `AddSuite`
+**Структура:**
+```
+internal/client/
+├── client.go           # HTTPClient — основной HTTP клиент
+├── interfaces.go       # ClientInterface + 7 API групп
+├── mock.go             # MockClient для тестирования
+├── projects.go         # ProjectsAPI (5 методов)
+├── cases.go            # CasesAPI (14 методов)
+├── suites.go           # SuitesAPI (5 методов)
+├── sections.go         # SectionsAPI (5 методов)
+├── sharedsteps.go      # SharedStepsAPI (6 методов)
+├── runs.go             # RunsAPI (6 методов)
+└── results.go          # ResultsAPI (7 методов)
+```
 
-### 4. Models (`internal/models/data/`)
+**ClientInterface:**
+- 43 метода общего назначения
+- Композиция из 7 интерфейсов по доменам
+- Поддержка mock-реализации для тестов
 
-**Что делает:** Описывает структуры данных (DTO)
+### 4. Interactive Layer (`internal/interactive/`)
 
-**Примеры структур:**
-- `Run` — test run
-- `Result` — результат теста
-- `Case` — тест-кейс
-- `Suite` — тест-сюита
+**Ответственность:** Интерактивный выбор проектов, сьютов, ранов.
+
+**Использование:**
+- `gotr run list` — выбор проекта → список ранов
+- `gotr result list` — выбор проекта → выбор рана → результаты
+- `gotr get cases` — выбор проекта → выбор сьюта
+
+### 5. Models (`internal/models/data/`)
+
+**Ответственность:** DTO (Data Transfer Objects) для API.
+
+**Основные структуры:**
+- `Project`, `Suite`, `Section`, `Case`
+- `Run`, `Test`, `Result`
+- `SharedStep`
+- `Status` — константы статусов
+
+### 6. Utilities (`internal/utils/`)
+
+**Ответственность:** Вспомогательные функции.
+
+**Компоненты:**
+- `helpers.go` — парсинг ID, вывод результатов, сохранение в файл
+- `log.go` — директории для логов
 
 ## Поток данных
 
-### Пример: Создание test run
+### Пример 1: Создание test run
 
 ```
 Пользователь
@@ -108,117 +158,174 @@ POST /index.php?/api/v2/add_run/30
 TestRail API
 ```
 
-### Пример: Добавление результата
+### Пример 2: Миграция данных (sync full)
 
 ```
 Пользователь
     ↓
-gotr result add 12345 --status-id 1 --comment "Passed"
+gotr sync full --src-project 30 --dst-project 31
     ↓
-CLI Layer (cmd/result/add.go)
+CLI Layer (cmd/sync/sync_full.go)
     ↓
-ResultService.AddForTest(testID=12345, req={status_id:1, ...})
+migration.NewMigration(client, 30, 0, 31, 0, "title", logDir)
     ↓
-Валидация: testID>0? status_id>0?
+Migration.FetchSharedStepsData()  // Получение данных
     ↓
-HTTPClient.AddResult(12345, req)
+Migration.FilterSharedSteps()     // Фильтрация дубликатов
     ↓
-POST /index.php?/api/v2/add_result/12345
+Migration.ImportSharedSteps()     // Импорт
     ↓
-TestRail API
+Аналогично для cases
+    ↓
+TestRail API (src) → Migration → TestRail API (dst)
 ```
 
-## Директории проекта
+## Полная структура проекта
 
 ```
 gotr/
-├── cmd/                    # CLI команды
-│   ├── run/               #   Управление runs
-│   ├── result/            #   Управление results
-│   ├── sync/              #   Миграция данных
-│   └── get/               #   GET запросы
-├── internal/              # Внутренний код
-│   ├── service/           #   Бизнес-логика
-│   │   ├── run.go
-│   │   ├── result.go
-│   │   └── migration/
-│   ├── client/            #   HTTP клиент
-│   │   ├── runs.go
-│   │   ├── results.go
-│   │   └── ...
-│   ├── models/            #   Модели данных
-│   │   └── data/
-│   │       ├── runs.go
-│   │       ├── results.go
-│   │       └── ...
-│   └── utils/             #   Утилиты
-├── pkg/                   # Публичные пакеты
-│   └── testrailapi/       #   Описания API endpoint'ов
-├── docs/                  # Документация
-└── .systems/              # Системные документы разработки
+├── cmd/                          # CLI команды
+│   ├── common/                   #   Общие компоненты
+│   │   ├── client.go            #     ClientAccessor
+│   │   └── flags.go             #     Парсинг флагов
+│   ├── get/                     #   GET команды
+│   ├── result/                  #   Команды results
+│   ├── run/                     #   Команды runs
+│   ├── sync/                    #   Команды миграции
+│   ├── root.go                  #   Корневая команда
+│   └── commands.go              #   Регистрация команд
+├── docs/                         # Документация
+│   ├── architecture.md          #   Этот файл
+│   ├── configuration.md         #   Настройка
+│   ├── get-commands.md          #   GET команды
+│   ├── sync-commands.md         #   SYNC команды
+│   ├── installation.md          #   Установка
+│   ├── interactive-mode.md      #   Интерактивный режим
+│   └── other-commands.md        #   Прочие команды
+├── embedded/                     # Встроенные утилиты
+│   └── jq.go                    #   Встроенный jq
+├── internal/                     # Внутренний код
+│   ├── client/                  #   HTTP клиент
+│   │   ├── client.go           #     HTTPClient
+│   │   ├── interfaces.go       #     ClientInterface (43 метода)
+│   │   ├── mock.go             #     MockClient
+│   │   ├── projects.go         #     ProjectsAPI
+│   │   ├── cases.go            #     CasesAPI
+│   │   ├── suites.go           #     SuitesAPI
+│   │   ├── sections.go         #     SectionsAPI
+│   │   ├── sharedsteps.go      #     SharedStepsAPI
+│   │   ├── runs.go             #     RunsAPI
+│   │   └── results.go          #     ResultsAPI
+│   ├── interactive/            #   Интерактивный выбор
+│   │   └── selector.go         #     Селекторы проектов/сьютов
+│   ├── service/                #   Бизнес-логика
+│   │   ├── run.go              #     RunService
+│   │   ├── result.go           #     ResultService
+│   │   └── migration/          #     Миграция данных
+│   │       ├── types.go       #       Migration struct
+│   │       ├── fetch.go       #       Получение данных
+│   │       ├── filter.go      #       Фильтрация
+│   │       ├── import.go      #       Импорт
+│   │       ├── export.go      #       Экспорт
+│   │       ├── mapping.go     #       Mapping ID
+│   │       └── log.go         #       Логирование
+│   ├── models/                 #   Модели данных
+│   │   └── data/              #     DTO для API
+│   │       ├── projects.go    #       Project
+│   │       ├── cases.go       #       Case
+│   │       ├── suites.go      #       Suite
+│   │       ├── sections.go    #       Section
+│   │       ├── sharedsteps.go #       SharedStep
+│   │       ├── runs.go        #       Run, Test
+│   │       ├── results.go     #       Result
+│   │       └── statuses.go    #       Status
+│   └── utils/                  #   Утилиты
+│       ├── helpers.go         #     Вспомогательные функции
+│       └── log.go             #     Работа с логами
+├── pkg/                          # Публичные пакеты
+│   └── testrailapi/            #   Описания API endpoints
+│       └── api_paths.go
+├── .systems/                     # Системная документация
+│   └── ARCHITECTURE.md         #   Детальная архитектура для разработчиков
+├── dist/                         # Артефакты сборки (в .gitignore)
+├── main.go                       # Точка входа
+├── go.mod                        # Go модули
+├── Makefile                     # Сборка
+└── README.md                    # Основная документация
 ```
 
 ## Доступные команды
 
 ### Управление test runs (`gotr run`)
-- `gotr run get <id>` — получить информацию о run
-- `gotr run list <project-id>` — список runs проекта
-- `gotr run create <project-id>` — создать run
-- `gotr run update <id>` — обновить run
-- `gotr run close <id>` — закрыть run
-- `gotr run delete <id>` — удалить run
+| Команда | Описание |
+|---------|----------|
+| `gotr run get <id>` | Получить информацию о run |
+| `gotr run list [project-id]` | Список runs (интерактивный выбор) |
+| `gotr run create <project-id>` | Создать run |
+| `gotr run update <id>` | Обновить run |
+| `gotr run close <id>` | Закрыть run |
+| `gotr run delete <id>` | Удалить run |
 
 ### Управление результатами (`gotr result`)
-- `gotr result get <test-id>` — получить результаты test
-- `gotr result get-case <run-id> <case-id>` — получить результаты case
-- `gotr result add <test-id>` — добавить результат
-- `gotr result add-case <run-id>` — добавить результат для case
-- `gotr result add-bulk <run-id>` — массовое добавление из файла
+| Команда | Описание |
+|---------|----------|
+| `gotr result get <test-id>` | Получить результаты test |
+| `gotr result get-case <run-id> <case-id>` | Получить результаты case |
+| `gotr result list [--run-id <id>]` | Список результатов (интерактивно) |
+| `gotr result add <test-id>` | Добавить результат |
+| `gotr result add-case <run-id>` | Добавить результат для case |
+| `gotr result add-bulk <run-id>` | Массовое добавление из файла |
 
 ### Миграция данных (`gotr sync`)
-- `gotr sync full` — полная миграция (suites → sections → shared-steps → cases)
-- `gotr sync cases` — миграция кейсов
-- `gotr sync shared-steps` — миграция shared steps
-- `gotr sync suites` — миграция suites
-- `gotr sync sections` — миграция sections
+| Команда | Описание |
+|---------|----------|
+| `gotr sync full` | Полная миграция (shared-steps + cases) |
+| `gotr sync cases` | Миграция кейсов |
+| `gotr sync shared-steps` | Миграция shared steps |
+| `gotr sync suites` | Миграция suites |
+| `gotr sync sections` | Миграция sections |
 
 ### Получение данных (`gotr get`)
-- `gotr get case <id>` — получить кейс
-- `gotr get cases <project-id>` — получить кейсы проекта
-- `gotr get suite <id>` — получить сьюту
-- `gotr get suites <project-id>` — получить сьюты
-- `gotr get project <id>` — получить проект
-- `gotr get projects` — получить все проекты
-- `gotr get sharedstep <id>` — получить shared step
-- `gotr get sharedsteps <project-id>` — получить shared steps
+| Команда | Описание |
+|---------|----------|
+| `gotr get projects` | Все проекты |
+| `gotr get project <id>` | Конкретный проект |
+| `gotr get suites [project-id]` | Сьютs проекта |
+| `gotr get suite <id>` | Конкретный сьют |
+| `gotr get cases [project-id]` | Кейсы (интерактивный выбор сьюта) |
+| `gotr get case <id>` | Конкретный кейс |
+| `gotr get sharedsteps <project-id>` | Shared steps |
+| `gotr get sections <project-id>` | Секции |
 
 ### Прочие команды
-- `gotr add <endpoint>` — POST запросы
-- `gotr update <endpoint>` — UPDATE запросы
-- `gotr delete <endpoint>` — DELETE запросы
-- `gotr list <resource>` — список API endpoints
-- `gotr export <resource>` — экспорт данных
-- `gotr import <resource>` — импорт данных
-- `gotr compare` — сравнение проектов
-- `gotr config` — управление конфигурацией
+| Команда | Описание |
+|---------|----------|
+| `gotr add <endpoint>` | POST запросы |
+| `gotr update <endpoint>` | UPDATE запросы |
+| `gotr delete <endpoint>` | DELETE запросы |
+| `gotr list <resource>` | Список API endpoints |
+| `gotr export <resource>` | Экспорт данных |
+| `gotr import <resource>` | Импорт данных |
+| `gotr compare` | Сравнение проектов |
+| `gotr config` | Управление конфигурацией |
+| `gotr self-test` | Самодиагностика |
 
 ## Почему такая архитектура
 
 ### Преимущества
 
 1. **Чёткое разделение** — каждый слой знает только про свой уровень
-2. **Легко тестировать** — можно тестировать сервисы без реальных HTTP запросов
-3. **Легко расширять** — добавление новой команды не требует изменения client
+2. **Тестируемость** — можно тестировать сервисы с MockClient без реальных HTTP запросов
+3. **Расширяемость** — добавление новой команды не требует изменения client
 4. **Переиспользование** — один сервис используется в разных командах
+5. **Интерактивность** — единый механизм выбора в `internal/interactive/`
 
-### Что если нужно добавить retry?
+### Добавление retry
 
-Если TestRail начнёт возвращать ошибки "rate limit", retry логику добавляется только в Service Layer, не затрагивая CLI команды:
+Если TestRail возвращает "rate limit", retry добавляется только в Service Layer:
 
 ```go
-// Service Layer
 func (s *RunService) Get(id int64) (*data.Run, error) {
-    // Добавляем retry здесь
     var run *data.Run
     err := retry.Do(3, func() error {
         var err error
@@ -229,15 +336,18 @@ func (s *RunService) Get(id int64) (*data.Run, error) {
 }
 ```
 
-CLI команды даже не заметят изменений!
+CLI команды не требуют изменений!
 
 ## Для разработчиков
 
-Если вы хотите внести изменения:
+Где вносить изменения:
 
-- **Новая команда** → создавайте в `cmd/`
-- **Новая валидация** → добавляйте в `internal/service/`
-- **Новый API метод** → добавляйте в `internal/client/`
-- **Новая структура данных** → добавляйте в `internal/models/data/`
+| Задача | Локация |
+|--------|---------|
+| Новая команда | `cmd/<group>/*.go` |
+| Новая валидация | `internal/service/*.go` |
+| Новый API метод | `internal/client/*.go` + `interfaces.go` |
+| Новая структура данных | `internal/models/data/*.go` |
+| Интерактивный выбор | `internal/interactive/selector.go` |
 
-Подробная техническая документация находится в `.systems/ARCHITECTURE.md`
+Подробная техническая документация: `.systems/ARCHITECTURE.md`

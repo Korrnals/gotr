@@ -1,6 +1,8 @@
 package sync
 
 import (
+	"context"
+
 	"github.com/Korrnals/gotr/cmd/common"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
@@ -54,6 +56,18 @@ func SetGetClientForTests(fn GetClientFunc) {
 	}
 }
 
+// testClientKey — ключ для mock клиента в тестах
+var testClientKey = &struct{}{}
+
+// SetTestClient устанавливает mock клиент для тестов
+func SetTestClient(cmd *cobra.Command, mockClient client.ClientInterface) {
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	cmd.SetContext(context.WithValue(ctx, testClientKey, mockClient))
+}
+
 // getClientSafe безопасно вызывает getClient с проверкой на nil
 // Fallback: берёт клиент из контекста (для тестов)
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
@@ -62,13 +76,25 @@ func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 			return c
 		}
 	}
-	// Fallback для тестов - берём из контекста
+	// Fallback для старых тестов - берём из контекста по старому ключу
 	if v := cmd.Context().Value(testHTTPClientKey); v != nil {
 		if c, ok := v.(*client.HTTPClient); ok {
 			return c
 		}
 	}
 	return nil
+}
+
+// getClientInterface безопасно возвращает ClientInterface (для тестов с MockClient)
+func getClientInterface(cmd *cobra.Command) client.ClientInterface {
+	// Сначала проверяем новый ключ для mock клиентов
+	if v := cmd.Context().Value(testClientKey); v != nil {
+		if c, ok := v.(client.ClientInterface); ok {
+			return c
+		}
+	}
+	// Fallback: используем обычный getClientSafe
+	return getClientSafe(cmd)
 }
 
 // Register регистрирует команду sync и все её подкоманды

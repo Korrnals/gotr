@@ -31,7 +31,7 @@ var suitesCmd = &cobra.Command{
 	--save-mapping   Сохранить mapping
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := getClientSafe(cmd)
+		cli := getClientInterface(cmd)
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
@@ -45,7 +45,7 @@ var suitesCmd = &cobra.Command{
 		}
 
 		logDir := utils.LogDir()
-		m, err := newMigration(client, srcProject, 0, dstProject, 0, compareField, logDir)
+		m, err := newMigration(cli, srcProject, 0, dstProject, 0, compareField, logDir)
 		if err != nil {
 			return err
 		}

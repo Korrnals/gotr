@@ -9,6 +9,14 @@ import (
 	"go.yaml.in/yaml/v3"
 )
 
+// DefaultConfigValues — дефолтные placeholder'ы в шаблоне конфигурации.
+// Эти значения используются как при создании конфига, так и для проверки валидности.
+const (
+	DefaultBaseURL  = "https://yourcompany.testrail.io/"
+	DefaultUsername = "your-email@example.com"
+	DefaultAPIKey   = "your_api_key_here"
+)
+
 type ConfigData struct {
 	BaseURL  string `yaml:"base_url"`
 	Username string `yaml:"username"`
@@ -45,9 +53,9 @@ func Default() (*Config, error) {
 // WithDefaults заполняет дефолтными значениями
 func (c *Config) WithDefaults() *Config {
 	c.Data = &ConfigData{
-		BaseURL:  "https://yourcompany.testrail.io/",
-		Username: "your-email@example.com",
-		APIKey:   "your_api_key_here",
+		BaseURL:  DefaultBaseURL,
+		Username: DefaultUsername,
+		APIKey:   DefaultAPIKey,
 		Insecure: false,
 		JqFormat: false,
 	}
@@ -76,4 +84,19 @@ func (c *Config) Create() error {
 // Path возвращает путь (для подкоманды path)
 func (c *Config) PathString() string {
 	return c.Path
+}
+
+// IsValid проверяет, что конфиг содержит реальные данные, а не дефолтные placeholder'ы
+func (c *Config) IsValid() bool {
+	if c.Data == nil {
+		return false
+	}
+	return c.Data.BaseURL != "" && c.Data.BaseURL != DefaultBaseURL &&
+		c.Data.Username != "" && c.Data.Username != DefaultUsername &&
+		c.Data.APIKey != "" && c.Data.APIKey != DefaultAPIKey
+}
+
+// IsDefaultValue проверяет, является ли значение дефолтным placeholder'ом
+func IsDefaultValue(value, defaultValue string) bool {
+	return value == "" || value == defaultValue
 }

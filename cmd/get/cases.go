@@ -1,11 +1,8 @@
 package get
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -54,12 +51,20 @@ var casesCmd = &cobra.Command{
 		if pid, _ := command.Flags().GetString("project-id"); pid != "" {
 			projectIDStr = pid
 		}
+		var projectID int64
+		var err error
+
 		if projectIDStr == "" {
-			return fmt.Errorf("укажите ID проекта через позиционный аргумент или флаг --project-id")
-		}
-		projectID, err := strconv.ParseInt(projectIDStr, 10, 64)
-		if err != nil {
-			return fmt.Errorf("некорректный ID проекта: %w", err)
+			// Интерактивный выбор проекта
+			projectID, err = selectProjectInteractively(client)
+			if err != nil {
+				return err
+			}
+		} else {
+			projectID, err = strconv.ParseInt(projectIDStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("некорректный ID проекта: %w", err)
+			}
 		}
 
 		sectionID, _ := command.Flags().GetInt64("section-id")
@@ -130,43 +135,6 @@ func fetchCasesFromAllSuites(cmd *cobra.Command, client *client.HTTPClient, proj
 
 	fmt.Printf("\n=== Итого: %d кейсов из %d сьютов ===\n\n", len(allCases), len(suites))
 	return handleOutput(cmd, allCases, start)
-}
-
-// selectSuiteInteractively показывает список сьютов и просит выбрать
-func selectSuiteInteractively(suites data.GetSuitesResponse) (int64, error) {
-	fmt.Println("\nВ проекте найдено несколько сьютов:")
-	fmt.Println(strings.Repeat("-", 60))
-
-	for i, suite := range suites {
-		fmt.Printf("  [%d] ID: %d | %s\n", i+1, suite.ID, suite.Name)
-		if suite.Description != "" {
-			desc := suite.Description
-			if len(desc) > 50 {
-				desc = desc[:47] + "..."
-			}
-			fmt.Printf("       %s\n", desc)
-		}
-	}
-
-	fmt.Println(strings.Repeat("-", 60))
-	fmt.Printf("Выберите номер сьюта (1-%d): ", len(suites))
-
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
-	}
-
-	input = strings.TrimSpace(input)
-	choice, err := strconv.Atoi(input)
-	if err != nil || choice < 1 || choice > len(suites) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(suites))
-	}
-
-	selectedSuite := suites[choice-1]
-	fmt.Printf("\nВыбран сьют: %s (ID: %d)\n\n", selectedSuite.Name, selectedSuite.ID)
-
-	return selectedSuite.ID, nil
 }
 
 // caseCmd — подкоманда для одного кейса

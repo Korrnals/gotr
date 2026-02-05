@@ -43,6 +43,22 @@ func (s *ResultService) GetForCase(runID, caseID int64) (data.GetResultsResponse
 	return s.client.GetResultsForCase(runID, caseID)
 }
 
+// GetForRun получает результаты для run ID
+func (s *ResultService) GetForRun(runID int64) (data.GetResultsResponse, error) {
+	if err := s.validateID(runID, "run_id"); err != nil {
+		return nil, err
+	}
+	return s.client.GetResultsForRun(runID)
+}
+
+// GetRunsForProject получает список runs для проекта (для интерактивного выбора)
+func (s *ResultService) GetRunsForProject(projectID int64) (data.GetRunsResponse, error) {
+	if err := s.validateID(projectID, "project_id"); err != nil {
+		return nil, err
+	}
+	return s.client.GetRuns(projectID)
+}
+
 // AddForTest добавляет результат для test с валидацией
 func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*data.Result, error) {
 	log.L().Info("adding result for test",

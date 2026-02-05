@@ -13,7 +13,6 @@ import (
 
 // TestSyncCases_DryRun_NoAddCase проверяет, что в режиме dry-run не вызывается AddCase
 // TODO: Тест требует рефакторинга - использует устаревшую архитектуру getClient
-testHTTPClientKey := "httpClient"
 
 func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	t.Skip("Skipping broken test - needs refactoring to use context-based client")
@@ -52,7 +51,6 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 
 // TestSyncCases_Confirm_TriggersAddCase проверяет, что подтверждение запускает импорт кейсов
 // TODO: Тест требует рефакторинга - использует устаревшую архитектуру getClient
-testHTTPClientKey := "httpClient"
 
 func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	t.Skip("Skipping broken test - needs refactoring to use context-based client")

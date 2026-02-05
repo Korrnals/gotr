@@ -36,7 +36,7 @@ type AddResultRequest struct {
 	Version    string `json:"version,omitempty"`          // The version or build tested against
 	Elapsed    string `json:"elapsed,omitempty"`          // The time it took to execute, e.g., "30m" or "1h 30m"
 	Defects    string `json:"defects,omitempty"`          // A comma-separated list of defects to link
-	AssignedTo int64  `json:"assignedto_id,omitempty""`   // The ID of the user the test should be assigned to
+	AssignedTo int64  `json:"assignedto_id,omitempty"`   // The ID of the user the test should be assigned to
 	// Custom fields are added dynamically via json.RawMessage if needed
 }
 

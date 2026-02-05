@@ -11,8 +11,8 @@ import (
 )
 
 // selectProjectInteractively показывает список проектов и просит выбрать
-func selectProjectInteractively(client *client.HTTPClient, prompt string) (int64, error) {
-	projects, err := client.GetProjects()
+func selectProjectInteractively(cli client.ClientInterface, prompt string) (int64, error) {
+	projects, err := cli.GetProjects()
 	if err != nil {
 		return 0, fmt.Errorf("не удалось получить список проектов: %w", err)
 	}
@@ -50,8 +50,8 @@ func selectProjectInteractively(client *client.HTTPClient, prompt string) (int64
 }
 
 // selectSuiteInteractively показывает список сьютов проекта и просит выбрать
-func selectSuiteInteractively(client *client.HTTPClient, projectID int64, prompt string) (int64, error) {
-	suites, err := client.GetSuites(projectID)
+func selectSuiteInteractively(cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
+	suites, err := cli.GetSuites(projectID)
 	if err != nil {
 		return 0, fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
 	}

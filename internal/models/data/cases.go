@@ -83,20 +83,32 @@ type AddCaseRequest struct {
 }
 
 // UpdateCaseRequest — запрос для update_case (частичные обновления)
+// Используются указатели для различения "не задано" от "пустое значение"
 type UpdateCaseRequest struct {
-	Title                string `json:"title,omitempty"`
-	TypeID               int64  `json:"type_id,omitempty"`               // Для изменения типа кейса
-	PriorityID           int64  `json:"priority_id,omitempty"`
-	Estimate             string `json:"estimate,omitempty"`
-	CustomPreconds       string `json:"custom_preconds,omitempty"`
-	CustomSteps          string `json:"custom_steps,omitempty"`          // Текстовый формат шагов
-	CustomExpected       string `json:"custom_expected,omitempty"`       // Ожидаемый результат
-	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Step из shared.go
-	Refs                 string `json:"refs,omitempty"`
-	MilestoneID          int64  `json:"milestone_id,omitempty"`
-	SuiteID              int64  `json:"suite_id,omitempty"`              // Для перемещения между сьютами
-	SectionID            int64  `json:"section_id,omitempty"`            // Для перемещения между секциями
-	TemplateID           int64  `json:"template_id,omitempty"`           // Для изменения шаблона
+	Title                *string `json:"title,omitempty"`
+	TypeID               *int64  `json:"type_id,omitempty"`               // Для изменения типа кейса
+	PriorityID           *int64  `json:"priority_id,omitempty"`
+	Estimate             *string `json:"estimate,omitempty"`
+	CustomPreconds       *string `json:"custom_preconds,omitempty"`
+	CustomSteps          *string `json:"custom_steps,omitempty"`          // Текстовый формат шагов
+	CustomExpected       *string `json:"custom_expected,omitempty"`       // Ожидаемый результат
+	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Step из shared.go
+	Refs                 *string `json:"refs,omitempty"`
+	MilestoneID          *int64  `json:"milestone_id,omitempty"`
+	SuiteID              *int64  `json:"suite_id,omitempty"`              // Для перемещения между сьютами
+	SectionID            *int64  `json:"section_id,omitempty"`            // Для перемещения между секциями
+	TemplateID           *int64  `json:"template_id,omitempty"`           // Для изменения шаблона
+}
+
+// CopyCasesRequest — запрос для copy_cases_to_section
+type CopyCasesRequest struct {
+	CaseIDs []int64 `json:"case_ids"` // IDs of cases to copy
+}
+
+// MoveCasesRequest — запрос для move_cases_to_section
+type MoveCasesRequest struct {
+	CaseIDs []int64 `json:"case_ids"` // IDs of cases to move
+	SuiteID int64   `json:"suite_id,omitempty"` // Target suite ID (for cross-suite moves)
 }
 
 // UpdateCasesRequest — запрос для bulk update_cases

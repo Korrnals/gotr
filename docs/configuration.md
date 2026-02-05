@@ -6,7 +6,7 @@
 
 1. **Флаги командной строки** (`--url`, `--username`, `--api-key`)
 2. **Переменные окружения** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
-3. **Конфигурационный файл** (`~/.gotr/config.yaml`)
+3. **Конфигурационный файл** (`~/.gotr/config/default.yaml`)
 
 ## Переменные окружения
 
@@ -51,7 +51,7 @@ debug: false         # отладочный вывод
 
 Поиск конфига в порядке приоритета:
 
-1. `~/.gotr/config.yaml`
+1. `~/.gotr/config/default.yaml`
 2. `./config.yaml` (текущая директория)
 
 ## Флаги глобальные

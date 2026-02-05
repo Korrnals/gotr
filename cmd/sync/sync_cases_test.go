@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"context"
 	"os"
 	"testing"
 
@@ -11,28 +10,46 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// resetCasesFlags сбрасывает и пересоздаёт флаги для casesCmd
+func resetCasesFlags() {
+	casesCmd.ResetFlags()
+	casesCmd.Flags().Int64("src-project", 0, "")
+	casesCmd.Flags().Int64("src-suite", 0, "")
+	casesCmd.Flags().Int64("dst-project", 0, "")
+	casesCmd.Flags().Int64("dst-suite", 0, "")
+	casesCmd.Flags().String("compare-field", "title", "")
+	casesCmd.Flags().Bool("dry-run", false, "")
+	casesCmd.Flags().String("output", "", "")
+	casesCmd.Flags().String("mapping-file", "", "")
+}
+
 // TestSyncCases_DryRun_NoAddCase проверяет, что в режиме dry-run не вызывается AddCase
 func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	addCalled := false
-	mock := &mockClient{
-		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
-			if p == 1 {
+
+	// Создаём mock клиент который реализует оба интерфейса (client.ClientInterface и migration.ClientInterface)
+	mock := &client.MockClient{
+		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			if projectID == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		addCase: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCalled = true
 			return &data.Case{ID: 100, Title: r.Title}, nil
 		},
 	}
 
+	// Подменяем newMigration для теста
 	old := newMigration
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
+	// Устанавливаем mock клиент через SetTestClient
+	resetCasesFlags()
 	cmd := casesCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
@@ -47,14 +64,15 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 // TestSyncCases_Confirm_TriggersAddCase проверяет, что подтверждение запускает импорт кейсов
 func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	addCalled := false
-	mock := &mockClient{
-		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
-			if p == 1 {
+
+	mock := &client.MockClient{
+		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			if projectID == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		addCase: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCalled = true
 			return &data.Case{ID: 100, Title: r.Title}, nil
 		},
@@ -64,10 +82,9 @@ func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// ensure command has a client in context to avoid GetClient exit
-	dummy, _ := client.NewClient("http://example.com", "u", "k", false)
+	resetCasesFlags()
 	cmd := casesCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, dummy))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")

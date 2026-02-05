@@ -32,7 +32,7 @@ var sharedStepsCmd = &cobra.Command{
 
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := getClientSafe(cmd)
+		cli := getClientInterface(cmd)
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -47,7 +47,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(client, "Выберите SOURCE проект (откуда копировать shared steps):")
+			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект (откуда копировать shared steps):")
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ var sharedStepsCmd = &cobra.Command{
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-				srcSuite, err = selectSuiteInteractively(client, srcProject, "Выберите SOURCE сьют:")
+				srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
 				if err != nil {
 					return err
 				}
@@ -69,7 +69,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(client, "Выберите DESTINATION проект (куда копировать shared steps):")
+			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект (куда копировать shared steps):")
 			if err != nil {
 				return err
 			}
@@ -78,7 +78,7 @@ var sharedStepsCmd = &cobra.Command{
 		// Директория для логов и инициализация миграции
 		logDir := utils.LogDir()
 		// Шаг 1) Инициализация объекта миграции (логирование, client, параметры)
-		m, err := newMigration(client, srcProject, srcSuite, dstProject, 0, compareField, logDir)
+		m, err := newMigration(cli, srcProject, srcSuite, dstProject, 0, compareField, logDir)
 		if err != nil {
 			return err
 		}

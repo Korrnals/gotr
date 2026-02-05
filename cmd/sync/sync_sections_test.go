@@ -19,7 +19,7 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	// Подготавливаем мок-клиент, который сигнализирует о существовании секции
 	addCalled := false
 	mock := &mockClient{
@@ -64,7 +64,7 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	// Подготавливаем мок-клиент и отслеживаем вызов AddSection
 	addCalled := false
 	mock := &mockClient{

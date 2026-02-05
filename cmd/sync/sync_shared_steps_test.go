@@ -15,7 +15,7 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	addCalled := false
 	mock := &mockClient{
 		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
@@ -53,7 +53,7 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	addCalled := false
 	mock := &mockClient{
 		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {

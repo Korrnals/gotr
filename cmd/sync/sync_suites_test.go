@@ -19,7 +19,7 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	// Подготавливаем мок-клиент: source содержит одну suite
 	addCalled := false
 	mock := &mockClient{
@@ -63,7 +63,7 @@ func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSuites_Confirm_TriggersAddSuite(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	// Подготавливаем мок-клиент и отмечаем факт вызова AddSuite
 	addCalled := false
 	mock := &mockClient{

@@ -14,7 +14,7 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncFull_DryRun_NoAdds(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	addShared := false
 	addCase := false
 	mock := &mockClient{
@@ -63,7 +63,7 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	addShared := false
 	addCase := false
 	mock := &mockClient{

@@ -15,7 +15,7 @@ import (
 // TODO: Тест требует рефакторинга - использует устаревшую архитектуру getClient
 
 func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	addCalled := false
 	mock := &mockClient{
 		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
@@ -53,7 +53,7 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 // TODO: Тест требует рефакторинга - использует устаревшую архитектуру getClient
 
 func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
-	t.Skip("Skipping broken test - needs refactoring to use context-based client")
+	
 	addCalled := false
 	mock := &mockClient{
 		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {

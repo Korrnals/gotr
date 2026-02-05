@@ -17,135 +17,76 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.3.0-blue.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
+[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.25.6-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-`gotr` is a powerful and convenient command-line utility for working with TestRail API v2.  
-It allows you to perform GET/POST requests, export/import data, synchronize entities between projects, manage test runs and results, filter responses through the built-in `jq`, and much more — without the need to install external dependencies.
+A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Current Version: 2.3.0** — See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v2.5.0** — See [CHANGELOG](CHANGELOG.md) for details
 
-## 🙏 Acknowledgements
+## Overview
 
-This project uses the following amazing open-source libraries:
+`gotr` provides a comprehensive toolkit for TestRail operations:
 
-- **[spf13/cobra](https://github.com/spf13/cobra)** — CLI application framework
-- **[spf13/viper](https://github.com/spf13/viper)** — configuration and environment variables
-- **[cheggaaa/pb/v3](https://github.com/cheggaaa/pb)** — progress bars
-- **[go.uber.org/zap](https://github.com/uber-go/zap)** — high-performance logging
-- **[stretchr/testify](https://github.com/stretchr/testify)** — testing toolkit
-- **[embedded jq](https://github.com/itchyny/gojq)** — built-in jq utility for JSON filtering
+- **Data Operations** — Retrieve and manage test cases, suites, sections, shared steps, runs, and results
+- **Project Synchronization** — Migrate entities between projects with intelligent duplicate detection
+- **Interactive Workflow** — Guided selection of projects and suites eliminates the need to memorize IDs
+- **Built-in Processing** — JSON filtering with embedded `jq`, progress tracking, and structured logging
+- **Flexible Configuration** — Support for flags, environment variables, and configuration files
 
-## 📁 Project Structure
+## Quick Start
 
 ```bash
-gotr/
-├── cmd/                    # CLI commands
-│   ├── get/               # GET commands (cases, suites, projects, etc.)
-│   ├── sync/              # SYNC commands (data migration)
-│   ├── commands.go        # Centralized command registration
-│   ├── root.go            # Root command and configuration
-│   ├── config.go          # Config management commands
-│   ├── list.go            # List command
-│   └── ...                # Other commands
-├── docs/                   # Documentation
-│   ├── installation.md
-│   ├── configuration.md
-│   ├── get-commands.md
-│   ├── sync-commands.md
-│   └── ...
-├── embedded/               # Embedded utilities (jq)
-├── internal/               # Internal packages
-│   ├── client/            # HTTP client for TestRail API
-│   │   ├── cases.go       # Cases API methods
-│   │   ├── projects.go    # Projects API methods
-│   │   ├── sections.go    # Sections API methods
-│   │   ├── suites.go      # Suites API methods
-│   │   └── sharedsteps.go # Shared steps API methods
-│   ├── migration/         # Migration logic (sync)
-│   ├── models/            # Data structures
-│   │   └── data/          # API data models
-│   │       ├── cases.go       # Case models
-│   │       ├── results.go     # Result models (NEW in 2.3.0)
-│   │       ├── runs.go        # Run models (NEW in 2.3.0)
-│   │       ├── sections.go    # Section models
-│   │       ├── sharedsteps.go # Shared step models
-│   │       ├── statuses.go    # Status models (NEW in 2.3.0)
-│   │       ├── suites.go      # Suite models
-│   │       └── tests.go       # Test models (NEW in 2.3.0)
-│   └── utils/             # Utilities
-├── pkg/                    # Public packages
-│   └── testrailapi/       # API endpoint definitions
-├── main.go                 # Entry point
-├── go.mod                  # Go modules
-└── Makefile               # Build automation
+# Install (Linux/macOS)
+curl -sL https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr
+chmod +x gotr && sudo mv gotr /usr/local/bin/
+
+# Initialize configuration
+gotr config init
+
+# Verify installation
+gotr self-test
 ```
 
-## 🚀 Quick Start
+## Key Features
 
-```bash
-# Installation (Linux/macOS)
-curl -s -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr && chmod +x gotr && sudo mv gotr /usr/local/bin/
+| Feature | Description |
+|---------|-------------|
+| **Full API Coverage** | Complete support for TestRail API v2 endpoints |
+| **Interactive Mode** | Visual selection for projects, suites, and migration targets |
+| **Data Synchronization** | Migrate cases, shared steps, suites, and sections between projects |
+| **Test Run Management** | Create runs, add results, and track test execution |
+| **Built-in jq** | Filter and transform JSON without external dependencies |
+| **Progress Indicators** | Visual feedback for long-running operations |
+| **Shell Completion** | Auto-completion for bash, zsh, and fish |
+| **Comprehensive Logging** | Structured JSON logs for audit and debugging |
 
-# Verify
-gotr --help
-```
-
-## ✨ Key Features
-
-- 📡 **Full TestRail API Support** — GET/POST requests to all endpoints
-- 🏃 **Test Runs & Results** — create runs, add results, close runs (NEW in 2.3.0)
-- 🔄 **Synchronization** — migrate cases, shared steps, suites, sections between projects
-- 🎯 **Interactive Mode** — no need to remember project and suite IDs
-- 📦 **Built-in jq** — filtering without installing external utilities
-- 💾 **Export/Import** — save and load data in JSON format
-- 🔧 **Flexible Configuration** — flags, env variables, config file
-- 🖥️ **Auto-completion** — bash/zsh/fish completion
-- 📊 **Progress Bars** — visual feedback for long operations
-
-## 📚 Documentation
-
-Detailed documentation is available in the [`docs/`](docs/) directory:
-
-- [Installation](docs/installation.md)
-- [Configuration](docs/configuration.md)
-- [GET Commands](docs/get-commands.md)
-- [SYNC Commands](docs/sync-commands.md)
-- [Interactive Mode](docs/interactive-mode.md)
-- [Other Commands](docs/other-commands.md)
-
-## 🎮 Usage Examples
+## Usage Examples
 
 ### Interactive Mode
 
 ```bash
-# Get cases — interactive selection of project and suite
+# Get cases with interactive project/suite selection
 gotr get cases
 
-# Sync cases — interactive selection of source and destination
-gotr sync cases
-
-# Full migration
+# Sync with guided workflow
 gotr sync full
 ```
 
-### Getting Data
+### Data Retrieval
 
 ```bash
-# All projects
+# List all projects
 gotr get projects
 
-# Project cases (with interactive suite selection)
-gotr get cases 30
-
-# Or with explicit suite ID
+# Get cases from specific project and suite
 gotr get cases 30 --suite-id 20069
 
-# All cases from all suites in project
+# Get cases from all suites in project
 gotr get cases 30 --all-suites
 
-# Shared steps
+# Get shared steps
 gotr get sharedsteps 30
 ```
 
@@ -163,75 +104,131 @@ gotr sync shared-steps \
   --src-project 30 --dst-project 31 \
   --approve --save-mapping
 
-# Cases only (with mapping file)
+# Cases with existing mapping
 gotr sync cases \
   --src-project 30 --src-suite 20069 \
   --dst-project 31 --dst-suite 19859 \
   --mapping-file mapping.json --approve
 ```
 
-### Comparing Projects
+### Test Runs and Results
 
 ```bash
-# Compare cases between two projects
-gotr compare cases --pid1 30 --pid2 31 --field title
+# Create test run
+gotr run add 30 --name "Regression Suite" --case-ids "1,2,3,4,5"
+
+# Add test result
+gotr result add 12345 --status-id 1 --comment "Test passed"
+
+# List test results
+gotr result list --run-id 100
 ```
 
-### Filtering with jq
+### JSON Filtering
 
 ```bash
-# Only id and name of projects
+# Extract specific fields
 gotr get projects --jq --jq-filter '.[] | {id: .id, name: .name}'
 
-# Pretty output with jq
+# Pretty print with jq
 gotr get case 12345 --jq
 ```
 
-## ⚙️ Configuration
+## Configuration
 
-Configuration priority (from highest to lowest):
+Configuration priority (highest to lowest):
 
-1. **Flags** (`--url`, `--username`, `--api-key`)
-2. **Env variables** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
-3. **Config file** (`~/.gotr/config/default.yaml`)
+1. **Command-line flags** (`--url`, `--username`, `--api-key`)
+2. **Environment variables** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
+3. **Configuration file** (`~/.gotr/config/default.yaml`)
 
 ```bash
-# Create config
+# Initialize configuration
 gotr config init
 
-# View config
+# View current configuration
 gotr config view
 ```
 
-## 🆕 What's New
+## Documentation
 
-### 2026-02-03 — Interactive Mode
+- [Installation Guide](docs/installation.md)
+- [Configuration](docs/configuration.md)
+- [GET Commands](docs/get-commands.md)
+- [SYNC Commands](docs/sync-commands.md)
+- [Interactive Mode](docs/interactive-mode.md)
 
-- **Interactive selection** for all `get` and `sync` commands — no need to remember IDs
-- **Auto-selection** when project has only one suite
-- **`--all-suites` flag** for getting cases from all suites
-- **Restructuring** of `cmd/` package — improved code organization
+## Project Structure
 
-### 2026-01-24 — Sync Commands
+```
+gotr/
+├── cmd/                          # CLI commands
+│   ├── common/                   #   Shared components
+│   │   ├── client.go            #     Unified client access
+│   │   └── flags.go             #     Common flag parsing
+│   ├── get/                     #   GET commands (cases, suites, projects)
+│   ├── run/                     #   Test run management
+│   ├── result/                  #   Test results management
+│   └── sync/                    #   Data migration commands
+├── docs/                         # Documentation
+│   ├── architecture.md          #   Detailed architecture
+│   ├── get-commands.md          #   GET command reference
+│   ├── sync-commands.md         #   SYNC command reference
+│   └── ...
+├── internal/
+│   ├── client/                  #   TestRail API client
+│   │   ├── interfaces.go       #     ClientInterface (43 methods)
+│   │   ├── mock.go             #     MockClient for testing
+│   │   └── *.go                #     API implementations
+│   ├── interactive/            #   Interactive selection
+│   ├── service/                #   Business logic
+│   │   ├── run.go              #     RunService
+│   │   ├── result.go           #     ResultService
+│   │   └── migration/          #     Data migration engine
+│   ├── models/                 #   Data models
+│   │   └── data/              #     API DTOs
+│   └── utils/                  #   Utilities
+├── pkg/                          # Public packages
+│   └── testrailapi/            #   API endpoint definitions
+└── main.go                       # Entry point
+```
 
-- New commands `sync suites` and `sync sections`
-- Unified flags for all `sync/*` commands
-- Unit tests for synchronization
+See [docs/architecture.md](docs/architecture.md) for complete structure.
 
-### 2026-01-15 — Get Commands v2.0
+## What's New in v2.5.0
 
-- Redesigned `get` command with subcommands
-- Positional arguments for IDs
-- Improved typing (int64)
+### Architecture Improvements
+- **Unified Client Interface** — Single `ClientInterface` across all packages eliminates code duplication
+- **Enhanced Test Coverage** — All sync tests now use interface-based mocking (10 new tests, 0 skipped)
+- **Refactored Common Package** — Eliminated `getClientSafe` duplication across command packages
 
-## 📦 Installation
+### Interactive Features
+- **Interactive Selection** — Visual pickers for projects and suites in `run list` and `result list`
+- **Streamlined Workflow** — Reduced friction for common operations
 
-See [docs/installation.md](docs/installation.md)
+See [CHANGELOG](CHANGELOG.md) for complete history.
 
-## 🤝 Contributing
+## Installation
 
-Issues and Pull Requests are welcome!
+Detailed installation instructions: [docs/installation.md](docs/installation.md)
 
-## 📄 License
+## Contributing
+
+Contributions are welcome. Please open an issue or submit a pull request.
+
+## Acknowledgements
+
+This project is built with the following open-source libraries:
+
+| Library | Purpose |
+|---------|---------|
+| [spf13/cobra](https://github.com/spf13/cobra) | CLI framework |
+| [spf13/viper](https://github.com/spf13/viper) | Configuration management |
+| [cheggaaa/pb/v3](https://github.com/cheggaaa/pb) | Progress bars |
+| [go.uber.org/zap](https://github.com/uber-go/zap) | Structured logging |
+| [stretchr/testify](https://github.com/stretchr/testify) | Testing toolkit |
+| [itchyny/gojq](https://github.com/itchyny/gojq) | Embedded JSON processor |
+
+## License
 
 MIT License — see [LICENSE](LICENSE)

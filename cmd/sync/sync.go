@@ -1,12 +1,13 @@
 package sync
 
 import (
+	"github.com/Korrnals/gotr/cmd/common"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
+type GetClientFunc = common.GetClientFunc
 
 // Cmd — родительская команда для миграции
 var Cmd = &cobra.Command{
@@ -42,18 +43,22 @@ var Cmd = &cobra.Command{
 	},
 }
 
-var getClient GetClientFunc
+var clientAccessor *common.ClientAccessor
 
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
-	getClient = fn
+	if clientAccessor == nil {
+		clientAccessor = common.NewClientAccessor(fn)
+	} else {
+		clientAccessor.SetClientForTests(fn)
+	}
 }
 
 // getClientSafe безопасно вызывает getClient с проверкой на nil
 // Fallback: берёт клиент из контекста (для тестов)
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
-	if getClient != nil {
-		if c := getClient(cmd); c != nil {
+	if clientAccessor != nil {
+		if c := clientAccessor.GetClientSafe(cmd); c != nil {
 			return c
 		}
 	}
@@ -68,7 +73,7 @@ func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 
 // Register регистрирует команду sync и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
-	getClient = clientFn
+	clientAccessor = common.NewClientAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
 	Cmd.AddCommand(sharedStepsCmd)

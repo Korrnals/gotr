@@ -1,12 +1,13 @@
 package result
 
 import (
+	"github.com/Korrnals/gotr/cmd/common"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
+type GetClientFunc = common.GetClientFunc
 
 // Cmd — родительская команда для управления результатами тестов
 var Cmd = &cobra.Command{
@@ -45,24 +46,28 @@ Test result — это результат выполнения отдельно�
 	},
 }
 
-var getClient GetClientFunc
+var clientAccessor *common.ClientAccessor
 
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
-	getClient = fn
+	if clientAccessor == nil {
+		clientAccessor = common.NewClientAccessor(fn)
+	} else {
+		clientAccessor.SetClientForTests(fn)
+	}
 }
 
 // getClientSafe безопасно вызывает getClient с проверкой на nil
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
-	if getClient == nil {
+	if clientAccessor == nil {
 		return nil
 	}
-	return getClient(cmd)
+	return clientAccessor.GetClientSafe(cmd)
 }
 
 // Register регистрирует команду result и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
-	getClient = clientFn
+	clientAccessor = common.NewClientAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
 	// Добавляем подкоманды

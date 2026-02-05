@@ -19,11 +19,11 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	// Подготавливаем мок-клиент, который сигнализирует о существовании секции
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSections: func(p, s int64) (data.GetSectionsResponse, error) {
 			if p == 1 {
 				return data.GetSectionsResponse{{ID: 11, Name: "Sec 1"}}, nil
@@ -65,11 +65,11 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	// Подготавливаем мок-клиент и отслеживаем вызов AddSection
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSections: func(p, s int64) (data.GetSectionsResponse, error) {
 			if p == 1 {
 				return data.GetSectionsResponse{{ID: 11, Name: "Sec 1"}}, nil

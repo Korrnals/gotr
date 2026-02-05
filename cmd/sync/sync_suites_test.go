@@ -19,11 +19,11 @@ import (
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	// Подготавливаем мок-клиент: source содержит одну suite
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSuites: func(p int64) (data.GetSuitesResponse, error) {
 			if p == 1 {
 				return data.GetSuitesResponse{{ID: 10, Name: "Suite 1"}}, nil
@@ -64,11 +64,11 @@ func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
 // testHTTPClientKey removed - tests skipped
 
 func TestSyncSuites_Confirm_TriggersAddSuite(t *testing.T) {
-	t.Skip("Skipping: requires command refactoring to use interface-based client")
+	t.Skip("TODO: Needs command refactoring to use interface-based client for proper mocking")
 	
 	// Подготавливаем мок-клиент и отмечаем факт вызова AddSuite
 	addCalled := false
-	mock := &mockClient{
+	mock := &migrationMock{
 		getSuites: func(p int64) (data.GetSuitesResponse, error) {
 			if p == 1 {
 				return data.GetSuitesResponse{{ID: 10, Name: "Suite 1"}}, nil

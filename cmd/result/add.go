@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Korrnals/gotr/cmd/common/dryrun"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
@@ -38,7 +39,9 @@ var addCmd = &cobra.Command{
 	# Переназначить на другого пользователя
 	gotr result add 12345 --status-id 2 --assigned-to 10 \\
 		--comment "Need re-test by another engineer"
-`,
+
+	# Dry-run режим
+	gotr result add 12345 --status-id 1 --comment "Test" --dry-run`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		httpClient := getClientSafe(cmd)
@@ -55,6 +58,19 @@ var addCmd = &cobra.Command{
 		req, err := buildAddResultRequest(cmd)
 		if err != nil {
 			return err
+		}
+
+		// Проверяем dry-run режим
+		isDryRun, _ := cmd.Flags().GetBool("dry-run")
+		if isDryRun {
+			dr := dryrun.New("result add")
+			dr.PrintOperation(
+				fmt.Sprintf("Add Result for Test %d", testID),
+				"POST",
+				fmt.Sprintf("/index.php?/api/v2/add_result/%d", testID),
+				req,
+			)
+			return nil
 		}
 
 		result, err := svc.AddForTest(testID, req)
@@ -83,7 +99,9 @@ TestRail сам находит соответствующий test в run.
 	# Указать дефект и время
 	gotr result add-case 12345 --case-id 98765 --status-id 5 \\
 		--defects "JIRA-456" --elapsed "5m"
-`,
+
+	# Dry-run режим
+	gotr result add-case 12345 --case-id 98765 --status-id 1 --dry-run`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		httpClient := getClientSafe(cmd)
@@ -101,6 +119,19 @@ TestRail сам находит соответствующий test в run.
 		req, err := buildAddResultRequest(cmd)
 		if err != nil {
 			return err
+		}
+
+		// Проверяем dry-run режим
+		isDryRun, _ := cmd.Flags().GetBool("dry-run")
+		if isDryRun {
+			dr := dryrun.New("result add-case")
+			dr.PrintOperation(
+				fmt.Sprintf("Add Result for Case %d in Run %d", caseID, runID),
+				"POST",
+				fmt.Sprintf("/index.php?/api/v2/add_result_for_case/%d/%d", runID, caseID),
+				req,
+			)
+			return nil
 		}
 
 		result, err := svc.AddForCase(runID, caseID, req)
@@ -134,7 +165,10 @@ JSON файл должен содержать массив результато�
 ]
 
 Поддерживаются оба формата: с test_id и с case_id.
-`,
+
+Примеры:
+	# Dry-run режим
+	gotr result add-bulk 12345 --results-file results.json --dry-run`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		httpClient := getClientSafe(cmd)
@@ -152,6 +186,19 @@ JSON файл должен содержать массив результато�
 		fileData, err := os.ReadFile(resultsFile)
 		if err != nil {
 			return fmt.Errorf("ошибка чтения файла: %w", err)
+		}
+
+		// Проверяем dry-run режим
+		isDryRun, _ := cmd.Flags().GetBool("dry-run")
+		if isDryRun {
+			dr := dryrun.New("result add-bulk")
+			dr.PrintOperation(
+				fmt.Sprintf("Add Bulk Results for Run %d", runID),
+				"POST",
+				fmt.Sprintf("/index.php?/api/v2/add_results/%d", runID),
+				string(fileData),
+			)
+			return nil
 		}
 
 		// Пытаемся распарсить и отправить

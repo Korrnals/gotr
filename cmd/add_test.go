@@ -22,7 +22,7 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	
 	// Добавляем флаги
 	cmd.Flags().StringP("name", "n", "", "Название ресурса")
-	cmd.Flags().StringP("description", "d", "", "Описание/announcement")
+	cmd.Flags().String("description", "", "Описание/announcement")
 	cmd.Flags().String("announcement", "", "Announcement (для проекта)")
 	cmd.Flags().Bool("show-announcement", false, "Показывать announcement")
 	cmd.Flags().Int64("suite-id", 0, "ID сьюта")

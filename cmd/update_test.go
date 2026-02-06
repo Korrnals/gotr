@@ -22,7 +22,7 @@ func setupUpdateTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	
 	// Добавляем флаги
 	cmd.Flags().StringP("name", "n", "", "Название ресурса")
-	cmd.Flags().StringP("description", "d", "", "Описание")
+	cmd.Flags().String("description", "", "Описание")
 	cmd.Flags().String("announcement", "", "Announcement (для проекта)")
 	cmd.Flags().Bool("show-announcement", false, "Показывать announcement")
 	cmd.Flags().Bool("is-completed", false, "Отметить как завершённый")

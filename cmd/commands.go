@@ -42,7 +42,7 @@ func initGlobalFlags() {
 	rootCmd.PersistentFlags().String("url", "", "Базовый URL TestRail")
 	rootCmd.PersistentFlags().StringP("username", "u", "", "Email пользователя TestRail")
 	rootCmd.PersistentFlags().StringP("api-key", "k", "", "API ключ TestRail")
-	rootCmd.PersistentFlags().BoolP("insecure", "i", false, "Пропустить проверку TLS сертификата")
+	rootCmd.PersistentFlags().Bool("insecure", false, "Пропустить проверку TLS сертификата")
 	rootCmd.PersistentFlags().BoolP("config", "c", false, "Создать дефолтный файл конфигурации")
 
 	// Скрытый debug

@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/wizard"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -32,14 +34,22 @@ var updateCmd = &cobra.Command{
   gotr update suite 100 --name "Updated Suite"
   gotr update case 12345 --title "Updated Title" --priority-id 2
   gotr update run 1000 --name "Updated Run Name"
-  gotr update shared-step 50 --title "Updated Step"`,
+  gotr update shared-step 50 --title "Updated Step"
+
+Интерактивный режим (wizard):
+  gotr update project 1 -i
+  gotr update suite 100 -i
+  gotr update case 12345 -i
+
+Dry-run mode:
+  gotr update project 1 --name "Test" --dry-run  # Show what would be updated`,
 	RunE: runUpdate,
 }
 
 func init() {
 	// Общие флаги для обновления
 	updateCmd.Flags().StringP("name", "n", "", "Название ресурса")
-	updateCmd.Flags().StringP("description", "d", "", "Описание")
+	updateCmd.Flags().String("description", "", "Описание")
 	updateCmd.Flags().String("announcement", "", "Announcement (для проекта)")
 	updateCmd.Flags().Bool("show-announcement", false, "Показывать announcement")
 	updateCmd.Flags().Bool("is-completed", false, "Отметить как завершённый")
@@ -54,6 +64,8 @@ func init() {
 	updateCmd.Flags().Bool("include-all", false, "Включить все кейсы (для run)")
 	updateCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
 	updateCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+	updateCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	updateCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
@@ -80,6 +92,19 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Проверяем dry-run режим
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("update " + endpoint)
+		return runUpdateDryRun(cmd, dr, endpoint, id, jsonData)
+	}
+
+	// Проверяем интерактивный режим
+	isInteractive, _ := cmd.Flags().GetBool("interactive")
+	if isInteractive {
+		return runUpdateInteractive(cli, cmd, endpoint, id)
+	}
+
 	// Маршрутизация по endpoint
 	switch endpoint {
 	case "project":
@@ -97,6 +122,296 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
 	}
+}
+
+// runUpdateInteractive запускает интерактивный wizard для обновления ресурса
+func runUpdateInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint string, id int64) error {
+	switch endpoint {
+	case "project":
+		return updateProjectInteractive(cli, cmd, id)
+	case "suite":
+		return updateSuiteInteractive(cli, cmd, id)
+	case "case":
+		return updateCaseInteractive(cli, cmd, id)
+	default:
+		return fmt.Errorf("интерактивный режим не поддерживается для endpoint: %s", endpoint)
+	}
+}
+
+func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	answers, err := wizard.AskProject(true)
+	if err != nil {
+		return fmt.Errorf("ошибка ввода: %v", err)
+	}
+
+	// Предпросмотр
+	fmt.Println("\n────────────────────────────────────────────────────────────")
+	fmt.Println("📋 ПРЕДПРОСМОТР: Update Project")
+	fmt.Println("────────────────────────────────────────────────────────────")
+	fmt.Printf("Project ID:      %d\n", id)
+	fmt.Printf("Название:        %s\n", answers.Name)
+	fmt.Printf("Announcement:    %s\n", answers.Announcement)
+	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
+	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	confirmed, err := wizard.AskConfirm("Подтвердить обновление?")
+	if err != nil || !confirmed {
+		fmt.Println("\n❌ Отменено")
+		return nil
+	}
+
+	req := &data.UpdateProjectRequest{
+		Name:             answers.Name,
+		Announcement:     answers.Announcement,
+		ShowAnnouncement: answers.ShowAnnouncement,
+		IsCompleted:      answers.IsCompleted,
+	}
+
+	project, err := cli.UpdateProject(id, req)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления проекта: %v", err)
+	}
+
+	fmt.Printf("\n✅ Проект обновлён (ID: %d)\n", project.ID)
+	return outputUpdateResult(cmd, project)
+}
+
+func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	answers, err := wizard.AskSuite(true)
+	if err != nil {
+		return fmt.Errorf("ошибка ввода: %v", err)
+	}
+
+	// Предпросмотр
+	fmt.Println("\n────────────────────────────────────────────────────────────")
+	fmt.Println("📋 ПРЕДПРОСМОТР: Update Suite")
+	fmt.Println("────────────────────────────────────────────────────────────")
+	fmt.Printf("Suite ID:        %d\n", id)
+	fmt.Printf("Название:        %s\n", answers.Name)
+	fmt.Printf("Описание:        %s\n", answers.Description)
+	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	confirmed, err := wizard.AskConfirm("Подтвердить обновление?")
+	if err != nil || !confirmed {
+		fmt.Println("\n❌ Отменено")
+		return nil
+	}
+
+	req := &data.UpdateSuiteRequest{
+		Name:        answers.Name,
+		Description: answers.Description,
+		IsCompleted: answers.IsCompleted,
+	}
+
+	suite, err := cli.UpdateSuite(id, req)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления сьюта: %v", err)
+	}
+
+	fmt.Printf("\n✅ Сьют обновлён (ID: %d)\n", suite.ID)
+	return outputUpdateResult(cmd, suite)
+}
+
+func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	answers, err := wizard.AskCase(true)
+	if err != nil {
+		return fmt.Errorf("ошибка ввода: %v", err)
+	}
+
+	// Предпросмотр
+	fmt.Println("\n────────────────────────────────────────────────────────────")
+	fmt.Println("📋 ПРЕДПРОСМОТР: Update Case")
+	fmt.Println("────────────────────────────────────────────────────────────")
+	fmt.Printf("Case ID:         %d\n", id)
+	fmt.Printf("Заголовок:       %s\n", answers.Title)
+	fmt.Printf("Type ID:         %d\n", answers.TypeID)
+	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	confirmed, err := wizard.AskConfirm("Подтвердить обновление?")
+	if err != nil || !confirmed {
+		fmt.Println("\n❌ Отменено")
+		return nil
+	}
+
+	req := &data.UpdateCaseRequest{
+		Title:      &answers.Title,
+		TypeID:     &answers.TypeID,
+		PriorityID: &answers.PriorityID,
+		Refs:       &answers.Refs,
+	}
+
+	caseResp, err := cli.UpdateCase(id, req)
+	if err != nil {
+		return fmt.Errorf("ошибка обновления кейса: %v", err)
+	}
+
+	fmt.Printf("\n✅ Кейс обновлён (ID: %d)\n", caseResp.ID)
+	return outputUpdateResult(cmd, caseResp)
+}
+
+// runUpdateDryRun выполняет dry-run для update команды
+func runUpdateDryRun(cmd *cobra.Command, dr *dryrun.Printer, endpoint string, id int64, jsonData []byte) error {
+	// Читаем флаги
+	name, _ := cmd.Flags().GetString("name")
+	title, _ := cmd.Flags().GetString("title")
+	description, _ := cmd.Flags().GetString("description")
+	announcement, _ := cmd.Flags().GetString("announcement")
+	showAnn, _ := cmd.Flags().GetBool("show-announcement")
+	isCompleted, _ := cmd.Flags().GetBool("is-completed")
+	milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
+	assignedToID, _ := cmd.Flags().GetInt64("assignedto-id")
+	includeAll, _ := cmd.Flags().GetBool("include-all")
+	typeID, _ := cmd.Flags().GetInt64("type-id")
+	priorityID, _ := cmd.Flags().GetInt64("priority-id")
+	refs, _ := cmd.Flags().GetString("refs")
+	caseIDsStr, _ := cmd.Flags().GetString("case-ids")
+
+	var method, url string
+	var body interface{}
+
+	switch endpoint {
+	case "project":
+		if len(jsonData) > 0 {
+			var req data.UpdateProjectRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			req := data.UpdateProjectRequest{
+				ShowAnnouncement: showAnn,
+				IsCompleted:      isCompleted,
+			}
+			if name != "" {
+				req.Name = name
+			}
+			if announcement != "" {
+				req.Announcement = announcement
+			}
+			body = req
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/update_project/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Update Project %d", id), method, url, body)
+
+	case "suite":
+		if len(jsonData) > 0 {
+			var req data.UpdateSuiteRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			req := data.UpdateSuiteRequest{
+				IsCompleted: isCompleted,
+			}
+			if name != "" {
+				req.Name = name
+			}
+			if description != "" {
+				req.Description = description
+			}
+			body = req
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/update_suite/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Update Suite %d", id), method, url, body)
+
+	case "section":
+		if len(jsonData) > 0 {
+			var req data.UpdateSectionRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			req := data.UpdateSectionRequest{}
+			if name != "" {
+				req.Name = name
+			}
+			if description != "" {
+				req.Description = description
+			}
+			body = req
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/update_section/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Update Section %d", id), method, url, body)
+
+	case "case":
+		if len(jsonData) > 0 {
+			var req data.UpdateCaseRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			req := data.UpdateCaseRequest{}
+			if title != "" {
+				req.Title = &title
+			}
+			if typeID > 0 {
+				req.TypeID = &typeID
+			}
+			if priorityID > 0 {
+				req.PriorityID = &priorityID
+			}
+			if refs != "" {
+				req.Refs = &refs
+			}
+			body = req
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/update_case/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Update Case %d", id), method, url, body)
+
+	case "run":
+		if len(jsonData) > 0 {
+			var req data.UpdateRunRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			req := data.UpdateRunRequest{
+				IncludeAll: &includeAll,
+			}
+			if name != "" {
+				req.Name = &name
+			}
+			if description != "" {
+				req.Description = &description
+			}
+			if milestoneID > 0 {
+				req.MilestoneID = &milestoneID
+			}
+			if assignedToID > 0 {
+				req.AssignedTo = &assignedToID
+			}
+			if caseIDsStr != "" {
+				caseIDs := parseCaseIDs(caseIDsStr)
+				req.CaseIDs = caseIDs
+			}
+			body = req
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/update_run/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Update Run %d", id), method, url, body)
+
+	case "shared-step":
+		if len(jsonData) > 0 {
+			var req data.UpdateSharedStepRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			req := data.UpdateSharedStepRequest{}
+			if title != "" {
+				req.Title = title
+			}
+			body = req
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/update_shared_step/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Update Shared Step %d", id), method, url, body)
+
+	default:
+		return fmt.Errorf("неподдерживаемый endpoint для dry-run: %s", endpoint)
+	}
+
+	return nil
 }
 
 func updateProject(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {

@@ -6,6 +6,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/wizard"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -35,14 +37,22 @@ var addCmd = &cobra.Command{
   gotr add suite 1 --name "Smoke Tests"
   gotr add case 100 --title "Login test" --template-id 1
   gotr add run 1 --name "Nightly Run" --suite-id 100
-  gotr add result 12345 --status-id 1 --comment "Passed"`,
+  gotr add result 12345 --status-id 1 --comment "Passed"
+
+Интерактивный режим (wizard):
+  gotr add project -i
+  gotr add suite 1 -i
+  gotr add case 100 -i
+
+Dry-run mode:
+  gotr add project --name "Test" --dry-run  # Show what would be created`,
 	RunE: runAdd,
 }
 
 func init() {
 	// Общие флаги для создания
 	addCmd.Flags().StringP("name", "n", "", "Название ресурса")
-	addCmd.Flags().StringP("description", "d", "", "Описание/announcement")
+	addCmd.Flags().String("description", "", "Описание/announcement")
 	addCmd.Flags().String("announcement", "", "Announcement (для проекта)")
 	addCmd.Flags().Bool("show-announcement", false, "Показывать announcement")
 	addCmd.Flags().Int64("suite-id", 0, "ID сьюта")
@@ -62,6 +72,8 @@ func init() {
 	addCmd.Flags().Bool("include-all", true, "Включить все кейсы (для run)")
 	addCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
 	addCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+	addCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	addCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
@@ -93,6 +105,19 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("ошибка чтения JSON-файла: %v", err)
 		}
+	}
+
+	// Проверяем dry-run режим
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("add " + endpoint)
+		return runAddDryRun(cmd, dr, endpoint, id, jsonData)
+	}
+
+	// Проверяем интерактивный режим
+	isInteractive, _ := cmd.Flags().GetBool("interactive")
+	if isInteractive {
+		return runAddInteractive(cli, cmd, endpoint, id)
 	}
 
 	// Маршрутизация по endpoint
@@ -138,6 +163,351 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
 	}
+}
+
+// runAddInteractive запускает интерактивный wizard для создания ресурса
+func runAddInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint string, parentID int64) error {
+	switch endpoint {
+	case "project":
+		return addProjectInteractive(cli, cmd)
+	case "suite":
+		if parentID == 0 {
+			return fmt.Errorf("необходимо указать project_id: gotr add suite <project_id> --interactive")
+		}
+		return addSuiteInteractive(cli, cmd, parentID)
+	case "case":
+		if parentID == 0 {
+			return fmt.Errorf("необходимо указать section_id: gotr add case <section_id> --interactive")
+		}
+		return addCaseInteractive(cli, cmd, parentID)
+	case "run":
+		if parentID == 0 {
+			return fmt.Errorf("необходимо указать project_id: gotr add run <project_id> --interactive")
+		}
+		return addRunInteractive(cli, cmd, parentID)
+	default:
+		return fmt.Errorf("интерактивный режим не поддерживается для endpoint: %s", endpoint)
+	}
+}
+
+func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error {
+	answers, err := wizard.AskProject(false)
+	if err != nil {
+		return fmt.Errorf("ошибка ввода: %v", err)
+	}
+
+	// Предпросмотр
+	fmt.Println("\n────────────────────────────────────────────────────────────")
+	fmt.Println("📋 ПРЕДПРОСМОТР: Create Project")
+	fmt.Println("────────────────────────────────────────────────────────────")
+	fmt.Printf("Название:        %s\n", answers.Name)
+	fmt.Printf("Announcement:    %s\n", answers.Announcement)
+	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	if err != nil || !confirmed {
+		fmt.Println("\n❌ Отменено")
+		return nil
+	}
+
+	req := &data.AddProjectRequest{
+		Name:             answers.Name,
+		Announcement:     answers.Announcement,
+		ShowAnnouncement: answers.ShowAnnouncement,
+	}
+
+	project, err := cli.AddProject(req)
+	if err != nil {
+		return fmt.Errorf("ошибка создания проекта: %v", err)
+	}
+
+	fmt.Printf("\n✅ Проект создан (ID: %d)\n", project.ID)
+	return outputResult(cmd, project)
+}
+
+func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
+	answers, err := wizard.AskSuite(false)
+	if err != nil {
+		return fmt.Errorf("ошибка ввода: %v", err)
+	}
+
+	// Предпросмотр
+	fmt.Println("\n────────────────────────────────────────────────────────────")
+	fmt.Println("📋 ПРЕДПРОСМОТР: Create Suite")
+	fmt.Println("────────────────────────────────────────────────────────────")
+	fmt.Printf("Название:        %s\n", answers.Name)
+	fmt.Printf("Описание:        %s\n", answers.Description)
+	fmt.Printf("Project ID:      %d\n", projectID)
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	if err != nil || !confirmed {
+		fmt.Println("\n❌ Отменено")
+		return nil
+	}
+
+	req := &data.AddSuiteRequest{
+		Name:        answers.Name,
+		Description: answers.Description,
+	}
+
+	suite, err := cli.AddSuite(projectID, req)
+	if err != nil {
+		return fmt.Errorf("ошибка создания сьюта: %v", err)
+	}
+
+	fmt.Printf("\n✅ Сьют создан (ID: %d)\n", suite.ID)
+	return outputResult(cmd, suite)
+}
+
+func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionID int64) error {
+	answers, err := wizard.AskCase(false)
+	if err != nil {
+		return fmt.Errorf("ошибка ввода: %v", err)
+	}
+
+	// Предпросмотр
+	fmt.Println("\n────────────────────────────────────────────────────────────")
+	fmt.Println("📋 ПРЕДПРОСМОТР: Create Case")
+	fmt.Println("────────────────────────────────────────────────────────────")
+	fmt.Printf("Заголовок:       %s\n", answers.Title)
+	fmt.Printf("Section ID:      %d\n", sectionID)
+	fmt.Printf("Type ID:         %d\n", answers.TypeID)
+	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	if err != nil || !confirmed {
+		fmt.Println("\n❌ Отменено")
+		return nil
+	}
+
+	req := &data.AddCaseRequest{
+		Title:      answers.Title,
+		SectionID:  sectionID,
+		TypeID:     answers.TypeID,
+		PriorityID: answers.PriorityID,
+		Refs:       answers.Refs,
+	}
+
+	caseResp, err := cli.AddCase(sectionID, req)
+	if err != nil {
+		return fmt.Errorf("ошибка создания кейса: %v", err)
+	}
+
+	fmt.Printf("\n✅ Кейс создан (ID: %d)\n", caseResp.ID)
+	return outputResult(cmd, caseResp)
+}
+
+func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
+	answers, err := wizard.AskRun(false)
+	if err != nil {
+		return fmt.Errorf("ошибка ввода: %v", err)
+	}
+
+	// Предпросмотр
+	fmt.Println("\n────────────────────────────────────────────────────────────")
+	fmt.Println("📋 ПРЕДПРОСМОТР: Create Run")
+	fmt.Println("────────────────────────────────────────────────────────────")
+	fmt.Printf("Название:        %s\n", answers.Name)
+	fmt.Printf("Описание:        %s\n", answers.Description)
+	fmt.Printf("Suite ID:        %d\n", answers.SuiteID)
+	fmt.Printf("Include all:     %v\n", answers.IncludeAll)
+	fmt.Printf("Project ID:      %d\n", projectID)
+	fmt.Println("────────────────────────────────────────────────────────────")
+
+	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	if err != nil || !confirmed {
+		fmt.Println("\n❌ Отменено")
+		return nil
+	}
+
+	req := &data.AddRunRequest{
+		Name:        answers.Name,
+		Description: answers.Description,
+		SuiteID:     answers.SuiteID,
+		IncludeAll:  answers.IncludeAll,
+	}
+
+	run, err := cli.AddRun(projectID, req)
+	if err != nil {
+		return fmt.Errorf("ошибка создания рана: %v", err)
+	}
+
+	fmt.Printf("\n✅ Run создан (ID: %d)\n", run.ID)
+	return outputResult(cmd, run)
+}
+
+// runAddDryRun выполняет dry-run для add команды
+func runAddDryRun(cmd *cobra.Command, dr *dryrun.Printer, endpoint string, id int64, jsonData []byte) error {
+	// Читаем флаги
+	name, _ := cmd.Flags().GetString("name")
+	title, _ := cmd.Flags().GetString("title")
+	description, _ := cmd.Flags().GetString("description")
+	announcement, _ := cmd.Flags().GetString("announcement")
+	showAnn, _ := cmd.Flags().GetBool("show-announcement")
+	suiteID, _ := cmd.Flags().GetInt64("suite-id")
+	sectionID, _ := cmd.Flags().GetInt64("section-id")
+	milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
+	templateID, _ := cmd.Flags().GetInt64("template-id")
+	typeID, _ := cmd.Flags().GetInt64("type-id")
+	priorityID, _ := cmd.Flags().GetInt64("priority-id")
+	refs, _ := cmd.Flags().GetString("refs")
+	comment, _ := cmd.Flags().GetString("comment")
+	statusID, _ := cmd.Flags().GetInt64("status-id")
+	elapsed, _ := cmd.Flags().GetString("elapsed")
+	defects, _ := cmd.Flags().GetString("defects")
+	assignedTo, _ := cmd.Flags().GetInt64("assignedto-id")
+	caseIDsStr, _ := cmd.Flags().GetString("case-ids")
+	includeAll, _ := cmd.Flags().GetBool("include-all")
+
+	var method, url string
+	var body interface{}
+
+	switch endpoint {
+	case "project":
+		if len(jsonData) > 0 {
+			var req data.AddProjectRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			body = data.AddProjectRequest{
+				Name:             name,
+				Announcement:     announcement,
+				ShowAnnouncement: showAnn,
+			}
+		}
+		method = "POST"
+		url = "/index.php?/api/v2/add_project/"
+		dr.PrintOperation("Create Project", method, url, body)
+
+	case "suite":
+		if id == 0 {
+			return fmt.Errorf("необходимо указать project_id: gotr add suite <project_id> --dry-run")
+		}
+		if len(jsonData) > 0 {
+			var req data.AddSuiteRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			body = data.AddSuiteRequest{
+				Name:        name,
+				Description: description,
+			}
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/add_suite/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Create Suite in Project %d", id), method, url, body)
+
+	case "section":
+		if id == 0 {
+			return fmt.Errorf("необходимо указать project_id: gotr add section <project_id> --dry-run")
+		}
+		if len(jsonData) > 0 {
+			var req data.AddSectionRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			body = data.AddSectionRequest{
+				Name:        name,
+				Description: description,
+				SuiteID:     suiteID,
+				ParentID:    sectionID,
+			}
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/add_section/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Create Section in Project %d", id), method, url, body)
+
+	case "case":
+		if id == 0 {
+			return fmt.Errorf("необходимо указать section_id: gotr add case <section_id> --dry-run")
+		}
+		if len(jsonData) > 0 {
+			var req data.AddCaseRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			body = data.AddCaseRequest{
+				Title:      title,
+				TemplateID: templateID,
+				TypeID:     typeID,
+				PriorityID: priorityID,
+				Refs:       refs,
+			}
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/add_case/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Create Case in Section %d", id), method, url, body)
+
+	case "run":
+		if id == 0 {
+			return fmt.Errorf("необходимо указать project_id: gotr add run <project_id> --dry-run")
+		}
+		if len(jsonData) > 0 {
+			var req data.AddRunRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			caseIDs := parseCaseIDs(caseIDsStr)
+			body = data.AddRunRequest{
+				Name:        name,
+				Description: description,
+				SuiteID:     suiteID,
+				MilestoneID: milestoneID,
+				AssignedTo:  assignedTo,
+				IncludeAll:  includeAll,
+				CaseIDs:     caseIDs,
+			}
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/add_run/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Create Run in Project %d", id), method, url, body)
+
+	case "result":
+		if id == 0 {
+			return fmt.Errorf("необходимо указать test_id: gotr add result <test_id> --dry-run")
+		}
+		if len(jsonData) > 0 {
+			var req data.AddResultRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			body = data.AddResultRequest{
+				StatusID: statusID,
+				Comment:  comment,
+				Elapsed:  elapsed,
+				Defects:  defects,
+				AssignedTo: assignedTo,
+			}
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/add_result/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Add Result for Test %d", id), method, url, body)
+
+	case "shared-step":
+		if id == 0 {
+			return fmt.Errorf("необходимо указать project_id: gotr add shared-step <project_id> --dry-run")
+		}
+		if len(jsonData) > 0 {
+			var req data.AddSharedStepRequest
+			json.Unmarshal(jsonData, &req)
+			body = req
+		} else {
+			body = data.AddSharedStepRequest{
+				Title: title,
+			}
+		}
+		method = "POST"
+		url = fmt.Sprintf("/index.php?/api/v2/add_shared_step/%d", id)
+		dr.PrintOperation(fmt.Sprintf("Create Shared Step in Project %d", id), method, url, body)
+
+	default:
+		return fmt.Errorf("неподдерживаемый endpoint для dry-run: %s", endpoint)
+	}
+
+	return nil
 }
 
 func addProject(cli client.ClientInterface, cmd *cobra.Command, jsonData []byte) error {

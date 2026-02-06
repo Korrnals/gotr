@@ -9,6 +9,35 @@
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Added
+
+#### Dry-run режим
+
+- **Флаг** `--dry-run` — единый флаг для всех команд, изменяющих состояние:
+  - `add` — project, suite, section, case, run, result, shared-step
+  - `update` — project, suite, section, case, run, shared-step
+  - `delete` — project, suite, section, case, run, shared-step
+  - `run create/update/close/delete`
+  - `result add/add-case/add-bulk`
+- **Пакет** `cmd/common/dryrun/` — централизованное форматирование вывода dry-run
+
+#### Интерактивный wizard mode
+
+- **Флаг** `--interactive/-i` — интерактивный режим для команд:
+  - `add` — project, suite, case, run
+  - `update` — project, suite, case
+- **Пакет** `cmd/common/wizard/` — библиотека интерактивных prompt'ов на survey/v2
+- Паттерн: ввод → предпросмотр → подтверждение/отмена
+
+### Changed
+
+- **Флаг** `-i` теперь используется для `--interactive` (вместо `--insecure`)
+- **Флаг** `--insecure` — только длинная форма (без shorthand)
+
+---
+
 ## [2.5.0] - 2026-02-05
 
 ### Added

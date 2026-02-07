@@ -82,6 +82,13 @@ type ResultsAPI interface {
 	AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
+// TestsAPI — операции с тестами
+type TestsAPI interface {
+	GetTest(testID int64) (*data.Test, error)
+	GetTests(runID int64, filters map[string]string) ([]data.Test, error)
+	UpdateTest(testID int64, req *data.UpdateTestRequest) (*data.Test, error)
+}
+
 // ClientInterface — полный интерфейс клиента TestRail API
 type ClientInterface interface {
 	ProjectsAPI
@@ -91,6 +98,7 @@ type ClientInterface interface {
 	SharedStepsAPI
 	RunsAPI
 	ResultsAPI
+	TestsAPI
 }
 
 // Проверка, что HTTPClient реализует ClientInterface

@@ -69,6 +69,11 @@ type MockClient struct {
 	AddResultForCaseFunc   func(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
 	AddResultsFunc         func(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
 	AddResultsForCasesFunc func(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
+
+	// TestsAPI
+	GetTestFunc      func(testID int64) (*data.Test, error)
+	GetTestsFunc     func(runID int64, filters map[string]string) ([]data.Test, error)
+	UpdateTestFunc   func(testID int64, req *data.UpdateTestRequest) (*data.Test, error)
 }
 
 // Проверка, что MockClient реализует ClientInterface
@@ -427,6 +432,30 @@ func (m *MockClient) AddResults(runID int64, req *data.AddResultsRequest) (data.
 func (m *MockClient) AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	if m.AddResultsForCasesFunc != nil {
 		return m.AddResultsForCasesFunc(runID, req)
+	}
+	return nil, nil
+}
+
+// ---------------------------------------------------------------------------
+// TestsAPI
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetTest(testID int64) (*data.Test, error) {
+	if m.GetTestFunc != nil {
+		return m.GetTestFunc(testID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetTests(runID int64, filters map[string]string) ([]data.Test, error) {
+	if m.GetTestsFunc != nil {
+		return m.GetTestsFunc(runID, filters)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) UpdateTest(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+	if m.UpdateTestFunc != nil {
+		return m.UpdateTestFunc(testID, req)
 	}
 	return nil, nil
 }

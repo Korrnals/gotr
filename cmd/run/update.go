@@ -3,6 +3,7 @@ package run
 import (
 	"fmt"
 
+	"github.com/Korrnals/gotr/cmd/common/dryrun"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
@@ -25,7 +26,9 @@ var updateCmd = &cobra.Command{
 
 	# Изменить набор кейсов в run
 	gotr run update 12345 --case-ids 100,200,300 --include-all=false
-`,
+
+	# Dry-run режим
+	gotr run update 12345 --name "Test" --dry-run`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		httpClient := getClientSafe(cmd)
@@ -65,6 +68,19 @@ var updateCmd = &cobra.Command{
 		if cmd.Flags().Changed("include-all") {
 			includeAll, _ := cmd.Flags().GetBool("include-all")
 			req.IncludeAll = &includeAll
+		}
+
+		// Проверяем dry-run режим
+		isDryRun, _ := cmd.Flags().GetBool("dry-run")
+		if isDryRun {
+			dr := dryrun.New("run update")
+			dr.PrintOperation(
+				fmt.Sprintf("Update Run %d", runID),
+				"POST",
+				fmt.Sprintf("/index.php?/api/v2/update_run/%d", runID),
+				req,
+			)
+			return nil
 		}
 
 		run, err := svc.Update(runID, req)

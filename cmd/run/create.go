@@ -3,6 +3,7 @@ package run
 import (
 	"fmt"
 
+	"github.com/Korrnals/gotr/cmd/common/dryrun"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
@@ -31,7 +32,9 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 	# Создать run только с определёнными кейсами
 	gotr run create 30 --suite-id 20069 --name "Critical Path" \\
 		--case-ids 123,456,789
-`,
+
+	# Dry-run режим
+	gotr run create 30 --suite-id 20069 --name "Test" --dry-run`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		httpClient := getClientSafe(cmd)
@@ -53,6 +56,7 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 		assignedTo, _ := cmd.Flags().GetInt64("assigned-to")
 		caseIDs, _ := cmd.Flags().GetInt64Slice("case-ids")
 		configIDs, _ := cmd.Flags().GetInt64Slice("config-ids")
+		includeAll, _ := cmd.Flags().GetBool("include-all")
 
 		req := &data.AddRunRequest{
 			Name:        name,
@@ -62,6 +66,20 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 			AssignedTo:  assignedTo,
 			CaseIDs:     caseIDs,
 			ConfigIDs:   configIDs,
+			IncludeAll:  includeAll,
+		}
+
+		// Проверяем dry-run режим
+		isDryRun, _ := cmd.Flags().GetBool("dry-run")
+		if isDryRun {
+			dr := dryrun.New("run create")
+			dr.PrintOperation(
+				fmt.Sprintf("Create Run in Project %d", projectID),
+				"POST",
+				fmt.Sprintf("/index.php?/api/v2/add_run/%d", projectID),
+				req,
+			)
+			return nil
 		}
 
 		run, err := svc.Create(projectID, req)

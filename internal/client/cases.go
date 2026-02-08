@@ -378,3 +378,49 @@ func casesEqualByField(c1, c2 data.Case, field string) bool {
 		return false
 	}
 }
+
+// CopyCasesToSection копирует кейсы в секцию
+// https://support.testrail.com/hc/en-us/articles/7077990441108-Cases#copycasestosection
+func (c *HTTPClient) CopyCasesToSection(sectionID int64, req *data.CopyCasesRequest) error {
+	endpoint := fmt.Sprintf("copy_cases_to_section/%d", sectionID)
+
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("error marshaling request: %w", err)
+	}
+
+	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	if err != nil {
+		return fmt.Errorf("error copying cases to section %d: %w", sectionID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+	return nil
+}
+
+// MoveCasesToSection перемещает кейсы в секцию
+// https://support.testrail.com/hc/en-us/articles/7077990441108-Cases#movecasestosection
+func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequest) error {
+	endpoint := fmt.Sprintf("move_cases_to_section/%d", sectionID)
+
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("error marshaling request: %w", err)
+	}
+
+	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	if err != nil {
+		return fmt.Errorf("error moving cases to section %d: %w", sectionID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+	return nil
+}

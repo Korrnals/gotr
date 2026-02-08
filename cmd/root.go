@@ -99,6 +99,20 @@ func GetClient(cmd *cobra.Command) *client.HTTPClient {
 	return val.(*client.HTTPClient)
 }
 
+// GetClientInterface — получает клиент как интерфейс (для тестов с mock)
+func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
+	val := cmd.Context().Value(httpClientKey)
+	if val == nil {
+		fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
+		os.Exit(1)
+	}
+	// Поддерживаем как *client.HTTPClient, так и *client.MockClient
+	if cli, ok := val.(client.ClientInterface); ok {
+		return cli
+	}
+	return val.(*client.HTTPClient)
+}
+
 func initConfig() {
 	// 1. Добавляем стандартные пути поиска
 	home, err := os.UserHomeDir()

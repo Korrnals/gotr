@@ -89,6 +89,8 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	createCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
 	createCmd.Flags().Int64Slice("case-ids", nil, "Список ID кейсов для включения (через запятую)")
 	createCmd.Flags().Int64Slice("config-ids", nil, "Список ID конфигураций (через запятую)")
+	createCmd.Flags().Bool("include-all", true, "Включить все кейсы сьюты")
+	createCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	createCmd.MarkFlagRequired("suite-id")
 	createCmd.MarkFlagRequired("name")
 
@@ -99,4 +101,11 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	updateCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
 	updateCmd.Flags().Int64Slice("case-ids", nil, "Список ID кейсов (через запятую)")
 	updateCmd.Flags().Bool("include-all", false, "Включить все кейсы сьюты")
+	updateCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+
+	// Флаги для close
+	closeCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+
+	// Флаги для delete
+	deleteCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 }

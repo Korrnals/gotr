@@ -9,6 +9,55 @@
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-02-05
+
+### Added
+
+#### Интерактивный режим
+
+- **Команда** `gotr run list` — интерактивный выбор проекта при отсутствии аргументов
+- **Команда** `gotr result list` — интерактивный выбор проекта → test run
+- **Пакет** `internal/interactive/` — единый механизм интерактивного выбора
+
+#### Client Interface + Mock (Архитектурное улучшение)
+
+- **Пакет** `internal/client/interfaces.go` — полный композитный интерфейс:
+  - `ProjectsAPI` — 5 методов
+  - `CasesAPI` — 14 методов
+  - `SuitesAPI` — 5 методов
+  - `SectionsAPI` — 5 методов
+  - `SharedStepsAPI` — 6 методов
+  - `RunsAPI` — 6 методов
+  - `ResultsAPI` — 7 методов
+- **Пакет** `internal/client/mock.go` — полный `MockClient` (43 метода)
+- Проверка компиляции: `var _ ClientInterface = (*HTTPClient)(nil)`
+
+#### Общие утилиты (Рефакторинг)
+
+- **Пакет** `cmd/common/client.go` — `ClientAccessor` для единого доступа к HTTP клиенту
+- **Пакет** `cmd/common/flags.go` — общие функции парсинга флагов
+- Рефакторинг `cmd/result/`, `cmd/run/`, `cmd/sync/` — использование `common.ClientAccessor`
+- Удалено дублирование `getClientSafe` из 3 пакетов
+
+### Fixed
+
+#### Унификация интерфейсов миграции
+
+- **Удалён дублирующий пакет** `internal/migration` (оставлен `internal/service/migration`)
+- **Унифицирован интерфейс** — `internal/service/migration` теперь использует `client.ClientInterface`
+- **Обновлён `MockClient`** — дефолтные возвращаемые значения предотвращают nil pointer dereference
+- **Рефакторинг sync тестов** — все 10 тестов переписаны с использованием `client.MockClient`
+- Убраны пропуски тестов (`t.Skip`) — все тесты проходят
+
+### Changed
+
+- **README.md** — реструктурировано описание, acknowledgements перенесены в конец
+- Версия обновлена до `2.5.0`
+
+---
+
+## [2.4.0] - 2026-02-04
+
 ### Added
 
 #### Results API (Полная реализация)
@@ -239,7 +288,7 @@
 
 ### Added
 
-- Поддержка конфигурационного файла `~/.gotr/config.yaml` с автоматическим чтением (Viper).
+- Поддержка конфигурационного файла `~/.gotr/config/default.yaml` с автоматическим чтением (Viper).
 - Новые подкоманды в группе `config`:
   - `gotr config init` — создание дефолтного конфига с комментариями.
   - `gotr config path` — показ пути к конфигу.

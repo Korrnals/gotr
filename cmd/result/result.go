@@ -1,12 +1,13 @@
 package result
 
 import (
+	"github.com/Korrnals/gotr/cmd/common"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
+type GetClientFunc = common.GetClientFunc
 
 // Cmd — родительская команда для управления результатами тестов
 var Cmd = &cobra.Command{
@@ -17,6 +18,7 @@ var Cmd = &cobra.Command{
 Test result — это результат выполнения отдельного теста (passed, failed, blocked и т.д.)
 
 Подкоманды:
+	list       — получить результаты для test run (с интерактивным выбором)
 	get        — получить результаты для test
 	get-case   — получить результаты для кейса в run
 	add        — добавить результат для test
@@ -24,6 +26,12 @@ Test result — это результат выполнения отдельно�
 	add-bulk   — массовое добавление результатов
 
 Примеры:
+	# Получить результаты с интерактивным выбором run
+	gotr result list
+
+	# Получить результаты для конкретного run
+	gotr result list 12345
+
 	# Получить результаты test
 	gotr result get 12345
 
@@ -38,27 +46,32 @@ Test result — это результат выполнения отдельно�
 	},
 }
 
-var getClient GetClientFunc
+var clientAccessor *common.ClientAccessor
 
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
-	getClient = fn
+	if clientAccessor == nil {
+		clientAccessor = common.NewClientAccessor(fn)
+	} else {
+		clientAccessor.SetClientForTests(fn)
+	}
 }
 
 // getClientSafe безопасно вызывает getClient с проверкой на nil
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
-	if getClient == nil {
+	if clientAccessor == nil {
 		return nil
 	}
-	return getClient(cmd)
+	return clientAccessor.GetClientSafe(cmd)
 }
 
 // Register регистрирует команду result и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
-	getClient = clientFn
+	clientAccessor = common.NewClientAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
 	// Добавляем подкоманды
+	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(getCmd)
 	Cmd.AddCommand(getCaseCmd)
 	Cmd.AddCommand(addCmd)

@@ -1,7 +1,6 @@
 package sync
 
 import (
-	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -10,28 +9,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// resetFullFlags сбрасывает и пересоздаёт флаги для fullCmd
+func resetFullFlags() {
+	fullCmd.ResetFlags()
+	fullCmd.Flags().Int64("src-project", 0, "")
+	fullCmd.Flags().Int64("src-suite", 0, "")
+	fullCmd.Flags().Int64("dst-project", 0, "")
+	fullCmd.Flags().Int64("dst-suite", 0, "")
+	fullCmd.Flags().String("compare-field", "title", "")
+	fullCmd.Flags().Bool("dry-run", false, "")
+	fullCmd.Flags().Bool("approve", false, "")
+	fullCmd.Flags().Bool("save-mapping", false, "")
+}
+
 // TestSyncFull_DryRun_NoAdds проверяет, что dry-run не вызывает создания сущностей
 func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	addShared := false
 	addCase := false
-	mock := &mockClient{
-		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
-			if p == 1 {
+
+	mock := &client.MockClient{
+		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		addSharedStep: func(p int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addShared = true
 			return &data.SharedStep{ID: 100}, nil
 		},
-		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
-			if p == 1 {
+		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			if projectID == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		addCase: func(s int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCase = true
 			return &data.Case{ID: 100}, nil
 		},
@@ -41,8 +54,9 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
+	resetFullFlags()
 	cmd := fullCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
@@ -59,26 +73,25 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 	addShared := false
 	addCase := false
-	mock := &mockClient{
-		getSharedSteps: func(p int64) (data.GetSharedStepsResponse, error) {
-			// Возвращаем shared steps только для исходного проекта (p == 1)
-			if p == 1 {
+
+	mock := &client.MockClient{
+		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		addSharedStep: func(p int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addShared = true
 			return &data.SharedStep{ID: 100}, nil
 		},
-		getCases: func(p, s, sec int64) (data.GetCasesResponse, error) {
-			// Возвращаем кейсы только для исходного проекта/suite (p == 1 && s == 10)
-			if p == 1 && s == 10 {
+		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			if projectID == 1 && suiteID == 10 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		addCase: func(s int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCase = true
 			return &data.Case{ID: 100}, nil
 		},
@@ -88,8 +101,9 @@ func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
+	resetFullFlags()
 	cmd := fullCmd
-	cmd.SetContext(context.WithValue(context.Background(), testHTTPClientKey, &client.HTTPClient{}))
+	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")

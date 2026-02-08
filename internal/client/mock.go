@@ -9,27 +9,27 @@ import (
 // MockClient реализует ClientInterface для тестирования
 type MockClient struct {
 	// ProjectsAPI
-	GetProjectsFunc     func() (data.GetProjectsResponse, error)
-	GetProjectFunc      func(projectID int64) (*data.GetProjectResponse, error)
-	AddProjectFunc      func(req *data.AddProjectRequest) (*data.GetProjectResponse, error)
-	UpdateProjectFunc   func(projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error)
-	DeleteProjectFunc   func(projectID int64) error
+	GetProjectsFunc   func() (data.GetProjectsResponse, error)
+	GetProjectFunc    func(projectID int64) (*data.GetProjectResponse, error)
+	AddProjectFunc    func(req *data.AddProjectRequest) (*data.GetProjectResponse, error)
+	UpdateProjectFunc func(projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error)
+	DeleteProjectFunc func(projectID int64) error
 
 	// CasesAPI
-	GetCasesFunc          func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error)
-	GetCaseFunc           func(caseID int64) (*data.Case, error)
-	AddCaseFunc           func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
-	UpdateCaseFunc        func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
-	DeleteCaseFunc        func(caseID int64) error
-	UpdateCasesFunc       func(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error)
-	DeleteCasesFunc       func(suiteID int64, req *data.DeleteCasesRequest) error
+	GetCasesFunc           func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error)
+	GetCaseFunc            func(caseID int64) (*data.Case, error)
+	AddCaseFunc            func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
+	UpdateCaseFunc         func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
+	DeleteCaseFunc         func(caseID int64) error
+	UpdateCasesFunc        func(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error)
+	DeleteCasesFunc        func(suiteID int64, req *data.DeleteCasesRequest) error
 	CopyCasesToSectionFunc func(sectionID int64, req *data.CopyCasesRequest) error
 	MoveCasesToSectionFunc func(sectionID int64, req *data.MoveCasesRequest) error
-	GetHistoryForCaseFunc func(caseID int64) (*data.GetHistoryForCaseResponse, error)
-	GetCaseFieldsFunc     func() (data.GetCaseFieldsResponse, error)
-	AddCaseFieldFunc      func(req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error)
-	GetCaseTypesFunc      func() (data.GetCaseTypesResponse, error)
-	DiffCasesDataFunc     func(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error)
+	GetHistoryForCaseFunc  func(caseID int64) (*data.GetHistoryForCaseResponse, error)
+	GetCaseFieldsFunc      func() (data.GetCaseFieldsResponse, error)
+	AddCaseFieldFunc       func(req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error)
+	GetCaseTypesFunc       func() (data.GetCaseTypesResponse, error)
+	DiffCasesDataFunc      func(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error)
 
 	// SuitesAPI
 	GetSuitesFunc   func(projectID int64) (data.GetSuitesResponse, error)
@@ -71,27 +71,27 @@ type MockClient struct {
 	AddResultsForCasesFunc func(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 
 	// TestsAPI
-	GetTestFunc      func(testID int64) (*data.Test, error)
-	GetTestsFunc     func(runID int64, filters map[string]string) ([]data.Test, error)
-	UpdateTestFunc   func(testID int64, req *data.UpdateTestRequest) (*data.Test, error)
+	GetTestFunc    func(testID int64) (*data.Test, error)
+	GetTestsFunc   func(runID int64, filters map[string]string) ([]data.Test, error)
+	UpdateTestFunc func(testID int64, req *data.UpdateTestRequest) (*data.Test, error)
 
 	// MilestonesAPI
-	GetMilestoneFunc     func(milestoneID int64) (*data.Milestone, error)
-	GetMilestonesFunc    func(projectID int64) ([]data.Milestone, error)
-	AddMilestoneFunc     func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error)
-	UpdateMilestoneFunc  func(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error)
-	DeleteMilestoneFunc  func(milestoneID int64) error
+	GetMilestoneFunc    func(milestoneID int64) (*data.Milestone, error)
+	GetMilestonesFunc   func(projectID int64) ([]data.Milestone, error)
+	AddMilestoneFunc    func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error)
+	UpdateMilestoneFunc func(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error)
+	DeleteMilestoneFunc func(milestoneID int64) error
 
 	// PlansAPI
-	GetPlanFunc          func(planID int64) (*data.Plan, error)
-	GetPlansFunc         func(projectID int64) (data.GetPlansResponse, error)
-	AddPlanFunc          func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error)
-	UpdatePlanFunc       func(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error)
-	ClosePlanFunc        func(planID int64) (*data.Plan, error)
-	DeletePlanFunc       func(planID int64) error
-	AddPlanEntryFunc     func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error)
-	UpdatePlanEntryFunc  func(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error)
-	DeletePlanEntryFunc  func(planID int64, entryID string) error
+	GetPlanFunc         func(planID int64) (*data.Plan, error)
+	GetPlansFunc        func(projectID int64) (data.GetPlansResponse, error)
+	AddPlanFunc         func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error)
+	UpdatePlanFunc      func(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error)
+	ClosePlanFunc       func(planID int64) (*data.Plan, error)
+	DeletePlanFunc      func(planID int64) error
+	AddPlanEntryFunc    func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error)
+	UpdatePlanEntryFunc func(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error)
+	DeletePlanEntryFunc func(planID int64, entryID string) error
 }
 
 // Проверка, что MockClient реализует ClientInterface

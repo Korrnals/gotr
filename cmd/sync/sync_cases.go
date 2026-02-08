@@ -43,7 +43,7 @@ var casesCmd = &cobra.Command{
 `,
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := getClientSafe(cmd)
+		cli := getClientInterface(cmd)
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -58,7 +58,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(client, "Выберите SOURCE проект (откуда копировать):")
+			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект (откуда копировать):")
 			if err != nil {
 				return err
 			}
@@ -66,7 +66,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(client, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
 			if err != nil {
 				return err
 			}
@@ -74,7 +74,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(client, "Выберите DESTINATION проект (куда копировать):")
+			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект (куда копировать):")
 			if err != nil {
 				return err
 			}
@@ -82,7 +82,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(client, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(cli, dstProject, "Выберите DESTINATION сьют:")
 			if err != nil {
 				return err
 			}
@@ -98,7 +98,7 @@ var casesCmd = &cobra.Command{
 		}
 
 		// Создаём объект миграции
-		m, err := newMigration(client, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
+		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
 			return err
 		}

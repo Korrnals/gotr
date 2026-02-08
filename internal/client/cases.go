@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"io"
 	"net/http"
+
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
 // GetCases получает **все** кейсы проекта (с пагинацией).
@@ -379,48 +380,48 @@ func casesEqualByField(c1, c2 data.Case, field string) bool {
 	}
 }
 
-// CopyCasesToSection копирует кейсы в секцию
-// https://support.testrail.com/hc/en-us/articles/7077990441108-Cases#copycasestosection
+// CopyCasesToSection копирует кейсы в указанную секцию
+// POST index.php?/api/v2/copy_cases_to_section/:section_id
 func (c *HTTPClient) CopyCasesToSection(sectionID int64, req *data.CopyCasesRequest) error {
-	endpoint := fmt.Sprintf("copy_cases_to_section/%d", sectionID)
-
-	jsonBody, err := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return fmt.Errorf("error marshaling request: %w", err)
+		return fmt.Errorf("ошибка маршалинга CopyCasesRequest: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	endpoint := fmt.Sprintf("copy_cases_to_section/%d", sectionID)
+	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return fmt.Errorf("error copying cases to section %d: %w", sectionID, err)
+		return fmt.Errorf("ошибка запроса CopyCasesToSection для секции %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+		return fmt.Errorf("ошибка копирования кейсов в секцию %d: %s, тело: %s", sectionID, resp.Status, string(body))
 	}
+
 	return nil
 }
 
-// MoveCasesToSection перемещает кейсы в секцию
-// https://support.testrail.com/hc/en-us/articles/7077990441108-Cases#movecasestosection
+// MoveCasesToSection перемещает кейсы в указанную секцию
+// POST index.php?/api/v2/move_cases_to_section/:section_id
 func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequest) error {
-	endpoint := fmt.Sprintf("move_cases_to_section/%d", sectionID)
-
-	jsonBody, err := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return fmt.Errorf("error marshaling request: %w", err)
+		return fmt.Errorf("ошибка маршалинга MoveCasesRequest: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	endpoint := fmt.Sprintf("move_cases_to_section/%d", sectionID)
+	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return fmt.Errorf("error moving cases to section %d: %w", sectionID, err)
+		return fmt.Errorf("ошибка запроса MoveCasesToSection для секции %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+		return fmt.Errorf("ошибка перемещения кейсов в секцию %d: %s, тело: %s", sectionID, resp.Status, string(body))
 	}
+
 	return nil
 }

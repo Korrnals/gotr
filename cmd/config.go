@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	defaultConfig = "$HOME/.gotr/config.yaml"
+	defaultConfig = "$HOME/.gotr/config/default.yaml"
 )
 
 // configCmd — родительская команда "config"
@@ -30,13 +30,13 @@ var configCmd = &cobra.Command{
 var configInitCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Создать дефолтный файл конфигурации",
-	Long: `Создаёт дефолтный файл конфигурации в ~/.gotr/config.yaml.
+	Long: `Создаёт дефолтный файл конфигурации в ~/.gotr/config/default.yaml.
 
 Пример:
 	gotr config init			# Создать дефолтный конфиг
 
 Default (config):
-	$HOME/.gotr/config.yaml		# Путь до дефолтного файла конфигурации
+	$HOME/.gotr/config/default.yaml		# Путь до дефолтного файла конфигурации
 
 Примечание:
 	После создания обязательно отредактируйте файл, указав свои данные TestRail.`,

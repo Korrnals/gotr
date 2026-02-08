@@ -1,12 +1,15 @@
 package sync
 
 import (
+	"context"
+
+	"github.com/Korrnals/gotr/cmd/common"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
+type GetClientFunc = common.GetClientFunc
 
 // Cmd — родительская команда для миграции
 var Cmd = &cobra.Command{
@@ -42,24 +45,61 @@ var Cmd = &cobra.Command{
 	},
 }
 
-var getClient GetClientFunc
+var clientAccessor *common.ClientAccessor
 
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
-	getClient = fn
+	if clientAccessor == nil {
+		clientAccessor = common.NewClientAccessor(fn)
+	} else {
+		clientAccessor.SetClientForTests(fn)
+	}
+}
+
+// testClientKey — ключ для mock клиента в тестах
+var testClientKey = &struct{}{}
+
+// SetTestClient устанавливает mock клиент для тестов
+func SetTestClient(cmd *cobra.Command, mockClient client.ClientInterface) {
+	ctx := cmd.Context()
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	cmd.SetContext(context.WithValue(ctx, testClientKey, mockClient))
 }
 
 // getClientSafe безопасно вызывает getClient с проверкой на nil
+// Fallback: берёт клиент из контекста (для тестов)
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
-	if getClient == nil {
-		return nil
+	if clientAccessor != nil {
+		if c := clientAccessor.GetClientSafe(cmd); c != nil {
+			return c
+		}
 	}
-	return getClient(cmd)
+	// Fallback для старых тестов - берём из контекста по старому ключу
+	if v := cmd.Context().Value(testHTTPClientKey); v != nil {
+		if c, ok := v.(*client.HTTPClient); ok {
+			return c
+		}
+	}
+	return nil
+}
+
+// getClientInterface безопасно возвращает ClientInterface (для тестов с MockClient)
+func getClientInterface(cmd *cobra.Command) client.ClientInterface {
+	// Сначала проверяем новый ключ для mock клиентов
+	if v := cmd.Context().Value(testClientKey); v != nil {
+		if c, ok := v.(client.ClientInterface); ok {
+			return c
+		}
+	}
+	// Fallback: используем обычный getClientSafe
+	return getClientSafe(cmd)
 }
 
 // Register регистрирует команду sync и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
-	getClient = clientFn
+	clientAccessor = common.NewClientAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
 	Cmd.AddCommand(sharedStepsCmd)

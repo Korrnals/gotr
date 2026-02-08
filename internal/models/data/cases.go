@@ -191,3 +191,13 @@ type DiffCasesResponse struct {
 		Second Case  `json:"second"`
 	} `json:"diff_by_field"` // Отличаются по полю
 }
+
+// CopyCasesRequest — запрос для copy_cases_to_section
+type CopyCasesRequest struct {
+	CaseIDs []int64 `json:"case_ids"` // Список ID кейсов для копирования
+}
+
+// MoveCasesRequest — запрос для move_cases_to_section
+type MoveCasesRequest struct {
+	CaseIDs []int64 `json:"case_ids"` // Список ID кейсов для перемещения
+}

@@ -50,3 +50,6 @@ gotr.exe
 *.gz
 *.zip
 *.tar
+
+# Distribution directory (contains built binaries and release artifacts)
+dist/

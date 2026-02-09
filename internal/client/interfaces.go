@@ -148,6 +148,44 @@ type ReportsAPI interface {
 	RunCrossProjectReport(templateID int64) (*data.RunReportResponse, error)
 }
 
+// ExtendedAPI — расширенные API (Groups, Roles, ResultFields, Datasets, Variables, BDDs, Labels)
+type ExtendedAPI interface {
+	// Groups
+	GetGroups(projectID int64) (data.GetGroupsResponse, error)
+	GetGroup(groupID int64) (*data.Group, error)
+	AddGroup(projectID int64, name string, userIDs []int64) (*data.Group, error)
+	UpdateGroup(groupID int64, name string, userIDs []int64) (*data.Group, error)
+	DeleteGroup(groupID int64) error
+
+	// Roles
+	GetRoles() (data.GetRolesResponse, error)
+	GetRole(roleID int64) (*data.Role, error)
+
+	// ResultFields
+	GetResultFields() (data.GetResultFieldsResponse, error)
+
+	// Datasets
+	GetDatasets(projectID int64) (data.GetDatasetsResponse, error)
+	GetDataset(datasetID int64) (*data.Dataset, error)
+	AddDataset(projectID int64, name string) (*data.Dataset, error)
+	UpdateDataset(datasetID int64, name string) (*data.Dataset, error)
+	DeleteDataset(datasetID int64) error
+
+	// Variables
+	GetVariables(datasetID int64) (data.GetVariablesResponse, error)
+	AddVariable(datasetID int64, name string) (*data.Variable, error)
+	UpdateVariable(variableID int64, name string) (*data.Variable, error)
+	DeleteVariable(variableID int64) error
+
+	// BDDs
+	GetBDD(caseID int64) (*data.BDD, error)
+	AddBDD(caseID int64, content string) (*data.BDD, error)
+
+	// Labels
+	UpdateTestLabels(testID int64, labels []string) error
+	UpdateTestsLabels(runID int64, testIDs []int64, labels []string) error
+}
+
 // ClientInterface — полный интерфейс клиента TestRail API
 type ClientInterface interface {
 	ProjectsAPI
@@ -164,6 +202,7 @@ type ClientInterface interface {
 	ConfigurationsAPI
 	UsersAPI
 	ReportsAPI
+	ExtendedAPI
 }
 
 // Проверка, что HTTPClient реализует ClientInterface

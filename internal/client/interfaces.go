@@ -141,6 +141,13 @@ type UsersAPI interface {
 	GetTemplates(projectID int64) (data.GetTemplatesResponse, error)
 }
 
+// ReportsAPI — операции с отчётами
+type ReportsAPI interface {
+	GetReports(projectID int64) (data.GetReportsResponse, error)
+	RunReport(templateID int64) (*data.RunReportResponse, error)
+	RunCrossProjectReport(templateID int64) (*data.RunReportResponse, error)
+}
+
 // ClientInterface — полный интерфейс клиента TestRail API
 type ClientInterface interface {
 	ProjectsAPI
@@ -156,6 +163,7 @@ type ClientInterface interface {
 	AttachmentsAPI
 	ConfigurationsAPI
 	UsersAPI
+	ReportsAPI
 }
 
 // Проверка, что HTTPClient реализует ClientInterface

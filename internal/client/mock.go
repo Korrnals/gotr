@@ -116,6 +116,11 @@ type MockClient struct {
 	GetPrioritiesFunc    func() (data.GetPrioritiesResponse, error)
 	GetStatusesFunc      func() (data.GetStatusesResponse, error)
 	GetTemplatesFunc     func(projectID int64) (data.GetTemplatesResponse, error)
+
+	// ReportsAPI
+	GetReportsFunc              func(projectID int64) (data.GetReportsResponse, error)
+	RunReportFunc               func(templateID int64) (*data.RunReportResponse, error)
+	RunCrossProjectReportFunc   func(templateID int64) (*data.RunReportResponse, error)
 }
 
 // Проверка, что MockClient реализует ClientInterface
@@ -737,6 +742,30 @@ func (m *MockClient) GetStatuses() (data.GetStatusesResponse, error) {
 func (m *MockClient) GetTemplates(projectID int64) (data.GetTemplatesResponse, error) {
 	if m.GetTemplatesFunc != nil {
 		return m.GetTemplatesFunc(projectID)
+	}
+	return nil, nil
+}
+
+// ---------------------------------------------------------------------------
+// ReportsAPI
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetReports(projectID int64) (data.GetReportsResponse, error) {
+	if m.GetReportsFunc != nil {
+		return m.GetReportsFunc(projectID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) RunReport(templateID int64) (*data.RunReportResponse, error) {
+	if m.RunReportFunc != nil {
+		return m.RunReportFunc(templateID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) RunCrossProjectReport(templateID int64) (*data.RunReportResponse, error) {
+	if m.RunCrossProjectReportFunc != nil {
+		return m.RunCrossProjectReportFunc(templateID)
 	}
 	return nil, nil
 }

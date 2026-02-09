@@ -5,6 +5,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/cases"
 	"github.com/Korrnals/gotr/cmd/get"
 	"github.com/Korrnals/gotr/cmd/labels"
+	"github.com/Korrnals/gotr/cmd/plans"
 	"github.com/Korrnals/gotr/cmd/result"
 	"github.com/Korrnals/gotr/cmd/run"
 	"github.com/Korrnals/gotr/cmd/sync"
@@ -38,6 +39,7 @@ func init() {
 	cases.Register(rootCmd, GetClientInterface)
 	get.Register(rootCmd, GetClient)
 	labels.Register(rootCmd, GetClientInterface)
+	plans.Register(rootCmd, GetClientInterface)
 	run.Register(rootCmd, GetClient)
 	result.Register(rootCmd, GetClient)
 	sync.Register(rootCmd, GetClient)

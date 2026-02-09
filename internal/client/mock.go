@@ -92,6 +92,13 @@ type MockClient struct {
 	AddPlanEntryFunc    func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error)
 	UpdatePlanEntryFunc func(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error)
 	DeletePlanEntryFunc func(planID int64, entryID string) error
+
+	// AttachmentsAPI
+	AddAttachmentToCaseFunc      func(caseID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanFunc      func(planID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanEntryFunc func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToResultFunc    func(resultID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToRunFunc       func(runID int64, filePath string) (*data.AttachmentResponse, error)
 }
 
 // Проверка, что MockClient реализует ClientInterface
@@ -580,4 +587,42 @@ func (m *MockClient) DeletePlanEntry(planID int64, entryID string) error {
 		return m.DeletePlanEntryFunc(planID, entryID)
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// AttachmentsAPI
+// ---------------------------------------------------------------------------
+func (m *MockClient) AddAttachmentToCase(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+	if m.AddAttachmentToCaseFunc != nil {
+		return m.AddAttachmentToCaseFunc(caseID, filePath)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddAttachmentToPlan(planID int64, filePath string) (*data.AttachmentResponse, error) {
+	if m.AddAttachmentToPlanFunc != nil {
+		return m.AddAttachmentToPlanFunc(planID, filePath)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddAttachmentToPlanEntry(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+	if m.AddAttachmentToPlanEntryFunc != nil {
+		return m.AddAttachmentToPlanEntryFunc(planID, entryID, filePath)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddAttachmentToResult(resultID int64, filePath string) (*data.AttachmentResponse, error) {
+	if m.AddAttachmentToResultFunc != nil {
+		return m.AddAttachmentToResultFunc(resultID, filePath)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddAttachmentToRun(runID int64, filePath string) (*data.AttachmentResponse, error) {
+	if m.AddAttachmentToRunFunc != nil {
+		return m.AddAttachmentToRunFunc(runID, filePath)
+	}
+	return nil, nil
 }

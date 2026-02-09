@@ -35,8 +35,10 @@ type authTransport struct {
 
 func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.SetBasicAuth(t.username, t.apiKey)
-	// Можно ещё добавить заголовки:
-	req.Header.Set("Content-Type", "application/json")
+	// Устанавливаем Content-Type только если он не установлен
+	if req.Header.Get("Content-Type") == "" {
+		req.Header.Set("Content-Type", "application/json")
+	}
 	return t.base.RoundTrip(req)
 }
 
@@ -141,8 +143,17 @@ func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryPar
 	if err != nil {
 		return nil, err
 	}
+
+	// Проверяем, есть ли Content-Type в queryParams (для multipart/form-data)
+	contentType := "application/json"
+	if ct, ok := queryParams["Content-Type"]; ok {
+		contentType = ct
+		// Удаляем Content-Type из queryParams чтобы не добавлять его в URL
+		delete(queryParams, "Content-Type")
+	}
+
 	// Устанавливаем заголовок Content-Type
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 	// Выпоняем сформированный запрос
 	return c.client.Do(req)
 }

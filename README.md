@@ -17,19 +17,20 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.6.0--dev-blue.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.6-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v2.5.0** — See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v2.6.0-dev** — Stage 4 Complete: 106/106 API endpoints implemented. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 
 `gotr` provides a comprehensive toolkit for TestRail operations:
 
-- **Data Operations** — Retrieve and manage test cases, suites, sections, shared steps, runs, and results
+- **Data Operations** — Retrieve and manage test cases, suites, sections, shared steps, runs, results, milestones, plans, and more
+- **Complete API Coverage** — All 106 TestRail API v2 endpoints implemented (Stage 4 complete)
 - **Project Synchronization** — Migrate entities between projects with intelligent duplicate detection
 - **Interactive Workflow** — Guided selection of projects and suites eliminates the need to memorize IDs
 - **Built-in Processing** — JSON filtering with embedded `jq`, progress tracking, and structured logging
@@ -177,7 +178,7 @@ gotr/
 │   └── ...
 ├── internal/
 │   ├── client/                  #   TestRail API client
-│   │   ├── interfaces.go       #     ClientInterface (43 methods)
+│   │   ├── interfaces.go       #     ClientInterface (106 endpoints, 14 APIs)
 │   │   ├── mock.go             #     MockClient for testing
 │   │   └── *.go                #     API implementations
 │   ├── interactive/            #   Interactive selection
@@ -194,6 +195,21 @@ gotr/
 ```
 
 See [docs/architecture.md](docs/architecture.md) for complete structure.
+
+## What's New in v2.6.0-dev (Stage 4 Complete)
+
+### Complete API Coverage
+
+All 106 TestRail API v2 endpoints are now implemented:
+
+- **Tests API** (3 endpoints) — GetTest, GetTests, UpdateTest
+- **Milestones API** (5 endpoints) — Full CRUD for milestones
+- **Plans API** (9 endpoints) — Full CRUD + plan entries management
+- **Attachments API** (5 endpoints) — File uploads to cases/plans/results/runs
+- **Configurations API** (7 endpoints) — Test configurations management
+- **Users & Reference** (7 endpoints) — Users, Priorities, Statuses, Templates
+- **Reports API** (3 endpoints) — Report generation and retrieval
+- **Extended APIs** (21 endpoints) — Groups, Roles, Datasets, Variables, BDDs, Labels
 
 ## What's New in v2.5.0
 

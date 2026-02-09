@@ -4,38 +4,53 @@
 BINARY_NAME=gotr
 
 # Приоритет версии:
-# 1. Явно указанная при вызове make (make VERSION=v2.6.0)
-# 2. Значение из cmd/root.go (если VERSION не указана)
+# 1. Явно указанная при вызове make (make VERSION=v2.6.0) - HIGHEST PRIORITY
+# 2. Версия из cmd/root.go (извлекается автоматически)
 #
-# Чтобы использовать git tag: make VERSION=$(git describe --tags --abbrev=0)
+# При сборке без VERSION:
+#   - Извлекается версия из cmd/root.go
+#   - Для релизных версий (без -dev) создается/проверяется git tag
 VERSION ?=
+
+# Извлекаем версию из cmd/root.go если не указана явно
+ifeq ($(VERSION),)
+    CODE_VERSION := $(shell grep -E '^[[:space:]]*Version[[:space:]]*=[[:space:]]*"' cmd/root.go | sed 's/.*"\([^"]*\)".*/\1/')
+    VERSION := $(CODE_VERSION)
+endif
 
 # Коммит и дата для дополнительной информации
 COMMIT = $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE = $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Флаги для встраивания версии
-# Используем полный путь к пакету для корректной работы
 PACKAGE_PATH = github.com/Korrnals/gotr/cmd
-
-# Если VERSION не пустой — передаем все флаги
-# Если VERSION пустой — передаем только Commit и Date, Version берется из cmd/root.go
-ifneq ($(VERSION),)
-    LDFLAGS = -ldflags="-s -w -X '$(PACKAGE_PATH).Version=$(VERSION)' -X '$(PACKAGE_PATH).Commit=$(COMMIT)' -X '$(PACKAGE_PATH).Date=$(DATE)'"
-else
-    LDFLAGS = -ldflags="-s -w -X '$(PACKAGE_PATH).Commit=$(COMMIT)' -X '$(PACKAGE_PATH).Date=$(DATE)'"
-endif
+LDFLAGS = -ldflags="-s -w -X '$(PACKAGE_PATH).Version=$(VERSION)' -X '$(PACKAGE_PATH).Commit=$(COMMIT)' -X '$(PACKAGE_PATH).Date=$(DATE)'"
 
 # Цель по умолчанию
 all: build
 
-# Сборка
-build:
-ifneq ($(VERSION),)
-	@echo "Сборка $(BINARY_NAME) версии $(VERSION) (commit: $(COMMIT))"
+# Синхронизация git tag для релизных версий (без -dev)
+# Нормализация тега: убираем префикс v если есть, потом добавляем
+VERSION_TAG := $(VERSION:v%=%)
+sync-tag:
+ifeq ($(findstring -dev,$(VERSION)),)
+	@echo "Проверка git tag для релизной версии $(VERSION)..."
+	@git fetch --tags 2>/dev/null || true
+	@if ! git tag -l "v$(VERSION_TAG)" | grep -q "v$(VERSION_TAG)"; then \
+		echo "Создание git tag v$(VERSION_TAG)..."; \
+		git tag -a "v$(VERSION_TAG)" -m "Release $(VERSION_TAG)"; \
+		echo "✓ Git tag v$(VERSION_TAG) создан локально"; \
+		echo "  Для отправки выполните: git push origin v$(VERSION_TAG)"; \
+	else \
+		echo "✓ Git tag v$(VERSION_TAG) уже существует"; \
+	fi
 else
-	@echo "Сборка $(BINARY_NAME) (версия из кода, commit: $(COMMIT))"
+	@echo "Dev-версия ($(VERSION)) - git tag не требуется"
 endif
+
+# Сборка
+build: sync-tag
+	@echo "Сборка $(BINARY_NAME) версии $(VERSION) (commit: $(COMMIT))"
 	go build $(LDFLAGS) -o $(BINARY_NAME)
 
 # Сжатие бинарника UPX (опционально, если установлен upx)
@@ -103,28 +118,31 @@ release-compressed: clean
 # Сборка + сжатие
 build-compressed: build compress
 
+# Создание git tag и push
 tag:
 	@if [ -z "$(VERSION)" ]; then \
-		echo "Укажите версию: make tag VERSION=v1.0.0"; \
+		echo "Укажите версию: make tag VERSION=v2.6.0"; \
 		exit 1; \
 	fi
-	@echo "Создание тега $(VERSION)"
-	git tag -a $(VERSION) -m "Релиз $(VERSION)"
-	git push origin $(VERSION)
-	@echo "Тег $(VERSION) создан и отправлен"
-
-# Пример использования:
-# make tag VERSION=v1.0.0
+	@echo "Создание тега v$(VERSION)"
+	git tag -a "v$(VERSION)" -m "Release $(VERSION)"
+	git push origin "v$(VERSION)"
+	@echo "Тег v$(VERSION) создан и отправлен"
 
 # Помощь
 help:
 	@echo "Доступные цели:"
-	@echo "  build       — собрать бинарник для текущей платформы"
-	@echo "  compress	 — сжать бинарник UPX (если установлен)"
+	@echo "  build       — собрать бинарник (версия из cmd/root.go)"
+	@echo "  compress    — сжать бинарник UPX (если установлен)"
 	@echo "  install     — установить в /usr/local/bin (требует sudo)"
 	@echo "  test        — запустить тесты"
 	@echo "  clean       — удалить бинарник"
 	@echo "  release     — собрать для Linux, macOS и Windows"
-	@echo "  help        — показать эту справку"
+	@echo "  tag         — создать и отправить git tag"
+	@echo ""
+	@echo "Примеры:"
+	@echo "  make build                    # Сборка с версией из кода"
+	@echo "  make build VERSION=v2.6.0     # Сборка с явной версией"
+	@echo "  make tag VERSION=v2.6.0       # Создание релизного тега"
 
-.PHONY: all build test-build test install clean build-linux build-darwin build-windows release help
+.PHONY: all build test-build test install clean build-linux build-darwin build-windows release help sync-tag

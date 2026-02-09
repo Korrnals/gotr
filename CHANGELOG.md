@@ -11,6 +11,14 @@
 
 ### Added
 
+#### Build System Improvements
+
+- **Автоматическая синхронизация версии в Makefile:**
+  - Команда `make build` теперь извлекает версию из `cmd/root.go` (единый источник правды)
+  - Для релизных версий (без `-dev`) автоматически создаётся/проверяется git tag
+  - Приоритет версии: 1) `make build VERSION=x`, 2) версия из кода, 3) git tag
+  - Нормализация тега: поддержка `VERSION=v2.6.0` и `VERSION=2.6.0`
+
 #### Stage 4: Complete API Coverage (106/106 endpoints)
 
 - **Attachments API** — 5 endpoints:

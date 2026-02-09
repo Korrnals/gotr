@@ -99,6 +99,15 @@ type MockClient struct {
 	AddAttachmentToPlanEntryFunc func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToResultFunc    func(resultID int64, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToRunFunc       func(runID int64, filePath string) (*data.AttachmentResponse, error)
+
+	// ConfigurationsAPI
+	GetConfigsFunc          func(projectID int64) (data.GetConfigsResponse, error)
+	AddConfigGroupFunc      func(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error)
+	AddConfigFunc           func(groupID int64, req *data.AddConfigRequest) (*data.Config, error)
+	UpdateConfigGroupFunc   func(groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error)
+	UpdateConfigFunc        func(configID int64, req *data.UpdateConfigRequest) (*data.Config, error)
+	DeleteConfigGroupFunc   func(groupID int64) error
+	DeleteConfigFunc        func(configID int64) error
 }
 
 // Проверка, что MockClient реализует ClientInterface
@@ -625,4 +634,56 @@ func (m *MockClient) AddAttachmentToRun(runID int64, filePath string) (*data.Att
 		return m.AddAttachmentToRunFunc(runID, filePath)
 	}
 	return nil, nil
+}
+
+// ---------------------------------------------------------------------------
+// ConfigurationsAPI
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetConfigs(projectID int64) (data.GetConfigsResponse, error) {
+	if m.GetConfigsFunc != nil {
+		return m.GetConfigsFunc(projectID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddConfigGroup(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+	if m.AddConfigGroupFunc != nil {
+		return m.AddConfigGroupFunc(projectID, req)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddConfig(groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
+	if m.AddConfigFunc != nil {
+		return m.AddConfigFunc(groupID, req)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) UpdateConfigGroup(groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
+	if m.UpdateConfigGroupFunc != nil {
+		return m.UpdateConfigGroupFunc(groupID, req)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) UpdateConfig(configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
+	if m.UpdateConfigFunc != nil {
+		return m.UpdateConfigFunc(configID, req)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) DeleteConfigGroup(groupID int64) error {
+	if m.DeleteConfigGroupFunc != nil {
+		return m.DeleteConfigGroupFunc(groupID)
+	}
+	return nil
+}
+
+func (m *MockClient) DeleteConfig(configID int64) error {
+	if m.DeleteConfigFunc != nil {
+		return m.DeleteConfigFunc(configID)
+	}
+	return nil
 }

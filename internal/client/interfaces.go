@@ -120,6 +120,17 @@ type AttachmentsAPI interface {
 	AddAttachmentToRun(runID int64, filePath string) (*data.AttachmentResponse, error)
 }
 
+// ConfigurationsAPI — операции с конфигурациями
+type ConfigurationsAPI interface {
+	GetConfigs(projectID int64) (data.GetConfigsResponse, error)
+	AddConfigGroup(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error)
+	AddConfig(groupID int64, req *data.AddConfigRequest) (*data.Config, error)
+	UpdateConfigGroup(groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error)
+	UpdateConfig(configID int64, req *data.UpdateConfigRequest) (*data.Config, error)
+	DeleteConfigGroup(groupID int64) error
+	DeleteConfig(configID int64) error
+}
+
 // ClientInterface — полный интерфейс клиента TestRail API
 type ClientInterface interface {
 	ProjectsAPI
@@ -133,6 +144,7 @@ type ClientInterface interface {
 	MilestonesAPI
 	PlansAPI
 	AttachmentsAPI
+	ConfigurationsAPI
 }
 
 // Проверка, что HTTPClient реализует ClientInterface

@@ -7,7 +7,7 @@ import (
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
+type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
 // Register registers all labels commands with the root command
 func Register(root *cobra.Command, getClient GetClientFunc) {

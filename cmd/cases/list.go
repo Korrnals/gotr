@@ -7,13 +7,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd creates 'cases list' command
+// newListCmd создаёт команду 'cases list'
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list <project_id>",
-		Short: "List test cases",
-		Long:  `List test cases in a project with optional filtering.`,
-		Example: `  gotr cases list 1
+		Short: "Список тест-кейсов",
+		Long:  `Выводит список тест-кейсов проекта с возможностью фильтрации.`,
+		Example: `  # Список всех кейсов проекта
+  gotr cases list 1
+
+  # Фильтрация по сьюте и секции
   gotr cases list 1 --suite-id=100 --section-id=50`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -35,8 +38,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64("suite-id", 0, "Suite ID filter")
-	cmd.Flags().Int64("section-id", 0, "Section ID filter")
+	cmd.Flags().Int64("suite-id", 0, "Фильтр по ID сьюты")
+	cmd.Flags().Int64("section-id", 0, "Фильтр по ID секции")
 
 	return cmd
 }

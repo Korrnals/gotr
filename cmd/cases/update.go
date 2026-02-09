@@ -11,13 +11,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd creates 'cases update' command
+// newUpdateCmd создаёт команду 'cases update'
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <case_id>",
-		Short: "Update a test case",
-		Long:  `Update an existing test case.`,
-		Example: `  gotr cases update 12345 --title="Updated Title" --priority-id=2
+		Short: "Обновить тест-кейс",
+		Long:  `Обновляет существующий тест-кейс.`,
+		Example: `  # Обновить название и приоритет
+  gotr cases update 12345 --title="Новое название" --priority-id=2
+
+  # Обновить из JSON-файла
   gotr cases update 12345 --json-file=update.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -71,13 +74,13 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
-	cmd.Flags().String("json-file", "", "Path to JSON file with update data")
-	cmd.Flags().String("title", "", "New title")
-	cmd.Flags().Int64("type-id", 0, "New type ID")
-	cmd.Flags().Int64("priority-id", 0, "New priority ID")
-	cmd.Flags().String("refs", "", "New references")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными для обновления")
+	cmd.Flags().String("title", "", "Новое название")
+	cmd.Flags().Int64("type-id", 0, "Новый ID типа")
+	cmd.Flags().Int64("priority-id", 0, "Новый ID приоритета")
+	cmd.Flags().String("refs", "", "Новые ссылки")
 
 	return cmd
 }

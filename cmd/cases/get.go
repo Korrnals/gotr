@@ -7,13 +7,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd creates 'cases get' command
+// newGetCmd создаёт команду 'cases get'
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <case_id>",
-		Short: "Get a test case by ID",
-		Long:  `Retrieve details of a specific test case.`,
-		Example: `  gotr cases get 12345
+		Short: "Получить тест-кейс по ID",
+		Long:  `Получает детальную информацию о тест-кейсе по его идентификатору.`,
+		Example: `  # Получить информацию о кейсе
+  gotr cases get 12345
+
+  # Сохранить в файл
   gotr cases get 12345 -o case.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -1,4 +1,4 @@
-// Package attachments implements CLI commands for TestRail Attachments API
+// Package attachments реализует CLI команды для работы с вложениями TestRail
 package attachments
 
 import (
@@ -9,33 +9,43 @@ import (
 // GetClientFunc — тип функции для получения клиента
 type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
 
-// Register registers all attachment commands with the root command
+// Register регистрирует все команды для работы с вложениями
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	attachmentsCmd := &cobra.Command{
 		Use:   "attachments",
-		Short: "Manage file attachments",
-		Long:  `Add file attachments to cases, plans, plan entries, results, and runs.`,
+		Short: "Управление файловыми вложениями",
+		Long: `Управление файловыми вложениями к тест-кейсам, планам, результатам и прогонам.
+
+Поддерживаемые типы ресурсов для прикрепления файлов:
+  • case       — вложение к тест-кейсу
+  • plan       — вложение к тест-плану
+  • plan-entry — вложение к записи плана
+  • result     — вложение к результату теста
+  • run        — вложение к тестовому прогону`,
 	}
 
-	// Create 'add' parent command
+	// Создание родительской команды 'add'
 	addCmd := &cobra.Command{
 		Use:   "add",
-		Short: "Add attachment to a resource",
-		Long:  `Upload a file attachment to a specific resource (case, plan, plan-entry, result, or run).`,
+		Short: "Добавить вложение к ресурсу",
+		Long: `Загружает файл и прикрепляет его к указанному ресурсу.
+
+Поддерживаются различные типы ресурсов: тест-кейс, план, запись плана,
+результат теста или тестовый прогон.`,
 	}
 
-	// Persistent flags for all add subcommands
-	addCmd.PersistentFlags().Bool("dry-run", false, "Show what would be done without making changes")
-	addCmd.PersistentFlags().StringP("output", "o", "", "Save response to file")
+	// Общие флаги для всех подкоманд add
+	addCmd.PersistentFlags().Bool("dry-run", false, "Показать, что будет сделано без загрузки файла")
+	addCmd.PersistentFlags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
 
-	// Add subcommands to 'add'
+	// Добавление подкоманд к 'add'
 	addCmd.AddCommand(newAddCaseCmd(getClient))
 	addCmd.AddCommand(newAddPlanCmd(getClient))
 	addCmd.AddCommand(newAddPlanEntryCmd(getClient))
 	addCmd.AddCommand(newAddResultCmd(getClient))
 	addCmd.AddCommand(newAddRunCmd(getClient))
 
-	// Add 'add' to attachments
+	// Добавление 'add' в attachments
 	attachmentsCmd.AddCommand(addCmd)
 
 	root.AddCommand(attachmentsCmd)

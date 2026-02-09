@@ -12,12 +12,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newBulkCmd creates 'cases bulk' parent command
+// newBulkCmd создаёт родительскую команду 'cases bulk'
 func newBulkCmd(getClient GetClientFunc) *cobra.Command {
 	bulkCmd := &cobra.Command{
 		Use:   "bulk",
-		Short: "Bulk operations on test cases",
-		Long:  `Bulk update, delete, copy, or move multiple test cases at once.`,
+		Short: "Массовые операции над тест-кейсами",
+		Long: `Массовые операции: обновление, удаление, копирование или перемещение нескольких тест-кейсов.
+
+Подкоманды:
+  • update — массовое обновление полей
+  • delete — массовое удаление
+  • copy   — копирование в другую секцию
+  • move   — перемещение в другую секцию`,
 	}
 
 	bulkCmd.AddCommand(newBulkUpdateCmd(getClient))
@@ -28,13 +34,16 @@ func newBulkCmd(getClient GetClientFunc) *cobra.Command {
 	return bulkCmd
 }
 
-// newBulkUpdateCmd creates 'cases bulk update' command
+// newBulkUpdateCmd создаёт команду 'cases bulk update'
 func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <case_ids...>",
-		Short: "Bulk update cases",
-		Long:  `Update multiple test cases at once with the same field values.`,
-		Example: `  gotr cases bulk update 1,2,3 --suite-id=100 --priority-id=1
+		Short: "Массовое обновление кейсов",
+		Long:  `Обновляет несколько тест-кейсов одновременно с одинаковыми значениями полей.`,
+		Example: `  # Обновить приоритет нескольких кейсов
+  gotr cases bulk update 1,2,3 --suite-id=100 --priority-id=1
+
+  # Обновить оценку времени
   gotr cases bulk update 1 2 3 --suite-id=100 --estimate="1h 30m"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -76,22 +85,26 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
-	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
-	cmd.Flags().Int64("priority-id", 0, "Priority ID to set")
-	cmd.Flags().String("estimate", "", "Estimate to set (e.g., '1h 30m')")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
+	cmd.Flags().Int64("priority-id", 0, "ID приоритета для установки")
+	cmd.Flags().String("estimate", "", "Оценка времени (например: '1h 30m')")
 
 	return cmd
 }
 
-// newBulkDeleteCmd creates 'cases bulk delete' command
+// newBulkDeleteCmd создаёт команду 'cases bulk delete'
 func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <case_ids...>",
-		Short: "Bulk delete cases",
-		Long:  `Delete multiple test cases at once.`,
-		Example: `  gotr cases bulk delete 1,2,3 --suite-id=100`,
+		Short: "Массовое удаление кейсов",
+		Long:  `Удаляет несколько тест-кейсов одновременно.`,
+		Example: `  # Удалить несколько кейсов
+  gotr cases bulk delete 1,2,3 --suite-id=100
+
+  # Проверить перед удалением
+  gotr cases bulk delete 1,2,3 --suite-id=100 --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("case IDs required")
@@ -125,19 +138,23 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено")
+	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
 
 	return cmd
 }
 
-// newBulkCopyCmd creates 'cases bulk copy' command
+// newBulkCopyCmd создаёт команду 'cases bulk copy'
 func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "copy <case_ids...>",
-		Short: "Copy cases to section",
-		Long:  `Copy multiple test cases to another section.`,
-		Example: `  gotr cases bulk copy 1,2,3 --section-id=50`,
+		Short: "Копировать кейсы в секцию",
+		Long:  `Копирует несколько тест-кейсов в другую секцию.`,
+		Example: `  # Копировать кейсы в другую секцию
+  gotr cases bulk copy 1,2,3 --section-id=50
+
+  # Проверить перед копированием
+  gotr cases bulk copy 1,2,3 --section-id=50 --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("case IDs required")
@@ -171,19 +188,23 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().Int64("section-id", 0, "Target section ID (required)")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано")
+	cmd.Flags().Int64("section-id", 0, "ID целевой секции (обязательно)")
 
 	return cmd
 }
 
-// newBulkMoveCmd creates 'cases bulk move' command
+// newBulkMoveCmd создаёт команду 'cases bulk move'
 func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "move <case_ids...>",
-		Short: "Move cases to section",
-		Long:  `Move multiple test cases to another section.`,
-		Example: `  gotr cases bulk move 1,2,3 --section-id=50`,
+		Short: "Переместить кейсы в секцию",
+		Long:  `Перемещает несколько тест-кейсов в другую секцию.`,
+		Example: `  # Переместить кейсы в другую секцию
+  gotr cases bulk move 1,2,3 --section-id=50
+
+  # Проверить перед перемещением
+  gotr cases bulk move 1,2,3 --section-id=50 --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
 				return fmt.Errorf("case IDs required")
@@ -217,13 +238,13 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().Int64("section-id", 0, "Target section ID (required)")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано")
+	cmd.Flags().Int64("section-id", 0, "ID целевой секции (обязательно)")
 
 	return cmd
 }
 
-// parseIDList parses comma-separated or space-separated IDs
+// parseIDList разбирает ID, разделённые запятыми или пробелами
 func parseIDList(args []string) []int64 {
 	var ids []int64
 	for _, arg := range args {
@@ -241,7 +262,7 @@ func parseIDList(args []string) []int64 {
 	return ids
 }
 
-// outputResult outputs result as JSON or to file
+// outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
 	output, _ := cmd.Flags().GetString("output")
 

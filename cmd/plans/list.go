@@ -7,13 +7,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd creates 'plans list' command
+// newListCmd создаёт команду 'plans list'
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list <project_id>",
-		Short: "List test plans",
-		Long:  `List all test plans in a project.`,
-		Example: `  gotr plans list 1`,
+		Short: "Список тест-планов",
+		Long:  `Выводит список всех тест-планов проекта.`,
+		Example: `  # Список планов проекта
+  gotr plans list 1`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := strconv.ParseInt(args[0], 10, 64)

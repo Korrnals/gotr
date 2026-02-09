@@ -11,14 +11,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd creates 'plans add' command
+// newAddCmd создаёт команду 'plans add'
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <project_id>",
-		Short: "Create a new test plan",
-		Long:  `Create a new test plan in the specified project.`,
-		Example: `  gotr plans add 1 --name="Sprint 1 Plan"
-  gotr plans add 1 --name="Regression" --description="Full regression suite"`,
+		Short: "Создать новый тест-план",
+		Long:  `Создаёт новый тест-план в указанном проекте.`,
+		Example: `  # Создать план для спринта
+  gotr plans add 1 --name="План спринта 1"
+
+  # Создать план регрессии с описанием
+  gotr plans add 1 --name="Регрессия" --description="Полный набор регрессионных тестов"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID, err := strconv.ParseInt(args[0], 10, 64)
@@ -60,16 +63,16 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
-	cmd.Flags().String("name", "", "Plan name (required)")
-	cmd.Flags().String("description", "", "Plan description")
-	cmd.Flags().Int64("milestone-id", 0, "Milestone ID")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	cmd.Flags().String("name", "", "Название плана (обязательно)")
+	cmd.Flags().String("description", "", "Описание плана")
+	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
 
 	return cmd
 }
 
-// outputResult outputs result as JSON or to file
+// outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
 	output, _ := cmd.Flags().GetString("output")
 

@@ -8,13 +8,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd creates 'plans delete' command
+// newDeleteCmd создаёт команду 'plans delete'
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <plan_id>",
-		Short: "Delete a test plan",
-		Long:  `Delete a test plan by ID.`,
-		Example: `  gotr plans delete 12345`,
+		Short: "Удалить тест-план",
+		Long:  `Удаляет тест-план по его ID.`,
+		Example: `  # Удалить план
+  gotr plans delete 12345
+
+  # Проверить перед удалением
+  gotr plans delete 12345 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			planID, err := strconv.ParseInt(args[0], 10, 64)
@@ -39,7 +43,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
 
 	return cmd
 }

@@ -1,0 +1,238 @@
+package attachments
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"strconv"
+
+	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/spf13/cobra"
+)
+
+// newAddCaseCmd creates 'attachments add case' command
+func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
+	return &cobra.Command{
+		Use:   "case <case_id> <file_path>",
+		Short: "Add attachment to a test case",
+		Long:  `Upload a file attachment to a specific test case.`,
+		Example: `  gotr attachments add case 12345 ./screenshot.png
+  gotr attachments add case 99999 ./test-data.json --dry-run`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			caseID, err := parseID(args[0], "case_id")
+			if err != nil {
+				return err
+			}
+			filePath := args[1]
+
+			// Check dry-run
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := dryrun.New("attachments add case")
+				dr.PrintSimple("Add Attachment to Case", fmt.Sprintf("Case ID: %d, File: %s", caseID, filePath))
+				return nil
+			}
+
+			// Validate file exists
+			if err := validateFileExists(filePath); err != nil {
+				return err
+			}
+
+			cli := getClient(cmd)
+			resp, err := cli.AddAttachmentToCase(caseID, filePath)
+			if err != nil {
+				return fmt.Errorf("failed to add attachment: %w", err)
+			}
+
+			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			return outputResult(cmd, resp)
+		},
+	}
+}
+
+// newAddPlanCmd creates 'attachments add plan' command
+func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
+	return &cobra.Command{
+		Use:   "plan <plan_id> <file_path>",
+		Short: "Add attachment to a test plan",
+		Long:  `Upload a file attachment to a specific test plan.`,
+		Example: `  gotr attachments add plan 100 ./report.pdf
+  gotr attachments add plan 200 ./summary.docx`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			planID, err := parseID(args[0], "plan_id")
+			if err != nil {
+				return err
+			}
+			filePath := args[1]
+
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := dryrun.New("attachments add plan")
+				dr.PrintSimple("Add Attachment to Plan", fmt.Sprintf("Plan ID: %d, File: %s", planID, filePath))
+				return nil
+			}
+
+			if err := validateFileExists(filePath); err != nil {
+				return err
+			}
+
+			cli := getClient(cmd)
+			resp, err := cli.AddAttachmentToPlan(planID, filePath)
+			if err != nil {
+				return fmt.Errorf("failed to add attachment: %w", err)
+			}
+
+			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			return outputResult(cmd, resp)
+		},
+	}
+}
+
+// newAddPlanEntryCmd creates 'attachments add plan-entry' command
+func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
+	return &cobra.Command{
+		Use:   "plan-entry <plan_id> <entry_id> <file_path>",
+		Short: "Add attachment to a plan entry",
+		Long:  `Upload a file attachment to a specific plan entry.`,
+		Example: `  gotr attachments add plan-entry 100 entry-abc123 ./data.csv
+  gotr attachments add plan-entry 200 def456 ./notes.txt`,
+		Args: cobra.ExactArgs(3),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			planID, err := parseID(args[0], "plan_id")
+			if err != nil {
+				return err
+			}
+			entryID := args[1]
+			filePath := args[2]
+
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := dryrun.New("attachments add plan-entry")
+				dr.PrintSimple("Add Attachment to Plan Entry", fmt.Sprintf("Plan ID: %d, Entry ID: %s, File: %s", planID, entryID, filePath))
+				return nil
+			}
+
+			if err := validateFileExists(filePath); err != nil {
+				return err
+			}
+
+			cli := getClient(cmd)
+			resp, err := cli.AddAttachmentToPlanEntry(planID, entryID, filePath)
+			if err != nil {
+				return fmt.Errorf("failed to add attachment: %w", err)
+			}
+
+			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			return outputResult(cmd, resp)
+		},
+	}
+}
+
+// newAddResultCmd creates 'attachments add result' command
+func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
+	return &cobra.Command{
+		Use:   "result <result_id> <file_path>",
+		Short: "Add attachment to a test result",
+		Long:  `Upload a file attachment to a specific test result.`,
+		Example: `  gotr attachments add result 98765 ./log.txt
+  gotr attachments add result 54321 ./screenshot.png`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			resultID, err := parseID(args[0], "result_id")
+			if err != nil {
+				return err
+			}
+			filePath := args[1]
+
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := dryrun.New("attachments add result")
+				dr.PrintSimple("Add Attachment to Result", fmt.Sprintf("Result ID: %d, File: %s", resultID, filePath))
+				return nil
+			}
+
+			if err := validateFileExists(filePath); err != nil {
+				return err
+			}
+
+			cli := getClient(cmd)
+			resp, err := cli.AddAttachmentToResult(resultID, filePath)
+			if err != nil {
+				return fmt.Errorf("failed to add attachment: %w", err)
+			}
+
+			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			return outputResult(cmd, resp)
+		},
+	}
+}
+
+// newAddRunCmd creates 'attachments add run' command
+func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
+	return &cobra.Command{
+		Use:   "run <run_id> <file_path>",
+		Short: "Add attachment to a test run",
+		Long:  `Upload a file attachment to a specific test run.`,
+		Example: `  gotr attachments add run 555 ./report.html
+  gotr attachments add run 777 ./summary.pdf`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			runID, err := parseID(args[0], "run_id")
+			if err != nil {
+				return err
+			}
+			filePath := args[1]
+
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := dryrun.New("attachments add run")
+				dr.PrintSimple("Add Attachment to Run", fmt.Sprintf("Run ID: %d, File: %s", runID, filePath))
+				return nil
+			}
+
+			if err := validateFileExists(filePath); err != nil {
+				return err
+			}
+
+			cli := getClient(cmd)
+			resp, err := cli.AddAttachmentToRun(runID, filePath)
+			if err != nil {
+				return fmt.Errorf("failed to add attachment: %w", err)
+			}
+
+			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			return outputResult(cmd, resp)
+		},
+	}
+}
+
+// parseID parses string ID to int64
+func parseID(s, name string) (int64, error) {
+	id, err := strconv.ParseInt(s, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, fmt.Errorf("invalid %s: %s", name, s)
+	}
+	return id, nil
+}
+
+// validateFileExists checks if file exists
+func validateFileExists(filePath string) error {
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("file not found: %s", filePath)
+	}
+	return nil
+}
+
+// outputResult outputs result as JSON or to file
+func outputResult(cmd *cobra.Command, data interface{}) error {
+	output, _ := cmd.Flags().GetString("output")
+
+	jsonBytes, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	if output != "" {
+		return os.WriteFile(output, jsonBytes, 0644)
+	}
+
+	fmt.Println(string(jsonBytes))
+	return nil
+}

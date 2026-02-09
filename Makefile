@@ -4,35 +4,38 @@
 BINARY_NAME=gotr
 
 # Приоритет версии:
-# 1. Явно указанная при вызове make (make VERSION=v1.0.0)
-# 2. Git tag (если есть)
-# 3. "dev"
-VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || echo "")
-ifeq ($(VERSION),)
-    VERSION = dev
-endif
-
-# Если VERSION всё ещё пустой или содержит постфикс (например, v1.0.0-3-gabc123), оставляем только тег
-# Но если явно указана — оставляем как есть
-ifneq ($(filter v%,$(VERSION)),)
-    # Если это чистый тег (v1.0.0) — ок
-    # Если с постфиксом — берём только тег
-    VERSION = $(shell git describe --tags --abbrev=0 2>/dev/null || echo dev)
-endif
+# 1. Явно указанная при вызове make (make VERSION=v2.6.0)
+# 2. Значение из cmd/root.go (если VERSION не указана)
+#
+# Чтобы использовать git tag: make VERSION=$(git describe --tags --abbrev=0)
+VERSION ?=
 
 # Коммит и дата для дополнительной информации
 COMMIT = $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 DATE = $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Флаги для встраивания версии
-LDFLAGS = -ldflags="-s -w -X gotr/cmd.Version=$(VERSION) -X gotr/cmd.Commit=$(COMMIT) -X gotr/cmd.Date=$(DATE)"
+# Используем полный путь к пакету для корректной работы
+PACKAGE_PATH = github.com/Korrnals/gotr/cmd
+
+# Если VERSION не пустой — передаем все флаги
+# Если VERSION пустой — передаем только Commit и Date, Version берется из cmd/root.go
+ifneq ($(VERSION),)
+    LDFLAGS = -ldflags="-s -w -X '$(PACKAGE_PATH).Version=$(VERSION)' -X '$(PACKAGE_PATH).Commit=$(COMMIT)' -X '$(PACKAGE_PATH).Date=$(DATE)'"
+else
+    LDFLAGS = -ldflags="-s -w -X '$(PACKAGE_PATH).Commit=$(COMMIT)' -X '$(PACKAGE_PATH).Date=$(DATE)'"
+endif
 
 # Цель по умолчанию
 all: build
 
 # Сборка
 build:
+ifneq ($(VERSION),)
 	@echo "Сборка $(BINARY_NAME) версии $(VERSION) (commit: $(COMMIT))"
+else
+	@echo "Сборка $(BINARY_NAME) (версия из кода, commit: $(COMMIT))"
+endif
 	go build $(LDFLAGS) -o $(BINARY_NAME)
 
 # Сжатие бинарника UPX (опционально, если установлен upx)

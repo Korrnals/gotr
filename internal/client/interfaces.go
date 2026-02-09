@@ -131,6 +131,16 @@ type ConfigurationsAPI interface {
 	DeleteConfig(configID int64) error
 }
 
+// UsersAPI — операции с пользователями и справочниками
+type UsersAPI interface {
+	GetUsers() (data.GetUsersResponse, error)
+	GetUser(userID int64) (*data.User, error)
+	GetUserByEmail(email string) (*data.User, error)
+	GetPriorities() (data.GetPrioritiesResponse, error)
+	GetStatuses() (data.GetStatusesResponse, error)
+	GetTemplates(projectID int64) (data.GetTemplatesResponse, error)
+}
+
 // ClientInterface — полный интерфейс клиента TestRail API
 type ClientInterface interface {
 	ProjectsAPI
@@ -145,6 +155,7 @@ type ClientInterface interface {
 	PlansAPI
 	AttachmentsAPI
 	ConfigurationsAPI
+	UsersAPI
 }
 
 // Проверка, что HTTPClient реализует ClientInterface

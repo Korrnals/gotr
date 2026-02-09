@@ -111,6 +111,15 @@ type PlansAPI interface {
 	DeletePlanEntry(planID int64, entryID string) error
 }
 
+// AttachmentsAPI — операции с вложениями
+type AttachmentsAPI interface {
+	AddAttachmentToCase(caseID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlan(planID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanEntry(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToResult(resultID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToRun(runID int64, filePath string) (*data.AttachmentResponse, error)
+}
+
 // ClientInterface — полный интерфейс клиента TestRail API
 type ClientInterface interface {
 	ProjectsAPI
@@ -123,6 +132,7 @@ type ClientInterface interface {
 	TestsAPI
 	MilestonesAPI
 	PlansAPI
+	AttachmentsAPI
 }
 
 // Проверка, что HTTPClient реализует ClientInterface

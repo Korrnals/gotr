@@ -121,6 +121,41 @@ type MockClient struct {
 	GetReportsFunc              func(projectID int64) (data.GetReportsResponse, error)
 	RunReportFunc               func(templateID int64) (*data.RunReportResponse, error)
 	RunCrossProjectReportFunc   func(templateID int64) (*data.RunReportResponse, error)
+
+	// ExtendedAPI - Groups
+	GetGroupsFunc       func(projectID int64) (data.GetGroupsResponse, error)
+	GetGroupFunc        func(groupID int64) (*data.Group, error)
+	AddGroupFunc        func(projectID int64, name string, userIDs []int64) (*data.Group, error)
+	UpdateGroupFunc     func(groupID int64, name string, userIDs []int64) (*data.Group, error)
+	DeleteGroupFunc     func(groupID int64) error
+
+	// ExtendedAPI - Roles
+	GetRolesFunc        func() (data.GetRolesResponse, error)
+	GetRoleFunc         func(roleID int64) (*data.Role, error)
+
+	// ExtendedAPI - ResultFields
+	GetResultFieldsFunc func() (data.GetResultFieldsResponse, error)
+
+	// ExtendedAPI - Datasets
+	GetDatasetsFunc     func(projectID int64) (data.GetDatasetsResponse, error)
+	GetDatasetFunc      func(datasetID int64) (*data.Dataset, error)
+	AddDatasetFunc      func(projectID int64, name string) (*data.Dataset, error)
+	UpdateDatasetFunc   func(datasetID int64, name string) (*data.Dataset, error)
+	DeleteDatasetFunc   func(datasetID int64) error
+
+	// ExtendedAPI - Variables
+	GetVariablesFunc    func(datasetID int64) (data.GetVariablesResponse, error)
+	AddVariableFunc     func(datasetID int64, name string) (*data.Variable, error)
+	UpdateVariableFunc  func(variableID int64, name string) (*data.Variable, error)
+	DeleteVariableFunc  func(variableID int64) error
+
+	// ExtendedAPI - BDDs
+	GetBDDFunc          func(caseID int64) (*data.BDD, error)
+	AddBDDFunc          func(caseID int64, content string) (*data.BDD, error)
+
+	// ExtendedAPI - Labels
+	UpdateTestLabelsFunc  func(testID int64, labels []string) error
+	UpdateTestsLabelsFunc func(runID int64, testIDs []int64, labels []string) error
 }
 
 // Проверка, что MockClient реализует ClientInterface
@@ -768,4 +803,172 @@ func (m *MockClient) RunCrossProjectReport(templateID int64) (*data.RunReportRes
 		return m.RunCrossProjectReportFunc(templateID)
 	}
 	return nil, nil
+}
+
+// ---------------------------------------------------------------------------
+// ExtendedAPI - Groups
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetGroups(projectID int64) (data.GetGroupsResponse, error) {
+	if m.GetGroupsFunc != nil {
+		return m.GetGroupsFunc(projectID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetGroup(groupID int64) (*data.Group, error) {
+	if m.GetGroupFunc != nil {
+		return m.GetGroupFunc(groupID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddGroup(projectID int64, name string, userIDs []int64) (*data.Group, error) {
+	if m.AddGroupFunc != nil {
+		return m.AddGroupFunc(projectID, name, userIDs)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) UpdateGroup(groupID int64, name string, userIDs []int64) (*data.Group, error) {
+	if m.UpdateGroupFunc != nil {
+		return m.UpdateGroupFunc(groupID, name, userIDs)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) DeleteGroup(groupID int64) error {
+	if m.DeleteGroupFunc != nil {
+		return m.DeleteGroupFunc(groupID)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// ExtendedAPI - Roles
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetRoles() (data.GetRolesResponse, error) {
+	if m.GetRolesFunc != nil {
+		return m.GetRolesFunc()
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetRole(roleID int64) (*data.Role, error) {
+	if m.GetRoleFunc != nil {
+		return m.GetRoleFunc(roleID)
+	}
+	return nil, nil
+}
+
+// ---------------------------------------------------------------------------
+// ExtendedAPI - ResultFields
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetResultFields() (data.GetResultFieldsResponse, error) {
+	if m.GetResultFieldsFunc != nil {
+		return m.GetResultFieldsFunc()
+	}
+	return nil, nil
+}
+
+// ---------------------------------------------------------------------------
+// ExtendedAPI - Datasets
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetDatasets(projectID int64) (data.GetDatasetsResponse, error) {
+	if m.GetDatasetsFunc != nil {
+		return m.GetDatasetsFunc(projectID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetDataset(datasetID int64) (*data.Dataset, error) {
+	if m.GetDatasetFunc != nil {
+		return m.GetDatasetFunc(datasetID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddDataset(projectID int64, name string) (*data.Dataset, error) {
+	if m.AddDatasetFunc != nil {
+		return m.AddDatasetFunc(projectID, name)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) UpdateDataset(datasetID int64, name string) (*data.Dataset, error) {
+	if m.UpdateDatasetFunc != nil {
+		return m.UpdateDatasetFunc(datasetID, name)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) DeleteDataset(datasetID int64) error {
+	if m.DeleteDatasetFunc != nil {
+		return m.DeleteDatasetFunc(datasetID)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// ExtendedAPI - Variables
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetVariables(datasetID int64) (data.GetVariablesResponse, error) {
+	if m.GetVariablesFunc != nil {
+		return m.GetVariablesFunc(datasetID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddVariable(datasetID int64, name string) (*data.Variable, error) {
+	if m.AddVariableFunc != nil {
+		return m.AddVariableFunc(datasetID, name)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) UpdateVariable(variableID int64, name string) (*data.Variable, error) {
+	if m.UpdateVariableFunc != nil {
+		return m.UpdateVariableFunc(variableID, name)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) DeleteVariable(variableID int64) error {
+	if m.DeleteVariableFunc != nil {
+		return m.DeleteVariableFunc(variableID)
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// ExtendedAPI - BDDs
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetBDD(caseID int64) (*data.BDD, error) {
+	if m.GetBDDFunc != nil {
+		return m.GetBDDFunc(caseID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddBDD(caseID int64, content string) (*data.BDD, error) {
+	if m.AddBDDFunc != nil {
+		return m.AddBDDFunc(caseID, content)
+	}
+	return nil, nil
+}
+
+// ---------------------------------------------------------------------------
+// ExtendedAPI - Labels
+// ---------------------------------------------------------------------------
+func (m *MockClient) UpdateTestLabels(testID int64, labels []string) error {
+	if m.UpdateTestLabelsFunc != nil {
+		return m.UpdateTestLabelsFunc(testID, labels)
+	}
+	return nil
+}
+
+func (m *MockClient) UpdateTestsLabels(runID int64, testIDs []int64, labels []string) error {
+	if m.UpdateTestsLabelsFunc != nil {
+		return m.UpdateTestsLabelsFunc(runID, testIDs, labels)
+	}
+	return nil
 }

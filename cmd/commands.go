@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/get"
+	"github.com/Korrnals/gotr/cmd/labels"
 	"github.com/Korrnals/gotr/cmd/result"
 	"github.com/Korrnals/gotr/cmd/run"
 	"github.com/Korrnals/gotr/cmd/sync"
@@ -34,6 +35,7 @@ func init() {
 	// Регистрация команд из подпакетов (передаем GetClient)
 	attachments.Register(rootCmd, GetClient)
 	get.Register(rootCmd, GetClient)
+	labels.Register(rootCmd, GetClient)
 	run.Register(rootCmd, GetClient)
 	result.Register(rootCmd, GetClient)
 	sync.Register(rootCmd, GetClient)

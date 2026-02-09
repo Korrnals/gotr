@@ -15,7 +15,7 @@ import (
 
 var (
 	// Версия утилиты — заполняется при сборке через -ldflags
-	Version = "2.5.0" // значение по умолчанию для локальной разработки
+	Version = "2.6.0-dev" // значение по умолчанию для локальной разработки
 	Commit  = "unknown"
 	Date    = "unknown"
 )
@@ -95,6 +95,20 @@ func GetClient(cmd *cobra.Command) *client.HTTPClient {
 	if val == nil {
 		fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
 		os.Exit(1)
+	}
+	return val.(*client.HTTPClient)
+}
+
+// GetClientInterface — получает клиент как интерфейс (для тестов с mock)
+func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
+	val := cmd.Context().Value(httpClientKey)
+	if val == nil {
+		fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
+		os.Exit(1)
+	}
+	// Поддерживаем как *client.HTTPClient, так и *client.MockClient
+	if cli, ok := val.(client.ClientInterface); ok {
+		return cli
 	}
 	return val.(*client.HTTPClient)
 }

@@ -91,6 +91,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	addCmd.Flags().String("elapsed", "", "Затраченное время (например: '1m 30s')")
 	addCmd.Flags().String("defects", "", "ID дефектов (через запятую)")
 	addCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
+	addCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	addCmd.MarkFlagRequired("status-id")
 
 	// Флаги для add-case (те же + case-id)
@@ -101,10 +102,12 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	addCaseCmd.Flags().String("elapsed", "", "Затраченное время")
 	addCaseCmd.Flags().String("defects", "", "ID дефектов (через запятую)")
 	addCaseCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
+	addCaseCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	addCaseCmd.MarkFlagRequired("case-id")
 	addCaseCmd.MarkFlagRequired("status-id")
 
 	// Флаги для add-bulk
 	addBulkCmd.Flags().String("results-file", "", "JSON файл с результатами (обязательный)")
+	addBulkCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	addBulkCmd.MarkFlagRequired("results-file")
 }

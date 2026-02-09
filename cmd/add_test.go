@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -170,4 +171,184 @@ func TestAdd_UnsupportedEndpoint(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "неподдерживаемый")
+}
+
+
+// ==================== Attachment Tests ====================
+
+// TestAdd_AttachmentCase_Success проверяет добавление вложения к кейсу
+func TestAdd_AttachmentCase_Success(t *testing.T) {
+	// Создаем временный файл
+	tmpFile, err := os.CreateTemp("", "test-attachment-*.txt")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("test content")
+	tmpFile.Close()
+
+	mock := &client.MockClient{
+		AddAttachmentToCaseFunc: func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+			assert.Equal(t, int64(12345), caseID)
+			assert.Equal(t, tmpFile.Name(), filePath)
+			return &data.AttachmentResponse{AttachmentID: 999, URL: "https://example.com/attachment/999"}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "case", "12345", tmpFile.Name()})
+
+	err = cmd.Execute()
+	assert.NoError(t, err)
+}
+
+// TestAdd_AttachmentPlan_Success проверяет добавление вложения к плану
+func TestAdd_AttachmentPlan_Success(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test-plan-*.pdf")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("plan content")
+	tmpFile.Close()
+
+	mock := &client.MockClient{
+		AddAttachmentToPlanFunc: func(planID int64, filePath string) (*data.AttachmentResponse, error) {
+			assert.Equal(t, int64(100), planID)
+			assert.Equal(t, tmpFile.Name(), filePath)
+			return &data.AttachmentResponse{AttachmentID: 888, URL: "https://example.com/attachment/888"}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "plan", "100", tmpFile.Name()})
+
+	err = cmd.Execute()
+	assert.NoError(t, err)
+}
+
+// TestAdd_AttachmentPlanEntry_Success проверяет добавление вложения к plan entry
+func TestAdd_AttachmentPlanEntry_Success(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test-entry-*.doc")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("entry content")
+	tmpFile.Close()
+
+	mock := &client.MockClient{
+		AddAttachmentToPlanEntryFunc: func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+			assert.Equal(t, int64(200), planID)
+			assert.Equal(t, "entry-abc123", entryID)
+			assert.Equal(t, tmpFile.Name(), filePath)
+			return &data.AttachmentResponse{AttachmentID: 777, URL: "https://example.com/attachment/777"}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "plan-entry", "200", "entry-abc123", tmpFile.Name()})
+
+	err = cmd.Execute()
+	assert.NoError(t, err)
+}
+
+// TestAdd_AttachmentResult_Success проверяет добавление вложения к результату
+func TestAdd_AttachmentResult_Success(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test-result-*.log")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("result log content")
+	tmpFile.Close()
+
+	mock := &client.MockClient{
+		AddAttachmentToResultFunc: func(resultID int64, filePath string) (*data.AttachmentResponse, error) {
+			assert.Equal(t, int64(98765), resultID)
+			assert.Equal(t, tmpFile.Name(), filePath)
+			return &data.AttachmentResponse{AttachmentID: 666, URL: "https://example.com/attachment/666"}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "result", "98765", tmpFile.Name()})
+
+	err = cmd.Execute()
+	assert.NoError(t, err)
+}
+
+// TestAdd_AttachmentRun_Success проверяет добавление вложения к рану
+func TestAdd_AttachmentRun_Success(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "test-run-*.png")
+	assert.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	tmpFile.WriteString("png binary content")
+	tmpFile.Close()
+
+	mock := &client.MockClient{
+		AddAttachmentToRunFunc: func(runID int64, filePath string) (*data.AttachmentResponse, error) {
+			assert.Equal(t, int64(555), runID)
+			assert.Equal(t, tmpFile.Name(), filePath)
+			return &data.AttachmentResponse{AttachmentID: 555, URL: "https://example.com/attachment/555"}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "run", "555", tmpFile.Name()})
+
+	err = cmd.Execute()
+	assert.NoError(t, err)
+}
+
+// TestAdd_Attachment_MissingArgs проверяет ошибку при недостаточных аргументах
+func TestAdd_Attachment_MissingArgs(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "тип вложения")
+}
+
+// TestAdd_Attachment_InvalidCaseID проверяет ошибку при неверном case_id
+func TestAdd_Attachment_InvalidCaseID(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "case", "invalid", "/tmp/test.txt"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "case_id")
+}
+
+// TestAdd_Attachment_UnsupportedType проверяет ошибку при неподдерживаемом типе
+func TestAdd_Attachment_UnsupportedType(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "invalid-type", "123", "/tmp/test.txt"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "неподдерживаемый тип")
+}
+
+// TestAdd_Attachment_MissingFilePath проверяет ошибку при отсутствии пути к файлу
+func TestAdd_Attachment_MissingFilePath(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "case", "12345"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "использование")
+}
+
+// TestAdd_Attachment_MissingPlanEntryArgs проверяет ошибку при недостаточных аргументах для plan-entry
+func TestAdd_Attachment_MissingPlanEntryArgs(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetArgs([]string{"attachment", "plan-entry", "100", "entry-id"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "использование")
 }

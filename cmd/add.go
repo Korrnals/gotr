@@ -31,6 +31,11 @@ var addCmd = &cobra.Command{
   milestone <project_id>    Создать milestone
   plan <project_id>         Создать test plan
   entry <plan_id>           Добавить entry в plan
+  attachment case <case_id> <file>    Добавить вложение к кейсу
+  attachment plan <plan_id> <file>    Добавить вложение к плану
+  attachment plan-entry <plan_id> <entry_id> <file>  Добавить вложение к entry
+  attachment result <result_id> <file>  Добавить вложение к результату
+  attachment run <run_id> <file>      Добавить вложение к рану
 
 Примеры:
   gotr add project --name "New Project" --announcement "Desc"
@@ -38,6 +43,9 @@ var addCmd = &cobra.Command{
   gotr add case 100 --title "Login test" --template-id 1
   gotr add run 1 --name "Nightly Run" --suite-id 100
   gotr add result 12345 --status-id 1 --comment "Passed"
+  gotr add attachment case 12345 ./screenshot.png
+  gotr add attachment plan 100 ./report.pdf
+  gotr add attachment result 98765 ./log.txt
 
 Интерактивный режим (wizard):
   gotr add project -i
@@ -78,7 +86,7 @@ func init() {
 
 func runAdd(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("необходимо указать endpoint: project, suite, section, case, run, result, result-for-case, shared-step, milestone, plan, entry")
+		return fmt.Errorf("необходимо указать endpoint: project, suite, section, case, run, result, result-for-case, shared-step, milestone, plan, entry, attachment")
 	}
 
 	endpoint := args[0]
@@ -86,9 +94,9 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	// Получаем клиент
 	cli := GetClientInterface(cmd)
 
-	// Определяем ID из аргументов
+	// Определяем ID из аргументов (не для attachment - у него своя структура аргументов)
 	var id int64
-	if len(args) > 1 {
+	if len(args) > 1 && endpoint != "attachment" {
 		parsedID, err := strconv.ParseInt(args[1], 10, 64)
 		if err != nil {
 			return fmt.Errorf("неверный ID: %v", err)
@@ -107,9 +115,9 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Проверяем dry-run режим
+	// Проверяем dry-run режим (не для attachment - у него свой dry-run внутри)
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
-	if isDryRun {
+	if isDryRun && endpoint != "attachment" {
 		dr := dryrun.New("add " + endpoint)
 		return runAddDryRun(cmd, dr, endpoint, id, jsonData)
 	}
@@ -160,6 +168,8 @@ func runAdd(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("необходимо указать project_id: gotr add shared-step <project_id>")
 		}
 		return addSharedStep(cli, cmd, id, jsonData)
+	case "attachment":
+		return runAddAttachment(cli, cmd, args)
 	default:
 		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
 	}
@@ -503,6 +513,11 @@ func runAddDryRun(cmd *cobra.Command, dr *dryrun.Printer, endpoint string, id in
 		url = fmt.Sprintf("/index.php?/api/v2/add_shared_step/%d", id)
 		dr.PrintOperation(fmt.Sprintf("Create Shared Step in Project %d", id), method, url, body)
 
+	case "attachment":
+		// Для attachment dry-run обрабатывается отдельно в runAddAttachment
+		// Этот case не должен вызываться напрямую
+		return fmt.Errorf("используйте --dry-run с конкретной подкомандой attachment")
+
 	default:
 		return fmt.Errorf("неподдерживаемый endpoint для dry-run: %s", endpoint)
 	}
@@ -776,4 +791,188 @@ func splitString(s, sep string) []string {
 	}
 	result = append(result, current)
 	return result
+}
+
+// runAddAttachment обрабатывает добавление вложений (DEPRECATED: use 'gotr attachments add' instead)
+func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []string) error {
+	fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr add attachment' is deprecated. Use 'gotr attachments add' instead.")
+	
+	if len(args) < 2 {
+		return fmt.Errorf("необходимо указать тип вложения: case, plan, plan-entry, result, run")
+	}
+
+	attachmentType := args[1]
+
+	switch attachmentType {
+	case "case":
+		if len(args) < 4 {
+			return fmt.Errorf("использование: gotr add attachment case <case_id> <file_path>")
+		}
+		caseID, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return fmt.Errorf("неверный case_id: %v", err)
+		}
+		filePath := args[3]
+		return addAttachmentToCase(cli, cmd, caseID, filePath)
+
+	case "plan":
+		if len(args) < 4 {
+			return fmt.Errorf("использование: gotr add attachment plan <plan_id> <file_path>")
+		}
+		planID, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return fmt.Errorf("неверный plan_id: %v", err)
+		}
+		filePath := args[3]
+		return addAttachmentToPlan(cli, cmd, planID, filePath)
+
+	case "plan-entry":
+		if len(args) < 5 {
+			return fmt.Errorf("использование: gotr add attachment plan-entry <plan_id> <entry_id> <file_path>")
+		}
+		planID, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return fmt.Errorf("неверный plan_id: %v", err)
+		}
+		entryID := args[3]
+		filePath := args[4]
+		return addAttachmentToPlanEntry(cli, cmd, planID, entryID, filePath)
+
+	case "result":
+		if len(args) < 4 {
+			return fmt.Errorf("использование: gotr add attachment result <result_id> <file_path>")
+		}
+		resultID, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return fmt.Errorf("неверный result_id: %v", err)
+		}
+		filePath := args[3]
+		return addAttachmentToResult(cli, cmd, resultID, filePath)
+
+	case "run":
+		if len(args) < 4 {
+			return fmt.Errorf("использование: gotr add attachment run <run_id> <file_path>")
+		}
+		runID, err := strconv.ParseInt(args[2], 10, 64)
+		if err != nil {
+			return fmt.Errorf("неверный run_id: %v", err)
+		}
+		filePath := args[3]
+		return addAttachmentToRun(cli, cmd, runID, filePath)
+
+	default:
+		return fmt.Errorf("неподдерживаемый тип вложения: %s. Доступные: case, plan, plan-entry, result, run", attachmentType)
+	}
+}
+
+func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID int64, filePath string) error {
+	// Проверяем dry-run режим
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("add attachment case")
+		dr.PrintSimple("Add Attachment to Case", fmt.Sprintf("Case ID: %d, File: %s", caseID, filePath))
+		return nil
+	}
+
+	// Проверяем существование файла
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("файл не найден: %s", filePath)
+	}
+
+	resp, err := cli.AddAttachmentToCase(caseID, filePath)
+	if err != nil {
+		return fmt.Errorf("ошибка добавления вложения к кейсу: %v", err)
+	}
+
+	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("   URL: %s\n", resp.URL)
+	return outputResult(cmd, resp)
+}
+
+func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID int64, filePath string) error {
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("add attachment plan")
+		dr.PrintSimple("Add Attachment to Plan", fmt.Sprintf("Plan ID: %d, File: %s", planID, filePath))
+		return nil
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("файл не найден: %s", filePath)
+	}
+
+	resp, err := cli.AddAttachmentToPlan(planID, filePath)
+	if err != nil {
+		return fmt.Errorf("ошибка добавления вложения к плану: %v", err)
+	}
+
+	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("   URL: %s\n", resp.URL)
+	return outputResult(cmd, resp)
+}
+
+func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, planID int64, entryID, filePath string) error {
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("add attachment plan-entry")
+		dr.PrintSimple("Add Attachment to Plan Entry", fmt.Sprintf("Plan ID: %d, Entry ID: %s, File: %s", planID, entryID, filePath))
+		return nil
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("файл не найден: %s", filePath)
+	}
+
+	resp, err := cli.AddAttachmentToPlanEntry(planID, entryID, filePath)
+	if err != nil {
+		return fmt.Errorf("ошибка добавления вложения к plan entry: %v", err)
+	}
+
+	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("   URL: %s\n", resp.URL)
+	return outputResult(cmd, resp)
+}
+
+func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resultID int64, filePath string) error {
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("add attachment result")
+		dr.PrintSimple("Add Attachment to Result", fmt.Sprintf("Result ID: %d, File: %s", resultID, filePath))
+		return nil
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("файл не найден: %s", filePath)
+	}
+
+	resp, err := cli.AddAttachmentToResult(resultID, filePath)
+	if err != nil {
+		return fmt.Errorf("ошибка добавления вложения к результату: %v", err)
+	}
+
+	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("   URL: %s\n", resp.URL)
+	return outputResult(cmd, resp)
+}
+
+func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID int64, filePath string) error {
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("add attachment run")
+		dr.PrintSimple("Add Attachment to Run", fmt.Sprintf("Run ID: %d, File: %s", runID, filePath))
+		return nil
+	}
+
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		return fmt.Errorf("файл не найден: %s", filePath)
+	}
+
+	resp, err := cli.AddAttachmentToRun(runID, filePath)
+	if err != nil {
+		return fmt.Errorf("ошибка добавления вложения к рану: %v", err)
+	}
+
+	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("   URL: %s\n", resp.URL)
+	return outputResult(cmd, resp)
 }

@@ -7,13 +7,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd creates 'plans get' command
+// newGetCmd создаёт команду 'plans get'
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <plan_id>",
-		Short: "Get a test plan by ID",
-		Long:  `Retrieve details of a specific test plan including entries.`,
-		Example: `  gotr plans get 12345
+		Short: "Получить тест-план по ID",
+		Long:  `Получает детальную информацию о тест-плане, включая записи (entries).`,
+		Example: `  # Получить информацию о плане
+  gotr plans get 12345
+
+  # Сохранить в файл
   gotr plans get 12345 -o plan.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

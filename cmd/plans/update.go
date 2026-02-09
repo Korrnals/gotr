@@ -9,14 +9,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd creates 'plans update' command
+// newUpdateCmd создаёт команду 'plans update'
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <plan_id>",
-		Short: "Update a test plan",
-		Long:  `Update an existing test plan.`,
-		Example: `  gotr plans update 12345 --name="Updated Plan Name"
-  gotr plans update 12345 --description="New description"`,
+		Short: "Обновить тест-план",
+		Long:  `Обновляет существующий тест-план.`,
+		Example: `  # Изменить название плана
+  gotr plans update 12345 --name="Новое название плана"
+
+  # Изменить описание
+  gotr plans update 12345 --description="Новое описание"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			planID, err := strconv.ParseInt(args[0], 10, 64)
@@ -54,11 +57,11 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
-	cmd.Flags().String("name", "", "New plan name")
-	cmd.Flags().String("description", "", "New description")
-	cmd.Flags().Int64("milestone-id", 0, "Milestone ID")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	cmd.Flags().String("name", "", "Новое название плана")
+	cmd.Flags().String("description", "", "Новое описание")
+	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
 
 	return cmd
 }

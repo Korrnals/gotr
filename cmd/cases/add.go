@@ -11,13 +11,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd creates 'cases add' command
+// newAddCmd создаёт команду 'cases add'
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <section_id>",
-		Short: "Create a new test case",
-		Long:  `Create a new test case in the specified section.`,
-		Example: `  gotr cases add 100 --title="Login Test" --template-id=1
+		Short: "Создать новый тест-кейс",
+		Long:  `Создаёт новый тест-кейс в указанной секции.`,
+		Example: `  # Создать тест-кейс с параметрами
+  gotr cases add 100 --title="Тест авторизации" --template-id=1
+
+  # Создать из JSON-файла
   gotr cases add 100 --json-file=case.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -68,14 +71,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
-	cmd.Flags().String("json-file", "", "Path to JSON file with case data")
-	cmd.Flags().String("title", "", "Case title")
-	cmd.Flags().Int64("template-id", 0, "Template ID")
-	cmd.Flags().Int64("type-id", 0, "Type ID")
-	cmd.Flags().Int64("priority-id", 0, "Priority ID")
-	cmd.Flags().String("refs", "", "References")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными кейса")
+	cmd.Flags().String("title", "", "Название тест-кейса")
+	cmd.Flags().Int64("template-id", 0, "ID шаблона")
+	cmd.Flags().Int64("type-id", 0, "ID типа теста")
+	cmd.Flags().Int64("priority-id", 0, "ID приоритета")
+	cmd.Flags().String("refs", "", "Ссылки (референсы)")
 
 	return cmd
 }

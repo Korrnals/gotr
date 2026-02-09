@@ -8,13 +8,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCloseCmd creates 'plans close' command
+// newCloseCmd создаёт команду 'plans close'
 func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close <plan_id>",
-		Short: "Close a test plan",
-		Long:  `Close an open test plan (mark as completed).`,
-		Example: `  gotr plans close 12345`,
+		Short: "Закрыть тест-план",
+		Long:  `Закрывает открытый тест-план (отмечает как завершённый).`,
+		Example: `  # Закрыть план
+  gotr plans close 12345
+
+  # Проверить перед закрытием
+  gotr plans close 12345 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			planID, err := strconv.ParseInt(args[0], 10, 64)
@@ -40,8 +44,8 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без реального закрытия")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
 
 	return cmd
 }

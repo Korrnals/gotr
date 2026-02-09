@@ -9,13 +9,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateTestCmd creates 'labels update test' command
+// newUpdateTestCmd создаёт команду 'labels update test'
 func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test <test_id>",
-		Short: "Update labels for a single test",
-		Long:  `Update labels for a specific test by ID.`,
-		Example: `  gotr labels update test 12345 --labels="smoke,critical"
+		Short: "Обновить метки одного теста",
+		Long:  `Обновляет метки для конкретного теста по его ID.`,
+		Example: `  # Добавить метки smoke и critical
+  gotr labels update test 12345 --labels="smoke,critical"
+
+  # Проверить без изменений
   gotr labels update test 99999 --labels="regression" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,19 +50,22 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("labels", "", "Comma-separated list of labels (required)")
+	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
 	cmd.MarkFlagRequired("labels")
 
 	return cmd
 }
 
-// newUpdateTestsCmd creates 'labels update tests' command
+// newUpdateTestsCmd создаёт команду 'labels update tests'
 func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tests",
-		Short: "Update labels for multiple tests in a run",
-		Long:  `Update labels for multiple tests within a specific test run.`,
-		Example: `  gotr labels update tests --run-id=100 --test-ids=1,2,3 --labels="smoke,critical"
+		Short: "Обновить метки нескольких тестов в прогоне",
+		Long:  `Обновляет метки для нескольких тестов в рамках одного тестового прогона.`,
+		Example: `  # Обновить метки для тестов 1,2,3 в прогоне 100
+  gotr labels update tests --run-id=100 --test-ids=1,2,3 --labels="smoke,critical"
+
+  # Проверить без изменений
   gotr labels update tests --run-id=200 --test-ids=10,20 --labels="regression" --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID, _ := cmd.Flags().GetInt64("run-id")
@@ -99,9 +105,9 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64("run-id", 0, "Test run ID (required)")
-	cmd.Flags().String("test-ids", "", "Comma-separated list of test IDs (required)")
-	cmd.Flags().String("labels", "", "Comma-separated list of labels (required)")
+	cmd.Flags().Int64("run-id", 0, "ID тестового прогона (обязательно)")
+	cmd.Flags().String("test-ids", "", "Список ID тестов через запятую (обязательно)")
+	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
 
 	cmd.MarkFlagRequired("run-id")
 	cmd.MarkFlagRequired("test-ids")
@@ -110,7 +116,7 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// parseLabels parses comma-separated labels
+// parseLabels разбирает метки, разделённые запятыми
 func parseLabels(s string) []string {
 	var labels []string
 	for _, part := range strings.Split(s, ",") {
@@ -122,7 +128,7 @@ func parseLabels(s string) []string {
 	return labels
 }
 
-// parseIntList parses comma-separated integers
+// parseIntList разбирает список чисел, разделённых запятыми
 func parseIntList(s string) []int64 {
 	var ids []int64
 	for _, part := range strings.Split(s, ",") {

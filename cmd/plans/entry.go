@@ -10,12 +10,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newEntryCmd creates 'plans entry' parent command
+// newEntryCmd создаёт родительскую команду 'plans entry'
 func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	entryCmd := &cobra.Command{
 		Use:   "entry",
-		Short: "Manage plan entries",
-		Long:  `Add, update, or delete entries within a test plan.`,
+		Short: "Управление записями плана",
+		Long: `Управление записями (entries) тест-плана — тестовыми прогонами внутри плана.
+
+Подкоманды:
+  • add    — добавить запись (тестовый прогон) в план
+  • update — обновить существующую запись
+  • delete — удалить запись из плана`,
 	}
 
 	entryCmd.AddCommand(newEntryAddCmd(getClient))
@@ -25,13 +30,16 @@ func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	return entryCmd
 }
 
-// newEntryAddCmd creates 'plans entry add' command
+// newEntryAddCmd создаёт команду 'plans entry add'
 func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <plan_id>",
-		Short: "Add entry to plan",
-		Long:  `Add a new entry (test run) to an existing plan.`,
-		Example: `  gotr plans entry add 100 --suite-id=50 --name="Entry 1"
+		Short: "Добавить запись в план",
+		Long:  `Добавляет новую запись (тестовый прогон) в существующий план.`,
+		Example: `  # Добавить прогон с названием
+  gotr plans entry add 100 --suite-id=50 --name="Прогон 1"
+
+  # Добавить с конфигурациями
   gotr plans entry add 100 --suite-id=50 --config-ids="1,2,3"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,22 +82,23 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
-	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
-	cmd.Flags().String("name", "", "Entry name")
-	cmd.Flags().String("config-ids", "", "Comma-separated config IDs")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
+	cmd.Flags().String("name", "", "Название записи")
+	cmd.Flags().String("config-ids", "", "ID конфигураций через запятую")
 
 	return cmd
 }
 
-// newEntryUpdateCmd creates 'plans entry update' command
+// newEntryUpdateCmd создаёт команду 'plans entry update'
 func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <plan_id> <entry_id>",
-		Short: "Update plan entry",
-		Long:  `Update an existing plan entry.`,
-		Example: `  gotr plans entry update 100 abc123 --name="Updated Entry"`,
+		Short: "Обновить запись плана",
+		Long:  `Обновляет существующую запись в тест-плане.`,
+		Example: `  # Изменить название записи
+  gotr plans entry update 100 abc123 --name="Обновлённая запись"`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			planID, err := strconv.ParseInt(args[0], 10, 64)
@@ -126,20 +135,24 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
-	cmd.Flags().StringP("output", "o", "", "Save response to file")
-	cmd.Flags().String("name", "", "New entry name")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	cmd.Flags().String("name", "", "Новое название записи")
 
 	return cmd
 }
 
-// newEntryDeleteCmd creates 'plans entry delete' command
+// newEntryDeleteCmd создаёт команду 'plans entry delete'
 func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <plan_id> <entry_id>",
-		Short: "Delete plan entry",
-		Long:  `Delete an entry from a test plan.`,
-		Example: `  gotr plans entry delete 100 abc123`,
+		Short: "Удалить запись плана",
+		Long:  `Удаляет запись из тест-плана.`,
+		Example: `  # Удалить запись из плана
+  gotr plans entry delete 100 abc123
+
+  # Проверить перед удалением
+  gotr plans entry delete 100 abc123 --dry-run`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			planID, err := strconv.ParseInt(args[0], 10, 64)
@@ -169,12 +182,12 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show what would be done")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено")
 
 	return cmd
 }
 
-// parseIntList parses comma-separated integers
+// parseIntList разбирает список чисел, разделённых запятыми
 func parseIntList(s string) []int64 {
 	var ids []int64
 	for _, part := range strings.Split(s, ",") {

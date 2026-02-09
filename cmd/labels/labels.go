@@ -1,4 +1,4 @@
-// Package labels implements CLI commands for TestRail Labels API
+// Package labels реализует CLI команды для работы с метками тестов TestRail
 package labels
 
 import (
@@ -9,29 +9,36 @@ import (
 // GetClientFunc — тип функции для получения клиента
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register registers all labels commands with the root command
+// Register регистрирует все команды для работы с метками
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	labelsCmd := &cobra.Command{
 		Use:   "labels",
-		Short: "Manage test labels",
-		Long:  `Update labels for tests and test runs.`,
+		Short: "Управление метками тестов",
+		Long: `Обновление меток (labels) для тестов и тестовых прогонов.
+
+Метки позволяют категоризировать и группировать тесты для удобного анализа.
+Можно обновлять метки как для одного теста, так и для всех тестов в прогоне.`,
 	}
 
-	// Create 'update' parent command
+	// Создание родительской команды 'update'
 	updateCmd := &cobra.Command{
 		Use:   "update",
-		Short: "Update labels for tests",
-		Long:  `Update labels for a single test or multiple tests in a run.`,
+		Short: "Обновить метки для тестов",
+		Long: `Обновляет метки для одного теста или сразу для всех тестов в прогоне.
+
+Доступные подкоманды:
+  • test  — обновить метки одного теста по ID
+  • tests — обновить метки всех тестов в прогоне`,
 	}
 
-	// Persistent flags for all update subcommands
-	updateCmd.PersistentFlags().Bool("dry-run", false, "Show what would be done without making changes")
+	// Общие флаги для всех подкоманд update
+	updateCmd.PersistentFlags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
 
-	// Add subcommands to 'update'
+	// Добавление подкоманд к 'update'
 	updateCmd.AddCommand(newUpdateTestCmd(getClient))
 	updateCmd.AddCommand(newUpdateTestsCmd(getClient))
 
-	// Add 'update' to labels
+	// Добавление 'update' в labels
 	labelsCmd.AddCommand(updateCmd)
 
 	root.AddCommand(labelsCmd)

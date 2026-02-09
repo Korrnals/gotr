@@ -1,4 +1,4 @@
-// Package cases implements CLI commands for TestRail Cases API
+// Package cases реализует CLI команды для работы с тест-кейсами TestRail
 package cases
 
 import (
@@ -9,15 +9,23 @@ import (
 // GetClientFunc — тип функции для получения клиента
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register registers all cases commands with the root command
+// Register регистрирует все команды для работы с тест-кейсами
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	casesCmd := &cobra.Command{
 		Use:   "cases",
-		Short: "Manage test cases",
-		Long:  `Create, read, update, delete, and bulk operations for test cases.`,
+		Short: "Управление тест-кейсами",
+		Long: `Управление тест-кейсами: создание, чтение, обновление, удаление и массовые операции.
+
+Основные операции:
+  • add    — создать новый тест-кейс
+  • get    — получить тест-кейс по ID
+  • list   — список тест-кейсов с фильтрами
+  • update — обновить тест-кейс
+  • delete — удалить тест-кейс
+  • bulk   — массовые операции (update/delete/copy/move)`,
 	}
 
-	// Add subcommands
+	// Добавление подкоманд
 	casesCmd.AddCommand(newAddCmd(getClient))
 	casesCmd.AddCommand(newGetCmd(getClient))
 	casesCmd.AddCommand(newListCmd(getClient))
@@ -27,3 +35,4 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
 
 	root.AddCommand(casesCmd)
 }
+

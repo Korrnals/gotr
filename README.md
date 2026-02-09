@@ -53,7 +53,7 @@ gotr self-test
 
 | Feature | Description |
 |---------|-------------|
-| **Full API Coverage** | Complete support for TestRail API v2 endpoints |
+| **Full API Coverage** | 106/106 TestRail API v2 endpoints implemented |
 | **Interactive Mode** | Visual selection for projects, suites, and migration targets |
 | **Data Synchronization** | Migrate cases, shared steps, suites, and sections between projects |
 | **Test Run Management** | Create runs, add results, and track test execution |

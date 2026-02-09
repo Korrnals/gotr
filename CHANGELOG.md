@@ -11,6 +11,35 @@
 
 ### Added
 
+#### Stage 4: Complete API Coverage (106/106 endpoints)
+
+- **Attachments API** — 5 endpoints:
+  - `AddAttachmentToCase`, `AddAttachmentToPlan`, `AddAttachmentToPlanEntry`
+  - `AddAttachmentToResult`, `AddAttachmentToRun`
+  - Поддержка multipart/form-data для загрузки файлов
+- **Configurations API** — 7 endpoints:
+  - `GetConfigs`, `AddConfigGroup`, `AddConfig`
+  - `UpdateConfigGroup`, `UpdateConfig`, `DeleteConfigGroup`, `DeleteConfig`
+- **Users API** — 4 endpoints:
+  - `GetUsers`, `GetUser`, `GetUserByEmail`
+- **Reference Data APIs** — 3 endpoints:
+  - `GetPriorities`, `GetStatuses`, `GetTemplates`
+- **Reports API** — 3 endpoints:
+  - `GetReports`, `RunReport`, `RunCrossProjectReport`
+- **Extended APIs** — 21 endpoints:
+  - Groups: `GetGroups`, `GetGroup`, `AddGroup`, `UpdateGroup`, `DeleteGroup`
+  - Roles: `GetRoles`, `GetRole`
+  - ResultFields: `GetResultFields`
+  - Datasets: `GetDatasets`, `GetDataset`, `AddDataset`, `UpdateDataset`, `DeleteDataset`
+  - Variables: `GetVariables`, `AddVariable`, `UpdateVariable`, `DeleteVariable`
+  - BDDs: `GetBDD`, `AddBDD`
+  - Labels: `UpdateTestLabels`, `UpdateTestsLabels`
+
+**Всего реализовано:** 44 новых endpoint'а  
+**Общее покрытие:** 106/106 endpoint'ов TestRail API (100%)
+
+### Added
+
 #### Dry-run режим
 
 - **Флаг** `--dry-run` — единый флаг для всех команд, изменяющих состояние:

@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"io"
 	"net/http"
+
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
 // GetCases получает **все** кейсы проекта (с пагинацией).

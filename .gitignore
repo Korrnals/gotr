@@ -51,6 +51,5 @@ gotr.exe
 *.zip
 *.tar
 
-**/dist/
-# Build artifacts
+# Distribution directory (contains built binaries and release artifacts)
 dist/

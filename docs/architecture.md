@@ -1,7 +1,7 @@
 # Архитектура gotr
 
 > Общее описание архитектуры CLI-утилиты gotr для пользователей  
-> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-05 (v2.5.0).
+> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-08 (v2.6.0-dev) — Stage 4: Complete API Coverage (106 endpoints).
 
 ## Что такое gotr
 
@@ -93,21 +93,31 @@ gotr run get 12345 --jq
 ```
 internal/client/
 ├── client.go           # HTTPClient — основной HTTP клиент
-├── interfaces.go       # ClientInterface + 7 API групп
+├── interfaces.go       # ClientInterface + 14 API групп (106 endpoints)
 ├── mock.go             # MockClient для тестирования
-├── projects.go         # ProjectsAPI (5 методов)
-├── cases.go            # CasesAPI (14 методов)
-├── suites.go           # SuitesAPI (5 методов)
-├── sections.go         # SectionsAPI (5 методов)
-├── sharedsteps.go      # SharedStepsAPI (6 методов)
-├── runs.go             # RunsAPI (6 методов)
-└── results.go          # ResultsAPI (7 методов)
+├── projects.go         # ProjectsAPI (5 endpoints)
+├── cases.go            # CasesAPI (14 endpoints)
+├── suites.go           # SuitesAPI (5 endpoints)
+├── sections.go         # SectionsAPI (5 endpoints)
+├── sharedsteps.go      # SharedStepsAPI (6 endpoints)
+├── runs.go             # RunsAPI (6 endpoints)
+├── results.go          # ResultsAPI (7 endpoints)
+├── tests.go            # TestsAPI (3 endpoints) — Stage 4
+├── milestones.go       # MilestonesAPI (5 endpoints) — Stage 4
+├── plans.go            # PlansAPI (9 endpoints) — Stage 4
+├── attachments.go      # AttachmentsAPI (5 endpoints) — Stage 4
+├── configs.go          # ConfigurationsAPI (7 endpoints) — Stage 4
+├── users.go            # UsersAPI (4 endpoints) — Stage 4
+├── reports.go          # ReportsAPI (3 endpoints) — Stage 4
+└── extended.go         # ExtendedAPI (21 endpoint) — Stage 4
 ```
 
 **ClientInterface:**
-- 43 метода общего назначения
-- Композиция из 7 интерфейсов по доменам
+- 106 endpoints полностью покрыты
+- 118 методов (включая вспомогательные)
+- Композиция из 14 интерфейсов по доменам
 - Поддержка mock-реализации для тестов
+- 100% покрытие TestRail API v2
 
 ### 4. Interactive Layer (`internal/interactive/`)
 
@@ -125,8 +135,10 @@ internal/client/
 **Основные структуры:**
 - `Project`, `Suite`, `Section`, `Case`
 - `Run`, `Test`, `Result`
-- `SharedStep`
-- `Status` — константы статусов
+- `SharedStep`, `Milestone`, `Plan`
+- `Attachment`, `Config`, `User`
+- `Report`, `Group`, `Role`, `Dataset`
+- `Status`, `Priority` — константы
 
 ### 6. Utilities (`internal/utils/`)
 

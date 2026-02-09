@@ -107,3 +107,11 @@ gotr get projects --jq --jq-filter '.[] | {id: .id, name: .name}'
 # Красивый вывод
 gotr get case 12345 --jq
 ```
+
+---
+
+## Примечание: Полное покрытие API
+
+Все 106 endpoint'ов TestRail API v2 реализованы в Client Layer (`internal/client/`).
+CLI команды для новых API (milestones, plans, tests, configurations, users, reports, etc.)
+будут добавлены в **Stage 5**.

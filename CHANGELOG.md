@@ -9,6 +9,70 @@
 
 ## [Unreleased]
 
+### Added
+
+#### Build System Improvements
+
+- **Автоматическая синхронизация версии в Makefile:**
+  - Команда `make build` теперь извлекает версию из `cmd/root.go` (единый источник правды)
+  - Для релизных версий (без `-dev`) автоматически создаётся/проверяется git tag
+  - Приоритет версии: 1) `make build VERSION=x`, 2) версия из кода, 3) git tag
+  - Нормализация тега: поддержка `VERSION=v2.6.0` и `VERSION=2.6.0`
+
+#### Stage 4: Complete API Coverage (106/106 endpoints)
+
+- **Attachments API** — 5 endpoints:
+  - `AddAttachmentToCase`, `AddAttachmentToPlan`, `AddAttachmentToPlanEntry`
+  - `AddAttachmentToResult`, `AddAttachmentToRun`
+  - Поддержка multipart/form-data для загрузки файлов
+- **Configurations API** — 7 endpoints:
+  - `GetConfigs`, `AddConfigGroup`, `AddConfig`
+  - `UpdateConfigGroup`, `UpdateConfig`, `DeleteConfigGroup`, `DeleteConfig`
+- **Users API** — 4 endpoints:
+  - `GetUsers`, `GetUser`, `GetUserByEmail`
+- **Reference Data APIs** — 3 endpoints:
+  - `GetPriorities`, `GetStatuses`, `GetTemplates`
+- **Reports API** — 3 endpoints:
+  - `GetReports`, `RunReport`, `RunCrossProjectReport`
+- **Extended APIs** — 21 endpoints:
+  - Groups: `GetGroups`, `GetGroup`, `AddGroup`, `UpdateGroup`, `DeleteGroup`
+  - Roles: `GetRoles`, `GetRole`
+  - ResultFields: `GetResultFields`
+  - Datasets: `GetDatasets`, `GetDataset`, `AddDataset`, `UpdateDataset`, `DeleteDataset`
+  - Variables: `GetVariables`, `AddVariable`, `UpdateVariable`, `DeleteVariable`
+  - BDDs: `GetBDD`, `AddBDD`
+  - Labels: `UpdateTestLabels`, `UpdateTestsLabels`
+
+**Всего реализовано:** 44 новых endpoint'а  
+**Общее покрытие:** 106/106 endpoint'ов TestRail API (100%)
+
+### Added
+
+#### Dry-run режим
+
+- **Флаг** `--dry-run` — единый флаг для всех команд, изменяющих состояние:
+  - `add` — project, suite, section, case, run, result, shared-step
+  - `update` — project, suite, section, case, run, shared-step
+  - `delete` — project, suite, section, case, run, shared-step
+  - `run create/update/close/delete`
+  - `result add/add-case/add-bulk`
+- **Пакет** `cmd/common/dryrun/` — централизованное форматирование вывода dry-run
+
+#### Интерактивный wizard mode
+
+- **Флаг** `--interactive/-i` — интерактивный режим для команд:
+  - `add` — project, suite, case, run
+  - `update` — project, suite, case
+- **Пакет** `cmd/common/wizard/` — библиотека интерактивных prompt'ов на survey/v2
+- Паттерн: ввод → предпросмотр → подтверждение/отмена
+
+### Changed
+
+- **Флаг** `-i` теперь используется для `--interactive` (вместо `--insecure`)
+- **Флаг** `--insecure` — только длинная форма (без shorthand)
+
+---
+
 ## [2.5.0] - 2026-02-05
 
 ### Added

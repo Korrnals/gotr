@@ -82,6 +82,110 @@ type ResultsAPI interface {
 	AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
+// TestsAPI — операции с тестами
+type TestsAPI interface {
+	GetTest(testID int64) (*data.Test, error)
+	GetTests(runID int64, filters map[string]string) ([]data.Test, error)
+	UpdateTest(testID int64, req *data.UpdateTestRequest) (*data.Test, error)
+}
+
+// MilestonesAPI — операции с milestones
+type MilestonesAPI interface {
+	GetMilestone(milestoneID int64) (*data.Milestone, error)
+	GetMilestones(projectID int64) ([]data.Milestone, error)
+	AddMilestone(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error)
+	UpdateMilestone(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error)
+	DeleteMilestone(milestoneID int64) error
+}
+
+// PlansAPI — операции с тест-планами
+type PlansAPI interface {
+	GetPlan(planID int64) (*data.Plan, error)
+	GetPlans(projectID int64) (data.GetPlansResponse, error)
+	AddPlan(projectID int64, req *data.AddPlanRequest) (*data.Plan, error)
+	UpdatePlan(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error)
+	ClosePlan(planID int64) (*data.Plan, error)
+	DeletePlan(planID int64) error
+	AddPlanEntry(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error)
+	UpdatePlanEntry(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error)
+	DeletePlanEntry(planID int64, entryID string) error
+}
+
+// AttachmentsAPI — операции с вложениями
+type AttachmentsAPI interface {
+	AddAttachmentToCase(caseID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlan(planID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanEntry(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToResult(resultID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToRun(runID int64, filePath string) (*data.AttachmentResponse, error)
+}
+
+// ConfigurationsAPI — операции с конфигурациями
+type ConfigurationsAPI interface {
+	GetConfigs(projectID int64) (data.GetConfigsResponse, error)
+	AddConfigGroup(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error)
+	AddConfig(groupID int64, req *data.AddConfigRequest) (*data.Config, error)
+	UpdateConfigGroup(groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error)
+	UpdateConfig(configID int64, req *data.UpdateConfigRequest) (*data.Config, error)
+	DeleteConfigGroup(groupID int64) error
+	DeleteConfig(configID int64) error
+}
+
+// UsersAPI — операции с пользователями и справочниками
+type UsersAPI interface {
+	GetUsers() (data.GetUsersResponse, error)
+	GetUser(userID int64) (*data.User, error)
+	GetUserByEmail(email string) (*data.User, error)
+	GetPriorities() (data.GetPrioritiesResponse, error)
+	GetStatuses() (data.GetStatusesResponse, error)
+	GetTemplates(projectID int64) (data.GetTemplatesResponse, error)
+}
+
+// ReportsAPI — операции с отчётами
+type ReportsAPI interface {
+	GetReports(projectID int64) (data.GetReportsResponse, error)
+	RunReport(templateID int64) (*data.RunReportResponse, error)
+	RunCrossProjectReport(templateID int64) (*data.RunReportResponse, error)
+}
+
+// ExtendedAPI — расширенные API (Groups, Roles, ResultFields, Datasets, Variables, BDDs, Labels)
+type ExtendedAPI interface {
+	// Groups
+	GetGroups(projectID int64) (data.GetGroupsResponse, error)
+	GetGroup(groupID int64) (*data.Group, error)
+	AddGroup(projectID int64, name string, userIDs []int64) (*data.Group, error)
+	UpdateGroup(groupID int64, name string, userIDs []int64) (*data.Group, error)
+	DeleteGroup(groupID int64) error
+
+	// Roles
+	GetRoles() (data.GetRolesResponse, error)
+	GetRole(roleID int64) (*data.Role, error)
+
+	// ResultFields
+	GetResultFields() (data.GetResultFieldsResponse, error)
+
+	// Datasets
+	GetDatasets(projectID int64) (data.GetDatasetsResponse, error)
+	GetDataset(datasetID int64) (*data.Dataset, error)
+	AddDataset(projectID int64, name string) (*data.Dataset, error)
+	UpdateDataset(datasetID int64, name string) (*data.Dataset, error)
+	DeleteDataset(datasetID int64) error
+
+	// Variables
+	GetVariables(datasetID int64) (data.GetVariablesResponse, error)
+	AddVariable(datasetID int64, name string) (*data.Variable, error)
+	UpdateVariable(variableID int64, name string) (*data.Variable, error)
+	DeleteVariable(variableID int64) error
+
+	// BDDs
+	GetBDD(caseID int64) (*data.BDD, error)
+	AddBDD(caseID int64, content string) (*data.BDD, error)
+
+	// Labels
+	UpdateTestLabels(testID int64, labels []string) error
+	UpdateTestsLabels(runID int64, testIDs []int64, labels []string) error
+}
+
 // ClientInterface — полный интерфейс клиента TestRail API
 type ClientInterface interface {
 	ProjectsAPI
@@ -91,6 +195,14 @@ type ClientInterface interface {
 	SharedStepsAPI
 	RunsAPI
 	ResultsAPI
+	TestsAPI
+	MilestonesAPI
+	PlansAPI
+	AttachmentsAPI
+	ConfigurationsAPI
+	UsersAPI
+	ReportsAPI
+	ExtendedAPI
 }
 
 // Проверка, что HTTPClient реализует ClientInterface

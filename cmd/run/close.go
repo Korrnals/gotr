@@ -3,6 +3,7 @@ package run
 import (
 	"fmt"
 
+	"github.com/Korrnals/gotr/cmd/common/dryrun"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +27,9 @@ var closeCmd = &cobra.Command{
 
 	# Закрыть и сохранить информацию о закрытом run
 	gotr run close 12345 -o closed_run.json
-`,
+
+	# Dry-run режим
+	gotr run close 12345 --dry-run`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		httpClient := getClientSafe(cmd)
@@ -38,6 +41,19 @@ var closeCmd = &cobra.Command{
 		runID, err := svc.ParseID(args, 0)
 		if err != nil {
 			return fmt.Errorf("некорректный ID test run: %w", err)
+		}
+
+		// Проверяем dry-run режим
+		isDryRun, _ := cmd.Flags().GetBool("dry-run")
+		if isDryRun {
+			dr := dryrun.New("run close")
+			dr.PrintOperation(
+				fmt.Sprintf("Close Run %d", runID),
+				"POST",
+				fmt.Sprintf("/index.php?/api/v2/close_run/%d", runID),
+				nil,
+			)
+			return nil
 		}
 
 		run, err := svc.Close(runID)

@@ -108,6 +108,14 @@ type MockClient struct {
 	UpdateConfigFunc        func(configID int64, req *data.UpdateConfigRequest) (*data.Config, error)
 	DeleteConfigGroupFunc   func(groupID int64) error
 	DeleteConfigFunc        func(configID int64) error
+
+	// UsersAPI
+	GetUsersFunc         func() (data.GetUsersResponse, error)
+	GetUserFunc          func(userID int64) (*data.User, error)
+	GetUserByEmailFunc   func(email string) (*data.User, error)
+	GetPrioritiesFunc    func() (data.GetPrioritiesResponse, error)
+	GetStatusesFunc      func() (data.GetStatusesResponse, error)
+	GetTemplatesFunc     func(projectID int64) (data.GetTemplatesResponse, error)
 }
 
 // Проверка, что MockClient реализует ClientInterface
@@ -686,4 +694,49 @@ func (m *MockClient) DeleteConfig(configID int64) error {
 		return m.DeleteConfigFunc(configID)
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// UsersAPI
+// ---------------------------------------------------------------------------
+func (m *MockClient) GetUsers() (data.GetUsersResponse, error) {
+	if m.GetUsersFunc != nil {
+		return m.GetUsersFunc()
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetUser(userID int64) (*data.User, error) {
+	if m.GetUserFunc != nil {
+		return m.GetUserFunc(userID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetUserByEmail(email string) (*data.User, error) {
+	if m.GetUserByEmailFunc != nil {
+		return m.GetUserByEmailFunc(email)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetPriorities() (data.GetPrioritiesResponse, error) {
+	if m.GetPrioritiesFunc != nil {
+		return m.GetPrioritiesFunc()
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetStatuses() (data.GetStatusesResponse, error) {
+	if m.GetStatusesFunc != nil {
+		return m.GetStatusesFunc()
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetTemplates(projectID int64) (data.GetTemplatesResponse, error) {
+	if m.GetTemplatesFunc != nil {
+		return m.GetTemplatesFunc(projectID)
+	}
+	return nil, nil
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/cases"
 	"github.com/Korrnals/gotr/cmd/configurations"
+	"github.com/Korrnals/gotr/cmd/datasets"
 	"github.com/Korrnals/gotr/cmd/get"
 	"github.com/Korrnals/gotr/cmd/groups"
 	"github.com/Korrnals/gotr/cmd/labels"
@@ -41,6 +42,7 @@ func init() {
 	attachments.Register(rootCmd, GetClient)
 	cases.Register(rootCmd, GetClientInterface)
 	configurations.Register(rootCmd, GetClientInterface)
+	datasets.Register(rootCmd, GetClientInterface)
 	get.Register(rootCmd, GetClient)
 	groups.Register(rootCmd, GetClientInterface)
 	labels.Register(rootCmd, GetClientInterface)

@@ -9,6 +9,7 @@ import (
 )
 
 // newCloseCmd создаёт команду 'plans close'
+// Эндпоинт: POST /close_plan/{plan_id}
 func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close <plan_id>",

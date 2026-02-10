@@ -9,6 +9,7 @@ import (
 )
 
 // newDeleteCmd создаёт команду 'cases delete'
+// Эндпоинт: POST /delete_case/{case_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <case_id>",

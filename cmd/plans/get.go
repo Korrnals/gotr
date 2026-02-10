@@ -8,6 +8,7 @@ import (
 )
 
 // newGetCmd создаёт команду 'plans get'
+// Эндпоинт: GET /get_plan/{plan_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <plan_id>",

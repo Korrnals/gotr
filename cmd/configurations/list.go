@@ -10,6 +10,7 @@ import (
 )
 
 // newListCmd создаёт команду 'configurations list'
+// Эндпоинт: GET /get_configs/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list <project_id>",

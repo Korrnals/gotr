@@ -13,6 +13,7 @@ import (
 )
 
 // newBulkCmd создаёт родительскую команду 'cases bulk'
+// Родительская команда для массовых операций над кейсами
 func newBulkCmd(getClient GetClientFunc) *cobra.Command {
 	bulkCmd := &cobra.Command{
 		Use:   "bulk",
@@ -35,6 +36,7 @@ func newBulkCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newBulkUpdateCmd создаёт команду 'cases bulk update'
+// Эндпоинт: POST /update_cases/{suite_id}
 func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <case_ids...>",
@@ -95,6 +97,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newBulkDeleteCmd создаёт команду 'cases bulk delete'
+// Эндпоинт: POST /delete_cases/{suite_id}
 func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <case_ids...>",
@@ -145,6 +148,7 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newBulkCopyCmd создаёт команду 'cases bulk copy'
+// Эндпоинт: POST /copy_cases_to_section/{section_id}
 func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "copy <case_ids...>",
@@ -195,6 +199,7 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newBulkMoveCmd создаёт команду 'cases bulk move'
+// Эндпоинт: POST /move_cases_to_section/{section_id}
 func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "move <case_ids...>",

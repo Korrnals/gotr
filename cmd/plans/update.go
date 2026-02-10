@@ -10,6 +10,7 @@ import (
 )
 
 // newUpdateCmd создаёт команду 'plans update'
+// Эндпоинт: POST /update_plan/{plan_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <plan_id>",

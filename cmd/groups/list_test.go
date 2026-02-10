@@ -1,4 +1,4 @@
-package configurations
+package groups
 
 import (
 	"context"
@@ -17,25 +17,12 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
-			return data.GetConfigsResponse{
-				{
-					ID:   1,
-					Name: "Browsers",
-					Configs: []data.Config{
-						{ID: 10, Name: "Chrome"},
-						{ID: 11, Name: "Firefox"},
-					},
-				},
-				{
-					ID:   2,
-					Name: "OS",
-					Configs: []data.Config{
-						{ID: 20, Name: "Windows"},
-						{ID: 21, Name: "Linux"},
-					},
-				},
+			return []data.Group{
+				{ID: 1, Name: "QA Team"},
+				{ID: 2, Name: "Developers"},
+				{ID: 3, Name: "Managers"},
 			}, nil
 		},
 	}
@@ -48,39 +35,10 @@ func TestListCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestListCmd_WithOutputFile(t *testing.T) {
-	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
-			return data.GetConfigsResponse{
-				{ID: 1, Name: "Browsers"},
-			}, nil
-		},
-	}
-
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "configs.json")
-
-	cmd := newListCmd(getClientForTests)
-	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"1", "-o", outputFile})
-
-	err := cmd.Execute()
-	assert.NoError(t, err)
-
-	// Проверяем что файл создан
-	_, err = os.Stat(outputFile)
-	assert.NoError(t, err)
-
-	// Проверяем содержимое
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Browsers")
-}
-
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
-			return data.GetConfigsResponse{}, nil
+		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+			return []data.Group{}, nil
 		},
 	}
 
@@ -94,18 +52,42 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
-			return nil, fmt.Errorf("проект не найден")
+		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+			return nil, fmt.Errorf("ошибка подключения к API")
 		},
 	}
 
 	cmd := newListCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"999"})
+	cmd.SetArgs([]string{"1"})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "проект не найден")
+	assert.Contains(t, err.Error(), "ошибка подключения")
+}
+
+func TestListCmd_WithOutputFile(t *testing.T) {
+	mock := &client.MockClient{
+		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+			return []data.Group{
+				{ID: 1, Name: "QA Team"},
+			}, nil
+		},
+	}
+
+	tmpDir := t.TempDir()
+	outputFile := filepath.Join(tmpDir, "groups.json")
+
+	cmd := newListCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1", "-o", outputFile})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+
+	content, err := os.ReadFile(outputFile)
+	assert.NoError(t, err)
+	assert.Contains(t, string(content), "QA Team")
 }
 
 // ==================== Тесты валидации ====================
@@ -185,14 +167,18 @@ func TestRegister(t *testing.T) {
 	})
 
 	// Проверяем что команда добавлена
-	configsCmd, _, err := root.Find([]string{"configurations"})
+	groupsCmd, _, err := root.Find([]string{"groups"})
 	assert.NoError(t, err)
-	assert.NotNil(t, configsCmd)
-	assert.Equal(t, "configurations", configsCmd.Name())
+	assert.NotNil(t, groupsCmd)
+	assert.Equal(t, "groups", groupsCmd.Name())
 
 	// Проверяем что подкоманда list существует
-	listCmd, _, err := root.Find([]string{"configurations", "list"})
+	listCmd, _, err := root.Find([]string{"groups", "list"})
 	assert.NoError(t, err)
 	assert.NotNil(t, listCmd)
-	assert.Equal(t, "list", listCmd.Name())
+
+	// Проверяем что подкоманда get существует
+	getCmd, _, err := root.Find([]string{"groups", "get"})
+	assert.NoError(t, err)
+	assert.NotNil(t, getCmd)
 }

@@ -22,16 +22,27 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • Мобильные устройства (iOS, Android)
   • Версии ПО и другие параметры
 
-Конфигурации привязаны к проекту и используются при создании тест-планов
-с множественными конфигурациями для тестирования одного набора кейсов
-в разных средах.
+Конфигурации организованы в группы (например: "Browsers", "OS").
+Каждая группа содержит отдельные конфигурации (например: "Chrome", "Firefox").
 
 Доступные операции:
-  • list — список конфигураций проекта`,
+  • list          — список конфигураций проекта
+  • add-group     — создать группу конфигураций
+  • add-config    — добавить конфигурацию в группу
+  • update-group  — обновить группу
+  • update-config — обновить конфигурацию
+  • delete-group  — удалить группу
+  • delete-config — удалить конфигурацию`,
 	}
 
 	// Добавление подкоманд
 	configsCmd.AddCommand(newListCmd(getClient))
+	configsCmd.AddCommand(newAddGroupCmd(getClient))
+	configsCmd.AddCommand(newAddConfigCmd(getClient))
+	configsCmd.AddCommand(newUpdateGroupCmd(getClient))
+	configsCmd.AddCommand(newUpdateConfigCmd(getClient))
+	configsCmd.AddCommand(newDeleteGroupCmd(getClient))
+	configsCmd.AddCommand(newDeleteConfigCmd(getClient))
 
 	root.AddCommand(configsCmd)
 }

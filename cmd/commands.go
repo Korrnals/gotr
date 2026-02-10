@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/Korrnals/gotr/cmd/attachments"
+	"github.com/Korrnals/gotr/cmd/bdds"
 	"github.com/Korrnals/gotr/cmd/cases"
 	"github.com/Korrnals/gotr/cmd/configurations"
 	"github.com/Korrnals/gotr/cmd/datasets"
@@ -41,6 +42,7 @@ func init() {
 
 	// Регистрация команд из подпакетов (передаем GetClient)
 	attachments.Register(rootCmd, GetClient)
+	bdds.Register(rootCmd, GetClientInterface)
 	cases.Register(rootCmd, GetClientInterface)
 	configurations.Register(rootCmd, GetClientInterface)
 	datasets.Register(rootCmd, GetClientInterface)

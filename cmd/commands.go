@@ -14,6 +14,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/run"
 	"github.com/Korrnals/gotr/cmd/sync"
 	"github.com/Korrnals/gotr/cmd/test"
+	"github.com/Korrnals/gotr/cmd/variables"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -52,6 +53,7 @@ func init() {
 	result.Register(rootCmd, GetClient)
 	sync.Register(rootCmd, GetClient)
 	test.Register(rootCmd, GetClient)
+	variables.Register(rootCmd, GetClientInterface)
 }
 
 // initGlobalFlags инициализирует глобальные флаги для rootCmd

@@ -9,6 +9,7 @@ import (
 )
 
 // newDeleteCmd создаёт команду 'milestones delete'
+// Эндпоинт: POST /delete_milestone/{milestone_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <milestone_id>",

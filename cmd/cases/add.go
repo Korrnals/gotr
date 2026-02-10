@@ -12,6 +12,7 @@ import (
 )
 
 // newAddCmd создаёт команду 'cases add'
+// Эндпоинт: POST /add_case/{section_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <section_id>",

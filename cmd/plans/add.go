@@ -12,6 +12,7 @@ import (
 )
 
 // newAddCmd создаёт команду 'plans add'
+// Эндпоинт: POST /add_plan/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <project_id>",

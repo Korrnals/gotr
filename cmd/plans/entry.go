@@ -11,6 +11,7 @@ import (
 )
 
 // newEntryCmd создаёт родительскую команду 'plans entry'
+// Родительская команда для управления записями плана
 func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	entryCmd := &cobra.Command{
 		Use:   "entry",
@@ -31,6 +32,7 @@ func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newEntryAddCmd создаёт команду 'plans entry add'
+// Эндпоинт: POST /add_plan_entry/{plan_id}
 func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add <plan_id>",
@@ -92,6 +94,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newEntryUpdateCmd создаёт команду 'plans entry update'
+// Эндпоинт: POST /update_plan_entry/{plan_id}/{entry_id}
 func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <plan_id> <entry_id>",
@@ -143,6 +146,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newEntryDeleteCmd создаёт команду 'plans entry delete'
+// Эндпоинт: POST /delete_plan_entry/{plan_id}/{entry_id}
 func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <plan_id> <entry_id>",

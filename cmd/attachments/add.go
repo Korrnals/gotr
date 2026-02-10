@@ -11,6 +11,7 @@ import (
 )
 
 // newAddCaseCmd создаёт команду 'attachments add case'
+// Эндпоинт: POST /add_attachment_to_case/{case_id}
 func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case <case_id> <file_path>",
@@ -54,6 +55,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newAddPlanCmd создаёт команду 'attachments add plan'
+// Эндпоинт: POST /add_attachment_to_plan/{plan_id}
 func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "plan <plan_id> <file_path>",
@@ -95,6 +97,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newAddPlanEntryCmd создаёт команду 'attachments add plan-entry'
+// Эндпоинт: POST /add_attachment_to_plan_entry/{plan_id}/{entry_id}
 func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "plan-entry <plan_id> <entry_id> <file_path>",
@@ -137,6 +140,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newAddResultCmd создаёт команду 'attachments add result'
+// Эндпоинт: POST /add_attachment_to_result/{result_id}
 func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "result <result_id> <file_path>",
@@ -178,6 +182,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newAddRunCmd создаёт команду 'attachments add run'
+// Эндпоинт: POST /add_attachment_to_run/{run_id}
 func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "run <run_id> <file_path>",

@@ -8,6 +8,7 @@ import (
 )
 
 // newListCmd создаёт команду 'cases list'
+// Эндпоинт: GET /get_cases/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list <project_id>",

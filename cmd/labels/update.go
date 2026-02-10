@@ -10,6 +10,7 @@ import (
 )
 
 // newUpdateTestCmd создаёт команду 'labels update test'
+// Эндпоинт: POST /update_test/{test_id}
 func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test <test_id>",
@@ -57,6 +58,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 // newUpdateTestsCmd создаёт команду 'labels update tests'
+// Эндпоинт: POST /update_tests/{run_id}
 func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tests",

@@ -51,8 +51,9 @@ func TestSuitesCmd_Success(t *testing.T) {
 	})
 
 	cmd := newSuitesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
-	
+
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
@@ -67,6 +68,7 @@ func TestSuitesCmd_NoClient(t *testing.T) {
 	})
 
 	cmd := newSuitesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -81,6 +83,7 @@ func TestSuitesCmd_InvalidPid1(t *testing.T) {
 	})
 
 	cmd := newSuitesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=invalid", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -98,6 +101,7 @@ func TestSuitesCmd_ProjectError(t *testing.T) {
 	})
 
 	cmd := newSuitesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -123,6 +127,7 @@ func TestCasesCmd_Success(t *testing.T) {
 	})
 
 	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -155,6 +160,7 @@ func TestCasesCmd_WithField(t *testing.T) {
 	})
 
 	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--field=priority_id"})
 
 	err := cmd.Execute()
@@ -177,6 +183,7 @@ func TestPlansCmd_Success(t *testing.T) {
 	})
 
 	cmd := newPlansCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -199,6 +206,7 @@ func TestRunsCmd_Success(t *testing.T) {
 	})
 
 	cmd := newRunsCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -224,6 +232,7 @@ func TestSectionsCmd_Success(t *testing.T) {
 	})
 
 	cmd := newSectionsCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -246,6 +255,7 @@ func TestMilestonesCmd_Success(t *testing.T) {
 	})
 
 	cmd := newMilestonesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -268,6 +278,7 @@ func TestDatasetsCmd_Success(t *testing.T) {
 	})
 
 	cmd := newDatasetsCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -290,6 +301,7 @@ func TestGroupsCmd_Success(t *testing.T) {
 	})
 
 	cmd := newGroupsCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -312,6 +324,7 @@ func TestLabelsCmd_Success(t *testing.T) {
 	})
 
 	cmd := newLabelsCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -334,6 +347,7 @@ func TestTemplatesCmd_Success(t *testing.T) {
 	})
 
 	cmd := newTemplatesCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -356,6 +370,7 @@ func TestConfigurationsCmd_Success(t *testing.T) {
 	})
 
 	cmd := newConfigurationsCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -378,6 +393,7 @@ func TestSharedStepsCmd_Success(t *testing.T) {
 	})
 
 	cmd := newSharedStepsCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	err := cmd.Execute()
@@ -433,6 +449,7 @@ func TestAllCmd_Success(t *testing.T) {
 	})
 
 	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
 	var buf bytes.Buffer
@@ -489,6 +506,7 @@ func TestAllCmd_WithSave(t *testing.T) {
 	})
 
 	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=json"})
 
 	var buf bytes.Buffer

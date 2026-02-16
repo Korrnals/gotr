@@ -50,6 +50,13 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 `,
 	}
 
+	// Add persistent flags FIRST (before subcommands) for completion to work
+	Cmd.PersistentFlags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
+	Cmd.PersistentFlags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
+	Cmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, yaml, csv")
+	Cmd.PersistentFlags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
+	Cmd.PersistentFlags().String("save-to", "", "Сохранить результат в указанный файл")
+
 	// Add all subcommands
 	Cmd.AddCommand(casesCmd)
 	Cmd.AddCommand(suitesCmd)
@@ -64,10 +71,6 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	Cmd.AddCommand(templatesCmd)
 	Cmd.AddCommand(configurationsCmd)
 	Cmd.AddCommand(allCmd)
-
-	// Add persistent flags (available on all subcommands)
-	Cmd.PersistentFlags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
-	Cmd.PersistentFlags().String("save-to", "", "Сохранить результат в указанный файл")
 
 	rootCmd.AddCommand(Cmd)
 }

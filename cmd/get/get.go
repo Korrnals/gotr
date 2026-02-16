@@ -175,13 +175,5 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 		subCmd.Flags().BoolP("body-only", "b", false, "Сохранить только тело ответа (без метаданных)")
 	}
 
-	// Специфичные флаги для cases
-	casesCmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (если не указан — будет предложен выбор)")
-	casesCmd.Flags().Int64("section-id", 0, "ID секции (опционально)")
-	casesCmd.Flags().Bool("all-suites", false, "Получить кейсы из всех сьютов проекта")
-	casesCmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
-
-	// Специфичные флаги для suites и sharedsteps
-	suitesCmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
-	sharedStepsCmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	// Специфичные флаги для cases уже определены в конструкторе newCasesCmd
 }

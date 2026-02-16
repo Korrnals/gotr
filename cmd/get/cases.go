@@ -10,11 +10,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// casesCmd — подкоманда для списка кейсов проекта
-var casesCmd = &cobra.Command{
-	Use:   "cases [project-id]",
-	Short: "Получить кейсы проекта",
-	Long: `Получить кейсы проекта.
+// newCasesCmd создаёт команду для получения кейсов проекта
+func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "cases [project-id]",
+		Short: "Получить кейсы проекта",
+		Long: `Получить кейсы проекта.
 
 Если проект содержит несколько сьютов и --suite-id не указан, 
 будет предложено выбрать сьют из списка.
@@ -40,75 +41,116 @@ var casesCmd = &cobra.Command{
 	# С фильтрацией по секции
 	gotr get cases 30 --suite-id 20069 --section-id 100
 `,
-	RunE: func(command *cobra.Command, args []string) error {
-		start := time.Now()
-		client := getClient(command)
+		RunE: func(command *cobra.Command, args []string) error {
+			start := time.Now()
+			cli := getClient(command)
+			if cli == nil {
+				return fmt.Errorf("HTTP клиент не инициализирован")
+			}
 
-		projectIDStr := ""
-		if len(args) > 0 {
-			projectIDStr = args[0]
-		}
-		if pid, _ := command.Flags().GetString("project-id"); pid != "" {
-			projectIDStr = pid
-		}
-		var projectID int64
-		var err error
+			projectIDStr := ""
+			if len(args) > 0 {
+				projectIDStr = args[0]
+			}
+			if pid, _ := command.Flags().GetString("project-id"); pid != "" {
+				projectIDStr = pid
+			}
+			var projectID int64
+			var err error
 
-		if projectIDStr == "" {
-			// Интерактивный выбор проекта
-			projectID, err = selectProjectInteractively(client)
+			if projectIDStr == "" {
+				// Интерактивный выбор проекта
+				projectID, err = selectProjectInteractively(cli)
+				if err != nil {
+					return err
+				}
+			} else {
+				projectID, err = strconv.ParseInt(projectIDStr, 10, 64)
+				if err != nil {
+					return fmt.Errorf("некорректный ID проекта: %w", err)
+				}
+			}
+
+			sectionID, _ := command.Flags().GetInt64("section-id")
+			allSuites, _ := command.Flags().GetBool("all-suites")
+			suiteID, _ := command.Flags().GetInt64("suite-id")
+
+			// Если указан конкретный suite-id — используем его
+			if suiteID != 0 {
+				return fetchAndOutputCases(command, cli, projectID, suiteID, sectionID, start)
+			}
+
+			// Получаем список сьютов проекта
+			suites, err := cli.GetSuites(projectID)
+			if err != nil {
+				return fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
+			}
+
+			if len(suites) == 0 {
+				return fmt.Errorf("в проекте %d не найдено сьютов", projectID)
+			}
+
+			// Если --all-suites — собираем кейсы из всех сьютов
+			if allSuites {
+				return fetchCasesFromAllSuites(command, cli, projectID, suites, sectionID, start)
+			}
+
+			// Если только один сьют — используем его автоматически
+			if len(suites) == 1 {
+				fmt.Printf("В проекте найден один сьют (ID: %d), используем его автоматически...\n", suites[0].ID)
+				return fetchAndOutputCases(command, cli, projectID, suites[0].ID, sectionID, start)
+			}
+
+			// Несколько сьютов — интерактивный выбор
+			selectedSuiteID, err := selectSuiteInteractively(suites)
 			if err != nil {
 				return err
 			}
-		} else {
-			projectID, err = strconv.ParseInt(projectIDStr, 10, 64)
-			if err != nil {
-				return fmt.Errorf("некорректный ID проекта: %w", err)
+
+			return fetchAndOutputCases(command, cli, projectID, selectedSuiteID, sectionID, start)
+		},
+	}
+
+	cmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (если не указан — будет предложен выбор)")
+	cmd.Flags().Int64("section-id", 0, "ID секции (опционально)")
+	cmd.Flags().Bool("all-suites", false, "Получить кейсы из всех сьютов проекта")
+	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+
+	return cmd
+}
+
+// newCaseCmd создаёт команду для получения одного кейса
+func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
+	return &cobra.Command{
+		Use:   "case <case-id>",
+		Short: "Получить один кейс по ID кейса",
+		Long:  "Получает детальную информацию о конкретном тест-кейсе по его ID.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(command *cobra.Command, args []string) error {
+			start := time.Now()
+			cli := getClient(command)
+			if cli == nil {
+				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
-		}
 
-		sectionID, _ := command.Flags().GetInt64("section-id")
-		allSuites, _ := command.Flags().GetBool("all-suites")
-		suiteID, _ := command.Flags().GetInt64("suite-id")
+			idStr := args[0]
+			id, err := strconv.ParseInt(idStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("некорректный ID кейса: %w", err)
+			}
 
-		// Если указан конкретный suite-id — используем его
-		if suiteID != 0 {
-			return fetchAndOutputCases(command, client, projectID, suiteID, sectionID, start)
-		}
+			kase, err := cli.GetCase(id)
+			if err != nil {
+				return err
+			}
 
-		// Получаем список сьютов проекта
-		suites, err := client.GetSuites(projectID)
-		if err != nil {
-			return fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
-		}
-
-		if len(suites) == 0 {
-			return fmt.Errorf("в проекте %d не найдено сьютов", projectID)
-		}
-
-		// Если --all-suites — собираем кейсы из всех сьютов
-		if allSuites {
-			return fetchCasesFromAllSuites(command, client, projectID, suites, sectionID, start)
-		}
-
-		// Если только один сьют — используем его автоматически
-		if len(suites) == 1 {
-			fmt.Printf("В проекте найден один сьют (ID: %d), используем его автоматически...\n", suites[0].ID)
-			return fetchAndOutputCases(command, client, projectID, suites[0].ID, sectionID, start)
-		}
-
-		// Несколько сьютов — интерактивный выбор
-		selectedSuiteID, err := selectSuiteInteractively(suites)
-		if err != nil {
-			return err
-		}
-
-		return fetchAndOutputCases(command, client, projectID, selectedSuiteID, sectionID, start)
-	},
+			return handleOutput(command, kase, start)
+		},
+	}
 }
 
 // fetchAndOutputCases получает кейсы и выводит результат
-func fetchAndOutputCases(cmd *cobra.Command, client *client.HTTPClient, projectID, suiteID, sectionID int64, start time.Time) error {
+func fetchAndOutputCases(cmd *cobra.Command, client client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
 	cases, err := client.GetCases(projectID, suiteID, sectionID)
 	if err != nil {
 		return err
@@ -118,7 +160,7 @@ func fetchAndOutputCases(cmd *cobra.Command, client *client.HTTPClient, projectI
 }
 
 // fetchCasesFromAllSuites получает кейсы из всех сьютов проекта
-func fetchCasesFromAllSuites(cmd *cobra.Command, client *client.HTTPClient, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
+func fetchCasesFromAllSuites(cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
 	fmt.Printf("Получение кейсов из %d сьютов проекта...\n\n", len(suites))
 
 	allCases := make(data.GetCasesResponse, 0)
@@ -137,27 +179,12 @@ func fetchCasesFromAllSuites(cmd *cobra.Command, client *client.HTTPClient, proj
 	return handleOutput(cmd, allCases, start)
 }
 
-// caseCmd — подкоманда для одного кейса
-var caseCmd = &cobra.Command{
-	Use:   "case <case-id>",
-	Short: "Получить один кейс по ID кейса",
-	Long:  "Получает детальную информацию о конкретном тест-кейсе по его ID.",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(command *cobra.Command, args []string) error {
-		start := time.Now()
-		client := getClient(command)
+// casesCmd — экспортированная команда для регистрации
+var casesCmd = newCasesCmd(func(cmd *cobra.Command) client.ClientInterface {
+	return getClient(cmd)
+})
 
-		idStr := args[0]
-		id, err := strconv.ParseInt(idStr, 10, 64)
-		if err != nil {
-			return fmt.Errorf("некорректный ID кейса: %w", err)
-		}
-
-		kase, err := client.GetCase(id)
-		if err != nil {
-			return err
-		}
-
-		return handleOutput(command, kase, start)
-	},
-}
+// caseCmd — экспортированная команда для регистрации
+var caseCmd = newCaseCmd(func(cmd *cobra.Command) client.ClientInterface {
+	return getClient(cmd)
+})

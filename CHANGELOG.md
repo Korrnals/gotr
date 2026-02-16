@@ -11,6 +11,36 @@
 
 ### Added
 
+#### Stage 5: CLI Test Coverage (986 tests, 10 packages at 100%)
+
+- **Comprehensive test suite** for all CLI commands:
+  - `cmd/run` — 38 tests (95.2% coverage)
+  - `cmd/result` — 46+ tests (90.6% coverage)
+  - `cmd/get` — 71 tests (89.7% coverage)
+  - `cmd/attachments` — 18 tests (100% coverage)
+  - `cmd/labels` — 60+ tests (100% coverage)
+  - `cmd/groups` — 26 tests (100% coverage)
+  - `cmd/cases` — 87 tests (99.2% coverage)
+  - `cmd/test` + `cmd/tests` — 35 tests (90.5%+ coverage)
+  - `cmd/templates`, `cmd/reports`, `cmd/sync`, `cmd/milestones`, `cmd/plans`
+  - `cmd/users`, `cmd/variables`, `cmd/configurations`, `cmd/datasets`
+  - `cmd/bdds`, `cmd/roles` — all at 87-100% coverage
+- **Test infrastructure:**
+  - Shared `testhelper` package for mock client injection
+  - `serviceWrapper` pattern for interface-based testing
+  - Constructor pattern for all commands (`newXxxCmd`)
+- **Total:** 110 test files, 986 test functions, 18 packages ≥ 90% coverage
+
+#### Stage 5.2: Project Comparison Command
+
+- **New `compare` command** for comparing resources between projects:
+  - Compare individual resources: cases, suites, sections, runs, plans, milestones
+  - Compare all resources at once: `gotr compare all --pid1 30 --pid2 31`
+  - Field-based comparison for cases: `--field title`, `--field priority_id`
+  - Detailed diff output with summary statistics
+- **Supported resources:** cases, suites, sections, sharedsteps, runs, plans,
+  milestones, datasets, groups, labels, templates, configurations
+
 #### Build System Improvements
 
 - **Автоматическая синхронизация версии в Makefile:**

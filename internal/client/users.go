@@ -2,6 +2,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,6 +17,28 @@ func (c *HTTPClient) GetUsers() (data.GetUsersResponse, error) {
 	resp, err := c.Get("get_users", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting users: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+
+	var users data.GetUsersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
+		return nil, fmt.Errorf("error decoding users: %w", err)
+	}
+	return users, nil
+}
+
+// GetUsersByProject получает список пользователей проекта
+// https://support.testrail.com/hc/en-us/articles/7077807509812-Users#getusers
+func (c *HTTPClient) GetUsersByProject(projectID int64) (data.GetUsersResponse, error) {
+	endpoint := fmt.Sprintf("get_users/%d", projectID)
+	resp, err := c.Get(endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting users for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
@@ -59,6 +82,59 @@ func (c *HTTPClient) GetUserByEmail(email string) (*data.User, error) {
 	resp, err := c.Get("get_user_by_email", map[string]string{"email": email})
 	if err != nil {
 		return nil, fmt.Errorf("error getting user by email %s: %w", email, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+
+	var user data.User
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		return nil, fmt.Errorf("error decoding user: %w", err)
+	}
+	return &user, nil
+}
+
+// AddUser создаёт нового пользователя
+// https://support.testrail.com/hc/en-us/articles/7077807509812-Users#adduser
+func (c *HTTPClient) AddUser(req data.AddUserRequest) (*data.User, error) {
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling AddUserRequest: %w", err)
+	}
+
+	resp, err := c.Post("add_user", bytes.NewReader(bodyBytes), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error adding user: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+
+	var user data.User
+	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
+		return nil, fmt.Errorf("error decoding user: %w", err)
+	}
+	return &user, nil
+}
+
+// UpdateUser обновляет существующего пользователя
+// https://support.testrail.com/hc/en-us/articles/7077807509812-Users#updateuser
+func (c *HTTPClient) UpdateUser(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+	endpoint := fmt.Sprintf("update_user/%d", userID)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling UpdateUserRequest: %w", err)
+	}
+
+	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error updating user %d: %w", userID, err)
 	}
 	defer resp.Body.Close()
 

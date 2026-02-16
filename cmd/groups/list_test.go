@@ -181,4 +181,19 @@ func TestRegister(t *testing.T) {
 	getCmd, _, err := root.Find([]string{"groups", "get"})
 	assert.NoError(t, err)
 	assert.NotNil(t, getCmd)
+
+	// Проверяем что подкоманда add существует
+	addCmd, _, err := root.Find([]string{"groups", "add"})
+	assert.NoError(t, err)
+	assert.NotNil(t, addCmd)
+
+	// Проверяем что подкоманда update существует
+	updateCmd, _, err := root.Find([]string{"groups", "update"})
+	assert.NoError(t, err)
+	assert.NotNil(t, updateCmd)
+
+	// Проверяем что подкоманда delete существует
+	deleteCmd, _, err := root.Find([]string{"groups", "delete"})
+	assert.NoError(t, err)
+	assert.NotNil(t, deleteCmd)
 }

@@ -14,7 +14,7 @@ import (
 )
 
 // SelectProjectInteractively показывает список проектов и просит выбрать
-func SelectProjectInteractively(httpClient *client.HTTPClient) (int64, error) {
+func SelectProjectInteractively(httpClient client.ClientInterface) (int64, error) {
 	projects, err := httpClient.GetProjects()
 	if err != nil {
 		return 0, fmt.Errorf("не удалось получить список проектов: %w", err)

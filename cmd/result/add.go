@@ -1,20 +1,22 @@
 package result
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
 )
 
-var addCmd = &cobra.Command{
-	Use:   "add [test-id]",
-	Short: "Добавить результат для test",
-	Long: `Добавляет результат выполнения для указанного test ID.
+// newAddCmd создаёт команду 'result add'
+// Эндпоинт: POST /add_result/{test_id}
+func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "add [test-id]",
+		Short: "Добавить результат для test",
+		Long: `Добавляет результат выполнения для указанного test ID.
 
 Статусы результатов (стандартные):
 	1 — Passed
@@ -42,51 +44,66 @@ var addCmd = &cobra.Command{
 
 	# Dry-run режим
 	gotr result add 12345 --status-id 1 --comment "Test" --dry-run`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		httpClient := getClientSafe(cmd)
-		if httpClient == nil {
-			return fmt.Errorf("HTTP клиент не инициализирован")
-		}
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cli := getClient(cmd)
+			if cli == nil {
+				return fmt.Errorf("HTTP клиент не инициализирован")
+			}
 
-		svc := service.NewResultService(httpClient)
-		testID, err := svc.ParseID(args, 0)
-		if err != nil {
-			return fmt.Errorf("некорректный ID test: %w", err)
-		}
+			svc := newResultServiceFromInterface(cli)
+			testID, err := svc.ParseID(args, 0)
+			if err != nil {
+				return fmt.Errorf("некорректный ID test: %w", err)
+			}
 
-		req, err := buildAddResultRequest(cmd)
-		if err != nil {
-			return err
-		}
+			req, err := buildAddResultRequest(cmd)
+			if err != nil {
+				return err
+			}
 
-		// Проверяем dry-run режим
-		isDryRun, _ := cmd.Flags().GetBool("dry-run")
-		if isDryRun {
-			dr := dryrun.New("result add")
-			dr.PrintOperation(
-				fmt.Sprintf("Add Result for Test %d", testID),
-				"POST",
-				fmt.Sprintf("/index.php?/api/v2/add_result/%d", testID),
-				req,
-			)
-			return nil
-		}
+			// Проверяем dry-run режим
+			isDryRun, _ := cmd.Flags().GetBool("dry-run")
+			if isDryRun {
+				dr := dryrun.New("result add")
+				dr.PrintOperation(
+					fmt.Sprintf("Add Result for Test %d", testID),
+					"POST",
+					fmt.Sprintf("/index.php?/api/v2/add_result/%d", testID),
+					req,
+				)
+				return nil
+			}
 
-		result, err := svc.AddForTest(testID, req)
-		if err != nil {
-			return fmt.Errorf("ошибка добавления результата: %w", err)
-		}
+			result, err := svc.AddForTest(testID, req)
+			if err != nil {
+				return fmt.Errorf("ошибка добавления результата: %w", err)
+			}
 
-		svc.PrintSuccess(cmd, "Результат добавлен успешно:")
-		return svc.Output(cmd, result)
-	},
+			svc.PrintSuccess(cmd, "Результат добавлен успешно:")
+			return svc.Output(cmd, result)
+		},
+	}
+
+	cmd.Flags().Int64("status-id", 0, "ID статуса результата (обязательный)")
+	cmd.Flags().String("comment", "", "Комментарий к результату")
+	cmd.Flags().String("version", "", "Версия ПО")
+	cmd.Flags().String("elapsed", "", "Затраченное время (например: '1m 30s')")
+	cmd.Flags().String("defects", "", "ID дефектов (через запятую)")
+	cmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
+	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.MarkFlagRequired("status-id")
+
+	return cmd
 }
 
-var addCaseCmd = &cobra.Command{
-	Use:   "add-case [run-id]",
-	Short: "Добавить результат для кейса в run",
-	Long: `Добавляет результат выполнения для указанного кейса в test run.
+// newAddCaseCmd создаёт команду 'result add-case'
+// Эндпоинт: POST /add_result_for_case/{run_id}/{case_id}
+func newAddCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "add-case [run-id]",
+		Short: "Добавить результат для кейса в run",
+		Long: `Добавляет результат выполнения для указанного кейса в test run.
 
 Отличие от 'add': здесь указывается run_id и case_id, а не test_id.
 TestRail сам находит соответствующий test в run.
@@ -102,52 +119,69 @@ TestRail сам находит соответствующий test в run.
 
 	# Dry-run режим
 	gotr result add-case 12345 --case-id 98765 --status-id 1 --dry-run`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		httpClient := getClientSafe(cmd)
-		if httpClient == nil {
-			return fmt.Errorf("HTTP клиент не инициализирован")
-		}
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cli := getClient(cmd)
+			if cli == nil {
+				return fmt.Errorf("HTTP клиент не инициализирован")
+			}
 
-		svc := service.NewResultService(httpClient)
-		runID, err := svc.ParseID(args, 0)
-		if err != nil {
-			return fmt.Errorf("некорректный ID run: %w", err)
-		}
+			svc := newResultServiceFromInterface(cli)
+			runID, err := svc.ParseID(args, 0)
+			if err != nil {
+				return fmt.Errorf("некорректный ID run: %w", err)
+			}
 
-		caseID, _ := cmd.Flags().GetInt64("case-id")
-		req, err := buildAddResultRequest(cmd)
-		if err != nil {
-			return err
-		}
+			caseID, _ := cmd.Flags().GetInt64("case-id")
+			req, err := buildAddResultRequest(cmd)
+			if err != nil {
+				return err
+			}
 
-		// Проверяем dry-run режим
-		isDryRun, _ := cmd.Flags().GetBool("dry-run")
-		if isDryRun {
-			dr := dryrun.New("result add-case")
-			dr.PrintOperation(
-				fmt.Sprintf("Add Result for Case %d in Run %d", caseID, runID),
-				"POST",
-				fmt.Sprintf("/index.php?/api/v2/add_result_for_case/%d/%d", runID, caseID),
-				req,
-			)
-			return nil
-		}
+			// Проверяем dry-run режим
+			isDryRun, _ := cmd.Flags().GetBool("dry-run")
+			if isDryRun {
+				dr := dryrun.New("result add-case")
+				dr.PrintOperation(
+					fmt.Sprintf("Add Result for Case %d in Run %d", caseID, runID),
+					"POST",
+					fmt.Sprintf("/index.php?/api/v2/add_result_for_case/%d/%d", runID, caseID),
+					req,
+				)
+				return nil
+			}
 
-		result, err := svc.AddForCase(runID, caseID, req)
-		if err != nil {
-			return fmt.Errorf("ошибка добавления результата: %w", err)
-		}
+			result, err := svc.AddForCase(runID, caseID, req)
+			if err != nil {
+				return fmt.Errorf("ошибка добавления результата: %w", err)
+			}
 
-		svc.PrintSuccess(cmd, "Результат добавлен успешно:")
-		return svc.Output(cmd, result)
-	},
+			svc.PrintSuccess(cmd, "Результат добавлен успешно:")
+			return svc.Output(cmd, result)
+		},
+	}
+
+	cmd.Flags().Int64("case-id", 0, "ID тест-кейса (обязательный)")
+	cmd.Flags().Int64("status-id", 0, "ID статуса результата (обязательный)")
+	cmd.Flags().String("comment", "", "Комментарий к результату")
+	cmd.Flags().String("version", "", "Версия ПО")
+	cmd.Flags().String("elapsed", "", "Затраченное время")
+	cmd.Flags().String("defects", "", "ID дефектов (через запятую)")
+	cmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
+	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.MarkFlagRequired("case-id")
+	cmd.MarkFlagRequired("status-id")
+
+	return cmd
 }
 
-var addBulkCmd = &cobra.Command{
-	Use:   "add-bulk [run-id]",
-	Short: "Массовое добавление результатов",
-	Long: `Добавляет несколько результатов одним запросом.
+// newAddBulkCmd создаёт команду 'result add-bulk'
+// Эндпоинт: POST /add_results/{run_id}
+func newAddBulkCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "add-bulk [run-id]",
+		Short: "Массовое добавление результатов",
+		Long: `Добавляет несколько результатов одним запросом.
 
 JSON файл должен содержать массив результатов:
 [
@@ -169,47 +203,54 @@ JSON файл должен содержать массив результато�
 Примеры:
 	# Dry-run режим
 	gotr result add-bulk 12345 --results-file results.json --dry-run`,
-	Args: cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		httpClient := getClientSafe(cmd)
-		if httpClient == nil {
-			return fmt.Errorf("HTTP клиент не инициализирован")
-		}
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cli := getClient(cmd)
+			if cli == nil {
+				return fmt.Errorf("HTTP клиент не инициализирован")
+			}
 
-		svc := service.NewResultService(httpClient)
-		runID, err := svc.ParseID(args, 0)
-		if err != nil {
-			return fmt.Errorf("некорректный ID run: %w", err)
-		}
+			svc := newResultServiceFromInterface(cli)
+			runID, err := svc.ParseID(args, 0)
+			if err != nil {
+				return fmt.Errorf("некорректный ID run: %w", err)
+			}
 
-		resultsFile, _ := cmd.Flags().GetString("results-file")
-		fileData, err := os.ReadFile(resultsFile)
-		if err != nil {
-			return fmt.Errorf("ошибка чтения файла: %w", err)
-		}
+			resultsFile, _ := cmd.Flags().GetString("results-file")
+			fileData, err := os.ReadFile(resultsFile)
+			if err != nil {
+				return fmt.Errorf("ошибка чтения файла: %w", err)
+			}
 
-		// Проверяем dry-run режим
-		isDryRun, _ := cmd.Flags().GetBool("dry-run")
-		if isDryRun {
-			dr := dryrun.New("result add-bulk")
-			dr.PrintOperation(
-				fmt.Sprintf("Add Bulk Results for Run %d", runID),
-				"POST",
-				fmt.Sprintf("/index.php?/api/v2/add_results/%d", runID),
-				string(fileData),
-			)
-			return nil
-		}
+			// Проверяем dry-run режим
+			isDryRun, _ := cmd.Flags().GetBool("dry-run")
+			if isDryRun {
+				dr := dryrun.New("result add-bulk")
+				dr.PrintOperation(
+					fmt.Sprintf("Add Bulk Results for Run %d", runID),
+					"POST",
+					fmt.Sprintf("/index.php?/api/v2/add_results/%d", runID),
+					string(fileData),
+				)
+				return nil
+			}
 
-		// Пытаемся распарсить и отправить
-		results, err := parseAndAddResults(svc, runID, fileData)
-		if err != nil {
-			return err
-		}
+			// Пытаемся распарсить и отправить
+			results, err := svc.AddBulkResults(runID, fileData)
+			if err != nil {
+				return err
+			}
 
-		svc.PrintSuccess(cmd, "Результаты добавлены успешно:")
-		return svc.Output(cmd, results)
-	},
+			svc.PrintSuccess(cmd, "Результаты добавлены успешно:")
+			return svc.Output(cmd, results)
+		},
+	}
+
+	cmd.Flags().String("results-file", "", "JSON файл с результатами (обязательный)")
+	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.MarkFlagRequired("results-file")
+
+	return cmd
 }
 
 // buildAddResultRequest собирает запрос из флагов
@@ -236,21 +277,9 @@ func buildAddResultRequest(cmd *cobra.Command) (*data.AddResultRequest, error) {
 	}, nil
 }
 
-// parseAndAddResults парсит JSON и добавляет результаты
-func parseAndAddResults(svc *service.ResultService, runID int64, fileData []byte) (interface{}, error) {
-	// Пробуем как массив с test_id
-	var testResults []data.ResultEntry
-	if err := json.Unmarshal(fileData, &testResults); err == nil && len(testResults) > 0 {
-		req := &data.AddResultsRequest{Results: testResults}
-		return svc.AddResults(runID, req)
-	}
-
-	// Пробуем как массив с case_id
-	var caseResults []data.ResultForCaseEntry
-	if err := json.Unmarshal(fileData, &caseResults); err == nil && len(caseResults) > 0 {
-		req := &data.AddResultsForCasesRequest{Results: caseResults}
-		return svc.AddResultsForCases(runID, req)
-	}
-
-	return nil, fmt.Errorf("не удалось распарсить JSON файл: ожидается массив с test_id или case_id")
-}
+// Обратная совместимость: глобальные переменные для использования в result.go
+var (
+	addCmd     = newAddCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
+	addCaseCmd = newAddCaseCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
+	addBulkCmd = newAddBulkCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
+)

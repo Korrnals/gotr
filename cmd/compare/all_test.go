@@ -207,8 +207,11 @@ func TestAllCmd_SaveYAML(t *testing.T) {
 		return mock
 	})
 
+	tmpDir := t.TempDir()
+	savePath := filepath.Join(tmpDir, "result.yaml")
+
 	cmd := newAllCmd()
-	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=yaml", "--save"})
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=yaml", "--save-to=" + savePath})
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)

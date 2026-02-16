@@ -45,7 +45,8 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 
 Примеры:
   gotr compare cases --pid1 30 --pid2 31
-  gotr compare all --pid1 30 --pid2 31 --format json --save result.json
+  gotr compare all --pid1 30 --pid2 31 --save
+  gotr compare all --pid1 30 --pid2 31 --save-to result.json
 `,
 	}
 

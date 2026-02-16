@@ -421,5 +421,5 @@ func TestPrintTable_WithIDsMismatch(t *testing.T) {
 	assert.NoError(t, err)
 	output := buf.String()
 	assert.Contains(t, output, "Case C")
-	assert.Contains(t, output, "разные ID")
+	assert.Contains(t, output, "Различаются")
 }

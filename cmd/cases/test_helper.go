@@ -21,6 +21,9 @@ func setupTestCmd(t *testing.T, mock *client.MockClient) *cobra.Command {
 
 // getClientForTests извлекает клиент из контекста для тестов
 func getClientForTests(cmd *cobra.Command) client.ClientInterface {
+	if cmd == nil || cmd.Context() == nil {
+		return nil
+	}
 	val := cmd.Context().Value(testHTTPClientKey)
 	if val == nil {
 		return nil

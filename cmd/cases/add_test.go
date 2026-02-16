@@ -2,6 +2,7 @@ package cases
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -149,4 +150,60 @@ func TestAddCmd_AllFlags(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
+}
+
+func TestAddCmd_WithJSONFile(t *testing.T) {
+	// Create a temp JSON file
+	tempDir := t.TempDir()
+	jsonFile := tempDir + "/case.json"
+	jsonData := `{"title": "JSON Test Case", "template_id": 2, "priority_id": 1}`
+	err := os.WriteFile(jsonFile, []byte(jsonData), 0644)
+	assert.NoError(t, err)
+
+	mock := &client.MockClient{
+		AddCaseFunc: func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			assert.Equal(t, int64(100), sectionID)
+			assert.Equal(t, "JSON Test Case", req.Title)
+			assert.Equal(t, int64(2), req.TemplateID)
+			assert.Equal(t, int64(1), req.PriorityID)
+			return &data.Case{ID: 555, Title: req.Title}, nil
+		},
+	}
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", "--json-file=" + jsonFile})
+
+	err = cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAddCmd_JSONFileNotFound(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", "--json-file=/nonexistent/file.json"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error reading JSON file")
+}
+
+func TestAddCmd_InvalidJSONFile(t *testing.T) {
+	// Create a temp file with invalid JSON
+	tempDir := t.TempDir()
+	jsonFile := tempDir + "/invalid.json"
+	err := os.WriteFile(jsonFile, []byte("not valid json"), 0644)
+	assert.NoError(t, err)
+
+	mock := &client.MockClient{}
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", "--json-file=" + jsonFile})
+
+	err = cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error parsing JSON")
 }

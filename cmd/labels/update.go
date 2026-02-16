@@ -46,7 +46,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 
-			fmt.Printf("✅ Labels updated for test %d: %v\n", testID, labels)
+			fmt.Fprintf(cmd.OutOrStdout(), "✅ Labels updated for test %d: %v\n", testID, labels)
 			return nil
 		},
 	}
@@ -102,7 +102,7 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 
-			fmt.Printf("✅ Labels updated for %d tests in run %d: %v\n", len(testIDs), runID, labels)
+			fmt.Fprintf(cmd.OutOrStdout(), "✅ Labels updated for %d tests in run %d: %v\n", len(testIDs), runID, labels)
 			return nil
 		},
 	}

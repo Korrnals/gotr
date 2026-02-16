@@ -20,6 +20,11 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
 Можно обновлять метки как для одного теста, так и для всех тестов в прогоне.`,
 	}
 
+	// Добавление команд получения и управления метками
+	labelsCmd.AddCommand(newGetCmd(getClient))
+	labelsCmd.AddCommand(newListCmd(getClient))
+	labelsCmd.AddCommand(newUpdateLabelCmd(getClient))
+
 	// Создание родительской команды 'update'
 	updateCmd := &cobra.Command{
 		Use:   "update",

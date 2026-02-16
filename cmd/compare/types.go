@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -64,34 +65,55 @@ func GetProjectNames(cli client.ClientInterface, pid1, pid2 int64) (string, stri
 	return proj1.Name, proj2.Name, nil
 }
 
+// getFormatFromExtension extracts format from file extension
+func getFormatFromExtension(path string) string {
+	path = strings.ToLower(path)
+	if strings.HasSuffix(path, ".json") {
+		return "json"
+	}
+	if strings.HasSuffix(path, ".yaml") || strings.HasSuffix(path, ".yml") {
+		return "yaml"
+	}
+	if strings.HasSuffix(path, ".csv") {
+		return "csv"
+	}
+	if strings.HasSuffix(path, ".txt") {
+		return "table"
+	}
+	return ""
+}
+
 // PrintCompareResult prints or saves a compare result
 // savePath can be:
-//   - "__DEFAULT__" : save to default location (~/.gotr/exports/)
-//   - custom path   : save to specified path
+//   - "__DEFAULT__" : save to default location (~/.gotr/exports/) as table
+//   - custom path   : save to specified path (format from --format flag or detected from extension)
 //   - ""            : print to stdout
 func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, project2Name, format, savePath string) error {
 	// If save path is provided (flag was used), save to file
 	if savePath != "" {
-		// For saving, default to json if table format is specified
-		saveFormat := format
-		if saveFormat == "table" || saveFormat == "" {
-			saveFormat = "json"
-		}
-
 		if savePath == "__DEFAULT__" {
-			// --save flag was used, save to default location
-			filepath, err := save.Output(cmd, result, "compare", saveFormat)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("Результат сохранён в %s\n", filepath)
-			return nil
+			// --save flag was used, save table as text file
+			return saveTableToFile(cmd, result, project1Name, project2Name)
 		}
 		// --save-to flag was used with custom path
-		if err := saveToFileWithPath(result, saveFormat, savePath); err != nil {
-			return err
+		// If format is "table" (default), try to detect from file extension
+		if format == "table" {
+			if detected := getFormatFromExtension(savePath); detected != "" {
+				format = detected
+			}
 		}
-		fmt.Printf("Результат сохранён в %s\n", savePath)
+		switch format {
+		case "json", "yaml", "csv":
+			if err := saveToFileWithPath(result, format, savePath); err != nil {
+				return err
+			}
+			// Message is printed by saveToFile
+		case "table":
+			// Save table as text
+			return saveTableToFile(cmd, result, project1Name, project2Name, savePath)
+		default:
+			return fmt.Errorf("неподдерживаемый формат: %s", format)
+		}
 		return nil
 	}
 
@@ -460,6 +482,69 @@ func saveToFile(data []byte, savePath string) error {
 		return fmt.Errorf("ошибка записи файла: %w", err)
 	}
 	fmt.Printf("Результат сохранён в %s\n", savePath)
+	return nil
+}
+
+// saveTableToFile saves the table output to a file
+func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, project2Name string, customPath ...string) error {
+	// Create pipe to capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("ошибка создания pipe: %w", err)
+	}
+	os.Stdout = w
+
+	// Capture output in goroutine
+	outChan := make(chan string, 1)
+	errChan := make(chan error, 1)
+	go func() {
+		var buf strings.Builder
+		_, err := io.Copy(&buf, r)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		outChan <- buf.String()
+	}()
+
+	// Print table (writes to stdout)
+	printErr := printTable(result, project1Name, project2Name)
+
+	// Restore stdout and close writer
+	w.Close()
+	os.Stdout = oldStdout
+
+	// Get captured output
+	var output string
+	select {
+	case output = <-outChan:
+	case err := <-errChan:
+		return fmt.Errorf("ошибка чтения вывода: %w", err)
+	}
+
+	if printErr != nil {
+		return printErr
+	}
+
+	// Determine file path
+	var filePath string
+	if len(customPath) > 0 && customPath[0] != "" {
+		filePath = customPath[0]
+	} else {
+		// Use default path with .txt extension for table
+		filePath = save.GenerateFilename("compare", "txt")
+		exportsDir, _ := save.GetExportsDir("compare")
+		os.MkdirAll(exportsDir, 0755)
+		filePath = exportsDir + "/" + filePath
+	}
+
+	// Write to file
+	if err := os.WriteFile(filePath, []byte(output), 0644); err != nil {
+		return fmt.Errorf("ошибка записи файла: %w", err)
+	}
+
+	fmt.Printf("Результат сохранён в %s\n", filePath)
 	return nil
 }
 

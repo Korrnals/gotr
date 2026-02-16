@@ -3,7 +3,10 @@ package compare
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
@@ -163,54 +166,33 @@ func newAllCmd() *cobra.Command {
 				errors["configurations"] = err
 			}
 
-			// Print summary
-			fmt.Printf("\n=== Сводный отчёт сравнения проектов ===\n")
-			fmt.Printf("Проект 1: %s (ID: %d)\n", project1Name, pid1)
-			fmt.Printf("Проект 2: %s (ID: %d)\n\n", project2Name, pid2)
-
-			printResourceSummary("Cases", result.Cases)
-			printResourceSummary("Suites", result.Suites)
-			printResourceSummary("Sections", result.Sections)
-			printResourceSummary("Shared Steps", result.SharedSteps)
-			printResourceSummary("Runs", result.Runs)
-			printResourceSummary("Plans", result.Plans)
-			printResourceSummary("Milestones", result.Milestones)
-			printResourceSummary("Datasets", result.Datasets)
-			printResourceSummary("Groups", result.Groups)
-			printResourceSummary("Labels", result.Labels)
-			printResourceSummary("Templates", result.Templates)
-			printResourceSummary("Configurations", result.Configurations)
-
-			// Print errors if any
-			if len(errors) > 0 {
-				fmt.Printf("\n=== Ошибки ===\n")
-				for resource, err := range errors {
-					fmt.Printf("- %s: %v\n", resource, err)
-				}
-			}
+			// Print summary table
+				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors)
 
 			// Save result if requested
 			if savePath != "" {
-				// For saving, default to json if table format is specified
-				saveFormat := format
-				if saveFormat == "table" || saveFormat == "" {
-					saveFormat = "json"
-				}
-
 				if savePath == "__DEFAULT__" {
-					// --save flag was used, save to default location
-					filepath, err := save.Output(cmd, result, "compare", saveFormat)
-					if err != nil {
-						return err
-					}
-					fmt.Printf("Результат сохранён в %s\n", filepath)
-					return nil
+					// --save flag was used, save summary as text file
+					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__")
 				}
 				// --save-to flag was used with custom path
-				if err := saveAllResult(result, saveFormat, savePath); err != nil {
-					return err
+				// If format is "table" (default), try to detect from file extension
+				if format == "table" {
+					if detected := getFormatFromExtension(savePath); detected != "" {
+						format = detected
+					}
 				}
-				fmt.Printf("Результат сохранён в %s\n", savePath)
+				switch format {
+				case "json", "yaml":
+					if err := saveAllResult(result, format, savePath); err != nil {
+						return err
+					}
+					fmt.Printf("Результат сохранён в %s\n", savePath)
+				case "table":
+					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath)
+				default:
+					return fmt.Errorf("неподдерживаемый формат '%s' для сохранения, используйте json, yaml или table", format)
+				}
 				return nil
 			}
 
@@ -282,6 +264,143 @@ func printResourceSummary(resourceName string, result *CompareResult) {
 		len(result.OnlyInFirst),
 		len(result.OnlyInSecond),
 		len(result.Common))
+}
+
+// printAllSummaryTable prints a formatted table summary for compare all
+func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error) {
+	// Table header
+	fmt.Println()
+	fmt.Println("╔══════════════════════════════════════════════════════════════════════════════╗")
+	fmt.Println("║                    СВОДНЫЙ ОТЧЁТ СРАВНЕНИЯ ПРОЕКТОВ                         ║")
+	fmt.Println("╠══════════════════════════════════════════════════════════════════════════════╣")
+	fmt.Printf("║  Проект 1: %-30s (ID: %-5d)              ║\n", truncate(project1Name, 30), pid1)
+	fmt.Printf("║  Проект 2: %-30s (ID: %-5d)              ║\n", truncate(project2Name, 30), pid2)
+	fmt.Println("╚══════════════════════════════════════════════════════════════════════════════╝")
+	fmt.Println()
+
+	// Resource table header
+	fmt.Println("┌────────────────────┬─────────────┬─────────────┬─────────┬──────────┐")
+	fmt.Println("│ Ресурс             │ Только в P1 │ Только в P2 │ Общих   │ Статус   │")
+	fmt.Println("├────────────────────┼─────────────┼─────────────┼─────────┼──────────┤")
+
+	// Print each resource
+	printResourceRow("Cases", result.Cases)
+	printResourceRow("Suites", result.Suites)
+	printResourceRow("Sections", result.Sections)
+	printResourceRow("Shared Steps", result.SharedSteps)
+	printResourceRow("Runs", result.Runs)
+	printResourceRow("Plans", result.Plans)
+	printResourceRow("Milestones", result.Milestones)
+	printResourceRow("Datasets", result.Datasets)
+	printResourceRow("Groups", result.Groups)
+	printResourceRow("Labels", result.Labels)
+	printResourceRow("Templates", result.Templates)
+	printResourceRow("Configurations", result.Configurations)
+
+	fmt.Println("└────────────────────┴─────────────┴─────────────┴─────────┴──────────┘")
+
+	// Legend
+	fmt.Println()
+	fmt.Println("Статус:  ✓  - полное совпадение  │  ⚠  - есть отличия  │  ✗  - ошибка загрузки")
+	fmt.Println()
+
+	// Print errors if any
+	if len(errors) > 0 {
+		fmt.Println("╔══════════════════════════════════════════════════════════════════════════════╗")
+		fmt.Println("║                              ОШИБКИ                                          ║")
+		fmt.Println("╚══════════════════════════════════════════════════════════════════════════════╝")
+		for resource, err := range errors {
+			fmt.Printf("  • %-15s: %v\n", resource, err)
+		}
+		fmt.Println()
+	}
+}
+
+// printResourceRow prints a single resource row for the summary table
+func printResourceRow(name string, result *CompareResult) {
+	if result == nil {
+		fmt.Printf("│ %-18s │     ✗       │     ✗       │    ✗    │    ✗     │\n", name)
+		return
+	}
+
+	onlyP1 := len(result.OnlyInFirst)
+	onlyP2 := len(result.OnlyInSecond)
+	common := len(result.Common)
+
+	// Status indicator
+	status := "✓"
+	if onlyP1 > 0 || onlyP2 > 0 {
+		status = "⚠"
+	}
+
+	fmt.Printf("│ %-18s │ %11d │ %11d │ %7d │    %-5s │\n", name, onlyP1, onlyP2, common, status)
+}
+
+// truncate truncates string to max length with ellipsis
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen-3] + "..."
+}
+
+// saveAllSummaryToFile saves the summary output to a file (for --save or --save-to with table format)
+func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errors map[string]error, savePath string) error {
+	// Create pipe to capture stdout
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		return fmt.Errorf("ошибка создания pipe: %w", err)
+	}
+	os.Stdout = w
+
+	// Capture output in goroutine
+	outChan := make(chan string, 1)
+	errChan := make(chan error, 1)
+	go func() {
+		var buf strings.Builder
+		_, err := io.Copy(&buf, r)
+		if err != nil {
+			errChan <- err
+			return
+		}
+		outChan <- buf.String()
+	}()
+
+	// Print summary table (writes to stdout)
+	printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors)
+
+	// Restore stdout and close writer
+	w.Close()
+	os.Stdout = oldStdout
+
+	// Get captured output
+	var output string
+	select {
+	case output = <-outChan:
+	case err := <-errChan:
+		return fmt.Errorf("ошибка чтения вывода: %w", err)
+	}
+
+	// Determine file path
+	var filePath string
+	if savePath != "__DEFAULT__" {
+		filePath = savePath
+	} else {
+		// Use default path with .txt extension
+		filePath = save.GenerateFilename("compare", "txt")
+		exportsDir, _ := save.GetExportsDir("compare")
+		os.MkdirAll(exportsDir, 0755)
+		filePath = exportsDir + "/" + filePath
+	}
+
+	// Write to file
+	if err := os.WriteFile(filePath, []byte(output), 0644); err != nil {
+		return fmt.Errorf("ошибка записи файла: %w", err)
+	}
+
+	fmt.Printf("Результат сохранён в %s\n", filePath)
+	return nil
 }
 
 // saveAllResult saves the allResult to a file in the specified format.

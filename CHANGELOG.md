@@ -46,7 +46,13 @@
   - `gotr compare labels` - compare labels
   - `gotr compare templates` - compare templates
   - `gotr compare configurations` - compare configurations
-  - `gotr compare all` - compare all resources at once
+  - `gotr compare all` - compare all resources at once with formatted table output
+- **Enhanced `--save` and new `--save-to` flags:**
+  - `--save` - saves table output as text file to `~/.gotr/exports/{resource}/`
+  - `--save-to <path>` - saves to specified path with format from `--format` or auto-detected from extension
+  - Auto-detection: `.json` → JSON, `.yaml`/`.yml` → YAML, `.csv` → CSV, `.txt` → table
+  - Supports JSON, YAML, CSV, and table (text) formats
+  - Affects all `compare` subcommands
 - **BREAKING CHANGE: `--save` flag replaces `--output` across ALL commands:**
   - `--save` is now a boolean flag (no value required)
   - Saves to `~/.gotr/exports/{resource}/{resource}_YYYY-MM-DD_HH-MM-SS.{format}`
@@ -54,6 +60,11 @@
   - Affected commands: `get`, `export`, `users list`, `labels list`, `reports list-cross-project`, 
     `test get/list`, `tests list`, `groups add/update`, and all `compare` subcommands
 - **Field-based comparison** for cases: `--field title`, `--field priority_id`, etc.
+- **Formatted table output** for `compare all`:
+  - Unicode box-drawing characters for clean presentation
+  - Status indicators: ✓ (perfect match), ⚠ (has differences), ✗ (error loading)
+  - Compact summary showing counts per resource type
+  - Error section for failed resource comparisons
 - **Package structure:**
   - `types.go` - shared types (CompareResult, ItemInfo, CommonItemInfo)
   - `register.go` - command registration with root command

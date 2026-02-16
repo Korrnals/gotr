@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
@@ -64,11 +65,20 @@ func GetProjectNames(cli client.ClientInterface, pid1, pid2 int64) (string, stri
 }
 
 // PrintCompareResult prints or saves a compare result
-func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, project2Name, format string, saveFlag bool) error {
-	// If save flag is set, save to file
-	if saveFlag {
-		_, err := save.Output(cmd, result, "compare", format)
-		return err
+// savePath can be:
+//   - "__DEFAULT__" : save to default location (~/.gotr/exports/)
+//   - custom path   : save to specified path
+//   - ""            : print to stdout
+func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, project2Name, format, savePath string) error {
+	// If save path is provided (flag was used), save to file
+	if savePath != "" {
+		if savePath == "__DEFAULT__" {
+			// --save flag was used, save to default location
+			_, err := save.Output(cmd, result, "compare", format)
+			return err
+		}
+		// --save-to flag was used with custom path
+		return saveToFileWithPath(result, format, savePath)
 	}
 
 	// Otherwise, print to stdout
@@ -84,44 +94,232 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 	}
 }
 
+// tableCell represents a cell in the table with content and width
+type tableCell struct {
+	content string
+	width   int
+}
+
+// truncateString truncates a string to maxWidth with ellipsis if needed
+func truncateString(s string, maxWidth int) string {
+	if maxWidth <= 3 {
+		if utf8.RuneCountInString(s) > maxWidth {
+			return string([]rune(s)[:maxWidth])
+		}
+		return s
+	}
+	if utf8.RuneCountInString(s) > maxWidth {
+		return string([]rune(s)[:maxWidth-3]) + "..."
+	}
+	return s
+}
+
+// padRight pads a string to the right to reach target width
+func padRight(s string, width int) string {
+	runeCount := utf8.RuneCountInString(s)
+	if runeCount >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-runeCount)
+}
+
+// printHorizontalBorder prints a horizontal border line
+func printHorizontalBorder(left, mid, right string, widths []int) {
+	parts := make([]string, len(widths))
+	for i, w := range widths {
+		parts[i] = strings.Repeat("─", w+2)
+	}
+	fmt.Println(left + strings.Join(parts, mid) + right)
+}
+
+// printRow prints a data row with given widths
+func printRow(cells []string, widths []int) {
+	parts := make([]string, len(cells))
+	for i, cell := range cells {
+		parts[i] = " " + padRight(truncateString(cell, widths[i]), widths[i]) + " "
+	}
+	fmt.Println("│" + strings.Join(parts, "│") + "│")
+}
+
+// printHeader prints a header row (title spanning all columns)
+func printHeader(title string, totalWidth int) {
+	titleWidth := utf8.RuneCountInString(title)
+	padding := totalWidth - 2 - titleWidth
+	if padding < 0 {
+		padding = 0
+		title = truncateString(title, totalWidth-2)
+	}
+	leftPad := padding / 2
+	rightPad := padding - leftPad
+	fmt.Println("│" + strings.Repeat(" ", leftPad) + title + strings.Repeat(" ", rightPad) + "│")
+}
+
+// printSeparator prints a separator line between header and data
+func printSeparator(widths []int) {
+	parts := make([]string, len(widths))
+	for i, w := range widths {
+		parts[i] = strings.Repeat("─", w+2)
+	}
+	fmt.Println("├" + strings.Join(parts, "┼") + "┤")
+}
+
 // printTable prints the result in table format
 func printTable(result CompareResult, project1Name, project2Name string) error {
-	fmt.Printf("\n=== Сравнение ресурса: %s ===\n", result.Resource)
-	fmt.Printf("Проект 1: %s (ID: %d)\n", project1Name, result.Project1ID)
-	fmt.Printf("Проект 2: %s (ID: %d)\n\n", project2Name, result.Project2ID)
+	fmt.Printf("\n=== Сравнение: %s (проекты %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
 
-	fmt.Printf("Только в проекте 1 (%d):\n", len(result.OnlyInFirst))
-	if len(result.OnlyInFirst) == 0 {
-		fmt.Println("  (нет)")
-	} else {
-		for _, item := range result.OnlyInFirst {
-			fmt.Printf("  - %s (ID: %d)\n", item.Name, item.ID)
-		}
-	}
+	// Table 1: Only in Project 1
+	printOnlyInProjectTable(result.OnlyInFirst, result.Project1ID, project1Name)
 
-	fmt.Printf("\nТолько в проекте 2 (%d):\n", len(result.OnlyInSecond))
-	if len(result.OnlyInSecond) == 0 {
-		fmt.Println("  (нет)")
-	} else {
-		for _, item := range result.OnlyInSecond {
-			fmt.Printf("  - %s (ID: %d)\n", item.Name, item.ID)
-		}
-	}
+	// Table 2: Only in Project 2
+	printOnlyInProjectTable(result.OnlyInSecond, result.Project2ID, project2Name)
 
-	fmt.Printf("\nОбщие элементы (%d):\n", len(result.Common))
-	if len(result.Common) == 0 {
-		fmt.Println("  (нет)")
-	} else {
-		for _, item := range result.Common {
-			matchStr := ""
-			if !item.IDsMatch {
-				matchStr = fmt.Sprintf(" [разные ID: %d vs %d]", item.ID1, item.ID2)
-			}
-			fmt.Printf("  - %s (ID: %d vs %d)%s\n", item.Name, item.ID1, item.ID2, matchStr)
-		}
-	}
+	// Table 3: Common items
+	printCommonTable(result.Common, result.Project1ID, result.Project2ID)
+
+	// Table 4: ID Mapping (for items with different IDs)
+	printIDMappingTable(result.Common)
 
 	return nil
+}
+
+// printOnlyInProjectTable prints a table for items only in one project
+func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName string) {
+	// Column widths - increased for long Russian names
+	idWidth := 8
+	nameWidth := 70
+
+	widths := []int{idWidth, nameWidth}
+	// totalInnerWidth = sum of column widths + 3 per column - 1 (for proper border alignment)
+	totalInnerWidth := idWidth + nameWidth + 3*len(widths) - 1
+
+	// Title
+	title := fmt.Sprintf("Только в проекте %d - \"%s\"", projectID, projectName)
+	printHorizontalBorder("┌", "┬", "┐", widths)
+	printHeader(title, totalInnerWidth)
+
+	// If no items, show empty message
+	if len(items) == 0 {
+		printSeparator(widths)
+		printHeader("(нет)", totalInnerWidth)
+		printHorizontalBorder("└", "┴", "┘", widths)
+		fmt.Println()
+		return
+	}
+
+	// Column headers
+	printSeparator(widths)
+	printRow([]string{"ID", "Name"}, widths)
+	printSeparator(widths)
+
+	// Data rows
+	for _, item := range items {
+		printRow([]string{fmt.Sprintf("%d", item.ID), item.Name}, widths)
+	}
+
+	printHorizontalBorder("└", "┴", "┘", widths)
+	fmt.Println()
+}
+
+// printCommonTable prints a table for common items
+func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
+	// Column widths - increased for long Russian names
+	nameWidth := 50
+	id1Width := 12
+	id2Width := 12
+	statusWidth := 20
+
+	widths := []int{nameWidth, id1Width, id2Width, statusWidth}
+	// totalInnerWidth = sum of column widths + 3 per column - 1 (for proper border alignment)
+	totalInnerWidth := nameWidth + id1Width + id2Width + statusWidth + 3*len(widths) - 1
+
+	// Title
+	printHorizontalBorder("┌", "┬", "┐", widths)
+	printHeader("Общие в обоих проектах", totalInnerWidth)
+
+	// If no items, show empty message
+	if len(items) == 0 {
+		printSeparator(widths)
+		printHeader("(нет)", totalInnerWidth)
+		printHorizontalBorder("└", "┴", "┘", widths)
+		fmt.Println()
+		return
+	}
+
+	// Column headers
+	printSeparator(widths)
+	printRow([]string{
+		"Name",
+		fmt.Sprintf("ID proj %d", project1ID),
+		fmt.Sprintf("ID proj %d", project2ID),
+		"Статус ID",
+	}, widths)
+	printSeparator(widths)
+
+	// Data rows
+	for _, item := range items {
+		status := "✓ Совпадают"
+		if !item.IDsMatch {
+			status = "⚠ Различаются"
+		}
+		printRow([]string{
+			item.Name,
+			fmt.Sprintf("%d", item.ID1),
+			fmt.Sprintf("%d", item.ID2),
+			status,
+		}, widths)
+	}
+
+	printHorizontalBorder("└", "┴", "┘", widths)
+	fmt.Println()
+}
+
+// printIDMappingTable prints a table for ID mapping (items with different IDs)
+func printIDMappingTable(items []CommonItemInfo) {
+	// Filter items with different IDs
+	var mappings []CommonItemInfo
+	for _, item := range items {
+		if !item.IDsMatch {
+			mappings = append(mappings, item)
+		}
+	}
+
+	// Column widths
+	sourceWidth := 12
+	targetWidth := 12
+	nameWidth := 70
+
+	widths := []int{sourceWidth, targetWidth, nameWidth}
+	totalInnerWidth := sourceWidth + targetWidth + nameWidth + 3*len(widths) - 1
+
+	// Title
+	printHorizontalBorder("┌", "┬", "┐", widths)
+	printHeader("Маппинг ID (для обновления)", totalInnerWidth)
+
+	// If no mappings, don't show the table at all (or show empty message)
+	if len(mappings) == 0 {
+		printSeparator(widths)
+		printHeader("(все ID совпадают)", totalInnerWidth)
+		printHorizontalBorder("└", "┴", "┘", widths)
+		fmt.Println()
+		return
+	}
+
+	// Column headers
+	printSeparator(widths)
+	printRow([]string{"Source ID", "Target ID", "Name"}, widths)
+	printSeparator(widths)
+
+	// Data rows - show only items with different IDs
+	for _, item := range mappings {
+		printRow([]string{
+			fmt.Sprintf("%d", item.ID1),
+			fmt.Sprintf("%d", item.ID2),
+			item.Name,
+		}, widths)
+	}
+
+	printHorizontalBorder("└", "┴", "┘", widths)
+	fmt.Println()
 }
 
 // printJSON prints the result as JSON
@@ -249,6 +447,35 @@ func saveToFile(data []byte, savePath string) error {
 	}
 	fmt.Printf("Результат сохранён в %s\n", savePath)
 	return nil
+}
+
+// saveToFileWithPath saves the result to a specific file path
+func saveToFileWithPath(result CompareResult, format, savePath string) error {
+	var data []byte
+	var err error
+
+	switch format {
+	case "json":
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+		}
+	case "yaml":
+		data, err = yaml.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("ошибка маршалинга YAML: %w", err)
+		}
+	case "csv":
+		return saveCSV(result, savePath)
+	default:
+		// Default to JSON for unknown formats
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+		}
+	}
+
+	return saveToFile(data, savePath)
 }
 
 // GetProjectName retrieves a single project name (helper for tests)

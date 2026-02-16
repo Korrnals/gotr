@@ -51,8 +51,11 @@ func newAllCmd() *cobra.Command {
   # Сравнить все ресурсы
   gotr compare all --pid1 30 --pid2 31
 
-  # Сохранить в JSON
-  gotr compare all --pid1 30 --pid2 31 --format json --save result.json
+  # Сохранить результат в файл по умолчанию
+  gotr compare all --pid1 30 --pid2 31 --save
+
+  # Сохранить результат в указанный файл
+  gotr compare all --pid1 30 --pid2 31 --save-to result.json
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
@@ -61,7 +64,7 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Parse flags
-			pid1, pid2, format, saveFlag, err := parseCommonFlags(cmd)
+			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
 			if err != nil {
 				return err
 			}
@@ -187,9 +190,14 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Save result if requested
-			if saveFlag {
-				_, err := save.Output(cmd, result, "compare", format)
-				return err
+			if savePath != "" {
+				if savePath == "__DEFAULT__" {
+					// --save flag was used, save to default location
+					_, err := save.Output(cmd, result, "compare", format)
+					return err
+				}
+				// --save-to flag was used with custom path
+				return saveAllResult(result, format, savePath)
 			}
 
 			return nil
@@ -206,17 +214,21 @@ func newAllCmd() *cobra.Command {
 var allCmd = newAllCmd()
 
 // parseCommonFlags parses common flags for all subcommands.
-func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format string, saveFlag bool, err error) {
+// Returns savePath which can be:
+//   - "__DEFAULT__" if --save flag was used (save to default location)
+//   - custom path if --save-to flag was used
+//   - "" if neither flag was used
+func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath string, err error) {
 	pid1Str, _ := cmd.Flags().GetString("pid1")
 	pid1, err = strconv.ParseInt(pid1Str, 10, 64)
 	if err != nil || pid1 <= 0 {
-		return 0, 0, "", false, fmt.Errorf("укажите корректный pid1 (--pid1)")
+		return 0, 0, "", "", fmt.Errorf("укажите корректный pid1 (--pid1)")
 	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
 	pid2, err = strconv.ParseInt(pid2Str, 10, 64)
 	if err != nil || pid2 <= 0 {
-		return 0, 0, "", false, fmt.Errorf("укажите корректный pid2 (--pid2)")
+		return 0, 0, "", "", fmt.Errorf("укажите корректный pid2 (--pid2)")
 	}
 
 	format, _ = cmd.Flags().GetString("format")
@@ -224,16 +236,24 @@ func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format string, save
 		format = "table"
 	}
 
-	saveFlag, _ = cmd.Flags().GetBool("save")
+	// Check save flags
+	if cmd.Flags().Changed("save-to") {
+		// --save-to has priority and specifies custom path
+		savePath, _ = cmd.Flags().GetString("save-to")
+	} else if cmd.Flags().Changed("save") {
+		// --save means use default path
+		savePath = "__DEFAULT__"
+	}
 
-	return pid1, pid2, format, saveFlag, nil
+	return pid1, pid2, format, savePath, nil
 }
 
 // addCommonFlags adds common flags to a command.
 func addCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
 	cmd.Flags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
-	cmd.Flags().Bool("save", false, "Сохранить результат в файл")
+	cmd.Flags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
+	cmd.Flags().String("save-to", "", "Сохранить результат в указанный файл")
 	cmd.Flags().StringP("format", "f", "table", "Формат вывода: table, json, yaml, csv")
 
 	cmd.MarkFlagRequired("pid1")

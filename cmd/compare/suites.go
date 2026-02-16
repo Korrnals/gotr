@@ -19,8 +19,11 @@ func newSuitesCmd() *cobra.Command {
   # Сравнить сюиты
   gotr compare suites --pid1 30 --pid2 31
 
-  # Сохранить результат
-  gotr compare suites --pid1 30 --pid2 31 --format json --save suites_diff.json
+  # Сохранить результат в файл по умолчанию
+  gotr compare suites --pid1 30 --pid2 31 --save
+
+  # Сохранить результат в указанный файл
+  gotr compare suites --pid1 30 --pid2 31 --save-to suites_diff.json
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
@@ -29,7 +32,7 @@ func newSuitesCmd() *cobra.Command {
 			}
 
 			// Parse flags
-			pid1, pid2, format, saveFlag, err := parseCommonFlags(cmd)
+			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
 			if err != nil {
 				return err
 			}
@@ -47,7 +50,7 @@ func newSuitesCmd() *cobra.Command {
 			}
 
 			// Print or save result
-			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, saveFlag)
+			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath)
 		},
 	}
 

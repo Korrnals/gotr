@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
 // newListCmd создаёт команду 'plans list'
 // Эндпоинт: GET /get_plans/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list <project_id>",
 		Short: "Список тест-планов",
 		Long:  `Выводит список всех тест-планов проекта.`,
@@ -29,7 +30,12 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to list plans: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			_, err = save.Output(cmd, resp, "plans", "json")
+			return err
 		},
 	}
+
+	save.AddFlag(cmd)
+
+	return cmd
 }

@@ -2,6 +2,7 @@ package run
 
 import (
 	"github.com/Korrnals/gotr/cmd/common"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -77,7 +78,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 
 	// Общие флаги для всех подкоманд
 	for _, subCmd := range Cmd.Commands() {
-		subCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+		save.AddFlag(subCmd)
 		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 	}
 

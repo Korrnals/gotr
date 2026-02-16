@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/internal/output"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
@@ -36,11 +36,12 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to list reports: %w", err)
 			}
 
-			return output.Result(cmd, resp)
+			_, err = save.Output(cmd, resp, "reports", "json")
+			return err
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 
 	return cmd
 }

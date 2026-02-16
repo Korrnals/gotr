@@ -42,7 +42,7 @@ func TestRegister(t *testing.T) {
 
 func TestOutputResult_JSON(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	data := &data.Plan{ID: 1, Name: "Test Plan"}
 	err := outputResult(cmd, data)
@@ -68,7 +68,7 @@ func TestOutputResult_ToFile(t *testing.T) {
 
 func TestOutputResult_InvalidData(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	// Channel cannot be serialized to JSON
 	invalidData := make(chan int)

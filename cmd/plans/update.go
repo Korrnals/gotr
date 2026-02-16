@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -59,7 +60,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Новое название плана")
 	cmd.Flags().String("description", "", "Новое описание")
 	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")

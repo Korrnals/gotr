@@ -152,7 +152,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	badData := make(chan int)
 
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	err := outputResult(cmd, badData)
 	assert.Error(t, err)

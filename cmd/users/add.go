@@ -6,7 +6,7 @@ package users
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/cmd/internal/output"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -51,7 +51,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add user: %w", err)
 			}
 
-			return output.Result(cmd, user)
+			_, err = save.Output(cmd, user, "users", "json")
+			return err
 		},
 	}
 
@@ -60,7 +61,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64Var(&roleID, "role", 0, "ID роли пользователя")
 	cmd.Flags().BoolVar(&isAdmin, "admin", false, "Сделать пользователя администратором")
 	cmd.Flags().StringVar(&password, "password", "", "Пароль пользователя")
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("email")

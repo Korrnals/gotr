@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/cmd/internal/output"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -67,7 +67,7 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 			return outputAttachmentsList(cmd, attachments)
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "Формат вывода: json")
+	save.AddFlag(cmd)
 	return cmd
 }
 
@@ -91,7 +91,7 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 			return outputAttachmentsList(cmd, attachments)
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "Формат вывода: json")
+	save.AddFlag(cmd)
 	return cmd
 }
 
@@ -115,7 +115,7 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			return outputAttachmentsList(cmd, attachments)
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "Формат вывода: json")
+	save.AddFlag(cmd)
 	return cmd
 }
 
@@ -139,7 +139,7 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 			return outputAttachmentsList(cmd, attachments)
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "Формат вывода: json")
+	save.AddFlag(cmd)
 	return cmd
 }
 
@@ -163,14 +163,15 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 			return outputAttachmentsList(cmd, attachments)
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "Формат вывода: json")
+	save.AddFlag(cmd)
 	return cmd
 }
 
 func outputAttachmentsList(cmd *cobra.Command, attachments data.GetAttachmentsResponse) error {
-	outputFlag, _ := cmd.Flags().GetString("output")
-	if outputFlag == "json" {
-		return output.JSON(cmd, attachments)
+	outputFlag, _ := cmd.Flags().GetString("save")
+	if outputFlag != "" {
+		_, err := save.Output(cmd, attachments, "attachments", "json")
+		return err
 	}
 
 	if len(attachments) == 0 {

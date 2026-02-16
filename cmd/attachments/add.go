@@ -1,12 +1,12 @@
 package attachments
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
@@ -242,17 +242,6 @@ func validateFileExists(filePath string) error {
 
 // outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if output != "" {
-		return os.WriteFile(output, jsonBytes, 0644)
-	}
-
-	fmt.Println(string(jsonBytes))
-	return nil
+	_, err := save.Output(cmd, data, "attachments", "json")
+	return err
 }

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -85,7 +86,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
 	cmd.Flags().String("name", "", "Название записи")
 	cmd.Flags().String("config-ids", "", "ID конфигураций через запятую")
@@ -139,7 +140,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Новое название записи")
 
 	return cmd

@@ -1,11 +1,10 @@
 package variables
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
@@ -41,24 +40,13 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 
 	return cmd
 }
 
 // outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if output != "" {
-		return os.WriteFile(output, jsonBytes, 0644)
-	}
-
-	fmt.Println(string(jsonBytes))
-	return nil
+	_, err := save.Output(cmd, data, "variables", "json")
+	return err
 }

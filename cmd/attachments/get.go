@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/internal/output"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
@@ -38,9 +38,10 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to get attachment: %w", err)
 			}
 
-			return output.Result(cmd, resp)
+			_, err = save.Output(cmd, resp, "attachments", "json")
+			return err
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 	return cmd
 }

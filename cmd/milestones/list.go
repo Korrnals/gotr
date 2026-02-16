@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +40,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 
 	return cmd
 }

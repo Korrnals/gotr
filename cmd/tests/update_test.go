@@ -148,7 +148,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	badData := make(chan int)
 
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	err := outputResult(cmd, badData, time.Now())
 	assert.Error(t, err)
@@ -241,7 +241,7 @@ func TestOutputResult_WithFileOutput(t *testing.T) {
 
 func TestOutputResult_WithoutFileOutput(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	data := map[string]string{"key": "value"}
 	err := outputResult(cmd, data, time.Now())

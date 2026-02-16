@@ -1,12 +1,11 @@
 package plans
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -65,7 +64,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Название плана (обязательно)")
 	cmd.Flags().String("description", "", "Описание плана")
 	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
@@ -75,17 +74,6 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 // outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if output != "" {
-		return os.WriteFile(output, jsonBytes, 0644)
-	}
-
-	fmt.Println(string(jsonBytes))
-	return nil
+	_, err := save.Output(cmd, data, "plans", "json")
+	return err
 }

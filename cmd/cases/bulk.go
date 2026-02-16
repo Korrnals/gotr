@@ -1,13 +1,12 @@
 package cases
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -88,7 +87,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
 	cmd.Flags().Int64("priority-id", 0, "ID приоритета для установки")
 	cmd.Flags().String("estimate", "", "Оценка времени (например: '1h 30m')")
@@ -269,17 +268,6 @@ func parseIDList(args []string) []int64 {
 
 // outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if output != "" {
-		return os.WriteFile(output, jsonBytes, 0644)
-	}
-
-	fmt.Println(string(jsonBytes))
-	return nil
+	_, err := save.Output(cmd, data, "cases", "json")
+	return err
 }

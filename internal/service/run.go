@@ -14,14 +14,29 @@ import (
 	"go.uber.org/zap"
 )
 
+// runClientInterface определяет методы клиента, необходимые для RunService
+type runClientInterface interface {
+	GetRun(runID int64) (*data.Run, error)
+	GetRuns(projectID int64) (data.GetRunsResponse, error)
+	AddRun(projectID int64, req *data.AddRunRequest) (*data.Run, error)
+	UpdateRun(runID int64, req *data.UpdateRunRequest) (*data.Run, error)
+	CloseRun(runID int64) (*data.Run, error)
+	DeleteRun(runID int64) error
+}
+
 // RunService предоставляет методы для работы с test runs
 type RunService struct {
-	client *client.HTTPClient
+	client runClientInterface
 }
 
 // NewRunService создаёт новый сервис для работы с runs
 func NewRunService(client *client.HTTPClient) *RunService {
 	return &RunService{client: client}
+}
+
+// NewRunServiceFromInterface создаёт сервис из клиента-интерфейса (для тестов)
+func NewRunServiceFromInterface(cli client.ClientInterface) *RunService {
+	return &RunService{client: cli}
 }
 
 // Get получает информацию о test run по ID

@@ -14,14 +14,31 @@ import (
 	"go.uber.org/zap"
 )
 
+// resultClientInterface определяет методы клиента, необходимые для ResultService
+type resultClientInterface interface {
+	GetResults(testID int64) (data.GetResultsResponse, error)
+	GetResultsForCase(runID, caseID int64) (data.GetResultsResponse, error)
+	GetResultsForRun(runID int64) (data.GetResultsResponse, error)
+	GetRuns(projectID int64) (data.GetRunsResponse, error)
+	AddResult(testID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddResultForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
+	AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
+}
+
 // ResultService предоставляет методы для работы с результатами тестов
 type ResultService struct {
-	client *client.HTTPClient
+	client resultClientInterface
 }
 
 // NewResultService создаёт новый сервис для работы с результатами
 func NewResultService(client *client.HTTPClient) *ResultService {
 	return &ResultService{client: client}
+}
+
+// NewResultServiceFromInterface создаёт сервис из клиента-интерфейса (для тестов)
+func NewResultServiceFromInterface(cli client.ClientInterface) *ResultService {
+	return &ResultService{client: cli}
 }
 
 // GetForTest получает результаты для test ID

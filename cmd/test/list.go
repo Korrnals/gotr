@@ -1,9 +1,7 @@
 package test
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
@@ -68,16 +66,15 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 			}
 
 			// Проверяем нужно ли сохранить в файл
-			output, _ := cmd.Flags().GetString("save")
-			if output != "" {
-				jsonBytes, err := json.MarshalIndent(tests, "", "  ")
+			saveFlag, _ := cmd.Flags().GetBool("save")
+			if saveFlag {
+				filepath, err := save.Output(cmd, tests, "test", "json")
 				if err != nil {
-					return fmt.Errorf("ошибка сериализации: %w", err)
+					return fmt.Errorf("ошибка сохранения: %w", err)
 				}
-				if err := os.WriteFile(output, jsonBytes, 0644); err != nil {
-					return fmt.Errorf("ошибка записи файла: %w", err)
+				if filepath != "" {
+					svc.PrintSuccess(cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)
 				}
-				svc.PrintSuccess(cmd, "Список тестов (%d) сохранён в %s", len(tests), output)
 				return nil
 			}
 

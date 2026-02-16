@@ -39,8 +39,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to list labels: %w", err)
 			}
 
-			outputFlag, _ := cmd.Flags().GetString("save")
-			if outputFlag != "" {
+			saveFlag, _ := cmd.Flags().GetBool("save")
+			if saveFlag {
 				_, err := save.Output(cmd, labels, "labels", "json")
 				return err
 			}

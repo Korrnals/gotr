@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -63,10 +64,11 @@ func GetProjectNames(cli client.ClientInterface, pid1, pid2 int64) (string, stri
 }
 
 // PrintCompareResult prints or saves a compare result
-func PrintCompareResult(result CompareResult, project1Name, project2Name, format, savePath string) error {
-	// If save path is provided, save to file
-	if savePath != "" {
-		return saveCompareResult(result, format, savePath)
+func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, project2Name, format string, saveFlag bool) error {
+	// If save flag is set, save to file
+	if saveFlag {
+		_, err := save.Output(cmd, result, "compare", format)
+		return err
 	}
 
 	// Otherwise, print to stdout

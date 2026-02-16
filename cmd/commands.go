@@ -166,7 +166,9 @@ func registerExportCmd() {
 	exportCmd.Flags().StringP("suite-id", "s", "", "ID тест-сюиты (для get_cases)")
 	exportCmd.Flags().String("section-id", "", "ID секции (для get_cases)")
 	exportCmd.Flags().String("milestone-id", "", "ID milestone (для get_runs)")
-	exportCmd.Flags().String("save", "", "Сохранить ответ в файл (если указан)")
+	
+	// Флаг --save для сохранения в ~/.gotr/exports/
+	exportCmd.Flags().Bool("save", false, "Сохранить ответ в ~/.gotr/exports/export/")
 
 	// Автодополнение
 	exportCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

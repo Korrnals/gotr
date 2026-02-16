@@ -72,13 +72,27 @@ func GetProjectNames(cli client.ClientInterface, pid1, pid2 int64) (string, stri
 func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, project2Name, format, savePath string) error {
 	// If save path is provided (flag was used), save to file
 	if savePath != "" {
+		// For saving, default to json if table format is specified
+		saveFormat := format
+		if saveFormat == "table" || saveFormat == "" {
+			saveFormat = "json"
+		}
+
 		if savePath == "__DEFAULT__" {
 			// --save flag was used, save to default location
-			_, err := save.Output(cmd, result, "compare", format)
-			return err
+			filepath, err := save.Output(cmd, result, "compare", saveFormat)
+			if err != nil {
+				return err
+			}
+			fmt.Printf("Результат сохранён в %s\n", filepath)
+			return nil
 		}
 		// --save-to flag was used with custom path
-		return saveToFileWithPath(result, format, savePath)
+		if err := saveToFileWithPath(result, saveFormat, savePath); err != nil {
+			return err
+		}
+		fmt.Printf("Результат сохранён в %s\n", savePath)
+		return nil
 	}
 
 	// Otherwise, print to stdout

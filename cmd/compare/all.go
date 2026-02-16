@@ -191,13 +191,27 @@ func newAllCmd() *cobra.Command {
 
 			// Save result if requested
 			if savePath != "" {
+				// For saving, default to json if table format is specified
+				saveFormat := format
+				if saveFormat == "table" || saveFormat == "" {
+					saveFormat = "json"
+				}
+
 				if savePath == "__DEFAULT__" {
 					// --save flag was used, save to default location
-					_, err := save.Output(cmd, result, "compare", format)
-					return err
+					filepath, err := save.Output(cmd, result, "compare", saveFormat)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("Результат сохранён в %s\n", filepath)
+					return nil
 				}
 				// --save-to flag was used with custom path
-				return saveAllResult(result, format, savePath)
+				if err := saveAllResult(result, saveFormat, savePath); err != nil {
+					return err
+				}
+				fmt.Printf("Результат сохранён в %s\n", savePath)
+				return nil
 			}
 
 			return nil

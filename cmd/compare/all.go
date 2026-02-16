@@ -248,12 +248,11 @@ func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath st
 	return pid1, pid2, format, savePath, nil
 }
 
-// addCommonFlags adds common flags to a command.
+// addCommonFlags marks required flags that are already registered as persistent.
+// Note: pid1, pid2, format, save, save-to are registered as persistent flags
+// in register.go to ensure they appear in completion.
 func addCommonFlags(cmd *cobra.Command) {
-	cmd.Flags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
-	cmd.Flags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
-	cmd.Flags().StringP("format", "f", "table", "Формат вывода: table, json, yaml, csv")
-
+	// Mark required flags
 	cmd.MarkFlagRequired("pid1")
 	cmd.MarkFlagRequired("pid2")
 }

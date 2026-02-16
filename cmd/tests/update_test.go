@@ -148,7 +148,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	badData := make(chan int)
 
 	cmd := &cobra.Command{}
-	cmd.Flags().String("save", "", "")
+	cmd.Flags().Bool("save", false, "")
 
 	err := outputResult(cmd, badData, time.Now())
 	assert.Error(t, err)
@@ -169,42 +169,6 @@ func TestRegister(t *testing.T) {
 }
 
 // ==================== Additional Tests for Output Functions ====================
-
-func TestSaveToFile_Success(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "test.json")
-
-	cmd := &cobra.Command{}
-	data := map[string]string{"key": "value"}
-
-	err := saveToFile(cmd, data, outputFile)
-	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "key")
-}
-
-func TestSaveToFile_InvalidPath(t *testing.T) {
-	cmd := &cobra.Command{}
-	data := map[string]string{"key": "value"}
-
-	// Try to write to a non-existent directory without permissions
-	err := saveToFile(cmd, data, "/nonexistent/dir/test.json")
-	assert.Error(t, err)
-}
-
-func TestSaveToFile_MarshalError(t *testing.T) {
-	cmd := &cobra.Command{}
-	// Channel cannot be marshaled to JSON
-	invalidData := make(chan int)
-
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "test.json")
-
-	err := saveToFile(cmd, invalidData, outputFile)
-	assert.Error(t, err)
-}
 
 func TestPrintJSON_Success(t *testing.T) {
 	cmd := &cobra.Command{}

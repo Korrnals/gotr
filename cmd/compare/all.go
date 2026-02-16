@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -60,7 +61,7 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Parse flags
-			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
+			pid1, pid2, format, saveFlag, err := parseCommonFlags(cmd)
 			if err != nil {
 				return err
 			}
@@ -186,8 +187,9 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Save result if requested
-			if savePath != "" {
-				return saveAllResult(result, format, savePath)
+			if saveFlag {
+				_, err := save.Output(cmd, result, "compare", format)
+				return err
 			}
 
 			return nil
@@ -204,17 +206,17 @@ func newAllCmd() *cobra.Command {
 var allCmd = newAllCmd()
 
 // parseCommonFlags parses common flags for all subcommands.
-func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath string, err error) {
+func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format string, saveFlag bool, err error) {
 	pid1Str, _ := cmd.Flags().GetString("pid1")
 	pid1, err = strconv.ParseInt(pid1Str, 10, 64)
 	if err != nil || pid1 <= 0 {
-		return 0, 0, "", "", fmt.Errorf("укажите корректный pid1 (--pid1)")
+		return 0, 0, "", false, fmt.Errorf("укажите корректный pid1 (--pid1)")
 	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
 	pid2, err = strconv.ParseInt(pid2Str, 10, 64)
 	if err != nil || pid2 <= 0 {
-		return 0, 0, "", "", fmt.Errorf("укажите корректный pid2 (--pid2)")
+		return 0, 0, "", false, fmt.Errorf("укажите корректный pid2 (--pid2)")
 	}
 
 	format, _ = cmd.Flags().GetString("format")
@@ -222,16 +224,16 @@ func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath st
 		format = "table"
 	}
 
-	savePath, _ = cmd.Flags().GetString("save")
+	saveFlag, _ = cmd.Flags().GetBool("save")
 
-	return pid1, pid2, format, savePath, nil
+	return pid1, pid2, format, saveFlag, nil
 }
 
 // addCommonFlags adds common flags to a command.
 func addCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
 	cmd.Flags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
-	cmd.Flags().StringP("save", "s", "", "Сохранить результат в файл")
+	cmd.Flags().Bool("save", false, "Сохранить результат в файл")
 	cmd.Flags().StringP("format", "f", "table", "Формат вывода: table, json, yaml, csv")
 
 	cmd.MarkFlagRequired("pid1")

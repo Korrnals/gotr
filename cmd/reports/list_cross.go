@@ -30,8 +30,8 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to list cross-project reports: %w", err)
 			}
 
-			outputFlag, _ := cmd.Flags().GetString("save")
-			if outputFlag != "" {
+			saveFlag, _ := cmd.Flags().GetBool("save")
+			if saveFlag {
 				_, err := save.Output(cmd, reports, "reports", "json")
 				return err
 			}

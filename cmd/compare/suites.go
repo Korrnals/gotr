@@ -29,7 +29,7 @@ func newSuitesCmd() *cobra.Command {
 			}
 
 			// Parse flags
-			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
+			pid1, pid2, format, saveFlag, err := parseCommonFlags(cmd)
 			if err != nil {
 				return err
 			}
@@ -47,7 +47,7 @@ func newSuitesCmd() *cobra.Command {
 			}
 
 			// Print or save result
-			return PrintCompareResult(*result, project1Name, project2Name, format, savePath)
+			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, saveFlag)
 		},
 	}
 

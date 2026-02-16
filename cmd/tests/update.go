@@ -1,9 +1,7 @@
 package tests
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"strconv"
 	"time"
 
@@ -70,20 +68,4 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
 
 	return cmd
-}
-
-func _unused_outputResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	if output != "" {
-		return os.WriteFile(output, jsonBytes, 0644)
-	}
-
-	fmt.Println(string(jsonBytes))
-	return nil
 }

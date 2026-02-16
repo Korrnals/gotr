@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/internal/output"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
@@ -39,12 +39,13 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			return output.Result(cmd, group)
+			return outputResult(cmd, group)
 		},
 	}
 
 	cmd.Flags().StringP("name", "n", "", "Новое название группы (обязательно)")
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано, без выполнения")
+	save.AddFlag(cmd)
 
 	return cmd
 }

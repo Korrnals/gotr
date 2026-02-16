@@ -3,7 +3,6 @@ package get
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
@@ -65,7 +64,7 @@ func SetGetClientForTests(fn GetClientFunc) {
 func handleOutput(command *cobra.Command, data any, start time.Time) error {
 	quiet, _ := command.Flags().GetBool("quiet")
 	outputFormat, _ := command.Flags().GetString("type")
-	saveFile, _ := command.Flags().GetString("save")
+	saveFlag, _ := command.Flags().GetBool("save")
 	jqEnabled, _ := command.Flags().GetBool("jq")
 	jqFilter, _ := command.Flags().GetString("jq-filter")
 	bodyOnly, _ := command.Flags().GetBool("body-only")
@@ -75,13 +74,10 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 		jqEnabled = viper.GetBool("jq_format")
 	}
 
-	if saveFile != "" {
-		var toSave []byte
-		var err error
-		if bodyOnly {
-			toSave, err = json.MarshalIndent(data, "", "  ")
-		} else {
-			full := struct {
+	if saveFlag {
+		var toSave interface{} = data
+		if !bodyOnly {
+			toSave = struct {
 				Status     string        `json:"status"`
 				StatusCode int           `json:"status_code"`
 				Duration   time.Duration `json:"duration"`
@@ -94,17 +90,15 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 				Timestamp:  time.Now(),
 				Data:       data,
 			}
-			toSave, err = json.MarshalIndent(full, "", "  ")
 		}
+		filepath, err := save.Output(command, toSave, "get", "json")
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга: %w", err)
+			return fmt.Errorf("ошибка сохранения: %w", err)
 		}
-		if err := os.WriteFile(saveFile, toSave, 0644); err != nil {
-			return err
+		if !quiet && filepath != "" {
+			fmt.Printf("Ответ сохранён в %s\n", filepath)
 		}
-		if !quiet {
-			fmt.Printf("Ответ сохранён в %s\n", saveFile)
-		}
+		return nil
 	}
 
 	if jqEnabled || jqFilter != "" {

@@ -64,8 +64,8 @@ func listAllUsers(cmd *cobra.Command, cli usersClient) error {
 		return fmt.Errorf("failed to list users: %w", err)
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("save")
-	if outputFlag != "" {
+	saveFlag, _ := cmd.Flags().GetBool("save")
+	if saveFlag {
 		_, err := save.Output(cmd, users, "users", "json")
 		return err
 	}
@@ -89,8 +89,8 @@ func listProjectUsers(cmd *cobra.Command, cli usersClient, projectID int64) erro
 		return fmt.Errorf("failed to list project users: %w", err)
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("save")
-	if outputFlag != "" {
+	saveFlag, _ := cmd.Flags().GetBool("save")
+	if saveFlag {
 		_, err := save.Output(cmd, users, "users", "json")
 		return err
 	}

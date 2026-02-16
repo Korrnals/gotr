@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/cmd/internal/output"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -31,7 +31,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr users list 123
 
   # Вывод в JSON
-  gotr users list -o json`,
+  gotr users list -s output.json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
 
@@ -48,7 +48,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Формат вывода: json")
+	save.AddFlag(cmd)
 
 	return cmd
 }
@@ -64,9 +64,10 @@ func listAllUsers(cmd *cobra.Command, cli usersClient) error {
 		return fmt.Errorf("failed to list users: %w", err)
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("output")
-	if outputFlag == "json" {
-		return output.List(cmd, users)
+	outputFlag, _ := cmd.Flags().GetString("save")
+	if outputFlag != "" {
+		_, err := save.Output(cmd, users, "users", "json")
+		return err
 	}
 
 	if len(users) == 0 {
@@ -88,9 +89,10 @@ func listProjectUsers(cmd *cobra.Command, cli usersClient, projectID int64) erro
 		return fmt.Errorf("failed to list project users: %w", err)
 	}
 
-	outputFlag, _ := cmd.Flags().GetString("output")
-	if outputFlag == "json" {
-		return output.List(cmd, users)
+	outputFlag, _ := cmd.Flags().GetString("save")
+	if outputFlag != "" {
+		_, err := save.Output(cmd, users, "users", "json")
+		return err
 	}
 
 	if len(users) == 0 {

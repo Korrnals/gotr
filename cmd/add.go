@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/cmd/common/wizard"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -79,7 +80,7 @@ func init() {
 	addCmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
 	addCmd.Flags().Bool("include-all", true, "Включить все кейсы (для run)")
 	addCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
-	addCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+	save.AddFlag(addCmd)
 	addCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	addCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
 }
@@ -739,22 +740,8 @@ func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int
 }
 
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-	
-	if output != "" {
-		jsonBytes, err := json.MarshalIndent(data, "", "  ")
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(output, jsonBytes, 0644)
-	}
-	
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(jsonBytes))
-	return nil
+	_, err := save.Output(cmd, data, "result", "json")
+	return err
 }
 
 func parseCaseIDs(s string) []int64 {

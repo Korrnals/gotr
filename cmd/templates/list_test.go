@@ -134,7 +134,7 @@ func TestOutputResult_ToFile(t *testing.T) {
 
 func TestOutputResult_MarshalError(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	// Channel cannot be marshaled to JSON
 	invalidData := make(chan int)
@@ -145,7 +145,7 @@ func TestOutputResult_MarshalError(t *testing.T) {
 
 func TestOutputResult_WriteFileError(t *testing.T) {
 	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 	// Set output to a path that cannot be created (invalid directory)
 	cmd.Flags().Set("output", "/nonexistent/dir/file.json")
 

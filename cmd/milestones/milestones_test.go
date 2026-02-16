@@ -40,7 +40,7 @@ func TestRegister(t *testing.T) {
 
 func TestOutputResult_Default(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	data := &data.Milestone{ID: 1, Name: "Test Milestone"}
 	err := outputResult(cmd, data)
@@ -60,7 +60,7 @@ func TestOutputResult_JSON(t *testing.T) {
 
 func TestOutputList(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 
 	data := []data.Milestone{
 		{ID: 1, Name: "Milestone 1"},

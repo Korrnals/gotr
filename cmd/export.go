@@ -62,7 +62,7 @@ var exportCmd = &cobra.Command{
 
 		// Флаги
 		quiet, _ := cmd.Flags().GetBool("quiet")
-		outputFile, _ := cmd.Flags().GetString("output")
+		outputFile, _ := cmd.Flags().GetString("save")
 
 		// Имя файла
 		filename := outputFile

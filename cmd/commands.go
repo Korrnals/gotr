@@ -4,6 +4,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/bdds"
 	"github.com/Korrnals/gotr/cmd/cases"
+	"github.com/Korrnals/gotr/cmd/compare"
 	"github.com/Korrnals/gotr/cmd/configurations"
 	"github.com/Korrnals/gotr/cmd/datasets"
 	"github.com/Korrnals/gotr/cmd/get"
@@ -37,13 +38,13 @@ func init() {
 	registerCopyCmd()
 	registerExportCmd()
 	registerImportCmd()
-	registerCompareCmd()
 	registerCompletionCmd()
 
 	// Регистрация команд из подпакетов (передаем GetClient)
 	attachments.Register(rootCmd, GetClientInterface)
 	bdds.Register(rootCmd, GetClientInterface)
 	cases.Register(rootCmd, GetClientInterface)
+	compare.Register(rootCmd, GetClientInterface)
 	configurations.Register(rootCmd, GetClientInterface)
 	datasets.Register(rootCmd, GetClientInterface)
 	get.Register(rootCmd, GetClient)
@@ -165,7 +166,7 @@ func registerExportCmd() {
 	exportCmd.Flags().StringP("suite-id", "s", "", "ID тест-сюиты (для get_cases)")
 	exportCmd.Flags().String("section-id", "", "ID секции (для get_cases)")
 	exportCmd.Flags().String("milestone-id", "", "ID milestone (для get_runs)")
-	exportCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (если указан)")
+	exportCmd.Flags().String("save", "", "Сохранить ответ в файл (если указан)")
 
 	// Автодополнение
 	exportCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
@@ -186,19 +187,6 @@ func registerExportCmd() {
 
 func registerImportCmd() {
 	rootCmd.AddCommand(importCmd)
-}
-
-// ============================================
-// Compare
-// ============================================
-
-func registerCompareCmd() {
-	rootCmd.AddCommand(compareCmd)
-
-	// Флаги для compare
-	compareCmd.Flags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
-	compareCmd.Flags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
-	compareCmd.Flags().String("field", "title", "Поле для сравнения (title, priority_id, custom_preconds и т.д.)")
 }
 
 // ============================================

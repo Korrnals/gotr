@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -73,7 +74,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл (JSON)")
+	save.AddFlag(cmd)
 	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными кейса")
 	cmd.Flags().String("title", "", "Название тест-кейса")
 	cmd.Flags().Int64("template-id", 0, "ID шаблона")

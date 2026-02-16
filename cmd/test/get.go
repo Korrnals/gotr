@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
@@ -43,7 +44,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 			}
 
 			// Проверяем нужно ли сохранить в файл
-			output, _ := cmd.Flags().GetString("output")
+			output, _ := cmd.Flags().GetString("save")
 			if output != "" {
 				jsonBytes, err := json.MarshalIndent(test, "", "  ")
 				if err != nil {
@@ -60,7 +61,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 		},
 	}
 
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+	save.AddFlag(cmd)
 	cmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 
 	return cmd

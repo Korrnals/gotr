@@ -17,7 +17,7 @@ import (
 func TestHandleOutput_JSONOutput(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json", "")
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 	cmd.Flags().BoolP("quiet", "q", false, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -33,7 +33,7 @@ func TestHandleOutput_JSONOutput(t *testing.T) {
 func TestHandleOutput_JSONFullOutput(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json-full", "")
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 	cmd.Flags().BoolP("quiet", "q", false, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -48,7 +48,7 @@ func TestHandleOutput_JSONFullOutput(t *testing.T) {
 func TestHandleOutput_DefaultOutput(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "table", "") // Неподдерживаемый формат
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 	cmd.Flags().BoolP("quiet", "q", false, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -135,7 +135,7 @@ func TestHandleOutput_FileOutputQuiet(t *testing.T) {
 func TestHandleOutput_QuietMode(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json", "")
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 	cmd.Flags().BoolP("quiet", "q", true, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -150,7 +150,7 @@ func TestHandleOutput_QuietMode(t *testing.T) {
 func TestHandleOutput_JQEnabled(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json", "")
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 	cmd.Flags().BoolP("quiet", "q", false, "")
 	cmd.Flags().BoolP("jq", "j", true, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -169,7 +169,7 @@ func TestHandleOutput_JQEnabled(t *testing.T) {
 func TestHandleOutput_JQFilterOnly(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json", "")
-	cmd.Flags().StringP("output", "o", "", "")
+	cmd.Flags().String("save", "", "")
 	cmd.Flags().BoolP("quiet", "q", false, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", ".test", "")

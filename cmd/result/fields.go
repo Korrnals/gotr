@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -54,11 +55,8 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 // outputResult выводит результат в JSON
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-	if output != "" {
-		return saveToFile(data, output)
-	}
-	return printJSON(data)
+	_, err := save.Output(cmd, data, "results", "json")
+	return err
 }
 
 // saveToFile сохраняет данные в файл

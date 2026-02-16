@@ -31,15 +31,41 @@
   - Constructor pattern for all commands (`newXxxCmd`)
 - **Total:** 110 test files, 986 test functions, 18 packages ≥ 90% coverage
 
-#### Stage 5.2: Project Comparison Command
+#### Stage 5.2: Project Comparison Command (Refactored)
 
-- **New `compare` command** for comparing resources between projects:
-  - Compare individual resources: cases, suites, sections, runs, plans, milestones
-  - Compare all resources at once: `gotr compare all --pid1 30 --pid2 31`
-  - Field-based comparison for cases: `--field title`, `--field priority_id`
-  - Detailed diff output with summary statistics
-- **Supported resources:** cases, suites, sections, sharedsteps, runs, plans,
-  milestones, datasets, groups, labels, templates, configurations
+- **New `cmd/compare/` package** with subcommand structure:
+  - `gotr compare cases` - compare test cases with field-based diff
+  - `gotr compare suites` - compare test suites
+  - `gotr compare sections` - compare sections
+  - `gotr compare sharedsteps` - compare shared steps
+  - `gotr compare runs` - compare test runs
+  - `gotr compare plans` - compare test plans
+  - `gotr compare milestones` - compare milestones
+  - `gotr compare datasets` - compare datasets
+  - `gotr compare groups` - compare groups
+  - `gotr compare labels` - compare labels
+  - `gotr compare templates` - compare templates
+  - `gotr compare configurations` - compare configurations
+  - `gotr compare all` - compare all resources at once
+- **New `--save` flag** (replaces `--output`) for saving comparison results:
+  - Supports JSON, YAML, and CSV formats via `--format` flag
+  - Default saves to `~/.gotr/exports/` directory
+  - Generates filenames with timestamps: `{resource}_YYYY-MM-DD_HH-MM-SS.{ext}`
+- **Field-based comparison** for cases: `--field title`, `--field priority_id`, etc.
+- **Package structure:**
+  - `types.go` - shared types (CompareResult, ItemInfo, CommonItemInfo)
+  - `register.go` - command registration with root command
+  - Individual files per resource (cases.go, suites.go, etc.)
+
+#### Save Package (cmd/common/flags/save)
+
+- **New package** for standardized output saving across all commands:
+  - `SaveWithOptions()` - unified save function supporting JSON, YAML, CSV formats
+  - `GenerateFilename()` - generates timestamped filenames: `{resource}_YYYY-MM-DD_HH-MM-SS.{ext}`
+  - `GetExportsDir()` - returns `~/.gotr/exports/` directory path
+  - Automatic directory creation with 0755 permissions
+  - CSV export with dynamic header detection from struct tags
+  - Over 40 comprehensive tests (100% coverage)
 
 #### Build System Improvements
 

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/cmd/internal/output"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -39,9 +39,10 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to list labels: %w", err)
 			}
 
-			outputFlag, _ := cmd.Flags().GetString("output")
-			if outputFlag == "json" {
-				return output.JSON(cmd, labels)
+			outputFlag, _ := cmd.Flags().GetString("save")
+			if outputFlag != "" {
+				_, err := save.Output(cmd, labels, "labels", "json")
+				return err
 			}
 
 			if len(labels) == 0 {
@@ -57,7 +58,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			return w.Flush()
 		},
 	}
-	cmd.Flags().StringP("output", "o", "", "Формат вывода: json")
+	save.AddFlag(cmd)
 	return cmd
 }
 

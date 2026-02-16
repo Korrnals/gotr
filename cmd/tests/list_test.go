@@ -117,7 +117,7 @@ func TestListCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "ран не найден")
 }
 
-func TestListCmd_WithOutput(t *testing.T) {
+func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
 			return []data.Test{
@@ -129,7 +129,7 @@ func TestListCmd_WithOutput(t *testing.T) {
 	cmd := newListCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	cmd.SetContext(testCmd.Context())
-	cmd.SetArgs([]string{"100", "--output", "/tmp/tests_list.json"})
+	cmd.SetArgs([]string{"100", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)

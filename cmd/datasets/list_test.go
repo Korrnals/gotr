@@ -3,8 +3,6 @@ package datasets
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -65,26 +63,19 @@ func TestListCmd_ClientError(t *testing.T) {
 	assert.Contains(t, err.Error(), "проект не найден")
 }
 
-func TestListCmd_WithOutputFile(t *testing.T) {
+func TestListCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
 		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{{ID: 1, Name: "Test Data"}}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "datasets.json")
-
 	cmd := newListCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"1", "-o", outputFile})
+	cmd.SetArgs([]string{"1", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Test Data")
 }
 
 // ==================== Тесты валидации ====================

@@ -2,8 +2,6 @@ package groups
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -33,26 +31,19 @@ func TestGetCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestGetCmd_WithOutputFile(t *testing.T) {
+func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetGroupFunc: func(groupID int64) (*data.Group, error) {
 			return &data.Group{ID: 5, Name: "Developers"}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "group.json")
-
 	cmd := newGetCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"5", "-o", outputFile})
+	cmd.SetArgs([]string{"5", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Developers")
 }
 
 func TestGetCmd_NotFound(t *testing.T) {

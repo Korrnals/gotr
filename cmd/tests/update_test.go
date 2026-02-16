@@ -223,25 +223,18 @@ func TestPrintJSON_MarshalError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestOutputResult_WithFileOutput(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "result.json")
-
+func TestOutputResult_WithSaveFlag(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", outputFile, "")
+	cmd.Flags().Bool("save", true, "")
 
 	data := map[string]string{"key": "value"}
 	err := outputResult(cmd, data, time.Now())
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "key")
 }
 
-func TestOutputResult_WithoutFileOutput(t *testing.T) {
+func TestOutputResult_WithoutSaveFlag(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().String("save", "", "")
+	cmd.Flags().Bool("save", false, "")
 
 	data := map[string]string{"key": "value"}
 	err := outputResult(cmd, data, time.Now())

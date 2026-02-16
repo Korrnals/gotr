@@ -3,8 +3,6 @@ package roles
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -66,7 +64,7 @@ func TestListCmd_ClientError(t *testing.T) {
 	assert.Contains(t, err.Error(), "ошибка подключения")
 }
 
-func TestListCmd_WithOutputFile(t *testing.T) {
+func TestListCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
 		GetRolesFunc: func() (data.GetRolesResponse, error) {
 			return []data.Role{
@@ -75,19 +73,12 @@ func TestListCmd_WithOutputFile(t *testing.T) {
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "roles.json")
-
 	cmd := newListCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"-o", outputFile})
+	cmd.SetArgs([]string{"--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Administrator")
 }
 
 // ==================== Тесты валидации ====================

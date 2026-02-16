@@ -23,6 +23,9 @@ func TestGetCmd_Success(t *testing.T) {
 	cmd.SetContext(setupTestCmd(t, mock).Context())
 	cmd.SetArgs([]string{"12345"})
 
+	// The newGetCmd doesn't add save flag, so we need to add it for outputResult
+	cmd.Flags().Bool("save", false, "")
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }

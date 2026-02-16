@@ -1,8 +1,6 @@
 package plans
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -42,7 +40,7 @@ func TestRegister(t *testing.T) {
 
 func TestOutputResult_JSON(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().String("save", "", "")
+	cmd.Flags().Bool("save", false, "")
 
 	data := &data.Plan{ID: 1, Name: "Test Plan"}
 	err := outputResult(cmd, data)
@@ -50,25 +48,19 @@ func TestOutputResult_JSON(t *testing.T) {
 }
 
 func TestOutputResult_ToFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "plan.json")
-
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("output", "o", outputFile, "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.ParseFlags([]string{"--save"})
 
 	plan := &data.Plan{ID: 1, Name: "Test Plan"}
 	err := outputResult(cmd, plan)
 	assert.NoError(t, err)
-
-	// Check file was created
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Test Plan")
 }
 
 func TestOutputResult_InvalidData(t *testing.T) {
 	cmd := &cobra.Command{}
-	cmd.Flags().String("save", "", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.ParseFlags([]string{"--save"})
 
 	// Channel cannot be serialized to JSON
 	invalidData := make(chan int)

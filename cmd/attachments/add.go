@@ -13,7 +13,7 @@ import (
 // newAddCaseCmd создаёт команду 'attachments add case'
 // Эндпоинт: POST /add_attachment_to_case/{case_id}
 func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "case <case_id> <file_path>",
 		Short: "Добавить вложение к тест-кейсу",
 		Long:  `Загружает файл и прикрепляет его к указанному тест-кейсу.`,
@@ -52,12 +52,14 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
+	save.AddFlag(cmd)
+	return cmd
 }
 
 // newAddPlanCmd создаёт команду 'attachments add plan'
 // Эндпоинт: POST /add_attachment_to_plan/{plan_id}
 func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "plan <plan_id> <file_path>",
 		Short: "Добавить вложение к тест-плану",
 		Long:  `Загружает файл и прикрепляет его к указанному тест-плану.`,
@@ -94,12 +96,14 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
+	save.AddFlag(cmd)
+	return cmd
 }
 
 // newAddPlanEntryCmd создаёт команду 'attachments add plan-entry'
 // Эндпоинт: POST /add_attachment_to_plan_entry/{plan_id}/{entry_id}
 func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "plan-entry <plan_id> <entry_id> <file_path>",
 		Short: "Добавить вложение к записи плана",
 		Long:  `Загружает файл и прикрепляет его к записи (entry) в тест-плане.`,
@@ -137,12 +141,14 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
+	save.AddFlag(cmd)
+	return cmd
 }
 
 // newAddResultCmd создаёт команду 'attachments add result'
 // Эндпоинт: POST /add_attachment_to_result/{result_id}
 func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "result <result_id> <file_path>",
 		Short: "Добавить вложение к результату теста",
 		Long:  `Загружает файл и прикрепляет его к результату выполнения теста.`,
@@ -179,12 +185,14 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
+	save.AddFlag(cmd)
+	return cmd
 }
 
 // newAddRunCmd создаёт команду 'attachments add run'
 // Эндпоинт: POST /add_attachment_to_run/{run_id}
 func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "run <run_id> <file_path>",
 		Short: "Добавить вложение к тестовому прогону",
 		Long:  `Загружает файл и прикрепляет его к тестовому прогону.`,
@@ -221,6 +229,8 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
+	save.AddFlag(cmd)
+	return cmd
 }
 
 // parseID преобразует строковый ID в int64

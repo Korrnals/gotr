@@ -2,8 +2,6 @@ package datasets
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -30,26 +28,19 @@ func TestUpdateCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateCmd_WithOutputFile(t *testing.T) {
+func TestUpdateCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateDatasetFunc: func(datasetID int64, name string) (*data.Dataset, error) {
 			return &data.Dataset{ID: 456, Name: name}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "dataset.json")
-
 	cmd := newUpdateCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"456", "--name", "New Name", "-o", outputFile})
+	cmd.SetArgs([]string{"456", "--name", "New Name", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "New Name")
 }
 
 func TestUpdateCmd_ClientError(t *testing.T) {

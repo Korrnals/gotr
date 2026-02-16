@@ -6,12 +6,15 @@ package attachments
 import (
 	"bytes"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ==================== Тесты для attachments list case ====================
@@ -62,7 +65,13 @@ func TestListCaseCmd_EmptyList(t *testing.T) {
 	assert.Contains(t, buf.String(), "No attachments found")
 }
 
-func TestListCaseCmd_WithJSONOutput(t *testing.T) {
+func TestListCaseCmd_WithSaveFlag(t *testing.T) {
+	// Create temp home directory for exports
+	tempHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", origHome)
+
 	mock := &client.MockClient{
 		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
 			return data.GetAttachmentsResponse{
@@ -73,16 +82,25 @@ func TestListCaseCmd_WithJSONOutput(t *testing.T) {
 
 	cmd := newListCaseCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"123", "-o", "json"})
+	cmd.SetArgs([]string{"123", "--save"})
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-	output := buf.String()
-	assert.Contains(t, output, "test.pdf")
-	assert.Contains(t, output, "2048")
+
+	// Verify file was created in exports directory
+	exportsDir := filepath.Join(tempHome, ".gotr", "exports", "attachments")
+	files, err := os.ReadDir(exportsDir)
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+
+	// Verify content
+	content, err := os.ReadFile(filepath.Join(exportsDir, files[0].Name()))
+	require.NoError(t, err)
+	assert.Contains(t, string(content), "test.pdf")
+	assert.Contains(t, string(content), "2048")
 }
 
 func TestListCaseCmd_InvalidCaseID(t *testing.T) {

@@ -168,8 +168,8 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 func outputAttachmentsList(cmd *cobra.Command, attachments data.GetAttachmentsResponse) error {
-	outputFlag, _ := cmd.Flags().GetString("save")
-	if outputFlag != "" {
+	saveFlag, _ := cmd.Flags().GetBool("save")
+	if saveFlag {
 		_, err := save.Output(cmd, attachments, "attachments", "json")
 		return err
 	}

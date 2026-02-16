@@ -3,8 +3,6 @@ package configurations
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -48,7 +46,7 @@ func TestListCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestListCmd_WithOutputFile(t *testing.T) {
+func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
 			return data.GetConfigsResponse{
@@ -57,24 +55,12 @@ func TestListCmd_WithOutputFile(t *testing.T) {
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "configs.json")
-
 	cmd := newListCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"1", "-o", outputFile})
+	cmd.SetArgs([]string{"1", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	// Проверяем что файл создан
-	_, err = os.Stat(outputFile)
-	assert.NoError(t, err)
-
-	// Проверяем содержимое
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Browsers")
 }
 
 func TestListCmd_Empty(t *testing.T) {

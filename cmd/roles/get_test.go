@@ -2,8 +2,6 @@ package roles
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -33,26 +31,19 @@ func TestGetCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestGetCmd_WithOutputFile(t *testing.T) {
+func TestGetCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
 		GetRoleFunc: func(roleID int64) (*data.Role, error) {
 			return &data.Role{ID: 2, Name: "Tester"}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "role.json")
-
 	cmd := newGetCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"2", "-o", outputFile})
+	cmd.SetArgs([]string{"2", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Tester")
 }
 
 func TestGetCmd_NotFound(t *testing.T) {

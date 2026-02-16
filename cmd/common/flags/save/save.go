@@ -20,8 +20,8 @@ func AddFlag(cmd *cobra.Command) {
 }
 
 // Output checks if --save flag is set and saves data to file if so.
-// If --save is not set, returns nil (output to stdout is handled elsewhere).
-// Returns the saved file path for user notification.
+// If --save is not set, outputs data to stdout as JSON.
+// Returns the saved file path for user notification (empty string if output to stdout).
 func Output(cmd *cobra.Command, data interface{}, resource string, format string) (string, error) {
 	saveFlag, err := cmd.Flags().GetBool("save")
 	if err != nil {
@@ -29,6 +29,12 @@ func Output(cmd *cobra.Command, data interface{}, resource string, format string
 	}
 
 	if !saveFlag {
+		// Output to stdout as JSON
+		content, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("error marshaling to JSON: %w", err)
+		}
+		fmt.Fprintln(cmd.OutOrStdout(), string(content))
 		return "", nil
 	}
 

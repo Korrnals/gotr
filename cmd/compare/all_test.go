@@ -211,6 +211,9 @@ func TestAllCmd_SaveYAML(t *testing.T) {
 	savePath := filepath.Join(tmpDir, "result.yaml")
 
 	cmd := newAllCmd()
+	// Add persistent flags that are normally added in Register()
+	cmd.PersistentFlags().Bool("save", false, "")
+	cmd.PersistentFlags().String("save-to", "", "")
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=yaml", "--save-to=" + savePath})
 
 	var buf bytes.Buffer

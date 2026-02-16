@@ -65,5 +65,9 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	Cmd.AddCommand(configurationsCmd)
 	Cmd.AddCommand(allCmd)
 
+	// Add persistent flags (available on all subcommands)
+	Cmd.PersistentFlags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
+	Cmd.PersistentFlags().String("save-to", "", "Сохранить результат в указанный файл")
+
 	rootCmd.AddCommand(Cmd)
 }

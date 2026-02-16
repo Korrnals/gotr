@@ -252,8 +252,6 @@ func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath st
 func addCommonFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
 	cmd.Flags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
-	cmd.Flags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
-	cmd.Flags().String("save-to", "", "Сохранить результат в указанный файл")
 	cmd.Flags().StringP("format", "f", "table", "Формат вывода: table, json, yaml, csv")
 
 	cmd.MarkFlagRequired("pid1")

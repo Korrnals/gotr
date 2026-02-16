@@ -31,6 +31,9 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
 	// Добавление подкоманд
 	groupsCmd.AddCommand(newListCmd(getClient))
 	groupsCmd.AddCommand(newGetCmd(getClient))
+	groupsCmd.AddCommand(newAddCmd(getClient))
+	groupsCmd.AddCommand(newUpdateCmd(getClient))
+	groupsCmd.AddCommand(newDeleteCmd(getClient))
 
 	root.AddCommand(groupsCmd)
 }

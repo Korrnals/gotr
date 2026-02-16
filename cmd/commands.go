@@ -41,7 +41,7 @@ func init() {
 	registerCompletionCmd()
 
 	// Регистрация команд из подпакетов (передаем GetClient)
-	attachments.Register(rootCmd, GetClient)
+	attachments.Register(rootCmd, GetClientInterface)
 	bdds.Register(rootCmd, GetClientInterface)
 	cases.Register(rootCmd, GetClientInterface)
 	configurations.Register(rootCmd, GetClientInterface)

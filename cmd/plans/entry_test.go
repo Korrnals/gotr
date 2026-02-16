@@ -175,3 +175,90 @@ func TestParseIntList_Empty(t *testing.T) {
 	ids := parseIntList("")
 	assert.Empty(t, ids)
 }
+
+// ==================== Additional Edge Case Tests ====================
+
+func TestEntryAddCmd_InvalidPlanID(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"invalid", "--suite-id=50"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid")
+}
+
+func TestEntryAddCmd_ZeroPlanID(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"0", "--suite-id=50"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+func TestEntryAddCmd_APIError(t *testing.T) {
+	mock := &client.MockClient{
+		AddPlanEntryFunc: func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
+			return nil, fmt.Errorf("plan not found")
+		},
+	}
+
+	cmd := newEntryAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", "--suite-id=50"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestEntryUpdateCmd_InvalidPlanID(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryUpdateCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"invalid", "abc123"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+func TestEntryUpdateCmd_APIError(t *testing.T) {
+	mock := &client.MockClient{
+		UpdatePlanEntryFunc: func(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
+			return nil, fmt.Errorf("entry not found")
+		},
+	}
+
+	cmd := newEntryUpdateCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", "abc123", "--name=Updated"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestEntryDeleteCmd_InvalidPlanID(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryDeleteCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"invalid", "abc123"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+func TestParseIntList_NegativeNumbers(t *testing.T) {
+	// Negative numbers should be filtered out
+	ids := parseIntList("1,-5,3")
+	assert.Equal(t, []int64{1, 3}, ids)
+}
+
+func TestParseIntList_Zero(t *testing.T) {
+	// Zero should be filtered out
+	ids := parseIntList("1,0,3")
+	assert.Equal(t, []int64{1, 3}, ids)
+}

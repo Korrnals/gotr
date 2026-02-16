@@ -31,7 +31,7 @@
   - Constructor pattern for all commands (`newXxxCmd`)
 - **Total:** 110 test files, 986 test functions, 18 packages ≥ 90% coverage
 
-#### Stage 5.2: Project Comparison Command (Refactored)
+#### Stage 5.2: Project Comparison Command + Unified --save Flag
 
 - **New `cmd/compare/` package** with subcommand structure:
   - `gotr compare cases` - compare test cases with field-based diff
@@ -47,10 +47,12 @@
   - `gotr compare templates` - compare templates
   - `gotr compare configurations` - compare configurations
   - `gotr compare all` - compare all resources at once
-- **New `--save` flag** (replaces `--output`) for saving comparison results:
-  - Supports JSON, YAML, and CSV formats via `--format` flag
-  - Default saves to `~/.gotr/exports/` directory
-  - Generates filenames with timestamps: `{resource}_YYYY-MM-DD_HH-MM-SS.{ext}`
+- **BREAKING CHANGE: `--save` flag replaces `--output` across ALL commands:**
+  - `--save` is now a boolean flag (no value required)
+  - Saves to `~/.gotr/exports/{resource}/{resource}_YYYY-MM-DD_HH-MM-SS.{format}`
+  - Supports JSON, YAML, and CSV formats via `--format` flag (where applicable)
+  - Affected commands: `get`, `export`, `users list`, `labels list`, `reports list-cross-project`, 
+    `test get/list`, `tests list`, `groups add/update`, and all `compare` subcommands
 - **Field-based comparison** for cases: `--field title`, `--field priority_id`, etc.
 - **Package structure:**
   - `types.go` - shared types (CompareResult, ItemInfo, CommonItemInfo)

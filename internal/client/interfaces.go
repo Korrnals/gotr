@@ -118,6 +118,13 @@ type AttachmentsAPI interface {
 	AddAttachmentToPlanEntry(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToResult(resultID int64, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToRun(runID int64, filePath string) (*data.AttachmentResponse, error)
+	DeleteAttachment(attachmentID int64) error
+	GetAttachment(attachmentID int64) (*data.Attachment, error)
+	GetAttachmentsForCase(caseID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForPlan(planID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForPlanEntry(planID int64, entryID string) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForRun(runID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForTest(testID int64) (data.GetAttachmentsResponse, error)
 }
 
 // ConfigurationsAPI — операции с конфигурациями
@@ -134,8 +141,11 @@ type ConfigurationsAPI interface {
 // UsersAPI — операции с пользователями и справочниками
 type UsersAPI interface {
 	GetUsers() (data.GetUsersResponse, error)
+	GetUsersByProject(projectID int64) (data.GetUsersResponse, error)
 	GetUser(userID int64) (*data.User, error)
 	GetUserByEmail(email string) (*data.User, error)
+	AddUser(req data.AddUserRequest) (*data.User, error)
+	UpdateUser(userID int64, req data.UpdateUserRequest) (*data.User, error)
 	GetPriorities() (data.GetPrioritiesResponse, error)
 	GetStatuses() (data.GetStatusesResponse, error)
 	GetTemplates(projectID int64) (data.GetTemplatesResponse, error)
@@ -144,6 +154,7 @@ type UsersAPI interface {
 // ReportsAPI — операции с отчётами
 type ReportsAPI interface {
 	GetReports(projectID int64) (data.GetReportsResponse, error)
+	GetCrossProjectReports() (data.GetReportsResponse, error)
 	RunReport(templateID int64) (*data.RunReportResponse, error)
 	RunCrossProjectReport(templateID int64) (*data.RunReportResponse, error)
 }
@@ -182,6 +193,9 @@ type ExtendedAPI interface {
 	AddBDD(caseID int64, content string) (*data.BDD, error)
 
 	// Labels
+	GetLabels(projectID int64) (data.GetLabelsResponse, error)
+	GetLabel(labelID int64) (*data.Label, error)
+	UpdateLabel(labelID int64, req data.UpdateLabelRequest) (*data.Label, error)
 	UpdateTestLabels(testID int64, labels []string) error
 	UpdateTestsLabels(runID int64, testIDs []int64, labels []string) error
 }

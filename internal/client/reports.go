@@ -75,3 +75,25 @@ func (c *HTTPClient) RunCrossProjectReport(templateID int64) (*data.RunReportRes
 	}
 	return &reportResp, nil
 }
+
+// GetCrossProjectReports получает список кросс-проектных шаблонов отчётов
+// https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#getcrossprojectreports
+func (c *HTTPClient) GetCrossProjectReports() (data.GetReportsResponse, error) {
+	endpoint := "get_cross_project_reports"
+	resp, err := c.Get(endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting cross-project reports: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+
+	var reports data.GetReportsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&reports); err != nil {
+		return nil, fmt.Errorf("error decoding cross-project reports: %w", err)
+	}
+	return reports, nil
+}

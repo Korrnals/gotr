@@ -476,3 +476,68 @@ func (c *HTTPClient) UpdateTestsLabels(runID int64, testIDs []int64, labels []st
 	}
 	return nil
 }
+
+// GetLabels получает список меток проекта
+func (c *HTTPClient) GetLabels(projectID int64) (data.GetLabelsResponse, error) {
+	endpoint := fmt.Sprintf("get_labels/%d", projectID)
+	resp, err := c.Get(endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting labels for project %d: %w", projectID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+
+	var labels data.GetLabelsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&labels); err != nil {
+		return nil, fmt.Errorf("error decoding labels: %w", err)
+	}
+	return labels, nil
+}
+
+// GetLabel получает метку по ID
+func (c *HTTPClient) GetLabel(labelID int64) (*data.Label, error) {
+	endpoint := fmt.Sprintf("get_label/%d", labelID)
+	resp, err := c.Get(endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting label %d: %w", labelID, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+
+	var label data.Label
+	if err := json.NewDecoder(resp.Body).Decode(&label); err != nil {
+		return nil, fmt.Errorf("error decoding label: %w", err)
+	}
+	return &label, nil
+}
+
+// UpdateLabel обновляет метку
+func (c *HTTPClient) UpdateLabel(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+	endpoint := fmt.Sprintf("update_label/%d", labelID)
+	jsonBody, _ := json.Marshal(req)
+
+	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	if err != nil {
+		return nil, fmt.Errorf("error updating label: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+	}
+
+	var label data.Label
+	if err := json.NewDecoder(resp.Body).Decode(&label); err != nil {
+		return nil, fmt.Errorf("error decoding label: %w", err)
+	}
+	return &label, nil
+}

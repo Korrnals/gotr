@@ -115,6 +115,6 @@ func TestAddSyncFlags_SetValues(t *testing.T) {
 	mappingFile, _ := cmd.Flags().GetString("mapping-file")
 	assert.Equal(t, "mapping.json", mappingFile)
 
-	output, _ := cmd.Flags().GetString("save")
+	output, _ := cmd.Flags().GetString("output")
 	assert.Equal(t, "output.json", output)
 }

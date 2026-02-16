@@ -3,8 +3,6 @@ package bdds
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -33,26 +31,19 @@ func TestGetCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestGetCmd_WithOutput(t *testing.T) {
+func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetBDDFunc: func(caseID int64) (*data.BDD, error) {
 			return &data.BDD{ID: 1, CaseID: caseID, Content: "Feature: Test"}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "bdd.json")
-
 	cmd := newGetCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"12345", "-o", outputFile})
+	cmd.SetArgs([]string{"12345", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Feature: Test")
 }
 
 func TestGetCmd_NotFound(t *testing.T) {

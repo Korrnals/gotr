@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/common"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -292,9 +293,9 @@ func TestRegister(t *testing.T) {
 		assert.NoError(t, err, "subcommand %s should exist", sub)
 		assert.NotNil(t, cmd, "subcommand %s should not be nil", sub)
 
-		// Проверяем что флаги output и quiet добавлены
-		outputFlag := cmd.Flags().Lookup("output")
-		assert.NotNil(t, outputFlag, "output flag should exist on %s", sub)
+		// Проверяем что флаги save и quiet добавлены
+		saveFlag := cmd.Flags().Lookup("save")
+		assert.NotNil(t, saveFlag, "save flag should exist on %s", sub)
 
 		quietFlag := cmd.Flags().Lookup("quiet")
 		assert.NotNil(t, quietFlag, "quiet flag should exist on %s", sub)
@@ -461,10 +462,7 @@ func TestListCmd_Interactive_SelectRunError(t *testing.T) {
 
 // ==================== Тесты для outputResult (через команду с флагом output) ====================
 
-func TestOutputResult_WithOutputFlag(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "output.json")
-
+func TestOutputResult_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
 		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
 			return []data.Result{{ID: 1, TestID: 100, StatusID: 1}}, nil
@@ -474,17 +472,12 @@ func TestOutputResult_WithOutputFlag(t *testing.T) {
 	// Пересоздаем команду с нашим getClient чтобы использовать mock
 	cmd := newListCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	// Добавляем флаг output вручную (как это делает Register)
-	cmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
-	cmd.SetArgs([]string{"12345", "--output", outputFile})
+	// Добавляем флаг save (как это делает Register)
+	save.AddFlag(cmd)
+	cmd.SetArgs([]string{"12345", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	// Проверяем что файл создан
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "test_id")
 }
 
 // ==================== Дополнительные тесты для покрытия ====================

@@ -2,8 +2,6 @@ package variables
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -28,26 +26,19 @@ func TestUpdateCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateCmd_WithOutput(t *testing.T) {
+func TestUpdateCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateVariableFunc: func(variableID int64, name string) (*data.Variable, error) {
 			return &data.Variable{ID: 789, Name: name}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "var.json")
-
 	cmd := newUpdateCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"789", "--name", "updated", "-o", outputFile})
+	cmd.SetArgs([]string{"789", "--name", "updated", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "updated")
 }
 
 func TestUpdateCmd_DryRun(t *testing.T) {

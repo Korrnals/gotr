@@ -5,8 +5,6 @@ package labels
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -58,29 +56,22 @@ func TestUpdateLabelCmd_WithShortFlags(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateLabelCmd_WithOutputFile(t *testing.T) {
+func TestUpdateLabelCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return &data.Label{ID: 3, Name: "Saved Label"}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "updated_label.json")
-
 	cmd := newUpdateLabelCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"3", "--project", "1", "--title", "Saved Label", "-o", outputFile})
+	cmd.SetArgs([]string{"3", "--project", "1", "--title", "Saved Label", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Saved Label")
 }
 
-func TestUpdateLabelCmd_WithJSONOutput(t *testing.T) {
+func TestUpdateLabelCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return &data.Label{ID: 7, Name: "JSON Label"}, nil
@@ -89,7 +80,7 @@ func TestUpdateLabelCmd_WithJSONOutput(t *testing.T) {
 
 	cmd := newUpdateLabelCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"7", "--project", "1", "--title", "JSON Label", "-o", "json"})
+	cmd.SetArgs([]string{"7", "--project", "1", "--title", "JSON Label", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)

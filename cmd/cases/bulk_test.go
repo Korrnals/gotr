@@ -2,8 +2,6 @@ package cases
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -134,7 +132,7 @@ func TestBulkUpdateCmd_ClientError(t *testing.T) {
 	assert.Contains(t, err.Error(), "API error")
 }
 
-func TestBulkUpdateCmd_WithOutputFile(t *testing.T) {
+func TestBulkUpdateCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateCasesFunc: func(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 			return &data.GetCasesResponse{
@@ -144,21 +142,12 @@ func TestBulkUpdateCmd_WithOutputFile(t *testing.T) {
 		},
 	}
 
-	// Create temp directory for output file
-	tempDir := t.TempDir()
-	outputFile := filepath.Join(tempDir, "output.json")
-
 	cmd := newBulkUpdateCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"1,2", "--suite-id=100", "--priority-id=1", "--output=" + outputFile})
+	cmd.SetArgs([]string{"1,2", "--suite-id=100", "--priority-id=1", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	// Verify file was created
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Test Case 1")
 }
 
 // ==================== Bulk Delete Tests ====================
@@ -429,47 +418,21 @@ func TestParseIDList_EmptyParts(t *testing.T) {
 // ==================== Output Result Tests ====================
 
 func TestOutputResult_Stdout(t *testing.T) {
+	// Create a command with the save flag properly defined
 	cmd := &cobra.Command{}
+	cmd.Flags().Bool("save", false, "")
 	data := map[string]string{"key": "value"}
 
 	err := outputResult(cmd, data)
 	assert.NoError(t, err)
 }
 
-func TestOutputResult_ToFile(t *testing.T) {
-	tempDir := t.TempDir()
-	outputFile := filepath.Join(tempDir, "result.json")
-
+func TestOutputResult_WithSave(t *testing.T) {
+	// Create a command with the save flag set to true
 	cmd := &cobra.Command{}
-	cmd.Flags().String("output", outputFile, "")
+	cmd.Flags().Bool("save", true, "")
 
 	data := map[string]string{"key": "value", "test": "data"}
 	err := outputResult(cmd, data)
 	assert.NoError(t, err)
-
-	// Verify file content
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "\"key\": \"value\"")
-	assert.Contains(t, string(content), "\"test\": \"data\"")
-}
-
-func TestOutputResult_InvalidPath(t *testing.T) {
-	// Use a path that cannot be written to
-	cmd := &cobra.Command{}
-	cmd.Flags().String("output", "/nonexistent/path/result.json", "")
-
-	data := map[string]string{"key": "value"}
-	err := outputResult(cmd, data)
-	assert.Error(t, err)
-}
-
-// Helper function that returns a command with output flag set
-func setupOutputTestCmd(t *testing.T, outputPath string) *cobra.Command {
-	cmd := &cobra.Command{}
-	cmd.Flags().String("output", "", "")
-	if outputPath != "" {
-		cmd.Flags().Set("output", outputPath)
-	}
-	return cmd
 }

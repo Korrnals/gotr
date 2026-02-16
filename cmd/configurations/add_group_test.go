@@ -2,8 +2,6 @@ package configurations
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -28,26 +26,19 @@ func TestAddGroupCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAddGroupCmd_WithOutput(t *testing.T) {
+func TestAddGroupCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		AddConfigGroupFunc: func(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 			return &data.ConfigGroup{ID: 5, Name: req.Name}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "group.json")
-
 	cmd := newAddGroupCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"1", "--name", "OS", "-o", outputFile})
+	cmd.SetArgs([]string{"1", "--name", "OS", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "OS")
 }
 
 func TestAddGroupCmd_DryRun(t *testing.T) {

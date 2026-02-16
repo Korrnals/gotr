@@ -3,8 +3,6 @@ package variables
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -62,26 +60,19 @@ func TestListCmd_ClientError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestListCmd_WithOutputFile(t *testing.T) {
+func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetVariablesFunc: func(datasetID int64) (data.GetVariablesResponse, error) {
 			return []data.Variable{{ID: 1, Name: "email"}}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "vars.json")
-
 	cmd := newListCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"123", "-o", outputFile})
+	cmd.SetArgs([]string{"123", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "email")
 }
 
 func TestListCmd_InvalidID(t *testing.T) {

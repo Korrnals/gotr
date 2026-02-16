@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/spf13/cobra"
 )
 
 // newGetCmd создаёт команду 'plans get'
 // Эндпоинт: GET /get_plan/{plan_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "get <plan_id>",
 		Short: "Получить тест-план по ID",
 		Long:  `Получает детальную информацию о тест-плане, включая записи (entries).`,
@@ -18,7 +19,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans get 12345
 
   # Сохранить в файл
-  gotr plans get 12345 -o plan.json`,
+  gotr plans get 12345 --save`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			planID, err := strconv.ParseInt(args[0], 10, 64)
@@ -35,4 +36,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
+
+	save.AddFlag(cmd)
+
+	return cmd
 }

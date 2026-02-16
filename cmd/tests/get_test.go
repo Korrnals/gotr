@@ -111,7 +111,7 @@ func TestGetCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "тест не найден")
 }
 
-func TestGetCmd_WithOutput(t *testing.T) {
+func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetTestFunc: func(testID int64) (*data.Test, error) {
 			return &data.Test{
@@ -127,7 +127,7 @@ func TestGetCmd_WithOutput(t *testing.T) {
 	cmd := newGetCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	cmd.SetContext(testCmd.Context())
-	cmd.SetArgs([]string{"12345", "--output", "/tmp/test_get.json"})
+	cmd.SetArgs([]string{"12345", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)

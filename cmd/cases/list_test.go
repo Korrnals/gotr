@@ -28,6 +28,9 @@ func TestListCmd_Success(t *testing.T) {
 	cmd.SetContext(setupTestCmd(t, mock).Context())
 	cmd.SetArgs([]string{"1"})
 
+	// The newListCmd doesn't add save flag, so we need to add it for outputResult
+	cmd.Flags().Bool("save", false, "")
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -48,6 +51,9 @@ func TestListCmd_WithSuite(t *testing.T) {
 	cmd.SetContext(setupTestCmd(t, mock).Context())
 	cmd.SetArgs([]string{"1", "--suite-id=100"})
 
+	// The newListCmd doesn't add save flag, so we need to add it for outputResult
+	cmd.Flags().Bool("save", false, "")
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -67,6 +73,9 @@ func TestListCmd_WithSection(t *testing.T) {
 	cmd := newListCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
 	cmd.SetArgs([]string{"1", "--suite-id=100", "--section-id=50"})
+
+	// The newListCmd doesn't add save flag, so we need to add it for outputResult
+	cmd.Flags().Bool("save", false, "")
 
 	err := cmd.Execute()
 	assert.NoError(t, err)

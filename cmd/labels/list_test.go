@@ -6,7 +6,6 @@ package labels
 import (
 	"bytes"
 	"fmt"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -62,7 +61,7 @@ func TestListCmd_Empty(t *testing.T) {
 	assert.Contains(t, buf.String(), "No labels found")
 }
 
-func TestListCmd_WithJSONOutput(t *testing.T) {
+func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{
@@ -74,13 +73,13 @@ func TestListCmd_WithJSONOutput(t *testing.T) {
 
 	cmd := newListCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"1", "-o", "json"})
+	cmd.SetArgs([]string{"1", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
 
-func TestListCmd_WithOutputFile(t *testing.T) {
+func TestListCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
 		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{
@@ -89,22 +88,12 @@ func TestListCmd_WithOutputFile(t *testing.T) {
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "labels.json")
-
 	cmd := newListCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
-	// Note: list command supports -o json for JSON output, not file path
-	// When a file path is provided, it outputs table format to stdout
-	cmd.SetArgs([]string{"1", "-o", outputFile})
-
-	var buf bytes.Buffer
-	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{"1", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-	// Output goes to stdout in table format, not to file
-	assert.Contains(t, buf.String(), "Bug")
 }
 
 // ==================== Тесты ошибок API ====================

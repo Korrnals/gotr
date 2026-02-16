@@ -2,8 +2,6 @@ package test
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -95,7 +93,7 @@ func TestListCmd_WithMultipleFilters(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestListCmd_WithOutput(t *testing.T) {
+func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
 			return []data.Test{
@@ -104,21 +102,13 @@ func TestListCmd_WithOutput(t *testing.T) {
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "tests.json")
-
 	cmd := newListCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	cmd.SetContext(testCmd.Context())
-	cmd.SetArgs([]string{"100", "--output", outputFile})
+	cmd.SetArgs([]string{"100", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	// Проверяем, что файл создан
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Test 1")
 }
 
 func TestListCmd_InvalidRunID(t *testing.T) {

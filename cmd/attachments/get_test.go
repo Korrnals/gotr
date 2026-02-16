@@ -14,6 +14,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ==================== Тесты для attachments get ====================
@@ -50,7 +51,13 @@ func TestGetCmd_Success(t *testing.T) {
 	assert.Contains(t, output, "12345")
 }
 
-func TestGetCmd_WithJSONOutput(t *testing.T) {
+func TestGetCmd_WithSaveFlag(t *testing.T) {
+	// Create temp home directory for exports
+	tempHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", origHome)
+
 	mock := &client.MockClient{
 		GetAttachmentFunc: func(attachmentID int64) (*data.Attachment, error) {
 			return &data.Attachment{
@@ -67,13 +74,9 @@ func TestGetCmd_WithJSONOutput(t *testing.T) {
 		},
 	}
 
-	// Create a temp directory for output file
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "output.json")
-
 	cmd := newGetCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"12345", "-o", outputFile})
+	cmd.SetArgs([]string{"12345", "--save"})
 
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
@@ -81,9 +84,15 @@ func TestGetCmd_WithJSONOutput(t *testing.T) {
 	err := cmd.Execute()
 	assert.NoError(t, err)
 
-	// Verify the file was created and contains the expected data
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
+	// Verify file was created in exports directory
+	exportsDir := filepath.Join(tempHome, ".gotr", "exports", "attachments")
+	files, err := os.ReadDir(exportsDir)
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+
+	// Verify content
+	content, err := os.ReadFile(filepath.Join(exportsDir, files[0].Name()))
+	require.NoError(t, err)
 	assert.Contains(t, string(content), "test-file.pdf")
 	assert.Contains(t, string(content), "12345")
 	assert.Contains(t, string(content), "application/pdf")

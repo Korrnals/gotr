@@ -61,7 +61,7 @@ func TestListCrossProjectCmd_ClientError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to fetch cross-project reports")
 }
 
-func TestListCrossProjectCmd_WithJSONOutput(t *testing.T) {
+func TestListCrossProjectCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
 		GetCrossProjectReportsFunc: func() (data.GetReportsResponse, error) {
 			return data.GetReportsResponse{
@@ -72,7 +72,7 @@ func TestListCrossProjectCmd_WithJSONOutput(t *testing.T) {
 
 	cmd := newListCrossProjectCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"--output", "json"})
+	cmd.SetArgs([]string{"--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)

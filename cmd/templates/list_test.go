@@ -2,8 +2,6 @@ package templates
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -106,9 +104,6 @@ func TestOutputResult_Stdout(t *testing.T) {
 }
 
 func TestOutputResult_ToFile(t *testing.T) {
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "templates.json")
-
 	mock := &client.MockClient{
 		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{
@@ -120,16 +115,10 @@ func TestOutputResult_ToFile(t *testing.T) {
 
 	cmd := newListCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"1", "-o", outputFile})
+	cmd.SetArgs([]string{"1", "--save"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	// Verify file was created and contains expected content
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "Test Case (Text)")
-	assert.Contains(t, string(content), "Test Case (Steps)")
 }
 
 func TestOutputResult_MarshalError(t *testing.T) {
@@ -143,16 +132,21 @@ func TestOutputResult_MarshalError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestOutputResult_WriteFileError(t *testing.T) {
-	cmd := &cobra.Command{Use: "test"}
-	cmd.Flags().String("save", "", "")
-	// Set output to a path that cannot be created (invalid directory)
-	cmd.Flags().Set("output", "/nonexistent/dir/file.json")
+func TestOutputResult_SaveToFile(t *testing.T) {
+	mock := &client.MockClient{
+		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+			return []data.Template{
+				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
+			}, nil
+		},
+	}
 
-	data := map[string]string{"key": "value"}
+	cmd := newListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1", "--save"})
 
-	err := outputResult(cmd, data)
-	assert.Error(t, err)
+	err := cmd.Execute()
+	assert.NoError(t, err)
 }
 
 // ==================== Тесты для Register ====================

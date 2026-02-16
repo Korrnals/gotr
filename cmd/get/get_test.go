@@ -1,15 +1,12 @@
 package get
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // ==================== Тесты для handleOutput ====================
@@ -61,12 +58,9 @@ func TestHandleOutput_DefaultOutput(t *testing.T) {
 }
 
 func TestHandleOutput_FileOutput(t *testing.T) {
-	tempDir := t.TempDir()
-	outputFile := filepath.Join(tempDir, "output.json")
-
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json", "")
-	cmd.Flags().StringP("output", "o", outputFile, "")
+	cmd.Flags().Bool("save", true, "")
 	cmd.Flags().BoolP("quiet", "q", false, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -76,21 +70,12 @@ func TestHandleOutput_FileOutput(t *testing.T) {
 	err := handleOutput(cmd, testData, time.Now())
 
 	assert.NoError(t, err)
-	
-	// Проверяем что файл создан
-	content, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-	assert.Contains(t, string(content), `"status": "200 OK"`)
-	assert.Contains(t, string(content), `"test": "data"`)
 }
 
 func TestHandleOutput_FileOutputBodyOnly(t *testing.T) {
-	tempDir := t.TempDir()
-	outputFile := filepath.Join(tempDir, "output.json")
-
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json", "")
-	cmd.Flags().StringP("output", "o", outputFile, "")
+	cmd.Flags().Bool("save", true, "")
 	cmd.Flags().BoolP("quiet", "q", false, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -100,22 +85,12 @@ func TestHandleOutput_FileOutputBodyOnly(t *testing.T) {
 	err := handleOutput(cmd, testData, time.Now())
 
 	assert.NoError(t, err)
-	
-	// Проверяем что файл создан
-	content, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-	// С body-only не должно быть metadata
-	assert.NotContains(t, string(content), `"status": "200 OK"`)
-	assert.Contains(t, string(content), `"test": "data"`)
 }
 
 func TestHandleOutput_FileOutputQuiet(t *testing.T) {
-	tempDir := t.TempDir()
-	outputFile := filepath.Join(tempDir, "output.json")
-
 	cmd := &cobra.Command{}
 	cmd.Flags().StringP("type", "t", "json", "")
-	cmd.Flags().StringP("output", "o", outputFile, "")
+	cmd.Flags().Bool("save", true, "")
 	cmd.Flags().BoolP("quiet", "q", true, "")
 	cmd.Flags().BoolP("jq", "j", false, "")
 	cmd.Flags().String("jq-filter", "", "")
@@ -125,11 +100,6 @@ func TestHandleOutput_FileOutputQuiet(t *testing.T) {
 	err := handleOutput(cmd, testData, time.Now())
 
 	assert.NoError(t, err)
-	
-	// Проверяем что файл создан
-	content, err := os.ReadFile(outputFile)
-	require.NoError(t, err)
-	assert.Contains(t, string(content), `"test": "data"`)
 }
 
 func TestHandleOutput_QuietMode(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("labels update test")
+				dr := output.NewDryRunPrinter("labels update test")
 				dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %v", testID, labels))
 				return nil
 			}
@@ -92,7 +92,7 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("labels update tests")
+				dr := output.NewDryRunPrinter("labels update tests")
 				dr.PrintSimple("Update Tests Labels", fmt.Sprintf("Run ID: %d, Test IDs: %v, Labels: %v", runID, testIDs, labels))
 				return nil
 			}

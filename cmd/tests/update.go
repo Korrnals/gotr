@@ -5,8 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -46,7 +45,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("tests update")
+				dr := output.NewDryRunPrinter("tests update")
 				dr.PrintSimple("Обновить тест", fmt.Sprintf("Test ID: %d", testID))
 				return nil
 			}
@@ -63,7 +62,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().Int64("status-id", 0, "ID статуса теста (1=passed, 5=failed, etc.)")
 	cmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
 

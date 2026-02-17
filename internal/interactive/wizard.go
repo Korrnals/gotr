@@ -1,5 +1,5 @@
-// Package wizard предоставляет интерактивный режим для команд add и update
-package wizard
+// Package interactive provides interactive mode (wizard) for add and update commands.
+package interactive
 
 import (
 	"fmt"

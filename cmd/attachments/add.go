@@ -5,8 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +32,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("attachments add case")
+				dr := output.NewDryRunPrinter("attachments add case")
 				dr.PrintSimple("Add Attachment to Case", fmt.Sprintf("Case ID: %d, File: %s", caseID, filePath))
 				return nil
 			}
@@ -56,7 +55,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	return cmd
 }
 
@@ -81,7 +80,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			filePath := args[1]
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("attachments add plan")
+				dr := output.NewDryRunPrinter("attachments add plan")
 				dr.PrintSimple("Add Attachment to Plan", fmt.Sprintf("Plan ID: %d, File: %s", planID, filePath))
 				return nil
 			}
@@ -103,7 +102,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	return cmd
 }
 
@@ -129,7 +128,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			filePath := args[2]
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("attachments add plan-entry")
+				dr := output.NewDryRunPrinter("attachments add plan-entry")
 				dr.PrintSimple("Add Attachment to Plan Entry", fmt.Sprintf("Plan ID: %d, Entry ID: %s, File: %s", planID, entryID, filePath))
 				return nil
 			}
@@ -151,7 +150,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	return cmd
 }
 
@@ -176,7 +175,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			filePath := args[1]
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("attachments add result")
+				dr := output.NewDryRunPrinter("attachments add result")
 				dr.PrintSimple("Add Attachment to Result", fmt.Sprintf("Result ID: %d, File: %s", resultID, filePath))
 				return nil
 			}
@@ -198,7 +197,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	return cmd
 }
 
@@ -223,7 +222,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			filePath := args[1]
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("attachments add run")
+				dr := output.NewDryRunPrinter("attachments add run")
 				dr.PrintSimple("Add Attachment to Run", fmt.Sprintf("Run ID: %d, File: %s", runID, filePath))
 				return nil
 			}
@@ -245,7 +244,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			return outputResult(cmd, resp)
 		},
 	}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	return cmd
 }
 
@@ -268,6 +267,6 @@ func validateFileExists(filePath string) error {
 
 // outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := save.Output(cmd, data, "attachments", "json")
+	_, err := output.Output(cmd, data, "attachments", "json")
 	return err
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +45,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 	cmd.Flags().StringP("name", "n", "", "Название группы (обязательно)")
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано, без выполнения")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

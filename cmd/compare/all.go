@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -392,8 +392,8 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 		filePath = savePath
 	} else {
 		// Use default path with .txt extension
-		filePath = save.GenerateFilename("compare", "txt")
-		exportsDir, _ := save.GetExportsDir("compare")
+		filePath = outpututils.GenerateFilename("compare", "txt")
+		exportsDir, _ := outpututils.GetExportsDir("compare")
 		os.MkdirAll(exportsDir, 0755)
 		filePath = exportsDir + "/" + filePath
 	}

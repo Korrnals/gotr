@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -76,7 +76,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update user: %w", err)
 			}
 
-			_, err = save.Output(cmd, user, "users", "json")
+			_, err = output.Output(cmd, user, "users", "json")
 			return err
 		},
 	}
@@ -86,7 +86,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64Var(&roleID, "role", 0, "ID роли пользователя")
 	cmd.Flags().BoolVar(&isAdmin, "admin", false, "Сделать пользователя администратором")
 	cmd.Flags().BoolVar(&isActive, "inactive", false, "Заблокировать пользователя")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

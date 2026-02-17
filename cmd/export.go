@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 )
@@ -66,8 +66,8 @@ var exportCmd = &cobra.Command{
 		saveFlag, _ := cmd.Flags().GetBool("save")
 
 		if saveFlag {
-			// Сохранение через save.Output в ~/.gotr/exports/export/
-			filepath, err := save.Output(cmd, data, "export", "json")
+			// Сохранение через output.Output в ~/.gotr/exports/export/
+			filepath, err := output.Output(cmd, data, "export", "json")
 			if err != nil {
 				return fmt.Errorf("ошибка сохранения: %w", err)
 			}

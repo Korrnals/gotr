@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -65,7 +65,7 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("result add")
+				dr := output.NewDryRunPrinter("result add")
 				dr.PrintOperation(
 					fmt.Sprintf("Add Result for Test %d", testID),
 					"POST",
@@ -141,7 +141,7 @@ TestRail сам находит соответствующий test в run.
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("result add-case")
+				dr := output.NewDryRunPrinter("result add-case")
 				dr.PrintOperation(
 					fmt.Sprintf("Add Result for Case %d in Run %d", caseID, runID),
 					"POST",
@@ -225,7 +225,7 @@ JSON файл должен содержать массив результато�
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("result add-bulk")
+				dr := output.NewDryRunPrinter("result add-bulk")
 				dr.PrintOperation(
 					fmt.Sprintf("Add Bulk Results for Run %d", runID),
 					"POST",

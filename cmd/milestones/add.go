@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -55,7 +54,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("milestones add")
+				dr := output.NewDryRunPrinter("milestones add")
 				dr.PrintSimple("Create Milestone", fmt.Sprintf("Project ID: %d, Name: %s", projectID, req.Name))
 				return nil
 			}
@@ -72,7 +71,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без реального выполнения")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Название майлстона (обязательно)")
 	cmd.Flags().String("description", "", "Описание майлстона")
 	cmd.Flags().String("due-on", "", "Дедлайн в формате YYYY-MM-DD")

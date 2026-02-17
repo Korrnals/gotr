@@ -5,8 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
@@ -71,7 +70,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("cases bulk update")
+				dr := output.NewDryRunPrinter("cases bulk update")
 				dr.PrintSimple("Bulk Update Cases", fmt.Sprintf("Suite: %d, Cases: %v", suiteID, caseIDs))
 				return nil
 			}
@@ -91,7 +90,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
 	cmd.Flags().Int64("priority-id", 0, "ID приоритета для установки")
 	cmd.Flags().String("estimate", "", "Оценка времени (например: '1h 30m')")
@@ -129,7 +128,7 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			req := data.DeleteCasesRequest{CaseIDs: caseIDs}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("cases bulk delete")
+				dr := output.NewDryRunPrinter("cases bulk delete")
 				dr.PrintSimple("Bulk Delete Cases", fmt.Sprintf("Suite: %d, Cases: %v", suiteID, caseIDs))
 				return nil
 			}
@@ -183,7 +182,7 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 			req := data.CopyCasesRequest{CaseIDs: caseIDs}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("cases bulk copy")
+				dr := output.NewDryRunPrinter("cases bulk copy")
 				dr.PrintSimple("Copy Cases", fmt.Sprintf("Section: %d, Cases: %v", sectionID, caseIDs))
 				return nil
 			}
@@ -237,7 +236,7 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 			req := data.MoveCasesRequest{CaseIDs: caseIDs}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("cases bulk move")
+				dr := output.NewDryRunPrinter("cases bulk move")
 				dr.PrintSimple("Move Cases", fmt.Sprintf("Section: %d, Cases: %v", sectionID, caseIDs))
 				return nil
 			}
@@ -281,6 +280,6 @@ func parseIDList(args []string) []int64 {
 
 // outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := save.Output(cmd, data, "cases", "json")
+	_, err := output.Output(cmd, data, "cases", "json")
 	return err
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -533,8 +533,8 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		filePath = customPath[0]
 	} else {
 		// Use default path with .txt extension for table
-		filePath = save.GenerateFilename("compare", "txt")
-		exportsDir, _ := save.GetExportsDir("compare")
+		filePath = outpututils.GenerateFilename("compare", "txt")
+		exportsDir, _ := outpututils.GetExportsDir("compare")
 		os.MkdirAll(exportsDir, 0755)
 		filePath = exportsDir + "/" + filePath
 	}

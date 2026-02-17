@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -42,8 +43,11 @@ func newMilestonesCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
 			// Compare milestones
-			result, err := compareMilestonesInternal(cli, pid1, pid2)
+			result, err := compareMilestonesInternal(cli, pid1, pid2, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения milestones: %w", err)
 			}
@@ -63,12 +67,18 @@ func newMilestonesCmd() *cobra.Command {
 var milestonesCmd = newMilestonesCmd()
 
 // compareMilestonesInternal compares milestones between two projects and returns the result.
-func compareMilestonesInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+func compareMilestonesInternal(cli client.ClientInterface, pid1, pid2 int64, pm ...*progress.Manager) (*CompareResult, error) {
+	var p *progress.Manager
+	if len(pm) > 0 {
+		p = pm[0]
+	}
+	progress.Describe(p.NewSpinner(""), fmt.Sprintf("Загрузка milestones из проекта %d...", pid1))
 	milestones1, err := fetchMilestoneItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения milestones проекта %d: %w", pid1, err)
 	}
 
+	progress.Describe(p.NewSpinner(""), fmt.Sprintf("Загрузка milestones из проекта %d...", pid2))
 	milestones2, err := fetchMilestoneItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения milestones проекта %d: %w", pid2, err)

@@ -19,14 +19,14 @@
 ## 📊 Матрица прогресса
 
 ```
-Phase 6.1: Progress Bars      [░░░░░░░░░░] 0%
+Phase 6.1: Progress Bars      [███████░░░] 70%
 Phase 6.2: Parallel Requests  [░░░░░░░░░░] 0%
 Phase 6.3: Caching            [░░░░░░░░░░] 0%
 Phase 6.4: Retry Logic        [░░░░░░░░░░] 0%
 Phase 6.5: Batch Operations   [░░░░░░░░░░] 0%
 Phase 6.6: UX Polish          [░░░░░░░░░░] 0%
 
-Overall: 0% (0/6 phases)
+Overall: 12% (0.7/6 phases)
 ```
 
 ---
@@ -35,20 +35,18 @@ Overall: 0% (0/6 phases)
 
 ### Задачи
 
-- [ ] **Добавить зависимость** `schollz/progressbar/v3`
+- [x] **Добавить зависимость** `schollz/progressbar/v3`
   ```bash
   go get github.com/schollz/progressbar/v3
   ```
 
-- [ ] **Создать пакет** `internal/progress/`
-  - [ ] `progress.go` — интерфейс ProgressManager
-  - [ ] `bar.go` — обёртка над progressbar.Bar
-  - [ ] `spinner.go` — индикатор для неопределённых операций
-  - [ ] `options.go` — опции конфигурации
+- [x] **Создать пакет** `internal/progress/`
+  - [x] `progress.go` — интерфейс ProgressManager
+  - [x] `progress_test.go` — тесты (100% coverage)
 
-- [ ] **Интегрировать в compare**
-  - [ ] `compare cases` — progress bar при загрузке
-  - [ ] `compare all` — multi-bar (общий + per-resource)
+- [x] **Интегрировать в compare**
+  - [x] `compare cases` — progress bar при загрузке
+  - [ ] `compare all` — multi-bar (общий + per-resource) ⏳
   - [ ] `compare suites` — progress bar
   - [ ] `compare sharedsteps` — progress bar
 
@@ -61,9 +59,9 @@ Overall: 0% (0/6 phases)
   - [ ] `get cases --all-suites` — progress bar
   - [ ] `get sharedsteps` — progress bar
 
-- [ ] **Тесты**
-  - [ ] Unit tests для `internal/progress/`
-  - [ ] Проверка работы в TTY и non-TTY режимах
+- [x] **Тесты**
+  - [x] Unit tests для `internal/progress/` (100% coverage)
+  - [x] Проверка работы в TTY и non-TTY режимах
 
 ### Acceptance Criteria
 

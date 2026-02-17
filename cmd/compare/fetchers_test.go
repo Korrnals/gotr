@@ -28,7 +28,7 @@ func TestCompareSuitesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -51,7 +51,7 @@ func TestCompareSuitesInternal_FirstError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -67,7 +67,7 @@ func TestCompareSuitesInternal_SecondError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -80,7 +80,7 @@ func TestCompareSuitesInternal_Empty(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -229,7 +229,7 @@ func TestCompareSectionsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2)
+	result, err := compareSectionsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -243,7 +243,7 @@ func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2)
+	result, err := compareSectionsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -266,7 +266,7 @@ func TestComparePlansInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2)
+	result, err := comparePlansInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -280,7 +280,7 @@ func TestComparePlansInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2)
+	result, err := comparePlansInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -303,7 +303,7 @@ func TestCompareRunsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2)
+	result, err := compareRunsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -317,7 +317,7 @@ func TestCompareRunsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2)
+	result, err := compareRunsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -340,7 +340,7 @@ func TestCompareMilestonesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2)
+	result, err := compareMilestonesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -354,7 +354,7 @@ func TestCompareMilestonesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2)
+	result, err := compareMilestonesInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -377,7 +377,7 @@ func TestCompareDatasetsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2)
+	result, err := compareDatasetsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -391,7 +391,7 @@ func TestCompareDatasetsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2)
+	result, err := compareDatasetsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -414,7 +414,7 @@ func TestCompareGroupsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2)
+	result, err := compareGroupsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -428,7 +428,7 @@ func TestCompareGroupsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2)
+	result, err := compareGroupsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -451,7 +451,7 @@ func TestCompareLabelsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2)
+	result, err := compareLabelsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -465,7 +465,7 @@ func TestCompareLabelsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2)
+	result, err := compareLabelsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -488,7 +488,7 @@ func TestCompareTemplatesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2)
+	result, err := compareTemplatesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -502,7 +502,7 @@ func TestCompareTemplatesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2)
+	result, err := compareTemplatesInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -525,7 +525,7 @@ func TestCompareConfigurationsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2)
+	result, err := compareConfigurationsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -539,7 +539,7 @@ func TestCompareConfigurationsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2)
+	result, err := compareConfigurationsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -562,7 +562,7 @@ func TestCompareSharedStepsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2)
+	result, err := compareSharedStepsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -576,7 +576,7 @@ func TestCompareSharedStepsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2)
+	result, err := compareSharedStepsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)

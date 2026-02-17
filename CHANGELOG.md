@@ -11,7 +11,34 @@
 
 ### Added
 
-#### Stage 5: CLI Test Coverage (986 tests, 10 packages at 100%)
+#### Stage 6: Performance Optimization & UX Enhancement (In Progress)
+
+- **Progress Bars**: Visual feedback for long-running operations
+  - `github.com/schollz/progressbar/v3` integration
+  - Spinner for indeterminate progress
+  - Multi-bar support for parallel operations
+  
+- **Parallel API Requests**: 60-80% performance improvement
+  - Worker pool pattern for concurrent requests
+  - Rate limiting (150 req/min to respect TestRail limits)
+  - Parallel fetching for cases, suites, shared steps
+  
+- **Response Caching**: Disk-based cache with TTL
+  - Cache location: `~/.gotr/cache/`
+  - TTL: Projects 1h, Cases 15min, Suites 30min
+  - `--no-cache` flag to bypass
+  
+- **Retry Logic**: Exponential backoff for resilience
+  - Automatic retry on transient failures
+  - Circuit breaker pattern
+  - `--timeout` flag (default: 5min)
+  
+- **Batch Operations**: Optimized for large projects
+  - Batch fetching (250 items per request)
+  - Streaming output for large datasets
+  - Memory optimization (<500MB peak)
+
+#### Stage 5: CLI Test Coverage (986 tests, 10 packages at 100%) - COMPLETE
 
 - **Comprehensive test suite** for all CLI commands:
   - `cmd/run` — 38 tests (95.2% coverage)

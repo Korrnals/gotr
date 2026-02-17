@@ -186,7 +186,7 @@ func newAllCmd() *cobra.Command {
 						if err := saveAllResult(result, format, filePath); err != nil {
 							return err
 						}
-						fmt.Printf("Результат сохранён в %s\n", filePath)
+						// Message is printed by saveToFile via saveAllResult
 						return nil
 					default:
 						// "table" or unknown - save as text summary

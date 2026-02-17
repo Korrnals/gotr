@@ -3,6 +3,7 @@ package compare
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -64,11 +65,17 @@ func newCasesCmd() *cobra.Command {
 			// Create progress manager
 			pm := progress.NewManager()
 
+			// Start timer
+			startTime := time.Now()
+
 			// Compare cases
 			result, err := compareCasesInternal(cli, pid1, pid2, field, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения кейсов: %w", err)
 			}
+
+			// Calculate elapsed time
+			elapsed := time.Since(startTime)
 
 			// Print or save result
 			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
@@ -78,6 +85,11 @@ func newCasesCmd() *cobra.Command {
 			// Print additional field diff information for cases
 			if field != "title" {
 				printCasesFieldDiff(cli, pid1, pid2, field)
+			}
+
+			// Print statistics (only if not saving to file, or if quiet mode is not set)
+			if savePath == "" {
+				printCasesStats(result, elapsed)
 			}
 
 			return nil
@@ -365,4 +377,21 @@ func getFieldValue(c data.Case, field string) string {
 	default:
 		return "<unknown field>"
 	}
+}
+
+// printCasesStats prints execution statistics for compare cases
+func printCasesStats(result *CompareResult, elapsed time.Duration) {
+	totalCases := len(result.OnlyInFirst) + len(result.OnlyInSecond) + len(result.Common)
+	
+	fmt.Println()
+	fmt.Println("╔══════════════════════════════════════════════════════════════╗")
+	fmt.Println("║                    СТАТИСТИКА ВЫПОЛНЕНИЯ                     ║")
+	fmt.Println("╠══════════════════════════════════════════════════════════════╣")
+	fmt.Printf("║  Время выполнения: %-42s ║\n", elapsed.Round(time.Millisecond))
+	fmt.Printf("║  Всего кейсов обработано: %-35d ║\n", totalCases)
+	fmt.Println("╠══════════════════════════════════════════════════════════════╣")
+	fmt.Printf("║  Только в проекте %d: %-35d ║\n", result.Project1ID, len(result.OnlyInFirst))
+	fmt.Printf("║  Только в проекте %d: %-35d ║\n", result.Project2ID, len(result.OnlyInSecond))
+	fmt.Printf("║  Общих кейсов: %-44d ║\n", len(result.Common))
+	fmt.Println("╚══════════════════════════════════════════════════════════════╝")
 }

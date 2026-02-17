@@ -59,14 +59,25 @@ Overall: 17% (1/6 phases)
   - [x] `compare configurations` — spinner
   - [x] `compare all` — использует pm для всех внутренних команд
 
-- [ ] **Интегрировать в sync** (перенесено в backlog)
-  - [ ] `sync full` — progress bar для каждой фазы
-  - [ ] `sync cases` — progress bar
-  - [ ] `sync shared-steps` — progress bar
+- [x] **Интегрировать в sync** (5 команд)
+  - [x] `sync full` — multi-phase progress
+  - [x] `sync suites` — spinner
+  - [x] `sync sections` — spinner
+  - [x] `sync shared-steps` — spinner
+  - [x] `sync cases` — spinner
 
-- [ ] **Интегрировать в get** (перенесено в backlog)
-  - [ ] `get cases --all-suites` — progress bar
-  - [ ] `get sharedsteps` — progress bar
+- [x] **Интегрировать в get** (4 команды)
+  - [x] `get cases --all-suites` — progress bar
+  - [x] `get sharedsteps` — spinner
+  - [x] `get suites` — spinner
+  - [x] `get sections` — spinner
+
+- [x] **Интегрировать в остальные команды**
+  - [x] `cases bulk` — spinner для bulk операций
+  - [x] `attachments add` — spinner для загрузки файлов
+  - [x] `users list` — spinner для списка пользователей
+  - [x] `reports run` — spinner для генерации отчётов
+  - [x] `reports run-cross-project` — spinner
 
 - [x] **Тесты**
   - [x] Unit tests для `internal/progress/` (100% coverage)
@@ -74,6 +85,9 @@ Overall: 17% (1/6 phases)
 
 ### Результаты
 - ✅ Все 12 compare команд имеют progress bars
+- ✅ Все 5 sync команд имеют progress bars
+- ✅ Все 4 get команды имеют progress bars  
+- ✅ Другие команды с длительными операциями имеют progress bars
 - ✅ Пакет `internal/progress` готов для повторного использования
 - ✅ Паттерн интеграции установлен
 - ✅ Все тесты проходят (27/27)
@@ -286,35 +300,40 @@ Overall: 17% (1/6 phases)
 
 ---
 
-## 🚀 Subagent Plan: Progress Bars for Sync & Get Commands
+## ✅ Subagent Execution Summary: COMPLETE
 
-### Overview
-После успешного завершения compare команд через subagents, планируется аналогичный подход для sync и get команд.
+### Progress Bars Implementation (Phase 6.1)
 
-### Subagent Assignments
+**Subagent A: Sync Commands** ✅
+- Files: `cmd/sync/sync_full.go`, `cmd/sync/sync_cases.go`, `cmd/sync/sync_shared_steps.go`, `cmd/sync/sync_suites.go`, `cmd/sync/sync_sections.go`
+- Removed old `cheggaaa/pb/v3` dependency
+- Added spinners for all phases
 
-**Subagent A: Sync Commands**
-- Files: `cmd/sync/sync.go`, `cmd/sync/sync_cases.go`, `cmd/sync/sync_shared_steps.go`
-- Pattern: Multi-phase progress (fetch → filter → import)
-- Complexity: High (complex workflows)
+**Subagent B: Get Commands** ✅
+- Files: `cmd/get/cases.go`, `cmd/get/sharedsteps.go`, `cmd/get/suites.go`, `cmd/get/sections.go`
+- Progress bar for `--all-suites` flag
+- Spinners for single operations
 
-**Subagent B: Get Commands - Cases**
-- Files: `cmd/get/cases.go`
-- Pattern: Progress for --all-suites flag
-- Complexity: Medium
+**Subagent C: Cases + Attachments** ✅
+- Files: `cmd/cases/bulk.go`, `cmd/attachments/add.go`
+- Bulk operations progress
+- File upload spinners
 
-**Subagent C: Get Commands - Other**
-- Files: `cmd/get/sharedsteps.go`, `cmd/get/suites.go`
-- Pattern: Simple spinner for single operations
-- Complexity: Low
+**Subagent D: Other Commands** ✅
+- Files: `cmd/users/list.go`, `cmd/reports/run.go`, `cmd/reports/run_cross_project.go`
+- Long-running operations only
 
-### Integration Checklist
-- [ ] Each subagent follows `internal/progress` pattern
-- [ ] All tests pass after each subagent
-- [ ] Final QA by main agent
+**Subagent E: Common/Flags Reorganization** ✅
+- Created: `cmd/common/flags/parse/parse.go`
+- Created: `cmd/common/flags/get/get.go`
+- Updated: `cmd/common/flags.go` (backward compatibility layer)
 
-### Priority
-⏳ **Backlog** — Will be executed after Phase 6.2 (Parallel Requests) or in separate optimization sprint.
+### Quality Assurance
+- [x] All subagents followed `internal/progress` pattern
+- [x] All tests pass after each subagent
+- [x] Final QA by main agent completed
+- [x] Build successful: `go build ./...`
+- [x] All tests pass: `go test ./...` (27/27)
 
 ---
 

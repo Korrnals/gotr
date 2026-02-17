@@ -1,7 +1,7 @@
 # Архитектура gotr
 
 > Общее описание архитектуры CLI-утилиты gotr для пользователей  
-> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-08 (v2.6.0-dev) — Stage 4: Complete API Coverage (106 endpoints).
+> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-16 (v2.7.0-dev) — Stage 6: Concurrent API Processing + Progress Bars.
 
 ## Что такое gotr
 
@@ -22,6 +22,14 @@
 │  • Бизнес-логика                                            │
 │  • Валидация данных                                         │
 │  • Миграция данных (migration)                              │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  Concurrent Layer (internal/concurrent/*)                   │
+│  • WorkerPool — параллельная обработка запросов            │
+│  • RateLimiter — контроль 150 запросов/минуту              │
+│  • Retry — повторные попытки с экспоненциальной задержкой  │
+│  • CircuitBreaker — защита от каскадных ошибок             │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
@@ -119,7 +127,46 @@ internal/client/
 - Поддержка mock-реализации для тестов
 - 100% покрытие TestRail API v2
 
-### 4. Interactive Layer (`internal/interactive/`)
+### 4. Concurrent Layer (`internal/concurrent/`)
+
+**Ответственность:** Параллельная обработка API запросов с контролем нагрузки.
+
+**Зачем нужен:** TestRail API имеет лимит 180 запросов/минуту. Последовательная обработка множества сьютов/кейсов занимает минуты. Concurrent Layer позволяет:
+- Выполнять запросы параллельно (до 5 одновременно)
+- Автоматически регулировать скорость (150 req/min)
+- Автоматически повторять при ошибках
+- Защищать от перегрузки API
+
+**Пример ускорения:**
+```
+Загрузка кейсов из 10 сьютов:
+- Последовательно: 10 запросов × 1 сек = 10 секунд
+- Параллельно: 10 запросов / 5 workers = ~2 секунды (5x ускорение)
+```
+
+**Компоненты:**
+- **WorkerPool** — управление пулом горутин (3-5 воркеров)
+- **RateLimiter** — token bucket (150 запросов/минуту)
+- **Retry** — повтор с экспоненциальной задержкой (1с, 2с, 4с...)
+- **CircuitBreaker** — блокировка при множестве ошибок
+
+Подробнее: [docs/concurrent.md](./concurrent.md)
+
+### 5. Progress Layer (`internal/progress/`)
+
+**Ответственность:** Отображение прогресса длительных операций.
+
+**Использование:**
+- `gotr compare all` — прогресс сравнения проектов
+- `gotr sync full` — прогресс миграции
+- `gotr get cases` — прогресс загрузки кейсов
+
+**Особенности:**
+- Автоматически отключается в `--quiet` режиме
+- Поддерживает неопределенные операции (спиннеры)
+- Интегрируется с Concurrent Layer
+
+### 6. Interactive Layer (`internal/interactive/`)
 
 **Ответственность:** Интерактивный выбор проектов, сьютов, ранов.
 
@@ -128,7 +175,7 @@ internal/client/
 - `gotr result list` — выбор проекта → выбор рана → результаты
 - `gotr get cases` — выбор проекта → выбор сьюта
 
-### 5. Models (`internal/models/data/`)
+### 7. Models (`internal/models/data/`)
 
 **Ответственность:** DTO (Data Transfer Objects) для API.
 
@@ -140,7 +187,7 @@ internal/client/
 - `Report`, `Group`, `Role`, `Dataset`
 - `Status`, `Priority` — константы
 
-### 6. Utilities (`internal/utils/`)
+### 8. Utilities (`internal/utils/`)
 
 **Ответственность:** Вспомогательные функции.
 
@@ -197,17 +244,18 @@ TestRail API (src) → Migration → TestRail API (dst)
 ```
 gotr/
 ├── cmd/                          # CLI команды
-│   ├── common/                   #   Общие компоненты
-│   │   ├── client.go            #     ClientAccessor
-│   │   └── flags.go             #     Парсинг флагов
 │   ├── get/                     #   GET команды
 │   ├── result/                  #   Команды results
 │   ├── run/                     #   Команды runs
 │   ├── sync/                    #   Команды миграции
+│   ├── compare/                 #   Команды сравнения
+│   ├── attachments/             #   Команды для вложений
+│   ├── config/                  #   Команды конфигурации
 │   ├── root.go                  #   Корневая команда
 │   └── commands.go              #   Регистрация команд
 ├── docs/                         # Документация
 │   ├── architecture.md          #   Этот файл
+│   ├── concurrent.md            #   Параллельная обработка
 │   ├── configuration.md         #   Настройка
 │   ├── get-commands.md          #   GET команды
 │   ├── sync-commands.md         #   SYNC команды
@@ -219,7 +267,8 @@ gotr/
 ├── internal/                     # Внутренний код
 │   ├── client/                  #   HTTP клиент
 │   │   ├── client.go           #     HTTPClient
-│   │   ├── interfaces.go       #     ClientInterface (43 метода)
+│   │   ├── accessor.go         #     ClientAccessor (singleton)
+│   │   ├── interfaces.go       #     ClientInterface (106 endpoints)
 │   │   ├── mock.go             #     MockClient
 │   │   ├── projects.go         #     ProjectsAPI
 │   │   ├── cases.go            #     CasesAPI
@@ -228,8 +277,20 @@ gotr/
 │   │   ├── sharedsteps.go      #     SharedStepsAPI
 │   │   ├── runs.go             #     RunsAPI
 │   │   └── results.go          #     ResultsAPI
+│   ├── concurrent/             #   Параллельная обработка
+│   │   ├── pool.go            #     WorkerPool, ParallelMap
+│   │   ├── limiter.go         #     RateLimiter (150 req/min)
+│   │   ├── retry.go           #     Retry с backoff
+│   │   └── circuit.go         #     CircuitBreaker
+│   ├── progress/               #   Прогресс-бары
+│   │   └── progress.go        #     ProgressManager
 │   ├── interactive/            #   Интерактивный выбор
-│   │   └── selector.go         #     Селекторы проектов/сьютов
+│   │   └── wizard.go          #     InteractiveWizard
+│   ├── output/                 #   Вывод и сохранение
+│   │   ├── save.go            #     Сохранение в файл
+│   │   └── dryrun.go          #     Dry-run режим
+│   ├── flags/                  #   Хелперы для флагов
+│   │   └── helpers.go         #     Парсинг флагов
 │   ├── service/                #   Бизнес-логика
 │   │   ├── run.go              #     RunService
 │   │   ├── result.go           #     ResultService
@@ -360,6 +421,38 @@ CLI команды не требуют изменений!
 | Новая валидация | `internal/service/*.go` |
 | Новый API метод | `internal/client/*.go` + `interfaces.go` |
 | Новая структура данных | `internal/models/data/*.go` |
-| Интерактивный выбор | `internal/interactive/selector.go` |
+| Интерактивный выбор | `internal/interactive/wizard.go` |
+| Параллельная обработка | `internal/concurrent/*.go` |
+| Прогресс-бары | `internal/progress/*.go` |
 
 Подробная техническая документация: `.systems/ARCHITECTURE.md`
+
+### Параллельная обработка в командах
+
+Для ускорения операций с множеством сьютов/кейсов используйте `internal/concurrent`:
+
+```go
+// Пример: параллельная загрузка кейсов
+import "github.com/Korrnals/gotr/internal/concurrent"
+
+func fetchAllCases(client ClientInterface, projectID int64) ([]Case, error) {
+    suites, _ := client.GetSuites(projectID)
+    
+    // Параллельно загружаем кейсы из всех сьютов
+    results, err := concurrent.ParallelMap(suites, 5,
+        func(suite Suite, index int) ([]Case, error) {
+            return client.GetCases(projectID, suite.ID, 0)
+        })
+    
+    // Собираем результаты
+    var allCases []Case
+    for _, r := range results {
+        if r.Error == nil {
+            allCases = append(allCases, r.Data...)
+        }
+    }
+    return allCases, err
+}
+```
+
+Rate limiting (150 req/min) и retry применяются автоматически.

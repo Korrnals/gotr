@@ -6,6 +6,8 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -59,8 +61,11 @@ func newCasesCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
 			// Compare cases
-			result, err := compareCasesInternal(cli, pid1, pid2, field)
+			result, err := compareCasesInternal(cli, pid1, pid2, field, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения кейсов: %w", err)
 			}
@@ -90,14 +95,16 @@ func newCasesCmd() *cobra.Command {
 var casesCmd = newCasesCmd()
 
 // compareCasesInternal compares cases between two projects and returns the result.
-func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field string) (*CompareResult, error) {
-	// Get cases for both projects
-	cases1, err := fetchCaseItems(cli, pid1)
+func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field string, pm *progress.Manager) (*CompareResult, error) {
+	// Get cases for both projects with progress
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка кейсов из проекта %d...", pid1))
+	cases1, err := fetchCaseItems(cli, pid1, pm)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения кейсов проекта %d: %w", pid1, err)
 	}
 
-	cases2, err := fetchCaseItems(cli, pid2)
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка кейсов из проекта %d...", pid2))
+	cases2, err := fetchCaseItems(cli, pid2, pm)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения кейсов проекта %d: %w", pid2, err)
 	}
@@ -161,7 +168,7 @@ func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field st
 }
 
 // fetchCaseItems fetches all cases for a project and returns them as ItemInfo slice.
-func fetchCaseItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+func fetchCaseItems(cli client.ClientInterface, projectID int64, pm *progress.Manager) ([]ItemInfo, error) {
 	// Get all suites for the project
 	suites, err := cli.GetSuites(projectID)
 	if err != nil {
@@ -171,10 +178,17 @@ func fetchCaseItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, er
 	var allCases []ItemInfo
 	caseIDs := make(map[int64]bool) // Track unique case IDs
 
+	// Create progress bar for suites
+	var bar *progressbar.ProgressBar
+	if pm != nil && len(suites) > 1 {
+		bar = pm.NewBar(int64(len(suites)), fmt.Sprintf("Загрузка из %d сьютов...", len(suites)))
+	}
+
 	// Fetch cases from all suites
 	for _, suite := range suites {
 		cases, err := cli.GetCases(projectID, suite.ID, 0)
 		if err != nil {
+			progress.Add(bar, 1)
 			continue // Skip suites that fail
 		}
 
@@ -187,7 +201,9 @@ func fetchCaseItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, er
 				})
 			}
 		}
+		progress.Add(bar, 1)
 	}
+	progress.Finish(bar)
 
 	// If no suites or no cases found, try without suite
 	if len(allCases) == 0 {

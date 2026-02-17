@@ -94,35 +94,35 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Suites
-			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2); err == nil {
+			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2, pm); err == nil {
 				result.Suites = suitesResult
 			} else {
 				errors["suites"] = err
 			}
 
 			// Sections
-			if sectionsResult, err := compareSectionsInternal(cli, pid1, pid2); err == nil {
+			if sectionsResult, err := compareSectionsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Sections = sectionsResult
 			} else {
 				errors["sections"] = err
 			}
 
 			// Shared Steps
-			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2); err == nil {
+			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2, nil); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				errors["shared_steps"] = err
 			}
 
 			// Runs
-			if runsResult, err := compareRunsInternal(cli, pid1, pid2); err == nil {
+			if runsResult, err := compareRunsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Runs = runsResult
 			} else {
 				errors["runs"] = err
 			}
 
 			// Plans
-			if plansResult, err := comparePlansInternal(cli, pid1, pid2); err == nil {
+			if plansResult, err := comparePlansInternal(cli, pid1, pid2, nil); err == nil {
 				result.Plans = plansResult
 			} else {
 				errors["plans"] = err
@@ -143,28 +143,28 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Groups
-			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2); err == nil {
+			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Groups = groupsResult
 			} else {
 				errors["groups"] = err
 			}
 
 			// Labels
-			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2); err == nil {
+			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Labels = labelsResult
 			} else {
 				errors["labels"] = err
 			}
 
 			// Templates
-			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2); err == nil {
+			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2, nil); err == nil {
 				result.Templates = templatesResult
 			} else {
 				errors["templates"] = err
 			}
 
 			// Configurations
-			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2); err == nil {
+			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Configurations = configsResult
 			} else {
 				errors["configurations"] = err

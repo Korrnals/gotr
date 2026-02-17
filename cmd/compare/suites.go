@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -43,8 +44,11 @@ func newSuitesCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
 			// Compare suites
-			result, err := compareSuitesInternal(cli, pid1, pid2)
+			result, err := compareSuitesInternal(cli, pid1, pid2, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения сюитов: %w", err)
 			}
@@ -64,12 +68,14 @@ func newSuitesCmd() *cobra.Command {
 var suitesCmd = newSuitesCmd()
 
 // compareSuitesInternal compares suites between two projects and returns the result.
-func compareSuitesInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+func compareSuitesInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка сьютов из проекта %d...", pid1))
 	suites1, err := fetchSuiteItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения сюитов проекта %d: %w", pid1, err)
 	}
 
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка сьютов из проекта %d...", pid2))
 	suites2, err := fetchSuiteItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения сюитов проекта %d: %w", pid2, err)

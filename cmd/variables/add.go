@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -40,7 +39,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("variables add")
+				dr := output.NewDryRunPrinter("variables add")
 				dr.PrintSimple("Создать переменную", fmt.Sprintf("Dataset ID: %d, Name: %s", datasetID, name))
 				return nil
 			}
@@ -57,7 +56,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Название переменной (обязательно)")
 
 	return cmd

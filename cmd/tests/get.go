@@ -5,8 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +30,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Проверяем dry-run режим
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("tests get")
+				dr := output.NewDryRunPrinter("tests get")
 				dr.PrintSimple("Получить информацию о тесте", fmt.Sprintf("Test ID: %d", testID))
 				return nil
 			}
@@ -46,7 +45,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

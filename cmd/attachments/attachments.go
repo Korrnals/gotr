@@ -2,7 +2,7 @@
 package attachments
 
 import (
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +37,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
 
 	// Общие флаги для всех подкоманд add
 	addCmd.PersistentFlags().Bool("dry-run", false, "Показать, что будет сделано без загрузки файла")
-	save.AddFlag(addCmd)
+	output.AddFlag(addCmd)
 
 	// Добавление подкоманд к 'add'
 	addCmd.AddCommand(newAddCaseCmd(getClient))

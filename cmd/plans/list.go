@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -30,12 +30,12 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to list plans: %w", err)
 			}
 
-			_, err = save.Output(cmd, resp, "plans", "json")
+			_, err = output.Output(cmd, resp, "plans", "json")
 			return err
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +34,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("variables delete")
+				dr := output.NewDryRunPrinter("variables delete")
 				dr.PrintSimple("Удалить переменную", fmt.Sprintf("Variable ID: %d", variableID))
 				return nil
 			}

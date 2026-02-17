@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +37,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

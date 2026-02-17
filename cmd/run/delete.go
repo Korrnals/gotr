@@ -3,7 +3,7 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service"
@@ -104,7 +104,7 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("run delete")
+				dr := output.NewDryRunPrinter("run delete")
 				dr.PrintOperation(
 					fmt.Sprintf("Delete Run %d", runID),
 					"POST",

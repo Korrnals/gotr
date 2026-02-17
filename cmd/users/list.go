@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/progress"
@@ -49,7 +49,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }
@@ -70,7 +70,7 @@ func listAllUsers(cmd *cobra.Command, cli usersClient) error {
 
 	saveFlag, _ := cmd.Flags().GetBool("save")
 	if saveFlag {
-		_, err := save.Output(cmd, users, "users", "json")
+		_, err := output.Output(cmd, users, "users", "json")
 		return err
 	}
 
@@ -98,7 +98,7 @@ func listProjectUsers(cmd *cobra.Command, cli usersClient, projectID int64) erro
 
 	saveFlag, _ := cmd.Flags().GetBool("save")
 	if saveFlag {
-		_, err := save.Output(cmd, users, "users", "json")
+		_, err := output.Output(cmd, users, "users", "json")
 		return err
 	}
 

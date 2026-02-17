@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +28,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("result fields")
+				dr := output.NewDryRunPrinter("result fields")
 				dr.PrintOperation(
 					"Get Result Fields",
 					"GET",
@@ -55,7 +54,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 // outputResult выводит результат в JSON
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := save.Output(cmd, data, "results", "json")
+	_, err := output.Output(cmd, data, "results", "json")
 	return err
 }
 

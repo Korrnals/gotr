@@ -3,7 +3,7 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -45,7 +45,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("run get")
+				dr := output.NewDryRunPrinter("run get")
 				dr.PrintOperation(
 					fmt.Sprintf("Get Run %d", runID),
 					"GET",

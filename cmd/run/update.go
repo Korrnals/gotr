@@ -3,7 +3,7 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -75,7 +75,7 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("run update")
+				dr := output.NewDryRunPrinter("run update")
 				dr.PrintOperation(
 					fmt.Sprintf("Update Run %d", runID),
 					"POST",

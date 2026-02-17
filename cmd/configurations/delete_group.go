@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("configurations delete-group")
+				dr := output.NewDryRunPrinter("configurations delete-group")
 				dr.PrintSimple("Удалить группу", fmt.Sprintf("Group ID: %d", groupID))
 				return nil
 			}

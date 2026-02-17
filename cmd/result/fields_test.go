@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -23,7 +23,7 @@ func TestFieldsCmd_Success(t *testing.T) {
 	}
 
 	cmd := newFieldsCmd(testhelper.GetClientForTests)
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
 
 	err := cmd.Execute()
@@ -38,7 +38,7 @@ func TestFieldsCmd_EmptyList(t *testing.T) {
 	}
 
 	cmd := newFieldsCmd(testhelper.GetClientForTests)
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
 
 	err := cmd.Execute()
@@ -53,7 +53,7 @@ func TestFieldsCmd_APIError(t *testing.T) {
 	}
 
 	cmd := newFieldsCmd(testhelper.GetClientForTests)
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
 
 	err := cmd.Execute()
@@ -65,7 +65,7 @@ func TestFieldsCmd_DryRun(t *testing.T) {
 	mock := &client.MockClient{}
 
 	cmd := newFieldsCmd(testhelper.GetClientForTests)
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
 	cmd.SetArgs([]string{"--dry-run"})
 

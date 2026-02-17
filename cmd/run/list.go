@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/spf13/cobra"
@@ -68,7 +68,7 @@ ID, название, описание, статистика тестов (passe
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("run list")
+				dr := output.NewDryRunPrinter("run list")
 				dr.PrintOperation(
 					fmt.Sprintf("List Runs for Project %d", projectID),
 					"GET",

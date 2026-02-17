@@ -300,6 +300,55 @@ Overall: 17% (1/6 phases)
 
 ---
 
+## ✅ РЕФАКТОРИНГ АРХИТЕКТУРЫ: cmd/common → internal/
+
+### Выполнен полный рефакторинг структуры common пакетов
+
+**Старая структура (УДАЛЕНА):**
+```
+cmd/common/
+├── client.go          # ClientAccessor
+├── flags.go           # helpers (parse, get)
+├── dryrun/printer.go  # DryRunPrinter
+├── flags/save/        # Save functionality
+└── wizard/wizard.go   # Interactive wizard
+```
+
+**Новая структура:**
+```
+internal/
+├── client/
+│   ├── client.go      # существующий
+│   ├── mock.go        # существующий
+│   └── accessor.go    # NEW (ClientAccessor из cmd/common)
+├── interactive/
+│   └── wizard.go      # NEW (wizard из cmd/common)
+├── output/
+│   ├── dryrun.go      # NEW (dryrun из cmd/common)
+│   ├── save.go        # NEW (из flags/save)
+│   ├── filename.go    # NEW (из flags/save)
+│   ├── paths.go       # NEW (из flags/save)
+│   └── save_test.go   # NEW (из flags/save)
+└── flags/
+    ├── helpers.go     # NEW (из flags/)
+    └── helpers_test.go # NEW (из flags/)
+```
+
+### Изменения импортов (100+ файлов):
+- `cmd/common` → `internal/client`
+- `cmd/common/dryrun` → `internal/output`
+- `cmd/common/flags/save` → `internal/output`
+- `cmd/common/wizard` → `internal/interactive`
+
+### Субагенты выполнили:
+- **Subagent 1**: Обновление импортов client_accessor (4 файла)
+- **Subagent 2**: Обновление импортов dryrun (39 файлов)
+- **Subagent 3**: Обновление импортов flags/save (68 файлов)
+- **Subagent 4**: Обновление импортов wizard (2 файла)
+- **Main agent**: Исправления тестов, финальная проверка
+
+---
+
 ## ✅ Subagent Execution Summary: COMPLETE
 
 ### Progress Bars Implementation (Phase 6.1)

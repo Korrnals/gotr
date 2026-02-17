@@ -176,8 +176,22 @@ func newAllCmd() *cobra.Command {
 			// Save result if requested
 			if savePath != "" {
 				if savePath == "__DEFAULT__" {
-					// --save flag was used, save summary as text file
-					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__")
+					// --save flag was used, check format to determine output type
+					switch format {
+					case "json", "yaml":
+						// Save in structured format with auto-generated filename
+						exportsDir, _ := outpututils.GetExportsDir("compare")
+						os.MkdirAll(exportsDir, 0755)
+						filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
+						if err := saveAllResult(result, format, filePath); err != nil {
+							return err
+						}
+						fmt.Printf("Результат сохранён в %s\n", filePath)
+						return nil
+					default:
+						// "table" or unknown - save as text summary
+						return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__")
+					}
 				}
 				// --save-to flag was used with custom path
 				// If format is "table" (default), try to detect from file extension

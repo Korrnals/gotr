@@ -1,0 +1,392 @@
+# CHECKLIST.md — Чеклист Stage 6: Performance Optimization & UX
+
+> **Этап:** Stage 6 — Performance Optimization & UX Enhancement  
+> **Дата:** 2026-02-16  
+> **Версия:** 2.7.0 → 2.8.0-dev  
+> **Статус:** 🔄 В работе  
+> **Выбранная библиотека:** `github.com/schollz/progressbar/v3`
+
+---
+
+## ✅ УТВЕРЖДЁН: План Stage 6
+
+**Дата утверждения:** 2026-02-16  
+**Scope:** Performance optimization + UX enhancement  
+**Целевое улучшение:** 60-80% faster execution
+
+---
+
+## 📊 Матрица прогресса
+
+```
+Phase 6.1: Progress Bars      [░░░░░░░░░░] 0%
+Phase 6.2: Parallel Requests  [░░░░░░░░░░] 0%
+Phase 6.3: Caching            [░░░░░░░░░░] 0%
+Phase 6.4: Retry Logic        [░░░░░░░░░░] 0%
+Phase 6.5: Batch Operations   [░░░░░░░░░░] 0%
+Phase 6.6: UX Polish          [░░░░░░░░░░] 0%
+
+Overall: 0% (0/6 phases)
+```
+
+---
+
+## Phase 6.1: Progress Bars Foundation
+
+### Задачи
+
+- [ ] **Добавить зависимость** `schollz/progressbar/v3`
+  ```bash
+  go get github.com/schollz/progressbar/v3
+  ```
+
+- [ ] **Создать пакет** `internal/progress/`
+  - [ ] `progress.go` — интерфейс ProgressManager
+  - [ ] `bar.go` — обёртка над progressbar.Bar
+  - [ ] `spinner.go` — индикатор для неопределённых операций
+  - [ ] `options.go` — опции конфигурации
+
+- [ ] **Интегрировать в compare**
+  - [ ] `compare cases` — progress bar при загрузке
+  - [ ] `compare all` — multi-bar (общий + per-resource)
+  - [ ] `compare suites` — progress bar
+  - [ ] `compare sharedsteps` — progress bar
+
+- [ ] **Интегрировать в sync**
+  - [ ] `sync full` — progress bar для каждой фазы
+  - [ ] `sync cases` — progress bar
+  - [ ] `sync shared-steps` — progress bar
+
+- [ ] **Интегрировать в get**
+  - [ ] `get cases --all-suites` — progress bar
+  - [ ] `get sharedsteps` — progress bar
+
+- [ ] **Тесты**
+  - [ ] Unit tests для `internal/progress/`
+  - [ ] Проверка работы в TTY и non-TTY режимах
+
+### Acceptance Criteria
+
+- [ ] При выполнении `compare cases` >100 items показывается progress bar
+- [ ] При выполнении `compare all` показывается общий прогресс + per-resource
+- [ ] ETA отображается корректно
+- [ ] В non-TTY (CI/CD) режиме — только текстовые сообщения
+
+### Визуальный результат
+
+```
+Сравнение кейсов...
+Загрузка из проекта 30...  45% |████████████░░░░░░░░| (450/1000) [00:05<00:06]
+Загрузка из проекта 34...  30% |████████░░░░░░░░░░░░| (300/1000) [00:03<00:07]
+```
+
+---
+
+## Phase 6.2: Parallel API Requests
+
+### Задачи
+
+- [ ] **Создать пакет** `internal/concurrent/`
+  - [ ] `pool.go` — worker pool с errgroup
+  - [ ] `limiter.go` — rate limiter (token bucket)
+  - [ ] `retry.go` — retry logic
+
+- [ ] **Rate Limiter**
+  - [ ] Лимит: 150 requests/minute
+  - [ ] Burst capacity: 10 requests
+  - [ ] Graceful wait при превышении
+
+- [ ] **Parallel Client Methods**
+  - [ ] `GetCasesParallel(projectID, suiteIDs []int64)`
+  - [ ] `GetSuitesParallel(projectIDs []int64)`
+  - [ ] `GetSharedStepsParallel(projectIDs []int64)`
+
+- [ ] **Интеграция в compare**
+  - [ ] Параллельная загрузка для `compare all`
+  - [ ] Параллельная загрузка для `compare cases` (multi-suite)
+
+- [ ] **Тесты**
+  - [ ] Тесты для rate limiter
+  - [ ] Тесты для worker pool
+  - [ ] Проверка отсутствия race conditions
+
+### Acceptance Criteria
+
+- [ ] `compare all` выполняет независимые запросы параллельно
+- [ ] Нет 429 ошибок (rate limiting работает)
+- [ ] При ошибке одного запроса, остальные продолжают
+
+---
+
+## Phase 6.3: Response Caching
+
+### Задачи
+
+- [ ] **Создать пакет** `internal/cache/`
+  - [ ] `cache.go` — интерфейс Cache
+  - [ ] `disk.go` — disk-based реализация
+  - [ ] `ttl.go` — TTL management
+  - [ ] `cleanup.go` — cleanup old entries
+
+- [ ] **TTL настройки**
+  | Entity | TTL |
+  |--------|-----|
+  | Projects | 1 hour |
+  | Suites | 30 minutes |
+  | Cases | 15 minutes |
+  | Shared Steps | 15 minutes |
+  | Sections | 30 minutes |
+
+- [ ] **Cache Management**
+  - [ ] Автосоздание `~/.gotr/cache/`
+  - [ ] LRU eviction при >100MB
+  - [ ] Авто-cleanup при старте
+
+- [ ] **CLI команды**
+  - [ ] `gotr cache clear` — очистка всего кэша
+  - [ ] Флаг `--no-cache` — обход кэша
+
+- [ ] **Интеграция**
+  - [ ] Cache в `compare` командах
+  - [ ] Cache в `get` командах
+  - [ ] Cache invalidation на write операциях
+
+- [ ] **Тесты**
+  - [ ] Тесты для disk cache
+  - [ ] Тесты для TTL
+  - [ ] Тесты для cleanup
+
+### Acceptance Criteria
+
+- [ ] Повторный `compare` использует кэш и работает на 80% быстрее
+- [ ] Кэш уважает TTL
+- [ ] Размер кэша ограничен 100MB
+
+---
+
+## Phase 6.4: Retry Logic & Resilience
+
+### Задачи
+
+- [ ] **Retry Logic**
+  - [ ] Exponential backoff: 1s, 2s, 4s, 8s, 16s
+  - [ ] Max retries: 5
+  - [ ] Только для idempotent операций (GET, LIST)
+
+- [ ] **Circuit Breaker**
+  - [ ] Threshold: 5 ошибок подряд
+  - [ ] Timeout: 30 секунд
+  - [ ] Half-open state для проверки восстановления
+
+- [ ] **Error Context**
+  - [ ] Улучшенные сообщения: "Ошибка загрузки кейсов проекта 30: ..."
+  - [ ] Стек вызовов при `--verbose`
+
+- [ ] **Timeout Flag**
+  - [ ] `--timeout 5m` (default)
+  - [ ] `--timeout 0` (бесконечно)
+  - [ ] Max: 30m
+
+- [ ] **Тесты**
+  - [ ] Тесты для retry
+  - [ ] Тесты для circuit breaker
+  - [ ] Тесты для timeout
+
+### Acceptance Criteria
+
+- [ ] Transient ошибки автоматически ретраются
+- [ ] Circuit breaker предотвращает cascade failures
+- [ ] Timeout не оставляет "висячих" goroutines
+
+---
+
+## Phase 6.5: Batch Operations Optimization
+
+### Задачи
+
+- [ ] **Batch Fetching**
+  - [ ] Увеличить limit с 50 до 250 (макс для TestRail)
+  - [ ] Авто-pagination для больших датасетов
+
+- [ ] **Prefetching**
+  - [ ] Prefetch связанных сущностей
+  - [ ] Lazy vs Eager loading стратегии
+
+- [ ] **Memory Optimization**
+  - [ ] Streaming JSON parsing
+  - [ ] Очистка неиспользуемых объектов
+  - [ ] Пул буферов для снижения GC pressure
+
+- [ ] **compare all оптимизация**
+  - [ ] Общие данные загружаются один раз
+  - [ ] Avoid N+1 queries
+
+- [ ] **Тесты**
+  - [ ] Бенчмарки для сравнения
+  - [ ] Memory profiling
+
+### Acceptance Criteria
+
+- [ ] `compare all` на проекте 10,000+ кейсов: <2 минут
+- [ ] Память не превышает 500MB
+- [ ] Нет "out of memory" ошибок
+
+---
+
+## Phase 6.6: UX Polish
+
+### Задачи
+
+- [ ] **ETA Display**
+  - [ ] Расчет ETA в progress bar
+  - [ ] Скорость (items/sec)
+  - [ ] Оставшееся время
+
+- [ ] **Color Output**
+  - [ ] `github.com/fatih/color` интеграция
+  - [ ] Цветной статус: ✓ зелёный, ⚠ жёлтый, ✗ красный
+  - [ ] Отключение цветов через `NO_COLOR` env
+
+- [ ] **Quiet Mode**
+  - [ ] Флаг `--quiet` — только ошибки и результат
+  - [ ] Для CI/CD интеграции
+  - [ ] Exit codes: 0 (success), 1 (error), 2 (differences found)
+
+- [ ] **Verbose Mode**
+  - [ ] Флаг `--verbose` — детальное логирование
+  - [ ] API request/response logging
+  - [ ] Cache hit/miss logging
+
+- [ ] **Help Enhancement**
+  - [ ] Примеры в каждой команде help
+  - [ ] Long description с use cases
+
+- [ ] **Тесты**
+  - [ ] Тесты для quiet mode
+  - [ ] Тесты для verbose mode
+
+### Acceptance Criteria
+
+- [ ] Quiet mode выводит только результат
+- [ ] Verbose mode показывает API calls
+- [ ] Цвета отключаются в non-TTY
+
+---
+
+## 📁 Файлы для создания
+
+### Новые пакеты
+
+```
+internal/
+├── progress/
+│   ├── progress.go
+│   ├── bar.go
+│   ├── spinner.go
+│   ├── options.go
+│   └── progress_test.go
+├── cache/
+│   ├── cache.go
+│   ├── disk.go
+│   ├── ttl.go
+│   ├── cleanup.go
+│   └── cache_test.go
+└── concurrent/
+    ├── pool.go
+    ├── limiter.go
+    ├── retry.go
+    ├── circuit.go
+    └── concurrent_test.go
+```
+
+### Обновляемые файлы
+
+```
+cmd/
+├── compare/*.go          # Добавить progress bars
+├── sync/*.go             # Добавить progress bars
+└── get/*.go              # Добавить progress bars
+```
+
+---
+
+## 🧪 Тестовая стратегия
+
+### Unit Tests
+- Каждый новый пакет: 95%+ покрытие
+- Mock для HTTP client
+- Table-driven tests
+
+### Integration Tests
+- Тесты с реальным TestRail (опционально)
+- Performance benchmarks
+- Race condition detection: `go test -race`
+
+### Benchmarks
+```go
+func BenchmarkCompareCases(b *testing.B) {
+    // Сравнение до и после оптимизации
+}
+```
+
+---
+
+## ✅ Обязательные действия после завершения Stage 6
+
+### ☐ Уточнить у пользователя:
+- [ ] «Стоит ли выполнить модульные коммиты?»
+- [ ] «Необходимо ли выполнить очередной Релиз (2.8.0)?»
+
+### ☐ Обновить документацию:
+- [ ] `CHANGELOG.md` — добавить раздел [2.8.0]
+- [ ] `README.md` — обновить раздел Performance
+- [ ] `docs/*.md` — документация новых флагов
+
+### ☐ Обновить версию:
+- [ ] `cmd/root.go` — обновить Version = "2.8.0"
+- [ ] `CHANGELOG.md` — дата релиза
+
+### ☐ Зафиксировать изменения:
+```
+feat(progress): add progress bars with schollz/progressbar/v3
+feat(concurrent): add parallel API requests with rate limiting
+feat(cache): add disk-based response caching with TTL
+feat(retry): add exponential backoff and circuit breaker
+feat(perf): optimize batch operations and memory usage
+feat(ux): add quiet/verbose modes and colored output
+docs: update README and CHANGELOG for Stage 6
+```
+
+### ☐ Синхронизировать файлы оси:
+- [ ] `API_AUDIT.md` — обновить
+- [ ] `PLAN.md` — обновить статус Stage 6
+- [ ] `CHECKLIST.md` — этот файл ✅
+
+---
+
+## 📊 Success Metrics Checklist
+
+| Метрика | Было | Цель | Факт | Статус |
+|---------|------|------|------|--------|
+| compare cases (1000) | 5+ min | <30 sec | - | ⏳ |
+| compare all | 10+ min | <2 min | - | ⏳ |
+| Memory peak | 1GB+ | <500MB | - | ⏳ |
+| Test coverage | - | 95%+ | - | ⏳ |
+
+---
+
+## 🔥 Риски и Mitigation
+
+| Риск | Вероятность | Влияние | Mitigation |
+|------|-------------|---------|------------|
+| Rate limiting сложнее ожидаемого | Средняя | Высокое | Conservative limits, backoff |
+| Race conditions в parallel code | Средняя | Высокое | -race тесты, mutexes |
+| Cache invalidation баги | Низкая | Среднее | TTL, explicit invalidation |
+| Memory leaks | Низкая | Высокое | Profiling, pprof |
+
+---
+
+*Файл создан: 2026-02-16*  
+*Этап: Stage 6 — Performance Optimization*  
+*Статус: 🔄 В работе*  
+*Следующий шаг: Phase 6.1 — Progress Bars Foundation*

@@ -153,7 +153,7 @@ func TestCompareCasesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareCasesInternal(mock, 1, 2, "title")
+	result, err := compareCasesInternal(mock, 1, 2, "title", nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -170,7 +170,7 @@ func TestCompareCasesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareCasesInternal(mock, 1, 2, "title")
+	result, err := compareCasesInternal(mock, 1, 2, "title", nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -188,7 +188,7 @@ func TestFetchCaseItems_Success(t *testing.T) {
 		},
 	}
 
-	items, err := fetchCaseItems(mock, 1)
+	items, err := fetchCaseItems(mock, 1, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(items))
@@ -203,7 +203,7 @@ func TestFetchCaseItems_Error(t *testing.T) {
 		},
 	}
 
-	items, err := fetchCaseItems(mock, 1)
+	items, err := fetchCaseItems(mock, 1, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, items)

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -78,12 +79,15 @@ func newAllCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
 			// Compare all resources
 			result := &allResult{}
 			errors := make(map[string]error)
 
 			// Cases
-			if casesResult, err := compareCasesInternal(cli, pid1, pid2, "title"); err == nil {
+			if casesResult, err := compareCasesInternal(cli, pid1, pid2, "title", pm); err == nil {
 				result.Cases = casesResult
 			} else {
 				errors["cases"] = err

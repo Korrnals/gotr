@@ -2,9 +2,9 @@ package sync
 
 import (
 	"fmt"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/utils"
 
-	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -80,13 +80,11 @@ var fullCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		mainBar := pb.StartNew(2) // 2 основных этапа: shared + cases
-		mainBar.SetTemplateString(`{{counters . }} {{bar . }} {{percent . }}`)
-		defer mainBar.Finish()
+		// Create progress manager for multi-phase migration
+		pm := progress.NewManager()
 
 		// Шаг 1) Миграция shared steps (Fetch → Filter → Import)
-		mainBar.Increment()
-		fmt.Println("Шаг 1/2: Миграция shared steps...")
+		progress.Describe(pm.NewSpinner(""), "Шаг 1/2: Миграция shared steps...")
 		if err := m.MigrateSharedSteps(dryRun || !autoApprove); err != nil { // если dry-run — без импорта
 			return err
 		}
@@ -97,8 +95,7 @@ var fullCmd = &cobra.Command{
 		}
 
 		// Шаг 2) Миграция cases (Fetch → Filter → Import)
-		mainBar.Increment()
-		fmt.Println("Шаг 2/2: Миграция cases...")
+		progress.Describe(pm.NewSpinner(""), "Шаг 2/2: Миграция cases...")
 		if err := m.MigrateCases(dryRun); err != nil {
 			return err
 		}

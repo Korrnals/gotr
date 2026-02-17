@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -45,11 +46,17 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 				return fmt.Errorf("section_id должен быть положительным числом")
 			}
 
+			// Create progress manager and spinner
+			pm := progress.NewManager()
+			spinner := pm.NewSpinner("")
+			progress.Describe(spinner, "Загрузка секции...")
+
 			section, err := cli.GetSection(sectionID)
 			if err != nil {
 				return err
 			}
 
+			progress.Finish(spinner)
 			return handleOutput(command, section, start)
 		},
 	}
@@ -78,11 +85,17 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 
 			suiteID, _ := command.Flags().GetInt64("suite-id")
 
+			// Create progress manager and spinner
+			pm := progress.NewManager()
+			spinner := pm.NewSpinner("")
+			progress.Describe(spinner, "Загрузка секций...")
+
 			sections, err := cli.GetSections(projectID, suiteID)
 			if err != nil {
 				return err
 			}
 
+			progress.Finish(spinner)
 			return handleOutput(command, sections, start)
 		},
 	}

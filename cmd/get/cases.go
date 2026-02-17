@@ -7,6 +7,8 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -161,21 +163,27 @@ func fetchAndOutputCases(cmd *cobra.Command, client client.ClientInterface, proj
 
 // fetchCasesFromAllSuites получает кейсы из всех сьютов проекта
 func fetchCasesFromAllSuites(cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
-	fmt.Printf("Получение кейсов из %d сьютов проекта...\n\n", len(suites))
+	// Create progress manager
+	pm := progress.NewManager()
+
+	// Create progress bar for suites
+	var bar *progressbar.ProgressBar
+	if len(suites) > 1 {
+		bar = pm.NewBar(int64(len(suites)), fmt.Sprintf("Загрузка кейсов из %d сьютов...", len(suites)))
+	}
 
 	allCases := make(data.GetCasesResponse, 0)
 	for _, suite := range suites {
-		fmt.Printf("Сьют: %s (ID: %d)... ", suite.Name, suite.ID)
 		cases, err := client.GetCases(projectID, suite.ID, sectionID)
 		if err != nil {
-			fmt.Printf("ОШИБКА: %v\n", err)
-			continue
+			progress.Add(bar, 1)
+			continue // Skip suites that fail
 		}
-		fmt.Printf("найдено %d кейсов\n", len(cases))
 		allCases = append(allCases, cases...)
+		progress.Add(bar, 1)
 	}
+	progress.Finish(bar)
 
-	fmt.Printf("\n=== Итого: %d кейсов из %d сьютов ===\n\n", len(allCases), len(suites))
 	return handleOutput(cmd, allCases, start)
 }
 

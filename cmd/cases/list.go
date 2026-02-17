@@ -1,0 +1,46 @@
+package cases
+
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/spf13/cobra"
+)
+
+// newListCmd создаёт команду 'cases list'
+// Эндпоинт: GET /get_cases/{project_id}
+func newListCmd(getClient GetClientFunc) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "list <project_id>",
+		Short: "Список тест-кейсов",
+		Long:  `Выводит список тест-кейсов проекта с возможностью фильтрации.`,
+		Example: `  # Список всех кейсов проекта
+  gotr cases list 1
+
+  # Фильтрация по сьюте и секции
+  gotr cases list 1 --suite-id=100 --section-id=50`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID, err := strconv.ParseInt(args[0], 10, 64)
+			if err != nil || projectID <= 0 {
+				return fmt.Errorf("invalid project_id: %s", args[0])
+			}
+
+			suiteID, _ := cmd.Flags().GetInt64("suite-id")
+			sectionID, _ := cmd.Flags().GetInt64("section-id")
+
+			cli := getClient(cmd)
+			resp, err := cli.GetCases(projectID, suiteID, sectionID)
+			if err != nil {
+				return fmt.Errorf("failed to list cases: %w", err)
+			}
+
+			return outputResult(cmd, resp)
+		},
+	}
+
+	cmd.Flags().Int64("suite-id", 0, "Фильтр по ID сьюты")
+	cmd.Flags().Int64("section-id", 0, "Фильтр по ID секции")
+
+	return cmd
+}

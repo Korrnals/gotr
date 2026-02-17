@@ -1,0 +1,14 @@
+{
+  "id": 12345,
+  "name": "test-file.pdf",
+  "filename": "test-file.pdf",
+  "size": 1024,
+  "content_type": "application/pdf",
+  "created_on": 1704067200,
+  "project_id": 1,
+  "case_id": 100,
+  "run_id": 0,
+  "plan_id": 0,
+  "result_id": 0,
+  "user_id": 5
+}

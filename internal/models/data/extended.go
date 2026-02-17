@@ -72,3 +72,12 @@ type UpdateTestsLabelsRequest struct {
 	TestIDs []int64  `json:"test_ids"` // ID тестов
 	Labels  []string `json:"labels"`   // Список labels
 }
+
+// UpdateLabelRequest — запрос на обновление метки
+type UpdateLabelRequest struct {
+	ProjectID int64  `json:"project_id"` // ID проекта
+	Title     string `json:"title"`      // Название метки (max 20 символов)
+}
+
+// GetLabelsResponse — ответ на get_labels
+type GetLabelsResponse []Label

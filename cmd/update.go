@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/cmd/common/wizard"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -28,6 +29,7 @@ var updateCmd = &cobra.Command{
   shared-step <id>   Обновить shared step
   milestone <id>     Обновить milestone
   plan <id>          Обновить test plan
+  labels <test_id>   Обновить метки теста (deprecated: use 'gotr labels update')
 
 Примеры:
   gotr update project 1 --name "Updated Project"
@@ -63,9 +65,12 @@ func init() {
 	updateCmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
 	updateCmd.Flags().Bool("include-all", false, "Включить все кейсы (для run)")
 	updateCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
-	updateCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+	save.AddFlag(updateCmd)
 	updateCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	updateCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
+
+	// Flags для labels
+	updateCmd.Flags().String("labels", "", "Метки для теста (через запятую, для 'update labels')")
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
@@ -119,6 +124,8 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return updateRun(cli, cmd, id, jsonData)
 	case "shared-step":
 		return updateSharedStep(cli, cmd, id, jsonData)
+	case "labels":
+		return updateLabels(cli, cmd, id)
 	default:
 		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
 	}
@@ -407,6 +414,10 @@ func runUpdateDryRun(cmd *cobra.Command, dr *dryrun.Printer, endpoint string, id
 		url = fmt.Sprintf("/index.php?/api/v2/update_shared_step/%d", id)
 		dr.PrintOperation(fmt.Sprintf("Update Shared Step %d", id), method, url, body)
 
+	case "labels":
+		labels, _ := cmd.Flags().GetString("labels")
+		dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %s", id, labels))
+
 	default:
 		return fmt.Errorf("неподдерживаемый endpoint для dry-run: %s", endpoint)
 	}
@@ -593,20 +604,49 @@ func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, 
 }
 
 func outputUpdateResult(cmd *cobra.Command, data interface{}) error {
-	output, _ := cmd.Flags().GetString("output")
-	
-	if output != "" {
-		jsonBytes, err := json.MarshalIndent(data, "", "  ")
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(output, jsonBytes, 0644)
+	_, err := save.Output(cmd, data, "result", "json")
+	return err
+}
+
+
+// updateLabels обновляет метки теста (DEPRECATED: use 'gotr labels update' instead)
+func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) error {
+	fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr update labels' is deprecated. Use 'gotr labels update test' instead.")
+
+	labelsFlag, _ := cmd.Flags().GetString("labels")
+	if labelsFlag == "" {
+		return fmt.Errorf("необходимо указать --labels")
 	}
-	
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
+
+	// Парсим метки
+	labels := parseLabels(labelsFlag)
+	if len(labels) == 0 {
+		return fmt.Errorf("не указаны метки")
 	}
-	fmt.Println(string(jsonBytes))
+
+	// Проверяем dry-run
+	isDryRun, _ := cmd.Flags().GetBool("dry-run")
+	if isDryRun {
+		dr := dryrun.New("update labels")
+		dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %v", testID, labels))
+		return nil
+	}
+
+	if err := cli.UpdateTestLabels(testID, labels); err != nil {
+		return fmt.Errorf("ошибка обновления меток: %v", err)
+	}
+
+	fmt.Printf("✅ Метки обновлены для теста %d: %v\n", testID, labels)
 	return nil
+}
+
+// parseLabels парсит строку меток через запятую
+func parseLabels(s string) []string {
+	var labels []string
+	for _, part := range splitAndTrim(s, ",") {
+		if part != "" {
+			labels = append(labels, part)
+		}
+	}
+	return labels
 }

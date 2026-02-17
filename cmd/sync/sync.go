@@ -77,9 +77,11 @@ func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 		}
 	}
 	// Fallback для старых тестов - берём из контекста по старому ключу
-	if v := cmd.Context().Value(testHTTPClientKey); v != nil {
-		if c, ok := v.(*client.HTTPClient); ok {
-			return c
+	if ctx := cmd.Context(); ctx != nil {
+		if v := ctx.Value(testHTTPClientKey); v != nil {
+			if c, ok := v.(*client.HTTPClient); ok {
+				return c
+			}
 		}
 	}
 	return nil

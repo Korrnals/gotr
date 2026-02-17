@@ -42,7 +42,16 @@ Test — это конкретный экземпляр тест-кейса в �
 	},
 }
 
+// clientAccessor — глобальный accessor для получения клиента
 var clientAccessor *common.ClientAccessor
+
+// getClientInterface возвращает клиент как ClientInterface
+func getClientInterface(cmd *cobra.Command) client.ClientInterface {
+	if clientAccessor == nil {
+		return nil
+	}
+	return clientAccessor.GetClientSafe(cmd)
+}
 
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
@@ -53,30 +62,16 @@ func SetGetClientForTests(fn GetClientFunc) {
 	}
 }
 
-// getClientSafe безопасно вызывает getClient с проверкой на nil
-func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
-	if clientAccessor == nil {
-		return nil
-	}
-	return clientAccessor.GetClientSafe(cmd)
-}
-
 // Register регистрирует команду test и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	clientAccessor = common.NewClientAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
-	// Добавляем подкоманды
+	// Создаём и добавляем подкоманды используя конструкторы
+	// Флаги определяются внутри конструкторов
+	getCmd := newGetCmd(getClientInterface)
+	listCmd := newListCmd(getClientInterface)
+
 	Cmd.AddCommand(getCmd)
 	Cmd.AddCommand(listCmd)
-
-	// Общие флаги для всех подкоманд
-	for _, subCmd := range Cmd.Commands() {
-		subCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
-		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
-	}
-
-	// Флаги для list
-	listCmd.Flags().Int64("status-id", 0, "Фильтр по ID статуса")
-	listCmd.Flags().Int64("assigned-to", 0, "Фильтр по ID назначенного пользователя")
 }

@@ -3,9 +3,9 @@ package get
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	embed "github.com/Korrnals/gotr/embedded"
 	"github.com/spf13/cobra"
@@ -64,7 +64,7 @@ func SetGetClientForTests(fn GetClientFunc) {
 func handleOutput(command *cobra.Command, data any, start time.Time) error {
 	quiet, _ := command.Flags().GetBool("quiet")
 	outputFormat, _ := command.Flags().GetString("type")
-	saveFile, _ := command.Flags().GetString("output")
+	saveFlag, _ := command.Flags().GetBool("save")
 	jqEnabled, _ := command.Flags().GetBool("jq")
 	jqFilter, _ := command.Flags().GetString("jq-filter")
 	bodyOnly, _ := command.Flags().GetBool("body-only")
@@ -74,13 +74,10 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 		jqEnabled = viper.GetBool("jq_format")
 	}
 
-	if saveFile != "" {
-		var toSave []byte
-		var err error
-		if bodyOnly {
-			toSave, err = json.MarshalIndent(data, "", "  ")
-		} else {
-			full := struct {
+	if saveFlag {
+		var toSave interface{} = data
+		if !bodyOnly {
+			toSave = struct {
 				Status     string        `json:"status"`
 				StatusCode int           `json:"status_code"`
 				Duration   time.Duration `json:"duration"`
@@ -93,17 +90,15 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 				Timestamp:  time.Now(),
 				Data:       data,
 			}
-			toSave, err = json.MarshalIndent(full, "", "  ")
 		}
+		filepath, err := save.Output(command, toSave, "get", "json")
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга: %w", err)
+			return fmt.Errorf("ошибка сохранения: %w", err)
 		}
-		if err := os.WriteFile(saveFile, toSave, 0644); err != nil {
-			return err
+		if !quiet && filepath != "" {
+			fmt.Printf("Ответ сохранён в %s\n", filepath)
 		}
-		if !quiet {
-			fmt.Printf("Ответ сохранён в %s\n", saveFile)
-		}
+		return nil
 	}
 
 	if jqEnabled || jqFilter != "" {
@@ -168,20 +163,12 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	// Локальные флаги — только для подкоманд get и их детей
 	for _, subCmd := range Cmd.Commands() {
 		subCmd.Flags().StringP("type", "t", "json", "Формат вывода: json, json-full, table")
-		subCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+		save.AddFlag(subCmd)
 		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 		subCmd.Flags().BoolP("jq", "j", false, "Включить jq-форматирование (переопределяет конфиг jq_format)")
 		subCmd.Flags().String("jq-filter", "", "jq-фильтр")
 		subCmd.Flags().BoolP("body-only", "b", false, "Сохранить только тело ответа (без метаданных)")
 	}
 
-	// Специфичные флаги для cases
-	casesCmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (если не указан — будет предложен выбор)")
-	casesCmd.Flags().Int64("section-id", 0, "ID секции (опционально)")
-	casesCmd.Flags().Bool("all-suites", false, "Получить кейсы из всех сьютов проекта")
-	casesCmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
-
-	// Специфичные флаги для suites и sharedsteps
-	suitesCmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
-	sharedStepsCmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	// Специфичные флаги для cases уже определены в конструкторе newCasesCmd
 }

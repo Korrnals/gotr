@@ -96,18 +96,22 @@ var casesCmd = newCasesCmd()
 
 // compareCasesInternal compares cases between two projects and returns the result.
 func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field string, pm *progress.Manager) (*CompareResult, error) {
-	// Get cases for both projects with progress
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка кейсов из проекта %d...", pid1))
-	cases1, err := fetchCaseItems(cli, pid1, pm)
+	// Single progress spinner for both projects (prevents flickering from multiple bars)
+	spinner := pm.NewSpinner("")
+	progress.Describe(spinner, fmt.Sprintf("Загрузка кейсов из проектов %d и %d...", pid1, pid2))
+
+	// Get cases for both projects (without individual progress bars to avoid flickering)
+	cases1, err := fetchCaseItems(cli, pid1, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения кейсов проекта %d: %w", pid1, err)
 	}
 
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка кейсов из проекта %d...", pid2))
-	cases2, err := fetchCaseItems(cli, pid2, pm)
+	cases2, err := fetchCaseItems(cli, pid2, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения кейсов проекта %d: %w", pid2, err)
 	}
+
+	progress.Finish(spinner)
 
 	// Build name maps for comparison
 	cases1Map := make(map[string]ItemInfo)

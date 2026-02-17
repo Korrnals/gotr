@@ -102,7 +102,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 				if err := saveToFileWithPath(result, format, filePath); err != nil {
 					return err
 				}
-				fmt.Printf("Результат сохранён в %s\n", filePath)
+				// Message is printed by saveToFile
 				return nil
 			default:
 				// "table" or unknown - save as text table

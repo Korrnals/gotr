@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -68,20 +69,38 @@ func newSuitesCmd() *cobra.Command {
 var suitesCmd = newSuitesCmd()
 
 // compareSuitesInternal compares suites between two projects and returns the result.
+// Uses parallel API to fetch both projects simultaneously.
 func compareSuitesInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка сьютов из проекта %d...", pid1))
-	suites1, err := fetchSuiteItems(cli, pid1)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка получения сюитов проекта %d: %w", pid1, err)
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Параллельная загрузка сьютов из проектов %d и %d...", pid1, pid2))
+
+	// Fetch suites from both projects in parallel
+	suitesByProject, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2)
+	if err != nil && len(suitesByProject) == 0 {
+		return nil, fmt.Errorf("ошибка получения сюитов: %w", err)
 	}
 
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка сьютов из проекта %d...", pid2))
-	suites2, err := fetchSuiteItems(cli, pid2)
+	// Convert to ItemInfo slices
+	suites1 := suitesToItems(suitesByProject[pid1])
+	suites2 := suitesToItems(suitesByProject[pid2])
+
 	if err != nil {
-		return nil, fmt.Errorf("ошибка получения сюитов проекта %d: %w", pid2, err)
+		// Partial failure - log warning but continue with what we have
+		fmt.Printf("⚠ Предупреждение: не все проекты загружены: %v\n", err)
 	}
 
 	return compareItemInfos("suites", pid1, pid2, suites1, suites2), nil
+}
+
+// suitesToItems converts GetSuitesResponse to []ItemInfo
+func suitesToItems(suites data.GetSuitesResponse) []ItemInfo {
+	items := make([]ItemInfo, 0, len(suites))
+	for _, s := range suites {
+		items = append(items, ItemInfo{
+			ID:   s.ID,
+			Name: s.Name,
+		})
+	}
+	return items
 }
 
 // fetchSuiteItems fetches all suites for a project and returns them as ItemInfo slice.

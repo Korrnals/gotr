@@ -2,10 +2,10 @@ package sync
 
 import (
 	"fmt"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/utils"
 	"strings"
 
-	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -84,18 +84,16 @@ var sharedStepsCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		mainBar := pb.StartNew(6)
-		mainBar.SetTemplateString(`{{counters . }} {{bar . }} {{percent . }}`)
-		defer mainBar.Finish()
+		// Create progress manager
+		pm := progress.NewManager()
 
-		mainBar.Increment()
+		progress.Describe(pm.NewSpinner(""), "Загрузка shared steps...")
 		sourceSteps, targetSteps, err := m.FetchSharedStepsData()
 		if err != nil {
 			return err
 		}
 
 		// Шаг 2) Получение кейсов source для определения использования shared steps
-		mainBar.Increment()
 		sourceCases, err := m.Client.GetCases(srcProject, srcSuite, 0)
 		if err != nil {
 			return err
@@ -106,7 +104,6 @@ var sharedStepsCmd = &cobra.Command{
 		}
 
 		// Шаг 3) Фильтрация кандидатов (исключаем используемые и дубликаты)
-		mainBar.Increment()
 		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
 		if err != nil {
 			return err
@@ -125,7 +122,6 @@ var sharedStepsCmd = &cobra.Command{
 		}
 
 		// Шаг 4) Подтверждение импорта
-		mainBar.Increment()
 		if !autoApprove {
 			fmt.Printf("Подтверждение импорта %d shared steps...\n", len(filtered))
 			fmt.Print("Продолжить? [y/N]: ")
@@ -138,18 +134,13 @@ var sharedStepsCmd = &cobra.Command{
 		}
 
 		// Шаг 5) Импорт
-		mainBar.Increment()
-		importBar := pb.StartNew(len(filtered))
-		importBar.SetTemplateString(`Импорт: {{counters . }} {{bar . | green}} {{percent . }}`)
-		defer importBar.Finish()
-
+		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d shared steps...", len(filtered)))
 		err = m.ImportSharedSteps(filtered, false)
 		if err != nil {
 			return err
 		}
 
 		// Шаг 6) Сохранение mapping/filtered при запросе
-		mainBar.Increment()
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {

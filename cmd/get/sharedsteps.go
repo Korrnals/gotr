@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -58,11 +59,17 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 				}
 			}
 
+			// Create progress manager and spinner
+			pm := progress.NewManager()
+			spinner := pm.NewSpinner("")
+			progress.Describe(spinner, "Загрузка shared steps...")
+
 			steps, err := cli.GetSharedSteps(projectID)
 			if err != nil {
 				return err
 			}
 
+			progress.Finish(spinner)
 			return handleOutput(command, steps, start)
 		},
 	}

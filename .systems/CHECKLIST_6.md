@@ -19,19 +19,19 @@
 ## 📊 Матрица прогресса
 
 ```
-Phase 6.1: Progress Bars      [███████░░░] 70%
+Phase 6.1: Progress Bars      [██████████] 100% ✅
 Phase 6.2: Parallel Requests  [░░░░░░░░░░] 0%
 Phase 6.3: Caching            [░░░░░░░░░░] 0%
 Phase 6.4: Retry Logic        [░░░░░░░░░░] 0%
 Phase 6.5: Batch Operations   [░░░░░░░░░░] 0%
 Phase 6.6: UX Polish          [░░░░░░░░░░] 0%
 
-Overall: 12% (0.7/6 phases)
+Overall: 17% (1/6 phases)
 ```
 
 ---
 
-## Phase 6.1: Progress Bars Foundation
+## Phase 6.1: Progress Bars Foundation ✅ COMPLETE
 
 ### Задачи
 
@@ -44,24 +44,39 @@ Overall: 12% (0.7/6 phases)
   - [x] `progress.go` — интерфейс ProgressManager
   - [x] `progress_test.go` — тесты (100% coverage)
 
-- [x] **Интегрировать в compare**
-  - [x] `compare cases` — progress bar при загрузке
-  - [ ] `compare all` — multi-bar (общий + per-resource) ⏳
-  - [ ] `compare suites` — progress bar
-  - [ ] `compare sharedsteps` — progress bar
+- [x] **Интегрировать в compare** (12 команд)
+  - [x] `compare cases` — progress bar при загрузке сьютов
+  - [x] `compare suites` — spinner при загрузке
+  - [x] `compare sections` — spinner
+  - [x] `compare sharedsteps` — spinner
+  - [x] `compare runs` — spinner
+  - [x] `compare plans` — spinner
+  - [x] `compare milestones` — spinner
+  - [x] `compare datasets` — spinner
+  - [x] `compare groups` — spinner
+  - [x] `compare labels` — spinner
+  - [x] `compare templates` — spinner
+  - [x] `compare configurations` — spinner
+  - [x] `compare all` — использует pm для всех внутренних команд
 
-- [ ] **Интегрировать в sync**
+- [ ] **Интегрировать в sync** (перенесено в backlog)
   - [ ] `sync full` — progress bar для каждой фазы
   - [ ] `sync cases` — progress bar
   - [ ] `sync shared-steps` — progress bar
 
-- [ ] **Интегрировать в get**
+- [ ] **Интегрировать в get** (перенесено в backlog)
   - [ ] `get cases --all-suites` — progress bar
   - [ ] `get sharedsteps` — progress bar
 
 - [x] **Тесты**
   - [x] Unit tests для `internal/progress/` (100% coverage)
   - [x] Проверка работы в TTY и non-TTY режимах
+
+### Результаты
+- ✅ Все 12 compare команд имеют progress bars
+- ✅ Пакет `internal/progress` готов для повторного использования
+- ✅ Паттерн интеграции установлен
+- ✅ Все тесты проходят (27/27)
 
 ### Acceptance Criteria
 
@@ -268,6 +283,38 @@ Overall: 12% (0.7/6 phases)
 - [ ] Quiet mode выводит только результат
 - [ ] Verbose mode показывает API calls
 - [ ] Цвета отключаются в non-TTY
+
+---
+
+## 🚀 Subagent Plan: Progress Bars for Sync & Get Commands
+
+### Overview
+После успешного завершения compare команд через subagents, планируется аналогичный подход для sync и get команд.
+
+### Subagent Assignments
+
+**Subagent A: Sync Commands**
+- Files: `cmd/sync/sync.go`, `cmd/sync/sync_cases.go`, `cmd/sync/sync_shared_steps.go`
+- Pattern: Multi-phase progress (fetch → filter → import)
+- Complexity: High (complex workflows)
+
+**Subagent B: Get Commands - Cases**
+- Files: `cmd/get/cases.go`
+- Pattern: Progress for --all-suites flag
+- Complexity: Medium
+
+**Subagent C: Get Commands - Other**
+- Files: `cmd/get/sharedsteps.go`, `cmd/get/suites.go`
+- Pattern: Simple spinner for single operations
+- Complexity: Low
+
+### Integration Checklist
+- [ ] Each subagent follows `internal/progress` pattern
+- [ ] All tests pass after each subagent
+- [ ] Final QA by main agent
+
+### Priority
+⏳ **Backlog** — Will be executed after Phase 6.2 (Parallel Requests) or in separate optimization sprint.
 
 ---
 

@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -75,6 +76,9 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
+
 			cli := getClient(cmd)
 			resp, err := cli.UpdateCases(suiteID, &req)
 			if err != nil {
@@ -130,6 +134,9 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
+
 			cli := getClient(cmd)
 			if err := cli.DeleteCases(suiteID, &req); err != nil {
 				return fmt.Errorf("failed to delete cases: %w", err)
@@ -181,6 +188,9 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
+
 			cli := getClient(cmd)
 			if err := cli.CopyCasesToSection(sectionID, &req); err != nil {
 				return fmt.Errorf("failed to copy cases: %w", err)
@@ -231,6 +241,9 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 				dr.PrintSimple("Move Cases", fmt.Sprintf("Section: %d, Cases: %v", sectionID, caseIDs))
 				return nil
 			}
+
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
 			if err := cli.MoveCasesToSection(sectionID, &req); err != nil {

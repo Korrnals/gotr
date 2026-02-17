@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/common/dryrun"
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -41,6 +42,9 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			if err := validateFileExists(filePath); err != nil {
 				return err
 			}
+
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
 			resp, err := cli.AddAttachmentToCase(caseID, filePath)
@@ -85,6 +89,9 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			if err := validateFileExists(filePath); err != nil {
 				return err
 			}
+
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
 			resp, err := cli.AddAttachmentToPlan(planID, filePath)
@@ -131,6 +138,9 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
+
 			cli := getClient(cmd)
 			resp, err := cli.AddAttachmentToPlanEntry(planID, entryID, filePath)
 			if err != nil {
@@ -175,6 +185,9 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
+
 			cli := getClient(cmd)
 			resp, err := cli.AddAttachmentToResult(resultID, filePath)
 			if err != nil {
@@ -218,6 +231,9 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			if err := validateFileExists(filePath); err != nil {
 				return err
 			}
+
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
 			resp, err := cli.AddAttachmentToRun(runID, filePath)

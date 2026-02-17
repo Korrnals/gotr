@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +30,9 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
 			if err != nil || templateID <= 0 {
 				return fmt.Errorf("invalid template_id: %s", args[0])
 			}
+
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), "Запуск генерации отчёта...")
 
 			cli := getClient(cmd)
 			resp, err := cli.RunReport(templateID)

@@ -56,14 +56,19 @@ func newCasesCmd() *cobra.Command {
 				field = "title"
 			}
 
+			quiet, _ := cmd.Flags().GetBool("quiet")
+
 			// Get project names
 			project1Name, project2Name, err := GetProjectNames(cli, pid1, pid2)
 			if err != nil {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
+			// Create progress manager (quiet mode disables progress bars)
+			var pm *progress.Manager
+			if !quiet {
+				pm = progress.NewManager()
+			}
 
 			// Start timer
 			startTime := time.Now()
@@ -77,18 +82,20 @@ func newCasesCmd() *cobra.Command {
 			// Calculate elapsed time
 			elapsed := time.Since(startTime)
 
-			// Print or save result
+			// Print or save result (this also finishes any progress bars)
 			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
 				return err
 			}
 
 			// Print additional field diff information for cases
-			if field != "title" {
+			if field != "title" && !quiet {
 				printCasesFieldDiff(cli, pid1, pid2, field)
 			}
 
-			// Print statistics (always show for visibility)
-			printCasesStats(result, elapsed)
+			// Print statistics (unless quiet mode)
+			if !quiet {
+				printCasesStats(result, elapsed)
+			}
 
 			return nil
 		},

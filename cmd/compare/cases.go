@@ -95,23 +95,37 @@ func newCasesCmd() *cobra.Command {
 var casesCmd = newCasesCmd()
 
 // compareCasesInternal compares cases between two projects and returns the result.
+// Shows single informative progress bar for parallel loading from both projects.
 func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field string, pm *progress.Manager) (*CompareResult, error) {
-	// Single progress spinner for both projects (prevents flickering from multiple bars)
-	spinner := pm.NewSpinner("")
-	progress.Describe(spinner, fmt.Sprintf("Загрузка кейсов из проектов %d и %d...", pid1, pid2))
+	// Get suites count for both projects first (quick operation)
+	suitesMap, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2)
+	if err != nil && len(suitesMap) == 0 {
+		return nil, fmt.Errorf("ошибка получения сьютов: %w", err)
+	}
 
-	// Get cases for both projects (without individual progress bars to avoid flickering)
-	cases1, err := fetchCaseItems(cli, pid1, nil)
+	suites1 := suitesMap[pid1]
+	suites2 := suitesMap[pid2]
+	totalSuites := len(suites1) + len(suites2)
+
+	// Create single progress bar for all suites (if there are any)
+	var bar *progressbar.ProgressBar
+	if pm != nil && totalSuites > 0 {
+		bar = pm.NewBar(int64(totalSuites), 
+			fmt.Sprintf("Параллельная загрузка кейсов (%d сьютов)...", totalSuites))
+	}
+
+	// Get cases for both projects with shared progress bar
+	cases1, err := fetchCaseItemsWithProgress(cli, pid1, suites1, bar)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения кейсов проекта %d: %w", pid1, err)
 	}
 
-	cases2, err := fetchCaseItems(cli, pid2, nil)
+	cases2, err := fetchCaseItemsWithProgress(cli, pid2, suites2, bar)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения кейсов проекта %d: %w", pid2, err)
 	}
 
-	progress.Finish(spinner)
+	progress.Finish(bar)
 
 	// Build name maps for comparison
 	cases1Map := make(map[string]ItemInfo)
@@ -171,8 +185,63 @@ func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field st
 	}, nil
 }
 
+// fetchCaseItemsWithProgress fetches all cases for a project with progress updates.
+func fetchCaseItemsWithProgress(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, bar *progressbar.ProgressBar) ([]ItemInfo, error) {
+	// If no suites, fetch cases without suite filter
+	if len(suites) == 0 {
+		cases, err := cli.GetCases(projectID, 0, 0)
+		if err != nil {
+			return nil, err
+		}
+
+		allCases := make([]ItemInfo, 0, len(cases))
+		for _, c := range cases {
+			allCases = append(allCases, ItemInfo{
+				ID:   c.ID,
+				Name: c.Title,
+			})
+		}
+		return allCases, nil
+	}
+
+	// Extract suite IDs
+	suiteIDs := make([]int64, len(suites))
+	for i, s := range suites {
+		suiteIDs[i] = s.ID
+	}
+
+	// Fetch cases in parallel using concurrent API (5 workers, rate limited)
+	casesBySuite, err := cli.GetCasesParallel(projectID, suiteIDs, 5)
+	if err != nil && len(casesBySuite) == 0 {
+		return nil, err
+	}
+
+	// Collect unique cases and update progress
+	var allCases []ItemInfo
+	caseIDs := make(map[int64]bool)
+
+	for _, cases := range casesBySuite {
+		for _, c := range cases {
+			if !caseIDs[c.ID] {
+				caseIDs[c.ID] = true
+				allCases = append(allCases, ItemInfo{
+					ID:   c.ID,
+					Name: c.Title,
+				})
+			}
+		}
+		// Update progress for this suite
+		if bar != nil {
+			progress.Add(bar, 1)
+		}
+	}
+
+	return allCases, nil
+}
+
 // fetchCaseItems fetches all cases for a project and returns them as ItemInfo slice.
 // Uses parallel API for significant performance improvement (4-5x faster).
+// DEPRECATED: Use fetchCaseItemsWithProgress for better UX.
 func fetchCaseItems(cli client.ClientInterface, projectID int64, pm *progress.Manager) ([]ItemInfo, error) {
 	// Get all suites for the project
 	suites, err := cli.GetSuites(projectID)

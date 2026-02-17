@@ -87,10 +87,8 @@ func newCasesCmd() *cobra.Command {
 				printCasesFieldDiff(cli, pid1, pid2, field)
 			}
 
-			// Print statistics (only if not saving to file, or if quiet mode is not set)
-			if savePath == "" {
-				printCasesStats(result, elapsed)
-			}
+			// Print statistics (always show for visibility)
+			printCasesStats(result, elapsed)
 
 			return nil
 		},

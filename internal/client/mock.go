@@ -31,12 +31,19 @@ type MockClient struct {
 	GetCaseTypesFunc       func() (data.GetCaseTypesResponse, error)
 	DiffCasesDataFunc      func(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error)
 
+	// ConcurrentAPI - Parallel methods (Stage 6.2)
+	GetCasesParallelFunc          func(projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error)
+	GetCasesForSuitesParallelFunc func(projectID int64, suiteIDs []int64, workers int) (data.GetCasesResponse, error)
+	GetSuitesParallelFunc         func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error)
+
 	// SuitesAPI
 	GetSuitesFunc   func(projectID int64) (data.GetSuitesResponse, error)
 	GetSuiteFunc    func(suiteID int64) (*data.Suite, error)
 	AddSuiteFunc    func(projectID int64, req *data.AddSuiteRequest) (*data.Suite, error)
 	UpdateSuiteFunc func(suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error)
 	DeleteSuiteFunc func(suiteID int64) error
+
+	// ConcurrentAPI - Parallel methods (Stage 6.2)
 
 	// SectionsAPI
 	GetSectionsFunc   func(projectID, suiteID int64) (data.GetSectionsResponse, error)
@@ -314,6 +321,40 @@ func (m *MockClient) DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCa
 	return nil, nil
 }
 
+// GetCasesParallel — mock implementation
+func (m *MockClient) GetCasesParallel(projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error) {
+	if m.GetCasesParallelFunc != nil {
+		return m.GetCasesParallelFunc(projectID, suiteIDs, workers)
+	}
+	// Default: sequential fallback
+	results := make(map[int64]data.GetCasesResponse)
+	for _, sid := range suiteIDs {
+		cases, err := m.GetCases(projectID, sid, 0)
+		if err != nil {
+			return results, err
+		}
+		results[sid] = cases
+	}
+	return results, nil
+}
+
+// GetCasesForSuitesParallel — mock implementation
+func (m *MockClient) GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int) (data.GetCasesResponse, error) {
+	if m.GetCasesForSuitesParallelFunc != nil {
+		return m.GetCasesForSuitesParallelFunc(projectID, suiteIDs, workers)
+	}
+	// Default: use GetCasesParallel and flatten
+	results, err := m.GetCasesParallel(projectID, suiteIDs, workers)
+	if err != nil {
+		return nil, err
+	}
+	var allCases data.GetCasesResponse
+	for _, cases := range results {
+		allCases = append(allCases, cases...)
+	}
+	return allCases, nil
+}
+
 // ---------------------------------------------------------------------------
 // SuitesAPI
 // ---------------------------------------------------------------------------
@@ -350,6 +391,23 @@ func (m *MockClient) DeleteSuite(suiteID int64) error {
 		return m.DeleteSuiteFunc(suiteID)
 	}
 	return nil
+}
+
+// GetSuitesParallel — mock implementation
+func (m *MockClient) GetSuitesParallel(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+	if m.GetSuitesParallelFunc != nil {
+		return m.GetSuitesParallelFunc(projectIDs, workers)
+	}
+	// Default: sequential fallback
+	results := make(map[int64]data.GetSuitesResponse)
+	for _, pid := range projectIDs {
+		suites, err := m.GetSuites(pid)
+		if err != nil {
+			return results, err
+		}
+		results[pid] = suites
+	}
+	return results, nil
 }
 
 // ---------------------------------------------------------------------------

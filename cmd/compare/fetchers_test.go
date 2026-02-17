@@ -42,35 +42,42 @@ func TestCompareSuitesInternal_Success(t *testing.T) {
 }
 
 func TestCompareSuitesInternal_FirstError(t *testing.T) {
+	// Using GetSuitesParallelFunc to test fault-tolerant behavior
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			if projectID == 1 {
-				return nil, errors.New("API error")
-			}
-			return []data.Suite{}, nil
+		GetSuitesParallelFunc: func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+			results := make(map[int64]data.GetSuitesResponse)
+			// Return partial results (project 2 only) with error
+			results[2] = []data.Suite{}
+			return results, errors.New("API error for project 1")
 		},
 	}
 
 	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
+	// Parallel implementation is fault-tolerant: returns partial results with warning
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "suites", result.Resource)
 }
 
 func TestCompareSuitesInternal_SecondError(t *testing.T) {
+	// Using GetSuitesParallelFunc to test fault-tolerant behavior
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			if projectID == 1 {
-				return []data.Suite{}, nil
-			}
-			return nil, errors.New("API error")
+		GetSuitesParallelFunc: func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+			results := make(map[int64]data.GetSuitesResponse)
+			// Return partial results (project 1 only) with error
+			results[1] = []data.Suite{}
+			return results, errors.New("API error for project 2")
 		},
 	}
 
 	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
+	// Parallel implementation is fault-tolerant: returns partial results with warning
+	// Only returns error if BOTH projects fail
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "suites", result.Resource)
 }
 
 func TestCompareSuitesInternal_Empty(t *testing.T) {

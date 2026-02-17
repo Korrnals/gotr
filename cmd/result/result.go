@@ -2,6 +2,7 @@ package result
 
 import (
 	"github.com/Korrnals/gotr/cmd/common"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -77,37 +78,17 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	Cmd.AddCommand(addCmd)
 	Cmd.AddCommand(addCaseCmd)
 	Cmd.AddCommand(addBulkCmd)
+	Cmd.AddCommand(fieldsCmd)
 
 	// Общие флаги для всех подкоманд
 	for _, subCmd := range Cmd.Commands() {
-		subCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+		save.AddFlag(subCmd)
 		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 	}
 
-	// Флаги для add
-	addCmd.Flags().Int64("status-id", 0, "ID статуса результата (обязательный)")
-	addCmd.Flags().String("comment", "", "Комментарий к результату")
-	addCmd.Flags().String("version", "", "Версия ПО")
-	addCmd.Flags().String("elapsed", "", "Затраченное время (например: '1m 30s')")
-	addCmd.Flags().String("defects", "", "ID дефектов (через запятую)")
-	addCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
-	addCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	// Mark required flags (already defined in constructors)
 	addCmd.MarkFlagRequired("status-id")
-
-	// Флаги для add-case (те же + case-id)
-	addCaseCmd.Flags().Int64("case-id", 0, "ID тест-кейса (обязательный)")
-	addCaseCmd.Flags().Int64("status-id", 0, "ID статуса результата (обязательный)")
-	addCaseCmd.Flags().String("comment", "", "Комментарий к результату")
-	addCaseCmd.Flags().String("version", "", "Версия ПО")
-	addCaseCmd.Flags().String("elapsed", "", "Затраченное время")
-	addCaseCmd.Flags().String("defects", "", "ID дефектов (через запятую)")
-	addCaseCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
-	addCaseCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	addCaseCmd.MarkFlagRequired("case-id")
 	addCaseCmd.MarkFlagRequired("status-id")
-
-	// Флаги для add-bulk
-	addBulkCmd.Flags().String("results-file", "", "JSON файл с результатами (обязательный)")
-	addBulkCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	addBulkCmd.MarkFlagRequired("results-file")
 }

@@ -11,6 +11,75 @@
 
 ### Added
 
+#### Stage 5: CLI Test Coverage (986 tests, 10 packages at 100%)
+
+- **Comprehensive test suite** for all CLI commands:
+  - `cmd/run` — 38 tests (95.2% coverage)
+  - `cmd/result` — 46+ tests (90.6% coverage)
+  - `cmd/get` — 71 tests (89.7% coverage)
+  - `cmd/attachments` — 18 tests (100% coverage)
+  - `cmd/labels` — 60+ tests (100% coverage)
+  - `cmd/groups` — 26 tests (100% coverage)
+  - `cmd/cases` — 87 tests (99.2% coverage)
+  - `cmd/test` + `cmd/tests` — 35 tests (90.5%+ coverage)
+  - `cmd/templates`, `cmd/reports`, `cmd/sync`, `cmd/milestones`, `cmd/plans`
+  - `cmd/users`, `cmd/variables`, `cmd/configurations`, `cmd/datasets`
+  - `cmd/bdds`, `cmd/roles` — all at 87-100% coverage
+- **Test infrastructure:**
+  - Shared `testhelper` package for mock client injection
+  - `serviceWrapper` pattern for interface-based testing
+  - Constructor pattern for all commands (`newXxxCmd`)
+- **Total:** 110 test files, 986 test functions, 18 packages ≥ 90% coverage
+
+#### Stage 5.2: Project Comparison Command + Unified --save Flag
+
+- **New `cmd/compare/` package** with subcommand structure:
+  - `gotr compare cases` - compare test cases with field-based diff
+  - `gotr compare suites` - compare test suites
+  - `gotr compare sections` - compare sections
+  - `gotr compare sharedsteps` - compare shared steps
+  - `gotr compare runs` - compare test runs
+  - `gotr compare plans` - compare test plans
+  - `gotr compare milestones` - compare milestones
+  - `gotr compare datasets` - compare datasets
+  - `gotr compare groups` - compare groups
+  - `gotr compare labels` - compare labels
+  - `gotr compare templates` - compare templates
+  - `gotr compare configurations` - compare configurations
+  - `gotr compare all` - compare all resources at once with formatted table output
+- **Enhanced `--save` and new `--save-to` flags:**
+  - `--save` - saves table output as text file to `~/.gotr/exports/{resource}/`
+  - `--save-to <path>` - saves to specified path with format from `--format` or auto-detected from extension
+  - Auto-detection: `.json` → JSON, `.yaml`/`.yml` → YAML, `.csv` → CSV, `.txt` → table
+  - Supports JSON, YAML, CSV, and table (text) formats
+  - Affects all `compare` subcommands
+- **BREAKING CHANGE: `--save` flag replaces `--output` across ALL commands:**
+  - `--save` is now a boolean flag (no value required)
+  - Saves to `~/.gotr/exports/{resource}/{resource}_YYYY-MM-DD_HH-MM-SS.{format}`
+  - Supports JSON, YAML, and CSV formats via `--format` flag (where applicable)
+  - Affected commands: `get`, `export`, `users list`, `labels list`, `reports list-cross-project`, 
+    `test get/list`, `tests list`, `groups add/update`, and all `compare` subcommands
+- **Field-based comparison** for cases: `--field title`, `--field priority_id`, etc.
+- **Formatted table output** for `compare all`:
+  - Unicode box-drawing characters for clean presentation
+  - Status indicators: ✓ (perfect match), ⚠ (has differences), ✗ (error loading)
+  - Compact summary showing counts per resource type
+  - Error section for failed resource comparisons
+- **Package structure:**
+  - `types.go` - shared types (CompareResult, ItemInfo, CommonItemInfo)
+  - `register.go` - command registration with root command
+  - Individual files per resource (cases.go, suites.go, etc.)
+
+#### Save Package (cmd/common/flags/save)
+
+- **New package** for standardized output saving across all commands:
+  - `SaveWithOptions()` - unified save function supporting JSON, YAML, CSV formats
+  - `GenerateFilename()` - generates timestamped filenames: `{resource}_YYYY-MM-DD_HH-MM-SS.{ext}`
+  - `GetExportsDir()` - returns `~/.gotr/exports/` directory path
+  - Automatic directory creation with 0755 permissions
+  - CSV export with dynamic header detection from struct tags
+  - Over 40 comprehensive tests (100% coverage)
+
 #### Build System Improvements
 
 - **Автоматическая синхронизация версии в Makefile:**
@@ -384,3 +453,4 @@
 - Базовая версия с командами `list`, `get`, `add` и т.д.
 - Поддержка TestRail API v2 через HTTP-клиент.
 - Глобальные флаги `--url`, `--username`, `--api-key`.
+

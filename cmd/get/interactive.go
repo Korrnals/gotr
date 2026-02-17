@@ -8,7 +8,7 @@ import (
 
 // selectProjectInteractively показывает список проектов и просит выбрать
 // DEPRECATED: используйте interactive.SelectProjectInteractively
-func selectProjectInteractively(client *client.HTTPClient) (int64, error) {
+func selectProjectInteractively(client client.ClientInterface) (int64, error) {
 	return interactive.SelectProjectInteractively(client)
 }
 

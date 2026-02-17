@@ -94,11 +94,18 @@ type MockClient struct {
 	DeletePlanEntryFunc func(planID int64, entryID string) error
 
 	// AttachmentsAPI
-	AddAttachmentToCaseFunc      func(caseID int64, filePath string) (*data.AttachmentResponse, error)
-	AddAttachmentToPlanFunc      func(planID int64, filePath string) (*data.AttachmentResponse, error)
-	AddAttachmentToPlanEntryFunc func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
-	AddAttachmentToResultFunc    func(resultID int64, filePath string) (*data.AttachmentResponse, error)
-	AddAttachmentToRunFunc       func(runID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToCaseFunc       func(caseID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanFunc       func(planID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanEntryFunc  func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToResultFunc     func(resultID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToRunFunc        func(runID int64, filePath string) (*data.AttachmentResponse, error)
+	DeleteAttachmentFunc          func(attachmentID int64) error
+	GetAttachmentFunc             func(attachmentID int64) (*data.Attachment, error)
+	GetAttachmentsForCaseFunc     func(caseID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForPlanFunc     func(planID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForPlanEntryFunc func(planID int64, entryID string) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForRunFunc      func(runID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForTestFunc     func(testID int64) (data.GetAttachmentsResponse, error)
 
 	// ConfigurationsAPI
 	GetConfigsFunc          func(projectID int64) (data.GetConfigsResponse, error)
@@ -111,14 +118,18 @@ type MockClient struct {
 
 	// UsersAPI
 	GetUsersFunc         func() (data.GetUsersResponse, error)
+	GetUsersByProjectFunc func(projectID int64) (data.GetUsersResponse, error)
 	GetUserFunc          func(userID int64) (*data.User, error)
 	GetUserByEmailFunc   func(email string) (*data.User, error)
+	AddUserFunc          func(req data.AddUserRequest) (*data.User, error)
+	UpdateUserFunc       func(userID int64, req data.UpdateUserRequest) (*data.User, error)
 	GetPrioritiesFunc    func() (data.GetPrioritiesResponse, error)
 	GetStatusesFunc      func() (data.GetStatusesResponse, error)
 	GetTemplatesFunc     func(projectID int64) (data.GetTemplatesResponse, error)
 
 	// ReportsAPI
 	GetReportsFunc              func(projectID int64) (data.GetReportsResponse, error)
+	GetCrossProjectReportsFunc  func() (data.GetReportsResponse, error)
 	RunReportFunc               func(templateID int64) (*data.RunReportResponse, error)
 	RunCrossProjectReportFunc   func(templateID int64) (*data.RunReportResponse, error)
 
@@ -154,6 +165,9 @@ type MockClient struct {
 	AddBDDFunc          func(caseID int64, content string) (*data.BDD, error)
 
 	// ExtendedAPI - Labels
+	GetLabelsFunc         func(projectID int64) (data.GetLabelsResponse, error)
+	GetLabelFunc          func(labelID int64) (*data.Label, error)
+	UpdateLabelFunc       func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error)
 	UpdateTestLabelsFunc  func(testID int64, labels []string) error
 	UpdateTestsLabelsFunc func(runID int64, testIDs []int64, labels []string) error
 }
@@ -684,6 +698,55 @@ func (m *MockClient) AddAttachmentToRun(runID int64, filePath string) (*data.Att
 	return nil, nil
 }
 
+func (m *MockClient) DeleteAttachment(attachmentID int64) error {
+	if m.DeleteAttachmentFunc != nil {
+		return m.DeleteAttachmentFunc(attachmentID)
+	}
+	return nil
+}
+
+func (m *MockClient) GetAttachment(attachmentID int64) (*data.Attachment, error) {
+	if m.GetAttachmentFunc != nil {
+		return m.GetAttachmentFunc(attachmentID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetAttachmentsForCase(caseID int64) (data.GetAttachmentsResponse, error) {
+	if m.GetAttachmentsForCaseFunc != nil {
+		return m.GetAttachmentsForCaseFunc(caseID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetAttachmentsForPlan(planID int64) (data.GetAttachmentsResponse, error) {
+	if m.GetAttachmentsForPlanFunc != nil {
+		return m.GetAttachmentsForPlanFunc(planID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetAttachmentsForPlanEntry(planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+	if m.GetAttachmentsForPlanEntryFunc != nil {
+		return m.GetAttachmentsForPlanEntryFunc(planID, entryID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetAttachmentsForRun(runID int64) (data.GetAttachmentsResponse, error) {
+	if m.GetAttachmentsForRunFunc != nil {
+		return m.GetAttachmentsForRunFunc(runID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetAttachmentsForTest(testID int64) (data.GetAttachmentsResponse, error) {
+	if m.GetAttachmentsForTestFunc != nil {
+		return m.GetAttachmentsForTestFunc(testID)
+	}
+	return nil, nil
+}
+
 // ---------------------------------------------------------------------------
 // ConfigurationsAPI
 // ---------------------------------------------------------------------------
@@ -746,6 +809,13 @@ func (m *MockClient) GetUsers() (data.GetUsersResponse, error) {
 	return nil, nil
 }
 
+func (m *MockClient) GetUsersByProject(projectID int64) (data.GetUsersResponse, error) {
+	if m.GetUsersByProjectFunc != nil {
+		return m.GetUsersByProjectFunc(projectID)
+	}
+	return nil, nil
+}
+
 func (m *MockClient) GetUser(userID int64) (*data.User, error) {
 	if m.GetUserFunc != nil {
 		return m.GetUserFunc(userID)
@@ -756,6 +826,20 @@ func (m *MockClient) GetUser(userID int64) (*data.User, error) {
 func (m *MockClient) GetUserByEmail(email string) (*data.User, error) {
 	if m.GetUserByEmailFunc != nil {
 		return m.GetUserByEmailFunc(email)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) AddUser(req data.AddUserRequest) (*data.User, error) {
+	if m.AddUserFunc != nil {
+		return m.AddUserFunc(req)
+	}
+	return &data.User{ID: 999}, nil
+}
+
+func (m *MockClient) UpdateUser(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+	if m.UpdateUserFunc != nil {
+		return m.UpdateUserFunc(userID, req)
 	}
 	return nil, nil
 }
@@ -787,6 +871,13 @@ func (m *MockClient) GetTemplates(projectID int64) (data.GetTemplatesResponse, e
 func (m *MockClient) GetReports(projectID int64) (data.GetReportsResponse, error) {
 	if m.GetReportsFunc != nil {
 		return m.GetReportsFunc(projectID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetCrossProjectReports() (data.GetReportsResponse, error) {
+	if m.GetCrossProjectReportsFunc != nil {
+		return m.GetCrossProjectReportsFunc()
 	}
 	return nil, nil
 }
@@ -959,6 +1050,27 @@ func (m *MockClient) AddBDD(caseID int64, content string) (*data.BDD, error) {
 // ---------------------------------------------------------------------------
 // ExtendedAPI - Labels
 // ---------------------------------------------------------------------------
+func (m *MockClient) GetLabels(projectID int64) (data.GetLabelsResponse, error) {
+	if m.GetLabelsFunc != nil {
+		return m.GetLabelsFunc(projectID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) GetLabel(labelID int64) (*data.Label, error) {
+	if m.GetLabelFunc != nil {
+		return m.GetLabelFunc(labelID)
+	}
+	return nil, nil
+}
+
+func (m *MockClient) UpdateLabel(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+	if m.UpdateLabelFunc != nil {
+		return m.UpdateLabelFunc(labelID, req)
+	}
+	return nil, nil
+}
+
 func (m *MockClient) UpdateTestLabels(testID int64, labels []string) error {
 	if m.UpdateTestLabelsFunc != nil {
 		return m.UpdateTestLabelsFunc(testID, labels)

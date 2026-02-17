@@ -112,6 +112,29 @@ gotr sync cases \
   --mapping-file mapping.json --approve
 ```
 
+### Project Comparison
+
+Compare resources between two projects to identify differences and similarities:
+
+```bash
+# Compare all resources between projects
+gotr compare all --pid1 30 --pid2 34
+
+# Compare specific resource types
+gotr compare cases --pid1 30 --pid2 34
+gotr compare suites --pid1 30 --pid2 34
+gotr compare sharedsteps --pid1 30 --pid2 34
+
+# Save comparison results
+gotr compare all --pid1 30 --pid2 34 --save
+gotr compare cases --pid1 30 --pid2 34 --save-to results.json --format json
+
+# Auto-detect format from file extension
+gotr compare all --pid1 30 --pid2 34 --save-to comparison.yaml
+```
+
+**Supported resources:** `cases`, `suites`, `sections`, `sharedsteps`, `runs`, `plans`, `milestones`, `datasets`, `groups`, `labels`, `templates`, `configurations`, `all`
+
 ### Test Runs and Results
 
 ```bash

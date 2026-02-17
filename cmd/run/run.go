@@ -2,6 +2,7 @@ package run
 
 import (
 	"github.com/Korrnals/gotr/cmd/common"
+	"github.com/Korrnals/gotr/cmd/common/flags/save"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -77,35 +78,11 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 
 	// Общие флаги для всех подкоманд
 	for _, subCmd := range Cmd.Commands() {
-		subCmd.Flags().StringP("output", "o", "", "Сохранить ответ в файл")
+		save.AddFlag(subCmd)
 		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 	}
 
-	// Флаги для create
-	createCmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (обязательный)")
-	createCmd.Flags().String("name", "", "Название test run (обязательный)")
-	createCmd.Flags().String("description", "", "Описание test run")
-	createCmd.Flags().Int64("milestone-id", 0, "ID milestone")
-	createCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
-	createCmd.Flags().Int64Slice("case-ids", nil, "Список ID кейсов для включения (через запятую)")
-	createCmd.Flags().Int64Slice("config-ids", nil, "Список ID конфигураций (через запятую)")
-	createCmd.Flags().Bool("include-all", true, "Включить все кейсы сьюты")
-	createCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	// Mark required flags for create (already defined in constructor)
 	createCmd.MarkFlagRequired("suite-id")
 	createCmd.MarkFlagRequired("name")
-
-	// Флаги для update
-	updateCmd.Flags().String("name", "", "Новое название")
-	updateCmd.Flags().String("description", "", "Новое описание")
-	updateCmd.Flags().Int64("milestone-id", 0, "ID milestone")
-	updateCmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
-	updateCmd.Flags().Int64Slice("case-ids", nil, "Список ID кейсов (через запятую)")
-	updateCmd.Flags().Bool("include-all", false, "Включить все кейсы сьюты")
-	updateCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
-
-	// Флаги для close
-	closeCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
-
-	// Флаги для delete
-	deleteCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 }

@@ -31,6 +31,12 @@ type CasesAPI interface {
 	AddCaseField(req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error)
 	GetCaseTypes() (data.GetCaseTypesResponse, error)
 	DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error)
+
+	// Параллельные методы (Stage 6.2)
+	// GetCasesParallel получает кейсы из нескольких сьютов параллельно
+	GetCasesParallel(projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error)
+	// GetCasesForSuitesParallel получает все кейсы для списка сьютов одного проекта
+	GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int) (data.GetCasesResponse, error)
 }
 
 // SuitesAPI — операции с сьютами
@@ -40,6 +46,10 @@ type SuitesAPI interface {
 	AddSuite(projectID int64, req *data.AddSuiteRequest) (*data.Suite, error)
 	UpdateSuite(suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error)
 	DeleteSuite(suiteID int64) error
+
+	// Параллельные методы (Stage 6.2)
+	// GetSuitesParallel получает сьюты из нескольких проектов параллельно
+	GetSuitesParallel(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error)
 }
 
 // SectionsAPI — операции с секциями

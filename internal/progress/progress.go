@@ -2,6 +2,7 @@
 package progress
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -93,6 +94,8 @@ func Add(bar *progressbar.ProgressBar, n int) {
 func Finish(bar *progressbar.ProgressBar) {
 	if bar != nil {
 		bar.Finish()
+		// Add newline to separate from next output
+		fmt.Println()
 	}
 }
 

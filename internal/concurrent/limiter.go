@@ -19,16 +19,16 @@ type RateLimiter struct {
 // requestsPerMinute: maximum requests allowed per minute.
 func NewRateLimiter(requestsPerMinute int) *RateLimiter {
 	if requestsPerMinute <= 0 {
-		requestsPerMinute = 150 // Default: 150 req/min (TestRail limit)
+		requestsPerMinute = 180 // Default: 180 req/min (TestRail max limit)
 	}
 
 	// Convert requests per minute to rate per second
 	ratePerSecond := rate.Limit(float64(requestsPerMinute) / 60.0)
 	
-	// Burst size: allow 10% of the rate or minimum 5
-	burst := requestsPerMinute / 10
-	if burst < 5 {
-		burst = 5
+	// Burst size: allow 15% of the rate or minimum 10
+	burst := requestsPerMinute * 15 / 100
+	if burst < 10 {
+		burst = 10
 	}
 
 	return &RateLimiter{

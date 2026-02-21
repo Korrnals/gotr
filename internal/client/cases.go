@@ -14,6 +14,12 @@ import (
 // suiteID и sectionID — опционально (0 = не использовать).
 // Возвращает полный список кейсов.
 func (c *HTTPClient) GetCases(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+	return c.GetCasesWithProgress(projectID, suiteID, sectionID, nil)
+}
+
+// GetCasesWithProgress получает **все** кейсы проекта с отслеживанием прогресса.
+// monitor вызывается после каждой страницы (каждые 250 кейсов).
+func (c *HTTPClient) GetCasesWithProgress(projectID int64, suiteID int64, sectionID int64, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	var all data.GetCasesResponse
 	offset := int64(0)
 	limit := int64(250)
@@ -49,7 +55,13 @@ func (c *HTTPClient) GetCases(projectID int64, suiteID int64, sectionID int64) (
 
 		all = append(all, page...)
 
-		if len(page) < int(limit) {
+		// Update progress after each page
+		if monitor != nil {
+			monitor.Increment()
+		}
+
+		// Break if we got fewer items than limit, or if page is empty (safety check)
+		if len(page) == 0 || len(page) < int(limit) {
 			break
 		}
 
@@ -305,15 +317,38 @@ func (c *HTTPClient) AddCaseField(req *data.AddCaseFieldRequest) (*data.AddCaseF
 
 // DiffCasesData — сравнивает кейсы двух проектов по указанному полю.
 // Возвращает DiffCasesResponse с разницей.
+// Использует параллельную загрузку для ускорения.
 func (c *HTTPClient) DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
-	cases1, err := c.GetCases(pid1, 0, 0)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка получения кейсов из проекта %d: %w", pid1, err)
+	// Параллельная загрузка кейсов из обоих проектов
+	type result struct {
+		cases data.GetCasesResponse
+		err   error
+		pid   int64
 	}
-
-	cases2, err := c.GetCases(pid2, 0, 0)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка получения кейсов из проекта %d: %w", pid2, err)
+	
+	resultChan := make(chan result, 2)
+	
+	go func() {
+		cases, err := c.GetCases(pid1, 0, 0)
+		resultChan <- result{cases, err, pid1}
+	}()
+	
+	go func() {
+		cases, err := c.GetCases(pid2, 0, 0)
+		resultChan <- result{cases, err, pid2}
+	}()
+	
+	var cases1, cases2 data.GetCasesResponse
+	for i := 0; i < 2; i++ {
+		res := <-resultChan
+		if res.err != nil {
+			return nil, fmt.Errorf("ошибка получения кейсов из проекта %d: %w", res.pid, res.err)
+		}
+		if res.pid == pid1 {
+			cases1 = res.cases
+		} else {
+			cases2 = res.cases
+		}
 	}
 
 	firstCases := make(map[int64]data.Case)
@@ -326,19 +361,19 @@ func (c *HTTPClient) DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCa
 		secondCases[c.ID] = c
 	}
 
-	result := &data.DiffCasesResponse{}
+	diffResult := &data.DiffCasesResponse{}
 
 	// Только в первом
 	for id, c := range firstCases {
 		if _, ok := secondCases[id]; !ok {
-			result.OnlyInFirst = append(result.OnlyInFirst, c)
+			diffResult.OnlyInFirst = append(diffResult.OnlyInFirst, c)
 		}
 	}
 
 	// Только во втором
 	for id, c := range secondCases {
 		if _, ok := firstCases[id]; !ok {
-			result.OnlyInSecond = append(result.OnlyInSecond, c)
+			diffResult.OnlyInSecond = append(diffResult.OnlyInSecond, c)
 		}
 	}
 
@@ -346,7 +381,7 @@ func (c *HTTPClient) DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCa
 	for id, c1 := range firstCases {
 		if c2, ok := secondCases[id]; ok {
 			if !casesEqualByField(c1, c2, field) {
-				result.DiffByField = append(result.DiffByField, struct {
+				diffResult.DiffByField = append(diffResult.DiffByField, struct {
 					CaseID int64     `json:"case_id"`
 					First  data.Case `json:"first"`
 					Second data.Case `json:"second"`
@@ -355,7 +390,7 @@ func (c *HTTPClient) DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCa
 		}
 	}
 
-	return result, nil
+	return diffResult, nil
 }
 
 // casesEqualByField — сравнивает два кейса по указанному полю

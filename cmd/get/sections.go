@@ -49,14 +49,14 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 			// Create progress manager and spinner
 			pm := progress.NewManager()
 			spinner := pm.NewSpinner("")
-			progress.Describe(spinner, "Загрузка секции...")
+			spinner.Describe("Загрузка секции...")
 
 			section, err := cli.GetSection(sectionID)
 			if err != nil {
 				return err
 			}
 
-			progress.Finish(spinner)
+			spinner.Finish()
 			return handleOutput(command, section, start)
 		},
 	}
@@ -88,14 +88,14 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 			// Create progress manager and spinner
 			pm := progress.NewManager()
 			spinner := pm.NewSpinner("")
-			progress.Describe(spinner, "Загрузка секций...")
+			spinner.Describe("Загрузка секций...")
 
 			sections, err := cli.GetSections(projectID, suiteID)
 			if err != nil {
 				return err
 			}
 
-			progress.Finish(spinner)
+			spinner.Finish()
 			return handleOutput(command, sections, start)
 		},
 	}

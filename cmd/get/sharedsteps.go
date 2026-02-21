@@ -62,14 +62,14 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 			// Create progress manager and spinner
 			pm := progress.NewManager()
 			spinner := pm.NewSpinner("")
-			progress.Describe(spinner, "Загрузка shared steps...")
+			spinner.Describe("Загрузка shared steps...")
 
 			steps, err := cli.GetSharedSteps(projectID)
 			if err != nil {
 				return err
 			}
 
-			progress.Finish(spinner)
+			spinner.Finish()
 			return handleOutput(command, steps, start)
 		},
 	}

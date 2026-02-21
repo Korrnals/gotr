@@ -1,7 +1,7 @@
 // internal/models/data/milestones.go
 package data
 
-import "time"
+
 
 // Milestone — майлстоун (версия релиза) в TestRail
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones
@@ -10,12 +10,12 @@ type Milestone struct {
 	Name        string    `json:"name"`                   // The name of the milestone
 	Description string    `json:"description,omitempty"`  // The description of the milestone
 	ProjectID   int64     `json:"project_id"`             // The ID of the project this milestone belongs to
-	DueOn       time.Time `json:"due_on,omitempty"`       // The due date of the milestone
-	StartOn     time.Time `json:"start_on,omitempty"`     // The start date of the milestone
-	StartedOn   time.Time `json:"started_on,omitempty"`   // The date when milestone was started
+	DueOn       Timestamp `json:"due_on,omitempty"`       // The due date of the milestone
+	StartOn     Timestamp `json:"start_on,omitempty"`     // The start date of the milestone
+	StartedOn   Timestamp `json:"started_on,omitempty"`   // The date when milestone was started
 	IsStarted   bool      `json:"is_started"`             // True if the milestone has been started
 	IsCompleted bool      `json:"is_completed"`           // True if the milestone is completed
-	CompletedOn time.Time `json:"completed_on,omitempty"` // The date when milestone was completed
+	CompletedOn Timestamp `json:"completed_on,omitempty"` // The date when milestone was completed
 	URL         string    `json:"url,omitempty"`          // The address/URL of the milestone
 }
 

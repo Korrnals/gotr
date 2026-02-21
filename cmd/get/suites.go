@@ -62,14 +62,14 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			// Create progress manager and spinner
 			pm := progress.NewManager()
 			spinner := pm.NewSpinner("")
-			progress.Describe(spinner, "Загрузка сьютов...")
+			spinner.Describe("Загрузка сьютов...")
 
 			suites, err := cli.GetSuites(projectID)
 			if err != nil {
 				return err
 			}
 
-			progress.Finish(spinner)
+			spinner.Finish()
 			return handleOutput(command, suites, start)
 		},
 	}

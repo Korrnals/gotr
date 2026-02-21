@@ -3,6 +3,7 @@ package compare
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -48,14 +49,30 @@ func newSuitesCmd() *cobra.Command {
 			// Create progress manager
 			pm := progress.NewManager()
 
+			// Start timer
+			startTime := time.Now()
+
 			// Compare suites
 			result, err := compareSuitesInternal(cli, pid1, pid2, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения сюитов: %w", err)
 			}
 
+			elapsed := time.Since(startTime)
+
 			// Print or save result
-			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath)
+			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
+				return err
+			}
+
+			// Print statistics
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			if !quiet {
+				PrintCompareStats("suites", pid1, pid2, 
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+			}
+
+			return nil
 		},
 	}
 
@@ -74,7 +91,7 @@ func compareSuitesInternal(cli client.ClientInterface, pid1, pid2 int64, pm *pro
 	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Параллельная загрузка сьютов из проектов %d и %d...", pid1, pid2))
 
 	// Fetch suites from both projects in parallel
-	suitesByProject, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2)
+	suitesByProject, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2, nil)
 	if err != nil && len(suitesByProject) == 0 {
 		return nil, fmt.Errorf("ошибка получения сюитов: %w", err)
 	}

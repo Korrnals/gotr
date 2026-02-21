@@ -401,7 +401,7 @@ func TestMilestoneModel(t *testing.T) {
 		Name:        "Test Milestone",
 		Description: "Test description",
 		ProjectID:   1,
-		DueOn:       time.Now(),
+		DueOn:       data.Timestamp{Time: time.Now()},
 		IsCompleted: false,
 		URL:         "https://example.com/milestone/1",
 	}

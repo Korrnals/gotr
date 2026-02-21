@@ -6,6 +6,13 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
+// ProgressMonitor определяет интерфейс для мониторинга прогресса.
+// Реализуется типом progress.Monitor из пакета internal/progress.
+type ProgressMonitor interface {
+	Increment()
+	IncrementBy(n int)
+}
+
 // ProjectsAPI — операции с проектами
 type ProjectsAPI interface {
 	GetProjects() (data.GetProjectsResponse, error)
@@ -34,9 +41,12 @@ type CasesAPI interface {
 
 	// Параллельные методы (Stage 6.2)
 	// GetCasesParallel получает кейсы из нескольких сьютов параллельно
-	GetCasesParallel(projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error)
+	// Параметр monitor может быть nil, если прогресс не нужен
+	GetCasesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetCasesResponse, error)
+	// GetSuitesParallel получает сьюты из нескольких проектов параллельно
+	GetSuitesParallel(projectIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetSuitesResponse, error)
 	// GetCasesForSuitesParallel получает все кейсы для списка сьютов одного проекта
-	GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int) (data.GetCasesResponse, error)
+	GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error)
 }
 
 // SuitesAPI — операции с сьютами
@@ -47,9 +57,6 @@ type SuitesAPI interface {
 	UpdateSuite(suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error)
 	DeleteSuite(suiteID int64) error
 
-	// Параллельные методы (Stage 6.2)
-	// GetSuitesParallel получает сьюты из нескольких проектов параллельно
-	GetSuitesParallel(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error)
 }
 
 // SectionsAPI — операции с секциями

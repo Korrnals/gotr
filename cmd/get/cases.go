@@ -8,7 +8,6 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -167,7 +166,7 @@ func fetchCasesFromAllSuites(cmd *cobra.Command, client client.ClientInterface, 
 	pm := progress.NewManager()
 
 	// Create progress bar for suites
-	var bar *progressbar.ProgressBar
+	var bar *progress.Bar
 	if len(suites) > 1 {
 		bar = pm.NewBar(int64(len(suites)), fmt.Sprintf("Загрузка кейсов из %d сьютов...", len(suites)))
 	}
@@ -176,13 +175,13 @@ func fetchCasesFromAllSuites(cmd *cobra.Command, client client.ClientInterface, 
 	for _, suite := range suites {
 		cases, err := client.GetCases(projectID, suite.ID, sectionID)
 		if err != nil {
-			progress.Add(bar, 1)
+			bar.Add(1)
 			continue // Skip suites that fail
 		}
 		allCases = append(allCases, cases...)
-		progress.Add(bar, 1)
+		bar.Add(1)
 	}
-	progress.Finish(bar)
+	bar.Finish()
 
 	return handleOutput(cmd, allCases, start)
 }

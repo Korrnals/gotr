@@ -7,21 +7,38 @@
 
 ---
 
-## [Unreleased]
+## [2.6.0] - 2026-02-20
 
 ### Added
 
 #### Stage 6: Performance Optimization & UX Enhancement (In Progress)
 
+- **Universal Progress Monitoring**: Channel-based progress system
+  - `internal/progress.Monitor` — decoupled from UI
+  - Real-time updates via buffered channels
+  - Thread-safe, non-blocking implementation
+  - Works with any long-running operation
+  - See [docs/progress.md](docs/progress.md) for details
+
 - **Progress Bars**: Visual feedback for long-running operations
   - `github.com/schollz/progressbar/v3` integration
   - Spinner for indeterminate progress
   - Multi-bar support for parallel operations
+  - Automatic newlines after progress completion
   
 - **Parallel API Requests**: 60-80% performance improvement
   - Worker pool pattern for concurrent requests
-  - Rate limiting (150 req/min to respect TestRail limits)
+  - Rate limiting (180 req/min — TestRail maximum)
   - Parallel fetching for cases, suites, shared steps
+  - Integrated with progress monitoring
+  - **Page-level progress**: GetCasesWithProgress updates after each 250 cases page
+  
+- **Compare Cases Command**: Full comparison with parallel loading
+  - Two-phase progress: spinner → progress bars
+  - Parallel loading of both projects simultaneously  
+  - Project-level statistics (suites count, cases count, duration)
+  - Analysis phase with timing
+  - Debug mode support via `--debug` flag
   
 - **Response Caching**: Disk-based cache with TTL
   - Cache location: `~/.gotr/cache/`

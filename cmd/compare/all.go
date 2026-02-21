@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
@@ -81,6 +82,9 @@ func newAllCmd() *cobra.Command {
 
 			// Create progress manager
 			pm := progress.NewManager()
+
+			// Start timer
+			startTime := time.Now()
 
 			// Compare all resources
 			result := &allResult{}
@@ -171,7 +175,8 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Print summary table
-				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors)
+				elapsed := time.Since(startTime)
+				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
 
 			// Save result if requested
 			if savePath != "" {
@@ -190,7 +195,7 @@ func newAllCmd() *cobra.Command {
 						return nil
 					default:
 						// "table" or unknown - save as text summary
-						return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__")
+						return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__", time.Since(startTime))
 					}
 				}
 				// --save-to flag was used with custom path
@@ -205,9 +210,11 @@ func newAllCmd() *cobra.Command {
 					if err := saveAllResult(result, format, savePath); err != nil {
 						return err
 					}
+					// Print on new line after progress bar
+					fmt.Println()
 					fmt.Printf("Результат сохранён в %s\n", savePath)
 				case "table":
-					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath)
+					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath, time.Since(startTime))
 				default:
 					return fmt.Errorf("неподдерживаемый формат '%s' для сохранения, используйте json, yaml или table", format)
 				}
@@ -285,7 +292,7 @@ func printResourceSummary(resourceName string, result *CompareResult) {
 }
 
 // printAllSummaryTable prints a formatted table summary for compare all
-func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error) {
+func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error, elapsed time.Duration) {
 	// Table header
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════════════════════════════════════╗")
@@ -320,6 +327,12 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 	// Legend
 	fmt.Println()
 	fmt.Println("Статус:  ✓  - полное совпадение  │  ⚠  - есть отличия  │  ✗  - ошибка загрузки")
+	fmt.Println()
+
+	// Time summary
+	fmt.Println("═══════════════════════════════════════════════════════════════════════════════")
+	fmt.Printf("  ⏱️  Время выполнения: %s\n", elapsed.Round(time.Second))
+	fmt.Println("═══════════════════════════════════════════════════════════════════════════════")
 	fmt.Println()
 
 	// Print errors if any
@@ -363,7 +376,7 @@ func truncate(s string, maxLen int) string {
 }
 
 // saveAllSummaryToFile saves the summary output to a file (for --save or --save-to with table format)
-func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errors map[string]error, savePath string) error {
+func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errors map[string]error, savePath string, elapsed time.Duration) error {
 	// Create pipe to capture stdout
 	oldStdout := os.Stdout
 	r, w, err := os.Pipe()
@@ -386,7 +399,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 	}()
 
 	// Print summary table (writes to stdout)
-	printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors)
+	printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
 
 	// Restore stdout and close writer
 	w.Close()
@@ -417,6 +430,8 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 		return fmt.Errorf("ошибка записи файла: %w", err)
 	}
 
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", filePath)
 	return nil
 }

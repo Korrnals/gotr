@@ -486,6 +486,8 @@ func saveCSV(result CompareResult, savePath string) error {
 		}
 	}
 
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", savePath)
 	return nil
 }
@@ -495,6 +497,8 @@ func saveToFile(data []byte, savePath string) error {
 	if err := os.WriteFile(savePath, data, 0644); err != nil {
 		return fmt.Errorf("ошибка записи файла: %w", err)
 	}
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", savePath)
 	return nil
 }
@@ -558,6 +562,8 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		return fmt.Errorf("ошибка записи файла: %w", err)
 	}
 
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", filePath)
 	return nil
 }

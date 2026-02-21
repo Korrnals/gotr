@@ -16,6 +16,12 @@ type WorkerPool struct {
 	maxWorkers  int
 	errGroup    *errgroup.Group
 	errGroupCtx context.Context
+	monitor     ProgressMonitor // Optional progress monitor
+}
+
+// ProgressMonitor defines the interface for progress tracking.
+type ProgressMonitor interface {
+	Increment()
 }
 
 // PoolOption configures the WorkerPool.
@@ -32,6 +38,14 @@ func WithMaxWorkers(n int) PoolOption {
 func WithRateLimit(requestsPerMinute int) PoolOption {
 	return func(p *WorkerPool) {
 		p.limiter = NewRateLimiter(requestsPerMinute)
+	}
+}
+
+// WithProgressMonitor sets a progress monitor for the pool.
+// The monitor's Increment() will be called after each task completes.
+func WithProgressMonitor(monitor ProgressMonitor) PoolOption {
+	return func(p *WorkerPool) {
+		p.monitor = monitor
 	}
 }
 
@@ -59,7 +73,12 @@ func (p *WorkerPool) Submit(task func() error) {
 		if p.limiter != nil {
 			p.limiter.Wait()
 		}
-		return task()
+		err := task()
+		// Update progress after task completes
+		if p.monitor != nil {
+			p.monitor.Increment()
+		}
+		return err
 	})
 }
 

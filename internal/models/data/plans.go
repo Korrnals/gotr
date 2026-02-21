@@ -1,8 +1,6 @@
 // internal/models/data/plans.go
 package data
 
-import "time"
-
 // Plan — тест-план в TestRail
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans
 type Plan struct {
@@ -13,7 +11,7 @@ type Plan struct {
 	AssignedTo  int64       `json:"assignedto,omitempty"`  // The ID of the user the test plan is assigned to
 	ProjectID   int64       `json:"project_id"`            // The ID of the project this test plan belongs to
 	IsCompleted bool        `json:"is_completed"`          // True if the test plan is marked as completed
-	CompletedOn time.Time   `json:"completed_on,omitempty"` // The date/time when the test plan was closed
+	CompletedOn Timestamp   `json:"completed_on,omitempty"` // The date/time when the test plan was closed
 	PassedCount int         `json:"passed_count"`          // The number of tests in the test plan marked as passed
 	BlockedCount int        `json:"blocked_count"`         // The number of tests in the test plan marked as blocked
 	UntestedCount int      `json:"untested_count"`        // The number of tests in the test plan marked as untested
@@ -22,7 +20,7 @@ type Plan struct {
 	CustomStatusCount map[string]int `json:"custom_status_count,omitempty"` // Custom statuses count
 	Entries     []PlanEntry `json:"entries,omitempty"`     // An array of test plan entries (runs)
 	URL         string      `json:"url,omitempty"`         // The address/URL of the test plan
-	CreatedOn   time.Time   `json:"created_on,omitempty"`  // The date/time when the test plan was created
+	CreatedOn   Timestamp   `json:"created_on,omitempty"`  // The date/time when the test plan was created
 	CreatedBy   int64       `json:"created_by,omitempty"`  // The ID of the user who created the test plan
 }
 
@@ -38,7 +36,7 @@ type PlanEntry struct {
 	CaseIDs     []int64   `json:"case_ids,omitempty"`    // Array of case IDs to include (if include_all is false)
 	ConfigIDs   []int64   `json:"config_ids,omitempty"`  // Array of configuration IDs to use
 	Runs        []Run     `json:"runs,omitempty"`        // Array of test runs generated from this entry
-	CreatedOn   time.Time `json:"created_on,omitempty"`  // The date/time when the entry was created
+	CreatedOn   Timestamp `json:"created_on,omitempty"`  // The date/time when the entry was created
 	CreatedBy   int64     `json:"created_by,omitempty"`  // The ID of the user who created the entry
 }
 

@@ -17,13 +17,13 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.6.0--dev-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.6.0-blue.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.6-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v2.6.0-dev** — Stage 4 Complete: 106/106 API endpoints implemented. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v2.6.0** — Stage 4 Complete: 106/106 API endpoints implemented. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 
@@ -33,6 +33,7 @@ A professional command-line interface for TestRail API v2. Designed for QA engin
 - **Complete API Coverage** — All 106 TestRail API v2 endpoints implemented (Stage 4 complete)
 - **Project Synchronization** — Migrate entities between projects with intelligent duplicate detection
 - **Interactive Workflow** — Guided selection of projects and suites eliminates the need to memorize IDs
+- **Real-time Progress** — Visual progress bars with channel-based updates for all long-running operations
 - **Built-in Processing** — JSON filtering with embedded `jq`, progress tracking, and structured logging
 - **Flexible Configuration** — Support for flags, environment variables, and configuration files
 
@@ -59,7 +60,7 @@ gotr self-test
 | **Data Synchronization** | Migrate cases, shared steps, suites, and sections between projects |
 | **Test Run Management** | Create runs, add results, and track test execution |
 | **Built-in jq** | Filter and transform JSON without external dependencies |
-| **Progress Indicators** | Visual feedback for long-running operations |
+| **Real-time Progress** | Channel-based progress bars with live updates for parallel operations |
 | **Shell Completion** | Auto-completion for bash, zsh, and fish |
 | **Comprehensive Logging** | Structured JSON logs for audit and debugging |
 
@@ -158,6 +159,25 @@ gotr get projects --jq --jq-filter '.[] | {id: .id, name: .name}'
 gotr get case 12345 --jq
 ```
 
+## Debugging
+
+For troubleshooting and detailed execution information, use the `--debug` (or `-d`) flag:
+
+```bash
+# Show debug output for any command
+gotr compare cases --pid1 30 --pid2 34 --debug
+gotr sync cases --src-project 30 --dst-project 31 --debug
+gotr get cases --project-id 30 --debug
+
+# Debug output includes:
+# - API request details
+# - Progress tracking information
+# - Timing for each operation phase
+# - Suite/case processing details
+```
+
+> **Note:** The `--debug` flag is hidden from autocompletion but available in all commands.
+
 ## Configuration
 
 Configuration priority (highest to lowest):
@@ -181,6 +201,7 @@ gotr config view
 - [GET Commands](docs/get-commands.md)
 - [SYNC Commands](docs/sync-commands.md)
 - [Interactive Mode](docs/interactive-mode.md)
+- [Progress Monitoring](docs/progress.md) — Universal progress system for long-running operations
 
 ## Project Structure
 
@@ -219,7 +240,7 @@ gotr/
 
 See [docs/architecture.md](docs/architecture.md) for complete structure.
 
-## What's New in v2.6.0-dev (Stage 4 Complete)
+## What's New in v2.6.0 (Stage 4 Complete)
 
 ### Complete API Coverage
 

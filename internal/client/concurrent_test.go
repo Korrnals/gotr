@@ -74,7 +74,7 @@ func TestGetCasesParallel(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			results, err := mock.GetCasesParallel(30, tt.suiteIDs, tt.workers)
+			results, err := mock.GetCasesParallel(30, tt.suiteIDs, tt.workers, nil)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCasesParallel() error = %v, wantErr %v", err, tt.wantErr)
@@ -140,7 +140,7 @@ func TestGetSuitesParallel(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			results, err := mock.GetSuitesParallel(tt.projectIDs, tt.workers)
+			results, err := mock.GetSuitesParallel(tt.projectIDs, tt.workers, nil)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetSuitesParallel() error = %v, wantErr %v", err, tt.wantErr)
@@ -194,7 +194,7 @@ func TestGetCasesForSuitesParallel(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			cases, err := mock.GetCasesForSuitesParallel(30, tt.suiteIDs, tt.workers)
+			cases, err := mock.GetCasesForSuitesParallel(30, tt.suiteIDs, tt.workers, nil)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCasesForSuitesParallel() error = %v, wantErr %v", err, tt.wantErr)

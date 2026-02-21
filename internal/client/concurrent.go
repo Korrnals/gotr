@@ -19,21 +19,30 @@ const defaultWorkers = 5
 //   - projectID: ID проекта
 //   - suiteIDs: список ID сьютов для загрузки
 //   - workers: количество параллельных воркеров (0 = defaultWorkers)
+//   - monitor: опциональный монитор прогресса (может быть nil)
 //
 // Возвращает:
 //   - map[suiteID] => список кейсов
 //   - ошибку, если хотя бы один запрос не удался
 //
-// Пример:
+// Пример без прогресса:
 //
-//	cases, err := client.GetCasesParallel(30, []int64{1, 2, 3}, 5)
+//	cases, err := client.GetCasesParallel(30, []int64{1, 2, 3}, 5, nil)
 //	if err != nil {
 //	    log.Printf("Some suites failed: %v", err)
 //	}
-//	for suiteID, suiteCases := range cases {
-//	    fmt.Printf("Suite %d: %d cases\n", suiteID, len(suiteCases))
-//	}
-func (c *HTTPClient) GetCasesParallel(projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error) {
+//
+// Пример с прогресс-баром:
+//
+//	progressChan := make(chan int, 100)
+//	monitor := progress.NewMonitor(progressChan, len(suiteIDs))
+//	go func() {
+//	    for range progressChan {
+//	        bar.Add(1)
+//	    }
+//	}()
+//	cases, err := client.GetCasesParallel(30, suiteIDs, 5, monitor)
+func (c *HTTPClient) GetCasesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetCasesResponse, error) {
 	if len(suiteIDs) == 0 {
 		return make(map[int64]data.GetCasesResponse), nil
 	}
@@ -50,17 +59,21 @@ func (c *HTTPClient) GetCasesParallel(projectID int64, suiteIDs []int64, workers
 	var errs []error
 	var errMu sync.Mutex
 
-	// Worker pool с ограничением и rate limiter
-	pool := concurrent.NewWorkerPool(
+	// Worker pool с ограничением, rate limiter и монитором прогресса
+	opts := []concurrent.PoolOption{
 		concurrent.WithMaxWorkers(workers),
-		concurrent.WithRateLimit(150),
-	)
+		concurrent.WithRateLimit(180),
+	}
+	if monitor != nil {
+		opts = append(opts, concurrent.WithProgressMonitor(monitor))
+	}
+	pool := concurrent.NewWorkerPool(opts...)
 
 	// Запускаем задачи
 	for _, suiteID := range suiteIDs {
 		sid := suiteID // Захватываем переменную
 		pool.Submit(func() error {
-			// Выполняем запрос (rate limiting применяется автоматически внутри pool)
+			// Выполняем запрос (без внутреннего прогресса, только через pool)
 			cases, err := c.GetCases(projectID, sid, 0)
 			if err != nil {
 				errMu.Lock()
@@ -97,11 +110,12 @@ func (c *HTTPClient) GetCasesParallel(projectID int64, suiteIDs []int64, workers
 // Параметры:
 //   - projectIDs: список ID проектов
 //   - workers: количество параллельных воркеров (0 = defaultWorkers)
+//   - monitor: опциональный монитор прогресса (может быть nil)
 //
 // Возвращает:
 //   - map[projectID] => список сьютов
 //   - ошибку, если хотя бы один запрос не удался
-func (c *HTTPClient) GetSuitesParallel(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+func (c *HTTPClient) GetSuitesParallel(projectIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetSuitesResponse, error) {
 	if len(projectIDs) == 0 {
 		return make(map[int64]data.GetSuitesResponse), nil
 	}
@@ -118,11 +132,15 @@ func (c *HTTPClient) GetSuitesParallel(projectIDs []int64, workers int) (map[int
 	var errs []error
 	var errMu sync.Mutex
 
-	// Worker pool
-	pool := concurrent.NewWorkerPool(
+	// Worker pool с опциональным монитором
+	opts := []concurrent.PoolOption{
 		concurrent.WithMaxWorkers(workers),
-		concurrent.WithRateLimit(150),
-	)
+		concurrent.WithRateLimit(180),
+	}
+	if monitor != nil {
+		opts = append(opts, concurrent.WithProgressMonitor(monitor))
+	}
+	pool := concurrent.NewWorkerPool(opts...)
 
 	// Запускаем задачи
 	for _, projectID := range projectIDs {
@@ -166,17 +184,18 @@ func (c *HTTPClient) GetSuitesParallel(projectIDs []int64, workers int) (map[int
 //   - projectID: ID проекта
 //   - suiteIDs: список ID сьютов
 //   - workers: количество параллельных воркеров
+//   - monitor: опциональный монитор прогресса (может быть nil)
 //
 // Возвращает:
 //   - плоский список всех кейсов из всех сьютов
 //   - ошибку, если хотя бы один запрос не удался
-func (c *HTTPClient) GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int) (data.GetCasesResponse, error) {
+func (c *HTTPClient) GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	if len(suiteIDs) == 0 {
 		return data.GetCasesResponse{}, nil
 	}
 
 	// Получаем кейсы параллельно
-	results, err := c.GetCasesParallel(projectID, suiteIDs, workers)
+	results, err := c.GetCasesParallel(projectID, suiteIDs, workers, monitor)
 	if err != nil && len(results) == 0 {
 		return nil, err
 	}

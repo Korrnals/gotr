@@ -73,7 +73,7 @@ PATCH — багфиксы (обратно совместимые)
 ```
 
 ### Текущая версия
-- **Разработка:** `2.6.0-dev` (Stage 5 в процессе)
+- **Разработка:** `2.7.0-dev` (Stage 5 в процессе)
 - **Последний релиз:** `2.2.3`
 
 ### Правила обновления версии
@@ -273,7 +273,7 @@ PATCH — багфиксы (обратно совместимые)
 
 **Период:** 2026-02-07 — 2026-02-08  
 **Статус:** ✅ Завершён  
-**Версия:** 2.5.0 → 2.6.0-dev
+**Версия:** 2.5.0 → 2.7.0-dev
 
 **Цель:** Реализовать ВСЕ оставшиеся endpoint'ы TestRail API (106/106)
 
@@ -353,7 +353,7 @@ PATCH — багфиксы (обратно совместимые)
 
 **Период:** 2026-02-11 — 2026-02-11  
 **Статус:** ✅ Завершён (Вариант C — Полный)  
-**Версия:** 2.6.0-dev → 2.7.0
+**Версия:** 2.7.0-dev → 2.7.0
 **Scope:** 28 endpoints → CLI ~94% ✅
 
 **Результаты:**
@@ -547,12 +547,11 @@ cmd/
 
 #### Задачи
 
-**Phase 6.1: Progress Bars Foundation** (2-3 дня)
-- [ ] Интеграция `github.com/schollz/progressbar/v3`
-- [ ] Создать `internal/progress` пакет
-- [ ] Добавить progress bar в `compare` команды
-- [ ] Добавить progress bar в `sync` команды
-- [ ] Добавить progress bar в `get` команды с большими датасетами
+**Phase 6.1: Progress Bars Foundation** (2-3 дня) ✅
+- [x] Интеграция `github.com/vbauerster/mpb/v8` (вместо progressbar/v3)
+- [x] Создать `internal/progress` пакет
+- [x] Добавить progress bar в `compare` команды
+- [x] Добавить progress bar в `get` команды с большими датасетами
 
 **Phase 6.2: Parallel API Requests** (3-4 дня)
 - [ ] Создать `internal/concurrent` пакет
@@ -580,11 +579,32 @@ cmd/
 - [ ] Оптимизация памяти для больших сравнений
 - [ ] Streaming output для больших датасетов
 
-**Phase 6.6: UX Polish** (1-2 дня)
-- [ ] ETA расчет в progress bars
-- [ ] Цветной вывод
-- [ ] Флаг `--quiet` для CI/CD
-- [ ] Флаг `--verbose` для детального логирования
+**Phase 6.6: UX Polish** (1-2 дня) ✅
+- [x] ETA расчет в progress bars
+- [x] Цветной вывод (эмодзи)
+- [x] Флаг `--quiet` для CI/CD
+- [x] Флаг `--debug` для детального логирования
+
+**Phase 6.7: Recursive Parallelization** (7-10 дней) ⏳
+- [ ] Создать `ParallelController` для оркестрации запросов
+- [ ] Создать `ResultAggregator` для сбора результатов
+- [ ] Создать `AdaptiveRateLimiter` с priority queue
+- [ ] Параллельная пагинация внутри каждого сьюта
+- [ ] Контроллер для отслеживания всех горутин
+- [ ] Гарантированная целостность данных
+- [ ] Unit + Integration тесты
+- [ ] Performance benchmarks
+
+**Детали реализации:**
+- Максимум 20 concurrent requests
+- Adaptive rate limiting (снижение при 429)
+- Priority queue (большие сьюты первыми)
+- Graceful error handling с retry
+- Потоковая передача результатов
+
+**Целевое время**: < 5 минут для 36k+ cases (сейчас ~12 мин)
+
+**Документация**: [docs/recursive-parallelization-plan.md](../docs/recursive-parallelization-plan.md)
 
 #### Целевые метрики
 

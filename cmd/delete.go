@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -53,7 +53,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Проверяем dry-run режим
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("delete " + endpoint)
+		dr := output.NewDryRunPrinter("delete " + endpoint)
 		return runDeleteDryRun(dr, endpoint, id)
 	}
 
@@ -81,7 +81,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 }
 
 // runDeleteDryRun выполняет dry-run для delete команды
-func runDeleteDryRun(dr *dryrun.Printer, endpoint string, id int64) error {
+func runDeleteDryRun(dr *output.DryRunPrinter, endpoint string, id int64) error {
 	var method, url string
 
 	switch endpoint {

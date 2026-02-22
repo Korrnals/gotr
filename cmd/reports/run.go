@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -30,18 +31,21 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("invalid template_id: %s", args[0])
 			}
 
+			pm := progress.NewManager()
+			progress.Describe(pm.NewSpinner(""), "Запуск генерации отчёта...")
+
 			cli := getClient(cmd)
 			resp, err := cli.RunReport(templateID)
 			if err != nil {
 				return fmt.Errorf("failed to run report: %w", err)
 			}
 
-			_, err = save.Output(cmd, resp, "reports", "json")
+			_, err = output.Output(cmd, resp, "reports", "json")
 			return err
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

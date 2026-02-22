@@ -1,5 +1,5 @@
-// Package save provides utilities for saving command output to files
-package save
+// Package output provides utilities for output formatting and saving.
+package output
 
 import (
 	"encoding/csv"

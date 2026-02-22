@@ -1,14 +1,13 @@
 package run
 
 import (
-	"github.com/Korrnals/gotr/cmd/common"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc = common.GetClientFunc
+type GetClientFunc = client.GetClientFunc
 
 // Cmd — родительская команда для управления test runs
 var Cmd = &cobra.Command{
@@ -44,12 +43,12 @@ Test run — это экземпляр тест-сюиты, запущенный
 	},
 }
 
-var clientAccessor *common.ClientAccessor
+var clientAccessor *client.Accessor
 
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
 	if clientAccessor == nil {
-		clientAccessor = common.NewClientAccessor(fn)
+		clientAccessor = client.NewAccessor(fn)
 	} else {
 		clientAccessor.SetClientForTests(fn)
 	}
@@ -65,7 +64,7 @@ func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 
 // Register регистрирует команду run и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
-	clientAccessor = common.NewClientAccessor(clientFn)
+	clientAccessor = client.NewAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
 	// Добавляем подкоманды
@@ -78,7 +77,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 
 	// Общие флаги для всех подкоманд
 	for _, subCmd := range Cmd.Commands() {
-		save.AddFlag(subCmd)
+		output.AddFlag(subCmd)
 		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 	}
 

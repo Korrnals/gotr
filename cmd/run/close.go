@@ -3,7 +3,7 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -48,7 +48,7 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
-				dr := dryrun.New("run close")
+				dr := output.NewDryRunPrinter("run close")
 				dr.PrintOperation(
 					fmt.Sprintf("Close Run %d", runID),
 					"POST",

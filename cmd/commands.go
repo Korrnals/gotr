@@ -72,6 +72,9 @@ func initGlobalFlags() {
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Включить отладочный вывод")
 	rootCmd.PersistentFlags().MarkHidden("debug")
 
+	// Quiet mode (тихий режим для CI/CD)
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (только результат, без прогресса)")
+
 	// Биндим к Viper
 	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
 	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))

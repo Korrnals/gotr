@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -30,7 +29,7 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("plans close")
+				dr := output.NewDryRunPrinter("plans close")
 				dr.PrintSimple("Close Plan", fmt.Sprintf("Plan ID: %d", planID))
 				return nil
 			}
@@ -47,7 +46,7 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без реального закрытия")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

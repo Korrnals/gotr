@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -47,7 +46,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("plans add")
+				dr := output.NewDryRunPrinter("plans add")
 				dr.PrintSimple("Create Plan", fmt.Sprintf("Project ID: %d, Name: %s", projectID, req.Name))
 				return nil
 			}
@@ -64,7 +63,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Название плана (обязательно)")
 	cmd.Flags().String("description", "", "Описание плана")
 	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
@@ -74,6 +73,6 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 // outputResult выводит результат в JSON или сохраняет в файл
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := save.Output(cmd, data, "plans", "json")
+	_, err := output.Output(cmd, data, "plans", "json")
 	return err
 }

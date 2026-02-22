@@ -56,6 +56,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	Cmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, yaml, csv")
 	Cmd.PersistentFlags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
 	Cmd.PersistentFlags().String("save-to", "", "Сохранить результат в указанный файл")
+	Cmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (без статистики и прогресса)")
 
 	// Add all subcommands
 	Cmd.AddCommand(casesCmd)

@@ -6,9 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
-	"github.com/Korrnals/gotr/cmd/common/wizard"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -65,7 +64,7 @@ func init() {
 	updateCmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
 	updateCmd.Flags().Bool("include-all", false, "Включить все кейсы (для run)")
 	updateCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
-	save.AddFlag(updateCmd)
+	output.AddFlag(updateCmd)
 	updateCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	updateCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
 
@@ -100,7 +99,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	// Проверяем dry-run режим
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("update " + endpoint)
+		dr := output.NewDryRunPrinter("update " + endpoint)
 		return runUpdateDryRun(cmd, dr, endpoint, id, jsonData)
 	}
 
@@ -146,7 +145,7 @@ func runUpdateInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoi
 }
 
 func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
-	answers, err := wizard.AskProject(true)
+	answers, err := interactive.AskProject(true)
 	if err != nil {
 		return fmt.Errorf("ошибка ввода: %v", err)
 	}
@@ -162,7 +161,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
-	confirmed, err := wizard.AskConfirm("Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
 		fmt.Println("\n❌ Отменено")
 		return nil
@@ -185,7 +184,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 }
 
 func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
-	answers, err := wizard.AskSuite(true)
+	answers, err := interactive.AskSuite(true)
 	if err != nil {
 		return fmt.Errorf("ошибка ввода: %v", err)
 	}
@@ -200,7 +199,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
-	confirmed, err := wizard.AskConfirm("Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
 		fmt.Println("\n❌ Отменено")
 		return nil
@@ -222,7 +221,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 }
 
 func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
-	answers, err := wizard.AskCase(true)
+	answers, err := interactive.AskCase(true)
 	if err != nil {
 		return fmt.Errorf("ошибка ввода: %v", err)
 	}
@@ -237,7 +236,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
-	confirmed, err := wizard.AskConfirm("Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
 		fmt.Println("\n❌ Отменено")
 		return nil
@@ -260,7 +259,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 }
 
 // runUpdateDryRun выполняет dry-run для update команды
-func runUpdateDryRun(cmd *cobra.Command, dr *dryrun.Printer, endpoint string, id int64, jsonData []byte) error {
+func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string, id int64, jsonData []byte) error {
 	// Читаем флаги
 	name, _ := cmd.Flags().GetString("name")
 	title, _ := cmd.Flags().GetString("title")
@@ -604,7 +603,7 @@ func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, 
 }
 
 func outputUpdateResult(cmd *cobra.Command, data interface{}) error {
-	_, err := save.Output(cmd, data, "result", "json")
+	_, err := output.Output(cmd, data, "result", "json")
 	return err
 }
 
@@ -627,7 +626,7 @@ func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) 
 	// Проверяем dry-run
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("update labels")
+		dr := output.NewDryRunPrinter("update labels")
 		dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %v", testID, labels))
 		return nil
 	}

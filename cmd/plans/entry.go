@@ -5,8 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -69,7 +68,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("plans entry add")
+				dr := output.NewDryRunPrinter("plans entry add")
 				dr.PrintSimple("Add Plan Entry", fmt.Sprintf("Plan ID: %d, Suite ID: %d", planID, suiteID))
 				return nil
 			}
@@ -86,7 +85,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
 	cmd.Flags().String("name", "", "Название записи")
 	cmd.Flags().String("config-ids", "", "ID конфигураций через запятую")
@@ -123,7 +122,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("plans entry update")
+				dr := output.NewDryRunPrinter("plans entry update")
 				dr.PrintSimple("Update Plan Entry", fmt.Sprintf("Plan ID: %d, Entry ID: %s", planID, entryID))
 				return nil
 			}
@@ -140,7 +139,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Новое название записи")
 
 	return cmd
@@ -172,7 +171,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("plans entry delete")
+				dr := output.NewDryRunPrinter("plans entry delete")
 				dr.PrintSimple("Delete Plan Entry", fmt.Sprintf("Plan ID: %d, Entry ID: %s", planID, entryID))
 				return nil
 			}

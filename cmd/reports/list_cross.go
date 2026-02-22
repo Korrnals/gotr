@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -32,7 +32,7 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
-				_, err := save.Output(cmd, reports, "reports", "json")
+				_, err := output.Output(cmd, reports, "reports", "json")
 				return err
 			}
 
@@ -49,6 +49,6 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 			return w.Flush()
 		},
 	}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	return cmd
 }

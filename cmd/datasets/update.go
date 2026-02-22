@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +38,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("datasets update")
+				dr := output.NewDryRunPrinter("datasets update")
 				dr.PrintSimple("Обновить датасет", fmt.Sprintf("Dataset ID: %d, New Name: %s", datasetID, name))
 				return nil
 			}
@@ -56,7 +55,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Новое название датасета (обязательно)")
 
 	return cmd

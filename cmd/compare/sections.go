@@ -2,8 +2,10 @@ package compare
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -42,14 +44,33 @@ func newSectionsCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
+			// Start timer
+			startTime := time.Now()
+
 			// Compare sections
-			result, err := compareSectionsInternal(cli, pid1, pid2)
+			result, err := compareSectionsInternal(cli, pid1, pid2, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения секций: %w", err)
 			}
 
+			elapsed := time.Since(startTime)
+
 			// Print or save result
-			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath)
+			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
+				return err
+			}
+
+			// Print statistics
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			if !quiet {
+				PrintCompareStats("sections", pid1, pid2,
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+			}
+
+			return nil
 		},
 	}
 
@@ -63,13 +84,15 @@ func newSectionsCmd() *cobra.Command {
 var sectionsCmd = newSectionsCmd()
 
 // compareSectionsInternal compares sections between two projects and returns the result.
-func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
-	sections1, err := fetchSectionItems(cli, pid1)
+func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка секций из проекта %d...", pid1))
+	sections1, err := fetchSectionItems(cli, pid1, pm)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения секций проекта %d: %w", pid1, err)
 	}
 
-	sections2, err := fetchSectionItems(cli, pid2)
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка секций из проекта %d...", pid2))
+	sections2, err := fetchSectionItems(cli, pid2, pm)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения секций проекта %d: %w", pid2, err)
 	}
@@ -78,7 +101,7 @@ func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64) (*Com
 }
 
 // fetchSectionItems fetches all sections for a project and returns them as ItemInfo slice.
-func fetchSectionItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+func fetchSectionItems(cli client.ClientInterface, projectID int64, pm *progress.Manager) ([]ItemInfo, error) {
 	// Get all suites for the project
 	suites, err := cli.GetSuites(projectID)
 	if err != nil {

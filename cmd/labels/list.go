@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -41,7 +41,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
-				_, err := save.Output(cmd, labels, "labels", "json")
+				_, err := output.Output(cmd, labels, "labels", "json")
 				return err
 			}
 
@@ -58,7 +58,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			return w.Flush()
 		},
 	}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	return cmd
 }
 

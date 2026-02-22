@@ -8,9 +8,10 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +49,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }
@@ -59,6 +60,9 @@ type usersClient interface {
 }
 
 func listAllUsers(cmd *cobra.Command, cli usersClient) error {
+	pm := progress.NewManager()
+	progress.Describe(pm.NewSpinner(""), "Загрузка пользователей...")
+
 	users, err := cli.GetUsers()
 	if err != nil {
 		return fmt.Errorf("failed to list users: %w", err)
@@ -66,7 +70,7 @@ func listAllUsers(cmd *cobra.Command, cli usersClient) error {
 
 	saveFlag, _ := cmd.Flags().GetBool("save")
 	if saveFlag {
-		_, err := save.Output(cmd, users, "users", "json")
+		_, err := output.Output(cmd, users, "users", "json")
 		return err
 	}
 
@@ -84,6 +88,9 @@ func listAllUsers(cmd *cobra.Command, cli usersClient) error {
 }
 
 func listProjectUsers(cmd *cobra.Command, cli usersClient, projectID int64) error {
+	pm := progress.NewManager()
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка пользователей проекта %d...", projectID))
+
 	users, err := cli.GetUsersByProject(projectID)
 	if err != nil {
 		return fmt.Errorf("failed to list project users: %w", err)
@@ -91,7 +98,7 @@ func listProjectUsers(cmd *cobra.Command, cli usersClient, projectID int64) erro
 
 	saveFlag, _ := cmd.Flags().GetBool("save")
 	if saveFlag {
-		_, err := save.Output(cmd, users, "users", "json")
+		_, err := output.Output(cmd, users, "users", "json")
 		return err
 	}
 

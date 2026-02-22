@@ -2,10 +2,10 @@ package sync
 
 import (
 	"fmt"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/utils"
 	"strings"
 
-	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -81,19 +81,17 @@ var sectionsCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		mainBar := pb.StartNew(6)
-		mainBar.SetTemplateString(`{{counters . }} {{bar . }} {{percent . }}`)
-		defer mainBar.Finish()
+		// Create progress manager
+		pm := progress.NewManager()
 
 		// Шаг 1) Получение sections из source и target
-		mainBar.Increment()
+		progress.Describe(pm.NewSpinner(""), "Загрузка sections...")
 		sourceSections, targetSections, err := m.FetchSectionsData()
 		if err != nil {
 			return err
 		}
 
 		// Шаг 2) Фильтрация дубликатов
-		mainBar.Increment()
 		filtered, err := m.FilterSections(sourceSections, targetSections)
 		if err != nil {
 			return err
@@ -124,13 +122,12 @@ var sectionsCmd = &cobra.Command{
 			}
 		}
 
-		mainBar.Increment()
+		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d sections...", len(filtered)))
 		if err := m.ImportSections(filtered, false); err != nil {
 			return err
 		}
 
 		// Шаг 5) Сохранение mapping при запросе
-		mainBar.Increment()
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {

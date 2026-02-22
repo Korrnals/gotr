@@ -2,10 +2,10 @@ package sync
 
 import (
 	"fmt"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/utils"
 	"strings"
 
-	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -51,17 +51,15 @@ var suitesCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		mainBar := pb.StartNew(3)
-		mainBar.SetTemplateString(`{{counters . }} {{bar . }} {{percent . }}`)
-		defer mainBar.Finish()
+		// Create progress manager
+		pm := progress.NewManager()
 
-		mainBar.Increment()
+		progress.Describe(pm.NewSpinner(""), "Загрузка suites...")
 		sourceSuites, targetSuites, err := m.FetchSuitesData()
 		if err != nil {
 			return err
 		}
 
-		mainBar.Increment()
 		filtered, err := m.FilterSuites(sourceSuites, targetSuites)
 		if err != nil {
 			return err
@@ -91,13 +89,12 @@ var suitesCmd = &cobra.Command{
 		}
 
 		// Шаг 3) Подтверждение и импорт
-		mainBar.Increment()
+		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d suites...", len(filtered)))
 		if err := m.ImportSuites(filtered, false); err != nil {
 			return err
 		}
 
 		// Шаг 4) Сохранение mapping при запросе
-		mainBar.Increment()
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {

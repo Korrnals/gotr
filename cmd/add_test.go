@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -43,7 +43,7 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
 	cmd.Flags().Bool("include-all", true, "Включить все кейсы (для run)")
 	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	
 	// Создаем контекст с mock клиентом
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)

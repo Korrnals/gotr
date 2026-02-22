@@ -10,7 +10,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -92,8 +92,22 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 	// If save path is provided (flag was used), save to file
 	if savePath != "" {
 		if savePath == "__DEFAULT__" {
-			// --save flag was used, save table as text file
-			return saveTableToFile(cmd, result, project1Name, project2Name)
+			// --save flag was used, check format to determine output type
+			switch format {
+			case "json", "yaml", "csv":
+				// Save in structured format with auto-generated filename
+				exportsDir, _ := outpututils.GetExportsDir("compare")
+				os.MkdirAll(exportsDir, 0755)
+				filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
+				if err := saveToFileWithPath(result, format, filePath); err != nil {
+					return err
+				}
+				// Message is printed by saveToFile
+				return nil
+			default:
+				// "table" or unknown - save as text table
+				return saveTableToFile(cmd, result, project1Name, project2Name)
+			}
 		}
 		// --save-to flag was used with custom path
 		// If format is "table" (default), try to detect from file extension
@@ -472,6 +486,8 @@ func saveCSV(result CompareResult, savePath string) error {
 		}
 	}
 
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", savePath)
 	return nil
 }
@@ -481,6 +497,8 @@ func saveToFile(data []byte, savePath string) error {
 	if err := os.WriteFile(savePath, data, 0644); err != nil {
 		return fmt.Errorf("ошибка записи файла: %w", err)
 	}
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", savePath)
 	return nil
 }
@@ -533,8 +551,8 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		filePath = customPath[0]
 	} else {
 		// Use default path with .txt extension for table
-		filePath = save.GenerateFilename("compare", "txt")
-		exportsDir, _ := save.GetExportsDir("compare")
+		filePath = outpututils.GenerateFilename("compare", "txt")
+		exportsDir, _ := outpututils.GetExportsDir("compare")
 		os.MkdirAll(exportsDir, 0755)
 		filePath = exportsDir + "/" + filePath
 	}
@@ -544,6 +562,8 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		return fmt.Errorf("ошибка записи файла: %w", err)
 	}
 
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", filePath)
 	return nil
 }

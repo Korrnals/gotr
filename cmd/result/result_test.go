@@ -7,10 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Korrnals/gotr/cmd/common"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
-	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -247,7 +246,7 @@ func TestGetClientSafe_WithAccessor(t *testing.T) {
 	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	}
-	clientAccessor = common.NewClientAccessor(mockFn)
+	clientAccessor = client.NewAccessor(mockFn)
 
 	// Должен вернуть nil (так как mockFn возвращает nil)
 	cmd := &cobra.Command{}
@@ -473,7 +472,7 @@ func TestOutputResult_WithSaveFlag(t *testing.T) {
 	cmd := newListCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
 	// Добавляем флаг save (как это делает Register)
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.SetArgs([]string{"12345", "--save"})
 
 	err := cmd.Execute()

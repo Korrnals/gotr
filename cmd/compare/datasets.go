@@ -2,8 +2,10 @@ package compare
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -42,14 +44,33 @@ func newDatasetsCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
+			// Start timer
+			startTime := time.Now()
+
 			// Compare datasets
-			result, err := compareDatasetsInternal(cli, pid1, pid2)
+			result, err := compareDatasetsInternal(cli, pid1, pid2, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения datasets: %w", err)
 			}
 
+			elapsed := time.Since(startTime)
+
 			// Print or save result
-			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath)
+			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
+				return err
+			}
+
+			// Print statistics
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			if !quiet {
+				PrintCompareStats("datasets", pid1, pid2,
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+			}
+
+			return nil
 		},
 	}
 
@@ -63,12 +84,18 @@ func newDatasetsCmd() *cobra.Command {
 var datasetsCmd = newDatasetsCmd()
 
 // compareDatasetsInternal compares datasets between two projects and returns the result.
-func compareDatasetsInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+func compareDatasetsInternal(cli client.ClientInterface, pid1, pid2 int64, pm ...*progress.Manager) (*CompareResult, error) {
+	var p *progress.Manager
+	if len(pm) > 0 {
+		p = pm[0]
+	}
+	progress.Describe(p.NewSpinner(""), fmt.Sprintf("Загрузка datasets из проекта %d...", pid1))
 	datasets1, err := fetchDatasetItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения datasets проекта %d: %w", pid1, err)
 	}
 
+	progress.Describe(p.NewSpinner(""), fmt.Sprintf("Загрузка datasets из проекта %d...", pid2))
 	datasets2, err := fetchDatasetItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения datasets проекта %d: %w", pid2, err)

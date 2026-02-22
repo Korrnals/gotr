@@ -3,13 +3,12 @@ package sync
 import (
 	"context"
 
-	"github.com/Korrnals/gotr/cmd/common"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc = common.GetClientFunc
+type GetClientFunc = client.GetClientFunc
 
 // Cmd — родительская команда для миграции
 var Cmd = &cobra.Command{
@@ -45,12 +44,12 @@ var Cmd = &cobra.Command{
 	},
 }
 
-var clientAccessor *common.ClientAccessor
+var clientAccessor *client.Accessor
 
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
 	if clientAccessor == nil {
-		clientAccessor = common.NewClientAccessor(fn)
+		clientAccessor = client.NewAccessor(fn)
 	} else {
 		clientAccessor.SetClientForTests(fn)
 	}
@@ -101,7 +100,7 @@ func getClientInterface(cmd *cobra.Command) client.ClientInterface {
 
 // Register регистрирует команду sync и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
-	clientAccessor = common.NewClientAccessor(clientFn)
+	clientAccessor = client.NewAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
 	Cmd.AddCommand(sharedStepsCmd)

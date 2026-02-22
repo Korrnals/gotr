@@ -4,9 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Korrnals/gotr/cmd/common"
-	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -94,7 +93,7 @@ func TestGetClientSafe_WithAccessorReturnsClient(t *testing.T) {
 	mockClient := &client.HTTPClient{}
 
 	// Создаём accessor, который возвращает клиент
-	clientAccessor = common.NewClientAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
 		return mockClient
 	})
 
@@ -113,7 +112,7 @@ func TestGetClientSafe_WithAccessorReturnsNil_UsesContextFallback(t *testing.T) 
 	defer func() { clientAccessor = oldAccessor }()
 
 	// Создаём accessor, который возвращает nil
-	clientAccessor = common.NewClientAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	})
 
@@ -136,7 +135,7 @@ func TestGetClientSafe_WithInvalidTypeInContext(t *testing.T) {
 	defer func() { clientAccessor = oldAccessor }()
 
 	// Создаём accessor, который возвращает nil
-	clientAccessor = common.NewClientAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	})
 
@@ -156,7 +155,7 @@ func TestGetClientSafe_WithNilContext(t *testing.T) {
 	defer func() { clientAccessor = oldAccessor }()
 
 	// Создаём accessor, который возвращает nil
-	clientAccessor = common.NewClientAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	})
 

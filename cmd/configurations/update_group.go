@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +34,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("configurations update-group")
+				dr := output.NewDryRunPrinter("configurations update-group")
 				dr.PrintSimple("Обновить группу", fmt.Sprintf("Group ID: %d, New Name: %s", groupID, name))
 				return nil
 			}
@@ -53,7 +52,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Новое название группы (обязательно)")
 
 	return cmd

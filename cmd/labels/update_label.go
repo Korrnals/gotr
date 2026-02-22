@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -50,14 +50,14 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update label: %w", err)
 			}
 
-			_, err = save.Output(cmd, resp, "labels", "json")
+			_, err = output.Output(cmd, resp, "labels", "json")
 			return err
 		},
 	}
 
 	cmd.Flags().Int64VarP(&projectID, "project", "p", 0, "ID проекта (обязательно)")
 	cmd.Flags().StringVarP(&title, "title", "t", "", "Новое название метки (обязательно, max 20 символов)")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("project")
 	_ = cmd.MarkFlagRequired("title")

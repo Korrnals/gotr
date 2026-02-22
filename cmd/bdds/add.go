@@ -5,8 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +41,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("bdds add")
+				dr := output.NewDryRunPrinter("bdds add")
 				dr.PrintSimple("Добавить BDD", fmt.Sprintf("Case ID: %d", caseID))
 				return nil
 			}
@@ -59,7 +58,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("file", "", "Путь к файлу с Gherkin сценарием")
 
 	return cmd

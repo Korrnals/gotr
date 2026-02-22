@@ -28,7 +28,7 @@ func TestCompareSuitesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -42,35 +42,42 @@ func TestCompareSuitesInternal_Success(t *testing.T) {
 }
 
 func TestCompareSuitesInternal_FirstError(t *testing.T) {
+	// Using GetSuitesParallelFunc to test fault-tolerant behavior
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			if projectID == 1 {
-				return nil, errors.New("API error")
-			}
-			return []data.Suite{}, nil
+		GetSuitesParallelFunc: func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+			results := make(map[int64]data.GetSuitesResponse)
+			// Return partial results (project 2 only) with error
+			results[2] = []data.Suite{}
+			return results, errors.New("API error for project 1")
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
+	// Parallel implementation is fault-tolerant: returns partial results with warning
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "suites", result.Resource)
 }
 
 func TestCompareSuitesInternal_SecondError(t *testing.T) {
+	// Using GetSuitesParallelFunc to test fault-tolerant behavior
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			if projectID == 1 {
-				return []data.Suite{}, nil
-			}
-			return nil, errors.New("API error")
+		GetSuitesParallelFunc: func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+			results := make(map[int64]data.GetSuitesResponse)
+			// Return partial results (project 1 only) with error
+			results[1] = []data.Suite{}
+			return results, errors.New("API error for project 2")
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
-	assert.Error(t, err)
-	assert.Nil(t, result)
+	// Parallel implementation is fault-tolerant: returns partial results with warning
+	// Only returns error if BOTH projects fail
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "suites", result.Resource)
 }
 
 func TestCompareSuitesInternal_Empty(t *testing.T) {
@@ -80,7 +87,7 @@ func TestCompareSuitesInternal_Empty(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -153,7 +160,7 @@ func TestCompareCasesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareCasesInternal(mock, 1, 2, "title")
+	result, err := compareCasesInternal(mock, 1, 2, "title", nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -170,7 +177,7 @@ func TestCompareCasesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareCasesInternal(mock, 1, 2, "title")
+	result, err := compareCasesInternal(mock, 1, 2, "title", nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -188,7 +195,7 @@ func TestFetchCaseItems_Success(t *testing.T) {
 		},
 	}
 
-	items, err := fetchCaseItems(mock, 1)
+	items, err := fetchCaseItems(mock, 1, nil)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(items))
@@ -203,7 +210,7 @@ func TestFetchCaseItems_Error(t *testing.T) {
 		},
 	}
 
-	items, err := fetchCaseItems(mock, 1)
+	items, err := fetchCaseItems(mock, 1, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, items)
@@ -229,7 +236,7 @@ func TestCompareSectionsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2)
+	result, err := compareSectionsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -243,7 +250,7 @@ func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2)
+	result, err := compareSectionsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -266,7 +273,7 @@ func TestComparePlansInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2)
+	result, err := comparePlansInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -280,7 +287,7 @@ func TestComparePlansInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2)
+	result, err := comparePlansInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -303,7 +310,7 @@ func TestCompareRunsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2)
+	result, err := compareRunsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -317,7 +324,7 @@ func TestCompareRunsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2)
+	result, err := compareRunsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -340,7 +347,7 @@ func TestCompareMilestonesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2)
+	result, err := compareMilestonesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -354,7 +361,7 @@ func TestCompareMilestonesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2)
+	result, err := compareMilestonesInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -377,7 +384,7 @@ func TestCompareDatasetsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2)
+	result, err := compareDatasetsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -391,7 +398,7 @@ func TestCompareDatasetsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2)
+	result, err := compareDatasetsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -414,7 +421,7 @@ func TestCompareGroupsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2)
+	result, err := compareGroupsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -428,7 +435,7 @@ func TestCompareGroupsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2)
+	result, err := compareGroupsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -451,7 +458,7 @@ func TestCompareLabelsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2)
+	result, err := compareLabelsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -465,7 +472,7 @@ func TestCompareLabelsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2)
+	result, err := compareLabelsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -488,7 +495,7 @@ func TestCompareTemplatesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2)
+	result, err := compareTemplatesInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -502,7 +509,7 @@ func TestCompareTemplatesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2)
+	result, err := compareTemplatesInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -525,7 +532,7 @@ func TestCompareConfigurationsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2)
+	result, err := compareConfigurationsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -539,7 +546,7 @@ func TestCompareConfigurationsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2)
+	result, err := compareConfigurationsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -562,7 +569,7 @@ func TestCompareSharedStepsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2)
+	result, err := compareSharedStepsInternal(mock, 1, 2, nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -576,7 +583,7 @@ func TestCompareSharedStepsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2)
+	result, err := compareSharedStepsInternal(mock, 1, 2, nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)

@@ -2,8 +2,10 @@ package compare
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -42,14 +44,33 @@ func newRunsCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
+			// Start timer
+			startTime := time.Now()
+
 			// Compare runs
-			result, err := compareRunsInternal(cli, pid1, pid2)
+			result, err := compareRunsInternal(cli, pid1, pid2, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения runs: %w", err)
 			}
 
+			elapsed := time.Since(startTime)
+
 			// Print or save result
-			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath)
+			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
+				return err
+			}
+
+			// Print statistics
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			if !quiet {
+				PrintCompareStats("test runs", pid1, pid2,
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+			}
+
+			return nil
 		},
 	}
 
@@ -63,12 +84,14 @@ func newRunsCmd() *cobra.Command {
 var runsCmd = newRunsCmd()
 
 // compareRunsInternal compares runs between two projects and returns the result.
-func compareRunsInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+func compareRunsInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка runs из проекта %d...", pid1))
 	runs1, err := fetchRunItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения runs проекта %d: %w", pid1, err)
 	}
 
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка runs из проекта %d...", pid2))
 	runs2, err := fetchRunItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения runs проекта %d: %w", pid2, err)

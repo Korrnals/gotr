@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +31,7 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("configurations delete-config")
+				dr := output.NewDryRunPrinter("configurations delete-config")
 				dr.PrintSimple("Удалить конфигурацию", fmt.Sprintf("Config ID: %d", configID))
 				return nil
 			}

@@ -2,8 +2,10 @@ package compare
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -42,14 +44,33 @@ func newSharedStepsCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
+			// Start timer
+			startTime := time.Now()
+
 			// Compare shared steps
-			result, err := compareSharedStepsInternal(cli, pid1, pid2)
+			result, err := compareSharedStepsInternal(cli, pid1, pid2, pm)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения shared steps: %w", err)
 			}
 
+			elapsed := time.Since(startTime)
+
 			// Print or save result
-			return PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath)
+			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
+				return err
+			}
+
+			// Print statistics
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			if !quiet {
+				PrintCompareStats("shared steps", pid1, pid2,
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+			}
+
+			return nil
 		},
 	}
 
@@ -63,13 +84,15 @@ func newSharedStepsCmd() *cobra.Command {
 var sharedStepsCmd = newSharedStepsCmd()
 
 // compareSharedStepsInternal compares shared steps between two projects and returns the result.
-func compareSharedStepsInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
-	steps1, err := fetchSharedStepItems(cli, pid1)
+func compareSharedStepsInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка shared steps из проекта %d...", pid1))
+	steps1, err := fetchSharedStepItems(cli, pid1, pm)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения shared steps проекта %d: %w", pid1, err)
 	}
 
-	steps2, err := fetchSharedStepItems(cli, pid2)
+	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка shared steps из проекта %d...", pid2))
+	steps2, err := fetchSharedStepItems(cli, pid2, pm)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения shared steps проекта %d: %w", pid2, err)
 	}
@@ -78,7 +101,7 @@ func compareSharedStepsInternal(cli client.ClientInterface, pid1, pid2 int64) (*
 }
 
 // fetchSharedStepItems fetches all shared steps for a project and returns them as ItemInfo slice.
-func fetchSharedStepItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+func fetchSharedStepItems(cli client.ClientInterface, projectID int64, pm *progress.Manager) ([]ItemInfo, error) {
 	steps, err := cli.GetSharedSteps(projectID)
 	if err != nil {
 		return nil, err

@@ -3,7 +3,7 @@ package users
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -37,12 +37,12 @@ func newGetByEmailCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to get user by email: %w", err)
 			}
 
-			_, err = save.Output(cmd, resp, "users", "json")
+			_, err = output.Output(cmd, resp, "users", "json")
 			return err
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }

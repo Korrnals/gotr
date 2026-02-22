@@ -2,13 +2,12 @@
 package test
 
 import (
-	"github.com/Korrnals/gotr/cmd/common"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
 
 // GetClientFunc — тип функции для получения клиента
-type GetClientFunc = common.GetClientFunc
+type GetClientFunc = client.GetClientFunc
 
 // Cmd — родительская команда для управления тестами
 var Cmd = &cobra.Command{
@@ -43,7 +42,7 @@ Test — это конкретный экземпляр тест-кейса в �
 }
 
 // clientAccessor — глобальный accessor для получения клиента
-var clientAccessor *common.ClientAccessor
+var clientAccessor *client.Accessor
 
 // getClientInterface возвращает клиент как ClientInterface
 func getClientInterface(cmd *cobra.Command) client.ClientInterface {
@@ -56,7 +55,7 @@ func getClientInterface(cmd *cobra.Command) client.ClientInterface {
 // SetGetClientForTests устанавливает getClient для тестов
 func SetGetClientForTests(fn GetClientFunc) {
 	if clientAccessor == nil {
-		clientAccessor = common.NewClientAccessor(fn)
+		clientAccessor = client.NewAccessor(fn)
 	} else {
 		clientAccessor.SetClientForTests(fn)
 	}
@@ -64,7 +63,7 @@ func SetGetClientForTests(fn GetClientFunc) {
 
 // Register регистрирует команду test и все её подкоманды
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
-	clientAccessor = common.NewClientAccessor(clientFn)
+	clientAccessor = client.NewAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
 	// Создаём и добавляем подкоманды используя конструкторы

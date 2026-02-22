@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -40,12 +40,12 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	return cmd
 }
 
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := save.Output(cmd, data, "bdds", "json")
+	_, err := output.Output(cmd, data, "bdds", "json")
 	return err
 }

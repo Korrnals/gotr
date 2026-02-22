@@ -3,7 +3,7 @@ package test
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
@@ -44,7 +44,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 			// Проверяем нужно ли сохранить в файл
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
-				filepath, err := save.Output(cmd, test, "test", "json")
+				filepath, err := output.Output(cmd, test, "test", "json")
 				if err != nil {
 					return fmt.Errorf("ошибка сохранения: %w", err)
 				}
@@ -58,7 +58,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 		},
 	}
 
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 
 	return cmd

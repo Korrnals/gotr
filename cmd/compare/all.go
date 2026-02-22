@@ -7,8 +7,10 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	outpututils "github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -78,47 +80,53 @@ func newAllCmd() *cobra.Command {
 				return err
 			}
 
+			// Create progress manager
+			pm := progress.NewManager()
+
+			// Start timer
+			startTime := time.Now()
+
 			// Compare all resources
 			result := &allResult{}
 			errors := make(map[string]error)
 
 			// Cases
-			if casesResult, err := compareCasesInternal(cli, pid1, pid2, "title"); err == nil {
+			if casesResult, err := compareCasesInternal(cli, pid1, pid2, "title", pm); err == nil {
 				result.Cases = casesResult
 			} else {
 				errors["cases"] = err
 			}
 
 			// Suites
-			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2); err == nil {
+			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2, pm); err == nil {
 				result.Suites = suitesResult
 			} else {
 				errors["suites"] = err
 			}
 
 			// Sections
-			if sectionsResult, err := compareSectionsInternal(cli, pid1, pid2); err == nil {
+			if sectionsResult, err := compareSectionsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Sections = sectionsResult
 			} else {
 				errors["sections"] = err
 			}
 
 			// Shared Steps
-			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2); err == nil {
+			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2, nil); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				errors["shared_steps"] = err
 			}
 
 			// Runs
-			if runsResult, err := compareRunsInternal(cli, pid1, pid2); err == nil {
+			if runsResult, err := compareRunsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Runs = runsResult
 			} else {
 				errors["runs"] = err
 			}
 
 			// Plans
-			if plansResult, err := comparePlansInternal(cli, pid1, pid2); err == nil {
+			if plansResult, err := comparePlansInternal(cli, pid1, pid2, nil); err == nil {
 				result.Plans = plansResult
 			} else {
 				errors["plans"] = err
@@ -139,41 +147,56 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Groups
-			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2); err == nil {
+			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Groups = groupsResult
 			} else {
 				errors["groups"] = err
 			}
 
 			// Labels
-			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2); err == nil {
+			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Labels = labelsResult
 			} else {
 				errors["labels"] = err
 			}
 
 			// Templates
-			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2); err == nil {
+			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2, nil); err == nil {
 				result.Templates = templatesResult
 			} else {
 				errors["templates"] = err
 			}
 
 			// Configurations
-			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2); err == nil {
+			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2, nil); err == nil {
 				result.Configurations = configsResult
 			} else {
 				errors["configurations"] = err
 			}
 
 			// Print summary table
-				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors)
+				elapsed := time.Since(startTime)
+				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
 
 			// Save result if requested
 			if savePath != "" {
 				if savePath == "__DEFAULT__" {
-					// --save flag was used, save summary as text file
-					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__")
+					// --save flag was used, check format to determine output type
+					switch format {
+					case "json", "yaml":
+						// Save in structured format with auto-generated filename
+						exportsDir, _ := outpututils.GetExportsDir("compare")
+						os.MkdirAll(exportsDir, 0755)
+						filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
+						if err := saveAllResult(result, format, filePath); err != nil {
+							return err
+						}
+						// Message is printed by saveToFile via saveAllResult
+						return nil
+					default:
+						// "table" or unknown - save as text summary
+						return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__", time.Since(startTime))
+					}
 				}
 				// --save-to flag was used with custom path
 				// If format is "table" (default), try to detect from file extension
@@ -187,9 +210,11 @@ func newAllCmd() *cobra.Command {
 					if err := saveAllResult(result, format, savePath); err != nil {
 						return err
 					}
+					// Print on new line after progress bar
+					fmt.Println()
 					fmt.Printf("Результат сохранён в %s\n", savePath)
 				case "table":
-					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath)
+					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath, time.Since(startTime))
 				default:
 					return fmt.Errorf("неподдерживаемый формат '%s' для сохранения, используйте json, yaml или table", format)
 				}
@@ -267,7 +292,7 @@ func printResourceSummary(resourceName string, result *CompareResult) {
 }
 
 // printAllSummaryTable prints a formatted table summary for compare all
-func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error) {
+func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error, elapsed time.Duration) {
 	// Table header
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════════════════════════════════════╗")
@@ -302,6 +327,12 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 	// Legend
 	fmt.Println()
 	fmt.Println("Статус:  ✓  - полное совпадение  │  ⚠  - есть отличия  │  ✗  - ошибка загрузки")
+	fmt.Println()
+
+	// Time summary
+	fmt.Println("═══════════════════════════════════════════════════════════════════════════════")
+	fmt.Printf("  ⏱️  Время выполнения: %s\n", elapsed.Round(time.Second))
+	fmt.Println("═══════════════════════════════════════════════════════════════════════════════")
 	fmt.Println()
 
 	// Print errors if any
@@ -345,7 +376,7 @@ func truncate(s string, maxLen int) string {
 }
 
 // saveAllSummaryToFile saves the summary output to a file (for --save or --save-to with table format)
-func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errors map[string]error, savePath string) error {
+func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errors map[string]error, savePath string, elapsed time.Duration) error {
 	// Create pipe to capture stdout
 	oldStdout := os.Stdout
 	r, w, err := os.Pipe()
@@ -368,7 +399,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 	}()
 
 	// Print summary table (writes to stdout)
-	printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors)
+	printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
 
 	// Restore stdout and close writer
 	w.Close()
@@ -388,8 +419,8 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 		filePath = savePath
 	} else {
 		// Use default path with .txt extension
-		filePath = save.GenerateFilename("compare", "txt")
-		exportsDir, _ := save.GetExportsDir("compare")
+		filePath = outpututils.GenerateFilename("compare", "txt")
+		exportsDir, _ := outpututils.GetExportsDir("compare")
 		os.MkdirAll(exportsDir, 0755)
 		filePath = exportsDir + "/" + filePath
 	}
@@ -399,6 +430,8 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 		return fmt.Errorf("ошибка записи файла: %w", err)
 	}
 
+	// Print on new line after progress bar
+	fmt.Println()
 	fmt.Printf("Результат сохранён в %s\n", filePath)
 	return nil
 }

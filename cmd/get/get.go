@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	embed "github.com/Korrnals/gotr/embedded"
 	"github.com/spf13/cobra"
@@ -91,7 +91,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 				Data:       data,
 			}
 		}
-		filepath, err := save.Output(command, toSave, "get", "json")
+		filepath, err := output.Output(command, toSave, "get", "json")
 		if err != nil {
 			return fmt.Errorf("ошибка сохранения: %w", err)
 		}
@@ -163,7 +163,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	// Локальные флаги — только для подкоманд get и их детей
 	for _, subCmd := range Cmd.Commands() {
 		subCmd.Flags().StringP("type", "t", "json", "Формат вывода: json, json-full, table")
-		save.AddFlag(subCmd)
+		output.AddFlag(subCmd)
 		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 		subCmd.Flags().BoolP("jq", "j", false, "Включить jq-форматирование (переопределяет конфиг jq_format)")
 		subCmd.Flags().String("jq-filter", "", "jq-фильтр")

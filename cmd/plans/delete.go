@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +29,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("plans delete")
+				dr := output.NewDryRunPrinter("plans delete")
 				dr.PrintSimple("Delete Plan", fmt.Sprintf("Plan ID: %d", planID))
 				return nil
 			}

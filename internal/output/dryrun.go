@@ -1,5 +1,5 @@
-// Package dryrun provides utilities for dry-run mode across all commands
-package dryrun
+// Package output provides utilities for output formatting including dry-run mode.
+package output
 
 import (
 	"encoding/json"
@@ -7,18 +7,18 @@ import (
 	"os"
 )
 
-// Printer handles dry-run output formatting
-type Printer struct {
+// DryRunPrinter handles dry-run output formatting.
+type DryRunPrinter struct {
 	Command string
 }
 
-// New creates a new dry-run printer for the given command
-func New(command string) *Printer {
-	return &Printer{Command: command}
+// NewDryRunPrinter creates a new dry-run printer for the given command.
+func NewDryRunPrinter(command string) *DryRunPrinter {
+	return &DryRunPrinter{Command: command}
 }
 
-// PrintOperation displays what operation would be performed
-func (p *Printer) PrintOperation(operation, method, url string, body interface{}) {
+// PrintOperation displays what operation would be performed.
+func (p *DryRunPrinter) PrintOperation(operation, method, url string, body interface{}) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 	fmt.Fprintln(os.Stderr, "                    DRY RUN MODE")
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
@@ -28,7 +28,7 @@ func (p *Printer) PrintOperation(operation, method, url string, body interface{}
 	fmt.Fprintf(os.Stderr, "Endpoint:   %s\n", url)
 	fmt.Fprintln(os.Stderr, "───────────────────────────────────────────────────────────")
 	fmt.Fprintln(os.Stderr, "Request Body:")
-	
+
 	if body != nil {
 		jsonBytes, err := json.MarshalIndent(body, "", "  ")
 		if err != nil {
@@ -39,14 +39,14 @@ func (p *Printer) PrintOperation(operation, method, url string, body interface{}
 	} else {
 		fmt.Fprintln(os.Stderr, "  (no body)")
 	}
-	
+
 	fmt.Fprintln(os.Stderr, "───────────────────────────────────────────────────────────")
 	fmt.Fprintln(os.Stderr, "Result:     No changes made (dry-run mode)")
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 }
 
-// PrintSimple displays a simple dry-run message for operations without body
-func (p *Printer) PrintSimple(operation, description string) {
+// PrintSimple displays a simple dry-run message for operations without body.
+func (p *DryRunPrinter) PrintSimple(operation, description string) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 	fmt.Fprintln(os.Stderr, "                    DRY RUN MODE")
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
@@ -58,8 +58,8 @@ func (p *Printer) PrintSimple(operation, description string) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 }
 
-// PrintBatch displays batch operations (like sync)
-func (p *Printer) PrintBatch(operation string, items []string) {
+// PrintBatch displays batch operations (like sync).
+func (p *DryRunPrinter) PrintBatch(operation string, items []string) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 	fmt.Fprintln(os.Stderr, "                    DRY RUN MODE")
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
@@ -79,7 +79,7 @@ func (p *Printer) PrintBatch(operation string, items []string) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 }
 
-// FormatBodyForDisplay returns a formatted JSON string for display
+// FormatBodyForDisplay returns a formatted JSON string for display.
 func FormatBodyForDisplay(body interface{}) string {
 	if body == nil {
 		return "(no body)"
@@ -91,8 +91,8 @@ func FormatBodyForDisplay(body interface{}) string {
 	return string(jsonBytes)
 }
 
-// PrintSummary displays a summary of what would happen
-func (p *Printer) PrintSummary(actions []string) {
+// PrintSummary displays a summary of what would happen.
+func (p *DryRunPrinter) PrintSummary(actions []string) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 	fmt.Fprintln(os.Stderr, "                    DRY RUN SUMMARY")
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
@@ -107,8 +107,8 @@ func (p *Printer) PrintSummary(actions []string) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 }
 
-// PrintValidationError displays validation errors in dry-run mode
-func (p *Printer) PrintValidationError(err error) {
+// PrintValidationError displays validation errors in dry-run mode.
+func (p *DryRunPrinter) PrintValidationError(err error) {
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")
 	fmt.Fprintln(os.Stderr, "                    DRY RUN VALIDATION ERROR")
 	fmt.Fprintln(os.Stderr, "═══════════════════════════════════════════════════════════")

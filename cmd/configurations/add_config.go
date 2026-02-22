@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -39,7 +38,7 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("configurations add-config")
+				dr := output.NewDryRunPrinter("configurations add-config")
 				dr.PrintSimple("Добавить конфигурацию", fmt.Sprintf("Group ID: %d, Name: %s", groupID, name))
 				return nil
 			}
@@ -57,7 +56,7 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Название конфигурации (обязательно)")
 
 	return cmd

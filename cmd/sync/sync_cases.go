@@ -4,13 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/utils"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/cheggaaa/pb/v3"
 	"github.com/spf13/cobra"
 )
 
@@ -104,8 +104,12 @@ var casesCmd = &cobra.Command{
 		}
 		defer m.Close()
 
+		// Create progress manager
+		pm := progress.NewManager()
+
 		// Если указан mapping-файл — загрузим в m.mapping
 		if mappingFile != "" {
+			progress.Describe(pm.NewSpinner(""), "Загрузка маппинга...")
 			if err := m.LoadMappingFromFile(mappingFile); err != nil {
 				return fmt.Errorf("ошибка загрузки mapping: %w", err)
 			}
@@ -114,23 +118,12 @@ var casesCmd = &cobra.Command{
 			fmt.Println("Warning: mapping не загружен — shared_step_id НЕ будут заменены")
 		}
 
-		// Основной бар
-		mainBar := pb.StartNew(6)
-		mainBar.SetTemplateString(`{{counters . }} {{bar . }} {{percent . }} | ETA: {{etime . }}`)
-		defer mainBar.Finish()
-
-		fmt.Println("Шаг 1/6: Получаем кейсы из source и target...")
-		mainBar.Increment()
+		progress.Describe(pm.NewSpinner(""), "Загрузка кейсов...")
 		sourceCases, targetCases, err := m.FetchCasesData()
 		if err != nil {
 			return err
 		}
 
-		fmt.Println("Шаг 2/6: Проверяем дубликаты...")
-		mainBar.Increment()
-
-		fmt.Println("Шаг 3/6: Фильтруем новые кейсы...")
-		mainBar.Increment()
 		filtered, err := m.FilterCases(sourceCases, targetCases)
 		if err != nil {
 			return err
@@ -158,8 +151,7 @@ var casesCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Printf("\nШаг 4/6: Подтверждение импорта %d новых кейсов...\n", len(filtered))
-		mainBar.Increment()
+		fmt.Printf("\nПодтверждение импорта %d новых кейсов...\n", len(filtered))
 		fmt.Print("Продолжить? [y/N]: ")
 		var confirm string
 		fmt.Scanln(&confirm)
@@ -170,15 +162,12 @@ var casesCmd = &cobra.Command{
 			return nil
 		}
 
-		fmt.Println("Шаг 5/6: Импорт кейсов...")
-		mainBar.Increment()
-
+		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d кейсов...", len(filtered)))
 		createdIDs, importErrors, err := m.ImportCasesReport(filtered, false)
 		if err != nil {
 			return err
 		}
 
-		mainBar.Increment()
 		fmt.Printf("\nИмпорт завершён: %d новых кейсов\n", len(createdIDs))
 
 		if len(importErrors) > 0 {

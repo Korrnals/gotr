@@ -6,9 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
-	"github.com/Korrnals/gotr/cmd/common/wizard"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -80,7 +79,7 @@ func init() {
 	addCmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
 	addCmd.Flags().Bool("include-all", true, "Включить все кейсы (для run)")
 	addCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
-	save.AddFlag(addCmd)
+	output.AddFlag(addCmd)
 	addCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 	addCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
 }
@@ -119,7 +118,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	// Проверяем dry-run режим (не для attachment - у него свой dry-run внутри)
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun && endpoint != "attachment" {
-		dr := dryrun.New("add " + endpoint)
+		dr := output.NewDryRunPrinter("add " + endpoint)
 		return runAddDryRun(cmd, dr, endpoint, id, jsonData)
 	}
 
@@ -202,7 +201,7 @@ func runAddInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint 
 }
 
 func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error {
-	answers, err := wizard.AskProject(false)
+	answers, err := interactive.AskProject(false)
 	if err != nil {
 		return fmt.Errorf("ошибка ввода: %v", err)
 	}
@@ -216,7 +215,7 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
-	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
 		fmt.Println("\n❌ Отменено")
 		return nil
@@ -238,7 +237,7 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 }
 
 func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
-	answers, err := wizard.AskSuite(false)
+	answers, err := interactive.AskSuite(false)
 	if err != nil {
 		return fmt.Errorf("ошибка ввода: %v", err)
 	}
@@ -252,7 +251,7 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 	fmt.Printf("Project ID:      %d\n", projectID)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
-	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
 		fmt.Println("\n❌ Отменено")
 		return nil
@@ -273,7 +272,7 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 }
 
 func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionID int64) error {
-	answers, err := wizard.AskCase(false)
+	answers, err := interactive.AskCase(false)
 	if err != nil {
 		return fmt.Errorf("ошибка ввода: %v", err)
 	}
@@ -288,7 +287,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
-	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
 		fmt.Println("\n❌ Отменено")
 		return nil
@@ -312,7 +311,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 }
 
 func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
-	answers, err := wizard.AskRun(false)
+	answers, err := interactive.AskRun(false)
 	if err != nil {
 		return fmt.Errorf("ошибка ввода: %v", err)
 	}
@@ -328,7 +327,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 	fmt.Printf("Project ID:      %d\n", projectID)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
-	confirmed, err := wizard.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
 		fmt.Println("\n❌ Отменено")
 		return nil
@@ -351,7 +350,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 }
 
 // runAddDryRun выполняет dry-run для add команды
-func runAddDryRun(cmd *cobra.Command, dr *dryrun.Printer, endpoint string, id int64, jsonData []byte) error {
+func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string, id int64, jsonData []byte) error {
 	// Читаем флаги
 	name, _ := cmd.Flags().GetString("name")
 	title, _ := cmd.Flags().GetString("title")
@@ -740,7 +739,7 @@ func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int
 }
 
 func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := save.Output(cmd, data, "result", "json")
+	_, err := output.Output(cmd, data, "result", "json")
 	return err
 }
 
@@ -856,7 +855,7 @@ func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID 
 	// Проверяем dry-run режим
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("add attachment case")
+		dr := output.NewDryRunPrinter("add attachment case")
 		dr.PrintSimple("Add Attachment to Case", fmt.Sprintf("Case ID: %d, File: %s", caseID, filePath))
 		return nil
 	}
@@ -879,7 +878,7 @@ func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID 
 func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID int64, filePath string) error {
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("add attachment plan")
+		dr := output.NewDryRunPrinter("add attachment plan")
 		dr.PrintSimple("Add Attachment to Plan", fmt.Sprintf("Plan ID: %d, File: %s", planID, filePath))
 		return nil
 	}
@@ -901,7 +900,7 @@ func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID 
 func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, planID int64, entryID, filePath string) error {
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("add attachment plan-entry")
+		dr := output.NewDryRunPrinter("add attachment plan-entry")
 		dr.PrintSimple("Add Attachment to Plan Entry", fmt.Sprintf("Plan ID: %d, Entry ID: %s, File: %s", planID, entryID, filePath))
 		return nil
 	}
@@ -923,7 +922,7 @@ func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, pl
 func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resultID int64, filePath string) error {
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("add attachment result")
+		dr := output.NewDryRunPrinter("add attachment result")
 		dr.PrintSimple("Add Attachment to Result", fmt.Sprintf("Result ID: %d, File: %s", resultID, filePath))
 		return nil
 	}
@@ -945,7 +944,7 @@ func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resul
 func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID int64, filePath string) error {
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
-		dr := dryrun.New("add attachment run")
+		dr := output.NewDryRunPrinter("add attachment run")
 		dr.PrintSimple("Add Attachment to Run", fmt.Sprintf("Run ID: %d, File: %s", runID, filePath))
 		return nil
 	}

@@ -7,11 +7,62 @@
 
 ---
 
-## [Unreleased]
+## [2.7.0] - 2026-02-20
 
 ### Added
 
-#### Stage 5: CLI Test Coverage (986 tests, 10 packages at 100%)
+#### Stage 6: Performance Optimization & UX Enhancement (In Progress)
+
+- **Universal Progress Monitoring**: Channel-based progress system
+  - `internal/progress.Monitor` — decoupled from UI
+  - Real-time updates via buffered channels
+  - Thread-safe, non-blocking implementation
+  - Works with any long-running operation
+  - See [docs/progress.md](docs/progress.md) for details
+
+- **Multi-Progress-Bars (mpb)**: Visual feedback for long-running operations
+  - `github.com/vbauerster/mpb/v8` integration (multi-progress-bar library)
+  - Multiple simultaneous progress bars on separate lines
+  - Real-time updates for parallel project loading
+  - ETA, speed, and percentage decorators
+  
+- **Parallel API Requests**: 60-80% performance improvement
+  - Worker pool pattern for concurrent requests
+  - Rate limiting (180 req/min — TestRail maximum)
+  - Parallel fetching for cases, suites, shared steps
+  - Integrated with progress monitoring
+  - **Page-level progress**: GetCasesWithProgress updates after each 250 cases page
+  
+- **Compare Cases Command**: Full comparison with parallel loading
+  - Two-phase progress: spinner → progress bars
+  - Parallel loading of both projects simultaneously  
+  - Project-level statistics (suites count, cases count, duration)
+  - Analysis phase with timing
+  - Debug mode support via `--debug` flag
+  
+- **Response Caching**: Disk-based cache with TTL
+  - Cache location: `~/.gotr/cache/`
+  - TTL: Projects 1h, Cases 15min, Suites 30min
+  - `--no-cache` flag to bypass
+  
+- **Retry Logic**: Exponential backoff for resilience
+  - Automatic retry on transient failures
+  - Circuit breaker pattern
+  - `--timeout` flag (default: 5min)
+  
+- **Batch Operations**: Optimized for large projects
+  - Batch fetching (250 items per request)
+  - Streaming output for large datasets
+  - Memory optimization (<500MB peak)
+
+### Changed
+
+- **Progress Bar Library**: Migrated from `progressbar/v3` to `mpb/v8`
+  - Better support for multiple simultaneous progress bars
+  - Improved UX with parallel operations
+  - New API: methods called directly on bar objects (`bar.Add()`, `bar.Finish()`)
+
+#### Stage 5: CLI Test Coverage (986 tests, 10 packages at 100%) - COMPLETE
 
 - **Comprehensive test suite** for all CLI commands:
   - `cmd/run` — 38 tests (95.2% coverage)
@@ -86,7 +137,7 @@
   - Команда `make build` теперь извлекает версию из `cmd/root.go` (единый источник правды)
   - Для релизных версий (без `-dev`) автоматически создаётся/проверяется git tag
   - Приоритет версии: 1) `make build VERSION=x`, 2) версия из кода, 3) git tag
-  - Нормализация тега: поддержка `VERSION=v2.6.0` и `VERSION=2.6.0`
+  - Нормализация тега: поддержка `VERSION=v2.7.0` и `VERSION=2.7.0`
 
 #### Stage 4: Complete API Coverage (106/106 endpoints)
 

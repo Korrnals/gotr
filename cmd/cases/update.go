@@ -6,8 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Korrnals/gotr/cmd/common/dryrun"
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
@@ -60,7 +59,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
-				dr := dryrun.New("cases update")
+				dr := output.NewDryRunPrinter("cases update")
 				dr.PrintSimple("Update Case", fmt.Sprintf("Case ID: %d", caseID))
 				return nil
 			}
@@ -77,7 +76,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными для обновления")
 	cmd.Flags().String("title", "", "Новое название")
 	cmd.Flags().Int64("type-id", 0, "Новый ID типа")

@@ -5,7 +5,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Korrnals/gotr/cmd/common/flags/save"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -86,7 +86,7 @@ func TestNewAddCaseCmd_Success(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -104,7 +104,7 @@ func TestNewAddCaseCmd_InvalidCaseID(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -122,7 +122,7 @@ func TestNewAddCaseCmd_ZeroCaseID(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -140,7 +140,7 @@ func TestNewAddCaseCmd_FileNotFound(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -158,7 +158,7 @@ func TestNewAddCaseCmd_DryRun(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -184,7 +184,7 @@ func TestNewAddCaseCmd_APIError(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -216,7 +216,7 @@ func TestNewAddCaseCmd_WithSaveFlag(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -258,7 +258,7 @@ func TestNewAddPlanCmd_Success(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -276,7 +276,7 @@ func TestNewAddPlanCmd_InvalidPlanID(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -294,7 +294,7 @@ func TestNewAddPlanCmd_DryRun(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -320,7 +320,7 @@ func TestNewAddPlanCmd_APIError(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -338,7 +338,7 @@ func TestNewAddPlanCmd_FileNotFound(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -382,7 +382,7 @@ func TestNewAddPlanEntryCmd_Success(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -400,7 +400,7 @@ func TestNewAddPlanEntryCmd_InvalidPlanID(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -418,7 +418,7 @@ func TestNewAddPlanEntryCmd_DryRun(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -444,7 +444,7 @@ func TestNewAddPlanEntryCmd_APIError(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -462,7 +462,7 @@ func TestNewAddPlanEntryCmd_FileNotFound(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -480,7 +480,7 @@ func TestNewAddPlanEntryCmd_NoArgs(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -522,7 +522,7 @@ func TestNewAddResultCmd_Success(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddResultCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -540,7 +540,7 @@ func TestNewAddResultCmd_InvalidResultID(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddResultCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -558,7 +558,7 @@ func TestNewAddResultCmd_DryRun(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddResultCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -584,7 +584,7 @@ func TestNewAddResultCmd_APIError(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddResultCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -602,7 +602,7 @@ func TestNewAddResultCmd_FileNotFound(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddResultCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -645,7 +645,7 @@ func TestNewAddRunCmd_Success(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddRunCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -663,7 +663,7 @@ func TestNewAddRunCmd_InvalidRunID(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddRunCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -681,7 +681,7 @@ func TestNewAddRunCmd_DryRun(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddRunCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -707,7 +707,7 @@ func TestNewAddRunCmd_APIError(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddRunCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -725,7 +725,7 @@ func TestNewAddRunCmd_FileNotFound(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddRunCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -754,7 +754,7 @@ func TestOutputResult_Stdout(t *testing.T) {
 
 	parentCmd := &cobra.Command{Use: "add"}
 	parentCmd.PersistentFlags().Bool("dry-run", false, "")
-	save.AddFlag(parentCmd)
+	output.AddFlag(parentCmd)
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	parentCmd.AddCommand(cmd)
@@ -775,7 +775,7 @@ func TestOutputResult_Stdout(t *testing.T) {
 func TestOutputResult_StdoutOnly(t *testing.T) {
 	// Create a command with save flag not set
 	cmd := &cobra.Command{Use: "test"}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 
 	data := &data.AttachmentResponse{
 		AttachmentID: 123,
@@ -807,7 +807,7 @@ func TestOutputResult_MarshalError(t *testing.T) {
 	defer os.Setenv("HOME", origHome)
 
 	cmd := &cobra.Command{Use: "test"}
-	save.AddFlag(cmd)
+	output.AddFlag(cmd)
 	cmd.SetArgs([]string{"--save"})
 	require.NoError(t, cmd.Execute())
 

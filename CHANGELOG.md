@@ -20,11 +20,11 @@
   - Works with any long-running operation
   - See [docs/progress.md](docs/progress.md) for details
 
-- **Progress Bars**: Visual feedback for long-running operations
-  - `github.com/schollz/progressbar/v3` integration
-  - Spinner for indeterminate progress
-  - Multi-bar support for parallel operations
-  - Automatic newlines after progress completion
+- **Multi-Progress-Bars (mpb)**: Visual feedback for long-running operations
+  - `github.com/vbauerster/mpb/v8` integration (multi-progress-bar library)
+  - Multiple simultaneous progress bars on separate lines
+  - Real-time updates for parallel project loading
+  - ETA, speed, and percentage decorators
   
 - **Parallel API Requests**: 60-80% performance improvement
   - Worker pool pattern for concurrent requests
@@ -54,6 +54,13 @@
   - Batch fetching (250 items per request)
   - Streaming output for large datasets
   - Memory optimization (<500MB peak)
+
+### Changed
+
+- **Progress Bar Library**: Migrated from `progressbar/v3` to `mpb/v8`
+  - Better support for multiple simultaneous progress bars
+  - Improved UX with parallel operations
+  - New API: methods called directly on bar objects (`bar.Add()`, `bar.Finish()`)
 
 #### Stage 5: CLI Test Coverage (986 tests, 10 packages at 100%) - COMPLETE
 

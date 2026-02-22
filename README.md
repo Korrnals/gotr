@@ -17,13 +17,13 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.6.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.6-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v2.6.0** — Stage 4 Complete: 106/106 API endpoints implemented. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v2.7.0** — Stage 4 Complete: 106/106 API endpoints implemented. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 
@@ -240,7 +240,7 @@ gotr/
 
 See [docs/architecture.md](docs/architecture.md) for complete structure.
 
-## What's New in v2.6.0 (Stage 4 Complete)
+## What's New in v2.7.0 (Stage 4 Complete)
 
 ### Complete API Coverage
 

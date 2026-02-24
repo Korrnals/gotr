@@ -46,6 +46,10 @@ gotr.exe
 # Contains: API_ANALYSIS.md, API_AUDIT.md, CHECKLIST.md, PLAN.md, AGENTS.md
 .systems/
 
+# Protocols directory (AI collaboration protocols)
+# Contains: core/, agents/, project-*/, templates/, guides/
+.protocols/
+
 # Compressed binaries (for releases)
 *.gz
 *.zip

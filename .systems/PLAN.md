@@ -540,60 +540,69 @@ cmd/
 ### ЭТАП 6: Performance Optimization & UX Enhancement 🔄 (В работе)
 
 **Период:** 2026-02-16 — TBD  
-**Статус:** 🔄 В работе  
+**Статус:** 🔄 В работе (Phases 6.1-6.2, 6.4, 6.6 ✅)  
 **Версия:** 2.7.0 → 2.8.0-dev
 
 **Цель:** Устранение "зависаний" и улучшение производительности на 60-80%
 
 #### Задачи
 
-**Phase 6.1: Progress Bars Foundation** (2-3 дня) ✅
+**Phase 6.1: Progress Bars Foundation** ✅ (Завершено)
 - [x] Интеграция `github.com/vbauerster/mpb/v8` (вместо progressbar/v3)
 - [x] Создать `internal/progress` пакет
+  - `Manager` — управление прогресс-барами
+  - `Bar` — индивидуальные прогресс-бары с ETA
+  - `Monitor` — channel-based мониторинг
+  - `AsyncProgress` — асинхронные обновления
+  - `ProgressTracker` — multi-phase прогресс
 - [x] Добавить progress bar в `compare` команды
 - [x] Добавить progress bar в `get` команды с большими датасетами
 
-**Phase 6.2: Parallel API Requests** (3-4 дня)
-- [ ] Создать `internal/concurrent` пакет
-- [ ] Worker pool pattern для параллельных запросов
-- [ ] Rate limiter (150 req/min для TestRail)
-- [ ] Parallel fetching для cases, suites, shared steps
-- [ ] Graceful error handling при параллельных запросах
+**Phase 6.2: Parallel API Requests** ✅ (Завершено)
+- [x] Создать `internal/concurrent` пакет
+- [x] Worker pool pattern (`WorkerPool` с `errgroup`)
+- [x] Rate limiter (150 req/min для TestRail, token bucket)
+- [x] Adaptive Rate Limiter (подстройка по response time)
+- [x] Parallel fetching (`ParallelMap`, `ParallelForEach`)
+- [x] Batch Processor (пакетная обработка с retry)
+- [x] Graceful error handling при параллельных запросах
 
-**Phase 6.3: Response Caching** (2-3 дня)
+**Phase 6.3: Response Caching** ⏳ (Запланировано)
 - [ ] Создать `internal/cache` пакет
 - [ ] Disk-based cache с TTL
 - [ ] Cache invalidation при write операциях
 - [ ] Флаг `--no-cache` для обхода кэша
 - [ ] Команда `gotr cache clear`
 
-**Phase 6.4: Retry Logic & Resilience** (2-3 дня)
-- [ ] Exponential backoff retry (1s, 2s, 4s, 8s, 16s)
-- [ ] Circuit breaker pattern
-- [ ] Улучшенные сообщения об ошибках
-- [ ] Флаг `--timeout` (default: 5min)
+**Phase 6.4: Retry Logic & Resilience** ✅ (Завершено)
+- [x] Exponential backoff retry (1s, 2s, 4s, 8s, 16s, max 30s)
+- [x] Circuit breaker pattern (Closed/Open/Half-Open)
+- [x] Retry with context cancellation support
+- [x] Configurable retry policies
+- [ ] Флаг `--timeout` (default: 5min) — перенесено в 6.7
 
-**Phase 6.5: Batch Operations Optimization** (2-3 дня)
-- [ ] Batch fetching (250 items per request)
+**Phase 6.5: Batch Operations Optimization** 🔄 (Частично)
+- [x] Batch fetching (250 items per request) — `BatchProcessor`
 - [ ] Prefetching связанных сущностей
 - [ ] Оптимизация памяти для больших сравнений
 - [ ] Streaming output для больших датасетов
 
-**Phase 6.6: UX Polish** (1-2 дня) ✅
-- [x] ETA расчет в progress bars
+**Phase 6.6: UX Polish** ✅ (Завершено)
+- [x] ETA расчет в progress bars (EWMA-based)
 - [x] Цветной вывод (эмодзи)
 - [x] Флаг `--quiet` для CI/CD
 - [x] Флаг `--debug` для детального логирования
 
-**Phase 6.7: Recursive Parallelization** (7-10 дней) ⏳
+**Phase 6.7: Recursive Parallelization** 🔄 (В работе — приоритет)
 - [ ] Создать `ParallelController` для оркестрации запросов
 - [ ] Создать `ResultAggregator` для сбора результатов
-- [ ] Создать `AdaptiveRateLimiter` с priority queue
+- [ ] Priority queue (большие сьюты первыми)
 - [ ] Параллельная пагинация внутри каждого сьюта
 - [ ] Контроллер для отслеживания всех горутин
 - [ ] Гарантированная целостность данных
 - [ ] Unit + Integration тесты
 - [ ] Performance benchmarks
+- [ ] Флаг `--timeout` (default: 5min)
 
 **Детали реализации:**
 - Максимум 20 concurrent requests

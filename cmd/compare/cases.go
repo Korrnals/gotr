@@ -1,6 +1,7 @@
 package compare
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/parallel"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
@@ -74,7 +76,7 @@ func newCasesCmd() *cobra.Command {
 			startTime := time.Now()
 
 			// Execute comparison
-			result, err := compareCasesInternal(cli, pid1, pid2, field, pm)
+			result, err := compareCasesInternal(cmd, cli, pid1, pid2, field, pm)
 			if err != nil {
 				return err
 			}
@@ -100,6 +102,9 @@ func newCasesCmd() *cobra.Command {
 	// Add flags
 	addCommonFlags(cmd)
 	cmd.Flags().String("field", "title", "Поле для сравнения (title, priority_id, etc.)")
+	cmd.Flags().Int("parallel-suites", 5, "Максимальное количество параллельных сьютов (Stage 6.7)")
+	cmd.Flags().Int("parallel-pages", 3, "Максимальное количество параллельных страниц внутри сьюта (Stage 6.7)")
+	cmd.Flags().Duration("timeout", 5*time.Minute, "Таймаут для операции сравнения")
 
 	return cmd
 }
@@ -122,7 +127,7 @@ type ProjectLoadStats struct {
 
 // compareCasesInternal compares cases between two projects and returns the result.
 // Shows parallel loading of both projects with detailed statistics.
-func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field string, pm *progress.Manager) (*CompareResult, error) {
+func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string, pm *progress.Manager) (*CompareResult, error) {
 	// Phase 1: Get suites for both projects (quick operation)
 	utils.DebugPrint("[Compare] Phase 1: Fetching suites for projects %d and %d", pid1, pid2)
 	
@@ -149,6 +154,11 @@ func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field st
 	fmt.Fprintf(os.Stderr, "\n📥 Параллельная загрузка данных:\n")
 	fmt.Fprintf(os.Stderr, "   Проект %d: %d сьютов | Проект %d: %d сьютов\n\n", pid1, len(suites1), pid2, len(suites2))
 
+	// Read parallel execution flags
+	parallelSuites, _ := cmd.Flags().GetInt("parallel-suites")
+	parallelPages, _ := cmd.Flags().GetInt("parallel-pages")
+	timeout, _ := cmd.Flags().GetDuration("timeout")
+
 	var cases1, cases2 []ItemInfo
 	var err1, err2 error
 	var stats1, stats2 ProjectLoadStats
@@ -159,7 +169,7 @@ func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field st
 	// Load Project 1
 	go func() {
 		start := time.Now()
-		cases1, err1 = fetchCasesForProjectWithStats(cli, pid1, suites1, pm, &stats1)
+		cases1, err1 = fetchCasesForProjectWithStats(cli, pid1, suites1, pm, &stats1, parallelSuites, parallelPages, timeout)
 		stats1.ProjectID = pid1
 		stats1.SuitesCount = len(suites1)
 		stats1.CasesCount = len(cases1)
@@ -170,7 +180,7 @@ func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field st
 	// Load Project 2
 	go func() {
 		start := time.Now()
-		cases2, err2 = fetchCasesForProjectWithStats(cli, pid2, suites2, pm, &stats2)
+		cases2, err2 = fetchCasesForProjectWithStats(cli, pid2, suites2, pm, &stats2, parallelSuites, parallelPages, timeout)
 		stats2.ProjectID = pid2
 		stats2.SuitesCount = len(suites2)
 		stats2.CasesCount = len(cases2)
@@ -212,7 +222,7 @@ func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field st
 }
 
 // fetchCasesForProjectWithStats loads all cases for a single project with progress bar and stats.
-func fetchCasesForProjectWithStats(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, pm *progress.Manager, stats *ProjectLoadStats) ([]ItemInfo, error) {
+func fetchCasesForProjectWithStats(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, pm *progress.Manager, stats *ProjectLoadStats, parallelSuites, parallelPages int, timeout time.Duration) ([]ItemInfo, error) {
 	if len(suites) == 0 {
 		utils.DebugPrint("[Project %d] No suites, fetching all cases", projectID)
 		cases, err := cli.GetCases(projectID, 0, 0)
@@ -257,9 +267,18 @@ func fetchCasesForProjectWithStats(cli client.ClientInterface, projectID int64, 
 		}()
 	}
 
-	// Fetch cases
-	utils.DebugPrint("[Project %d] Starting GetCasesParallel with %d workers", projectID, 10)
-	casesBySuite, err := cli.GetCasesParallel(projectID, suiteIDs, 10, monitor)
+	// Create parallel controller config
+	config := &parallel.ControllerConfig{
+		MaxConcurrentSuites: parallelSuites,
+		MaxConcurrentPages:  parallelPages,
+		Timeout:             timeout,
+	}
+
+	// Fetch cases using the new context-aware parallel method
+	utils.DebugPrint("[Project %d] Starting GetCasesParallelCtx with parallelSuites=%d, parallelPages=%d, timeout=%s", 
+		projectID, parallelSuites, parallelPages, timeout)
+	ctx := context.Background()
+	cases, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config, monitor)
 	
 	if progressChan != nil {
 		close(progressChan)
@@ -268,24 +287,21 @@ func fetchCasesForProjectWithStats(cli client.ClientInterface, projectID int64, 
 		bar.Finish()
 	}
 	
-	if err != nil && len(casesBySuite) == 0 {
+	if err != nil && len(cases) == 0 {
 		return nil, err
 	}
 
-	// Collect unique cases
+	// Collect unique cases (GetCasesParallelCtx returns flat list)
 	var allCases []ItemInfo
 	caseIDs := make(map[int64]bool)
 
-	for suiteID, cases := range casesBySuite {
-		utils.DebugPrint("[Project %d] Suite %d: %d cases", projectID, suiteID, len(cases))
-		for _, c := range cases {
-			if !caseIDs[c.ID] {
-				caseIDs[c.ID] = true
-				allCases = append(allCases, ItemInfo{
-					ID:   c.ID,
-					Name: c.Title,
-				})
-			}
+	for _, c := range cases {
+		if !caseIDs[c.ID] {
+			caseIDs[c.ID] = true
+			allCases = append(allCases, ItemInfo{
+				ID:   c.ID,
+				Name: c.Title,
+			})
 		}
 	}
 

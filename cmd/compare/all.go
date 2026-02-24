@@ -91,7 +91,7 @@ func newAllCmd() *cobra.Command {
 			errors := make(map[string]error)
 
 			// Cases
-			if casesResult, err := compareCasesInternal(cli, pid1, pid2, "title", pm); err == nil {
+			if casesResult, err := compareCasesInternal(cmd, cli, pid1, pid2, "title", pm); err == nil {
 				result.Cases = casesResult
 			} else {
 				errors["cases"] = err

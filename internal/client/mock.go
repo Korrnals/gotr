@@ -38,7 +38,7 @@ type MockClient struct {
 	// ConcurrentAPI - Parallel methods (Stage 6.2)
 	GetCasesParallelFunc          func(projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error)
 	GetCasesForSuitesParallelFunc func(projectID int64, suiteIDs []int64, workers int) (data.GetCasesResponse, error)
-	GetCasesParallelV2Func        func(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig, monitor *progress.Monitor) (data.GetCasesResponse, error)
+	GetCasesParallelCtxFunc       func(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig, monitor *progress.Monitor) (data.GetCasesResponse, error)
 	GetSuitesParallelFunc         func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error)
 
 	// SuitesAPI
@@ -1151,10 +1151,10 @@ func (m *MockClient) UpdateTestsLabels(runID int64, testIDs []int64, labels []st
 }
 
 
-// GetCasesParallelV2 — mock implementation for Stage 6.7
-func (m *MockClient) GetCasesParallelV2(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig, monitor *progress.Monitor) (data.GetCasesResponse, error) {
-	if m.GetCasesParallelV2Func != nil {
-		return m.GetCasesParallelV2Func(ctx, projectID, suiteIDs, config, monitor)
+// GetCasesParallelCtx — mock implementation for Stage 6.7
+func (m *MockClient) GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig, monitor *progress.Monitor) (data.GetCasesResponse, error) {
+	if m.GetCasesParallelCtxFunc != nil {
+		return m.GetCasesParallelCtxFunc(ctx, projectID, suiteIDs, config, monitor)
 	}
 	// Default: delegate to GetCasesForSuitesParallel
 	workers := 5

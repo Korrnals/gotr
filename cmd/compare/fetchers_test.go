@@ -4,9 +4,11 @@ package compare
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -146,6 +148,9 @@ func TestFetchSuiteItems_Empty(t *testing.T) {
 
 func TestCompareCasesInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
+		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{}, nil // No suites, uses GetCases without suite filter
+		},
 		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 {
 				return []data.Case{
@@ -160,7 +165,12 @@ func TestCompareCasesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareCasesInternal(mock, 1, 2, "title", nil)
+	cmd := &cobra.Command{}
+	cmd.Flags().Int("parallel-suites", 5, "")
+	cmd.Flags().Int("parallel-pages", 3, "")
+	cmd.Flags().Duration("timeout", 5*time.Minute, "")
+
+	result, err := compareCasesInternal(cmd, mock, 1, 2, "title", nil)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -172,12 +182,20 @@ func TestCompareCasesInternal_Success(t *testing.T) {
 
 func TestCompareCasesInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
+		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{}, nil
+		},
 		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
 
-	result, err := compareCasesInternal(mock, 1, 2, "title", nil)
+	cmd := &cobra.Command{}
+	cmd.Flags().Int("parallel-suites", 5, "")
+	cmd.Flags().Int("parallel-pages", 3, "")
+	cmd.Flags().Duration("timeout", 5*time.Minute, "")
+
+	result, err := compareCasesInternal(cmd, mock, 1, 2, "title", nil)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)

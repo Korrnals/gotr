@@ -464,9 +464,9 @@ func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequ
 	return nil
 }
 
-// GetCasesParallelV2 получает кейсы из нескольких сьютов параллельно (Stage 6.7).
+// GetCasesParallelCtx получает кейсы из нескольких сьютов параллельно (Stage 6.7).
 // Использует recursive parallelization для максимальной производительности.
-func (c *HTTPClient) GetCasesParallelV2(
+func (c *HTTPClient) GetCasesParallelCtx(
 	ctx context.Context,
 	projectID int64,
 	suiteIDs []int64,

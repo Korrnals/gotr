@@ -278,13 +278,26 @@ func fetchCasesForProjectWithStats(cli client.ClientInterface, projectID int64, 
 	utils.DebugPrint("[Project %d] Starting GetCasesParallelCtx with parallelSuites=%d, parallelPages=%d, timeout=%s", 
 		projectID, parallelSuites, parallelPages, timeout)
 	ctx := context.Background()
-	cases, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config, monitor)
+	cases, execResult, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config, monitor)
 	
 	if progressChan != nil {
 		close(progressChan)
 	}
 	if bar != nil {
 		bar.Finish()
+	}
+	
+	// Log execution statistics
+	if execResult != nil {
+		utils.DebugPrint("[Project %d] Execution stats: expected=%d, got=%d, errors=%d, partial=%v",
+			projectID, len(suites)*100, len(cases), len(execResult.Errors), execResult.Partial)
+		
+		// Warn if significant data loss detected (>10%)
+		expectedCases := len(suites) * 100 // rough estimate
+		if len(cases) < int(float64(expectedCases)*0.9) {
+			fmt.Fprintf(os.Stderr, "⚠️  WARNING [Project %d]: Possible data loss! Expected ~%d cases, got %d\n", 
+				projectID, expectedCases, len(cases))
+		}
 	}
 	
 	if err != nil && len(cases) == 0 {

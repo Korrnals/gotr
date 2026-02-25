@@ -50,11 +50,22 @@ func (pc *ParallelController) Execute(
 		}, nil
 	}
 
+	// Get total expected count first (for verification)
+	totalExpected := 0
+	for _, task := range tasks {
+		if task.EstimatedSize > 0 {
+			totalExpected += task.EstimatedSize
+		}
+	}
+	log.Debug(fmt.Sprintf("[ParallelController] Starting execution for %d suites, estimated total: %d cases", 
+		len(tasks), totalExpected))
+
 	// Apply timeout if configured
 	if pc.config.Timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, pc.config.Timeout)
 		defer cancel()
+		log.Debug(fmt.Sprintf("[ParallelController] Timeout set to %v", pc.config.Timeout))
 	}
 
 	// Initialize rate limiter
@@ -109,11 +120,26 @@ func (pc *ParallelController) Execute(
 	stats.StartTime = startTime
 	stats.EndTime = time.Now()
 
+	// Verify completeness
+	log.Debug(fmt.Sprintf("[ParallelController] Execution complete: got %d cases from %d suites (expected ~%d)",
+		len(cases), completedSuites, totalExpected))
+	
+	if len(errors) > 0 {
+		log.Debug(fmt.Sprintf("[ParallelController] Errors encountered: %d", len(errors)))
+	}
+
+	// Check for significant data loss (>10%)
+	if totalExpected > 0 && len(cases) < int(float64(totalExpected)*0.9) {
+		log.Debug(fmt.Sprintf("[ParallelController] WARNING: Significant data loss detected! Expected ~%d, got %d (%.1f%%)",
+			totalExpected, len(cases), float64(len(cases))/float64(totalExpected)*100))
+	}
+
 	result := &ExecutionResult{
-		Cases:   cases,
-		Errors:  errors,
-		Stats:   stats,
-		Partial: err != nil && len(cases) > 0,
+		Cases:         cases,
+		Errors:        errors,
+		Stats:         stats,
+		Partial:       err != nil && len(cases) > 0,
+		ExpectedCases: totalExpected,
 	}
 
 	if err != nil && len(cases) == 0 {
@@ -177,16 +203,20 @@ func (pc *ParallelController) fetchSuiteParallel(
 	// Get total count to calculate pages
 	totalCount, err := fetcher.GetTotalCases(ctx, task.ProjectID, task.SuiteID)
 	if err != nil {
-		return fmt.Errorf("failed to get total count: %w", err)
+		return fmt.Errorf("failed to get total count for suite %d: %w", task.SuiteID, err)
 	}
 
 	if totalCount == 0 {
+		log.Debug(fmt.Sprintf("[Suite %d] No cases to fetch", task.SuiteID))
 		return nil // Nothing to fetch
 	}
 
 	// Calculate number of pages
 	pageSize := pc.config.PageSize
 	numPages := int(math.Ceil(float64(totalCount) / float64(pageSize)))
+	
+	log.Debug(fmt.Sprintf("[Suite %d] Expecting %d cases, %d pages (pageSize=%d)", 
+		task.SuiteID, totalCount, numPages, pageSize))
 
 	// Create page requests
 	pages := make([]PageRequest, numPages)
@@ -209,6 +239,7 @@ func (pc *ParallelController) fetchSuiteParallel(
 	g.SetLimit(maxPageWorkers)
 
 	var successCount int32
+	var errorCount int32
 	var mu sync.Mutex
 	var firstError error
 
@@ -221,6 +252,7 @@ func (pc *ParallelController) fetchSuiteParallel(
 			aggregator.Submit(result)
 
 			if result.Error != nil {
+				atomic.AddInt32(&errorCount, 1)
 				mu.Lock()
 				if firstError == nil {
 					firstError = result.Error
@@ -236,12 +268,29 @@ func (pc *ParallelController) fetchSuiteParallel(
 
 	// Wait for all page fetches
 	if err := g.Wait(); err != nil {
-		return err
+		return fmt.Errorf("suite %d: %w", task.SuiteID, err)
+	}
+
+	// Log completion status
+	success := atomic.LoadInt32(&successCount)
+	errors := atomic.LoadInt32(&errorCount)
+	
+	if errors > 0 {
+		log.Debug(fmt.Sprintf("[Suite %d] Completed with errors: %d/%d pages succeeded, %d failed", 
+			task.SuiteID, success, numPages, errors))
+	} else {
+		log.Debug(fmt.Sprintf("[Suite %d] All %d pages fetched successfully", task.SuiteID, numPages))
 	}
 
 	// Check if any pages succeeded
-	if successCount == 0 && firstError != nil {
-		return fmt.Errorf("all page fetches failed: %w", firstError)
+	if success == 0 && firstError != nil {
+		return fmt.Errorf("suite %d: all %d page fetches failed: %w", task.SuiteID, numPages, firstError)
+	}
+
+	// Warn if significant portion failed (>20%)
+	if float64(errors)/float64(numPages) > 0.2 {
+		log.Debug(fmt.Sprintf("[Suite %d] WARNING: %.0f%% of pages failed (%d/%d)", 
+			task.SuiteID, float64(errors)/float64(numPages)*100, errors, numPages))
 	}
 
 	return nil

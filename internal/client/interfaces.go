@@ -53,7 +53,8 @@ type CasesAPI interface {
 	GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error)
 	// GetCasesParallelCtx получает кейсы из нескольких сьютов с полным контролем (Stage 6.7)
 	// Использует recursive parallelization через parallel.Controller
-	GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig, monitor *progress.Monitor) (data.GetCasesResponse, error)
+	// Returns cases, execution result with statistics, and any error
+	GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig, monitor *progress.Monitor) (data.GetCasesResponse, *parallel.ExecutionResult, error)
 }
 
 // SuitesAPI — операции с сьютами

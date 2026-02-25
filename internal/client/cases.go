@@ -466,15 +466,16 @@ func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequ
 
 // GetCasesParallelCtx получает кейсы из нескольких сьютов параллельно (Stage 6.7).
 // Использует recursive parallelization для максимальной производительности.
+// Returns cases, execution result with statistics, and any error.
 func (c *HTTPClient) GetCasesParallelCtx(
 	ctx context.Context,
 	projectID int64,
 	suiteIDs []int64,
 	config *parallel.ControllerConfig,
 	progressMonitor *progress.Monitor,
-) (data.GetCasesResponse, error) {
+) (data.GetCasesResponse, *parallel.ExecutionResult, error) {
 	if len(suiteIDs) == 0 {
-		return data.GetCasesResponse{}, nil
+		return data.GetCasesResponse{}, &parallel.ExecutionResult{Cases: []data.Case{}}, nil
 	}
 
 	if config == nil {
@@ -498,10 +499,10 @@ func (c *HTTPClient) GetCasesParallelCtx(
 	result, err := controller.Execute(ctx, tasks, fetcher, progressMonitor)
 
 	if err != nil && len(result.Cases) == 0 {
-		return nil, err
+		return nil, result, err
 	}
 
-	return data.GetCasesResponse(result.Cases), nil
+	return data.GetCasesResponse(result.Cases), result, nil
 }
 
 // casesFetcher implements parallel.SuiteFetcher for cases

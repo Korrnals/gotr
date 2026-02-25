@@ -76,10 +76,11 @@ func (pr PageResult) IsSuccess() bool {
 
 // ExecutionResult contains the final result of parallel execution
 type ExecutionResult struct {
-	Cases      []data.Case
-	Errors     []error
-	Stats      AggregationStats
-	Partial    bool // true if execution was interrupted
+	Cases         []data.Case
+	Errors        []error
+	Stats         AggregationStats
+	Partial       bool // true if execution was interrupted
+	ExpectedCases int  // estimated total cases expected (for verification)
 }
 
 // Fetcher is the function type for fetching cases

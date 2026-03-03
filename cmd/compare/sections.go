@@ -2,10 +2,11 @@ package compare
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,14 +45,11 @@ func newSectionsCmd() *cobra.Command {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
 			// Start timer
 			startTime := time.Now()
 
 			// Compare sections
-			result, err := compareSectionsInternal(cli, pid1, pid2, pm)
+			result, err := compareSectionsInternal(cli, pid1, pid2)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения секций: %w", err)
 			}
@@ -84,15 +82,15 @@ func newSectionsCmd() *cobra.Command {
 var sectionsCmd = newSectionsCmd()
 
 // compareSectionsInternal compares sections between two projects and returns the result.
-func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка секций из проекта %d...", pid1))
-	sections1, err := fetchSectionItems(cli, pid1, pm)
+func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+	ui.Infof(os.Stderr, "Загрузка секций из проекта %d...", pid1)
+	sections1, err := fetchSectionItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения секций проекта %d: %w", pid1, err)
 	}
 
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка секций из проекта %d...", pid2))
-	sections2, err := fetchSectionItems(cli, pid2, pm)
+	ui.Infof(os.Stderr, "Загрузка секций из проекта %d...", pid2)
+	sections2, err := fetchSectionItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения секций проекта %d: %w", pid2, err)
 	}
@@ -101,7 +99,7 @@ func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64, pm *p
 }
 
 // fetchSectionItems fetches all sections for a project and returns them as ItemInfo slice.
-func fetchSectionItems(cli client.ClientInterface, projectID int64, pm *progress.Manager) ([]ItemInfo, error) {
+func fetchSectionItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
 	// Get all suites for the project
 	suites, err := cli.GetSuites(projectID)
 	if err != nil {

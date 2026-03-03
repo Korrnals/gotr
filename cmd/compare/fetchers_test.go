@@ -30,7 +30,7 @@ func TestCompareSuitesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2, nil)
+	result, err := compareSuitesInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -54,7 +54,7 @@ func TestCompareSuitesInternal_FirstError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2, nil)
+	result, err := compareSuitesInternal(mock, 1, 2)
 
 	// Parallel implementation is fault-tolerant: returns partial results with warning
 	assert.NoError(t, err)
@@ -73,7 +73,7 @@ func TestCompareSuitesInternal_SecondError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2, nil)
+	result, err := compareSuitesInternal(mock, 1, 2)
 
 	// Parallel implementation is fault-tolerant: returns partial results with warning
 	// Only returns error if BOTH projects fail
@@ -89,7 +89,7 @@ func TestCompareSuitesInternal_Empty(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2, nil)
+	result, err := compareSuitesInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -254,7 +254,7 @@ func TestCompareSectionsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2, nil)
+	result, err := compareSectionsInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -268,7 +268,7 @@ func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2, nil)
+	result, err := compareSectionsInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -291,7 +291,7 @@ func TestComparePlansInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2, nil)
+	result, err := comparePlansInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -305,7 +305,7 @@ func TestComparePlansInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2, nil)
+	result, err := comparePlansInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -328,7 +328,7 @@ func TestCompareRunsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2, nil)
+	result, err := compareRunsInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -342,7 +342,7 @@ func TestCompareRunsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2, nil)
+	result, err := compareRunsInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -365,7 +365,7 @@ func TestCompareMilestonesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2, nil)
+	result, err := compareMilestonesInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -379,7 +379,7 @@ func TestCompareMilestonesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2, nil)
+	result, err := compareMilestonesInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -402,7 +402,7 @@ func TestCompareDatasetsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2, nil)
+	result, err := compareDatasetsInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -416,7 +416,7 @@ func TestCompareDatasetsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2, nil)
+	result, err := compareDatasetsInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -439,7 +439,7 @@ func TestCompareGroupsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2, nil)
+	result, err := compareGroupsInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -453,7 +453,7 @@ func TestCompareGroupsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2, nil)
+	result, err := compareGroupsInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -476,7 +476,7 @@ func TestCompareLabelsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2, nil)
+	result, err := compareLabelsInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -490,7 +490,7 @@ func TestCompareLabelsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2, nil)
+	result, err := compareLabelsInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -513,7 +513,7 @@ func TestCompareTemplatesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2, nil)
+	result, err := compareTemplatesInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -527,7 +527,7 @@ func TestCompareTemplatesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2, nil)
+	result, err := compareTemplatesInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -550,7 +550,7 @@ func TestCompareConfigurationsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2, nil)
+	result, err := compareConfigurationsInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -564,7 +564,7 @@ func TestCompareConfigurationsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2, nil)
+	result, err := compareConfigurationsInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -587,7 +587,7 @@ func TestCompareSharedStepsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2, nil)
+	result, err := compareSharedStepsInternal(mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -601,7 +601,7 @@ func TestCompareSharedStepsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2, nil)
+	result, err := compareSharedStepsInternal(mock, 1, 2)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)

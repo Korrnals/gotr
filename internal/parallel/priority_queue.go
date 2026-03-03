@@ -21,7 +21,15 @@ func (h priorityHeap) Len() int { return len(h) }
 
 // Less defines priority order: higher priority values come first
 func (h priorityHeap) Less(i, j int) bool {
-	return h[i].Priority > h[j].Priority
+	if h[i].Priority != h[j].Priority {
+		return h[i].Priority > h[j].Priority
+	}
+
+	if h[i].Task.EstimatedSize != h[j].Task.EstimatedSize {
+		return h[i].Task.EstimatedSize > h[j].Task.EstimatedSize
+	}
+
+	return h[i].Task.SuiteID < h[j].Task.SuiteID
 }
 
 func (h priorityHeap) Swap(i, j int) {

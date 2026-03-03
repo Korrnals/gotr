@@ -7,7 +7,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/parallel"
-	"github.com/Korrnals/gotr/internal/progress"
 )
 
 // ProgressMonitor определяет интерфейс для мониторинга прогресса.
@@ -29,6 +28,7 @@ type ProjectsAPI interface {
 // CasesAPI — операции с кейсами
 type CasesAPI interface {
 	GetCases(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error)
+	GetCasesPage(projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error)
 	GetCase(caseID int64) (*data.Case, error)
 	AddCase(sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	UpdateCase(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
@@ -52,9 +52,9 @@ type CasesAPI interface {
 	// Uses recursive parallelization (Stage 6.7) for maximum performance
 	GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error)
 	// GetCasesParallelCtx получает кейсы из нескольких сьютов с полным контролем (Stage 6.7)
-	// Использует recursive parallelization через parallel.Controller
-	// Returns cases, execution result with statistics, and any error
-	GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig, monitor *progress.Monitor) (data.GetCasesResponse, *parallel.ExecutionResult, error)
+	// Использует streaming parallelization через parallel.Controller
+	// Progress reporting: set config.Reporter (implements parallel.ProgressReporter)
+	GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig) (data.GetCasesResponse, *parallel.ExecutionResult, error)
 }
 
 // SuitesAPI — операции с сьютами

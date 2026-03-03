@@ -3,6 +3,7 @@ package parallel
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -42,6 +43,11 @@ func (m *mockSuiteFetcher) FetchPage(ctx context.Context, req PageRequest) ([]da
 		}
 	}
 
+	// Check if this suite should fail (streaming doesn't call GetTotalCases)
+	if m.failSuiteIDs[req.SuiteID] {
+		return nil, errors.New("suite fetch failed")
+	}
+
 	// Check if this page should fail
 	if offsets, ok := m.failPageOffsets[req.SuiteID]; ok {
 		if offsets[req.Offset] {
@@ -68,19 +74,12 @@ func (m *mockSuiteFetcher) FetchPage(ctx context.Context, req PageRequest) ([]da
 	return cases[start:end], nil
 }
 
-func (m *mockSuiteFetcher) GetTotalCases(ctx context.Context, projectID int64, suiteID int64) (int, error) {
-	if m.failSuiteIDs[suiteID] {
-		return 0, errors.New("get total cases failed")
-	}
-	return len(m.cases[suiteID]), nil
-}
-
 func (m *mockSuiteFetcher) addCases(suiteID int64, count int) {
 	cases := make([]data.Case, count)
 	for i := 0; i < count; i++ {
 		cases[i] = data.Case{
 			ID:      suiteID*1000000 + int64(i),
-			Title:   "Case",
+			Title:   fmt.Sprintf("Case %d-%d", suiteID, i),
 			SuiteID: suiteID,
 		}
 	}
@@ -157,10 +156,12 @@ func TestParallelController_Execute_SuiteError(t *testing.T) {
 	fetcher.failSuiteIDs[2] = true // Suite 2 will fail
 
 	controller := NewController(&ControllerConfig{
-		MaxConcurrentSuites: 2,
-		MaxConcurrentPages:  2,
-		PageSize:            15,
-		Timeout:             30 * time.Second,
+		MaxConcurrentSuites:      2,
+		MaxConcurrentPages:       2,
+		PageSize:                 15,
+		Timeout:                  10 * time.Second,
+		MaxRetries:               1,
+		MaxConsecutiveErrorWaves: 1,
 	})
 
 	tasks := []SuiteTask{
@@ -291,49 +292,31 @@ func TestParallelController_Execute_LargeSuitePagination(t *testing.T) {
 	assert.True(t, atomic.LoadInt32(&fetcher.callCount) >= 20)
 }
 
-func TestParallelController_estimateSize(t *testing.T) {
-	fetcher := newMockSuiteFetcher()
-	fetcher.addCases(1, 150)
-
-	controller := NewController(DefaultControllerConfig())
-
-	// Test with GetTotalCases working
-	task := SuiteTask{SuiteID: 1, ProjectID: 10}
-	size := controller.estimateSize(context.Background(), task, fetcher)
-	assert.Equal(t, 150, size)
-
-	// Test with GetTotalCases failing
-	fetcher.failSuiteIDs[2] = true
-	task = SuiteTask{SuiteID: 2, ProjectID: 10}
-	size = controller.estimateSize(context.Background(), task, fetcher)
-	assert.True(t, size > 0) // Should return some default
-}
-
 func TestParallelController_DefaultConfig(t *testing.T) {
 	controller := NewController(nil)
 
 	assert.Equal(t, 5, controller.config.MaxConcurrentSuites)
 	assert.Equal(t, 3, controller.config.MaxConcurrentPages)
-	assert.Equal(t, 150, controller.config.RequestsPerMinute)
+	assert.Equal(t, 180, controller.config.RequestsPerMinute)
 	assert.Equal(t, 5*time.Minute, controller.config.Timeout)
 	assert.Equal(t, 250, controller.config.PageSize)
 }
 
 func TestParallelController_ValidateConfig(t *testing.T) {
 	config := &ControllerConfig{
-		MaxConcurrentSuites: 0, // Invalid
-		MaxConcurrentPages:  -1, // Invalid
-		RequestsPerMinute:   0,  // Invalid
-		Timeout:             0,  // Invalid
-		PageSize:            0,  // Invalid
+		MaxConcurrentSuites: 0,  // Invalid → default 5
+		MaxConcurrentPages:  -1, // Invalid → default 3
+		RequestsPerMinute:   0,  // Valid: 0 = unlimited (no rate limiting)
+		Timeout:             0,  // Invalid → default 5m
+		PageSize:            0,  // Invalid → default 250
 	}
 
 	config.Validate()
 
-	// Should be set to defaults
+	// Should be set to defaults (except RequestsPerMinute: 0 is valid)
 	assert.Equal(t, 5, config.MaxConcurrentSuites)
 	assert.Equal(t, 3, config.MaxConcurrentPages)
-	assert.Equal(t, 150, config.RequestsPerMinute)
+	assert.Equal(t, 0, config.RequestsPerMinute) // 0 = unlimited, valid
 	assert.Equal(t, 5*time.Minute, config.Timeout)
 	assert.Equal(t, 250, config.PageSize)
 }
@@ -379,3 +362,159 @@ func BenchmarkParallelController_Execute(b *testing.B) {
 		}
 	}
 }
+
+// truncatedMockFetcher simulates a server that occasionally returns truncated pages
+// (fewer results than limit, even though more data exists at higher offsets).
+type truncatedMockFetcher struct {
+	mockSuiteFetcher
+	// truncatePages maps suiteID -> offset -> max results to return (< pageSize)
+	truncatePages map[int64]map[int]int
+}
+
+func newTruncatedMockFetcher() *truncatedMockFetcher {
+	return &truncatedMockFetcher{
+		mockSuiteFetcher: mockSuiteFetcher{
+			cases:           make(map[int64][]data.Case),
+			latency:         1 * time.Millisecond,
+			failSuiteIDs:    make(map[int64]bool),
+			failPageOffsets: make(map[int64]map[int]bool),
+		},
+		truncatePages: make(map[int64]map[int]int),
+	}
+}
+
+func (m *truncatedMockFetcher) FetchPage(ctx context.Context, req PageRequest) ([]data.Case, error) {
+	atomic.AddInt32(&m.callCount, 1)
+
+	cases, ok := m.cases[req.SuiteID]
+	if !ok {
+		return []data.Case{}, nil
+	}
+
+	start := req.Offset
+	if start >= len(cases) {
+		return []data.Case{}, nil
+	}
+
+	end := start + req.Limit
+	if end > len(cases) {
+		end = len(cases)
+	}
+
+	result := cases[start:end]
+
+	// Apply truncation if configured for this suite+offset
+	if offsets, ok := m.truncatePages[req.SuiteID]; ok {
+		if maxResults, ok := offsets[req.Offset]; ok && len(result) > maxResults {
+			result = result[:maxResults]
+		}
+	}
+
+	return result, nil
+}
+
+func (m *truncatedMockFetcher) setTruncation(suiteID int64, offset int, maxResults int) {
+	if _, ok := m.truncatePages[suiteID]; !ok {
+		m.truncatePages[suiteID] = make(map[int]int)
+	}
+	m.truncatePages[suiteID][offset] = maxResults
+}
+
+// TestParallelController_TruncatedPageDoesNotLoseData verifies that a truncated API
+// response (fewer than pageSize items, but NOT the last page) does NOT cause
+// the controller to stop fetching early and lose data.
+// This is a regression test for the data loss bug where partial pages triggered
+// premature suite termination.
+func TestParallelController_TruncatedPageDoesNotLoseData(t *testing.T) {
+	fetcher := newTruncatedMockFetcher()
+	// Suite with 1000 cases, pageSize=250 → 4 full pages
+	fetcher.addCases(1, 1000)
+	// Simulate server returning only 200 items for offset=250 (should be 250)
+	fetcher.setTruncation(1, 250, 200)
+
+	controller := NewController(&ControllerConfig{
+		MaxConcurrentSuites: 1,
+		MaxConcurrentPages:  3,
+		PageSize:            250,
+		Timeout:             10 * time.Second,
+	})
+
+	tasks := []SuiteTask{
+		{SuiteID: 1, ProjectID: 10},
+	}
+
+	result, err := controller.Execute(context.Background(), tasks, fetcher, nil)
+	assert.NoError(t, err)
+
+	// We must get ALL 1000 cases (with 200 at offset 250, not 250, but data at 500+ still loaded)
+	// Expected: 250 (offset 0) + 200 (offset 250, truncated) + 250 (offset 500) + 250 (offset 750) + 50 gap cases NOT fetched
+	// Actually with truncation at offset 250 returning only 200 items, cases 450-499 are skipped
+	// (offset 250 returns items 250-449 instead of 250-499).
+	// But ALL subsequent pages (offset 500, 750) are still fetched.
+	// Total = 250 + 200 + 250 + 250 = 950 (50 cases at positions 450-499 lost due to API truncation,
+	// which is unavoidable, but critically offset 500+ data is NOT lost)
+	assert.GreaterOrEqual(t, len(result.Cases), 950,
+		"Must fetch data beyond the truncated page; old bug would stop at 700")
+	// The old buggy code would stop after wave 0 (offsets 0,250,500) because offset 250 had < 250 items,
+	// getting only 250+200+250=700 cases and missing the entire offset 750+ range
+}
+
+// TestParallelController_AllCasesFetchedNormally verifies complete fetch with no truncation
+func TestParallelController_AllCasesFetchedNormally(t *testing.T) {
+	fetcher := newMockSuiteFetcher()
+	fetcher.addCases(1, 1000)
+
+	controller := NewController(&ControllerConfig{
+		MaxConcurrentSuites: 1,
+		MaxConcurrentPages:  3,
+		PageSize:            250,
+		Timeout:             10 * time.Second,
+	})
+
+	tasks := []SuiteTask{
+		{SuiteID: 1, ProjectID: 10},
+	}
+
+	result, err := controller.Execute(context.Background(), tasks, fetcher, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, 1000, len(result.Cases), "Must fetch all 1000 cases")
+}
+
+// TestParallelController_MultipleSuitesWithTruncation tests multiple suites where one has truncation
+func TestParallelController_MultipleSuitesWithTruncation(t *testing.T) {
+	fetcher := newTruncatedMockFetcher()
+	fetcher.addCases(1, 500)  // Suite 1: normal
+	fetcher.addCases(2, 1500) // Suite 2: will have truncation
+	fetcher.addCases(3, 300)  // Suite 3: normal
+
+	// Truncate suite 2 offset 500 (returns 100 instead of 250)
+	fetcher.setTruncation(2, 500, 100)
+
+	controller := NewController(&ControllerConfig{
+		MaxConcurrentSuites: 3,
+		MaxConcurrentPages:  3,
+		PageSize:            250,
+		Timeout:             10 * time.Second,
+	})
+
+	tasks := []SuiteTask{
+		{SuiteID: 1, ProjectID: 10},
+		{SuiteID: 2, ProjectID: 10},
+		{SuiteID: 3, ProjectID: 10},
+	}
+
+	result, err := controller.Execute(context.Background(), tasks, fetcher, nil)
+	assert.NoError(t, err)
+
+	// Suite 1: 500 cases (all fetched)
+	// Suite 2: 1500 cases, but offset 500 truncated to 100 → loses 150 cases in that page,
+	//          but continues fetching 750+ → gets most of 1500
+	// Suite 3: 300 cases (all fetched)
+	// Total must be well above what old buggy code would produce
+	// Old code: suite 2 would stop after first wave with truncation → ~600 cases from suite 2
+	// New code: suite 2 continues → gets ~1350+ from suite 2
+	expectedMinimum := 500 + 1350 + 300 // conservative lower bound
+	assert.GreaterOrEqual(t, len(result.Cases), expectedMinimum,
+		"Truncation in one suite must not stop fetching for that suite")
+}
+

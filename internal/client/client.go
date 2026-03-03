@@ -4,12 +4,13 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/utils"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/Korrnals/gotr/internal/utils"
 )
 
 const apiPrefix = "index.php?/api/v2/"
@@ -38,6 +39,11 @@ func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	// Устанавливаем Content-Type только если он не установлен
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	// User-Agent обязателен для некоторых инсталляций TestRail —
+	// без браузерного заголовка сервер может вернуть 403/401.
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; gotr/2.7; +https://github.com/Korrnals/gotr)")
 	}
 	return t.base.RoundTrip(req)
 }
@@ -89,12 +95,19 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 	for _, o := range opts {
 		o(&cfg)
 	}
-	// Создаем транспорт с нужными опциями
+	// Создаем транспорт с нужными опциями.
+	// MaxIdleConnsPerHost MUST be high enough for parallel fetching —
+	// default Go value (2) causes constant TCP+TLS reconnects under
+	// concurrency 40+ (8 suites × 5 pages), leading to timeouts and errors.
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: cfg.insecure,
 		},
 		TLSHandshakeTimeout: cfg.tlsHandshakeTimeout,
+		MaxIdleConns:         100,
+		MaxIdleConnsPerHost:  50,
+		MaxConnsPerHost:      50,
+		IdleConnTimeout:      90 * time.Second,
 	}
 	// Создаем транспорт с Basic Auth, который будет добавляться в каждый запрос
 	auth := authTransport{

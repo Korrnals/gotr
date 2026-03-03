@@ -69,6 +69,16 @@ type PageResult struct {
 	FetchedAt time.Time
 }
 
+// FailedPage describes a page that could not be fetched even after recovery attempts.
+type FailedPage struct {
+	ProjectID int64  `json:"project_id" yaml:"project_id"`
+	SuiteID   int64  `json:"suite_id" yaml:"suite_id"`
+	Offset    int    `json:"offset" yaml:"offset"`
+	Limit     int    `json:"limit" yaml:"limit"`
+	PageNum   int    `json:"page_num" yaml:"page_num"`
+	Error     string `json:"error" yaml:"error"`
+}
+
 // IsSuccess returns true if the page was fetched successfully
 func (pr PageResult) IsSuccess() bool {
 	return pr.Error == nil
@@ -76,11 +86,11 @@ func (pr PageResult) IsSuccess() bool {
 
 // ExecutionResult contains the final result of parallel execution
 type ExecutionResult struct {
-	Cases         []data.Case
-	Errors        []error
-	Stats         AggregationStats
-	Partial       bool // true if execution was interrupted
-	ExpectedCases int  // estimated total cases expected (for verification)
+	Cases       []data.Case
+	Errors      []error
+	FailedPages []FailedPage
+	Stats       AggregationStats
+	Partial     bool // true if execution was interrupted
 }
 
 // Fetcher is the function type for fetching cases
@@ -90,8 +100,17 @@ type Fetcher func(ctx context.Context, projectID int64, suiteID int64, offset in
 type SuiteFetcher interface {
 	// FetchPage fetches a single page of cases
 	FetchPage(ctx context.Context, req PageRequest) ([]data.Case, error)
-	// GetTotalCases returns the total number of cases in a suite
-	GetTotalCases(ctx context.Context, projectID int64, suiteID int64) (int, error)
+}
+
+// ProgressReporter receives fine-grained progress updates from the controller.
+// All methods must be thread-safe.
+//
+// The ui.Task type implements this interface via structural typing.
+type ProgressReporter interface {
+	OnSuiteComplete()
+	OnCasesReceived(count int)
+	OnPageFetched()
+	OnError()
 }
 
 // ControllerConfig configures the ParallelController
@@ -100,7 +119,8 @@ type ControllerConfig struct {
 	MaxConcurrentSuites int
 	// MaxConcurrentPages limits parallel page fetching per suite (default: 3)
 	MaxConcurrentPages int
-	// RequestsPerMinute is the API rate limit (default: 150)
+	// RequestsPerMinute is the API rate limit (default: 180).
+	// Set to 0 to disable rate limiting (recommended for TestRail Server).
 	RequestsPerMinute int
 	// Timeout is the total operation timeout (default: 5m)
 	Timeout time.Duration
@@ -111,6 +131,15 @@ type ControllerConfig struct {
 		High   int
 		Medium int
 	}
+	// Reporter receives fine-grained progress updates (optional).
+	// Typically a *ui.Task that implements ProgressReporter.
+	Reporter ProgressReporter
+	// MaxRetries is the number of retries per page request (default: 5).
+	// Set to 0 to disable retries.
+	MaxRetries int
+	// MaxConsecutiveErrorWaves: stop streaming after N consecutive waves
+	// where ALL pages errored (no data). Default: 3.
+	MaxConsecutiveErrorWaves int
 }
 
 // DefaultControllerConfig returns a default configuration
@@ -118,9 +147,11 @@ func DefaultControllerConfig() *ControllerConfig {
 	return &ControllerConfig{
 		MaxConcurrentSuites: 5,
 		MaxConcurrentPages:  3,
-		RequestsPerMinute:   150,
+		RequestsPerMinute:   180,
 		Timeout:             5 * time.Minute,
 		PageSize:            250,
+		MaxRetries:                5,
+		MaxConsecutiveErrorWaves:  3,
 	}
 }
 
@@ -150,14 +181,18 @@ func (c *ControllerConfig) Validate() error {
 	if c.MaxConcurrentPages <= 0 {
 		c.MaxConcurrentPages = 3
 	}
-	if c.RequestsPerMinute <= 0 {
-		c.RequestsPerMinute = 150
+	if c.RequestsPerMinute < 0 {
+		c.RequestsPerMinute = 180
 	}
+	// RequestsPerMinute == 0 is valid — means unlimited (no rate limiting)
 	if c.Timeout <= 0 {
 		c.Timeout = 5 * time.Minute
 	}
 	if c.PageSize <= 0 {
 		c.PageSize = 250
+	}
+	if c.MaxConsecutiveErrorWaves <= 0 {
+		c.MaxConsecutiveErrorWaves = 3
 	}
 	return nil
 }

@@ -10,14 +10,82 @@ import (
 
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/parallel"
-	"github.com/Korrnals/gotr/internal/progress"
 )
+
+// decodeCasesResponse decodes a get_cases response that can be either:
+// - Paginated wrapper (TestRail 6.7+): {"offset":0, "limit":250, "size":N, "cases":[...]}
+// - Flat array (older TestRail): [case1, case2, ...]
+//
+// Returns the slice of cases regardless of format.
+func decodeCasesResponse(body []byte) ([]data.Case, error) {
+	if len(body) == 0 {
+		return nil, nil
+	}
+
+	// Detect format by first non-whitespace byte
+	for _, b := range body {
+		switch b {
+		case ' ', '\t', '\n', '\r':
+			continue
+		case '{':
+			// Paginated wrapper: {"offset":0, "limit":250, "size":N, "cases":[...]}
+			var paginated data.PaginatedCasesResponse
+			if err := json.Unmarshal(body, &paginated); err != nil {
+				return nil, fmt.Errorf("decode paginated response: %w", err)
+			}
+			return paginated.Cases, nil
+		case '[':
+			// Flat array: [case1, case2, ...]
+			var cases []data.Case
+			if err := json.Unmarshal(body, &cases); err != nil {
+				return nil, fmt.Errorf("decode flat response: %w", err)
+			}
+			return cases, nil
+		default:
+			return nil, fmt.Errorf("unexpected response format (starts with %q)", string([]byte{b}))
+		}
+	}
+
+	return nil, nil
+}
 
 // GetCases получает **все** кейсы проекта (с пагинацией).
 // suiteID и sectionID — опционально (0 = не использовать).
 // Возвращает полный список кейсов.
 func (c *HTTPClient) GetCases(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 	return c.GetCasesWithProgress(projectID, suiteID, sectionID, nil)
+}
+
+// GetCasesPage получает одну страницу кейсов по точным offset/limit.
+// Используется для точечного ретрая сбойных страниц без полного перепрогона.
+func (c *HTTPClient) GetCasesPage(projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+	endpoint := fmt.Sprintf("get_cases/%d", projectID)
+	query := map[string]string{
+		"suite_id": fmt.Sprintf("%d", suiteID),
+		"offset":   fmt.Sprintf("%d", offset),
+		"limit":    fmt.Sprintf("%d", limit),
+	}
+
+	resp, err := c.Get(endpoint, query)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка запроса GetCasesPage project=%d suite=%d offset=%d limit=%d: %w",
+			projectID, suiteID, offset, limit, err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка чтения тела ответа GetCasesPage project=%d suite=%d offset=%d limit=%d: %w",
+			projectID, suiteID, offset, limit, err)
+	}
+
+	page, err := decodeCasesResponse(body)
+	if err != nil {
+		return nil, fmt.Errorf("ошибка декодирования страницы кейсов project=%d suite=%d offset=%d limit=%d: %w",
+			projectID, suiteID, offset, limit, err)
+	}
+
+	return data.GetCasesResponse(page), nil
 }
 
 // GetCasesWithProgress получает **все** кейсы проекта с отслеживанием прогресса.
@@ -51,9 +119,14 @@ func (c *HTTPClient) GetCasesWithProgress(projectID int64, suiteID int64, sectio
 			return nil, fmt.Errorf("API вернул %s при получении кейсов проекта %d: %s", resp.Status, projectID, string(body))
 		}
 
-		var page data.GetCasesResponse
-		if err := json.NewDecoder(resp.Body).Decode(&page); err != nil {
-			return nil, fmt.Errorf("ошибка декодирования страницы кейсов (offset=%d): %w", offset, err)
+		body, readErr := io.ReadAll(resp.Body)
+		if readErr != nil {
+			return nil, fmt.Errorf("ошибка чтения тела ответа (offset=%d): %w", offset, readErr)
+		}
+
+		page, decErr := decodeCasesResponse(body)
+		if decErr != nil {
+			return nil, fmt.Errorf("ошибка декодирования страницы кейсов (offset=%d): %w", offset, decErr)
 		}
 
 		all = append(all, page...)
@@ -465,14 +538,13 @@ func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequ
 }
 
 // GetCasesParallelCtx получает кейсы из нескольких сьютов параллельно (Stage 6.7).
-// Использует recursive parallelization для максимальной производительности.
-// Returns cases, execution result with statistics, and any error.
+// Использует streaming parallelization — без предварительного подсчёта.
+// Для отображения прогресса установите config.Reporter (реализует parallel.ProgressReporter).
 func (c *HTTPClient) GetCasesParallelCtx(
 	ctx context.Context,
 	projectID int64,
 	suiteIDs []int64,
 	config *parallel.ControllerConfig,
-	progressMonitor *progress.Monitor,
 ) (data.GetCasesResponse, *parallel.ExecutionResult, error) {
 	if len(suiteIDs) == 0 {
 		return data.GetCasesResponse{}, &parallel.ExecutionResult{Cases: []data.Case{}}, nil
@@ -494,9 +566,9 @@ func (c *HTTPClient) GetCasesParallelCtx(
 	// Create fetcher implementation
 	fetcher := &casesFetcher{client: c}
 
-	// Execute parallel fetching
+	// Execute parallel fetching (Reporter is in config)
 	controller := parallel.NewController(config)
-	result, err := controller.Execute(ctx, tasks, fetcher, progressMonitor)
+	result, err := controller.Execute(ctx, tasks, fetcher, nil)
 
 	if err != nil && len(result.Cases) == 0 {
 		return nil, result, err
@@ -510,7 +582,9 @@ type casesFetcher struct {
 	client *HTTPClient
 }
 
-// FetchPage fetches a single page of cases
+// FetchPage fetches a single page of cases.
+// client.Get() already checks StatusCode != 200 and returns a formatted error,
+// so no duplicate status check is needed here.
 func (f *casesFetcher) FetchPage(ctx context.Context, req parallel.PageRequest) ([]data.Case, error) {
 	endpoint := fmt.Sprintf("get_cases/%d", req.ProjectID)
 	query := map[string]string{
@@ -525,46 +599,11 @@ func (f *casesFetcher) FetchPage(ctx context.Context, req parallel.PageRequest) 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
-	var cases data.GetCasesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&cases); err != nil {
-		return nil, fmt.Errorf("decode error: %w", err)
-	}
-
-	return cases, nil
-}
-
-// GetTotalCases returns the total number of cases in a suite
-func (f *casesFetcher) GetTotalCases(ctx context.Context, projectID int64, suiteID int64) (int, error) {
-	// Fetch first page with limit=1 to get count from response headers or size
-	endpoint := fmt.Sprintf("get_cases/%d", projectID)
-	query := map[string]string{
-		"suite_id": fmt.Sprintf("%d", suiteID),
-		"offset":   "0",
-		"limit":    "1",
-	}
-
-	resp, err := f.client.Get(endpoint, query)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return 0, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return 0, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
+		return nil, fmt.Errorf("read body error: %w", err)
 	}
 
-	var cases data.GetCasesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&cases); err != nil {
-		return 0, fmt.Errorf("decode error: %w", err)
-	}
-
-	// If we got 1 case, we need to estimate. For now, return a conservative estimate
-	// In real implementation, TestRail API might return X-Total-Count header
-	return len(cases) * 250, nil // Rough estimate
+	return decodeCasesResponse(body)
 }
+

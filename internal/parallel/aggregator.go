@@ -82,21 +82,31 @@ func (ra *ResultAggregator) Start(ctx context.Context) {
 func (ra *ResultAggregator) aggregate(ctx context.Context) {
 	defer close(ra.doneCh)
 
-	for {
-		select {
-		case <-ctx.Done():
-			log.Debug("ResultAggregator: context cancelled")
-			return
+	resultCh := ra.resultCh
+	errCh := ra.errCh
+	ctxDone := ctx.Done()
 
-		case result, ok := <-ra.resultCh:
+	for {
+		if resultCh == nil && errCh == nil {
+			return
+		}
+
+		select {
+		case <-ctxDone:
+			log.Debug("ResultAggregator: context cancelled, draining channels")
+			ctxDone = nil
+
+		case result, ok := <-resultCh:
 			if !ok {
-				return // Channel closed
+				resultCh = nil
+				continue
 			}
 			ra.processResult(result)
 
-		case err, ok := <-ra.errCh:
+		case err, ok := <-errCh:
 			if !ok {
-				return // Channel closed
+				errCh = nil
+				continue
 			}
 			ra.processError(err)
 		}

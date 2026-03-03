@@ -170,7 +170,7 @@ func TestCompareCasesInternal_Success(t *testing.T) {
 	cmd.Flags().Int("parallel-pages", 3, "")
 	cmd.Flags().Duration("timeout", 5*time.Minute, "")
 
-	result, err := compareCasesInternal(cmd, mock, 1, 2, "title", nil)
+	result, _, err := compareCasesInternal(cmd, mock, 1, 2, "title")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -195,7 +195,7 @@ func TestCompareCasesInternal_Error(t *testing.T) {
 	cmd.Flags().Int("parallel-pages", 3, "")
 	cmd.Flags().Duration("timeout", 5*time.Minute, "")
 
-	result, err := compareCasesInternal(cmd, mock, 1, 2, "title", nil)
+	result, _, err := compareCasesInternal(cmd, mock, 1, 2, "title")
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -213,7 +213,7 @@ func TestFetchCaseItems_Success(t *testing.T) {
 		},
 	}
 
-	items, err := fetchCaseItems(mock, 1, nil)
+	items, err := fetchCaseItems(mock, 1)
 
 	assert.NoError(t, err)
 	assert.Equal(t, 2, len(items))
@@ -228,7 +228,7 @@ func TestFetchCaseItems_Error(t *testing.T) {
 		},
 	}
 
-	items, err := fetchCaseItems(mock, 1, nil)
+	items, err := fetchCaseItems(mock, 1)
 
 	assert.Error(t, err)
 	assert.Nil(t, items)

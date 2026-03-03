@@ -88,7 +88,9 @@ var suitesCmd = newSuitesCmd()
 // compareSuitesInternal compares suites between two projects and returns the result.
 // Uses parallel API to fetch both projects simultaneously.
 func compareSuitesInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Параллельная загрузка сьютов из проектов %d и %d...", pid1, pid2))
+	if pm != nil {
+		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Параллельная загрузка сьютов из проектов %d и %d...", pid1, pid2))
+	}
 
 	// Fetch suites from both projects in parallel
 	suitesByProject, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2, nil)

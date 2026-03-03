@@ -1,0 +1,83 @@
+package compare
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+	"time"
+
+	"github.com/Korrnals/gotr/internal/parallel"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestLoadFailedPages_Success(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "failed.json")
+
+	jsonData := `{
+  "generated_at": "2026-03-03T10:15:00Z",
+  "total": 2,
+  "failed_pages": [
+    {"project_id":30,"suite_id":1001,"offset":0,"limit":250,"page_num":1,"error":"timeout"},
+    {"project_id":34,"suite_id":2002,"offset":250,"limit":250,"page_num":2,"error":"503"}
+  ]
+}`
+	require.NoError(t, os.WriteFile(path, []byte(jsonData), 0644))
+
+	pages, err := loadFailedPages(path)
+	require.NoError(t, err)
+	require.Len(t, pages, 2)
+	assert.Equal(t, int64(30), pages[0].ProjectID)
+	assert.Equal(t, int64(2002), pages[1].SuiteID)
+}
+
+func TestDedupeFailedPages_RemovesDuplicates(t *testing.T) {
+	in := []parallel.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1},
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1},
+		{ProjectID: 30, SuiteID: 1001, Offset: 250, Limit: 250, PageNum: 2},
+	}
+
+	out := dedupeFailedPages(in)
+	require.Len(t, out, 2)
+	assert.Equal(t, 0, out[0].Offset)
+	assert.Equal(t, 250, out[1].Offset)
+}
+
+func TestResolveRetryFailedPagesOptionsFromConfig_UsesConfigDefaults(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("compare.cases.retry.attempts", 9)
+	viper.Set("compare.cases.retry.workers", 12)
+	viper.Set("compare.cases.retry.delay", "2s")
+
+	cmd := newRetryFailedPagesCmd()
+	require.NoError(t, cmd.ParseFlags([]string{}))
+
+	opts, err := resolveRetryFailedPagesOptionsFromConfig(cmd)
+	require.NoError(t, err)
+	assert.Equal(t, 9, opts.Attempts)
+	assert.Equal(t, 12, opts.Workers)
+	assert.Equal(t, 2*time.Second, opts.Delay)
+}
+
+func TestResolveRetryFailedPagesOptionsFromConfig_FlagsOverrideConfig(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("compare.cases.retry.attempts", 9)
+	viper.Set("compare.cases.retry.workers", 12)
+	viper.Set("compare.cases.retry.delay", "2s")
+
+	cmd := newRetryFailedPagesCmd()
+	require.NoError(t, cmd.ParseFlags([]string{"--attempts=2", "--workers=3", "--retry-delay=250ms"}))
+
+	opts, err := resolveRetryFailedPagesOptionsFromConfig(cmd)
+	require.NoError(t, err)
+	assert.Equal(t, 2, opts.Attempts)
+	assert.Equal(t, 3, opts.Workers)
+	assert.Equal(t, 250*time.Millisecond, opts.Delay)
+}

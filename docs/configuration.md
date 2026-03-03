@@ -45,6 +45,29 @@ api_key: "your_api_key"
 insecure: false      # пропустить проверку TLS
 jq_format: false     # включить jq-форматирование по умолчанию
 debug: false         # отладочный вывод
+
+# Настройки compare-команд (performance tuning)
+compare:
+  # Авто-определение окружения: auto | cloud | server
+  deployment: "auto"
+  
+  # Для cloud: professional | enterprise
+  cloud_tier: "professional"
+  
+  # Лимит запросов/мин: -1 = авто по профилю, 0 = без лимита, >0 = фиксированный
+  rate_limit: -1
+  
+  cases:
+    parallel_suites: 8     # Одновременно загружаемых сьютов
+    parallel_pages: 10     # Одновременно загружаемых страниц внутри сьюта
+    page_retries: 5        # Retry для каждой страницы в основном этапе
+    timeout: "30m"         # Таймаут полной операции
+    auto_retry_failed_pages: true  # Авто-дозабор проблемных страниц
+    
+    retry:
+      attempts: 3          # Попытки на страницу при точечном ретрае
+      workers: 6           # Параллельных воркеров для дозабора
+      delay: "500ms"       # Пауза между попытками
 ```
 
 ### Расположение файла
@@ -63,6 +86,23 @@ debug: false         # отладочный вывод
 | `-k, --api-key` | API ключ | `TESTRAIL_API_KEY` |
 | `-i, --insecure` | Пропустить проверку TLS | - |
 | `-d, --debug` | Отладочный вывод | `TESTRAIL_DEBUG` |
+
+## Флаги compare
+
+Эти флаги доступны для всех подкоманд `compare` (`cases`, `all`, `retry-failed-pages` и др.):
+
+| Флаг | Описание | Конфиг-ключ |
+|------|----------|-------------|
+| `--rate-limit` | Лимит запросов/мин (-1=авто, 0=без лимита) | `compare.rate_limit` |
+| `--parallel-suites` | Параллельных сьютов (default 8) | `compare.cases.parallel_suites` |
+| `--parallel-pages` | Параллельных страниц (default 10) | `compare.cases.parallel_pages` |
+| `--page-retries` | Retry на страницу (default 5) | `compare.cases.page_retries` |
+| `--timeout` | Таймаут операции (default 30m) | `compare.cases.timeout` |
+| `--retry-attempts` | Попытки авто-ретрая (default 3) | `compare.cases.retry.attempts` |
+| `--retry-workers` | Воркеров авто-ретрая (default 6) | `compare.cases.retry.workers` |
+| `--retry-delay` | Пауза авто-ретрая (default 500ms) | `compare.cases.retry.delay` |
+
+**Приоритет:** CLI-флаг > конфиг YAML > default.
 
 ## Примеры использования
 

@@ -136,6 +136,30 @@ gotr compare all --pid1 30 --pid2 34 --save-to comparison.yaml
 
 **Supported resources:** `cases`, `suites`, `sections`, `sharedsteps`, `runs`, `plans`, `milestones`, `datasets`, `groups`, `labels`, `templates`, `configurations`, `all`
 
+#### Performance Tuning
+
+```bash
+# Server (без rate-limit, максимальная скорость)
+gotr compare cases --pid1 30 --pid2 34 --rate-limit 0
+
+# Cloud Enterprise (повышенный лимит)
+gotr compare cases --pid1 30 --pid2 34 --rate-limit 300
+
+# Больше параллелизма
+gotr compare cases --pid1 30 --pid2 34 --parallel-suites 16 --parallel-pages 20
+```
+
+Automatic deployment detection: gotr определяет `cloud/server` по URL и подбирает rate-limit автоматически. Настраивается в конфиге (`compare.deployment`, `compare.cloud_tier`).
+
+#### Точечный дозабор failed pages
+
+```bash
+# Если часть страниц не загрузилась — дозабрать только их
+gotr compare retry-failed-pages --from ~/.gotr/exports/compare/failed_pages_2026-03-03_10-15-00.json
+```
+
+По умолчанию compare cases автоматически пытается дозабрать проблемные страницы.
+
 ### Test Runs and Results
 
 ```bash

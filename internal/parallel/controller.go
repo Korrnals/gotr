@@ -4,7 +4,6 @@ package parallel
 import (
 	"context"
 	"fmt"
-	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,15 +11,13 @@ import (
 	"github.com/Korrnals/gotr/internal/concurrent"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
 	"golang.org/x/sync/errgroup"
 )
 
 // ParallelController orchestrates parallel fetching of cases across multiple suites
 type ParallelController struct {
-	config      *ControllerConfig
-	workerPool  *concurrent.WorkerPool
-	limiter     *concurrent.AdaptiveRateLimiter
+	config  *ControllerConfig
+	limiter *concurrent.AdaptiveRateLimiter
 }
 
 // NewController creates a new parallel controller with the given configuration
@@ -35,12 +32,17 @@ func NewController(config *ControllerConfig) *ParallelController {
 	}
 }
 
-// Execute executes parallel fetching for the given suite tasks
+// Execute executes parallel fetching for the given suite tasks.
+//
+// Key design decisions (Stage 6.7 v2):
+//   - Streaming pagination — pages fetched in waves until data exhausted
+//   - Reporter callbacks on every page — enables real-time progress display
+//   - Post-factum integrity log: total cases, pages, errors, duplicates
 func (pc *ParallelController) Execute(
 	ctx context.Context,
 	tasks []SuiteTask,
 	fetcher SuiteFetcher,
-	progressMonitor *progress.Monitor,
+	_ interface{}, // backward compat: was *progress.Monitor, now unused
 ) (*ExecutionResult, error) {
 	if len(tasks) == 0 {
 		return &ExecutionResult{
@@ -50,15 +52,7 @@ func (pc *ParallelController) Execute(
 		}, nil
 	}
 
-	// Get total expected count first (for verification)
-	totalExpected := 0
-	for _, task := range tasks {
-		if task.EstimatedSize > 0 {
-			totalExpected += task.EstimatedSize
-		}
-	}
-	log.Debug(fmt.Sprintf("[ParallelController] Starting execution for %d suites, estimated total: %d cases", 
-		len(tasks), totalExpected))
+	log.Debug(fmt.Sprintf("[ParallelController] Starting execution for %d suites (streaming mode)", len(tasks)))
 
 	// Apply timeout if configured
 	if pc.config.Timeout > 0 {
@@ -71,16 +65,15 @@ func (pc *ParallelController) Execute(
 	// Initialize rate limiter
 	pc.limiter = concurrent.NewAdaptiveRateLimiter(pc.config.RequestsPerMinute)
 
-	// Create priority queue and populate it
+	// Create priority queue — use simple FIFO
 	pq := NewPriorityQueue()
 	for _, task := range tasks {
-		// Estimate size if not provided
 		if task.EstimatedSize == 0 {
-			task.EstimatedSize = pc.estimateSize(ctx, task, fetcher)
+			task.EstimatedSize = 100 // default priority bucket
 		}
 		pq.Push(task)
 	}
-	pq.Close() // Close queue, no more items will be added
+	pq.Close()
 
 	// Create result aggregator
 	aggregator := NewResultAggregator(len(tasks) * 10)
@@ -90,6 +83,8 @@ func (pc *ParallelController) Execute(
 	startTime := time.Now()
 	var completedSuites int32
 	totalSuites := int32(len(tasks))
+	var failedPagesMu sync.Mutex
+	failedPages := make([]FailedPage, 0)
 
 	// Create worker pool for suites
 	maxWorkers := pc.config.MaxConcurrentSuites
@@ -103,7 +98,7 @@ func (pc *ParallelController) Execute(
 	// Start workers
 	for i := 0; i < maxWorkers; i++ {
 		g.Go(func() error {
-			return pc.suiteWorker(ctx, pq, fetcher, aggregator, &completedSuites, totalSuites, progressMonitor)
+			return pc.suiteWorker(ctx, pq, fetcher, aggregator, &completedSuites, totalSuites, &failedPagesMu, &failedPages)
 		})
 	}
 
@@ -120,31 +115,28 @@ func (pc *ParallelController) Execute(
 	stats.StartTime = startTime
 	stats.EndTime = time.Now()
 
-	// Verify completeness
-	log.Debug(fmt.Sprintf("[ParallelController] Execution complete: got %d cases from %d suites (expected ~%d)",
-		len(cases), completedSuites, totalExpected))
-	
+	log.Debug(fmt.Sprintf("[ParallelController] Execution complete: got %d cases from %d suites",
+		len(cases), completedSuites))
+
 	if len(errors) > 0 {
 		log.Debug(fmt.Sprintf("[ParallelController] Errors encountered: %d", len(errors)))
 	}
 
-	// Check for significant data loss (>10%)
-	if totalExpected > 0 && len(cases) < int(float64(totalExpected)*0.9) {
-		log.Debug(fmt.Sprintf("[ParallelController] WARNING: Significant data loss detected! Expected ~%d, got %d (%.1f%%)",
-			totalExpected, len(cases), float64(len(cases))/float64(totalExpected)*100))
-	}
-
 	result := &ExecutionResult{
-		Cases:         cases,
-		Errors:        errors,
-		Stats:         stats,
-		Partial:       err != nil && len(cases) > 0,
-		ExpectedCases: totalExpected,
+		Cases:       cases,
+		Errors:      errors,
+		FailedPages: failedPages,
+		Stats:       stats,
+		Partial:     err != nil && len(cases) > 0,
 	}
 
 	if err != nil && len(cases) == 0 {
 		return result, fmt.Errorf("parallel execution failed: %w", err)
 	}
+
+	// Post-factum integrity log
+	log.Debug(fmt.Sprintf("[ParallelController] Loaded %d cases from %d suites, %d pages, %d errors",
+		len(cases), stats.CompletedSuites, stats.TotalPages, len(errors)))
 
 	return result, nil
 }
@@ -157,141 +149,225 @@ func (pc *ParallelController) suiteWorker(
 	aggregator *ResultAggregator,
 	completedSuites *int32,
 	totalSuites int32,
-	progressMonitor *progress.Monitor,
+	failedPagesMu *sync.Mutex,
+	failedPages *[]FailedPage,
 ) error {
 	for {
-		// Check context cancellation
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
 
-		// Get next task from queue
 		task, ok := pq.Pop()
 		if !ok {
-			// Queue is closed and empty
 			return nil
 		}
 
-		log.Debug(fmt.Sprintf("Processing suite %d (estimated size: %d)", task.SuiteID, task.EstimatedSize))
+		log.Debug(fmt.Sprintf("Processing suite %d", task.SuiteID))
 
-		// Fetch all pages for this suite
-		err := pc.fetchSuiteParallel(ctx, task, fetcher, aggregator)
+		// Streaming fetch — no GetTotalCases needed
+		err := pc.fetchSuiteStreaming(ctx, task, fetcher, aggregator, failedPagesMu, failedPages)
 		if err != nil {
 			log.Debug(fmt.Sprintf("Error fetching suite %d: %v", task.SuiteID, err))
 			aggregator.SubmitError(fmt.Errorf("suite %d: %w", task.SuiteID, err))
 		}
 
-		// Update progress
 		completed := atomic.AddInt32(completedSuites, 1)
-		if progressMonitor != nil {
-			progressMonitor.Increment()
+
+		// Report suite completion via Reporter
+		if pc.config.Reporter != nil {
+			pc.config.Reporter.OnSuiteComplete()
 		}
 
 		log.Debug(fmt.Sprintf("Completed suite %d (%d/%d)", task.SuiteID, completed, totalSuites))
 	}
 }
 
-// fetchSuiteParallel fetches all pages from a suite in parallel
-func (pc *ParallelController) fetchSuiteParallel(
+// fetchSuiteStreaming fetches all pages from a suite using pipeline-based parallel pagination.
+// Instead of wave-based synchronization (fetch N → wait all → fetch N), this uses
+// N independent workers that continuously claim the next offset via an atomic counter.
+//
+// Algorithm:
+//   - N workers (MaxConcurrentPages) run in parallel
+//   - Each worker atomically claims the next offset, fetches the page, submits results
+//   - When a worker receives an empty page (0 cases, no error) → sets exhausted flag
+//   - All workers check the exhausted flag before claiming the next offset
+//   - Failed offsets are collected for a sequential recovery pass
+//
+// This eliminates wave synchronization overhead: no worker waits for the slowest
+// page in a batch. Throughput is limited only by the rate limiter and network latency.
+func (pc *ParallelController) fetchSuiteStreaming(
 	ctx context.Context,
 	task SuiteTask,
 	fetcher SuiteFetcher,
 	aggregator *ResultAggregator,
+	failedPagesMu *sync.Mutex,
+	failedPages *[]FailedPage,
 ) error {
-	// Get total count to calculate pages
-	totalCount, err := fetcher.GetTotalCases(ctx, task.ProjectID, task.SuiteID)
-	if err != nil {
-		return fmt.Errorf("failed to get total count for suite %d: %w", task.SuiteID, err)
-	}
-
-	if totalCount == 0 {
-		log.Debug(fmt.Sprintf("[Suite %d] No cases to fetch", task.SuiteID))
-		return nil // Nothing to fetch
-	}
-
-	// Calculate number of pages
 	pageSize := pc.config.PageSize
-	numPages := int(math.Ceil(float64(totalCount) / float64(pageSize)))
-	
-	log.Debug(fmt.Sprintf("[Suite %d] Expecting %d cases, %d pages (pageSize=%d)", 
-		task.SuiteID, totalCount, numPages, pageSize))
-
-	// Create page requests
-	pages := make([]PageRequest, numPages)
-	for i := 0; i < numPages; i++ {
-		pages[i] = PageRequest{
-			SuiteTask: task,
-			Offset:    i * pageSize,
-			Limit:     pageSize,
-			PageNum:   i + 1,
-		}
+	numWorkers := pc.config.MaxConcurrentPages
+	if numWorkers <= 0 {
+		numWorkers = 3
 	}
 
-	// Fetch pages in parallel with limited concurrency
-	maxPageWorkers := pc.config.MaxConcurrentPages
-	if maxPageWorkers > numPages {
-		maxPageWorkers = numPages
+	reporter := pc.config.Reporter
+
+	// Atomic offset counter — each worker claims the next offset atomically
+	var nextOffset int64
+	// Exhausted flag — set when we confidently reached end of data
+	var exhausted int32
+	// Consecutive empty pages counter; do not stop on first empty page because
+	// transient API glitches can return empty bodies sporadically.
+	var consecutiveEmptyPages int32
+	// Consecutive error counter — reset on any successful page
+	var consecutiveErrors int32
+	maxConsecutiveErrors := int32(pc.config.MaxConsecutiveErrorWaves * numWorkers)
+	if maxConsecutiveErrors <= 0 {
+		maxConsecutiveErrors = 9 // fallback
 	}
 
-	g, ctx := errgroup.WithContext(ctx)
-	g.SetLimit(maxPageWorkers)
+	// Failed offsets for recovery pass
+	var failedMu sync.Mutex
+	var failedOffsets []int
 
-	var successCount int32
-	var errorCount int32
-	var mu sync.Mutex
-	var firstError error
+	// Stats
+	var totalCases int32
 
-	for _, page := range pages {
-		page := page // capture loop variable
+	g, gctx := errgroup.WithContext(ctx)
+
+	for w := 0; w < numWorkers; w++ {
 		g.Go(func() error {
-			result := pc.fetchPageWithRetry(ctx, page, fetcher)
-
-			// Submit result to aggregator
-			aggregator.Submit(result)
-
-			if result.Error != nil {
-				atomic.AddInt32(&errorCount, 1)
-				mu.Lock()
-				if firstError == nil {
-					firstError = result.Error
+			for {
+				// Check context
+				if gctx.Err() != nil {
+					return gctx.Err()
 				}
-				mu.Unlock()
-				return nil // Don't stop on individual page errors
-			}
 
-			atomic.AddInt32(&successCount, 1)
-			return nil
+				// Check if suite data is exhausted
+				if atomic.LoadInt32(&exhausted) != 0 {
+					return nil
+				}
+
+				// Check if too many consecutive errors (likely past end of data)
+				if atomic.LoadInt32(&consecutiveErrors) >= maxConsecutiveErrors {
+					return nil
+				}
+
+				// Claim next offset atomically
+				offset := int(atomic.AddInt64(&nextOffset, int64(pageSize)) - int64(pageSize))
+
+				// Safety: cap at 10M cases (40K pages)
+				if offset/pageSize > 40000 {
+					log.Debug(fmt.Sprintf("[Suite %d] WARNING: hit 40K page limit, stopping", task.SuiteID))
+					atomic.StoreInt32(&exhausted, 1)
+					return nil
+				}
+
+				req := PageRequest{
+					SuiteTask: task,
+					Offset:    offset,
+					Limit:     pageSize,
+					PageNum:   offset/pageSize + 1,
+				}
+
+				result := pc.fetchPageWithRetry(gctx, req, fetcher)
+
+				if result.Error != nil {
+					// Record failed offset for recovery
+					failedMu.Lock()
+					failedOffsets = append(failedOffsets, offset)
+					failedMu.Unlock()
+					atomic.AddInt32(&consecutiveErrors, 1)
+					continue
+				}
+
+				if len(result.Cases) == 0 {
+					// Empty page can be transient; stop only after several consecutive empties.
+					emptyCount := atomic.AddInt32(&consecutiveEmptyPages, 1)
+					if emptyCount >= int32(numWorkers) {
+						atomic.StoreInt32(&exhausted, 1)
+						return nil
+					}
+					continue
+				}
+
+				// Success — reset consecutive error counter
+				atomic.StoreInt32(&consecutiveErrors, 0)
+				atomic.StoreInt32(&consecutiveEmptyPages, 0)
+
+				aggregator.Submit(result)
+				atomic.AddInt32(&totalCases, int32(len(result.Cases)))
+
+				if reporter != nil {
+					reporter.OnCasesReceived(len(result.Cases))
+					reporter.OnPageFetched()
+				}
+			}
 		})
 	}
 
-	// Wait for all page fetches
-	if err := g.Wait(); err != nil {
-		return fmt.Errorf("suite %d: %w", task.SuiteID, err)
+	g.Wait()
+
+	// === Recovery pass: re-fetch failed pages sequentially ===
+	if len(failedOffsets) > 0 {
+		log.Debug(fmt.Sprintf("[Suite %d] Recovery: re-fetching %d failed pages", task.SuiteID, len(failedOffsets)))
+
+		recovered := 0
+		permanentErrors := 0
+		for _, failedOffset := range failedOffsets {
+			if ctx.Err() != nil {
+				break
+			}
+
+			req := PageRequest{
+				SuiteTask: task,
+				Offset:    failedOffset,
+				Limit:     pageSize,
+				PageNum:   failedOffset/pageSize + 1,
+			}
+
+			result := pc.fetchPageWithRetry(ctx, req, fetcher)
+			if result.Error != nil {
+				// Still failed — submit as permanent error
+				aggregator.Submit(result)
+				failedPagesMu.Lock()
+				*failedPages = append(*failedPages, FailedPage{
+					ProjectID: task.ProjectID,
+					SuiteID:   task.SuiteID,
+					Offset:    failedOffset,
+					Limit:     pageSize,
+					PageNum:   failedOffset/pageSize + 1,
+					Error:     result.Error.Error(),
+				})
+				failedPagesMu.Unlock()
+				permanentErrors++
+				if reporter != nil {
+					reporter.OnError()
+				}
+				log.Debug(fmt.Sprintf("[Suite %d] Recovery FAILED for offset %d: %v",
+					task.SuiteID, failedOffset, result.Error))
+			} else if len(result.Cases) > 0 {
+				aggregator.Submit(result)
+				recovered++
+				atomic.AddInt32(&totalCases, int32(len(result.Cases)))
+
+				if reporter != nil {
+					reporter.OnCasesReceived(len(result.Cases))
+					reporter.OnPageFetched()
+				}
+			}
+			// else: empty page — offset was past end of data, not an error
+		}
+
+		if recovered > 0 || permanentErrors > 0 {
+			log.Debug(fmt.Sprintf("[Suite %d] Recovery: %d/%d recovered, %d permanent errors",
+				task.SuiteID, recovered, len(failedOffsets), permanentErrors))
+		}
 	}
 
-	// Log completion status
-	success := atomic.LoadInt32(&successCount)
-	errors := atomic.LoadInt32(&errorCount)
-	
-	if errors > 0 {
-		log.Debug(fmt.Sprintf("[Suite %d] Completed with errors: %d/%d pages succeeded, %d failed", 
-			task.SuiteID, success, numPages, errors))
-	} else {
-		log.Debug(fmt.Sprintf("[Suite %d] All %d pages fetched successfully", task.SuiteID, numPages))
-	}
-
-	// Check if any pages succeeded
-	if success == 0 && firstError != nil {
-		return fmt.Errorf("suite %d: all %d page fetches failed: %w", task.SuiteID, numPages, firstError)
-	}
-
-	// Warn if significant portion failed (>20%)
-	if float64(errors)/float64(numPages) > 0.2 {
-		log.Debug(fmt.Sprintf("[Suite %d] WARNING: %.0f%% of pages failed (%d/%d)", 
-			task.SuiteID, float64(errors)/float64(numPages)*100, errors, numPages))
-	}
+	cases := atomic.LoadInt32(&totalCases)
+	log.Debug(fmt.Sprintf("[Suite %d] Pipeline complete: %d cases fetched", task.SuiteID, cases))
 
 	return nil
 }
@@ -310,11 +386,17 @@ func (pc *ParallelController) fetchPageWithRetry(
 		FetchedAt: start,
 	}
 
-	// Apply rate limiting
+	// Apply rate limiting (wait time is NOT counted in response time)
 	pc.limiter.Wait()
+
+	// Measure only the actual server response time
+	fetchStart := time.Now()
 
 	// Fetch with retry
 	retryConfig := concurrent.DefaultRetryConfig()
+	if pc.config.MaxRetries >= 0 {
+		retryConfig.MaxRetries = pc.config.MaxRetries
+	}
 	err := concurrent.RetryWithContext(ctx, retryConfig, func() error {
 		cases, err := fetcher.FetchPage(ctx, req)
 		if err != nil {
@@ -324,54 +406,20 @@ func (pc *ParallelController) fetchPageWithRetry(
 		return nil
 	})
 
-	result.Duration = time.Since(start)
+	serverTime := time.Since(fetchStart)
+	result.Duration = time.Since(start) // total time including rate limiter wait
 
 	if err != nil {
 		result.Error = fmt.Errorf("page %d (offset %d): %w", req.PageNum, req.Offset, err)
-		// Record error for adaptive rate limiting
-		pc.limiter.RecordResponseTime(result.Duration)
-	} else {
-		// Record success for adaptive rate limiting
-		pc.limiter.RecordResponseTime(result.Duration)
 	}
+
+	// Record only server response time (not rate limiter wait time)
+	pc.limiter.RecordResponseTime(serverTime)
 
 	return result
 }
 
-// estimateSize estimates the number of cases in a suite
-func (pc *ParallelController) estimateSize(
-	ctx context.Context,
-	task SuiteTask,
-	fetcher SuiteFetcher,
-) int {
-	// Try to get total count
-	count, err := fetcher.GetTotalCases(ctx, task.ProjectID, task.SuiteID)
-	if err == nil {
-		return count
-	}
-
-	// Fallback: try fetching first page to estimate
-	req := PageRequest{
-		SuiteTask: task,
-		Offset:    0,
-		Limit:     1, // Just get count
-	}
-
-	cases, err := fetcher.FetchPage(ctx, req)
-	if err != nil {
-		return 100 // Default estimate
-	}
-
-	// If we got cases, use a conservative estimate
-	if len(cases) > 0 {
-		return len(cases) * 10 // Assume 10 pages
-	}
-
-	return 100 // Default
-}
-
 // GetStats returns statistics about the current execution
-// Note: This is a placeholder as stats are returned in ExecutionResult
 func (pc *ParallelController) GetStats() AggregationStats {
 	return AggregationStats{}
 }

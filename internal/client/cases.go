@@ -582,10 +582,10 @@ type casesFetcher struct {
 	client *HTTPClient
 }
 
-// FetchPage fetches a single page of cases.
+// FetchPageCtx fetches a single page of cases.
 // client.Get() already checks StatusCode != 200 and returns a formatted error,
 // so no duplicate status check is needed here.
-func (f *casesFetcher) FetchPage(ctx context.Context, req parallel.PageRequest) ([]data.Case, error) {
+func (f *casesFetcher) FetchPageCtx(ctx context.Context, req parallel.PageRequest) ([]data.Case, error) {
 	endpoint := fmt.Sprintf("get_cases/%d", req.ProjectID)
 	query := map[string]string{
 		"suite_id": fmt.Sprintf("%d", req.SuiteID),

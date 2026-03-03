@@ -14,7 +14,7 @@ func TestResultAggregator_Basic(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Submit some results
 	ra.Submit(PageResult{
@@ -47,7 +47,7 @@ func TestResultAggregator_Deduplication(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Submit results with duplicate IDs
 	ra.Submit(PageResult{
@@ -81,7 +81,7 @@ func TestResultAggregator_ErrorHandling(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Submit successful result
 	ra.Submit(PageResult{
@@ -109,7 +109,7 @@ func TestResultAggregator_Concurrent(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(1000)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Concurrent submissions
 	numProducers := 10
@@ -159,7 +159,7 @@ func TestResultAggregator_Stats(t *testing.T) {
 	assert.Equal(t, 0, stats.TotalCases)
 	assert.False(t, stats.IsRunning)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Stats after start
 	stats = ra.Stats()
@@ -206,7 +206,7 @@ func TestResultAggregator_DoubleStop(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 	ra.Submit(PageResult{Cases: []data.Case{{ID: 1}}})
 
 	cases1, _ := ra.Stop()
@@ -221,7 +221,7 @@ func TestResultAggregator_EmptyResults(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Submit empty results
 	ra.Submit(PageResult{SuiteID: 1, Cases: []data.Case{}})
@@ -235,7 +235,7 @@ func TestResultAggregator_NilError(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Submit nil error should not panic
 	ra.SubmitError(nil)
@@ -296,7 +296,7 @@ func TestResultAggregator_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ra := NewResultAggregator(100)
 
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	// Submit some results
 	ra.Submit(PageResult{
@@ -319,7 +319,7 @@ func TestResultAggregator_ContextCancellation(t *testing.T) {
 func BenchmarkResultAggregator_Submit(b *testing.B) {
 	ctx := context.Background()
 	ra := NewResultAggregator(10000)
-	ra.Start(ctx)
+	ra.StartCtx(ctx)
 
 	result := PageResult{
 		SuiteID: 1,

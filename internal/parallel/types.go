@@ -98,8 +98,8 @@ type Fetcher func(ctx context.Context, projectID int64, suiteID int64, offset in
 
 // SuiteFetcher is the interface for fetching suite data
 type SuiteFetcher interface {
-	// FetchPage fetches a single page of cases
-	FetchPage(ctx context.Context, req PageRequest) ([]data.Case, error)
+	// FetchPageCtx fetches a single page of cases
+	FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, error)
 }
 
 // ProgressReporter receives fine-grained progress updates from the controller.

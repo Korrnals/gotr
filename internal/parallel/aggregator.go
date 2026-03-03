@@ -60,7 +60,7 @@ func NewResultAggregator(bufferSize int) *ResultAggregator {
 
 // Start begins the aggregation process
 // This should be called once before submitting any results
-func (ra *ResultAggregator) Start(ctx context.Context) {
+func (ra *ResultAggregator) StartCtx(ctx context.Context) {
 	ra.mu.Lock()
 	defer ra.mu.Unlock()
 
@@ -75,11 +75,11 @@ func (ra *ResultAggregator) Start(ctx context.Context) {
 	ra.doneCh = make(chan struct{})
 
 	// Start the aggregation goroutine
-	go ra.aggregate(ctx)
+	go ra.aggregateCtx(ctx)
 }
 
 // aggregate runs in a separate goroutine and processes incoming results
-func (ra *ResultAggregator) aggregate(ctx context.Context) {
+func (ra *ResultAggregator) aggregateCtx(ctx context.Context) {
 	defer close(ra.doneCh)
 
 	resultCh := ra.resultCh

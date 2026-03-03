@@ -31,7 +31,7 @@ func newMockSuiteFetcher() *mockSuiteFetcher {
 	}
 }
 
-func (m *mockSuiteFetcher) FetchPage(ctx context.Context, req PageRequest) ([]data.Case, error) {
+func (m *mockSuiteFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, error) {
 	atomic.AddInt32(&m.callCount, 1)
 
 	// Simulate latency
@@ -383,7 +383,7 @@ func newTruncatedMockFetcher() *truncatedMockFetcher {
 	}
 }
 
-func (m *truncatedMockFetcher) FetchPage(ctx context.Context, req PageRequest) ([]data.Case, error) {
+func (m *truncatedMockFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, error) {
 	atomic.AddInt32(&m.callCount, 1)
 
 	cases, ok := m.cases[req.SuiteID]

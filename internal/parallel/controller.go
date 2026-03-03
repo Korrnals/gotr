@@ -77,7 +77,7 @@ func (pc *ParallelController) Execute(
 
 	// Create result aggregator
 	aggregator := NewResultAggregator(len(tasks) * 10)
-	aggregator.Start(ctx)
+	aggregator.StartCtx(ctx)
 
 	// Track statistics
 	startTime := time.Now()
@@ -398,7 +398,7 @@ func (pc *ParallelController) fetchPageWithRetry(
 		retryConfig.MaxRetries = pc.config.MaxRetries
 	}
 	err := concurrent.RetryWithContext(ctx, retryConfig, func() error {
-		cases, err := fetcher.FetchPage(ctx, req)
+		cases, err := fetcher.FetchPageCtx(ctx, req)
 		if err != nil {
 			return err
 		}

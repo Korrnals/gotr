@@ -68,7 +68,7 @@ func (c *ParallelController) FetchSuiteCases(
     suiteID int64,
 ) ([]Case, error)
 
-func (c *ParallelController) FetchPage(
+func (c *ParallelController) FetchPageCtx(
     projectID int64,
     suiteID int64,
     offset int64,

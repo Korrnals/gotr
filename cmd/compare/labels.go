@@ -2,10 +2,11 @@ package compare
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,14 +45,11 @@ func newLabelsCmd() *cobra.Command {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
 			// Start timer
 			startTime := time.Now()
 
 			// Compare labels
-			result, err := compareLabelsInternal(cli, pid1, pid2, pm)
+			result, err := compareLabelsInternal(cli, pid1, pid2)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения меток: %w", err)
 			}
@@ -84,14 +82,14 @@ func newLabelsCmd() *cobra.Command {
 var labelsCmd = newLabelsCmd()
 
 // compareLabelsInternal compares labels between two projects and returns the result.
-func compareLabelsInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка меток из проекта %d...", pid1))
+func compareLabelsInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+	ui.Infof(os.Stderr, "Загрузка меток из проекта %d...", pid1)
 	labels1, err := fetchLabelItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения меток проекта %d: %w", pid1, err)
 	}
 
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка меток из проекта %d...", pid2))
+	ui.Infof(os.Stderr, "Загрузка меток из проекта %d...", pid2)
 	labels2, err := fetchLabelItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения меток проекта %d: %w", pid2, err)

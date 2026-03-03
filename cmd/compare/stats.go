@@ -3,32 +3,23 @@ package compare
 import (
 	"fmt"
 	"time"
+
+	"github.com/Korrnals/gotr/internal/ui/reporter"
 )
 
-// PrintCompareStats prints universal statistics for compare commands
+// PrintCompareStats prints universal statistics for compare commands.
+// Delegates to reporter.CompareStats for centralized formatting.
 func PrintCompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int, elapsed time.Duration) {
-	total := onlyFirst + onlySecond + common
-	
-	fmt.Println()
-	fmt.Println("┌──────────────────────────────────────────────────────────────┐")
-	fmt.Printf("│          📊 СТАТИСТИКА: %s\n", resource)
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  ⏱️  Время выполнения: %s\n", elapsed.Round(time.Millisecond))
-	fmt.Printf("│  📦 Всего обработано: %d\n", total)
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  ✅ Только в проекте %d: %d\n", pid1, onlyFirst)
-	fmt.Printf("│  ✅ Только в проекте %d: %d\n", pid2, onlySecond)
-	fmt.Printf("│  🔗 Общих: %d\n", common)
-	fmt.Println("└──────────────────────────────────────────────────────────────┘")
+	reporter.CompareStats(resource, pid1, pid2, onlyFirst, onlySecond, common, elapsed).Print()
 }
 
 // PrintCompareResultShort prints short result (for non-compare commands)
 func PrintCompareResultShort(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int) {
-	fmt.Printf("\n%s: П%d=%d, П%d=%d, общих=%d\n", 
-		resource, pid1, onlyFirst, pid2, onlySecond, common)
+	fmt.Printf("\n%s\n", reporter.CompareResultShort(resource, pid1, pid2, onlyFirst, onlySecond, common))
 }
 
 // PrintCasesStatsWithErrors prints compare-cases statistics with error/retry diagnostics.
+// Uses reporter.Report builder for dynamic sections.
 func PrintCasesStatsWithErrors(
 	pid1, pid2 int64,
 	onlyFirst, onlySecond, common int,
@@ -37,22 +28,21 @@ func PrintCasesStatsWithErrors(
 ) {
 	total := onlyFirst + onlySecond + common
 
-	fmt.Println()
-	fmt.Println("┌──────────────────────────────────────────────────────────────┐")
-	fmt.Println("│          📊 СТАТИСТИКА: cases")
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  ⏱️  Время выполнения: %s\n", elapsed.Round(time.Millisecond))
-	fmt.Printf("│  📦 Всего обработано: %d\n", total)
-	fmt.Printf("│  ⚠️  Ошибки загрузки: П%d=%d, П%d=%d\n", pid1, stats.LoadErrorsP1, pid2, stats.LoadErrorsP2)
-	fmt.Printf("│  ⚠️  Failed pages до авто-ретрая: %d\n", stats.FailedPagesBefore)
-	if stats.RetryAttempted {
-		fmt.Printf("│  🔄 Авто-ретрай: восстановлено страниц %d/%d\n", stats.RetryStats.RecoveredPages, stats.RetryStats.UniquePages)
-		fmt.Printf("│  📥 Авто-ретрай: получено кейсов %d\n", stats.RetryStats.RecoveredCases)
-		fmt.Printf("│  ⚠️  Failed pages после авто-ретрая: %d\n", stats.FailedPagesAfter)
-	}
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  ✅ Только в проекте %d: %d\n", pid1, onlyFirst)
-	fmt.Printf("│  ✅ Только в проекте %d: %d\n", pid2, onlySecond)
-	fmt.Printf("│  🔗 Общих: %d\n", common)
-	fmt.Println("└──────────────────────────────────────────────────────────────┘")
+	r := reporter.New("cases").
+		Section("Общая статистика").
+		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
+		Stat("📦", "Всего обработано", total).
+		Section("Ошибки и ретраи").
+		StatFmt("⚠️", "Ошибки загрузки", "П%d=%d, П%d=%d", pid1, stats.LoadErrorsP1, pid2, stats.LoadErrorsP2).
+		Stat("⚠️", "Failed pages до авто-ретрая", stats.FailedPagesBefore).
+		StatIf(stats.RetryAttempted, "🔄", "Восстановлено страниц",
+			fmt.Sprintf("%d/%d", stats.RetryStats.RecoveredPages, stats.RetryStats.UniquePages)).
+		StatIf(stats.RetryAttempted, "📥", "Получено кейсов при ретрае", stats.RetryStats.RecoveredCases).
+		StatIf(stats.RetryAttempted, "⚠️", "Failed pages после авто-ретрая", stats.FailedPagesAfter).
+		Section("Результат сравнения").
+		Stat("✅", fmt.Sprintf("Только в проекте %d", pid1), onlyFirst).
+		Stat("✅", fmt.Sprintf("Только в проекте %d", pid2), onlySecond).
+		Stat("🔗", "Общих", common)
+
+	r.Print()
 }

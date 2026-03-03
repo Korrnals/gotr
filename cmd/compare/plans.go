@@ -2,10 +2,11 @@ package compare
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,14 +45,11 @@ func newPlansCmd() *cobra.Command {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
 			// Start timer
 			startTime := time.Now()
 
 			// Compare plans
-			result, err := comparePlansInternal(cli, pid1, pid2, pm)
+			result, err := comparePlansInternal(cli, pid1, pid2)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения plans: %w", err)
 			}
@@ -84,14 +82,14 @@ func newPlansCmd() *cobra.Command {
 var plansCmd = newPlansCmd()
 
 // comparePlansInternal compares plans between two projects and returns the result.
-func comparePlansInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка plans из проекта %d...", pid1))
+func comparePlansInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+	ui.Infof(os.Stderr, "Загрузка plans из проекта %d...", pid1)
 	plans1, err := fetchPlanItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения plans проекта %d: %w", pid1, err)
 	}
 
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка plans из проекта %d...", pid2))
+	ui.Infof(os.Stderr, "Загрузка plans из проекта %d...", pid2)
 	plans2, err := fetchPlanItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения plans проекта %d: %w", pid2, err)

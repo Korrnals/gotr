@@ -1,6 +1,8 @@
 package compare
 
 import (
+	"time"
+
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 )
@@ -29,24 +31,25 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 		Long: `Выполнение сравнения ресурсов между двумя проектами.
 
 Поддерживаемые ресурсы:
-  cases          - сравнить тест-кейсы
-  suites         - сравнить тест-сюиты
-  sections       - сравнить секции
-  sharedsteps    - сравнить shared steps
-  runs           - сравнить test runs
-  plans          - сравнить test plans
-  milestones     - сравнить milestones
-  datasets       - сравнить datasets
-  groups         - сравнить группы
-  labels         - сравнить метки
-  templates      - сравнить шаблоны
-  configurations - сравнить конфигурации
-  all            - сравнить все ресурсы
+	cases          - сравнить тест-кейсы
+	suites         - сравнить тест-сюиты
+	sections       - сравнить секции
+	sharedsteps    - сравнить shared steps
+	runs           - сравнить test runs
+	plans          - сравнить test plans
+	milestones     - сравнить milestones
+	datasets       - сравнить datasets
+	groups         - сравнить группы
+	labels         - сравнить метки
+	templates      - сравнить шаблоны
+	configurations - сравнить конфигурации
+	retry-failed-pages - точечно догрузить failed pages из JSON-отчёта
+	all            - сравнить все ресурсы
 
 Примеры:
-  gotr compare cases --pid1 30 --pid2 31
-  gotr compare all --pid1 30 --pid2 31 --save
-  gotr compare all --pid1 30 --pid2 31 --save-to result.json
+	gotr compare cases --pid1 30 --pid2 31
+	gotr compare all --pid1 30 --pid2 31 --save
+	gotr compare all --pid1 30 --pid2 31 --save-to result.json
 `,
 	}
 
@@ -57,6 +60,14 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	Cmd.PersistentFlags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
 	Cmd.PersistentFlags().String("save-to", "", "Сохранить результат в указанный файл")
 	Cmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (без статистики и прогресса)")
+	Cmd.PersistentFlags().Int("rate-limit", -1, "Лимит API-запросов в минуту. -1 = авто по profile/deployment, 0 = без лимита, >0 = фиксированное значение.")
+	Cmd.PersistentFlags().Int("parallel-suites", 8, "Максимальное количество параллельных сьютов")
+	Cmd.PersistentFlags().Int("parallel-pages", 10, "Максимальное количество параллельных страниц внутри сьюта")
+	Cmd.PersistentFlags().Int("page-retries", 5, "Количество retry для каждой страницы в основном этапе загрузки")
+	Cmd.PersistentFlags().Duration("timeout", 30*time.Minute, "Таймаут для операции сравнения")
+	Cmd.PersistentFlags().Int("retry-attempts", 3, "Количество попыток при точечном авто-ретрае failed pages")
+	Cmd.PersistentFlags().Int("retry-workers", 6, "Количество параллельных воркеров при авто-ретрае failed pages")
+	Cmd.PersistentFlags().Duration("retry-delay", 500*time.Millisecond, "Пауза между попытками одной страницы при авто-ретрае")
 
 	// Add all subcommands
 	Cmd.AddCommand(casesCmd)
@@ -71,6 +82,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	Cmd.AddCommand(labelsCmd)
 	Cmd.AddCommand(templatesCmd)
 	Cmd.AddCommand(configurationsCmd)
+	Cmd.AddCommand(retryFailedPagesCmd)
 	Cmd.AddCommand(allCmd)
 
 	rootCmd.AddCommand(Cmd)

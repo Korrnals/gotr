@@ -10,7 +10,6 @@ import (
 	"time"
 
 	outpututils "github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -80,10 +79,6 @@ func newAllCmd() *cobra.Command {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
-			// Start timer
 			startTime := time.Now()
 
 			// Compare all resources
@@ -91,14 +86,14 @@ func newAllCmd() *cobra.Command {
 			errors := make(map[string]error)
 
 			// Cases
-			if casesResult, err := compareCasesInternal(cmd, cli, pid1, pid2, "title", pm); err == nil {
+			if casesResult, _, err := compareCasesInternal(cmd, cli, pid1, pid2, "title"); err == nil {
 				result.Cases = casesResult
 			} else {
 				errors["cases"] = err
 			}
 
 			// Suites
-			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2, pm); err == nil {
+			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2, nil); err == nil {
 				result.Suites = suitesResult
 			} else {
 				errors["suites"] = err
@@ -175,8 +170,8 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Print summary table
-				elapsed := time.Since(startTime)
-				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
+			elapsed := time.Since(startTime)
+			printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
 
 			// Save result if requested
 			if savePath != "" {

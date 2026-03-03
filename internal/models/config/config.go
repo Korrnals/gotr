@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"go.yaml.in/yaml/v3"
 )
 
 // DefaultConfigValues — дефолтные placeholder'ы в шаблоне конфигурации.
@@ -23,6 +21,7 @@ type ConfigData struct {
 	APIKey   string `yaml:"api_key"`
 	Insecure bool   `yaml:"insecure"`
 	JqFormat bool   `yaml:"jq_format"`
+	Debug    bool   `yaml:"debug"`
 }
 
 // Config — представляет один конфиг-файл
@@ -58,6 +57,7 @@ func (c *Config) WithDefaults() *Config {
 		APIKey:   DefaultAPIKey,
 		Insecure: false,
 		JqFormat: false,
+		Debug:    false,
 	}
 	return c
 }
@@ -69,9 +69,7 @@ func (c *Config) Create() error {
 		return fmt.Errorf("не удалось создать директорию: %w", err)
 	}
 
-	header := []byte("# gotr configuration file\n# Отредактируйте под свои данные\n\n")
-	yamlData, _ := yaml.Marshal(c.Data)
-	content := append(header, yamlData...)
+	content := []byte(c.renderTemplate())
 
 	if err := os.WriteFile(c.Path, content, 0644); err != nil {
 		return fmt.Errorf("не удалось записать файл %s: %w", c.Path, err)
@@ -79,6 +77,92 @@ func (c *Config) Create() error {
 
 	fmt.Printf("Создан конфиг-файл: %s\n", c.Path)
 	return nil
+}
+
+func (c *Config) renderTemplate() string {
+	data := c.Data
+	if data == nil {
+		data = (&Config{}).WithDefaults().Data
+	}
+
+	return fmt.Sprintf(`# gotr configuration file
+#
+# Приоритет источников:
+#   1) CLI flags
+#   2) Environment variables (TESTRAIL_*)
+#   3) Этот файл
+
+# Базовый URL TestRail.
+# Пример cloud:  https://yourcompany.testrail.io
+# Пример server: https://testrail.example.local
+base_url: %q
+
+# Логин (обычно email пользователя TestRail).
+username: %q
+
+# API key пользователя TestRail.
+api_key: %q
+
+# true  -> пропустить проверку TLS сертификата (небезопасно, только для внутренних стендов)
+# false -> стандартная безопасная проверка TLS
+insecure: %v
+
+# Включить jq-форматирование вывода (если встроенный jq доступен в системе).
+jq_format: %v
+
+# Включить отладочный вывод gotr.
+debug: %v
+
+compare:
+	# Режим окружения для compare-запросов:
+	#   auto   - попытка определить по URL (cloud/server)
+	#   cloud  - принудительно cloud-профиль
+	#   server - принудительно server-профиль
+	deployment: "auto"
+
+	# Для cloud-профиля: professional|enterprise
+	cloud_tier: "professional"
+
+	# Глобальный лимит запросов в минуту для compare.
+	#   -1 -> автоматически по профилю (cloud/server)
+	#    0 -> лимит выключен
+	#   >0 -> фиксированное значение req/min
+	rate_limit: -1
+
+	# Дефолт для cloud, если rate_limit=-1.
+	# professional: 180, enterprise: 300
+	cloud_rate_limit: 180
+
+	# Дефолт для server, если rate_limit=-1.
+	# Обычно 0 (без лимита).
+	server_rate_limit: 0
+
+	cases:
+		# Параллельность по сьютам (между сьютами).
+		parallel_suites: 8
+
+		# Параллельность страниц внутри одного сьюта.
+		parallel_pages: 10
+
+		# Количество retry для каждой страницы в основном этапе загрузки compare cases.
+		page_retries: 5
+
+		# Таймаут полной операции compare cases.
+		timeout: "30m"
+
+		retry:
+			# Попытки дозабора одной failed-страницы.
+			attempts: 3
+
+			# Количество параллельных воркеров дозабора.
+			workers: 6
+
+			# Пауза между попытками дозабора одной страницы.
+			delay: "500ms"
+
+		# Всегда пытаться автоматически дозабирать failed pages после основного compare cases.
+		auto_retry_failed_pages: true
+`, data.BaseURL, data.Username, data.APIKey, data.Insecure, data.JqFormat, data.Debug)
 }
 
 // Path возвращает путь (для подкоманды path)

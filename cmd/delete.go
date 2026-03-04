@@ -47,7 +47,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	endpoint := args[0]
 	id, err := strconv.ParseInt(args[1], 10, 64)
 	if err != nil {
-		return fmt.Errorf("неверный ID: %v", err)
+		return fmt.Errorf("неверный ID: %w", err)
 	}
 
 	// Проверяем dry-run режим

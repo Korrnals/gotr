@@ -22,7 +22,20 @@ import (
 // casesCmd — экспортированная команда
 var casesCmd = newCasesCmd()
 
+// projectDataStats contains structural statistics about a single project.
+type projectDataStats struct {
+	Suites         int // количество сьюитов  (из GetSuites API)
+	Sections       int // уникальных секций   (из SectionID в кейсах)
+	CasesRaw       int // всего raw-кейсов до дедупликации
+	CasesUnique    int // уникальных кейсов   (после ID-dedup)
+	UniqueTitles   int // уникальных заголовков (для контроля)
+	EmptyTitles    int // кейсов без заголовка
+	Elapsed        time.Duration // время загрузки этого проекта
+}
+
 type casesExecutionStats struct {
+	Project1       projectDataStats
+	Project2       projectDataStats
 	LoadErrorsP1       int
 	LoadErrorsP2       int
 	FailedPagesBefore  int
@@ -171,6 +184,7 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 
 	var cases1, cases2 []ItemInfo
 	var failedPages1, failedPages2 []parallel.FailedPage
+	var stats1, stats2 projectDataStats
 	var err1, err2 error
 
 	done1 := make(chan struct{})
@@ -178,14 +192,14 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 
 	// Load Project 1
 	go func() {
-		cases1, failedPages1, err1 = fetchCasesForProject(cli, pid1, suites1, task1, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
+		cases1, failedPages1, stats1, err1 = fetchCasesForProject(cli, pid1, suites1, task1, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
 		task1.Finish()
 		close(done1)
 	}()
 
 	// Load Project 2
 	go func() {
-		cases2, failedPages2, err2 = fetchCasesForProject(cli, pid2, suites2, task2, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
+		cases2, failedPages2, stats2, err2 = fetchCasesForProject(cli, pid2, suites2, task2, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
 		task2.Finish()
 		close(done2)
 	}()
@@ -193,6 +207,9 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 	// Wait for both
 	<-done1
 	<-done2
+
+	execStats.Project1 = stats1
+	execStats.Project2 = stats2
 
 	// Stop live display
 	display.Finish()
@@ -286,22 +303,33 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 
 // fetchCasesForProject loads all cases for a single project.
 // task is a *ui.Task implementing parallel.ProgressReporter — gets live updates.
-func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []parallel.FailedPage, error) {
+func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []parallel.FailedPage, projectDataStats, error) {
+	fetchStart := time.Now()
+	pds := projectDataStats{Suites: len(suites)}
+
 	if len(suites) == 0 {
 		utils.DebugPrint("[Project %d] No suites, fetching all cases", projectID)
 		cases, err := cli.GetCases(projectID, 0, 0)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, pds, err
 		}
 
 		allCases := make([]ItemInfo, 0, len(cases))
+		sectionIDs := make(map[int64]struct{})
 		for _, c := range cases {
 			allCases = append(allCases, ItemInfo{
 				ID:   c.ID,
 				Name: c.Title,
 			})
+			if c.SectionID != 0 {
+				sectionIDs[c.SectionID] = struct{}{}
+			}
 		}
-		return allCases, nil, nil
+		pds.CasesRaw = len(cases)
+		pds.CasesUnique = len(allCases)
+		pds.Sections = len(sectionIDs)
+		pds.Elapsed = time.Since(fetchStart)
+		return allCases, nil, pds, nil
 	}
 
 	// Extract suite IDs
@@ -326,7 +354,7 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 	cases, result, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config)
 
 	if err != nil && len(cases) == 0 {
-		return nil, nil, err
+		return nil, nil, pds, err
 	}
 
 	// Log execution stats for diagnostics
@@ -336,9 +364,10 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 			projectID, stats.CompletedSuites, stats.TotalPages, stats.TotalCases, result.Partial)
 	}
 
-	// Collect unique cases (ID dedup)
+	// Collect unique cases (ID dedup) and count sections
 	var allCases []ItemInfo
 	caseIDs := make(map[int64]bool)
+	sectionIDs := make(map[int64]struct{})
 
 	emptyTitles := 0
 	for _, c := range cases {
@@ -352,6 +381,9 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 				Name: c.Title,
 			})
 		}
+		if c.SectionID != 0 {
+			sectionIDs[c.SectionID] = struct{}{}
+		}
 	}
 
 	// Count unique titles for verification
@@ -362,14 +394,21 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 		}
 	}
 
-	utils.DebugPrint("[Project %d] Total: %d raw → %d unique IDs → %d unique titles (empty titles: %d)",
-		projectID, len(cases), len(allCases), len(titleSet), emptyTitles)
+	pds.CasesRaw = len(cases)
+	pds.CasesUnique = len(allCases)
+	pds.UniqueTitles = len(titleSet)
+	pds.EmptyTitles = emptyTitles
+	pds.Sections = len(sectionIDs)
+	pds.Elapsed = time.Since(fetchStart)
+
+	utils.DebugPrint("[Project %d] Total: %d raw → %d unique IDs → %d unique titles (empty titles: %d), %d sections",
+		projectID, len(cases), len(allCases), len(titleSet), emptyTitles, len(sectionIDs))
 
 	if result != nil {
-		return allCases, result.FailedPages, nil
+		return allCases, result.FailedPages, pds, nil
 	}
 
-	return allCases, nil, nil
+	return allCases, nil, pds, nil
 }
 
 func collectCompareCasesFlagOverrides(cmd *cobra.Command) map[string]any {

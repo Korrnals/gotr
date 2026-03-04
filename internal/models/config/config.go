@@ -114,54 +114,54 @@ jq_format: %v
 debug: %v
 
 compare:
-	# Режим окружения для compare-запросов:
-	#   auto   - попытка определить по URL (cloud/server)
-	#   cloud  - принудительно cloud-профиль
-	#   server - принудительно server-профиль
-	deployment: "auto"
+  # Режим окружения для compare-запросов:
+  #   auto   - попытка определить по URL (cloud/server)
+  #   cloud  - принудительно cloud-профиль
+  #   server - принудительно server-профиль
+  deployment: "auto"
 
-	# Для cloud-профиля: professional|enterprise
-	cloud_tier: "professional"
+  # Для cloud-профиля: professional|enterprise
+  cloud_tier: "professional"
 
-	# Глобальный лимит запросов в минуту для compare.
-	#   -1 -> автоматически по профилю (cloud/server)
-	#    0 -> лимит выключен
-	#   >0 -> фиксированное значение req/min
-	rate_limit: -1
+  # Глобальный лимит запросов в минуту для compare.
+  #   -1 -> автоматически по профилю (cloud/server)
+  #    0 -> лимит выключен
+  #   >0 -> фиксированное значение req/min
+  rate_limit: -1
 
-	# Дефолт для cloud, если rate_limit=-1.
-	# professional: 180, enterprise: 300
-	cloud_rate_limit: 180
+  # Дефолт для cloud, если rate_limit=-1.
+  # professional: 180, enterprise: 300
+  cloud_rate_limit: 180
 
-	# Дефолт для server, если rate_limit=-1.
-	# Обычно 0 (без лимита).
-	server_rate_limit: 0
+  # Дефолт для server, если rate_limit=-1.
+  # Обычно 0 (без лимита).
+  server_rate_limit: 0
 
-	cases:
-		# Параллельность по сьютам (между сьютами).
-		parallel_suites: 8
+  cases:
+    # Параллельность по сьютам (между сьютами).
+    parallel_suites: 8
 
-		# Параллельность страниц внутри одного сьюта.
-		parallel_pages: 10
+    # Параллельность страниц внутри одного сьюта.
+    parallel_pages: 10
 
-		# Количество retry для каждой страницы в основном этапе загрузки compare cases.
-		page_retries: 5
+    # Количество retry для каждой страницы в основном этапе загрузки compare cases.
+    page_retries: 5
 
-		# Таймаут полной операции compare cases.
-		timeout: "30m"
+    # Таймаут полной операции compare cases.
+    timeout: "30m"
 
-		retry:
-			# Попытки дозабора одной failed-страницы.
-			attempts: 3
+    retry:
+      # Попытки дозабора одной failed-страницы.
+      attempts: 3
 
-			# Количество параллельных воркеров дозабора.
-			workers: 6
+      # Количество параллельных воркеров дозабора.
+      workers: 6
 
-			# Пауза между попытками дозабора одной страницы.
-			delay: "500ms"
+      # Пауза между попытками дозабора одной страницы.
+      delay: "500ms"
 
-		# Всегда пытаться автоматически дозабирать failed pages после основного compare cases.
-		auto_retry_failed_pages: true
+    # Всегда пытаться автоматически дозабирать failed pages после основного compare cases.
+    auto_retry_failed_pages: true
 `, data.BaseURL, data.Username, data.APIKey, data.Insecure, data.JqFormat, data.Debug)
 }
 

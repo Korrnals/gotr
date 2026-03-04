@@ -32,6 +32,10 @@ type projectDataStats struct {
 	CasesExpected  int // ожидаемых кейсов по данным API (сумма totalSize по всем сьютам; -1 если неизвестно)
 	SuitesWithTotal int // сколько сьютов сообщили totalSize
 	SuitesVerified  int // сьютов с подтверждённой полнотой (все страницы загружены, exhaustion чистый)
+	SuiteDetailsSum   int // сумма кейсов по всем сьютам (для проверки целостности)
+	SuiteDetailsMax   int // максимальный сьют по кейсам
+	SuiteDetailsMin   int // минимальный сьют по кейсам
+	SuiteDetailsCount int // количество сьютов с трекингом
 	TotalPages     int // общее количество запрошенных страниц
 	FailedPages    int // страниц с ошибками
 	UniqueTitles   int // уникальных заголовков (для контроля)
@@ -371,6 +375,23 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 		pds.CasesExpected = int(stats.ExpectedCases)
 		pds.SuitesWithTotal = stats.SuitesWithTotal
 		pds.SuitesVerified = stats.SuitesVerified
+		if len(stats.SuiteResults) > 0 {
+			sum := 0
+			maxC, minC := 0, stats.SuiteResults[0].CasesFetched
+			for _, r := range stats.SuiteResults {
+				sum += r.CasesFetched
+				if r.CasesFetched > maxC {
+					maxC = r.CasesFetched
+				}
+				if r.CasesFetched < minC {
+					minC = r.CasesFetched
+				}
+			}
+			pds.SuiteDetailsSum = sum
+			pds.SuiteDetailsMax = maxC
+			pds.SuiteDetailsMin = minC
+			pds.SuiteDetailsCount = len(stats.SuiteResults)
+		}
 		pds.TotalPages = stats.TotalPages
 		pds.FailedPages = stats.FailedPages
 	}

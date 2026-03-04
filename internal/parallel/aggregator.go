@@ -313,6 +313,14 @@ type AggregationStats struct {
 	ExpectedCases   int64 // sum of API totalSize across all suites (-1 per suite if unknown)
 	SuitesWithTotal int   // how many suites reported totalSize
 	SuitesVerified  int   // suites with all pages fetched, exhaustion confirmed, no permanent errors
+	SuiteResults    []SuiteResultInfo // per-suite fetch details
+}
+
+// SuiteResultInfo tracks per-suite fetch results for integrity verification.
+type SuiteResultInfo struct {
+	SuiteID      int
+	CasesFetched int
+	Verified     bool
 }
 
 // HasErrors returns true if any errors were encountered

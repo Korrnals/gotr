@@ -233,7 +233,7 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 	}
 
 	fmt.Printf("\n✅ Проект создан (ID: %d)\n", project.ID)
-	return outputResult(cmd, project)
+	return output.OutputResult(cmd, project, "result")
 }
 
 func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
@@ -268,7 +268,7 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 	}
 
 	fmt.Printf("\n✅ Сьют создан (ID: %d)\n", suite.ID)
-	return outputResult(cmd, suite)
+	return output.OutputResult(cmd, suite, "result")
 }
 
 func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionID int64) error {
@@ -307,7 +307,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 	}
 
 	fmt.Printf("\n✅ Кейс создан (ID: %d)\n", caseResp.ID)
-	return outputResult(cmd, caseResp)
+	return output.OutputResult(cmd, caseResp, "result")
 }
 
 func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
@@ -346,7 +346,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 	}
 
 	fmt.Printf("\n✅ Run создан (ID: %d)\n", run.ID)
-	return outputResult(cmd, run)
+	return output.OutputResult(cmd, run, "result")
 }
 
 // runAddDryRun выполняет dry-run для add команды
@@ -547,7 +547,7 @@ func addProject(cli client.ClientInterface, cmd *cobra.Command, jsonData []byte)
 		return fmt.Errorf("ошибка создания проекта: %v", err)
 	}
 
-	return outputResult(cmd, project)
+	return output.OutputResult(cmd, project, "result")
 }
 
 func addSuite(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
@@ -571,7 +571,7 @@ func addSuite(cli client.ClientInterface, cmd *cobra.Command, projectID int64, j
 		return fmt.Errorf("ошибка создания сьюта: %v", err)
 	}
 
-	return outputResult(cmd, suite)
+	return output.OutputResult(cmd, suite, "result")
 }
 
 func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
@@ -597,7 +597,7 @@ func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64,
 		return fmt.Errorf("ошибка создания секции: %v", err)
 	}
 
-	return outputResult(cmd, section)
+	return output.OutputResult(cmd, section, "result")
 }
 
 func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, jsonData []byte) error {
@@ -624,7 +624,7 @@ func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, js
 		return fmt.Errorf("ошибка создания кейса: %v", err)
 	}
 
-	return outputResult(cmd, caseResp)
+	return output.OutputResult(cmd, caseResp, "result")
 }
 
 func addRun(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
@@ -657,7 +657,7 @@ func addRun(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jso
 		return fmt.Errorf("ошибка создания рана: %v", err)
 	}
 
-	return outputResult(cmd, run)
+	return output.OutputResult(cmd, run, "result")
 }
 
 func addResult(cli client.ClientInterface, cmd *cobra.Command, testID int64, jsonData []byte) error {
@@ -685,7 +685,7 @@ func addResult(cli client.ClientInterface, cmd *cobra.Command, testID int64, jso
 		return fmt.Errorf("ошибка добавления результата: %v", err)
 	}
 
-	return outputResult(cmd, result)
+	return output.OutputResult(cmd, result, "result")
 }
 
 func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, caseID int64, jsonData []byte) error {
@@ -712,7 +712,7 @@ func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, cas
 		return fmt.Errorf("ошибка добавления результата: %v", err)
 	}
 
-	return outputResult(cmd, result)
+	return output.OutputResult(cmd, result, "result")
 }
 
 func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
@@ -735,13 +735,9 @@ func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int
 		return fmt.Errorf("ошибка создания shared step: %v", err)
 	}
 
-	return outputResult(cmd, step)
+	return output.OutputResult(cmd, step, "result")
 }
 
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "result", "json")
-	return err
-}
 
 func parseCaseIDs(s string) []int64 {
 	var ids []int64
@@ -872,7 +868,7 @@ func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID 
 
 	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID int64, filePath string) error {
@@ -894,7 +890,7 @@ func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID 
 
 	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, planID int64, entryID, filePath string) error {
@@ -916,7 +912,7 @@ func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, pl
 
 	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resultID int64, filePath string) error {
@@ -938,7 +934,7 @@ func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resul
 
 	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID int64, filePath string) error {
@@ -960,5 +956,5 @@ func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID in
 
 	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	return output.OutputResult(cmd, resp, "result")
 }

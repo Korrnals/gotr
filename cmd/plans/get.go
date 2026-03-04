@@ -33,7 +33,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to get plan: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 

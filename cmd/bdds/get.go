@@ -36,16 +36,11 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("не удалось получить BDD: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "bdds")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "bdds", "json")
-	return err
 }

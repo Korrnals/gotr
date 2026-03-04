@@ -11,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -150,7 +151,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().Bool("save", false, "")
 
-	err := outputResult(cmd, badData, time.Now())
+	err := output.OutputResult(cmd, badData, "tests")
 	assert.Error(t, err)
 }
 
@@ -192,7 +193,7 @@ func TestOutputResult_WithSaveFlag(t *testing.T) {
 	cmd.Flags().Bool("save", true, "")
 
 	data := map[string]string{"key": "value"}
-	err := outputResult(cmd, data, time.Now())
+	err := output.OutputResult(cmd, data, "tests")
 	assert.NoError(t, err)
 }
 
@@ -201,6 +202,6 @@ func TestOutputResult_WithoutSaveFlag(t *testing.T) {
 	cmd.Flags().Bool("save", false, "")
 
 	data := map[string]string{"key": "value"}
-	err := outputResult(cmd, data, time.Now())
+	err := output.OutputResult(cmd, data, "tests")
 	assert.NoError(t, err)
 }

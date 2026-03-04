@@ -5,10 +5,10 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -784,11 +784,11 @@ func TestOutputResult_StdoutOnly(t *testing.T) {
 		Size:         1024,
 	}
 
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "attachments")
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для newListCmd ====================
+// ==================== Тесты для newListCmd ======================================
 
 func TestNewListCmd_Creation(t *testing.T) {
 	cmd := newListCmd(nil)
@@ -814,7 +814,7 @@ func TestOutputResult_MarshalError(t *testing.T) {
 	// Channel cannot be marshaled to JSON
 	invalidData := make(chan int)
 
-	err := outputResult(cmd, invalidData)
+	err := output.OutputResult(cmd, invalidData, "attachments")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "marshaling")
 }

@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +47,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Группа %d обновлена\n", groupID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}
 

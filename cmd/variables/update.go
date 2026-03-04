@@ -48,7 +48,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Переменная %d обновлена\n", variableID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "variables")
 		},
 	}
 

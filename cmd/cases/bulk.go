@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -85,7 +85,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Updated %d cases\n", len(caseIDs))
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 
@@ -276,10 +276,4 @@ func parseIDList(args []string) []int64 {
 		}
 	}
 	return ids
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "cases", "json")
-	return err
 }

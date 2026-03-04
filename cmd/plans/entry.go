@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -80,7 +80,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Entry added to plan %d\n", planID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
@@ -134,7 +134,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Entry %s updated in plan %d\n", entryID, planID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 

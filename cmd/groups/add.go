@@ -39,7 +39,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			return outputResult(cmd, group)
+			return output.OutputResult(cmd, group, "groups")
 		},
 	}
 

@@ -50,7 +50,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Датасет создан (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}
 

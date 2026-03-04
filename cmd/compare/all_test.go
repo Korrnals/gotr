@@ -83,25 +83,6 @@ func TestSaveAllResult_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для printResourceSummary ====================
-
-func TestPrintResourceSummary_Empty(t *testing.T) {
-	result := &CompareResult{
-		Resource:     "datasets",
-		Project1ID:   1,
-		Project2ID:   2,
-		OnlyInFirst:  []ItemInfo{},
-		OnlyInSecond: []ItemInfo{},
-		Common:       []CommonItemInfo{},
-	}
-
-	var buf bytes.Buffer
-	old := captureStdout(&buf)
-	defer restoreStdout(old)
-
-	printResourceSummary("datasets", result)
-}
-
 // ==================== Тесты для allCmd с различными сценариями ====================
 
 func TestAllCmd_WithErrors(t *testing.T) {

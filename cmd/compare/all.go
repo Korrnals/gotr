@@ -273,19 +273,6 @@ func addCommonFlags(cmd *cobra.Command) {
 	cmd.MarkFlagRequired("pid2")
 }
 
-// printResourceSummary prints a summary line for a resource comparison.
-func printResourceSummary(resourceName string, result *CompareResult) {
-	if result == nil {
-		fmt.Printf("%-15s: ошибка получения данных\n", resourceName)
-		return
-	}
-	fmt.Printf("%-15s: только в P1: %d, только в P2: %d, общих: %d\n",
-		resourceName,
-		len(result.OnlyInFirst),
-		len(result.OnlyInSecond),
-		len(result.Common))
-}
-
 // printAllSummaryTable prints a formatted table summary for compare all
 func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error, elapsed time.Duration) {
 	// Table header

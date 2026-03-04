@@ -10,8 +10,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -38,16 +38,6 @@ type CompareResult struct {
 	OnlyInFirst  []ItemInfo       `json:"only_in_first" yaml:"only_in_first"`
 	OnlyInSecond []ItemInfo       `json:"only_in_second" yaml:"only_in_second"`
 	Common       []CommonItemInfo `json:"common" yaml:"common"`
-}
-
-// ResourceDiff represents a diff between two resources (legacy structure)
-type ResourceDiff struct {
-	Resource    string   `json:"resource"`
-	TotalFirst  int      `json:"total_first"`
-	TotalSecond int      `json:"total_second"`
-	Common      []string `json:"common"`
-	OnlyFirst   []string `json:"only_first"`
-	OnlySecond  []string `json:"only_second"`
 }
 
 // GetProjectNames retrieves project names for both project IDs
@@ -661,41 +651,4 @@ func parseFlags(cmd *cobra.Command) (pid1, pid2 int64, field string, err error) 
 	return pid1, pid2, field, nil
 }
 
-// buildResourceDiff builds a ResourceDiff from two string slices
-func buildResourceDiff(resource string, first, second []string) ResourceDiff {
-	firstSet := make(map[string]bool)
-	secondSet := make(map[string]bool)
 
-	for _, f := range first {
-		firstSet[strings.ToLower(strings.TrimSpace(f))] = true
-	}
-
-	for _, s := range second {
-		secondSet[strings.ToLower(strings.TrimSpace(s))] = true
-	}
-
-	var common, onlyFirst, onlySecond []string
-
-	for f := range firstSet {
-		if secondSet[f] {
-			common = append(common, f)
-		} else {
-			onlyFirst = append(onlyFirst, f)
-		}
-	}
-
-	for s := range secondSet {
-		if !firstSet[s] {
-			onlySecond = append(onlySecond, s)
-		}
-	}
-
-	return ResourceDiff{
-		Resource:    resource,
-		TotalFirst:  len(firstSet),
-		TotalSecond: len(secondSet),
-		Common:      common,
-		OnlyFirst:   onlyFirst,
-		OnlySecond:  onlySecond,
-	}
-}

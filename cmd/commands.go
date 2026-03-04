@@ -35,9 +35,7 @@ func init() {
 	registerAddCmd()
 	registerDeleteCmd()
 	registerUpdateCmd()
-	registerCopyCmd()
 	registerExportCmd()
-	registerImportCmd()
 	registerCompletionCmd()
 
 	// Регистрация команд из подпакетов (передаем GetClient)
@@ -150,14 +148,6 @@ func registerUpdateCmd() {
 }
 
 // ============================================
-// Copy
-// ============================================
-
-func registerCopyCmd() {
-	rootCmd.AddCommand(copyCmd)
-}
-
-// ============================================
 // Export
 // ============================================
 
@@ -184,14 +174,6 @@ func registerExportCmd() {
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	}
-}
-
-// ============================================
-// Import
-// ============================================
-
-func registerImportCmd() {
-	rootCmd.AddCommand(importCmd)
 }
 
 // ============================================

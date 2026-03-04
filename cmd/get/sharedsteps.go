@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -48,7 +49,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = selectProjectInteractively(cli)
+				projectID, err = interactive.SelectProjectInteractively(cli)
 				if err != nil {
 					return err
 				}

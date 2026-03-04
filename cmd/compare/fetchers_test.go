@@ -98,52 +98,6 @@ func TestCompareSuitesInternal_Empty(t *testing.T) {
 	assert.Equal(t, 0, len(result.Common))
 }
 
-// ==================== Тесты для fetchSuiteItems ====================
-
-func TestFetchSuiteItems_Success(t *testing.T) {
-	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			return []data.Suite{
-				{ID: 1, Name: "Suite A"},
-				{ID: 2, Name: "Suite B"},
-			}, nil
-		},
-	}
-
-	items, err := fetchSuiteItems(mock, 1)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(items))
-	assert.Equal(t, int64(1), items[0].ID)
-	assert.Equal(t, "Suite A", items[0].Name)
-}
-
-func TestFetchSuiteItems_Error(t *testing.T) {
-	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			return nil, errors.New("API error")
-		},
-	}
-
-	items, err := fetchSuiteItems(mock, 1)
-
-	assert.Error(t, err)
-	assert.Nil(t, items)
-}
-
-func TestFetchSuiteItems_Empty(t *testing.T) {
-	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			return []data.Suite{}, nil
-		},
-	}
-
-	items, err := fetchSuiteItems(mock, 1)
-
-	assert.NoError(t, err)
-	assert.Empty(t, items)
-}
-
 // ==================== Тесты для compareCasesInternal ====================
 
 func TestCompareCasesInternal_Success(t *testing.T) {
@@ -199,39 +153,6 @@ func TestCompareCasesInternal_Error(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-}
-
-// ==================== Тесты для fetchCaseItems ====================
-
-func TestFetchCaseItems_Success(t *testing.T) {
-	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return []data.Case{
-				{ID: 1, Title: "Case A"},
-				{ID: 2, Title: "Case B"},
-			}, nil
-		},
-	}
-
-	items, err := fetchCaseItems(mock, 1)
-
-	assert.NoError(t, err)
-	assert.Equal(t, 2, len(items))
-	assert.Equal(t, int64(1), items[0].ID)
-	assert.Equal(t, "Case A", items[0].Name)
-}
-
-func TestFetchCaseItems_Error(t *testing.T) {
-	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return nil, errors.New("API error")
-		},
-	}
-
-	items, err := fetchCaseItems(mock, 1)
-
-	assert.Error(t, err)
-	assert.Nil(t, items)
 }
 
 // ==================== Тесты для compareSectionsInternal ====================

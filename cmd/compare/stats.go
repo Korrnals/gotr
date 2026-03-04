@@ -37,7 +37,7 @@ func PrintCasesStatsWithErrors(
 			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
 				stats.Project1.CasesExpected, stats.Project1.SuitesWithTotal)).
 		StatFmt("📈", "Полнота загрузки", "%s",
-			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected)).
+			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.TotalPages > 0,
 			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project1.TotalPages, stats.Project1.FailedPages)).
@@ -54,7 +54,7 @@ func PrintCasesStatsWithErrors(
 			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
 				stats.Project2.CasesExpected, stats.Project2.SuitesWithTotal)).
 		StatFmt("📈", "Полнота загрузки", "%s",
-			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected)).
+			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.TotalPages > 0,
 			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project2.TotalPages, stats.Project2.FailedPages)).
@@ -77,9 +77,13 @@ func PrintCasesStatsWithErrors(
 }
 
 // formatCompleteness returns a human-readable completeness string.
-func formatCompleteness(actual, expected int) string {
+// failedPages indicates how many pages had permanent fetch errors.
+func formatCompleteness(actual, expected, failedPages int) string {
 	if expected <= 0 {
-		return fmt.Sprintf("%d (expected неизвестен)", actual)
+		if failedPages == 0 {
+			return fmt.Sprintf("%d (загружено полностью ✅)", actual)
+		}
+		return fmt.Sprintf("%d (ошибок: %d стр. ⚠️)", actual, failedPages)
 	}
 	pct := float64(actual) / float64(expected) * 100
 	if actual == expected {

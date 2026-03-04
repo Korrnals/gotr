@@ -28,8 +28,8 @@ func ensureCompareConfigDefaults() {
 	viper.SetDefault("compare.cloud_rate_limit", 300)  // enterprise-уровень
 	viper.SetDefault("compare.server_rate_limit", 0)   // server = без лимита
 
-	viper.SetDefault("compare.cases.parallel_suites", 12)
-	viper.SetDefault("compare.cases.parallel_pages", 8)
+	viper.SetDefault("compare.cases.parallel_suites", 10)
+	viper.SetDefault("compare.cases.parallel_pages", 6)
 	viper.SetDefault("compare.cases.page_retries", 5)
 	viper.SetDefault("compare.cases.timeout", "30m")
 	viper.SetDefault("compare.cases.retry.attempts", 5)

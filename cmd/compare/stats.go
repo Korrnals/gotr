@@ -13,11 +13,6 @@ func PrintCompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond,
 	reporter.CompareStats(resource, pid1, pid2, onlyFirst, onlySecond, common, elapsed).Print()
 }
 
-// PrintCompareResultShort prints short result (for non-compare commands)
-func PrintCompareResultShort(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int) {
-	fmt.Printf("\n%s\n", reporter.CompareResultShort(resource, pid1, pid2, onlyFirst, onlySecond, common))
-}
-
 // PrintCasesStatsWithErrors prints compare-cases statistics with error/retry diagnostics.
 // Uses reporter.Report builder for dynamic sections.
 func PrintCasesStatsWithErrors(

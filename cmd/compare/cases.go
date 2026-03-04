@@ -510,63 +510,6 @@ func analyzeCases(cases1, cases2 []ItemInfo, pid1, pid2 int64, field string) *Co
 	}
 }
 
-// fetchCaseItems fetches all cases for a project and returns them as ItemInfo slice.
-// Uses parallel API for significant performance improvement (4-5x faster).
-// DEPRECATED: Use fetchCasesForProject for better UX.
-func fetchCaseItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	// Get all suites for the project
-	suites, err := cli.GetSuites(projectID)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка получения сьютов проекта %d: %w", projectID, err)
-	}
-
-	// If no suites, fetch cases without suite filter
-	if len(suites) == 0 {
-		cases, err := cli.GetCases(projectID, 0, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		allCases := make([]ItemInfo, 0, len(cases))
-		for _, c := range cases {
-			allCases = append(allCases, ItemInfo{
-				ID:   c.ID,
-				Name: c.Title,
-			})
-		}
-		return allCases, nil
-	}
-
-	// Use parallel loading
-	suiteIDs := make([]int64, len(suites))
-	for i, s := range suites {
-		suiteIDs[i] = s.ID
-	}
-
-	casesBySuite, err := cli.GetCasesParallel(projectID, suiteIDs, 5, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Collect unique cases
-	var allCases []ItemInfo
-	caseIDs := make(map[int64]bool)
-
-	for _, cases := range casesBySuite {
-		for _, c := range cases {
-			if !caseIDs[c.ID] {
-				caseIDs[c.ID] = true
-				allCases = append(allCases, ItemInfo{
-					ID:   c.ID,
-					Name: c.Title,
-				})
-			}
-		}
-	}
-
-	return allCases, nil
-}
-
 // printCasesFieldDiff prints differences by field for cases.
 func printCasesFieldDiff(cli client.ClientInterface, pid1, pid2 int64, field string) {
 	diff, err := cli.DiffCasesData(pid1, pid2, field)

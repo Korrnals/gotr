@@ -118,24 +118,6 @@ func suitesToItems(suites data.GetSuitesResponse) []ItemInfo {
 	return items
 }
 
-// fetchSuiteItems fetches all suites for a project and returns them as ItemInfo slice.
-func fetchSuiteItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	suites, err := cli.GetSuites(projectID)
-	if err != nil {
-		return nil, err
-	}
-
-	items := make([]ItemInfo, 0, len(suites))
-	for _, s := range suites {
-		items = append(items, ItemInfo{
-			ID:   s.ID,
-			Name: s.Name,
-		})
-	}
-
-	return items, nil
-}
-
 // compareItemInfos compares two slices of ItemInfo and returns a CompareResult.
 func compareItemInfos(resource string, pid1, pid2 int64, items1, items2 []ItemInfo) *CompareResult {
 	// Build name maps

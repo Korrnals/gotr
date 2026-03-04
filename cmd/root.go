@@ -36,7 +36,6 @@ var rootCmd = &cobra.Command{
 		// Маппим переменные окружения в переменные, которые будут использоваться в клиенте
 		baseURL := viper.GetString("base_url")
 		username := viper.GetString("username")
-		password := viper.GetString("password")
 		apiKey := viper.GetString("api_key")
 		insecure := viper.GetBool("insecure")
 		debug := viper.GetBool("debug")
@@ -64,7 +63,7 @@ var rootCmd = &cobra.Command{
 			opts = append(opts, client.WithSkipTlsVerify(true)) //По-умолчанию, проверка tls - включена
 		}
 
-		httpClient, err := client.NewClient(baseURL, username, password, debug, opts...)
+		httpClient, err := client.NewClient(baseURL, username, apiKey, debug, opts...)
 		if err != nil {
 			return fmt.Errorf("не удалось создать клиент: %w", err)
 		}

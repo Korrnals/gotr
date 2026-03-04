@@ -33,6 +33,14 @@ func PrintCasesStatsWithErrors(
 		Stat("📄", "Кейсов (уникальных)", stats.Project1.CasesUnique).
 		StatIf(stats.Project1.CasesRaw != stats.Project1.CasesUnique,
 			"📄", "Кейсов (raw до дедупа)", stats.Project1.CasesRaw).
+		StatIf(stats.Project1.CasesExpected > 0,
+			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
+				stats.Project1.CasesExpected, stats.Project1.SuitesWithTotal)).
+		StatFmt("📈", "Полнота загрузки", "%s",
+			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected)).
+		StatIf(stats.Project1.TotalPages > 0,
+			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
+				stats.Project1.TotalPages, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.EmptyTitles > 0,
 			"⚠️", "Кейсов без заголовка", stats.Project1.EmptyTitles).
 		Stat("⏱️", "Загрузка", stats.Project1.Elapsed.Round(time.Millisecond)).
@@ -42,6 +50,14 @@ func PrintCasesStatsWithErrors(
 		Stat("📄", "Кейсов (уникальных)", stats.Project2.CasesUnique).
 		StatIf(stats.Project2.CasesRaw != stats.Project2.CasesUnique,
 			"📄", "Кейсов (raw до дедупа)", stats.Project2.CasesRaw).
+		StatIf(stats.Project2.CasesExpected > 0,
+			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
+				stats.Project2.CasesExpected, stats.Project2.SuitesWithTotal)).
+		StatFmt("📈", "Полнота загрузки", "%s",
+			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected)).
+		StatIf(stats.Project2.TotalPages > 0,
+			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
+				stats.Project2.TotalPages, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.EmptyTitles > 0,
 			"⚠️", "Кейсов без заголовка", stats.Project2.EmptyTitles).
 		Stat("⏱️", "Загрузка", stats.Project2.Elapsed.Round(time.Millisecond)).
@@ -58,4 +74,19 @@ func PrintCasesStatsWithErrors(
 		Stat("🔗", "Общих", common)
 
 	r.Print()
+}
+
+// formatCompleteness returns a human-readable completeness string.
+func formatCompleteness(actual, expected int) string {
+	if expected <= 0 {
+		return fmt.Sprintf("%d (expected неизвестен)", actual)
+	}
+	pct := float64(actual) / float64(expected) * 100
+	if actual == expected {
+		return fmt.Sprintf("%d/%d (100%%  ✅)", actual, expected)
+	}
+	if actual > expected {
+		return fmt.Sprintf("%d/%d (%.1f%% — дубли?)", actual, expected, pct)
+	}
+	return fmt.Sprintf("%d/%d (%.1f%% ⚠️)", actual, expected, pct)
 }

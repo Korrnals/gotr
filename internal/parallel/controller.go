@@ -86,6 +86,10 @@ func (pc *ParallelController) Execute(
 	var failedPagesMu sync.Mutex
 	failedPages := make([]FailedPage, 0)
 
+	// Expected cases tracking (sum of API totalSize per suite)
+	var expectedCasesTotal int64
+	var suitesWithTotal int32
+
 	// Create worker pool for suites
 	maxWorkers := pc.config.MaxConcurrentSuites
 	if maxWorkers > len(tasks) {
@@ -98,7 +102,7 @@ func (pc *ParallelController) Execute(
 	// Start workers
 	for i := 0; i < maxWorkers; i++ {
 		g.Go(func() error {
-			return pc.suiteWorker(ctx, pq, fetcher, aggregator, &completedSuites, totalSuites, &failedPagesMu, &failedPages)
+			return pc.suiteWorker(ctx, pq, fetcher, aggregator, &completedSuites, totalSuites, &failedPagesMu, &failedPages, &expectedCasesTotal, &suitesWithTotal)
 		})
 	}
 
@@ -114,6 +118,8 @@ func (pc *ParallelController) Execute(
 	stats.CompletedSuites = int(completedSuites)
 	stats.StartTime = startTime
 	stats.EndTime = time.Now()
+	stats.ExpectedCases = atomic.LoadInt64(&expectedCasesTotal)
+	stats.SuitesWithTotal = int(atomic.LoadInt32(&suitesWithTotal))
 
 	log.Debug(fmt.Sprintf("[ParallelController] Execution complete: got %d cases from %d suites",
 		len(cases), completedSuites))
@@ -151,6 +157,8 @@ func (pc *ParallelController) suiteWorker(
 	totalSuites int32,
 	failedPagesMu *sync.Mutex,
 	failedPages *[]FailedPage,
+	expectedCasesTotal *int64,
+	suitesWithTotal *int32,
 ) error {
 	for {
 		select {
@@ -167,10 +175,14 @@ func (pc *ParallelController) suiteWorker(
 		log.Debug(fmt.Sprintf("Processing suite %d", task.SuiteID))
 
 		// Streaming fetch — no GetTotalCases needed
-		err := pc.fetchSuiteStreaming(ctx, task, fetcher, aggregator, failedPagesMu, failedPages)
+		suiteExpected, err := pc.fetchSuiteStreaming(ctx, task, fetcher, aggregator, failedPagesMu, failedPages)
 		if err != nil {
 			log.Debug(fmt.Sprintf("Error fetching suite %d: %v", task.SuiteID, err))
 			aggregator.SubmitError(fmt.Errorf("suite %d: %w", task.SuiteID, err))
+		}
+		if suiteExpected >= 0 {
+			atomic.AddInt64(expectedCasesTotal, suiteExpected)
+			atomic.AddInt32(suitesWithTotal, 1)
 		}
 
 		completed := atomic.AddInt32(completedSuites, 1)
@@ -194,6 +206,8 @@ func (pc *ParallelController) suiteWorker(
 // The probe eliminates burst flood: instead of N workers speculatively claiming
 // offsets before any API response, we learn the exact page count upfront.
 // When totalSize is unknown (fallback), workers use exhaustion detection.
+// fetchSuiteStreaming returns (expectedTotal, error).
+// expectedTotal is the totalSize reported by the API (-1 if unknown).
 func (pc *ParallelController) fetchSuiteStreaming(
 	ctx context.Context,
 	task SuiteTask,
@@ -201,7 +215,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	aggregator *ResultAggregator,
 	failedPagesMu *sync.Mutex,
 	failedPages *[]FailedPage,
-) error {
+) (int64, error) {
 	pageSize := pc.config.PageSize
 	numWorkers := pc.config.MaxConcurrentPages
 	if numWorkers <= 0 {
@@ -237,7 +251,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 		if reporter != nil {
 			reporter.OnError()
 		}
-		return fmt.Errorf("suite %d: probe page 0 failed: %w", task.SuiteID, probeResult.Error)
+		return -1, fmt.Errorf("suite %d: probe page 0 failed: %w", task.SuiteID, probeResult.Error)
 	}
 
 	// Submit probe page results
@@ -262,7 +276,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 		(knownTotal < 0 && len(probeResult.Cases) < pageSize) {
 		log.Debug(fmt.Sprintf("[Suite %d] Probe: %d cases, totalSize=%d — single page, done",
 			task.SuiteID, len(probeResult.Cases), knownTotal))
-		return nil
+		return knownTotal, nil
 	}
 
 	// ── Phase 2: Parallel fetch of remaining pages ──
@@ -272,7 +286,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 		totalPages := int((knownTotal + int64(pageSize) - 1) / int64(pageSize))
 		remainingPages := totalPages - 1 // page 0 already fetched
 		if remainingPages <= 0 {
-			return nil
+			return knownTotal, nil
 		}
 		if numWorkers > remainingPages {
 			numWorkers = remainingPages
@@ -453,9 +467,9 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	}
 
 	cases := atomic.LoadInt32(&totalCases)
-	log.Debug(fmt.Sprintf("[Suite %d] Complete: %d cases fetched", task.SuiteID, cases))
+	log.Debug(fmt.Sprintf("[Suite %d] Complete: %d cases fetched (expected %d)", task.SuiteID, cases, knownTotal))
 
-	return nil
+	return knownTotal, nil
 }
 
 // fetchPageWithRetry fetches a single page with rate limiting and retry

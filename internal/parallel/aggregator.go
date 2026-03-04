@@ -310,6 +310,8 @@ type AggregationStats struct {
 	CompletedSuites int
 	StartTime       time.Time
 	EndTime         time.Time
+	ExpectedCases   int64 // sum of API totalSize across all suites (-1 per suite if unknown)
+	SuitesWithTotal int   // how many suites reported totalSize
 }
 
 // HasErrors returns true if any errors were encountered

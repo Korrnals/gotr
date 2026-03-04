@@ -29,6 +29,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/mattn/go-runewidth"
 )
 
 // boxWidth is the width of the box border (number of ─ characters).
@@ -139,6 +141,16 @@ func (r *Report) Print() {
 	fmt.Fprint(r.w, r.String())
 }
 
+// padRight pads content to fill boxWidth using visual (display) width,
+// then appends the closing │. Emoji and CJK characters are handled correctly.
+func padRight(content string) string {
+	visualWidth := runewidth.StringWidth(content)
+	if visualWidth >= boxWidth {
+		return content + "│"
+	}
+	return content + strings.Repeat(" ", boxWidth-visualWidth) + "│"
+}
+
 // String renders the entire report to a string.
 func (r *Report) String() string {
 	border := strings.Repeat("─", boxWidth)
@@ -146,19 +158,19 @@ func (r *Report) String() string {
 	var b strings.Builder
 	b.WriteString("\n")
 	b.WriteString("┌" + border + "┐\n")
-	b.WriteString(fmt.Sprintf("│          📊 СТАТИСТИКА: %s\n", r.title))
+	b.WriteString(padRight(fmt.Sprintf("│          📊 СТАТИСТИКА: %s", r.title)) + "\n")
 	b.WriteString("├" + border + "┤\n")
 
 	for _, e := range r.elements {
 		switch e.typ {
 		case elemSection:
-			b.WriteString(fmt.Sprintf("│  ◆ %s\n", e.label))
+			b.WriteString(padRight(fmt.Sprintf("│  ◆ %s", e.label)) + "\n")
 		case elemStat:
-			b.WriteString(fmt.Sprintf("│  %s %s: %s\n", e.icon, e.label, e.value))
+			b.WriteString(padRight(fmt.Sprintf("│  %s %s: %s", e.icon, e.label, e.value)) + "\n")
 		case elemSeparator:
 			b.WriteString("├" + border + "┤\n")
 		case elemBlank:
-			b.WriteString("│\n")
+			b.WriteString(padRight("│") + "\n")
 		}
 	}
 

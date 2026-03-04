@@ -236,47 +236,40 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	}
 	probeResult := pc.fetchPageWithRetry(ctx, probeReq, fetcher)
 
-	if probeResult.Error != nil {
-		// Can't fetch even page 0 — record as permanently failed
-		failedPagesMu.Lock()
-		*failedPages = append(*failedPages, FailedPage{
-			ProjectID: task.ProjectID,
-			SuiteID:   task.SuiteID,
-			Offset:    0,
-			Limit:     pageSize,
-			PageNum:   1,
-			Error:     probeResult.Error.Error(),
-		})
-		failedPagesMu.Unlock()
-		if reporter != nil {
-			reporter.OnError()
-		}
-		return -1, fmt.Errorf("suite %d: probe page 0 failed: %w", task.SuiteID, probeResult.Error)
-	}
-
-	// Submit probe page results
-	if len(probeResult.Cases) > 0 {
-		aggregator.Submit(probeResult)
-		atomic.AddInt32(&totalCases, int32(len(probeResult.Cases)))
-		if reporter != nil {
-			reporter.OnCasesReceived(len(probeResult.Cases))
-			reporter.OnPageFetched()
-		}
-	}
-
-	// Set known total from probe response
 	var knownTotal int64 = -1
-	if probeResult.TotalSize >= 0 {
-		knownTotal = probeResult.TotalSize
-	}
+	var probeFailed bool
 
-	// If suite is empty, fits in one page, or returned partial page (when total unknown) — done
-	if len(probeResult.Cases) == 0 ||
-		(knownTotal >= 0 && knownTotal <= int64(pageSize)) ||
-		(knownTotal < 0 && len(probeResult.Cases) < pageSize) {
-		log.Debug(fmt.Sprintf("[Suite %d] Probe: %d cases, totalSize=%d — single page, done",
-			task.SuiteID, len(probeResult.Cases), knownTotal))
-		return knownTotal, nil
+	if probeResult.Error != nil {
+		// Probe failed after retries — DON'T abandon the suite.
+		// Fall back to Phase 2 starting from offset 0, giving workers
+		// a chance to retry page 0 (server may recover by then).
+		log.Debug(fmt.Sprintf("[Suite %d] WARNING: probe page 0 failed: %v — falling back to Phase 2",
+			task.SuiteID, probeResult.Error))
+		probeFailed = true
+	} else {
+		// Submit probe page results
+		if len(probeResult.Cases) > 0 {
+			aggregator.Submit(probeResult)
+			atomic.AddInt32(&totalCases, int32(len(probeResult.Cases)))
+			if reporter != nil {
+				reporter.OnCasesReceived(len(probeResult.Cases))
+				reporter.OnPageFetched()
+			}
+		}
+
+		// Set known total from probe response
+		if probeResult.TotalSize >= 0 {
+			knownTotal = probeResult.TotalSize
+		}
+
+		// If suite is empty, fits in one page, or returned partial page (when total unknown) — done
+		if len(probeResult.Cases) == 0 ||
+			(knownTotal >= 0 && knownTotal <= int64(pageSize)) ||
+			(knownTotal < 0 && len(probeResult.Cases) < pageSize) {
+			log.Debug(fmt.Sprintf("[Suite %d] Probe: %d cases, totalSize=%d — single page, done",
+				task.SuiteID, len(probeResult.Cases), knownTotal))
+			return knownTotal, nil
+		}
 	}
 
 	// ── Phase 2: Parallel fetch of remaining pages ──
@@ -295,8 +288,14 @@ func (pc *ParallelController) fetchSuiteStreaming(
 			task.SuiteID, knownTotal, remainingPages, numWorkers))
 	}
 
-	// Workers start from page 1 (page 0 already fetched by probe)
-	var nextOffset int64 = int64(pageSize)
+	// If probe succeeded, start from page 1 (page 0 already fetched).
+	// If probe failed, start from page 0 — workers will retry it.
+	var nextOffset int64
+	if probeFailed {
+		nextOffset = 0
+	} else {
+		nextOffset = int64(pageSize)
+	}
 	// Exhausted flag — set when we confidently reached end of data
 	var exhausted int32
 	// Consecutive empty pages counter

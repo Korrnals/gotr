@@ -28,8 +28,8 @@ func ensureCompareConfigDefaults() {
 	viper.SetDefault("compare.cloud_rate_limit", 300)  // enterprise-уровень
 	viper.SetDefault("compare.server_rate_limit", 0)   // server = без лимита
 
-	viper.SetDefault("compare.cases.parallel_suites", 8)
-	viper.SetDefault("compare.cases.parallel_pages", 5)
+	viper.SetDefault("compare.cases.parallel_suites", 12)
+	viper.SetDefault("compare.cases.parallel_pages", 8)
 	viper.SetDefault("compare.cases.page_retries", 5)
 	viper.SetDefault("compare.cases.timeout", "30m")
 	viper.SetDefault("compare.cases.retry.attempts", 5)
@@ -69,7 +69,7 @@ func resolveCompareCasesRuntimeConfig(
 
 	parallelSuites := viper.GetInt("compare.cases.parallel_suites")
 	if parallelSuites <= 0 {
-		parallelSuites = 8
+		parallelSuites = 12
 	}
 	if isFlagProvided(cmdFlags, "parallel_suites") {
 		parallelSuites = cmdFlags["parallel_suites"].(int)
@@ -77,7 +77,7 @@ func resolveCompareCasesRuntimeConfig(
 
 	parallelPages := viper.GetInt("compare.cases.parallel_pages")
 	if parallelPages <= 0 {
-		parallelPages = 5
+		parallelPages = 8
 	}
 	if isFlagProvided(cmdFlags, "parallel_pages") {
 		parallelPages = cmdFlags["parallel_pages"].(int)

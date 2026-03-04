@@ -14,6 +14,7 @@ import (
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/parallel"
 	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/ui/reporter"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,6 +29,10 @@ type projectDataStats struct {
 	Sections       int // уникальных секций   (из SectionID в кейсах)
 	CasesRaw       int // всего raw-кейсов до дедупликации
 	CasesUnique    int // уникальных кейсов   (после ID-dedup)
+	CasesExpected  int // ожидаемых кейсов по данным API (сумма totalSize по всем сьютам; -1 если неизвестно)
+	SuitesWithTotal int // сколько сьютов сообщили totalSize
+	TotalPages     int // общее количество запрошенных страниц
+	FailedPages    int // страниц с ошибками
 	UniqueTitles   int // уникальных заголовков (для контроля)
 	EmptyTitles    int // кейсов без заголовка
 	Elapsed        time.Duration // время загрузки этого проекта
@@ -360,8 +365,12 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 	// Log execution stats for diagnostics
 	if result != nil {
 		stats := result.Stats
-		utils.DebugPrint("[Project %d] Fetch stats: %d suites completed, %d pages, %d raw cases, partial=%v",
-			projectID, stats.CompletedSuites, stats.TotalPages, stats.TotalCases, result.Partial)
+		utils.DebugPrint("[Project %d] Fetch stats: %d suites completed, %d pages, %d raw cases, expected=%d, partial=%v",
+			projectID, stats.CompletedSuites, stats.TotalPages, stats.TotalCases, stats.ExpectedCases, result.Partial)
+		pds.CasesExpected = int(stats.ExpectedCases)
+		pds.SuitesWithTotal = stats.SuitesWithTotal
+		pds.TotalPages = stats.TotalPages
+		pds.FailedPages = stats.FailedPages
 	}
 
 	// Collect unique cases (ID dedup) and count sections
@@ -604,16 +613,15 @@ func getFieldValue(c data.Case, field string) string {
 // printCasesStats prints execution statistics for compare cases.
 func printCasesStats(result *CompareResult, elapsed time.Duration) {
 	totalCases := len(result.OnlyInFirst) + len(result.OnlyInSecond) + len(result.Common)
-	
-	fmt.Println()
-	fmt.Println("┌──────────────────────────────────────────────────────────────┐")
-	fmt.Println("│                    СТАТИСТИКА ВЫПОЛНЕНИЯ                     │")
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  Время выполнения: %s\n", elapsed.Round(time.Millisecond))
-	fmt.Printf("│  Всего кейсов обработано: %d\n", totalCases)
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  Только в проекте %d: %d кейсов\n", result.Project1ID, len(result.OnlyInFirst))
-	fmt.Printf("│  Только в проекте %d: %d кейсов\n", result.Project2ID, len(result.OnlyInSecond))
-	fmt.Printf("│  Общих кейсов: %d\n", len(result.Common))
-	fmt.Println("└──────────────────────────────────────────────────────────────┘")
+
+	r := reporter.New("cases").
+		Section("Общая статистика").
+		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
+		Stat("📦", "Всего кейсов обработано", totalCases).
+		Section("Результат сравнения").
+		Stat("🔹", fmt.Sprintf("Только в проекте %d", result.Project1ID), len(result.OnlyInFirst)).
+		Stat("🔹", fmt.Sprintf("Только в проекте %d", result.Project2ID), len(result.OnlyInSecond)).
+		Stat("🔗", "Общих кейсов", len(result.Common))
+
+	r.Print()
 }

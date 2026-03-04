@@ -96,17 +96,19 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 		o(&cfg)
 	}
 	// Создаем транспорт с нужными опциями.
-	// MaxIdleConnsPerHost MUST be high enough for parallel fetching —
-	// default Go value (2) causes constant TCP+TLS reconnects under
-	// concurrency 40+ (8 suites × 5 pages), leading to timeouts and errors.
+	// MaxConnsPerHost MUST match actual concurrency:
+	// 2 projects × 8 suites × 10 pages = 160 concurrent requests.
+	// With MaxConnsPerHost=50, 110 requests queue inside Go transport;
+	// http.Client.Timeout includes queue wait, causing cascading timeouts
+	// and exponential-backoff retries → 3× slower than expected.
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: cfg.insecure,
 		},
 		TLSHandshakeTimeout: cfg.tlsHandshakeTimeout,
-		MaxIdleConns:         100,
-		MaxIdleConnsPerHost:  50,
-		MaxConnsPerHost:      50,
+		MaxIdleConns:         200,
+		MaxIdleConnsPerHost:  200,
+		MaxConnsPerHost:      0, // unlimited — concurrency governed by parallel settings
 		IdleConnTimeout:      90 * time.Second,
 	}
 	// Создаем транспорт с Basic Auth, который будет добавляться в каждый запрос

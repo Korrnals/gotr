@@ -26,7 +26,25 @@ func PrintCasesStatsWithErrors(
 	r := reporter.New("cases").
 		Section("Общая статистика").
 		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
-		Stat("📦", "Всего обработано", total).
+		Stat("📦", "Всего уникальных кейсов", total).
+		Section(fmt.Sprintf("Проект %d", pid1)).
+		Stat("📋", "Сьютов", stats.Project1.Suites).
+		Stat("📂", "Секций", stats.Project1.Sections).
+		Stat("📄", "Кейсов (уникальных)", stats.Project1.CasesUnique).
+		StatIf(stats.Project1.CasesRaw != stats.Project1.CasesUnique,
+			"📄", "Кейсов (raw до дедупа)", stats.Project1.CasesRaw).
+		StatIf(stats.Project1.EmptyTitles > 0,
+			"⚠️", "Кейсов без заголовка", stats.Project1.EmptyTitles).
+		Stat("⏱️", "Загрузка", stats.Project1.Elapsed.Round(time.Millisecond)).
+		Section(fmt.Sprintf("Проект %d", pid2)).
+		Stat("📋", "Сьютов", stats.Project2.Suites).
+		Stat("📂", "Секций", stats.Project2.Sections).
+		Stat("📄", "Кейсов (уникальных)", stats.Project2.CasesUnique).
+		StatIf(stats.Project2.CasesRaw != stats.Project2.CasesUnique,
+			"📄", "Кейсов (raw до дедупа)", stats.Project2.CasesRaw).
+		StatIf(stats.Project2.EmptyTitles > 0,
+			"⚠️", "Кейсов без заголовка", stats.Project2.EmptyTitles).
+		Stat("⏱️", "Загрузка", stats.Project2.Elapsed.Round(time.Millisecond)).
 		Section("Ошибки и ретраи").
 		StatFmt("⚠️", "Ошибки загрузки", "П%d=%d, П%d=%d", pid1, stats.LoadErrorsP1, pid2, stats.LoadErrorsP2).
 		Stat("⚠️", "Failed pages до авто-ретрая", stats.FailedPagesBefore).
@@ -35,8 +53,8 @@ func PrintCasesStatsWithErrors(
 		StatIf(stats.RetryAttempted, "📥", "Получено кейсов при ретрае", stats.RetryStats.RecoveredCases).
 		StatIf(stats.RetryAttempted, "⚠️", "Failed pages после авто-ретрая", stats.FailedPagesAfter).
 		Section("Результат сравнения").
-		Stat("✅", fmt.Sprintf("Только в проекте %d", pid1), onlyFirst).
-		Stat("✅", fmt.Sprintf("Только в проекте %d", pid2), onlySecond).
+		Stat("🔹", fmt.Sprintf("Уникальных в проекте %d", pid1), onlyFirst).
+		Stat("🔹", fmt.Sprintf("Уникальных в проекте %d", pid2), onlySecond).
 		Stat("🔗", "Общих", common)
 
 	r.Print()

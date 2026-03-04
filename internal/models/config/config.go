@@ -131,7 +131,7 @@ compare:
 
   # Дефолт для cloud, если rate_limit=-1.
   # professional: 180, enterprise: 300
-  cloud_rate_limit: 180
+  cloud_rate_limit: 300
 
   # Дефолт для server, если rate_limit=-1.
   # Обычно 0 (без лимита).
@@ -139,10 +139,10 @@ compare:
 
   cases:
     # Параллельность по сьютам (между сьютами).
-    parallel_suites: 8
+    parallel_suites: 16
 
     # Параллельность страниц внутри одного сьюта.
-    parallel_pages: 10
+    parallel_pages: 20
 
     # Количество retry для каждой страницы в основном этапе загрузки compare cases.
     page_retries: 5
@@ -152,13 +152,13 @@ compare:
 
     retry:
       # Попытки дозабора одной failed-страницы.
-      attempts: 3
+      attempts: 5
 
       # Количество параллельных воркеров дозабора.
-      workers: 6
+      workers: 12
 
       # Пауза между попытками дозабора одной страницы.
-      delay: "500ms"
+      delay: "200ms"
 
     # Всегда пытаться автоматически дозабирать failed pages после основного compare cases.
     auto_retry_failed_pages: true

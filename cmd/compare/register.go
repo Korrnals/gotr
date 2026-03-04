@@ -61,13 +61,13 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	Cmd.PersistentFlags().String("save-to", "", "Сохранить результат в указанный файл")
 	Cmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (без статистики и прогресса)")
 	Cmd.PersistentFlags().Int("rate-limit", -1, "Лимит API-запросов в минуту. -1 = авто по profile/deployment, 0 = без лимита, >0 = фиксированное значение.")
-	Cmd.PersistentFlags().Int("parallel-suites", 8, "Максимальное количество параллельных сьютов")
-	Cmd.PersistentFlags().Int("parallel-pages", 10, "Максимальное количество параллельных страниц внутри сьюта")
+	Cmd.PersistentFlags().Int("parallel-suites", 16, "Максимальное количество параллельных сьютов")
+	Cmd.PersistentFlags().Int("parallel-pages", 20, "Максимальное количество параллельных страниц внутри сьюта")
 	Cmd.PersistentFlags().Int("page-retries", 5, "Количество retry для каждой страницы в основном этапе загрузки")
 	Cmd.PersistentFlags().Duration("timeout", 30*time.Minute, "Таймаут для операции сравнения")
-	Cmd.PersistentFlags().Int("retry-attempts", 3, "Количество попыток при точечном авто-ретрае failed pages")
-	Cmd.PersistentFlags().Int("retry-workers", 6, "Количество параллельных воркеров при авто-ретрае failed pages")
-	Cmd.PersistentFlags().Duration("retry-delay", 500*time.Millisecond, "Пауза между попытками одной страницы при авто-ретрае")
+	Cmd.PersistentFlags().Int("retry-attempts", 5, "Количество попыток при точечном авто-ретрае failed pages")
+	Cmd.PersistentFlags().Int("retry-workers", 12, "Количество параллельных воркеров при авто-ретрае failed pages")
+	Cmd.PersistentFlags().Duration("retry-delay", 200*time.Millisecond, "Пауза между попытками одной страницы при авто-ретрае")
 
 	// Add all subcommands
 	Cmd.AddCommand(casesCmd)

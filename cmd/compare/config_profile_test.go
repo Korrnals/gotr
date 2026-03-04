@@ -74,9 +74,9 @@ func TestResolveCompareCasesRuntimeConfig_DefaultsAndAutoDeployment(t *testing.T
 
 	cfg, err := resolveCompareCasesRuntimeConfig(nil, "https://mycompany.testrail.io")
 	assert.NoError(t, err)
-	assert.Equal(t, 180, cfg.RateLimit)
-	assert.Equal(t, 8, cfg.ParallelSuites)
-	assert.Equal(t, 10, cfg.ParallelPages)
+	assert.Equal(t, 300, cfg.RateLimit)
+	assert.Equal(t, 16, cfg.ParallelSuites)
+	assert.Equal(t, 20, cfg.ParallelPages)
 	assert.Equal(t, 5, cfg.PageRetries)
 	assert.Equal(t, 30*time.Minute, cfg.Timeout)
 	assert.True(t, cfg.AutoRetryFailedPages)

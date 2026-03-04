@@ -217,6 +217,12 @@ func (d *Display) render() {
 		lineCount++
 	}
 
+	// Legend line
+	if len(d.tasks) > 0 {
+		buf.WriteString("   ⓘ  проект: кейсов (стр.) | сьюты | скорость | ⚠ ошибки | время\n")
+		lineCount++
+	}
+
 	// Tasks — primary metric is CASES, not suites
 	for _, t := range d.tasks {
 		suitesCompleted := t.completed.Load()

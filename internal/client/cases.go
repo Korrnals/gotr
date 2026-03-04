@@ -18,8 +18,15 @@ import (
 //
 // Returns the slice of cases regardless of format.
 func decodeCasesResponse(body []byte) ([]data.Case, error) {
+	cases, _, err := decodeCasesResponseWithSize(body)
+	return cases, err
+}
+
+// decodeCasesResponseWithSize decodes a get_cases response and returns (cases, totalSize, error).
+// totalSize is the "size" field from the paginated wrapper (-1 if flat array or unavailable).
+func decodeCasesResponseWithSize(body []byte) ([]data.Case, int64, error) {
 	if len(body) == 0 {
-		return nil, nil
+		return nil, -1, nil
 	}
 
 	// Detect format by first non-whitespace byte
@@ -31,22 +38,26 @@ func decodeCasesResponse(body []byte) ([]data.Case, error) {
 			// Paginated wrapper: {"offset":0, "limit":250, "size":N, "cases":[...]}
 			var paginated data.PaginatedCasesResponse
 			if err := json.Unmarshal(body, &paginated); err != nil {
-				return nil, fmt.Errorf("decode paginated response: %w", err)
+				return nil, -1, fmt.Errorf("decode paginated response: %w", err)
 			}
-			return paginated.Cases, nil
+			totalSize := paginated.Size
+			if totalSize == 0 && len(paginated.Cases) > 0 {
+				totalSize = -1 // size field not set, mark unknown
+			}
+			return paginated.Cases, totalSize, nil
 		case '[':
 			// Flat array: [case1, case2, ...]
 			var cases []data.Case
 			if err := json.Unmarshal(body, &cases); err != nil {
-				return nil, fmt.Errorf("decode flat response: %w", err)
+				return nil, -1, fmt.Errorf("decode flat response: %w", err)
 			}
-			return cases, nil
+			return cases, -1, nil
 		default:
-			return nil, fmt.Errorf("unexpected response format (starts with %q)", string([]byte{b}))
+			return nil, -1, fmt.Errorf("unexpected response format (starts with %q)", string([]byte{b}))
 		}
 	}
 
-	return nil, nil
+	return nil, -1, nil
 }
 
 // GetCases получает **все** кейсы проекта (с пагинацией).
@@ -585,7 +596,8 @@ type casesFetcher struct {
 // FetchPageCtx fetches a single page of cases.
 // client.Get() already checks StatusCode != 200 and returns a formatted error,
 // so no duplicate status check is needed here.
-func (f *casesFetcher) FetchPageCtx(ctx context.Context, req parallel.PageRequest) ([]data.Case, error) {
+// Returns (cases, totalSize, error). totalSize comes from API "size" field (-1 if unavailable).
+func (f *casesFetcher) FetchPageCtx(ctx context.Context, req parallel.PageRequest) ([]data.Case, int64, error) {
 	endpoint := fmt.Sprintf("get_cases/%d", req.ProjectID)
 	query := map[string]string{
 		"suite_id": fmt.Sprintf("%d", req.SuiteID),
@@ -595,15 +607,15 @@ func (f *casesFetcher) FetchPageCtx(ctx context.Context, req parallel.PageReques
 
 	resp, err := f.client.Get(endpoint, query)
 	if err != nil {
-		return nil, err
+		return nil, -1, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read body error: %w", err)
+		return nil, -1, fmt.Errorf("read body error: %w", err)
 	}
 
-	return decodeCasesResponse(body)
+	return decodeCasesResponseWithSize(body)
 }
 

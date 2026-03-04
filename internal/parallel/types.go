@@ -67,6 +67,7 @@ type PageResult struct {
 	Error     error
 	Duration  time.Duration
 	FetchedAt time.Time
+	TotalSize int64 // Total number of cases for the suite (from API "size" field, -1 = unknown)
 }
 
 // FailedPage describes a page that could not be fetched even after recovery attempts.
@@ -98,8 +99,9 @@ type Fetcher func(ctx context.Context, projectID int64, suiteID int64, offset in
 
 // SuiteFetcher is the interface for fetching suite data
 type SuiteFetcher interface {
-	// FetchPageCtx fetches a single page of cases
-	FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, error)
+	// FetchPageCtx fetches a single page of cases.
+	// Returns (cases, totalSize, error). totalSize is the total count from API ("size" field); -1 if unknown.
+	FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, int64, error)
 }
 
 // ProgressReporter receives fine-grained progress updates from the controller.

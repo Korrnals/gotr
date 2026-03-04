@@ -159,6 +159,10 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 		return nil, execStats, err
 	}
 
+	utils.DebugPrint("[Compare] RuntimeConfig: parallelSuites=%d, parallelPages=%d, rateLimit=%d, pageRetries=%d, retryAttempts=%d, retryWorkers=%d, retryDelay=%s",
+		runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.RateLimit,
+		runtimeConfig.PageRetries, runtimeConfig.RetryAttempts, runtimeConfig.RetryWorkers, runtimeConfig.RetryDelay)
+
 	// Create live display
 	display := ui.New()
 	display.SetHeader("Загрузка данных")

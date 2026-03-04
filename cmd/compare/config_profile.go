@@ -23,15 +23,18 @@ type compareCasesRuntimeConfig struct {
 func ensureCompareConfigDefaults() {
 	viper.SetDefault("compare.deployment", "auto")
 	viper.SetDefault("compare.cloud_tier", "professional")
-	viper.SetDefault("compare.rate_limit", -1)
+	viper.SetDefault("compare.rate_limit", -1) // -1 = авто: server→0 (без лимита), cloud→по тарифу
 
-	viper.SetDefault("compare.cases.parallel_suites", 8)
-	viper.SetDefault("compare.cases.parallel_pages", 10)
+	viper.SetDefault("compare.cloud_rate_limit", 300)  // enterprise-уровень
+	viper.SetDefault("compare.server_rate_limit", 0)   // server = без лимита
+
+	viper.SetDefault("compare.cases.parallel_suites", 16)
+	viper.SetDefault("compare.cases.parallel_pages", 20)
 	viper.SetDefault("compare.cases.page_retries", 5)
 	viper.SetDefault("compare.cases.timeout", "30m")
-	viper.SetDefault("compare.cases.retry.attempts", 3)
-	viper.SetDefault("compare.cases.retry.workers", 6)
-	viper.SetDefault("compare.cases.retry.delay", "500ms")
+	viper.SetDefault("compare.cases.retry.attempts", 5)
+	viper.SetDefault("compare.cases.retry.workers", 12)
+	viper.SetDefault("compare.cases.retry.delay", "200ms")
 	viper.SetDefault("compare.cases.auto_retry_failed_pages", true)
 }
 
@@ -66,7 +69,7 @@ func resolveCompareCasesRuntimeConfig(
 
 	parallelSuites := viper.GetInt("compare.cases.parallel_suites")
 	if parallelSuites <= 0 {
-		parallelSuites = 8
+		parallelSuites = 16
 	}
 	if isFlagProvided(cmdFlags, "parallel_suites") {
 		parallelSuites = cmdFlags["parallel_suites"].(int)
@@ -74,7 +77,7 @@ func resolveCompareCasesRuntimeConfig(
 
 	parallelPages := viper.GetInt("compare.cases.parallel_pages")
 	if parallelPages <= 0 {
-		parallelPages = 10
+		parallelPages = 20
 	}
 	if isFlagProvided(cmdFlags, "parallel_pages") {
 		parallelPages = cmdFlags["parallel_pages"].(int)
@@ -103,7 +106,7 @@ func resolveCompareCasesRuntimeConfig(
 
 	retryAttempts := viper.GetInt("compare.cases.retry.attempts")
 	if retryAttempts <= 0 {
-		retryAttempts = 3
+		retryAttempts = 5
 	}
 	if isFlagProvided(cmdFlags, "retry_attempts") {
 		retryAttempts = cmdFlags["retry_attempts"].(int)
@@ -111,7 +114,7 @@ func resolveCompareCasesRuntimeConfig(
 
 	retryWorkers := viper.GetInt("compare.cases.retry.workers")
 	if retryWorkers <= 0 {
-		retryWorkers = 6
+		retryWorkers = 12
 	}
 	if isFlagProvided(cmdFlags, "retry_workers") {
 		retryWorkers = cmdFlags["retry_workers"].(int)

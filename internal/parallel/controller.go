@@ -217,8 +217,9 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	var nextOffset int64
 	// Exhausted flag — set when we confidently reached end of data
 	var exhausted int32
-	// Consecutive empty pages counter; do not stop on first empty page because
-	// transient API glitches can return empty bodies sporadically.
+	// Known total size from API "size" field (-1 = unknown yet)
+	var knownTotal int64 = -1
+	// Consecutive empty pages counter
 	var consecutiveEmptyPages int32
 	// Consecutive error counter — reset on any successful page
 	var consecutiveErrors int32
@@ -257,6 +258,12 @@ func (pc *ParallelController) fetchSuiteStreaming(
 				// Claim next offset atomically
 				offset := int(atomic.AddInt64(&nextOffset, int64(pageSize)) - int64(pageSize))
 
+				// Exact bound: if API told us total size, skip offsets past it
+				if kt := atomic.LoadInt64(&knownTotal); kt >= 0 && int64(offset) >= kt {
+					atomic.StoreInt32(&exhausted, 1)
+					return nil
+				}
+
 				// Safety: cap at 10M cases (40K pages)
 				if offset/pageSize > 40000 {
 					log.Debug(fmt.Sprintf("[Suite %d] WARNING: hit 40K page limit, stopping", task.SuiteID))
@@ -273,6 +280,16 @@ func (pc *ParallelController) fetchSuiteStreaming(
 
 				result := pc.fetchPageWithRetry(gctx, req, fetcher)
 
+				// Use TotalSize from API to set exact bound (first response wins)
+				if result.TotalSize >= 0 {
+					atomic.CompareAndSwapInt64(&knownTotal, -1, result.TotalSize)
+					// Re-check: maybe this offset is already past the bound
+					if kt := atomic.LoadInt64(&knownTotal); kt >= 0 && int64(offset) >= kt {
+						atomic.StoreInt32(&exhausted, 1)
+						return nil
+					}
+				}
+
 				if result.Error != nil {
 					// Record failed offset for recovery
 					failedMu.Lock()
@@ -283,7 +300,12 @@ func (pc *ParallelController) fetchSuiteStreaming(
 				}
 
 				if len(result.Cases) == 0 {
-					// Empty page can be transient; stop only after several consecutive empties.
+					// Empty page — if we already know total, just mark exhausted
+					if atomic.LoadInt64(&knownTotal) >= 0 {
+						atomic.StoreInt32(&exhausted, 1)
+						return nil
+					}
+					// Unknown total: stop after several consecutive empties
 					emptyCount := atomic.AddInt32(&consecutiveEmptyPages, 1)
 					if emptyCount >= int32(numWorkers) {
 						atomic.StoreInt32(&exhausted, 1)
@@ -397,12 +419,14 @@ func (pc *ParallelController) fetchPageWithRetry(
 	if pc.config.MaxRetries >= 0 {
 		retryConfig.MaxRetries = pc.config.MaxRetries
 	}
+	result.TotalSize = -1
 	err := concurrent.RetryWithContext(ctx, retryConfig, func() error {
-		cases, err := fetcher.FetchPageCtx(ctx, req)
+		cases, totalSize, err := fetcher.FetchPageCtx(ctx, req)
 		if err != nil {
 			return err
 		}
 		result.Cases = cases
+		result.TotalSize = totalSize
 		return nil
 	})
 

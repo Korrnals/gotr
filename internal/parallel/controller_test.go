@@ -31,7 +31,7 @@ func newMockSuiteFetcher() *mockSuiteFetcher {
 	}
 }
 
-func (m *mockSuiteFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, error) {
+func (m *mockSuiteFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, int64, error) {
 	atomic.AddInt32(&m.callCount, 1)
 
 	// Simulate latency
@@ -39,31 +39,33 @@ func (m *mockSuiteFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([
 		select {
 		case <-time.After(m.latency):
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, -1, ctx.Err()
 		}
 	}
 
 	// Check if this suite should fail (streaming doesn't call GetTotalCases)
 	if m.failSuiteIDs[req.SuiteID] {
-		return nil, errors.New("suite fetch failed")
+		return nil, -1, errors.New("suite fetch failed")
 	}
 
 	// Check if this page should fail
 	if offsets, ok := m.failPageOffsets[req.SuiteID]; ok {
 		if offsets[req.Offset] {
-			return nil, errors.New("page fetch failed")
+			return nil, -1, errors.New("page fetch failed")
 		}
 	}
 
 	cases, ok := m.cases[req.SuiteID]
 	if !ok {
-		return []data.Case{}, nil
+		return []data.Case{}, 0, nil
 	}
+
+	totalSize := int64(len(cases))
 
 	// Slice the cases based on offset and limit
 	start := req.Offset
 	if start >= len(cases) {
-		return []data.Case{}, nil
+		return []data.Case{}, totalSize, nil
 	}
 
 	end := start + req.Limit
@@ -71,7 +73,7 @@ func (m *mockSuiteFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([
 		end = len(cases)
 	}
 
-	return cases[start:end], nil
+	return cases[start:end], totalSize, nil
 }
 
 func (m *mockSuiteFetcher) addCases(suiteID int64, count int) {
@@ -383,17 +385,19 @@ func newTruncatedMockFetcher() *truncatedMockFetcher {
 	}
 }
 
-func (m *truncatedMockFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, error) {
+func (m *truncatedMockFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, int64, error) {
 	atomic.AddInt32(&m.callCount, 1)
 
 	cases, ok := m.cases[req.SuiteID]
 	if !ok {
-		return []data.Case{}, nil
+		return []data.Case{}, 0, nil
 	}
+
+	totalSize := int64(len(cases))
 
 	start := req.Offset
 	if start >= len(cases) {
-		return []data.Case{}, nil
+		return []data.Case{}, totalSize, nil
 	}
 
 	end := start + req.Limit
@@ -410,7 +414,7 @@ func (m *truncatedMockFetcher) FetchPageCtx(ctx context.Context, req PageRequest
 		}
 	}
 
-	return result, nil
+	return result, totalSize, nil
 }
 
 func (m *truncatedMockFetcher) setTruncation(suiteID int64, offset int, maxResults int) {

@@ -219,7 +219,7 @@ func (d *Display) render() {
 
 	// Legend line
 	if len(d.tasks) > 0 {
-		buf.WriteString("   ⓘ  проект: кейсов (стр.) | сьюты | скорость | ⚠ ошибки | время\n")
+		buf.WriteString("   ⓘ  проект: кейсов (стр.) | сьюты | скорость | время\n")
 		lineCount++
 	}
 
@@ -262,13 +262,13 @@ func (d *Display) render() {
 			sb.WriteString(fmt.Sprintf(" | %s/с", fmtCount(int64(speed))))
 		}
 
-		// Errors
+		// Elapsed
+		sb.WriteString(fmt.Sprintf(" | %s", fmtDuration(elapsed)))
+
+		// Errors (at end — conditional, so main fields always align)
 		if errs > 0 {
 			sb.WriteString(fmt.Sprintf(" | ⚠ %d ош.", errs))
 		}
-
-		// Elapsed
-		sb.WriteString(fmt.Sprintf(" | %s", fmtDuration(elapsed)))
 
 		fmt.Fprintln(&buf, sb.String())
 		lineCount++

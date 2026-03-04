@@ -37,7 +37,8 @@ func PrintCasesStatsWithErrors(
 			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
 				stats.Project1.CasesExpected, stats.Project1.SuitesWithTotal)).
 		StatFmt("📈", "Полнота загрузки", "%s",
-			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected, stats.Project1.FailedPages)).
+			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected,
+				stats.Project1.Suites, stats.Project1.SuitesVerified, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.TotalPages > 0,
 			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project1.TotalPages, stats.Project1.FailedPages)).
@@ -54,7 +55,8 @@ func PrintCasesStatsWithErrors(
 			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
 				stats.Project2.CasesExpected, stats.Project2.SuitesWithTotal)).
 		StatFmt("📈", "Полнота загрузки", "%s",
-			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected, stats.Project2.FailedPages)).
+			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected,
+				stats.Project2.Suites, stats.Project2.SuitesVerified, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.TotalPages > 0,
 			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project2.TotalPages, stats.Project2.FailedPages)).
@@ -77,9 +79,24 @@ func PrintCasesStatsWithErrors(
 }
 
 // formatCompleteness returns a human-readable completeness string.
+// totalSuites/suitesVerified track suite-level exhaustion verification.
 // failedPages indicates how many pages had permanent fetch errors.
-func formatCompleteness(actual, expected, failedPages int) string {
+func formatCompleteness(actual, expected, totalSuites, suitesVerified, failedPages int) string {
+	// Suite verification status
+	suiteStatus := ""
+	if totalSuites > 0 {
+		if suitesVerified == totalSuites {
+			suiteStatus = fmt.Sprintf("%d/%d сьютов завершены ✅", suitesVerified, totalSuites)
+		} else {
+			incomplete := totalSuites - suitesVerified
+			suiteStatus = fmt.Sprintf("%d/%d сьютов ✅, %d неполных ⚠️", suitesVerified, totalSuites, incomplete)
+		}
+	}
+
 	if expected <= 0 {
+		if suiteStatus != "" {
+			return fmt.Sprintf("%d (%s)", actual, suiteStatus)
+		}
 		if failedPages == 0 {
 			return fmt.Sprintf("%d (загружено полностью ✅)", actual)
 		}

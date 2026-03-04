@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -68,7 +68,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Case created (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 

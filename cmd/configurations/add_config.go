@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +51,7 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Конфигурация добавлена (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}
 

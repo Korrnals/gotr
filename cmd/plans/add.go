@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -58,7 +58,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Plan created (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
@@ -69,10 +69,4 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "plans", "json")
-	return err
 }

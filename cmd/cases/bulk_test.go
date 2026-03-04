@@ -6,6 +6,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -423,7 +424,7 @@ func TestOutputResult_Stdout(t *testing.T) {
 	cmd.Flags().Bool("save", false, "")
 	data := map[string]string{"key": "value"}
 
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "cases")
 	assert.NoError(t, err)
 }
 
@@ -433,6 +434,6 @@ func TestOutputResult_WithSave(t *testing.T) {
 	cmd.Flags().Bool("save", true, "")
 
 	data := map[string]string{"key": "value", "test": "data"}
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "cases")
 	assert.NoError(t, err)
 }

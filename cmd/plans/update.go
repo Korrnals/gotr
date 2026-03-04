@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +54,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Plan %d updated\n", planID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 

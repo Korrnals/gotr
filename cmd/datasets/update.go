@@ -50,7 +50,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Датасет %d обновлён\n", datasetID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}
 

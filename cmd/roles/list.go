@@ -30,17 +30,11 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("не удалось получить список ролей: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "roles")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "roles", "json")
-	return err
 }

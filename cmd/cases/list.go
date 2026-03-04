@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -35,7 +36,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to list cases: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 

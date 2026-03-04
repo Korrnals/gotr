@@ -53,7 +53,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ BDD добавлен к кейсу %d\n", caseID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "bdds")
 		},
 	}
 

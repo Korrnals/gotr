@@ -3,7 +3,6 @@ package tests
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -20,7 +19,6 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 в рамках тестового прогона.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			start := time.Now()
 			client := getClient(cmd)
 
 			testID, err := strconv.ParseInt(args[0], 10, 64)
@@ -40,7 +38,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			return outputResult(cmd, test, start)
+			return output.OutputResult(cmd, test, "tests")
 		},
 	}
 

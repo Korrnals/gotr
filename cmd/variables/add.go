@@ -51,7 +51,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Переменная создана (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "variables")
 		},
 	}
 

@@ -184,19 +184,16 @@ func (pc *ParallelController) suiteWorker(
 	}
 }
 
-// fetchSuiteStreaming fetches all pages from a suite using pipeline-based parallel pagination.
-// Instead of wave-based synchronization (fetch N → wait all → fetch N), this uses
-// N independent workers that continuously claim the next offset via an atomic counter.
+// fetchSuiteStreaming fetches all pages from a suite using probe-first parallel pagination.
 //
-// Algorithm:
-//   - N workers (MaxConcurrentPages) run in parallel
-//   - Each worker atomically claims the next offset, fetches the page, submits results
-//   - When a worker receives an empty page (0 cases, no error) → sets exhausted flag
-//   - All workers check the exhausted flag before claiming the next offset
-//   - Failed offsets are collected for a sequential recovery pass
+// Algorithm (probe-first):
+//   - Phase 1: Probe — single synchronous request for page 0 to learn totalSize
+//   - Phase 2: Parallel — N workers fetch remaining pages with known bounds
+//   - Phase 3: Recovery — re-fetch any failed pages sequentially
 //
-// This eliminates wave synchronization overhead: no worker waits for the slowest
-// page in a batch. Throughput is limited only by the rate limiter and network latency.
+// The probe eliminates burst flood: instead of N workers speculatively claiming
+// offsets before any API response, we learn the exact page count upfront.
+// When totalSize is unknown (fallback), workers use exhaustion detection.
 func (pc *ParallelController) fetchSuiteStreaming(
 	ctx context.Context,
 	task SuiteTask,
@@ -213,12 +210,81 @@ func (pc *ParallelController) fetchSuiteStreaming(
 
 	reporter := pc.config.Reporter
 
-	// Atomic offset counter — each worker claims the next offset atomically
-	var nextOffset int64
+	// Stats
+	var totalCases int32
+
+	// ── Phase 1: Probe — fetch page 0 to learn totalSize before launching workers ──
+	probeReq := PageRequest{
+		SuiteTask: task,
+		Offset:    0,
+		Limit:     pageSize,
+		PageNum:   1,
+	}
+	probeResult := pc.fetchPageWithRetry(ctx, probeReq, fetcher)
+
+	if probeResult.Error != nil {
+		// Can't fetch even page 0 — record as permanently failed
+		failedPagesMu.Lock()
+		*failedPages = append(*failedPages, FailedPage{
+			ProjectID: task.ProjectID,
+			SuiteID:   task.SuiteID,
+			Offset:    0,
+			Limit:     pageSize,
+			PageNum:   1,
+			Error:     probeResult.Error.Error(),
+		})
+		failedPagesMu.Unlock()
+		if reporter != nil {
+			reporter.OnError()
+		}
+		return fmt.Errorf("suite %d: probe page 0 failed: %w", task.SuiteID, probeResult.Error)
+	}
+
+	// Submit probe page results
+	if len(probeResult.Cases) > 0 {
+		aggregator.Submit(probeResult)
+		atomic.AddInt32(&totalCases, int32(len(probeResult.Cases)))
+		if reporter != nil {
+			reporter.OnCasesReceived(len(probeResult.Cases))
+			reporter.OnPageFetched()
+		}
+	}
+
+	// Set known total from probe response
+	var knownTotal int64 = -1
+	if probeResult.TotalSize >= 0 {
+		knownTotal = probeResult.TotalSize
+	}
+
+	// If suite is empty, fits in one page, or returned partial page (when total unknown) — done
+	if len(probeResult.Cases) == 0 ||
+		(knownTotal >= 0 && knownTotal <= int64(pageSize)) ||
+		(knownTotal < 0 && len(probeResult.Cases) < pageSize) {
+		log.Debug(fmt.Sprintf("[Suite %d] Probe: %d cases, totalSize=%d — single page, done",
+			task.SuiteID, len(probeResult.Cases), knownTotal))
+		return nil
+	}
+
+	// ── Phase 2: Parallel fetch of remaining pages ──
+
+	// Cap workers to remaining pages when total is known
+	if knownTotal >= 0 {
+		totalPages := int((knownTotal + int64(pageSize) - 1) / int64(pageSize))
+		remainingPages := totalPages - 1 // page 0 already fetched
+		if remainingPages <= 0 {
+			return nil
+		}
+		if numWorkers > remainingPages {
+			numWorkers = remainingPages
+		}
+		log.Debug(fmt.Sprintf("[Suite %d] Probe: totalSize=%d, %d pages remaining, %d workers",
+			task.SuiteID, knownTotal, remainingPages, numWorkers))
+	}
+
+	// Workers start from page 1 (page 0 already fetched by probe)
+	var nextOffset int64 = int64(pageSize)
 	// Exhausted flag — set when we confidently reached end of data
 	var exhausted int32
-	// Known total size from API "size" field (-1 = unknown yet)
-	var knownTotal int64 = -1
 	// Consecutive empty pages counter
 	var consecutiveEmptyPages int32
 	// Consecutive error counter — reset on any successful page
@@ -231,9 +297,6 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	// Failed offsets for recovery pass
 	var failedMu sync.Mutex
 	var failedOffsets []int
-
-	// Stats
-	var totalCases int32
 
 	g, gctx := errgroup.WithContext(ctx)
 
@@ -280,7 +343,8 @@ func (pc *ParallelController) fetchSuiteStreaming(
 
 				result := pc.fetchPageWithRetry(gctx, req, fetcher)
 
-				// Use TotalSize from API to set exact bound (first response wins)
+				// Use TotalSize from API to update bound (probe normally sets this,
+				// but in fallback mode the first parallel response may set it)
 				if result.TotalSize >= 0 {
 					atomic.CompareAndSwapInt64(&knownTotal, -1, result.TotalSize)
 					// Re-check: maybe this offset is already past the bound
@@ -331,7 +395,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 
 	g.Wait()
 
-	// === Recovery pass: re-fetch failed pages sequentially ===
+	// ── Phase 3: Recovery pass — re-fetch failed pages sequentially ──
 	if len(failedOffsets) > 0 {
 		log.Debug(fmt.Sprintf("[Suite %d] Recovery: re-fetching %d failed pages", task.SuiteID, len(failedOffsets)))
 
@@ -389,7 +453,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	}
 
 	cases := atomic.LoadInt32(&totalCases)
-	log.Debug(fmt.Sprintf("[Suite %d] Pipeline complete: %d cases fetched", task.SuiteID, cases))
+	log.Debug(fmt.Sprintf("[Suite %d] Complete: %d cases fetched", task.SuiteID, cases))
 
 	return nil
 }

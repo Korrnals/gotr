@@ -34,7 +34,7 @@ import (
 )
 
 // boxWidth is the width of the box border (number of ─ characters).
-const boxWidth = 62
+const boxWidth = 66
 
 // ---------------------------------------------------------------------------
 // Element types

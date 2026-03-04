@@ -90,6 +90,8 @@ func (pc *ParallelController) Execute(
 	var expectedCasesTotal int64
 	var suitesWithTotal int32
 	var suitesVerified int32
+	var suiteResultsMu sync.Mutex
+	suiteResults := make([]SuiteResultInfo, 0, len(tasks))
 
 	// Create worker pool for suites
 	maxWorkers := pc.config.MaxConcurrentSuites
@@ -103,7 +105,7 @@ func (pc *ParallelController) Execute(
 	// Start workers
 	for i := 0; i < maxWorkers; i++ {
 		g.Go(func() error {
-			return pc.suiteWorker(ctx, pq, fetcher, aggregator, &completedSuites, totalSuites, &failedPagesMu, &failedPages, &expectedCasesTotal, &suitesWithTotal, &suitesVerified)
+			return pc.suiteWorker(ctx, pq, fetcher, aggregator, &completedSuites, totalSuites, &failedPagesMu, &failedPages, &expectedCasesTotal, &suitesWithTotal, &suitesVerified, &suiteResultsMu, &suiteResults)
 		})
 	}
 
@@ -122,6 +124,7 @@ func (pc *ParallelController) Execute(
 	stats.ExpectedCases = atomic.LoadInt64(&expectedCasesTotal)
 	stats.SuitesWithTotal = int(atomic.LoadInt32(&suitesWithTotal))
 	stats.SuitesVerified = int(atomic.LoadInt32(&suitesVerified))
+	stats.SuiteResults = suiteResults
 
 	log.Debug(fmt.Sprintf("[ParallelController] Execution complete: got %d cases from %d suites",
 		len(cases), completedSuites))
@@ -162,6 +165,8 @@ func (pc *ParallelController) suiteWorker(
 	expectedCasesTotal *int64,
 	suitesWithTotal *int32,
 	suitesVerified *int32,
+	suiteResultsMu *sync.Mutex,
+	suiteResults *[]SuiteResultInfo,
 ) error {
 	for {
 		select {
@@ -178,7 +183,7 @@ func (pc *ParallelController) suiteWorker(
 		log.Debug(fmt.Sprintf("Processing suite %d", task.SuiteID))
 
 		// Streaming fetch — no GetTotalCases needed
-		suiteExpected, verified, err := pc.fetchSuiteStreaming(ctx, task, fetcher, aggregator, failedPagesMu, failedPages)
+		casesFetched, suiteExpected, verified, err := pc.fetchSuiteStreaming(ctx, task, fetcher, aggregator, failedPagesMu, failedPages)
 		if err != nil {
 			log.Debug(fmt.Sprintf("Error fetching suite %d: %v", task.SuiteID, err))
 			aggregator.SubmitError(fmt.Errorf("suite %d: %w", task.SuiteID, err))
@@ -190,6 +195,15 @@ func (pc *ParallelController) suiteWorker(
 		if verified {
 			atomic.AddInt32(suitesVerified, 1)
 		}
+
+		// Track per-suite result for integrity verification
+		suiteResultsMu.Lock()
+		*suiteResults = append(*suiteResults, SuiteResultInfo{
+			SuiteID:      int(task.SuiteID),
+			CasesFetched: casesFetched,
+			Verified:     verified,
+		})
+		suiteResultsMu.Unlock()
 
 		completed := atomic.AddInt32(completedSuites, 1)
 
@@ -212,7 +226,8 @@ func (pc *ParallelController) suiteWorker(
 // The probe eliminates burst flood: instead of N workers speculatively claiming
 // offsets before any API response, we learn the exact page count upfront.
 // When totalSize is unknown (fallback), workers use exhaustion detection.
-// fetchSuiteStreaming returns (expectedTotal, verified, error).
+// fetchSuiteStreaming returns (casesFetched, expectedTotal, verified, error).
+// casesFetched is the actual number of cases loaded from this suite.
 // expectedTotal is the totalSize reported by the API (-1 if unknown).
 // verified is true when all pages were fetched and exhaustion confirmed (no permanent errors).
 func (pc *ParallelController) fetchSuiteStreaming(
@@ -222,7 +237,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	aggregator *ResultAggregator,
 	failedPagesMu *sync.Mutex,
 	failedPages *[]FailedPage,
-) (int64, bool, error) {
+) (int, int64, bool, error) {
 	pageSize := pc.config.PageSize
 	numWorkers := pc.config.MaxConcurrentPages
 	if numWorkers <= 0 {
@@ -275,7 +290,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 			(knownTotal < 0 && len(probeResult.Cases) < pageSize) {
 			log.Debug(fmt.Sprintf("[Suite %d] Probe: %d cases, totalSize=%d — single page, done",
 				task.SuiteID, len(probeResult.Cases), knownTotal))
-			return knownTotal, true, nil // single page — verified
+			return len(probeResult.Cases), knownTotal, true, nil // single page — verified
 		}
 	}
 
@@ -286,7 +301,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 		totalPages := int((knownTotal + int64(pageSize) - 1) / int64(pageSize))
 		remainingPages := totalPages - 1 // page 0 already fetched
 		if remainingPages <= 0 {
-			return knownTotal, true, nil // known total, single page — verified
+			return len(probeResult.Cases), knownTotal, true, nil // known total, single page — verified
 		}
 		if numWorkers > remainingPages {
 			numWorkers = remainingPages
@@ -486,10 +501,10 @@ func (pc *ParallelController) fetchSuiteStreaming(
 		failedPagesMu.Unlock()
 	}
 
-	cases := atomic.LoadInt32(&totalCases)
-	log.Debug(fmt.Sprintf("[Suite %d] Complete: %d cases fetched (expected %d, verified=%v)", task.SuiteID, cases, knownTotal, suiteVerified))
+	fetchedCount := int(atomic.LoadInt32(&totalCases))
+	log.Debug(fmt.Sprintf("[Suite %d] Complete: %d cases fetched (expected %d, verified=%v)", task.SuiteID, fetchedCount, knownTotal, suiteVerified))
 
-	return knownTotal, suiteVerified, nil
+	return fetchedCount, knownTotal, suiteVerified, nil
 }
 
 // fetchPageWithRetry fetches a single page with rate limiting and retry

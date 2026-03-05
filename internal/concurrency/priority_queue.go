@@ -1,5 +1,5 @@
-// Package parallel provides priority queue implementation for suite tasks.
-package parallel
+// Package concurrency provides priority queue implementation for suite tasks.
+package concurrency
 
 import (
 	"container/heap"

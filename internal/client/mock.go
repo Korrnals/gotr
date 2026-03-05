@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/parallel"
+	"github.com/Korrnals/gotr/internal/concurrency"
 )
 
 // MockClient реализует ClientInterface для тестирования
@@ -38,7 +38,7 @@ type MockClient struct {
 	// ConcurrentAPI - Parallel methods (Stage 6.2)
 	GetCasesParallelFunc          func(projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error)
 	GetCasesForSuitesParallelFunc func(projectID int64, suiteIDs []int64, workers int) (data.GetCasesResponse, error)
-	GetCasesParallelCtxFunc       func(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig) (data.GetCasesResponse, *parallel.ExecutionResult, error)
+	GetCasesParallelCtxFunc       func(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error)
 	GetSuitesParallelFunc         func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error)
 
 	// SuitesAPI
@@ -1159,7 +1159,7 @@ func (m *MockClient) UpdateTestsLabels(runID int64, testIDs []int64, labels []st
 
 
 // GetCasesParallelCtx — mock implementation for Stage 6.7
-func (m *MockClient) GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig) (data.GetCasesResponse, *parallel.ExecutionResult, error) {
+func (m *MockClient) GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
 	if m.GetCasesParallelCtxFunc != nil {
 		return m.GetCasesParallelCtxFunc(ctx, projectID, suiteIDs, config)
 	}
@@ -1169,7 +1169,7 @@ func (m *MockClient) GetCasesParallelCtx(ctx context.Context, projectID int64, s
 		workers = config.MaxConcurrentSuites
 	}
 	cases, err := m.GetCasesForSuitesParallel(projectID, suiteIDs, workers, nil)
-	result := &parallel.ExecutionResult{
+	result := &concurrency.ExecutionResult{
 		Cases: cases,
 	}
 	return cases, result, err

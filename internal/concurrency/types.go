@@ -1,7 +1,7 @@
-// Package parallel provides recursive parallelization for API requests.
+// Package concurrency provides recursive parallelization for API requests.
 // It enables concurrent fetching across multiple suites with parallel pagination
 // within each suite, using priority queues and adaptive rate limiting.
-package parallel
+package concurrency
 
 import (
 	"context"

@@ -1,5 +1,5 @@
-// Package parallel provides the ParallelController for orchestrating concurrent API requests.
-package parallel
+// Package concurrency provides the ParallelController for orchestrating concurrent API requests.
+package concurrency
 
 import (
 	"context"

@@ -14,8 +14,8 @@ import (
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/parallel"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/ui/reporter"
 	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/pkg/reporter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

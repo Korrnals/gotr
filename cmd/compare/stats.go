@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/ui/reporter"
+	"github.com/Korrnals/gotr/pkg/reporter"
 )
 
 // PrintCompareStats prints universal statistics for compare commands.

@@ -40,7 +40,7 @@ func PrintCasesStatsWithErrors(
 			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected,
 				stats.Project1.Suites, stats.Project1.SuitesVerified, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.SuiteDetailsCount > 0,
-			"📋", "Проверка", formatIntegrityCheck(
+			"�", "Всего кейсов в проекте", formatIntegrityCheck(
 				stats.Project1.CasesRaw, stats.Project1.SuiteDetailsCount,
 				stats.Project1.SuiteDetailsSum, stats.Project1.SuiteDetailsEmpty)).
 		StatIf(stats.Project1.TotalPages > 0,
@@ -62,7 +62,7 @@ func PrintCasesStatsWithErrors(
 			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected,
 				stats.Project2.Suites, stats.Project2.SuitesVerified, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.SuiteDetailsCount > 0,
-			"📋", "Проверка", formatIntegrityCheck(
+			"�", "Всего кейсов в проекте", formatIntegrityCheck(
 				stats.Project2.CasesRaw, stats.Project2.SuiteDetailsCount,
 				stats.Project2.SuiteDetailsSum, stats.Project2.SuiteDetailsEmpty)).
 		StatIf(stats.Project2.TotalPages > 0,
@@ -79,9 +79,9 @@ func PrintCasesStatsWithErrors(
 		StatIf(stats.RetryAttempted, "📥", "Получено кейсов при ретрае", stats.RetryStats.RecoveredCases).
 		StatIf(stats.RetryAttempted, "⚠️", "Failed pages после авто-ретрая", stats.FailedPagesAfter).
 		Section("Результат сравнения").
-		Stat("🔹", fmt.Sprintf("Уникальных в проекте %d", pid1), onlyFirst).
-		Stat("🔹", fmt.Sprintf("Уникальных в проекте %d", pid2), onlySecond).
-		Stat("🔗", "Общих", common)
+		Stat("🔹", fmt.Sprintf("Уникальных кейсов в проекте %d", pid1), onlyFirst).
+		Stat("🔹", fmt.Sprintf("Уникальных кейсов в проекте %d", pid2), onlySecond).
+		Stat("🔗", "Общих кейсов", common)
 
 	r.Print()
 }
@@ -120,8 +120,8 @@ func formatCompleteness(actual, expected, totalSuites, suitesVerified, failedPag
 	return fmt.Sprintf("%d/%d (%.1f%% ⚠️)", actual, expected, pct)
 }
 
-// formatIntegrityCheck verifies that sum of per-suite case counts matches total.
-// Shows empty suite count when present.
+// formatIntegrityCheck shows total cases across all suites in the project.
+// User compares this visually with "Полнота загрузки" to see if everything was fetched.
 func formatIntegrityCheck(casesRaw, suiteCount, suiteSum, emptySuites int) string {
 	if suiteCount == 0 {
 		return ""
@@ -131,10 +131,10 @@ func formatIntegrityCheck(casesRaw, suiteCount, suiteSum, emptySuites int) strin
 		emptyNote = fmt.Sprintf(", пустых: %d", emptySuites)
 	}
 	if suiteSum == casesRaw {
-		return fmt.Sprintf("Σ(%d сьютов) = %d ✅%s",
-			suiteCount, suiteSum, emptyNote)
+		return fmt.Sprintf("%d (%d сьютов%s)",
+			suiteSum, suiteCount, emptyNote)
 	}
 	diff := casesRaw - suiteSum
-	return fmt.Sprintf("Σ(%d сьютов) = %d ⚠️ (ожидалось %d, расхождение %+d)%s",
-		suiteCount, suiteSum, casesRaw, diff, emptyNote)
+	return fmt.Sprintf("%d (%d сьютов%s) ⚠️ загружено %d, расхождение %+d",
+		suiteSum, suiteCount, emptyNote, casesRaw, diff)
 }

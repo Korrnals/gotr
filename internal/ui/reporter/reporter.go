@@ -143,8 +143,13 @@ func (r *Report) Print() {
 
 // padRight pads content to fill boxWidth using visual (display) width,
 // then appends the closing │. Emoji and CJK characters are handled correctly.
+// Variation selectors (U+FE0F) are accounted for: go-runewidth reports them
+// as width 0, but terminals render the preceding character as emoji (width 2).
 func padRight(content string) string {
 	visualWidth := runewidth.StringWidth(content)
+	// Each U+FE0F variation selector adds +1 to visual width in emoji rendering
+	// that go-runewidth does not account for.
+	visualWidth += strings.Count(content, "\uFE0F")
 	if visualWidth >= boxWidth {
 		return content + "│"
 	}

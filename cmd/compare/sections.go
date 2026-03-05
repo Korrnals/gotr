@@ -1,12 +1,12 @@
 package compare
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/spf13/cobra"
 )
 
@@ -81,24 +81,13 @@ func newSectionsCmd() *cobra.Command {
 // sectionsCmd — экспортированная команда
 var sectionsCmd = newSectionsCmd()
 
-// compareSectionsInternal compares sections between two projects and returns the result.
+// compareSectionsInternal compares sections between two projects using FetchParallel.
 func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
-	ui.Infof(os.Stderr, "Загрузка секций из проекта %d...", pid1)
-	sections1, err := fetchSectionItems(cli, pid1)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка получения секций проекта %d: %w", pid1, err)
-	}
-
-	ui.Infof(os.Stderr, "Загрузка секций из проекта %d...", pid2)
-	sections2, err := fetchSectionItems(cli, pid2)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка получения секций проекта %d: %w", pid2, err)
-	}
-
-	return compareItemInfos("sections", pid1, pid2, sections1, sections2), nil
+	return compareSimpleInternal(cli, pid1, pid2, "sections", fetchSectionItems)
 }
 
-// fetchSectionItems fetches all sections for a project and returns them as ItemInfo slice.
+// fetchSectionItems fetches all sections for a project, parallelizing across suites
+// using FetchParallelBySuite.
 func fetchSectionItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
 	// Get all suites for the project
 	suites, err := cli.GetSuites(projectID)
@@ -106,45 +95,61 @@ func fetchSectionItems(cli client.ClientInterface, projectID int64) ([]ItemInfo,
 		return nil, err
 	}
 
-	items := make([]ItemInfo, 0)
-	sectionIDs := make(map[int64]bool) // Track unique section IDs
-
-	// Fetch sections from all suites
-	for _, suite := range suites {
-		sections, err := cli.GetSections(projectID, suite.ID)
-		if err != nil {
-			continue // Skip suites that fail
-		}
-
-		for _, s := range sections {
-			if !sectionIDs[s.ID] {
-				sectionIDs[s.ID] = true
-				name := s.Name
-				if suite.Name != "" {
-					name = fmt.Sprintf("%s / %s", suite.Name, s.Name)
-				}
-				items = append(items, ItemInfo{
-					ID:   s.ID,
-					Name: name,
-				})
-			}
-		}
-	}
-
-	// If no suites or no sections found, try without suite
-	if len(items) == 0 {
+	// If no suites, try without suite filter
+	if len(suites) == 0 {
 		sections, err := cli.GetSections(projectID, 0)
 		if err != nil {
 			return nil, err
 		}
-
+		items := make([]ItemInfo, 0, len(sections))
 		for _, s := range sections {
-			items = append(items, ItemInfo{
-				ID:   s.ID,
-				Name: s.Name,
-			})
+			items = append(items, ItemInfo{ID: s.ID, Name: s.Name})
+		}
+		return items, nil
+	}
+
+	// Build suite ID list and name map
+	suiteIDs := make([]int64, len(suites))
+	suiteNames := make(map[int64]string)
+	for i, s := range suites {
+		suiteIDs[i] = s.ID
+		suiteNames[s.ID] = s.Name
+	}
+
+	// Fetch sections from all suites in parallel
+	ctx := context.Background()
+	allSections, err := concurrency.FetchParallelBySuite(ctx, suiteIDs,
+		func(suiteID int64) ([]ItemInfo, error) {
+			sections, sErr := cli.GetSections(projectID, suiteID)
+			if sErr != nil {
+				return nil, sErr
+			}
+			items := make([]ItemInfo, 0, len(sections))
+			suiteName := suiteNames[suiteID]
+			for _, s := range sections {
+				name := s.Name
+				if suiteName != "" {
+					name = fmt.Sprintf("%s / %s", suiteName, s.Name)
+				}
+				items = append(items, ItemInfo{ID: s.ID, Name: name})
+			}
+			return items, nil
+		},
+		concurrency.WithContinueOnError(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Deduplicate by ID
+	seen := make(map[int64]bool)
+	result := make([]ItemInfo, 0, len(allSections))
+	for _, item := range allSections {
+		if !seen[item.ID] {
+			seen[item.ID] = true
+			result = append(result, item)
 		}
 	}
 
-	return items, nil
+	return result, nil
 }

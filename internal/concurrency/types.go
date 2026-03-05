@@ -104,15 +104,24 @@ type SuiteFetcher interface {
 	FetchPageCtx(ctx context.Context, req PageRequest) ([]data.Case, int64, error)
 }
 
-// ProgressReporter receives fine-grained progress updates from the controller.
+// ProgressReporter receives progress updates from concurrent operations.
 // All methods must be thread-safe.
 //
-// The ui.Task type implements this interface via structural typing.
+// Used by FetchParallel[T] and FetchParallelBySuite[T] strategies.
+// The ui.Task type implements this interface.
 type ProgressReporter interface {
-	OnSuiteComplete()
-	OnCasesReceived(count int)
-	OnPageFetched()
-	OnError()
+	OnItemComplete()       // one unit of work completed (project, suite, etc.)
+	OnBatchReceived(n int) // a batch of N items received
+	OnError()              // an error occurred
+}
+
+// PaginatedProgressReporter extends ProgressReporter for paginated strategies.
+// Used by ParallelController (heavy strategy for cases).
+//
+// The ui.Task type implements this interface.
+type PaginatedProgressReporter interface {
+	ProgressReporter
+	OnPageFetched() // one page of paginated results fetched
 }
 
 // ControllerConfig configures the ParallelController
@@ -134,8 +143,8 @@ type ControllerConfig struct {
 		Medium int
 	}
 	// Reporter receives fine-grained progress updates (optional).
-	// Typically a *ui.Task that implements ProgressReporter.
-	Reporter ProgressReporter
+	// Typically a *ui.Task that implements PaginatedProgressReporter.
+	Reporter PaginatedProgressReporter
 	// MaxRetries is the number of retries per page request (default: 5).
 	// Set to 0 to disable retries.
 	MaxRetries int

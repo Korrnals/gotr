@@ -118,12 +118,12 @@ func (d *Display) Finish() {
 // Task represents one tracked operation (e.g., loading a project).
 // It is safe for concurrent use via atomic operations.
 //
-// Task implements parallel.ProgressReporter via structural typing:
+// Task implements concurrency.PaginatedProgressReporter:
 //
-//	OnSuiteComplete()
-//	OnCasesReceived(count int)
-//	OnPageFetched()
-//	OnError()
+//	OnItemComplete()       — one unit completed (suite, project, etc.)
+//	OnBatchReceived(n int) — batch of N items received
+//	OnPageFetched()        — one page fetched (paginated strategies)
+//	OnError()              — error occurred
 type Task struct {
 	Name      string
 	Total     int32 // expected suites
@@ -136,15 +136,15 @@ type Task struct {
 	finished  atomic.Int32 // 0 or 1
 }
 
-// --- Methods matching parallel.ProgressReporter ---
+// --- Methods implementing concurrency.PaginatedProgressReporter ---
 
-// OnSuiteComplete marks one suite as completed.
-func (t *Task) OnSuiteComplete() { t.completed.Add(1) }
+// OnItemComplete marks one unit of work as completed (suite, project, etc.).
+func (t *Task) OnItemComplete() { t.completed.Add(1) }
 
-// OnCasesReceived adds received cases count.
-func (t *Task) OnCasesReceived(count int) { t.items.Add(int64(count)) }
+// OnBatchReceived adds received items count.
+func (t *Task) OnBatchReceived(n int) { t.items.Add(int64(n)) }
 
-// OnPageFetched marks one page as fetched.
+// OnPageFetched marks one page as fetched (paginated strategies).
 func (t *Task) OnPageFetched() { t.pages.Add(1) }
 
 // OnError records an error.

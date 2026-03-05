@@ -8,7 +8,7 @@ import (
 )
 
 // PrintCompareStats prints universal statistics for compare commands.
-// Delegates to reporter.CompareStats for centralized formatting.
+// Delegates to reporter.CompareStats for go-pretty rendering.
 func PrintCompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int, elapsed time.Duration) {
 	reporter.CompareStats(resource, pid1, pid2, onlyFirst, onlySecond, common, elapsed).Print()
 }
@@ -40,7 +40,7 @@ func PrintCasesStatsWithErrors(
 			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected,
 				stats.Project1.Suites, stats.Project1.SuitesVerified, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.SuiteDetailsCount > 0,
-			"�", "Всего кейсов в проекте", formatIntegrityCheck(
+			"📊", "Всего кейсов в проекте", formatIntegrityCheck(
 				stats.Project1.CasesRaw, stats.Project1.SuiteDetailsCount,
 				stats.Project1.SuiteDetailsSum, stats.Project1.SuiteDetailsEmpty)).
 		StatIf(stats.Project1.TotalPages > 0,
@@ -62,7 +62,7 @@ func PrintCasesStatsWithErrors(
 			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected,
 				stats.Project2.Suites, stats.Project2.SuitesVerified, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.SuiteDetailsCount > 0,
-			"�", "Всего кейсов в проекте", formatIntegrityCheck(
+			"📊", "Всего кейсов в проекте", formatIntegrityCheck(
 				stats.Project2.CasesRaw, stats.Project2.SuiteDetailsCount,
 				stats.Project2.SuiteDetailsSum, stats.Project2.SuiteDetailsEmpty)).
 		StatIf(stats.Project2.TotalPages > 0,

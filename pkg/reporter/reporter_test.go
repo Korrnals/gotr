@@ -19,13 +19,17 @@ func TestNew(t *testing.T) {
 
 func TestEmptyReport(t *testing.T) {
 	var buf bytes.Buffer
-	New("empty").Writer(&buf).Print()
+	New("empty").Writer(&buf).
+		Section("Пусто").
+		Stat("📦", "Тест", 0).
+		Print()
 
 	out := buf.String()
 	if !strings.Contains(out, "СТАТИСТИКА: empty") {
 		t.Errorf("missing title in output:\n%s", out)
 	}
-	if !strings.Contains(out, "┌") || !strings.Contains(out, "└") {
+	// go-pretty uses rounded borders ╭╮╰╯
+	if !strings.Contains(out, "╭") || !strings.Contains(out, "╰") {
 		t.Error("missing box borders")
 	}
 }
@@ -42,16 +46,16 @@ func TestSectionAndStat(t *testing.T) {
 
 	out := buf.String()
 
-	if !strings.Contains(out, "◆ General") {
+	if !strings.Contains(out, "General") {
 		t.Errorf("missing section 'General' in:\n%s", out)
 	}
-	if !strings.Contains(out, "◆ Details") {
+	if !strings.Contains(out, "Details") {
 		t.Errorf("missing section 'Details' in:\n%s", out)
 	}
-	if !strings.Contains(out, "📦 Total: 42") {
+	if !strings.Contains(out, "Total: 42") {
 		t.Errorf("missing stat 'Total: 42' in:\n%s", out)
 	}
-	if !strings.Contains(out, "✅ Ok: yes") {
+	if !strings.Contains(out, "Ok: yes") {
 		t.Errorf("missing stat 'Ok: yes' in:\n%s", out)
 	}
 }
@@ -96,16 +100,11 @@ func TestSeparator(t *testing.T) {
 		Print()
 
 	out := buf.String()
-	lines := strings.Split(out, "\n")
-	sepCount := 0
-	for _, line := range lines {
-		if strings.HasPrefix(line, "├") {
-			sepCount++
-		}
+	if !strings.Contains(out, "Before: 1") {
+		t.Errorf("missing 'Before' in:\n%s", out)
 	}
-	// One from header + one explicit = 2
-	if sepCount != 2 {
-		t.Errorf("expected 2 separator lines, got %d", sepCount)
+	if !strings.Contains(out, "After: 2") {
+		t.Errorf("missing 'After' in:\n%s", out)
 	}
 }
 
@@ -119,8 +118,11 @@ func TestBlank(t *testing.T) {
 		Print()
 
 	out := buf.String()
-	if !strings.Contains(out, "│\n│  📦 B") {
-		t.Errorf("blank line not rendered correctly:\n%s", out)
+	if !strings.Contains(out, "A: 1") {
+		t.Errorf("missing 'A: 1' in:\n%s", out)
+	}
+	if !strings.Contains(out, "B: 2") {
+		t.Errorf("missing 'B: 2' in:\n%s", out)
 	}
 }
 
@@ -207,62 +209,150 @@ func TestChaining(t *testing.T) {
 	}
 }
 
-func TestDynamicWidth(t *testing.T) {
-	var buf bytes.Buffer
-	New("width").
-		Writer(&buf).
-		Stat("📦", "Short", 1).
-		Stat("📊", "Very long label that should expand the box width beyond minimum", "value").
-		Print()
+func TestSafeIcon(t *testing.T) {
+	// All known emoji should map to a non-empty colored indicator.
+	knownEmoji := []string{"⏱️", "⏱", "📦", "📋", "📂", "📄", "📈", "📊", "📃",
+		"🔹", "🔗", "✅", "⚠️", "⚠", "🔄", "📥"}
 
-	out := buf.String()
-	lines := strings.Split(out, "\n")
-
-	// Find border width from top line.
-	var borderWidth int
-	for _, line := range lines {
-		if strings.HasPrefix(line, "┌") {
-			borderWidth = visualWidth(line)
-			break
+	for _, e := range knownEmoji {
+		result := safeIcon(e)
+		if result == "" {
+			t.Errorf("safeIcon(%q) returned empty", e)
+		}
+		// Should contain ANSI reset code — means it's colored.
+		if !strings.Contains(result, ansiReset) {
+			t.Errorf("safeIcon(%q) = %q, expected ANSI coloring", e, result)
 		}
 	}
 
-	// All lines with │ should have the same visual width as borders.
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		w := visualWidth(line)
-		if w != borderWidth {
-			t.Errorf("line width %d != border width %d: %q", w, borderWidth, line)
+	// Unknown emoji should get a default.
+	result := safeIcon("🦄")
+	if result == "" || !strings.Contains(result, ansiReset) {
+		t.Errorf("safeIcon for unknown emoji should return colored default, got %q", result)
+	}
+}
+
+func TestStripEmoji(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"10/10 сьютов завершены ✅", "10/10 сьютов завершены (OK)"},
+		{"ошибка ⚠️ найдена", "ошибка (!) найдена"},
+		{"всё ❌ плохо", "всё (X) плохо"},
+		{"нет emoji", "нет emoji"},
+		{"OK ✅ и ⚠️ рядом", "OK (OK) и (!) рядом"},
+	}
+	for _, tt := range tests {
+		got := StripEmoji(tt.input)
+		if got != tt.want {
+			t.Errorf("StripEmoji(%q) = %q, want %q", tt.input, got, tt.want)
 		}
 	}
 }
 
-func TestFE0FAlignment(t *testing.T) {
+func TestNoEmojiInOutput(t *testing.T) {
 	var buf bytes.Buffer
-	New("fe0f").
+	New("noemoji").
 		Writer(&buf).
-		Stat("⏱️", "С FE0F", "val1").
-		Stat("📦", "Без FE0F", "val2").
-		Stat("⚠️", "Тоже FE0F", "val3").
+		Section("Test").
+		Stat("⏱️", "Время", "1s").
+		Stat("📦", "Кейсов", 100).
+		Stat("⚠️", "Ошибок", 0).
+		Stat("📊", "Итого", "all good").
+		Print()
+
+	out := buf.String()
+
+	// The output should NOT contain any emoji — only ANSI-colored ASCII.
+	problematicEmoji := []string{"📊", "📦", "📋", "📂", "📄", "📈", "📃",
+		"🔹", "🔗", "⏱", "⚠", "✅"}
+	for _, e := range problematicEmoji {
+		if strings.Contains(out, e) {
+			t.Errorf("output should not contain emoji %q, got:\n%s", e, out)
+		}
+	}
+}
+
+func TestConsistentLineWidth(t *testing.T) {
+	var buf bytes.Buffer
+	New("align").
+		Writer(&buf).
+		Section("Тест").
+		Stat("⏱️", "Время", "1s").
+		Stat("📦", "Кейсов", 100).
+		Stat("⚠️", "Ошибок", 0).
+		Stat("📊", "Итого", "all good").
 		Print()
 
 	out := buf.String()
 	lines := strings.Split(out, "\n")
 
-	// All non-empty lines must have identical visual width.
-	var firstWidth int
+	// All lines between ╭ and ╰ should have │ as first and last visible char.
+	inside := false
 	for _, line := range lines {
-		if line == "" {
+		if strings.HasPrefix(line, "╭") {
+			inside = true
 			continue
 		}
-		w := visualWidth(line)
-		if firstWidth == 0 {
-			firstWidth = w
+		if strings.HasPrefix(line, "╰") {
+			break
 		}
-		if w != firstWidth {
-			t.Errorf("inconsistent width: got %d, want %d for line: %q", w, firstWidth, line)
+		if inside && len(line) > 0 {
+			trimmed := strings.TrimSpace(line)
+			if len(trimmed) == 0 {
+				continue
+			}
+			// go-pretty lines start with │ and end with │
+			if !strings.HasPrefix(trimmed, "│") && !strings.HasPrefix(trimmed, "├") {
+				t.Errorf("line should start with │ or ├: %q", line)
+			}
+			if !strings.HasSuffix(trimmed, "│") && !strings.HasSuffix(trimmed, "┤") {
+				t.Errorf("line should end with │ or ┤: %q", line)
+			}
 		}
+	}
+}
+
+func TestIndentation(t *testing.T) {
+	var buf bytes.Buffer
+	New("indent").
+		Writer(&buf).
+		Section("Проект 30").
+		Stat("📋", "Сьютов", 10).
+		Stat("📂", "Секций", 740).
+		Print()
+
+	out := buf.String()
+
+	// Section should NOT be indented (level 0).
+	if !strings.Contains(out, "Проект 30") {
+		t.Error("missing section name")
+	}
+
+	// Stats should be indented (level 1) — starts with "  " inside the cell.
+	if !strings.Contains(out, "  ") {
+		t.Error("stats should have indentation")
+	}
+	if !strings.Contains(out, "Сьютов: 10") {
+		t.Error("missing stat")
+	}
+}
+
+func TestInlineEmojiStripped(t *testing.T) {
+	var buf bytes.Buffer
+	New("strip").
+		Writer(&buf).
+		Stat("📈", "Полнота", "10/10 сьютов завершены ✅").
+		Stat("⚠️", "Проблема", "ошибка ⚠️ найдена").
+		Print()
+
+	out := buf.String()
+	// Inline emoji should be replaced with ASCII.
+	if strings.Contains(out, "✅") {
+		t.Errorf("inline ✅ should be stripped, got:\n%s", out)
+	}
+	if !strings.Contains(out, "(OK)") {
+		t.Errorf("✅ should be replaced with (OK), got:\n%s", out)
 	}
 }

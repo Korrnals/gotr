@@ -1,12 +1,13 @@
-// Package reporter provides a centralized, dynamic stats/report builder
-// for gotr CLI output.
+// Package reporter provides a centralized stats/report builder for gotr CLI output.
 //
 // All compare commands (and any future output) should use this package
 // so that format changes happen in ONE place, not across every command file.
 //
-// Two rendering backends are available:
-//   - Box renderer (default) — custom Unicode box drawing with dynamic width.
-//   - go-pretty renderer     — uses jedib0t/go-pretty for table output.
+// Uses go-pretty/v6 for rendering with ANSI-colored width-1 symbols instead
+// of emoji. Emoji have unpredictable visual width across terminals (VS Code,
+// iTerm, GNOME Terminal all disagree), which breaks table alignment.
+// Callers still pass emoji strings as icon hints — the reporter maps them
+// to safe colored indicators automatically.
 //
 // Usage (simple resource):
 //
@@ -34,11 +35,66 @@ import (
 	"strings"
 	"time"
 
-	"github.com/mattn/go-runewidth"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 )
 
-// minBoxWidth is the minimum inner width of the box border.
-const minBoxWidth = 60
+// ---------------------------------------------------------------------------
+// ANSI helpers — safe width-1 colored indicators
+// ---------------------------------------------------------------------------
+
+// ANSI color codes.
+const (
+	ansiReset   = "\033[0m"
+	ansiRed     = "\033[31m"
+	ansiGreen   = "\033[32m"
+	ansiYellow  = "\033[33m"
+	ansiBlue    = "\033[34m"
+	ansiMagenta = "\033[35m"
+	ansiCyan    = "\033[36m"
+	ansiWhite   = "\033[37m"
+	ansiBold    = "\033[1m"
+)
+
+// colored wraps a single character in ANSI color.
+func colored(color, ch string) string {
+	return color + ch + ansiReset
+}
+
+// emojiMap maps emoji strings to ANSI-colored width-1 indicators.
+// Every value is exactly 1 visible cell wide, so go-pretty can align perfectly.
+var emojiMap = map[string]string{
+	// Timing
+	"⏱️": colored(ansiCyan, "*"),
+	"⏱":  colored(ansiCyan, "*"),
+	// Counts / totals
+	"📦": colored(ansiBlue, "*"),
+	"📋": colored(ansiCyan, "*"),
+	"📂": colored(ansiBlue, "*"),
+	"📄": colored(ansiWhite, "*"),
+	"📈": colored(ansiGreen, "*"),
+	"📊": colored(ansiYellow, "*"),
+	"📃": colored(ansiCyan, "*"),
+	// Results
+	"🔹": colored(ansiYellow, "*"),
+	"🔗": colored(ansiGreen, "*"),
+	"✅": colored(ansiGreen, "+"),
+	// Warnings / errors
+	"⚠️": colored(ansiYellow, "!"),
+	"⚠":  colored(ansiYellow, "!"),
+	// Retry / recovery
+	"🔄": colored(ansiMagenta, "*"),
+	"📥": colored(ansiCyan, "*"),
+}
+
+// safeIcon converts an emoji icon to a width-1 ANSI-colored indicator.
+// Unknown emoji fall back to a white bullet.
+func safeIcon(emoji string) string {
+	if s, ok := emojiMap[emoji]; ok {
+		return s
+	}
+	return colored(ansiWhite, "*")
+}
 
 // ---------------------------------------------------------------------------
 // Element types
@@ -48,9 +104,9 @@ type elementType int
 
 const (
 	elemSection   elementType = iota // section header (◆ Name)
-	elemStat                         // stat line (icon label: value)
+	elemStat                         // stat line (icon  label: value)
 	elemSeparator                    // ├───...───┤
-	elemBlank                        // │
+	elemBlank                        // empty row
 )
 
 type element struct {
@@ -64,7 +120,7 @@ type element struct {
 // Report — dynamic builder
 // ---------------------------------------------------------------------------
 
-// Report accumulates sections/stats and renders them as a formatted box.
+// Report accumulates sections/stats and renders them via go-pretty.
 // All formatting logic is here — callers only supply data.
 type Report struct {
 	title    string
@@ -98,12 +154,13 @@ func (r *Report) Section(name string) *Report {
 
 // Stat adds a stat line: icon + label + value.
 // value is formatted via fmt.Sprintf("%v", ...).
+// Emoji in value text are automatically replaced with ASCII equivalents.
 func (r *Report) Stat(icon, label string, value interface{}) *Report {
 	r.elements = append(r.elements, element{
 		typ:   elemStat,
 		icon:  icon,
 		label: label,
-		value: fmt.Sprintf("%v", value),
+		value: StripEmoji(fmt.Sprintf("%v", value)),
 	})
 	return r
 }
@@ -118,12 +175,13 @@ func (r *Report) StatIf(cond bool, icon, label string, value interface{}) *Repor
 }
 
 // StatFmt adds a stat line with a pre-formatted value string.
+// Emoji in the formatted value are automatically replaced with ASCII equivalents.
 func (r *Report) StatFmt(icon, label, format string, args ...interface{}) *Report {
 	r.elements = append(r.elements, element{
 		typ:   elemStat,
 		icon:  icon,
 		label: label,
-		value: fmt.Sprintf(format, args...),
+		value: StripEmoji(fmt.Sprintf(format, args...)),
 	})
 	return r
 }
@@ -145,84 +203,49 @@ func (r *Report) Print() {
 	fmt.Fprint(r.w, r.String())
 }
 
-// visualWidth calculates the terminal display width of a string.
-// Accounts for U+FE0F (emoji variation selector) which go-runewidth
-// reports as 0 but causes the preceding character to render as 2-wide emoji.
-func visualWidth(s string) int {
-	w := runewidth.StringWidth(s)
-	w += strings.Count(s, "\uFE0F")
-	return w
-}
-
-// String renders the entire report to a string.
-// Uses two-pass rendering: first builds all content lines to determine
-// the maximum width, then pads everything to that width for perfect alignment.
+// String renders the entire report to a string via go-pretty.
+// Single-column layout with YAML-like indentation:
+//   - Section headers at level 0 (bold)
+//   - Stat lines indented with "  " prefix and colored icon
+//
+// All emoji are replaced with safe width-1 symbols to ensure alignment
+// in any terminal (VS Code, iTerm, GNOME Terminal, etc.).
 func (r *Report) String() string {
-	// Pass 1: build raw content lines (without padding or borders).
-	type lineInfo struct {
-		content string // raw content (e.g. "│  📦 Label: value")
-		isBorder bool  // true for separator lines (├───┤)
-	}
+	tw := table.NewWriter()
 
-	titleLine := fmt.Sprintf("│          📊 СТАТИСТИКА: %s", r.title)
-	lines := []lineInfo{{content: titleLine}}
+	// Style: rounded corners (╭╮╰╯).
+	tw.SetStyle(table.StyleRounded)
+
+	// Title row — no emoji, just colored text.
+	tw.SetTitle(fmt.Sprintf("%s%sСТАТИСТИКА: %s%s", ansiBold, ansiCyan, r.title, ansiReset))
+
+	// Center the title.
+	tw.Style().Title.Align = text.AlignCenter
+
+	// Single column, left-aligned, min width for readability.
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignLeft, WidthMin: 55},
+	})
 
 	for _, e := range r.elements {
 		switch e.typ {
 		case elemSection:
-			lines = append(lines, lineInfo{content: fmt.Sprintf("│  ◆ %s", e.label)})
+			tw.AppendSeparator()
+			tw.AppendRow(table.Row{
+				fmt.Sprintf("%s%s%s", ansiBold, e.label, ansiReset),
+			})
 		case elemStat:
-			lines = append(lines, lineInfo{content: fmt.Sprintf("│  %s %s: %s", e.icon, e.label, e.value)})
+			tw.AppendRow(table.Row{
+				fmt.Sprintf("  %s %s: %s", safeIcon(e.icon), e.label, e.value),
+			})
 		case elemSeparator:
-			lines = append(lines, lineInfo{isBorder: true})
+			tw.AppendSeparator()
 		case elemBlank:
-			lines = append(lines, lineInfo{content: "│"})
+			tw.AppendRow(table.Row{""})
 		}
 	}
 
-	// Pass 2: найти максимальную визуальную ширину среди всех строк контента.
-	maxWidth := minBoxWidth
-	for _, l := range lines {
-		if l.isBorder {
-			continue
-		}
-		if w := visualWidth(l.content); w > maxWidth {
-			maxWidth = w
-		}
-	}
-
-	// Ширины:
-	//   borderLen = maxWidth - 1       (кол-во символов ─)
-	//   Граница:  ┌(1) + borderLen×─ + ┐(1) = maxWidth + 1
-	//   Контент:  content(w) + pad(maxWidth-w) + │(1) = maxWidth + 1
-	// Все строки имеют одинаковую визуальную ширину = maxWidth + 1.
-	borderLen := maxWidth - 1
-	border := strings.Repeat("─", borderLen)
-
-	// Pass 3: рендер с выравниванием.
-	var b strings.Builder
-	b.WriteString("\n")
-	b.WriteString("┌" + border + "┐\n")
-
-	for i, l := range lines {
-		if l.isBorder {
-			b.WriteString("├" + border + "┤\n")
-			continue
-		}
-		w := visualWidth(l.content)
-		pad := ""
-		if w < maxWidth {
-			pad = strings.Repeat(" ", maxWidth-w)
-		}
-		b.WriteString(l.content + pad + "│\n")
-		// Разделитель после заголовка.
-		if i == 0 {
-			b.WriteString("├" + border + "┤\n")
-		}
-	}
-
-	b.WriteString("└" + border + "┘\n")
-	return b.String()
+	return "\n" + tw.Render() + "\n"
 }
 
 // ---------------------------------------------------------------------------
@@ -239,8 +262,8 @@ func CompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond, comm
 		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
 		Stat("📦", "Всего обработано", total).
 		Section("Результат сравнения").
-		Stat("✅", fmt.Sprintf("Только в проекте %d", pid1), onlyFirst).
-		Stat("✅", fmt.Sprintf("Только в проекте %d", pid2), onlySecond).
+		Stat("🔹", fmt.Sprintf("Только в проекте %d", pid1), onlyFirst).
+		Stat("🔹", fmt.Sprintf("Только в проекте %d", pid2), onlySecond).
 		Stat("🔗", "Общих", common)
 }
 
@@ -261,4 +284,19 @@ func FormatDuration(d time.Duration) string {
 		return fmt.Sprintf("%dм%02dс", m, s)
 	}
 	return fmt.Sprintf("%dс", s)
+}
+
+// StripEmoji removes common emoji from text, replacing them with ASCII equivalents.
+// Use this for values that go into table cells to avoid width issues.
+func StripEmoji(s string) string {
+	replacements := []struct{ from, to string }{
+		{"✅", "(OK)"},
+		{"⚠️", "(!)"},
+		{"⚠", "(!)"},
+		{"❌", "(X)"},
+	}
+	for _, r := range replacements {
+		s = strings.ReplaceAll(s, r.from, r.to)
+	}
+	return s
 }

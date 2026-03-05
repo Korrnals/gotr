@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	outpututils "github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/Korrnals/gotr/pkg/reporter"
@@ -311,7 +311,7 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 }
 
 // fetchCasesForProject loads all cases for a single project.
-// task is a *ui.Task implementing concurrency.ProgressReporter — gets live updates.
+// task is a *ui.Task implementing concurrency.PaginatedProgressReporter — gets live updates.
 func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
 	fetchStart := time.Now()
 	pds := projectDataStats{Suites: len(suites)}
@@ -347,14 +347,14 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 		suiteIDs[i] = s.ID
 	}
 
-	// Create parallel controller config with Reporter = task (ui.Task implements ProgressReporter)
+	// Create parallel controller config with Reporter = task (ui.Task implements PaginatedProgressReporter)
 	config := &concurrency.ControllerConfig{
 		MaxConcurrentSuites: parallelSuites,
 		MaxConcurrentPages:  parallelPages,
 		RequestsPerMinute:   rateLimit,
 		MaxRetries:          pageRetries,
 		Timeout:             timeout,
-		Reporter:            task, // *ui.Task → concurrency.ProgressReporter
+		Reporter:            task, // *ui.Task → concurrency.PaginatedProgressReporter
 	}
 
 	utils.DebugPrint("[Project %d] Starting GetCasesParallelCtx (streaming) with parallelSuites=%d, parallelPages=%d, timeout=%s",

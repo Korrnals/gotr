@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/concurrency"
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
 // decodeCasesResponse decodes a get_cases response that can be either:
@@ -550,7 +550,7 @@ func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequ
 
 // GetCasesParallelCtx получает кейсы из нескольких сьютов параллельно (Stage 6.7).
 // Использует streaming parallelization — без предварительного подсчёта.
-// Для отображения прогресса установите config.Reporter (реализует concurrency.ProgressReporter).
+// Для отображения прогресса установите config.Reporter (реализует concurrency.PaginatedProgressReporter).
 func (c *HTTPClient) GetCasesParallelCtx(
 	ctx context.Context,
 	projectID int64,

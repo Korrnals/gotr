@@ -33,8 +33,7 @@ type projectDataStats struct {
 	SuitesWithTotal int // сколько сьютов сообщили totalSize
 	SuitesVerified  int // сьютов с подтверждённой полнотой (все страницы загружены, exhaustion чистый)
 	SuiteDetailsSum   int // сумма кейсов по всем сьютам (для проверки целостности)
-	SuiteDetailsMax   int // максимальный сьют по кейсам
-	SuiteDetailsMin   int // минимальный сьют по кейсам
+	SuiteDetailsEmpty int // количество пустых сьютов (0 кейсов)
 	SuiteDetailsCount int // количество сьютов с трекингом
 	TotalPages     int // общее количество запрошенных страниц
 	FailedPages    int // страниц с ошибками
@@ -377,19 +376,23 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 		pds.SuitesVerified = stats.SuitesVerified
 		if len(stats.SuiteResults) > 0 {
 			sum := 0
-			maxC, minC := 0, stats.SuiteResults[0].CasesFetched
+			emptySuites := 0
 			for _, r := range stats.SuiteResults {
 				sum += r.CasesFetched
-				if r.CasesFetched > maxC {
-					maxC = r.CasesFetched
+				if r.CasesFetched == 0 {
+					emptySuites++
 				}
-				if r.CasesFetched < minC {
-					minC = r.CasesFetched
+				verified := "✗"
+				if r.Verified {
+					verified = "✓"
 				}
+				utils.DebugPrint("[Project %d] Suite %d: %d cases [%s]",
+					projectID, r.SuiteID, r.CasesFetched, verified)
 			}
+			utils.DebugPrint("[Project %d] Suite totals: Σ=%d, empty=%d, count=%d",
+				projectID, sum, emptySuites, len(stats.SuiteResults))
 			pds.SuiteDetailsSum = sum
-			pds.SuiteDetailsMax = maxC
-			pds.SuiteDetailsMin = minC
+			pds.SuiteDetailsEmpty = emptySuites
 			pds.SuiteDetailsCount = len(stats.SuiteResults)
 		}
 		pds.TotalPages = stats.TotalPages

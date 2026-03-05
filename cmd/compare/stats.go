@@ -42,8 +42,7 @@ func PrintCasesStatsWithErrors(
 		StatIf(stats.Project1.SuiteDetailsCount > 0,
 			"📋", "Проверка", formatIntegrityCheck(
 				stats.Project1.CasesRaw, stats.Project1.SuiteDetailsCount,
-				stats.Project1.SuiteDetailsSum, stats.Project1.SuiteDetailsMax,
-				stats.Project1.SuiteDetailsMin)).
+				stats.Project1.SuiteDetailsSum, stats.Project1.SuiteDetailsEmpty)).
 		StatIf(stats.Project1.TotalPages > 0,
 			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project1.TotalPages, stats.Project1.FailedPages)).
@@ -65,8 +64,7 @@ func PrintCasesStatsWithErrors(
 		StatIf(stats.Project2.SuiteDetailsCount > 0,
 			"📋", "Проверка", formatIntegrityCheck(
 				stats.Project2.CasesRaw, stats.Project2.SuiteDetailsCount,
-				stats.Project2.SuiteDetailsSum, stats.Project2.SuiteDetailsMax,
-				stats.Project2.SuiteDetailsMin)).
+				stats.Project2.SuiteDetailsSum, stats.Project2.SuiteDetailsEmpty)).
 		StatIf(stats.Project2.TotalPages > 0,
 			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project2.TotalPages, stats.Project2.FailedPages)).
@@ -123,16 +121,20 @@ func formatCompleteness(actual, expected, totalSuites, suitesVerified, failedPag
 }
 
 // formatIntegrityCheck verifies that sum of per-suite case counts matches total.
-// Shows max/min suite sizes for context.
-func formatIntegrityCheck(casesRaw, suiteCount, suiteSum, suiteMax, suiteMin int) string {
+// Shows empty suite count when present.
+func formatIntegrityCheck(casesRaw, suiteCount, suiteSum, emptySuites int) string {
 	if suiteCount == 0 {
 		return ""
 	}
+	emptyNote := ""
+	if emptySuites > 0 {
+		emptyNote = fmt.Sprintf(", пустых: %d", emptySuites)
+	}
 	if suiteSum == casesRaw {
-		return fmt.Sprintf("Σ(%d сьютов) = %d ✅ (макс %d, мин %d)",
-			suiteCount, suiteSum, suiteMax, suiteMin)
+		return fmt.Sprintf("Σ(%d сьютов) = %d ✅%s",
+			suiteCount, suiteSum, emptyNote)
 	}
 	diff := casesRaw - suiteSum
-	return fmt.Sprintf("Σ(%d сьютов) = %d ⚠️ (ожидалось %d, расхождение %+d)",
-		suiteCount, suiteSum, casesRaw, diff)
+	return fmt.Sprintf("Σ(%d сьютов) = %d ⚠️ (ожидалось %d, расхождение %+d)%s",
+		suiteCount, suiteSum, casesRaw, diff, emptyNote)
 }

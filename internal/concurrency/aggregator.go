@@ -1,5 +1,5 @@
-// Package parallel provides result aggregation for parallel operations.
-package parallel
+// Package concurrency provides result aggregation for parallel operations.
+package concurrency
 
 import (
 	"context"

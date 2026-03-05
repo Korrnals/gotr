@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/parallel"
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,7 @@ func TestLoadFailedPages_Success(t *testing.T) {
 }
 
 func TestDedupeFailedPages_RemovesDuplicates(t *testing.T) {
-	in := []parallel.FailedPage{
+	in := []concurrency.FailedPage{
 		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1},
 		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1},
 		{ProjectID: 30, SuiteID: 1001, Offset: 250, Limit: 250, PageNum: 2},

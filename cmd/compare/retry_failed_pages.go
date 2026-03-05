@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/parallel"
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
@@ -21,7 +21,7 @@ var retryFailedPagesCmd = newRetryFailedPagesCmd()
 type failedPagesFile struct {
 	GeneratedAt string                `json:"generated_at"`
 	Total       int                   `json:"total"`
-	FailedPages []parallel.FailedPage `json:"failed_pages"`
+	FailedPages []concurrency.FailedPage `json:"failed_pages"`
 }
 
 type retryFailedPagesOptions struct {
@@ -120,11 +120,11 @@ func resolveRetryFailedPagesOptionsFromConfig(cmd *cobra.Command) (retryFailedPa
 
 func executeRetryFailedPages(
 	cli client.ClientInterface,
-	failedPages []parallel.FailedPage,
+	failedPages []concurrency.FailedPage,
 	opts retryFailedPagesOptions,
 	sourceLabel string,
 	saveRemainingPath string,
-) ([]parallel.FailedPage, retryFailedPagesStats, error) {
+) ([]concurrency.FailedPage, retryFailedPagesStats, error) {
 	if len(failedPages) == 0 {
 		if sourceLabel != "" {
 			ui.Successf(os.Stderr, "Нет непрогруженных страниц: %s", sourceLabel)
@@ -155,12 +155,12 @@ func executeRetryFailedPages(
 	ui.Infof(os.Stderr, "Параметры: attempts=%d, workers=%d, retry-delay=%s", opts.Attempts, opts.Workers, opts.Delay)
 
 	type retryResult struct {
-		page  parallel.FailedPage
+		page  concurrency.FailedPage
 		err   error
 		count int
 	}
 
-	jobs := make(chan parallel.FailedPage, len(uniquePages))
+	jobs := make(chan concurrency.FailedPage, len(uniquePages))
 	results := make(chan retryResult, len(uniquePages))
 
 	for _, page := range uniquePages {
@@ -192,7 +192,7 @@ func executeRetryFailedPages(
 		}()
 	}
 
-	remaining := make([]parallel.FailedPage, 0)
+	remaining := make([]concurrency.FailedPage, 0)
 	recoveredPages := 0
 	recoveredCases := 0
 
@@ -255,7 +255,7 @@ func executeRetryFailedPages(
 	return remaining, stats, nil
 }
 
-func loadFailedPages(path string) ([]parallel.FailedPage, error) {
+func loadFailedPages(path string) ([]concurrency.FailedPage, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось прочитать файл %s: %w", path, err)
@@ -267,17 +267,17 @@ func loadFailedPages(path string) ([]parallel.FailedPage, error) {
 	}
 
 	if report.FailedPages == nil {
-		return []parallel.FailedPage{}, nil
+		return []concurrency.FailedPage{}, nil
 	}
 	return report.FailedPages, nil
 }
 
-func dedupeFailedPages(pages []parallel.FailedPage) []parallel.FailedPage {
+func dedupeFailedPages(pages []concurrency.FailedPage) []concurrency.FailedPage {
 	if len(pages) == 0 {
 		return pages
 	}
 
-	unique := make([]parallel.FailedPage, 0, len(pages))
+	unique := make([]concurrency.FailedPage, 0, len(pages))
 	seen := make(map[string]struct{}, len(pages))
 
 	for _, page := range pages {

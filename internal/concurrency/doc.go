@@ -1,4 +1,4 @@
-// Package parallel provides recursive parallelization for TestRail API requests.
+// Package concurrency provides recursive parallelization for TestRail API requests.
 //
 // It enables concurrent fetching of test cases across multiple test suites,
 // with parallel pagination within each suite. The package uses priority queues
@@ -46,4 +46,4 @@
 // Performance:
 //   - Default configuration targets 60-80% improvement over sequential fetching
 //   - Target: < 5 minutes for 36,000+ cases (from ~12 minutes sequential)
-package parallel
+package concurrency

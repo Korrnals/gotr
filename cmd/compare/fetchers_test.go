@@ -195,7 +195,7 @@ func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для comparePlansInternal ====================
+// ==================== Тесты для compareSimpleInternal (plans) ====================
 
 func TestComparePlansInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -212,7 +212,7 @@ func TestComparePlansInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "plans", fetchPlanItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -226,13 +226,13 @@ func TestComparePlansInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := comparePlansInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "plans", fetchPlanItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareRunsInternal ====================
+// ==================== Тесты для compareSimpleInternal (runs) ====================
 
 func TestCompareRunsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -249,7 +249,7 @@ func TestCompareRunsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "runs", fetchRunItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -263,13 +263,13 @@ func TestCompareRunsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareRunsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "runs", fetchRunItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareMilestonesInternal ====================
+// ==================== Тесты для compareSimpleInternal (milestones) ====================
 
 func TestCompareMilestonesInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -286,7 +286,7 @@ func TestCompareMilestonesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "milestones", fetchMilestoneItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -300,13 +300,13 @@ func TestCompareMilestonesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareMilestonesInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "milestones", fetchMilestoneItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareDatasetsInternal ====================
+// ==================== Тесты для compareSimpleInternal (datasets) ====================
 
 func TestCompareDatasetsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -323,7 +323,7 @@ func TestCompareDatasetsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "datasets", fetchDatasetItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -337,13 +337,13 @@ func TestCompareDatasetsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareDatasetsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "datasets", fetchDatasetItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareGroupsInternal ====================
+// ==================== Тесты для compareSimpleInternal (groups) ====================
 
 func TestCompareGroupsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -360,7 +360,7 @@ func TestCompareGroupsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "groups", fetchGroupItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -374,13 +374,13 @@ func TestCompareGroupsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareGroupsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "groups", fetchGroupItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareLabelsInternal ====================
+// ==================== Тесты для compareSimpleInternal (labels) ====================
 
 func TestCompareLabelsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -397,7 +397,7 @@ func TestCompareLabelsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "labels", fetchLabelItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -411,13 +411,13 @@ func TestCompareLabelsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareLabelsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "labels", fetchLabelItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareTemplatesInternal ====================
+// ==================== Тесты для compareSimpleInternal (templates) ====================
 
 func TestCompareTemplatesInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -434,7 +434,7 @@ func TestCompareTemplatesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "templates", fetchTemplateItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -448,13 +448,13 @@ func TestCompareTemplatesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareTemplatesInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "templates", fetchTemplateItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareConfigurationsInternal ====================
+// ==================== Тесты для compareSimpleInternal (configurations) ====================
 
 func TestCompareConfigurationsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -471,7 +471,7 @@ func TestCompareConfigurationsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "configurations", fetchConfigurationItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -485,13 +485,13 @@ func TestCompareConfigurationsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareConfigurationsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "configurations", fetchConfigurationItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSharedStepsInternal ====================
+// ==================== Тесты для compareSimpleInternal (sharedsteps) ====================
 
 func TestCompareSharedStepsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -508,7 +508,7 @@ func TestCompareSharedStepsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "sharedsteps", fetchSharedStepItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -522,7 +522,7 @@ func TestCompareSharedStepsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSharedStepsInternal(mock, 1, 2)
+	result, err := compareSimpleInternal(mock, 1, 2, "sharedsteps", fetchSharedStepItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)

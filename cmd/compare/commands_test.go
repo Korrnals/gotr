@@ -182,7 +182,7 @@ func TestPlansCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newPlansCmd()
+	cmd := newSimpleCompareCmd("plans", "plans", "test", "test", fetchPlanItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -205,7 +205,7 @@ func TestRunsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newRunsCmd()
+	cmd := newSimpleCompareCmd("runs", "runs", "test", "test", fetchRunItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -254,7 +254,7 @@ func TestMilestonesCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newMilestonesCmd()
+	cmd := newSimpleCompareCmd("milestones", "milestones", "test", "test", fetchMilestoneItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -277,7 +277,7 @@ func TestDatasetsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newDatasetsCmd()
+	cmd := newSimpleCompareCmd("datasets", "datasets", "test", "test", fetchDatasetItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -300,7 +300,7 @@ func TestGroupsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newGroupsCmd()
+	cmd := newSimpleCompareCmd("groups", "groups", "test", "test", fetchGroupItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -323,7 +323,7 @@ func TestLabelsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newLabelsCmd()
+	cmd := newSimpleCompareCmd("labels", "labels", "test", "test", fetchLabelItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -346,7 +346,7 @@ func TestTemplatesCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newTemplatesCmd()
+	cmd := newSimpleCompareCmd("templates", "templates", "test", "test", fetchTemplateItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -369,7 +369,7 @@ func TestConfigurationsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newConfigurationsCmd()
+	cmd := newSimpleCompareCmd("configurations", "configurations", "test", "test", fetchConfigurationItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -392,7 +392,7 @@ func TestSharedStepsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newSharedStepsCmd()
+	cmd := newSimpleCompareCmd("sharedsteps", "sharedsteps", "test", "test", fetchSharedStepItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 

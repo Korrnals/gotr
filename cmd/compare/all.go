@@ -107,63 +107,63 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Shared Steps
-			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2); err == nil {
+			if sharedStepsResult, err := compareSimpleInternal(cli, pid1, pid2, "sharedsteps", fetchSharedStepItems); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				errors["shared_steps"] = err
 			}
 
 			// Runs
-			if runsResult, err := compareRunsInternal(cli, pid1, pid2); err == nil {
+			if runsResult, err := compareSimpleInternal(cli, pid1, pid2, "runs", fetchRunItems); err == nil {
 				result.Runs = runsResult
 			} else {
 				errors["runs"] = err
 			}
 
 			// Plans
-			if plansResult, err := comparePlansInternal(cli, pid1, pid2); err == nil {
+			if plansResult, err := compareSimpleInternal(cli, pid1, pid2, "plans", fetchPlanItems); err == nil {
 				result.Plans = plansResult
 			} else {
 				errors["plans"] = err
 			}
 
 			// Milestones
-			if milestonesResult, err := compareMilestonesInternal(cli, pid1, pid2); err == nil {
+			if milestonesResult, err := compareSimpleInternal(cli, pid1, pid2, "milestones", fetchMilestoneItems); err == nil {
 				result.Milestones = milestonesResult
 			} else {
 				errors["milestones"] = err
 			}
 
 			// Datasets
-			if datasetsResult, err := compareDatasetsInternal(cli, pid1, pid2); err == nil {
+			if datasetsResult, err := compareSimpleInternal(cli, pid1, pid2, "datasets", fetchDatasetItems); err == nil {
 				result.Datasets = datasetsResult
 			} else {
 				errors["datasets"] = err
 			}
 
 			// Groups
-			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2); err == nil {
+			if groupsResult, err := compareSimpleInternal(cli, pid1, pid2, "groups", fetchGroupItems); err == nil {
 				result.Groups = groupsResult
 			} else {
 				errors["groups"] = err
 			}
 
 			// Labels
-			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2); err == nil {
+			if labelsResult, err := compareSimpleInternal(cli, pid1, pid2, "labels", fetchLabelItems); err == nil {
 				result.Labels = labelsResult
 			} else {
 				errors["labels"] = err
 			}
 
 			// Templates
-			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2); err == nil {
+			if templatesResult, err := compareSimpleInternal(cli, pid1, pid2, "templates", fetchTemplateItems); err == nil {
 				result.Templates = templatesResult
 			} else {
 				errors["templates"] = err
 			}
 
 			// Configurations
-			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2); err == nil {
+			if configsResult, err := compareSimpleInternal(cli, pid1, pid2, "configurations", fetchConfigurationItems); err == nil {
 				result.Configurations = configsResult
 			} else {
 				errors["configurations"] = err

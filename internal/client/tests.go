@@ -37,38 +37,15 @@ func (c *HTTPClient) GetTest(testID int64) (*data.Test, error) {
 	return &test, nil
 }
 
-// GetTests получает список тестов для тест-рана
+// GetTests получает список тестов для тест-рана (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#gettests
 // Поддерживает фильтры: status_id, assignedto_id
 func (c *HTTPClient) GetTests(runID int64, filters map[string]string) ([]data.Test, error) {
 	endpoint := fmt.Sprintf("get_tests/%d", runID)
-	
-	// Преобразуем фильтры в query параметры
-	var queryParams map[string]string
-	if len(filters) > 0 {
-		queryParams = make(map[string]string)
-		for key, value := range filters {
-			queryParams[key] = value
-		}
-	}
-	
-	resp, err := c.Get(endpoint, queryParams)
+	tests, err := fetchAllPages[data.Test](c, endpoint, filters, "tests")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetTests для рана %d: %w", runID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении тестов для рана %d: %s",
-			resp.Status, runID, string(body))
-	}
-
-	var tests []data.Test
-	if err := json.NewDecoder(resp.Body).Decode(&tests); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования списка тестов: %w", err)
-	}
-
 	return tests, nil
 }
 

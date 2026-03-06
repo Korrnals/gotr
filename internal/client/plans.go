@@ -33,26 +33,15 @@ func (c *HTTPClient) GetPlan(planID int64) (*data.Plan, error) {
 	return &plan, nil
 }
 
-// GetPlans получает список тест-планов проекта
+// GetPlans получает список тест-планов проекта (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#getplans
 func (c *HTTPClient) GetPlans(projectID int64) (data.GetPlansResponse, error) {
 	endpoint := fmt.Sprintf("get_plans/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	plans, err := fetchAllPages[data.Plan](c, endpoint, nil, "plans")
 	if err != nil {
 		return nil, fmt.Errorf("error getting plans for project %d: %w", projectID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for project %d: %s", resp.Status, projectID, string(body))
-	}
-
-	var plans data.GetPlansResponse
-	if err := json.NewDecoder(resp.Body).Decode(&plans); err != nil {
-		return nil, fmt.Errorf("error decoding plans: %w", err)
-	}
-	return plans, nil
+	return data.GetPlansResponse(plans), nil
 }
 
 // AddPlan создает новый тест-план

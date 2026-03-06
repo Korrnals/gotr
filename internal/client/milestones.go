@@ -36,28 +36,14 @@ func (c *HTTPClient) GetMilestone(milestoneID int64) (*data.Milestone, error) {
 	return &milestone, nil
 }
 
-// GetMilestones получает список milestone для проекта
+// GetMilestones получает список milestone для проекта (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#getmilestones
 func (c *HTTPClient) GetMilestones(projectID int64) ([]data.Milestone, error) {
 	endpoint := fmt.Sprintf("get_milestones/%d", projectID)
-	
-	resp, err := c.Get(endpoint, nil)
+	milestones, err := fetchAllPages[data.Milestone](c, endpoint, nil, "milestones")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetMilestones для проекта %d: %w", projectID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении milestone для проекта %d: %s",
-			resp.Status, projectID, string(body))
-	}
-
-	var milestones []data.Milestone
-	if err := json.NewDecoder(resp.Body).Decode(&milestones); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования списка milestone: %w", err)
-	}
-
 	return milestones, nil
 }
 

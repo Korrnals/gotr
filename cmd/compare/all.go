@@ -10,6 +10,9 @@ import (
 	"time"
 
 	outpututils "github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/pkg/reporter"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -100,70 +103,70 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Sections
-			if sectionsResult, err := compareSectionsInternal(cli, pid1, pid2); err == nil {
+			if sectionsResult, err := compareSimpleInternal(cli, pid1, pid2, "sections", fetchSectionItems); err == nil {
 				result.Sections = sectionsResult
 			} else {
 				errors["sections"] = err
 			}
 
 			// Shared Steps
-			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2); err == nil {
+			if sharedStepsResult, err := compareSimpleInternal(cli, pid1, pid2, "sharedsteps", fetchSharedStepItems); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				errors["shared_steps"] = err
 			}
 
 			// Runs
-			if runsResult, err := compareRunsInternal(cli, pid1, pid2); err == nil {
+			if runsResult, err := compareSimpleInternal(cli, pid1, pid2, "runs", fetchRunItems); err == nil {
 				result.Runs = runsResult
 			} else {
 				errors["runs"] = err
 			}
 
 			// Plans
-			if plansResult, err := comparePlansInternal(cli, pid1, pid2); err == nil {
+			if plansResult, err := compareSimpleInternal(cli, pid1, pid2, "plans", fetchPlanItems); err == nil {
 				result.Plans = plansResult
 			} else {
 				errors["plans"] = err
 			}
 
 			// Milestones
-			if milestonesResult, err := compareMilestonesInternal(cli, pid1, pid2); err == nil {
+			if milestonesResult, err := compareSimpleInternal(cli, pid1, pid2, "milestones", fetchMilestoneItems); err == nil {
 				result.Milestones = milestonesResult
 			} else {
 				errors["milestones"] = err
 			}
 
 			// Datasets
-			if datasetsResult, err := compareDatasetsInternal(cli, pid1, pid2); err == nil {
+			if datasetsResult, err := compareSimpleInternal(cli, pid1, pid2, "datasets", fetchDatasetItems); err == nil {
 				result.Datasets = datasetsResult
 			} else {
 				errors["datasets"] = err
 			}
 
 			// Groups
-			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2); err == nil {
+			if groupsResult, err := compareSimpleInternal(cli, pid1, pid2, "groups", fetchGroupItems); err == nil {
 				result.Groups = groupsResult
 			} else {
 				errors["groups"] = err
 			}
 
 			// Labels
-			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2); err == nil {
+			if labelsResult, err := compareSimpleInternal(cli, pid1, pid2, "labels", fetchLabelItems); err == nil {
 				result.Labels = labelsResult
 			} else {
 				errors["labels"] = err
 			}
 
 			// Templates
-			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2); err == nil {
+			if templatesResult, err := compareSimpleInternal(cli, pid1, pid2, "templates", fetchTemplateItems); err == nil {
 				result.Templates = templatesResult
 			} else {
 				errors["templates"] = err
 			}
 
 			// Configurations
-			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2); err == nil {
+			if configsResult, err := compareSimpleInternal(cli, pid1, pid2, "configurations", fetchConfigurationItems); err == nil {
 				result.Configurations = configsResult
 			} else {
 				errors["configurations"] = err
@@ -274,65 +277,67 @@ func addCommonFlags(cmd *cobra.Command) {
 }
 
 // printAllSummaryTable prints a formatted table summary for compare all
+// using go-pretty tables and reporter for consistent aligned output.
 func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error, elapsed time.Duration) {
-	// Table header
+	// Header via reporter
+	rpt := reporter.New("Сравнение проектов").
+		Section("Проекты").
+		StatFmt("📋", "Проект 1", "%s (ID: %d)", project1Name, pid1).
+		StatFmt("📋", "Проект 2", "%s (ID: %d)", project2Name, pid2)
+	rpt.Print()
+
+	// Resource comparison table via go-pretty
+	tw := table.NewWriter()
+	tw.SetOutputMirror(os.Stdout)
+	tw.SetStyle(table.StyleRounded)
+	tw.SetTitle("СВОДКА РЕСУРСОВ")
+	tw.Style().Title.Align = text.AlignCenter
+
+	tw.AppendHeader(table.Row{"Ресурс", "Только в P1", "Только в P2", "Общих", "Статус"})
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignLeft, WidthMin: 16},
+		{Number: 2, Align: text.AlignRight},
+		{Number: 3, Align: text.AlignRight},
+		{Number: 4, Align: text.AlignRight},
+		{Number: 5, Align: text.AlignCenter},
+	})
+
+	appendResourceRow(tw, "Cases", result.Cases)
+	appendResourceRow(tw, "Suites", result.Suites)
+	appendResourceRow(tw, "Sections", result.Sections)
+	appendResourceRow(tw, "Shared Steps", result.SharedSteps)
+	appendResourceRow(tw, "Runs", result.Runs)
+	appendResourceRow(tw, "Plans", result.Plans)
+	appendResourceRow(tw, "Milestones", result.Milestones)
+	appendResourceRow(tw, "Datasets", result.Datasets)
+	appendResourceRow(tw, "Groups", result.Groups)
+	appendResourceRow(tw, "Labels", result.Labels)
+	appendResourceRow(tw, "Templates", result.Templates)
+	appendResourceRow(tw, "Configurations", result.Configurations)
+
 	fmt.Println()
-	fmt.Println("╔══════════════════════════════════════════════════════════════════════════════╗")
-	fmt.Println("║                    СВОДНЫЙ ОТЧЁТ СРАВНЕНИЯ ПРОЕКТОВ                         ║")
-	fmt.Println("╠══════════════════════════════════════════════════════════════════════════════╣")
-	fmt.Printf("║  Проект 1: %-30s (ID: %-5d)              ║\n", truncate(project1Name, 30), pid1)
-	fmt.Printf("║  Проект 2: %-30s (ID: %-5d)              ║\n", truncate(project2Name, 30), pid2)
-	fmt.Println("╚══════════════════════════════════════════════════════════════════════════════╝")
-	fmt.Println()
-
-	// Resource table header
-	fmt.Println("┌────────────────────┬─────────────┬─────────────┬─────────┬──────────┐")
-	fmt.Println("│ Ресурс             │ Только в P1 │ Только в P2 │ Общих   │ Статус   │")
-	fmt.Println("├────────────────────┼─────────────┼─────────────┼─────────┼──────────┤")
-
-	// Print each resource
-	printResourceRow("Cases", result.Cases)
-	printResourceRow("Suites", result.Suites)
-	printResourceRow("Sections", result.Sections)
-	printResourceRow("Shared Steps", result.SharedSteps)
-	printResourceRow("Runs", result.Runs)
-	printResourceRow("Plans", result.Plans)
-	printResourceRow("Milestones", result.Milestones)
-	printResourceRow("Datasets", result.Datasets)
-	printResourceRow("Groups", result.Groups)
-	printResourceRow("Labels", result.Labels)
-	printResourceRow("Templates", result.Templates)
-	printResourceRow("Configurations", result.Configurations)
-
-	fmt.Println("└────────────────────┴─────────────┴─────────────┴─────────┴──────────┘")
-
-	// Legend
-	fmt.Println()
-	fmt.Println("Статус:  ✓  - полное совпадение  │  ⚠  - есть отличия  │  ✗  - ошибка загрузки")
-	fmt.Println()
-
-	// Time summary
-	fmt.Println("═══════════════════════════════════════════════════════════════════════════════")
-	fmt.Printf("  ⏱️  Время выполнения: %s\n", elapsed.Round(time.Second))
-	fmt.Println("═══════════════════════════════════════════════════════════════════════════════")
+	tw.Render()
 	fmt.Println()
 
-	// Print errors if any
+	// Footer stats via reporter
+	footer := reporter.New("Итого").
+		Section("Время").
+		Stat("⏱️", "Время выполнения", elapsed.Round(time.Second))
+
 	if len(errors) > 0 {
-		fmt.Println("╔══════════════════════════════════════════════════════════════════════════════╗")
-		fmt.Println("║                              ОШИБКИ                                          ║")
-		fmt.Println("╚══════════════════════════════════════════════════════════════════════════════╝")
+		footer.Section("Ошибки")
 		for resource, err := range errors {
-			fmt.Printf("  • %-15s: %v\n", resource, err)
+			footer.Stat("❌", resource, err)
 		}
-		fmt.Println()
 	}
+
+	footer.Print()
 }
 
-// printResourceRow prints a single resource row for the summary table
-func printResourceRow(name string, result *CompareResult) {
+// appendResourceRow adds a resource row to the go-pretty table.
+func appendResourceRow(tw table.Writer, name string, result *CompareResult) {
 	if result == nil {
-		fmt.Printf("│ %-18s │     ✗       │     ✗       │    ✗    │    ✗     │\n", name)
+		tw.AppendRow(table.Row{name, "-", "-", "-", "(X)"})
 		return
 	}
 
@@ -340,21 +345,12 @@ func printResourceRow(name string, result *CompareResult) {
 	onlyP2 := len(result.OnlyInSecond)
 	common := len(result.Common)
 
-	// Status indicator
-	status := "✓"
+	status := "(OK)"
 	if onlyP1 > 0 || onlyP2 > 0 {
-		status = "⚠"
+		status = "(!)"
 	}
 
-	fmt.Printf("│ %-18s │ %11d │ %11d │ %7d │    %-5s │\n", name, onlyP1, onlyP2, common, status)
-}
-
-// truncate truncates string to max length with ellipsis
-func truncate(s string, maxLen int) string {
-	if len(s) <= maxLen {
-		return s
-	}
-	return s[:maxLen-3] + "..."
+	tw.AppendRow(table.Row{name, onlyP1, onlyP2, common, status})
 }
 
 // saveAllSummaryToFile saves the summary output to a file (for --save or --save-to with table format)

@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/parallel"
 )
 
 // decodeCasesResponse decodes a get_cases response that can be either:
@@ -550,25 +550,25 @@ func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequ
 
 // GetCasesParallelCtx получает кейсы из нескольких сьютов параллельно (Stage 6.7).
 // Использует streaming parallelization — без предварительного подсчёта.
-// Для отображения прогресса установите config.Reporter (реализует parallel.ProgressReporter).
+// Для отображения прогресса установите config.Reporter (реализует concurrency.PaginatedProgressReporter).
 func (c *HTTPClient) GetCasesParallelCtx(
 	ctx context.Context,
 	projectID int64,
 	suiteIDs []int64,
-	config *parallel.ControllerConfig,
-) (data.GetCasesResponse, *parallel.ExecutionResult, error) {
+	config *concurrency.ControllerConfig,
+) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
 	if len(suiteIDs) == 0 {
-		return data.GetCasesResponse{}, &parallel.ExecutionResult{Cases: []data.Case{}}, nil
+		return data.GetCasesResponse{}, &concurrency.ExecutionResult{Cases: []data.Case{}}, nil
 	}
 
 	if config == nil {
-		config = parallel.DefaultControllerConfig()
+		config = concurrency.DefaultControllerConfig()
 	}
 
 	// Create tasks from suiteIDs
-	tasks := make([]parallel.SuiteTask, len(suiteIDs))
+	tasks := make([]concurrency.SuiteTask, len(suiteIDs))
 	for i, sid := range suiteIDs {
-		tasks[i] = parallel.SuiteTask{
+		tasks[i] = concurrency.SuiteTask{
 			SuiteID:   sid,
 			ProjectID: projectID,
 		}
@@ -578,7 +578,7 @@ func (c *HTTPClient) GetCasesParallelCtx(
 	fetcher := &casesFetcher{client: c}
 
 	// Execute parallel fetching (Reporter is in config)
-	controller := parallel.NewController(config)
+	controller := concurrency.NewController(config)
 	result, err := controller.Execute(ctx, tasks, fetcher, nil)
 
 	if err != nil && len(result.Cases) == 0 {
@@ -588,7 +588,7 @@ func (c *HTTPClient) GetCasesParallelCtx(
 	return data.GetCasesResponse(result.Cases), result, nil
 }
 
-// casesFetcher implements parallel.SuiteFetcher for cases
+// casesFetcher implements concurrency.SuiteFetcher for cases
 type casesFetcher struct {
 	client *HTTPClient
 }
@@ -597,7 +597,7 @@ type casesFetcher struct {
 // client.Get() already checks StatusCode != 200 and returns a formatted error,
 // so no duplicate status check is needed here.
 // Returns (cases, totalSize, error). totalSize comes from API "size" field (-1 if unavailable).
-func (f *casesFetcher) FetchPageCtx(ctx context.Context, req parallel.PageRequest) ([]data.Case, int64, error) {
+func (f *casesFetcher) FetchPageCtx(ctx context.Context, req concurrency.PageRequest) ([]data.Case, int64, error) {
 	endpoint := fmt.Sprintf("get_cases/%d", req.ProjectID)
 	query := map[string]string{
 		"suite_id": fmt.Sprintf("%d", req.SuiteID),

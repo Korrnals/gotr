@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	outpututils "github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/parallel"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/Korrnals/gotr/pkg/reporter"
@@ -192,7 +192,7 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 	task2 := display.AddTask(fmt.Sprintf("П%d (%d сьютов)", pid2, len(suites2)), len(suites2))
 
 	var cases1, cases2 []ItemInfo
-	var failedPages1, failedPages2 []parallel.FailedPage
+	var failedPages1, failedPages2 []concurrency.FailedPage
 	var stats1, stats2 projectDataStats
 	var err1, err2 error
 
@@ -236,7 +236,7 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 	execStats.LoadErrorsP1 = int(task1.Errors())
 	execStats.LoadErrorsP2 = int(task2.Errors())
 
-	allFailedPages := append(append([]parallel.FailedPage{}, failedPages1...), failedPages2...)
+	allFailedPages := append(append([]concurrency.FailedPage{}, failedPages1...), failedPages2...)
 	execStats.FailedPagesBefore = len(allFailedPages)
 	if len(allFailedPages) > 0 {
 		ui.Warningf(os.Stderr, "Неполученные страницы после retry/recovery: %d", len(allFailedPages))
@@ -311,8 +311,8 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 }
 
 // fetchCasesForProject loads all cases for a single project.
-// task is a *ui.Task implementing parallel.ProgressReporter — gets live updates.
-func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []parallel.FailedPage, projectDataStats, error) {
+// task is a *ui.Task implementing concurrency.PaginatedProgressReporter — gets live updates.
+func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
 	fetchStart := time.Now()
 	pds := projectDataStats{Suites: len(suites)}
 
@@ -347,14 +347,14 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 		suiteIDs[i] = s.ID
 	}
 
-	// Create parallel controller config with Reporter = task (ui.Task implements ProgressReporter)
-	config := &parallel.ControllerConfig{
+	// Create parallel controller config with Reporter = task (ui.Task implements PaginatedProgressReporter)
+	config := &concurrency.ControllerConfig{
 		MaxConcurrentSuites: parallelSuites,
 		MaxConcurrentPages:  parallelPages,
 		RequestsPerMinute:   rateLimit,
 		MaxRetries:          pageRetries,
 		Timeout:             timeout,
-		Reporter:            task, // *ui.Task → parallel.ProgressReporter
+		Reporter:            task, // *ui.Task → concurrency.PaginatedProgressReporter
 	}
 
 	utils.DebugPrint("[Project %d] Starting GetCasesParallelCtx (streaming) with parallelSuites=%d, parallelPages=%d, timeout=%s",
@@ -485,7 +485,7 @@ func collectCompareCasesFlagOverrides(cmd *cobra.Command) map[string]any {
 	return overrides
 }
 
-func saveFailedPagesReport(failedPages []parallel.FailedPage, requestedPath string) (string, error) {
+func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath string) (string, error) {
 	if len(failedPages) == 0 {
 		return "", nil
 	}
@@ -509,7 +509,7 @@ func saveFailedPagesReport(failedPages []parallel.FailedPage, requestedPath stri
 	payload := struct {
 		GeneratedAt string                `json:"generated_at"`
 		Total       int                   `json:"total"`
-		FailedPages []parallel.FailedPage `json:"failed_pages"`
+		FailedPages []concurrency.FailedPage `json:"failed_pages"`
 	}{
 		GeneratedAt: time.Now().Format(time.RFC3339),
 		Total:       len(failedPages),

@@ -100,7 +100,7 @@ func compareSuitesInternal(cli client.ClientInterface, pid1, pid2 int64) (*Compa
 
 	if err != nil {
 		// Partial failure - log warning but continue with what we have
-		fmt.Printf("⚠ Предупреждение: не все проекты загружены: %v\n", err)
+		ui.Warningf(os.Stderr, "не все проекты загружены: %v", err)
 	}
 
 	return compareItemInfos("suites", pid1, pid2, suites1, suites2), nil

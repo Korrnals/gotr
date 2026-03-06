@@ -1,5 +1,5 @@
-// Package parallel provides the ParallelController for orchestrating concurrent API requests.
-package parallel
+// Package concurrency provides the ParallelController for orchestrating concurrent API requests.
+package concurrency
 
 import (
 	"context"
@@ -209,7 +209,7 @@ func (pc *ParallelController) suiteWorker(
 
 		// Report suite completion via Reporter
 		if pc.config.Reporter != nil {
-			pc.config.Reporter.OnSuiteComplete()
+			pc.config.Reporter.OnItemComplete()
 		}
 
 		log.Debug(fmt.Sprintf("Completed suite %d (%d/%d)", task.SuiteID, completed, totalSuites))
@@ -274,7 +274,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 			aggregator.Submit(probeResult)
 			atomic.AddInt32(&totalCases, int32(len(probeResult.Cases)))
 			if reporter != nil {
-				reporter.OnCasesReceived(len(probeResult.Cases))
+				reporter.OnBatchReceived(len(probeResult.Cases))
 				reporter.OnPageFetched()
 			}
 		}
@@ -421,7 +421,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 				atomic.AddInt32(&totalCases, int32(len(result.Cases)))
 
 				if reporter != nil {
-					reporter.OnCasesReceived(len(result.Cases))
+					reporter.OnBatchReceived(len(result.Cases))
 					reporter.OnPageFetched()
 				}
 			}
@@ -474,7 +474,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 				atomic.AddInt32(&totalCases, int32(len(result.Cases)))
 
 				if reporter != nil {
-					reporter.OnCasesReceived(len(result.Cases))
+					reporter.OnBatchReceived(len(result.Cases))
 					reporter.OnPageFetched()
 				}
 			}

@@ -4,32 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"io"
 	"net/http"
+
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetSharedSteps получает список shared steps для проекта.
-// Возвращает все шаги (с пагинацией, если она есть).
+// GetSharedSteps получает список shared steps для проекта (поддерживает пагинацию).
 func (c *HTTPClient) GetSharedSteps(projectID int64) (data.GetSharedStepsResponse, error) {
 	endpoint := fmt.Sprintf("get_shared_steps/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	steps, err := fetchAllPages[data.SharedStep](c, endpoint, nil, "shared_steps")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSharedSteps проекта %d: %w", projectID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s для проекта %d: %s", resp.Status, projectID, string(body))
-	}
-
-	var steps data.GetSharedStepsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&steps); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования shared steps проекта %d: %w", projectID, err)
-	}
-
-	return steps, nil
+	return data.GetSharedStepsResponse(steps), nil
 }
 
 // GetSharedStep получает один shared step по ID.

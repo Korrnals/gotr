@@ -17,13 +17,13 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.25.6-blue.svg)](go.mod)
+[![Version](https://img.shields.io/badge/version-2.8.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v2.7.0** — Stage 4 Complete: 106/106 API endpoints implemented. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v2.8.0** — Stage 6.8 Complete: Concurrency unification, generic compare commands, `internal/concurrency/` package. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 
@@ -146,7 +146,7 @@ gotr compare cases --pid1 30 --pid2 34 --rate-limit 0
 gotr compare cases --pid1 30 --pid2 34 --rate-limit 300
 
 # Больше параллелизма
-gotr compare cases --pid1 30 --pid2 34 --parallel-suites 16 --parallel-pages 20
+gotr compare cases --pid1 30 --pid2 34 --parallel-suites 10 --parallel-pages 6
 ```
 
 Automatic deployment detection: gotr определяет `cloud/server` по URL и подбирает rate-limit автоматически. Настраивается в конфиге (`compare.deployment`, `compare.cloud_tier`).
@@ -249,6 +249,10 @@ gotr/
 │   │   ├── interfaces.go       #     ClientInterface (106 endpoints, 14 APIs)
 │   │   ├── mock.go             #     MockClient for testing
 │   │   └── *.go                #     API implementations
+│   ├── concurrency/            #   Parallel pipeline (Stage 6.8, ex-parallel/)
+│   │   ├── controller.go       #     ParallelController — suite/page orchestration
+│   │   ├── simple.go           #     FetchParallel[T], FetchParallelBySuite[T]
+│   │   └── *.go
 │   ├── interactive/            #   Interactive selection
 │   ├── service/                #   Business logic
 │   │   ├── run.go              #     RunService
@@ -258,19 +262,34 @@ gotr/
 │   │   └── data/              #     API DTOs
 │   └── utils/                  #   Utilities
 ├── pkg/                          # Public packages
-│   └── testrailapi/            #   API endpoint definitions
+│   ├── testrailapi/            #   API endpoint definitions
+│   └── reporter/               #   Unified statistics reporter (Stage 6.8)
 └── main.go                       # Entry point
 ```
 
 See [docs/architecture.md](docs/architecture.md) for complete structure.
 
-## What's New in v2.7.0 (Stage 4 Complete)
+## What's New in v2.8.0 (Stage 6.8 Complete)
+
+### Concurrency Unification
+
+- **`internal/concurrency/`** — unified concurrency package (renamed from `internal/parallel/`)
+  - Three strategy levels: `FetchParallel[T]` / `FetchParallelBySuite[T]` / `FetchParallelPaginated`
+  - Generic API: works with any resource type via Go generics `[T any]`
+- **Generic `newSimpleCompareCmd`** — ~1200 lines of copy-paste replaced by one generic factory
+  - 9 identical command files eliminated
+  - Parallel loading of P1 and P2 simultaneously for all simple compare subcommands
+- **`pkg/reporter/`** — unified statistics reporter (moved from `internal/ui/reporter/`)
+  - Consistent boxed output across all 13 compare subcommands
+- **`compare sections`** — now uses `FetchParallelBySuite[T]` for parallel per-suite loading
+- **`compare all`** — uses `reporter` for consistent output, partial results on API errors
+- **Stable defaults**: `parallel-suites=10`, `parallel-pages=6` (optimized for TestRail Server)
+
+## What's New in v2.7.0 (Stage 4 + Stage 6)
 
 ### Complete API Coverage
 
 All 106 TestRail API v2 endpoints are now implemented:
-
-- **Tests API** (3 endpoints) — GetTest, GetTests, UpdateTest
 - **Milestones API** (5 endpoints) — Full CRUD for milestones
 - **Plans API** (9 endpoints) — Full CRUD + plan entries management
 - **Attachments API** (5 endpoints) — File uploads to cases/plans/results/runs

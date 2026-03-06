@@ -113,6 +113,7 @@ internal/client/
 ├── client.go           # HTTPClient — основной HTTP клиент
 ├── interfaces.go       # ClientInterface + 14 API групп (106 endpoints)
 ├── mock.go             # MockClient для тестирования
+├── paginator.go        # Generic fetchAllPages[T] — автопагинация list-методов (Stage 6.9)
 ├── projects.go         # ProjectsAPI (5 endpoints)
 ├── cases.go            # CasesAPI (14 endpoints)
 ├── suites.go           # SuitesAPI (5 endpoints)
@@ -136,6 +137,11 @@ internal/client/
 - Композиция из 14 интерфейсов по доменам
 - Поддержка mock-реализации для тестов
 - 100% покрытие TestRail API v2
+
+**Generic Paginator (`paginator.go`):**
+- `fetchAllPages[T]` — прозрачная загрузка всех страниц для list-эндпоинтов
+- Обрабатывает оба формата TestRail: paginated wrapper `{"runs":[...],"offset":0}` и flat array `[...]`
+- 9 критичных методов мигрированы: GetRuns, GetPlans, GetSections, GetSharedSteps, GetMilestones, GetResults, GetResultsForRun, GetTests, GetSuites
 
 ### 4. Concurrent Layer (`internal/concurrent/`)
 

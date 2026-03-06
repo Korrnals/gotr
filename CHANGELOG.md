@@ -52,6 +52,51 @@
 
 ---
 
+#### Stage 6.9: Generic Paginator & Pagination Audit
+
+### Added
+
+- **`internal/client/paginator.go`** — универсальный generic-пагинатор `fetchAllPages[T]`
+  - Обрабатывает оба формата TestRail API без ветвлений в бизнес-логике:
+    - **Paginated wrapper** (TestRail 6.7+): `{"offset":0,"limit":250,"size":N,"<key>":[...]}`
+    - **Flat array** (старые TestRail Server): `[item1, item2, ...]`
+  - Автоматическое определение формата по первому байту ответа
+  - Стандартный размер страницы: 250 элементов (TestRail default)
+  - Выход по условию: `len(page) < limit` (последняя страница)
+
+- **Миграция 9 критичных list-методов** на `fetchAllPages[T]`:
+  - `GetRuns(projectID)` — runs теперь не обрезаются на 250
+  - `GetPlans(projectID)` — планы теперь не обрезаются на 250
+  - `GetSections(projectID, suiteID)` — секции (критично для `compare sections`)
+  - `GetSharedSteps(projectID)` — shared steps
+  - `GetMilestones(projectID)` — milestones
+  - `GetResults(runID)` — результаты рана
+  - `GetResultsForRun(runID)` — расширенный вариант
+  - `GetTests(runID)` — тесты рана
+  - `GetSuites(projectID)` — сьюты проекта
+
+### Changed
+
+- Все 9 мигрированных методов: тело метода упрощено с ~30 строк ручного цикла до 1 вызова `fetchAllPages`
+- Удалено ~145 строк дублированного pagination boilerplate из `internal/client/`
+
+### Tests
+
+- `internal/client/paginator_test.go` — 11 новых unit-тестов:
+  - Оба формата ответа (paginated wrapper и flat array)
+  - Многостраничная загрузка (multi-page accumulation)
+  - Граничные случаи: пустой ответ, последняя неполная страница
+  - Тест на ошибку сервера (HTTP 500)
+  - Table-driven tests для `decodeListResponse`
+
+### Verified
+
+- `compare all --pid1 30 --pid2 34`: 20 509 кейсов (87 стр.) + 116 009 кейсов (475 стр.) — пагинация подтверждена на реальных данных
+- `compare runs`, `compare plans`, `compare milestones`, `compare sections`, `compare sharedsteps`: все работают корректно
+- `go test ./...` — все тесты зелёные
+
+---
+
 ## [2.7.0] - 2026-02-20
 
 ### Added

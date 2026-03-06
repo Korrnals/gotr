@@ -127,52 +127,26 @@ func (c *HTTPClient) AddResultsForCases(runID int64, req *data.AddResultsForCase
 	return results, nil
 }
 
-// GetResults получает результаты для теста
+// GetResults получает результаты для теста (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#getresults
 func (c *HTTPClient) GetResults(testID int64) (data.GetResultsResponse, error) {
 	endpoint := fmt.Sprintf("get_results/%d", testID)
-	resp, err := c.Get(endpoint, nil)
+	results, err := fetchAllPages[data.Result](c, endpoint, nil, "results")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetResults для теста %d: %w", testID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении результатов для теста %d: %s",
-			resp.Status, testID, string(body))
-	}
-
-	var results data.GetResultsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования результатов: %w", err)
-	}
-
-	return results, nil
+	return data.GetResultsResponse(results), nil
 }
 
-// GetResultsForRun получает результаты для рана
+// GetResultsForRun получает результаты для рана (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#getresultsforrun
 func (c *HTTPClient) GetResultsForRun(runID int64) (data.GetResultsResponse, error) {
 	endpoint := fmt.Sprintf("get_results_for_run/%d", runID)
-	resp, err := c.Get(endpoint, nil)
+	results, err := fetchAllPages[data.Result](c, endpoint, nil, "results")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetResultsForRun для рана %d: %w", runID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении результатов для рана %d: %s",
-			resp.Status, runID, string(body))
-	}
-
-	var results data.GetResultsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования результатов: %w", err)
-	}
-
-	return results, nil
+	return data.GetResultsResponse(results), nil
 }
 
 // GetResultsForCase получает результаты для кейса в ране

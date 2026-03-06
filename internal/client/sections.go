@@ -11,33 +11,19 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetSections — получает секции для suite в проекте (suite_id обязательно для multi-suite проектов)
+// GetSections — получает секции для suite в проекте (поддерживает пагинацию)
+// suite_id обязательно для multi-suite проектов
 func (c *HTTPClient) GetSections(projectID, suiteID int64) (data.GetSectionsResponse, error) {
 	endpoint := fmt.Sprintf("get_sections/%d", projectID)
-	
-	// Формируем query-параметры
-	query := make(map[string]string)
+	var baseQuery map[string]string
 	if suiteID != 0 {
-		query["suite_id"] = fmt.Sprintf("%d", suiteID)
+		baseQuery = map[string]string{"suite_id": fmt.Sprintf("%d", suiteID)}
 	}
-	
-	resp, err := c.Get(endpoint, query)
+	sections, err := fetchAllPages[data.Section](c, endpoint, baseQuery, "sections")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSections для проекта %d, suite %d: %w", projectID, suiteID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении секций проекта %d, suite %d: %s", resp.Status, projectID, suiteID, string(body))
-	}
-
-	var sections data.GetSectionsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&sections); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования секций проекта %d, suite %d: %w", projectID, suiteID, err)
-	}
-
-	return sections, nil
+	return data.GetSectionsResponse(sections), nil
 }
 
 // GetSection — получает одну секцию по ID

@@ -12,23 +12,11 @@ import (
 // GetSuites получает список всех тест-сюит проекта.
 func (c *HTTPClient) GetSuites(projectID int64) (data.GetSuitesResponse, error) {
 	endpoint := fmt.Sprintf("get_suites/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	suites, err := fetchAllPages[data.Suite](c, endpoint, nil, "suites")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSuites для проекта %d: %w", projectID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении сюит проекта %d: %s", resp.Status, projectID, string(body))
-	}
-
-	var suites data.GetSuitesResponse
-	if err := json.NewDecoder(resp.Body).Decode(&suites); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования сюит проекта %d: %w", projectID, err)
-	}
-
-	return suites, nil
+	return data.GetSuitesResponse(suites), nil
 }
 
 // GetSuite получает одну тест-сюиту по ID.

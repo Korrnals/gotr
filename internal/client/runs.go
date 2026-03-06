@@ -35,28 +35,15 @@ func (c *HTTPClient) GetRun(runID int64) (*data.Run, error) {
 	return &run, nil
 }
 
-// GetRuns получает список тест-ранов проекта
+// GetRuns получает список тест-ранов проекта (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#getruns
 func (c *HTTPClient) GetRuns(projectID int64) (data.GetRunsResponse, error) {
 	endpoint := fmt.Sprintf("get_runs/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	runs, err := fetchAllPages[data.Run](c, endpoint, nil, "runs")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetRuns для проекта %d: %w", projectID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении ранов проекта %d: %s",
-			resp.Status, projectID, string(body))
-	}
-
-	var runs data.GetRunsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&runs); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования ранов: %w", err)
-	}
-
-	return runs, nil
+	return data.GetRunsResponse(runs), nil
 }
 
 // AddRun создаёт новый тест-ран

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	outpututils "github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -80,10 +79,6 @@ func newAllCmd() *cobra.Command {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
-			// Start timer
 			startTime := time.Now()
 
 			// Compare all resources
@@ -91,42 +86,42 @@ func newAllCmd() *cobra.Command {
 			errors := make(map[string]error)
 
 			// Cases
-			if casesResult, err := compareCasesInternal(cli, pid1, pid2, "title", pm); err == nil {
+			if casesResult, _, err := compareCasesInternal(cmd, cli, pid1, pid2, "title"); err == nil {
 				result.Cases = casesResult
 			} else {
 				errors["cases"] = err
 			}
 
 			// Suites
-			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2, pm); err == nil {
+			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2); err == nil {
 				result.Suites = suitesResult
 			} else {
 				errors["suites"] = err
 			}
 
 			// Sections
-			if sectionsResult, err := compareSectionsInternal(cli, pid1, pid2, nil); err == nil {
+			if sectionsResult, err := compareSectionsInternal(cli, pid1, pid2); err == nil {
 				result.Sections = sectionsResult
 			} else {
 				errors["sections"] = err
 			}
 
 			// Shared Steps
-			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2, nil); err == nil {
+			if sharedStepsResult, err := compareSharedStepsInternal(cli, pid1, pid2); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				errors["shared_steps"] = err
 			}
 
 			// Runs
-			if runsResult, err := compareRunsInternal(cli, pid1, pid2, nil); err == nil {
+			if runsResult, err := compareRunsInternal(cli, pid1, pid2); err == nil {
 				result.Runs = runsResult
 			} else {
 				errors["runs"] = err
 			}
 
 			// Plans
-			if plansResult, err := comparePlansInternal(cli, pid1, pid2, nil); err == nil {
+			if plansResult, err := comparePlansInternal(cli, pid1, pid2); err == nil {
 				result.Plans = plansResult
 			} else {
 				errors["plans"] = err
@@ -147,36 +142,36 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Groups
-			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2, nil); err == nil {
+			if groupsResult, err := compareGroupsInternal(cli, pid1, pid2); err == nil {
 				result.Groups = groupsResult
 			} else {
 				errors["groups"] = err
 			}
 
 			// Labels
-			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2, nil); err == nil {
+			if labelsResult, err := compareLabelsInternal(cli, pid1, pid2); err == nil {
 				result.Labels = labelsResult
 			} else {
 				errors["labels"] = err
 			}
 
 			// Templates
-			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2, nil); err == nil {
+			if templatesResult, err := compareTemplatesInternal(cli, pid1, pid2); err == nil {
 				result.Templates = templatesResult
 			} else {
 				errors["templates"] = err
 			}
 
 			// Configurations
-			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2, nil); err == nil {
+			if configsResult, err := compareConfigurationsInternal(cli, pid1, pid2); err == nil {
 				result.Configurations = configsResult
 			} else {
 				errors["configurations"] = err
 			}
 
 			// Print summary table
-				elapsed := time.Since(startTime)
-				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
+			elapsed := time.Since(startTime)
+			printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
 
 			// Save result if requested
 			if savePath != "" {
@@ -276,19 +271,6 @@ func addCommonFlags(cmd *cobra.Command) {
 	// Mark required flags
 	cmd.MarkFlagRequired("pid1")
 	cmd.MarkFlagRequired("pid2")
-}
-
-// printResourceSummary prints a summary line for a resource comparison.
-func printResourceSummary(resourceName string, result *CompareResult) {
-	if result == nil {
-		fmt.Printf("%-15s: ошибка получения данных\n", resourceName)
-		return
-	}
-	fmt.Printf("%-15s: только в P1: %d, только в P2: %d, общих: %d\n",
-		resourceName,
-		len(result.OnlyInFirst),
-		len(result.OnlyInSecond),
-		len(result.Common))
 }
 
 // printAllSummaryTable prints a formatted table summary for compare all

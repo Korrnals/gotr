@@ -36,7 +36,7 @@ func TestPrintCasesStats(t *testing.T) {
 	output := buf.String()
 
 	// Verify output contains key information
-	assert.Contains(t, output, "СТАТИСТИКА ВЫПОЛНЕНИЯ")
+	assert.Contains(t, output, "СТАТИСТИКА: cases")
 	assert.Contains(t, output, "1.5s") // elapsed time
 	assert.Contains(t, output, "4")   // total cases (2 + 1 + 1)
 	assert.Contains(t, output, "30")  // project 1 ID

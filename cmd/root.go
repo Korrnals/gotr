@@ -36,10 +36,15 @@ var rootCmd = &cobra.Command{
 		// Маппим переменные окружения в переменные, которые будут использоваться в клиенте
 		baseURL := viper.GetString("base_url")
 		username := viper.GetString("username")
-		password := viper.GetString("password")
-		apiKey := viper.GetString("api_key")
 		insecure := viper.GetBool("insecure")
 		debug := viper.GetBool("debug")
+
+		// Поддержка password (Basic Auth) и api_key (API Key Auth).
+		// password имеет приоритет — для обратной совместимости с TESTRAIL_PASSWORD.
+		apiKey := viper.GetString("password")
+		if apiKey == "" {
+			apiKey = viper.GetString("api_key")
+		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
 		utils.DebugPrint("{rootCmd} - PersistentPreRunE запущен для команды: %s", cmd.Use)
@@ -64,7 +69,7 @@ var rootCmd = &cobra.Command{
 			opts = append(opts, client.WithSkipTlsVerify(true)) //По-умолчанию, проверка tls - включена
 		}
 
-		httpClient, err := client.NewClient(baseURL, username, password, debug, opts...)
+		httpClient, err := client.NewClient(baseURL, username, apiKey, debug, opts...)
 		if err != nil {
 			return fmt.Errorf("не удалось создать клиент: %w", err)
 		}

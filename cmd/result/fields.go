@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -43,19 +43,13 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return fmt.Errorf("ошибка получения полей результатов: %w", err)
 			}
 
-			return outputResult(cmd, fields)
+			return output.OutputResult(cmd, fields, "results")
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "results", "json")
-	return err
 }
 
 // saveToFile сохраняет данные в файл

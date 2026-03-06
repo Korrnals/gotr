@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -128,7 +129,7 @@ func TestOutputResult_MarshalError(t *testing.T) {
 	// Channel cannot be marshaled to JSON
 	invalidData := make(chan int)
 
-	err := outputResult(cmd, invalidData)
+	err := output.OutputResult(cmd, invalidData, "templates")
 	assert.Error(t, err)
 }
 

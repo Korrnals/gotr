@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -123,7 +124,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("save", "", "")
 
-	err := outputResult(cmd, badData)
+	err := output.OutputResult(cmd, badData, "roles")
 	assert.Error(t, err)
 }
 

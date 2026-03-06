@@ -2,10 +2,11 @@ package compare
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,14 +45,11 @@ func newTemplatesCmd() *cobra.Command {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
 			// Start timer
 			startTime := time.Now()
 
 			// Compare templates
-			result, err := compareTemplatesInternal(cli, pid1, pid2, pm)
+			result, err := compareTemplatesInternal(cli, pid1, pid2)
 			if err != nil {
 				return fmt.Errorf("ошибка сравнения шаблонов: %w", err)
 			}
@@ -84,14 +82,14 @@ func newTemplatesCmd() *cobra.Command {
 var templatesCmd = newTemplatesCmd()
 
 // compareTemplatesInternal compares templates between two projects and returns the result.
-func compareTemplatesInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка шаблонов из проекта %d...", pid1))
+func compareTemplatesInternal(cli client.ClientInterface, pid1, pid2 int64) (*CompareResult, error) {
+	ui.Infof(os.Stderr, "Загрузка шаблонов из проекта %d...", pid1)
 	templates1, err := fetchTemplateItems(cli, pid1)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения шаблонов проекта %d: %w", pid1, err)
 	}
 
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка шаблонов из проекта %d...", pid2))
+	ui.Infof(os.Stderr, "Загрузка шаблонов из проекта %d...", pid2)
 	templates2, err := fetchTemplateItems(cli, pid2)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка получения шаблонов проекта %d: %w", pid2, err)

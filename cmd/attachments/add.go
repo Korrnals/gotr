@@ -52,7 +52,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -99,7 +99,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -147,7 +147,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -194,7 +194,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -241,7 +241,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -265,8 +265,3 @@ func validateFileExists(filePath string) error {
 	return nil
 }
 
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "attachments", "json")
-	return err
-}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
@@ -61,7 +62,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = selectProjectInteractively(cli)
+				projectID, err = interactive.SelectProjectInteractively(cli)
 				if err != nil {
 					return err
 				}
@@ -103,7 +104,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			}
 
 			// Несколько сьютов — интерактивный выбор
-			selectedSuiteID, err := selectSuiteInteractively(suites)
+			selectedSuiteID, err := interactive.SelectSuiteInteractively(suites)
 			if err != nil {
 				return err
 			}

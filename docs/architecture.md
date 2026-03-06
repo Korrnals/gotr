@@ -1,7 +1,7 @@
 # Архитектура gotr
 
 > Общее описание архитектуры CLI-утилиты gotr для пользователей  
-> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-16 (v2.7.0-dev) — Stage 6: Concurrent API Processing + Progress Bars.
+> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-03-04 (v2.8.0-dev) — Stage 6.7: Recursive Parallelization + Unified Reporter + Dead Code Cleanup.
 
 ## Что такое gotr
 
@@ -27,9 +27,17 @@
 ┌──────────────────────▼──────────────────────────────────────┐
 │  Concurrent Layer (internal/concurrent/*)                   │
 │  • WorkerPool — параллельная обработка запросов            │
-│  • RateLimiter — контроль 150 запросов/минуту              │
+│  • RateLimiter — контроль 180 запросов/минуту              │
 │  • Retry — повторные попытки с экспоненциальной задержкой  │
 │  • CircuitBreaker — защита от каскадных ошибок             │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  Parallel Layer (internal/parallel/*)                       │
+│  • ParallelController — pipeline pagination по сьютам      │
+│  • ResultAggregator — сбор результатов из горутин          │
+│  • PriorityQueue — приоритезация больших сьютов            │
+│  • SuiteFetcher — интерфейс для реализаций загрузки        │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
@@ -152,21 +160,49 @@ internal/client/
 
 Подробнее: [docs/concurrent.md](./concurrent.md)
 
-### 5. Progress Layer (`internal/progress/`)
+### 5. Parallel Layer (`internal/parallel/`)
 
-**Ответственность:** Отображение прогресса длительных операций.
+**Ответственность:** Pipeline-параллелизация загрузки кейсов из множества сьютов.
+
+**Компоненты:**
+- **ParallelController** — оркестрация pipeline: планирование страниц, воркер-пул, сбор результатов
+- **ResultAggregator** — потокобезопасная агрегация результатов из горутин (StartCtx/aggregateCtx)
+- **PriorityQueue** — heap-based очередь, большие сьюты обрабатываются первыми
+- **SuiteFetcher** — интерфейс (`FetchPageCtx`) для подстановки реальных и mock-реализаций
+
+**Конфигурация:** `--workers`, `--page-size`, `--max-retries`, `--retry-delay`, `--rate-limit`, `--profile` (fast/balanced/safe)
+
+Подробнее: [docs/recursive-parallelization-plan.md](./recursive-parallelization-plan.md)
+
+### 6. UI Layer (`internal/ui/`)
+
+**Ответственность:** Унифицированный вывод для всех команд.
+
+**Компоненты:**
+- **display.go** — ANSI live display с динамическими задачами (для `compare cases`)
+- **reporter/** — builder pattern для вывода статистики (`Section/Stat/StatIf/StatFmt/Blank/Separator/Print`)
 
 **Использование:**
-- `gotr compare all` — прогресс сравнения проектов
+- `gotr compare cases` — live display с прогрессом в реальном времени
+- Все 11 compare-подкоманд — reporter для итогового вывода
+- `ui.Infof(os.Stderr, ...)` — стилизованные сообщения
+
+### 7. Progress Layer (`internal/progress/`)
+
+**Ответственность:** Прогресс-бары для sync/get команд (mpb-based).
+
+**Использование:**
 - `gotr sync full` — прогресс миграции
 - `gotr get cases` — прогресс загрузки кейсов
+
+> **Примечание:** В compare-командах progress.Manager заменён на `internal/ui/reporter` для унифицированного вывода.
 
 **Особенности:**
 - Автоматически отключается в `--quiet` режиме
 - Поддерживает неопределенные операции (спиннеры)
-- Интегрируется с Concurrent Layer
+- `WithMonitorCtx` — мониторинг через context
 
-### 6. Interactive Layer (`internal/interactive/`)
+### 8. Interactive Layer (`internal/interactive/`)
 
 **Ответственность:** Интерактивный выбор проектов, сьютов, ранов.
 
@@ -175,7 +211,7 @@ internal/client/
 - `gotr result list` — выбор проекта → выбор рана → результаты
 - `gotr get cases` — выбор проекта → выбор сьюта
 
-### 7. Models (`internal/models/data/`)
+### 9. Models (`internal/models/data/`)
 
 **Ответственность:** DTO (Data Transfer Objects) для API.
 
@@ -187,7 +223,7 @@ internal/client/
 - `Report`, `Group`, `Role`, `Dataset`
 - `Status`, `Priority` — константы
 
-### 8. Utilities (`internal/utils/`)
+### 10. Utilities (`internal/utils/`)
 
 **Ответственность:** Вспомогательные функции.
 
@@ -282,8 +318,20 @@ gotr/
 │   │   ├── limiter.go         #     RateLimiter (150 req/min)
 │   │   ├── retry.go           #     Retry с backoff
 │   │   └── circuit.go         #     CircuitBreaker
-│   ├── progress/               #   Прогресс-бары
-│   │   └── progress.go        #     ProgressManager
+│   ├── parallel/               #   Pipeline-параллелизация
+│   │   ├── types.go           #     SuiteFetcher, PageRequest, PipelineConfig
+│   │   ├── priority_queue.go  #     PriorityQueue (heap-based)
+│   │   ├── aggregator.go      #     ResultAggregator
+│   │   ├── controller.go      #     ParallelController
+│   │   └── doc.go             #     Документация пакета
+│   ├── ui/                     #   Унифицированный вывод
+│   │   ├── display.go         #     ANSI live display
+│   │   └── reporter/          #     Builder для статистики
+│   │       └── reporter.go    #       Section/Stat/Print
+│   ├── progress/               #   Прогресс-бары (mpb)
+│   │   ├── progress.go        #     ProgressManager
+│   │   ├── monitor.go         #     WithMonitorCtx
+│   │   └── async.go           #     Async helpers
 │   ├── interactive/            #   Интерактивный выбор
 │   │   └── wizard.go          #     InteractiveWizard
 │   ├── output/                 #   Вывод и сохранение
@@ -422,8 +470,10 @@ CLI команды не требуют изменений!
 | Новый API метод | `internal/client/*.go` + `interfaces.go` |
 | Новая структура данных | `internal/models/data/*.go` |
 | Интерактивный выбор | `internal/interactive/wizard.go` |
-| Параллельная обработка | `internal/concurrent/*.go` |
-| Прогресс-бары | `internal/progress/*.go` |
+| Параллельная обработка (generic) | `internal/concurrent/*.go` |
+| Pipeline-параллелизация (cases) | `internal/parallel/*.go` |
+| Унифицированный вывод (compare) | `internal/ui/reporter/*.go` |
+| Прогресс-бары (sync/get) | `internal/progress/*.go` |
 
 Подробная техническая документация: `.systems/ARCHITECTURE.md`
 

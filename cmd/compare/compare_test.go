@@ -55,46 +55,6 @@ func TestParseFlags_InvalidPid1(t *testing.T) {
 	assert.Contains(t, err.Error(), "pid1")
 }
 
-// ==================== Тесты для buildResourceDiff ====================
-
-func TestBuildResourceDiff(t *testing.T) {
-	first := []string{"A", "B", "C"}
-	second := []string{"B", "C", "D"}
-
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, "test", diff.Resource)
-	assert.Equal(t, 3, diff.TotalFirst)
-	assert.Equal(t, 3, diff.TotalSecond)
-	assert.Equal(t, 2, len(diff.Common))     // B, C
-	assert.Equal(t, 1, len(diff.OnlyFirst))  // A
-	assert.Equal(t, 1, len(diff.OnlySecond)) // D
-}
-
-func TestBuildResourceDiff_EmptyFirst(t *testing.T) {
-	first := []string{}
-	second := []string{"A", "B", "C"}
-
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, 0, diff.TotalFirst)
-	assert.Equal(t, 3, diff.TotalSecond)
-	assert.Equal(t, 0, len(diff.Common))
-	assert.Equal(t, 0, len(diff.OnlyFirst))
-	assert.Equal(t, 3, len(diff.OnlySecond))
-}
-
-func TestBuildResourceDiff_BothEmpty(t *testing.T) {
-	first := []string{}
-	second := []string{}
-
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, 0, diff.TotalFirst)
-	assert.Equal(t, 0, diff.TotalSecond)
-	assert.Equal(t, 0, len(diff.Common))
-}
-
 // ==================== Тесты для collectNames ====================
 
 func TestCollectNames(t *testing.T) {
@@ -191,22 +151,4 @@ func TestIDMappingPair(t *testing.T) {
 	assert.Equal(t, "Test", pair.Name)
 }
 
-// ==================== Тесты для ResourceDiff ====================
 
-func TestResourceDiff_Struct(t *testing.T) {
-	diff := ResourceDiff{
-		Resource:    "suites",
-		TotalFirst:  5,
-		TotalSecond: 7,
-		Common:      []string{"A", "B"},
-		OnlyFirst:   []string{"C"},
-		OnlySecond:  []string{"D", "E"},
-	}
-
-	assert.Equal(t, "suites", diff.Resource)
-	assert.Equal(t, 5, diff.TotalFirst)
-	assert.Equal(t, 7, diff.TotalSecond)
-	assert.Equal(t, 2, len(diff.Common))
-	assert.Equal(t, 1, len(diff.OnlyFirst))
-	assert.Equal(t, 2, len(diff.OnlySecond))
-}

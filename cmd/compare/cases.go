@@ -1,20 +1,59 @@
 package compare
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
+	outpututils "github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/parallel"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/pkg/reporter"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // casesCmd — экспортированная команда
 var casesCmd = newCasesCmd()
+
+// projectDataStats contains structural statistics about a single project.
+type projectDataStats struct {
+	Suites         int // количество сьюитов  (из GetSuites API)
+	Sections       int // уникальных секций   (из SectionID в кейсах)
+	CasesRaw       int // всего raw-кейсов до дедупликации
+	CasesUnique    int // уникальных кейсов   (после ID-dedup)
+	CasesExpected  int // ожидаемых кейсов по данным API (сумма totalSize по всем сьютам; -1 если неизвестно)
+	SuitesWithTotal int // сколько сьютов сообщили totalSize
+	SuitesVerified  int // сьютов с подтверждённой полнотой (все страницы загружены, exhaustion чистый)
+	SuiteDetailsSum   int // сумма кейсов по всем сьютам (для проверки целостности)
+	SuiteDetailsEmpty int // количество пустых сьютов (0 кейсов)
+	SuiteDetailsCount int // количество сьютов с трекингом
+	TotalPages     int // общее количество запрошенных страниц
+	FailedPages    int // страниц с ошибками
+	UniqueTitles   int // уникальных заголовков (для контроля)
+	EmptyTitles    int // кейсов без заголовка
+	Elapsed        time.Duration // время загрузки этого проекта
+}
+
+type casesExecutionStats struct {
+	Project1       projectDataStats
+	Project2       projectDataStats
+	LoadErrorsP1       int
+	LoadErrorsP2       int
+	FailedPagesBefore  int
+	RetryStats         retryFailedPagesStats
+	FailedPagesAfter   int
+	FailedPagesReport  string
+	RetryAttempted     bool
+	RetryFailedWithErr bool
+}
 
 // newCasesCmd creates the 'compare cases' subcommand.
 func newCasesCmd() *cobra.Command {
@@ -67,14 +106,11 @@ func newCasesCmd() *cobra.Command {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
 			// Start timer
 			startTime := time.Now()
 
 			// Execute comparison
-			result, err := compareCasesInternal(cli, pid1, pid2, field, pm)
+			result, execStats, err := compareCasesInternal(cmd, cli, pid1, pid2, field)
 			if err != nil {
 				return err
 			}
@@ -89,8 +125,15 @@ func newCasesCmd() *cobra.Command {
 			// Print statistics
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			if !quiet {
-				PrintCompareStats("cases", pid1, pid2, 
-					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+				PrintCasesStatsWithErrors(
+					pid1,
+					pid2,
+					len(result.OnlyInFirst),
+					len(result.OnlyInSecond),
+					len(result.Common),
+					elapsed,
+					execStats,
+				)
 			}
 
 			return nil
@@ -112,69 +155,61 @@ func getCaseKey(item ItemInfo, field string) string {
 	return item.Name
 }
 
-// ProjectLoadStats holds statistics for project loading
-type ProjectLoadStats struct {
-	ProjectID    int64
-	SuitesCount  int
-	CasesCount   int
-	Duration     time.Duration
-}
-
 // compareCasesInternal compares cases between two projects and returns the result.
-// Shows parallel loading of both projects with detailed statistics.
-func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field string, pm *progress.Manager) (*CompareResult, error) {
+// Uses ui.Display for live progress — no mpb, no progress.Monitor.
+func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string) (*CompareResult, casesExecutionStats, error) {
+	execStats := casesExecutionStats{}
 	// Phase 1: Get suites for both projects (quick operation)
 	utils.DebugPrint("[Compare] Phase 1: Fetching suites for projects %d and %d", pid1, pid2)
-	
-	var spinner *progress.Bar
-	if pm != nil {
-		spinner = pm.NewSpinner(fmt.Sprintf("Получение структуры проектов %d и %d...", pid1, pid2))
-	}
+	ui.Infof(os.Stderr, "Получение структуры проектов %d и %d...", pid1, pid2)
 
 	suitesMap, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2, nil)
 	if err != nil && len(suitesMap) == 0 {
-		spinner.Finish()
-		return nil, fmt.Errorf("ошибка получения сьютов: %w", err)
+		return nil, execStats, fmt.Errorf("ошибка получения сьютов: %w", err)
 	}
 
 	suites1 := suitesMap[pid1]
 	suites2 := suitesMap[pid2]
-	spinner.Finish()
 
 	utils.DebugPrint("[Compare] Found suites: P%d=%d, P%d=%d", pid1, len(suites1), pid2, len(suites2))
 
-	// Phase 2: Parallel loading of both projects
+	// Phase 2: Parallel loading of both projects with live display
 	utils.DebugPrint("[Compare] Phase 2: Parallel loading of projects %d and %d", pid1, pid2)
-	
-	fmt.Fprintf(os.Stderr, "\n📥 Параллельная загрузка данных:\n")
-	fmt.Fprintf(os.Stderr, "   Проект %d: %d сьютов | Проект %d: %d сьютов\n\n", pid1, len(suites1), pid2, len(suites2))
+
+	runtimeConfig, err := resolveCompareCasesRuntimeConfig(collectCompareCasesFlagOverrides(cmd), viper.GetString("base_url"))
+	if err != nil {
+		return nil, execStats, err
+	}
+
+	utils.DebugPrint("[Compare] RuntimeConfig: parallelSuites=%d, parallelPages=%d, rateLimit=%d, pageRetries=%d, retryAttempts=%d, retryWorkers=%d, retryDelay=%s",
+		runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.RateLimit,
+		runtimeConfig.PageRetries, runtimeConfig.RetryAttempts, runtimeConfig.RetryWorkers, runtimeConfig.RetryDelay)
+
+	// Create live display
+	display := ui.New()
+	display.SetHeader("Загрузка данных")
+	task1 := display.AddTask(fmt.Sprintf("П%d (%d сьютов)", pid1, len(suites1)), len(suites1))
+	task2 := display.AddTask(fmt.Sprintf("П%d (%d сьютов)", pid2, len(suites2)), len(suites2))
 
 	var cases1, cases2 []ItemInfo
+	var failedPages1, failedPages2 []parallel.FailedPage
+	var stats1, stats2 projectDataStats
 	var err1, err2 error
-	var stats1, stats2 ProjectLoadStats
-	
+
 	done1 := make(chan struct{})
 	done2 := make(chan struct{})
 
 	// Load Project 1
 	go func() {
-		start := time.Now()
-		cases1, err1 = fetchCasesForProjectWithStats(cli, pid1, suites1, pm, &stats1)
-		stats1.ProjectID = pid1
-		stats1.SuitesCount = len(suites1)
-		stats1.CasesCount = len(cases1)
-		stats1.Duration = time.Since(start)
+		cases1, failedPages1, stats1, err1 = fetchCasesForProject(cli, pid1, suites1, task1, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
+		task1.Finish()
 		close(done1)
 	}()
 
 	// Load Project 2
 	go func() {
-		start := time.Now()
-		cases2, err2 = fetchCasesForProjectWithStats(cli, pid2, suites2, pm, &stats2)
-		stats2.ProjectID = pid2
-		stats2.SuitesCount = len(suites2)
-		stats2.CasesCount = len(cases2)
-		stats2.Duration = time.Since(start)
+		cases2, failedPages2, stats2, err2 = fetchCasesForProject(cli, pid2, suites2, task2, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
+		task2.Finish()
 		close(done2)
 	}()
 
@@ -182,52 +217,128 @@ func compareCasesInternal(cli client.ClientInterface, pid1, pid2 int64, field st
 	<-done1
 	<-done2
 
-	// Print results after both complete
-	fmt.Fprintf(os.Stderr, "📊 Результаты загрузки:\n")
-	fmt.Fprintf(os.Stderr, "  ✅ Проект %d: %d сьютов → %d кейсов (%s)\n", 
-		stats1.ProjectID, stats1.SuitesCount, stats1.CasesCount, stats1.Duration.Round(time.Second))
-	fmt.Fprintf(os.Stderr, "  ✅ Проект %d: %d сьютов → %d кейсов (%s)\n", 
-		stats2.ProjectID, stats2.SuitesCount, stats2.CasesCount, stats2.Duration.Round(time.Second))
+	execStats.Project1 = stats1
+	execStats.Project2 = stats2
+
+	// Stop live display
+	display.Finish()
+
+	// Print summary
+	ui.Section(os.Stderr, "Результаты загрузки")
+	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Проект %d", pid1),
+		fmt.Sprintf("%d кейсов за %s", len(cases1), task1.Elapsed().Round(time.Second)))
+	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Проект %d", pid2),
+		fmt.Sprintf("%d кейсов за %s", len(cases2), task2.Elapsed().Round(time.Second)))
+
+	if task1.Errors() > 0 || task2.Errors() > 0 {
+		ui.Warningf(os.Stderr, "Ошибки: П%d=%d, П%d=%d", pid1, task1.Errors(), pid2, task2.Errors())
+	}
+	execStats.LoadErrorsP1 = int(task1.Errors())
+	execStats.LoadErrorsP2 = int(task2.Errors())
+
+	allFailedPages := append(append([]parallel.FailedPage{}, failedPages1...), failedPages2...)
+	execStats.FailedPagesBefore = len(allFailedPages)
+	if len(allFailedPages) > 0 {
+		ui.Warningf(os.Stderr, "Неполученные страницы после retry/recovery: %d", len(allFailedPages))
+		showLimit := 10
+		if len(allFailedPages) < showLimit {
+			showLimit = len(allFailedPages)
+		}
+		for i := 0; i < showLimit; i++ {
+			fp := allFailedPages[i]
+			ui.Infof(os.Stderr, "  - проект=%d suite=%d page=%d offset=%d limit=%d", fp.ProjectID, fp.SuiteID, fp.PageNum, fp.Offset, fp.Limit)
+		}
+		if len(allFailedPages) > showLimit {
+			ui.Infof(os.Stderr, "  ... и ещё %d страниц (см. JSON-отчёт)", len(allFailedPages)-showLimit)
+		}
+
+		reportPath, saveErr := saveFailedPagesReport(allFailedPages, "")
+		if saveErr != nil {
+			ui.Warningf(os.Stderr, "Не удалось сохранить отчёт по ошибочным страницам: %v", saveErr)
+		} else {
+			ui.Infof(os.Stderr, "Отчёт по ошибочным страницам сохранён: %s", reportPath)
+			execStats.FailedPagesReport = reportPath
+		}
+
+		if runtimeConfig.AutoRetryFailedPages {
+			ui.Phase(os.Stderr, "Запуск авто-ретрая failed pages...")
+			execStats.RetryAttempted = true
+			remaining, retryStats, retryErr := executeRetryFailedPages(
+				cli,
+				allFailedPages,
+				retryFailedPagesOptions{
+					Attempts: runtimeConfig.RetryAttempts,
+					Workers:  runtimeConfig.RetryWorkers,
+					Delay:    runtimeConfig.RetryDelay,
+				},
+				"auto-retry после compare cases",
+				"",
+			)
+			execStats.RetryStats = retryStats
+			execStats.FailedPagesAfter = len(remaining)
+			if retryErr != nil {
+				execStats.RetryFailedWithErr = true
+				ui.Warningf(os.Stderr, "Авто-ретрай завершился с ошибкой: %v", retryErr)
+			} else if len(remaining) == 0 {
+				ui.Successf(os.Stderr, "Авто-ретрай: все failed pages успешно обработаны")
+			}
+		} else {
+			execStats.FailedPagesAfter = len(allFailedPages)
+			ui.Warningf(os.Stderr, "Авто-ретрай отключён через compare.cases.auto_retry_failed_pages")
+		}
+	}
 
 	if err1 != nil {
-		return nil, fmt.Errorf("ошибка загрузки проекта %d: %w", pid1, err1)
+		return nil, execStats, fmt.Errorf("ошибка загрузки проекта %d: %w", pid1, err1)
 	}
 	if err2 != nil {
-		return nil, fmt.Errorf("ошибка загрузки проекта %d: %w", pid2, err2)
+		return nil, execStats, fmt.Errorf("ошибка загрузки проекта %d: %w", pid2, err2)
 	}
 
 	// Phase 3: Analysis
 	utils.DebugPrint("[Compare] Phase 3: Analysis and comparison")
-	fmt.Fprintf(os.Stderr, "\n🔍 Выполняется анализ и сверка данных...\n")
+	ui.Phase(os.Stderr, "Выполняется анализ и сверка данных...")
 
 	start := time.Now()
 	result := analyzeCases(cases1, cases2, pid1, pid2, field)
 	elapsed := time.Since(start)
-	
-	fmt.Fprintf(os.Stderr, "  ✅ Анализ завершён (%s)\n", elapsed.Round(time.Millisecond))
-	utils.DebugPrint("[Compare] Analysis complete: P%d=%d unique, P%d=%d unique, common=%d", 
+
+	ui.Successf(os.Stderr, "Анализ завершён (%s)", elapsed.Round(time.Millisecond))
+	utils.DebugPrint("[Compare] Analysis complete: P%d=%d unique, P%d=%d unique, common=%d",
 		pid1, len(result.OnlyInFirst), pid2, len(result.OnlyInSecond), len(result.Common))
 
-	return result, nil
+	return result, execStats, nil
 }
 
-// fetchCasesForProjectWithStats loads all cases for a single project with progress bar and stats.
-func fetchCasesForProjectWithStats(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, pm *progress.Manager, stats *ProjectLoadStats) ([]ItemInfo, error) {
+// fetchCasesForProject loads all cases for a single project.
+// task is a *ui.Task implementing parallel.ProgressReporter — gets live updates.
+func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []parallel.FailedPage, projectDataStats, error) {
+	fetchStart := time.Now()
+	pds := projectDataStats{Suites: len(suites)}
+
 	if len(suites) == 0 {
 		utils.DebugPrint("[Project %d] No suites, fetching all cases", projectID)
 		cases, err := cli.GetCases(projectID, 0, 0)
 		if err != nil {
-			return nil, err
+			return nil, nil, pds, err
 		}
 
 		allCases := make([]ItemInfo, 0, len(cases))
+		sectionIDs := make(map[int64]struct{})
 		for _, c := range cases {
 			allCases = append(allCases, ItemInfo{
 				ID:   c.ID,
 				Name: c.Title,
 			})
+			if c.SectionID != 0 {
+				sectionIDs[c.SectionID] = struct{}{}
+			}
 		}
-		return allCases, nil
+		pds.CasesRaw = len(cases)
+		pds.CasesUnique = len(allCases)
+		pds.Sections = len(sectionIDs)
+		pds.Elapsed = time.Since(fetchStart)
+		return allCases, nil, pds, nil
 	}
 
 	// Extract suite IDs
@@ -236,61 +347,185 @@ func fetchCasesForProjectWithStats(cli client.ClientInterface, projectID int64, 
 		suiteIDs[i] = s.ID
 	}
 
-	// Create progress bar for this project
-	var bar *progress.Bar
-	if pm != nil {
-		bar = pm.NewBar(int64(len(suites)), 
-			fmt.Sprintf("⏳ Проект %d (%d сьютов)...", projectID, len(suites)))
+	// Create parallel controller config with Reporter = task (ui.Task implements ProgressReporter)
+	config := &parallel.ControllerConfig{
+		MaxConcurrentSuites: parallelSuites,
+		MaxConcurrentPages:  parallelPages,
+		RequestsPerMinute:   rateLimit,
+		MaxRetries:          pageRetries,
+		Timeout:             timeout,
+		Reporter:            task, // *ui.Task → parallel.ProgressReporter
 	}
 
-	// Create progress channel and monitor
-	var monitor *progress.Monitor
-	var progressChan chan int
-	if bar != nil {
-		progressChan = make(chan int, len(suiteIDs))
-		monitor = progress.NewMonitor(progressChan, len(suiteIDs))
-		
-		go func() {
-			for range progressChan {
-				bar.Add(1)
+	utils.DebugPrint("[Project %d] Starting GetCasesParallelCtx (streaming) with parallelSuites=%d, parallelPages=%d, timeout=%s",
+		projectID, parallelSuites, parallelPages, timeout)
+	ctx := context.Background()
+	cases, result, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config)
+
+	if err != nil && len(cases) == 0 {
+		return nil, nil, pds, err
+	}
+
+	// Log execution stats for diagnostics
+	if result != nil {
+		stats := result.Stats
+		utils.DebugPrint("[Project %d] Fetch stats: %d suites completed, %d pages, %d raw cases, expected=%d, partial=%v",
+			projectID, stats.CompletedSuites, stats.TotalPages, stats.TotalCases, stats.ExpectedCases, result.Partial)
+		pds.CasesExpected = int(stats.ExpectedCases)
+		pds.SuitesWithTotal = stats.SuitesWithTotal
+		pds.SuitesVerified = stats.SuitesVerified
+		if len(stats.SuiteResults) > 0 {
+			sum := 0
+			emptySuites := 0
+			for _, r := range stats.SuiteResults {
+				sum += r.CasesFetched
+				if r.CasesFetched == 0 {
+					emptySuites++
+				}
+				verified := "✗"
+				if r.Verified {
+					verified = "✓"
+				}
+				utils.DebugPrint("[Project %d] Suite %d: %d cases [%s]",
+					projectID, r.SuiteID, r.CasesFetched, verified)
 			}
-		}()
+			utils.DebugPrint("[Project %d] Suite totals: Σ=%d, empty=%d, count=%d",
+				projectID, sum, emptySuites, len(stats.SuiteResults))
+			pds.SuiteDetailsSum = sum
+			pds.SuiteDetailsEmpty = emptySuites
+			pds.SuiteDetailsCount = len(stats.SuiteResults)
+		}
+		pds.TotalPages = stats.TotalPages
+		pds.FailedPages = stats.FailedPages
 	}
 
-	// Fetch cases
-	utils.DebugPrint("[Project %d] Starting GetCasesParallel with %d workers", projectID, 10)
-	casesBySuite, err := cli.GetCasesParallel(projectID, suiteIDs, 10, monitor)
-	
-	if progressChan != nil {
-		close(progressChan)
-	}
-	if bar != nil {
-		bar.Finish()
-	}
-	
-	if err != nil && len(casesBySuite) == 0 {
-		return nil, err
-	}
-
-	// Collect unique cases
+	// Collect unique cases (ID dedup) and count sections
 	var allCases []ItemInfo
 	caseIDs := make(map[int64]bool)
+	sectionIDs := make(map[int64]struct{})
 
-	for suiteID, cases := range casesBySuite {
-		utils.DebugPrint("[Project %d] Suite %d: %d cases", projectID, suiteID, len(cases))
-		for _, c := range cases {
-			if !caseIDs[c.ID] {
-				caseIDs[c.ID] = true
-				allCases = append(allCases, ItemInfo{
-					ID:   c.ID,
-					Name: c.Title,
-				})
+	emptyTitles := 0
+	for _, c := range cases {
+		if !caseIDs[c.ID] {
+			caseIDs[c.ID] = true
+			if c.Title == "" {
+				emptyTitles++
+			}
+			allCases = append(allCases, ItemInfo{
+				ID:   c.ID,
+				Name: c.Title,
+			})
+		}
+		if c.SectionID != 0 {
+			sectionIDs[c.SectionID] = struct{}{}
+		}
+	}
+
+	// Count unique titles for verification
+	titleSet := make(map[string]struct{})
+	for _, item := range allCases {
+		if item.Name != "" {
+			titleSet[strings.ToLower(item.Name)] = struct{}{}
+		}
+	}
+
+	pds.CasesRaw = len(cases)
+	pds.CasesUnique = len(allCases)
+	pds.UniqueTitles = len(titleSet)
+	pds.EmptyTitles = emptyTitles
+	pds.Sections = len(sectionIDs)
+	pds.Elapsed = time.Since(fetchStart)
+
+	utils.DebugPrint("[Project %d] Total: %d raw → %d unique IDs → %d unique titles (empty titles: %d), %d sections",
+		projectID, len(cases), len(allCases), len(titleSet), emptyTitles, len(sectionIDs))
+
+	if result != nil {
+		return allCases, result.FailedPages, pds, nil
+	}
+
+	return allCases, nil, pds, nil
+}
+
+func collectCompareCasesFlagOverrides(cmd *cobra.Command) map[string]any {
+	overrides := map[string]any{}
+
+	if flag := cmd.Flags().Lookup("rate-limit"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetInt("rate-limit")
+		overrides["rate_limit"] = value
+	}
+	if flag := cmd.Flags().Lookup("parallel-suites"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetInt("parallel-suites")
+		overrides["parallel_suites"] = value
+	}
+	if flag := cmd.Flags().Lookup("parallel-pages"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetInt("parallel-pages")
+		overrides["parallel_pages"] = value
+	}
+	if flag := cmd.Flags().Lookup("page-retries"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetInt("page-retries")
+		overrides["page_retries"] = value
+	}
+	if flag := cmd.Flags().Lookup("timeout"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetDuration("timeout")
+		overrides["timeout"] = value
+	}
+	if flag := cmd.Flags().Lookup("retry-attempts"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetInt("retry-attempts")
+		overrides["retry_attempts"] = value
+	}
+	if flag := cmd.Flags().Lookup("retry-workers"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetInt("retry-workers")
+		overrides["retry_workers"] = value
+	}
+	if flag := cmd.Flags().Lookup("retry-delay"); flag != nil && flag.Changed {
+		value, _ := cmd.Flags().GetDuration("retry-delay")
+		overrides["retry_delay"] = value
+	}
+
+	return overrides
+}
+
+func saveFailedPagesReport(failedPages []parallel.FailedPage, requestedPath string) (string, error) {
+	if len(failedPages) == 0 {
+		return "", nil
+	}
+
+	path := strings.TrimSpace(requestedPath)
+	if path == "" {
+		exportsDir, _ := outpututils.GetExportsDir("compare")
+		if err := os.MkdirAll(exportsDir, 0755); err != nil {
+			return "", fmt.Errorf("создание директории отчётов: %w", err)
+		}
+		path = filepath.Join(exportsDir, fmt.Sprintf("failed_pages_%s.json", time.Now().Format("2006-01-02_15-04-05")))
+	} else {
+		dir := filepath.Dir(path)
+		if dir != "" && dir != "." {
+			if err := os.MkdirAll(dir, 0755); err != nil {
+				return "", fmt.Errorf("создание директории %s: %w", dir, err)
 			}
 		}
 	}
 
-	utils.DebugPrint("[Project %d] Total unique cases: %d", projectID, len(allCases))
-	return allCases, nil
+	payload := struct {
+		GeneratedAt string                `json:"generated_at"`
+		Total       int                   `json:"total"`
+		FailedPages []parallel.FailedPage `json:"failed_pages"`
+	}{
+		GeneratedAt: time.Now().Format(time.RFC3339),
+		Total:       len(failedPages),
+		FailedPages: failedPages,
+	}
+
+	data, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("marshal failed pages: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		return "", fmt.Errorf("запись отчёта %s: %w", path, err)
+	}
+
+	return path, nil
 }
 
 // analyzeCases performs comparison between two sets of cases.
@@ -353,150 +588,6 @@ func analyzeCases(cases1, cases2 []ItemInfo, pid1, pid2 int64, field string) *Co
 	}
 }
 
-// fetchCaseItemsWithProgress fetches all cases for a project with progress updates.
-// DEPRECATED: Use fetchCasesForProjectWithStats for better UX.
-func fetchCaseItemsWithProgress(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, bar *progress.Bar, workers int) ([]ItemInfo, error) {
-	if workers <= 0 {
-		workers = 5
-	}
-	
-	utils.DebugPrint("[Project %d] Starting fetchCaseItemsWithProgress: %d suites, %d workers", projectID, len(suites), workers)
-	
-	// If no suites, fetch cases without suite filter
-	if len(suites) == 0 {
-		utils.DebugPrint("[Project %d] No suites found, fetching cases without suite filter", projectID)
-		cases, err := cli.GetCases(projectID, 0, 0)
-		if err != nil {
-			utils.DebugPrint("[Project %d] Error fetching cases without suite: %v", projectID, err)
-			return nil, err
-		}
-
-		allCases := make([]ItemInfo, 0, len(cases))
-		for _, c := range cases {
-			allCases = append(allCases, ItemInfo{
-				ID:   c.ID,
-				Name: c.Title,
-			})
-		}
-		utils.DebugPrint("[Project %d] Fetched %d cases without suite filter", projectID, len(allCases))
-		return allCases, nil
-	}
-
-	// Extract suite IDs
-	suiteIDs := make([]int64, len(suites))
-	for i, s := range suites {
-		suiteIDs[i] = s.ID
-	}
-	utils.DebugPrint("[Project %d] Extracted %d suite IDs", projectID, len(suiteIDs))
-
-	// Create progress channel and monitor for real-time updates
-	var monitor *progress.Monitor
-	var progressChan chan int
-	if bar != nil {
-		progressChan = make(chan int, len(suiteIDs))
-		monitor = progress.NewMonitor(progressChan, len(suiteIDs))
-		
-		// Goroutine to update progress bar
-		go func() {
-			for range progressChan {
-				bar.Add(1)
-			}
-		}()
-	}
-	
-	// Fetch cases in parallel using concurrent API with progress monitor
-	utils.DebugPrint("[Project %d] Calling GetCasesParallel with %d workers", projectID, workers)
-	casesBySuite, err := cli.GetCasesParallel(projectID, suiteIDs, workers, monitor)
-	utils.DebugPrint("[Project %d] GetCasesParallel returned: %d suites, err=%v", projectID, len(casesBySuite), err)
-	
-	// Close progress channel to stop the update goroutine
-	if progressChan != nil {
-		close(progressChan)
-	}
-	if err != nil && len(casesBySuite) == 0 {
-		return nil, err
-	}
-
-	// Collect unique cases with summary
-	var allCases []ItemInfo
-	caseIDs := make(map[int64]bool)
-	totalCases := 0
-
-	for suiteID, cases := range casesBySuite {
-		totalCases += len(cases)
-		utils.DebugPrint("[Project %d] Processing suite %d: %d cases", projectID, suiteID, len(cases))
-		for _, c := range cases {
-			if !caseIDs[c.ID] {
-				caseIDs[c.ID] = true
-				allCases = append(allCases, ItemInfo{
-					ID:   c.ID,
-					Name: c.Title,
-				})
-			}
-		}
-	}
-	
-	utils.DebugPrint("[Project %d] Returning %d unique cases", projectID, len(allCases))
-	return allCases, nil
-}
-
-// fetchCaseItems fetches all cases for a project and returns them as ItemInfo slice.
-// Uses parallel API for significant performance improvement (4-5x faster).
-// DEPRECATED: Use fetchCasesForProjectWithStats for better UX.
-func fetchCaseItems(cli client.ClientInterface, projectID int64, pm *progress.Manager) ([]ItemInfo, error) {
-	// Get all suites for the project
-	suites, err := cli.GetSuites(projectID)
-	if err != nil {
-		return nil, fmt.Errorf("ошибка получения сьютов проекта %d: %w", projectID, err)
-	}
-
-	// If no suites, fetch cases without suite filter
-	if len(suites) == 0 {
-		cases, err := cli.GetCases(projectID, 0, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		allCases := make([]ItemInfo, 0, len(cases))
-		for _, c := range cases {
-			allCases = append(allCases, ItemInfo{
-				ID:   c.ID,
-				Name: c.Title,
-			})
-		}
-		return allCases, nil
-	}
-
-	// Use parallel loading
-	suiteIDs := make([]int64, len(suites))
-	for i, s := range suites {
-		suiteIDs[i] = s.ID
-	}
-
-	casesBySuite, err := cli.GetCasesParallel(projectID, suiteIDs, 5, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Collect unique cases
-	var allCases []ItemInfo
-	caseIDs := make(map[int64]bool)
-
-	for _, cases := range casesBySuite {
-		for _, c := range cases {
-			if !caseIDs[c.ID] {
-				caseIDs[c.ID] = true
-				allCases = append(allCases, ItemInfo{
-					ID:   c.ID,
-					Name: c.Title,
-				})
-			}
-		}
-	}
-
-	return allCases, nil
-}
-
 // printCasesFieldDiff prints differences by field for cases.
 func printCasesFieldDiff(cli client.ClientInterface, pid1, pid2 int64, field string) {
 	diff, err := cli.DiffCasesData(pid1, pid2, field)
@@ -548,16 +639,15 @@ func getFieldValue(c data.Case, field string) string {
 // printCasesStats prints execution statistics for compare cases.
 func printCasesStats(result *CompareResult, elapsed time.Duration) {
 	totalCases := len(result.OnlyInFirst) + len(result.OnlyInSecond) + len(result.Common)
-	
-	fmt.Println()
-	fmt.Println("┌──────────────────────────────────────────────────────────────┐")
-	fmt.Println("│                    СТАТИСТИКА ВЫПОЛНЕНИЯ                     │")
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  Время выполнения: %s\n", elapsed.Round(time.Millisecond))
-	fmt.Printf("│  Всего кейсов обработано: %d\n", totalCases)
-	fmt.Println("├──────────────────────────────────────────────────────────────┤")
-	fmt.Printf("│  Только в проекте %d: %d кейсов\n", result.Project1ID, len(result.OnlyInFirst))
-	fmt.Printf("│  Только в проекте %d: %d кейсов\n", result.Project2ID, len(result.OnlyInSecond))
-	fmt.Printf("│  Общих кейсов: %d\n", len(result.Common))
-	fmt.Println("└──────────────────────────────────────────────────────────────┘")
+
+	r := reporter.New("cases").
+		Section("Общая статистика").
+		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
+		Stat("📦", "Всего кейсов обработано", totalCases).
+		Section("Результат сравнения").
+		Stat("🔹", fmt.Sprintf("Только в проекте %d", result.Project1ID), len(result.OnlyInFirst)).
+		Stat("🔹", fmt.Sprintf("Только в проекте %d", result.Project2ID), len(result.OnlyInSecond)).
+		Stat("🔗", "Общих кейсов", len(result.Common))
+
+	r.Print()
 }

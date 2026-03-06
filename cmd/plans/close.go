@@ -41,7 +41,7 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Printf("✅ Plan %d closed\n", planID)
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 

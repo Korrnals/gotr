@@ -3,7 +3,10 @@
 package client
 
 import (
+	"context"
+
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/parallel"
 )
 
 // ProgressMonitor определяет интерфейс для мониторинга прогресса.
@@ -25,6 +28,7 @@ type ProjectsAPI interface {
 // CasesAPI — операции с кейсами
 type CasesAPI interface {
 	GetCases(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error)
+	GetCasesPage(projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error)
 	GetCase(caseID int64) (*data.Case, error)
 	AddCase(sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	UpdateCase(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
@@ -39,14 +43,18 @@ type CasesAPI interface {
 	GetCaseTypes() (data.GetCaseTypesResponse, error)
 	DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error)
 
-	// Параллельные методы (Stage 6.2)
-	// GetCasesParallel получает кейсы из нескольких сьютов параллельно
-	// Параметр monitor может быть nil, если прогресс не нужен
+	// Параллельные методы (Stage 6.2, 6.7)
+	// GetCasesParallel получает кейсы из нескольких сьютов параллельно (Legacy, use GetCasesForSuitesParallel)
 	GetCasesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetCasesResponse, error)
 	// GetSuitesParallel получает сьюты из нескольких проектов параллельно
 	GetSuitesParallel(projectIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetSuitesResponse, error)
 	// GetCasesForSuitesParallel получает все кейсы для списка сьютов одного проекта
+	// Uses recursive parallelization (Stage 6.7) for maximum performance
 	GetCasesForSuitesParallel(projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error)
+	// GetCasesParallelCtx получает кейсы из нескольких сьютов с полным контролем (Stage 6.7)
+	// Использует streaming parallelization через parallel.Controller
+	// Progress reporting: set config.Reporter (implements parallel.ProgressReporter)
+	GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *parallel.ControllerConfig) (data.GetCasesResponse, *parallel.ExecutionResult, error)
 }
 
 // SuitesAPI — операции с сьютами

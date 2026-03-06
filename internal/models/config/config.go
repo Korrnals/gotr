@@ -139,10 +139,10 @@ compare:
 
   cases:
     # Параллельность по сьютам (между сьютами).
-    parallel_suites: 16
+    parallel_suites: 10
 
     # Параллельность страниц внутри одного сьюта.
-    parallel_pages: 20
+    parallel_pages: 6
 
     # Количество retry для каждой страницы в основном этапе загрузки compare cases.
     page_retries: 5

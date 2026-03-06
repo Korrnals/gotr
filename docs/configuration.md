@@ -58,16 +58,16 @@ compare:
   rate_limit: -1
   
   cases:
-    parallel_suites: 8     # Одновременно загружаемых сьютов
-    parallel_pages: 10     # Одновременно загружаемых страниц внутри сьюта
+    parallel_suites: 10    # Одновременно загружаемых сьютов
+    parallel_pages: 6      # Одновременно загружаемых страниц внутри сьюта
     page_retries: 5        # Retry для каждой страницы в основном этапе
     timeout: "30m"         # Таймаут полной операции
     auto_retry_failed_pages: true  # Авто-дозабор проблемных страниц
     
     retry:
-      attempts: 3          # Попытки на страницу при точечном ретрае
-      workers: 6           # Параллельных воркеров для дозабора
-      delay: "500ms"       # Пауза между попытками
+      attempts: 5          # Попытки на страницу при точечном ретрае
+      workers: 12          # Параллельных воркеров для дозабора
+      delay: "200ms"       # Пауза между попытками
 ```
 
 ### Расположение файла
@@ -94,13 +94,13 @@ compare:
 | Флаг | Описание | Конфиг-ключ |
 |------|----------|-------------|
 | `--rate-limit` | Лимит запросов/мин (-1=авто, 0=без лимита) | `compare.rate_limit` |
-| `--parallel-suites` | Параллельных сьютов (default 8) | `compare.cases.parallel_suites` |
-| `--parallel-pages` | Параллельных страниц (default 10) | `compare.cases.parallel_pages` |
+| `--parallel-suites` | Параллельных сьютов (default 10) | `compare.cases.parallel_suites` |
+| `--parallel-pages` | Параллельных страниц (default 6) | `compare.cases.parallel_pages` |
 | `--page-retries` | Retry на страницу (default 5) | `compare.cases.page_retries` |
 | `--timeout` | Таймаут операции (default 30m) | `compare.cases.timeout` |
 | `--retry-attempts` | Попытки авто-ретрая (default 3) | `compare.cases.retry.attempts` |
-| `--retry-workers` | Воркеров авто-ретрая (default 6) | `compare.cases.retry.workers` |
-| `--retry-delay` | Пауза авто-ретрая (default 500ms) | `compare.cases.retry.delay` |
+| `--retry-workers` | Воркеров авто-ретрая (default 12) | `compare.cases.retry.workers` |
+| `--retry-delay` | Пауза авто-ретрая (default 200ms) | `compare.cases.retry.delay` |
 
 **Приоритет:** CLI-флаг > конфиг YAML > default.
 

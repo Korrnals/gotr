@@ -7,6 +7,51 @@
 
 ---
 
+## [2.8.0] - 2026-03-06
+
+### Added
+
+#### Stage 6.8: Concurrency Unification & Compare Subcommands
+
+- **`internal/concurrency/`** — новый unified concurrency-пакет (переименован из `internal/parallel/`)
+  - Три уровня стратегий:
+    - `FetchParallel[T]` — лёгкая: один API-вызов на проект, параллельная загрузка P1+P2
+    - `FetchParallelBySuite[T]` — средняя: per-suite запросы (для `sections`)
+    - `FetchParallelPaginated` — тяжёлая: `ParallelController` с пагинацией (для `cases`)
+  - Generic API через Go generics `[T any]`
+
+- **`pkg/reporter/`** — универсальный reporter вынесен в публичный пакет (из `internal/ui/reporter/`)
+  - Builder pattern: `Section` / `Stat` / `StatIf` / `StatFmt` / `Print`
+  - go-pretty/v6 для выровненного boxed-вывода
+
+- **Generic `newSimpleCompareCmd`** — одна generic-фабрика вместо 9 идентичных файлов (`cmd/compare/simple.go`)
+  - Устранено ~1200 строк копипасты
+  - Все простые подкоманды используют `FetchParallel[T]` для параллельной загрузки проектов
+
+- **`compare sections`** — параллельная загрузка секций по сьютам через `FetchParallelBySuite[T]`
+
+- **`compare all`** — единообразный вывод через `pkg/reporter`, partial results при недоступных API
+
+### Changed
+
+- `internal/parallel/` → `internal/concurrency/` (переименование пакета и всех импортов)
+- `internal/ui/reporter/` → `pkg/reporter/` (вынесен в публичный пакет)
+- Все 13 compare-подкоманд используют `pkg/reporter` для вывода статистики
+- `OnSuiteComplete` → `OnItemComplete` в интерфейсе `ProgressReporter`
+- Дефолтные значения: `parallel-suites=10`, `parallel-pages=6` (стабильные для TestRail Server)
+
+### Fixed
+
+- `compare all` более не использует `fmt.Println` с emoji и box-drawing символами
+- Устранено некорректное выравнивание статистики в терминалах без поддержки emoji
+
+### Performance
+
+- Простые compare-подкоманды (runs, plans, milestones и др.): загрузка P1 и P2 **параллельно**
+- `compare sections`: параллельная загрузка по сьютам вместо последовательной
+
+---
+
 ## [2.7.0] - 2026-02-20
 
 ### Added

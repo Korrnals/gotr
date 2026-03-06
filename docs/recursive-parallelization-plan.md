@@ -1,5 +1,9 @@
 # План рекурсивного распараллеливания (Recursive Parallelization)
 
+> **Исторический документ**: Stage 6.7.  
+> В Stage 6.8 пакет `internal/parallel/` переименован в `internal/concurrency/`  
+> и репортер перенесён в `pkg/reporter/`. Актуальная архитектура — см. `docs/architecture.md`.
+
 ## Общее описание
 
 Цель: достичь времени выполнения compare cases < 5 минут за счёт максимального использования concurrency на всех уровнях.
@@ -259,21 +263,23 @@ func BenchmarkParallelCompare(b *testing.B)
 | Retry логика | нет | auto-retry failed pages | **∞** |
 | Вывод | progress.Manager | centralized reporter | **унифицировано** |
 
-## Архитектура (реализованная)
+## Архитектура (реализованная, актуализировано в Stage 6.8)
 
 ```
-internal/parallel/
+internal/concurrency/          # было: internal/parallel/
 ├── types.go              # SuiteFetcher, PageRequest, PageResult, PipelineConfig
 ├── priority_queue.go     # PriorityQueue (heap-based)
 ├── aggregator.go         # ResultAggregator — сбор результатов из горутин
 ├── controller.go         # ParallelController — оркестрация pipeline
+├── simple.go             # FetchParallel[T], FetchParallelBySuite[T] (Stage 6.8)
 ├── doc.go                # Документация пакета
-└── *_test.go             # Тесты (100% покрытие)
+└── *_test.go             # Тесты
 
 internal/ui/
-├── display.go            # ANSI live display — динамическая таблица
-└── reporter/
-    └── reporter.go       # Builder pattern: Section/Stat/StatIf/StatFmt/Print
+└── display.go            # ANSI live display — динамическая таблица
+
+pkg/reporter/                  # было: internal/ui/reporter/ (Stage 6.8)
+└── reporter.go           # Builder pattern: Section/Stat/StatIf/StatFmt/Print
 
 internal/progress/
 ├── progress.go           # Manager (mpb-based, для sync/get команд)
@@ -291,5 +297,6 @@ internal/progress/
 ---
 
 **Статус**: ✅ Реализовано
-**Ветка**: `stage-6.7-recursive-parallelization` (11 коммитов)
-**Дата завершения**: 2026-03-03
+**Ветка**: `stage-6.7-recursive-parallelization` (11 коммитов)  
+**Дата завершения**: 2026-03-03  
+**См. также**: Stage 6.8 (`STAGE_6.8_DESIGN.md`) — унификация concurrency и перенос `internal/parallel/` → `internal/concurrency/`

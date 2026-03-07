@@ -35,7 +35,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetConfigs(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetConfigs(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить конфигурации: %w", err)
 			}

@@ -31,7 +31,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetDataset(datasetID)
+			ctx := cmd.Context()
+			resp, err := cli.GetDataset(ctx, datasetID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить датасет: %w", err)
 			}

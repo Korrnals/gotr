@@ -29,22 +29,23 @@ Test — это экземпляр тест-кейса в конкретном t
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
 			svc := newResultServiceFromInterface(cli)
-			testID, err := svc.ParseID(args, 0)
+			testID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
 				return fmt.Errorf("некорректный ID test: %w", err)
 			}
 
-			results, err := svc.GetForTest(testID)
+			results, err := svc.GetForTest(ctx, testID)
 			if err != nil {
 				return fmt.Errorf("ошибка получения результатов: %w", err)
 			}
 
-			return svc.Output(cmd, results)
+			return svc.Output(ctx, cmd, results)
 		},
 	}
 }
@@ -70,27 +71,28 @@ func newGetCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
 			svc := newResultServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
+			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
 				return fmt.Errorf("некорректный ID run: %w", err)
 			}
 
-			caseID, err := svc.ParseID(args, 1)
+			caseID, err := svc.ParseID(ctx, args, 1)
 			if err != nil {
 				return fmt.Errorf("некорректный ID case: %w", err)
 			}
 
-			results, err := svc.GetForCase(runID, caseID)
+			results, err := svc.GetForCase(ctx, runID, caseID)
 			if err != nil {
 				return fmt.Errorf("ошибка получения результатов: %w", err)
 			}
 
-			return svc.Output(cmd, results)
+			return svc.Output(ctx, cmd, results)
 		},
 	}
 }

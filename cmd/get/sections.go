@@ -37,6 +37,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -51,7 +52,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 			spinner := pm.NewSpinner("")
 			spinner.Describe("Загрузка секции...")
 
-			section, err := cli.GetSection(sectionID)
+			section, err := cli.GetSection(ctx, sectionID)
 			if err != nil {
 				return err
 			}
@@ -74,6 +75,7 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -90,7 +92,7 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 			spinner := pm.NewSpinner("")
 			spinner.Describe("Загрузка секций...")
 
-			sections, err := cli.GetSections(projectID, suiteID)
+			sections, err := cli.GetSections(ctx, projectID, suiteID)
 			if err != nil {
 				return err
 			}

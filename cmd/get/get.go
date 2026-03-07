@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/client"
 	embed "github.com/Korrnals/gotr/embedded"
+	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

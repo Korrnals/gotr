@@ -31,7 +31,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetGroup(groupID)
+			ctx := cmd.Context()
+			resp, err := cli.GetGroup(ctx, groupID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить группу: %w", err)
 			}

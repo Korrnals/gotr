@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 
 func TestDeleteGroupCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteConfigGroupFunc: func(groupID int64) error {
+		DeleteConfigGroupFunc: func(ctx context.Context, groupID int64) error {
 			assert.Equal(t, int64(5), groupID)
 			return nil
 		},
@@ -46,7 +47,7 @@ func TestDeleteGroupCmd_InvalidID(t *testing.T) {
 
 func TestDeleteGroupCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteConfigGroupFunc: func(groupID int64) error {
+		DeleteConfigGroupFunc: func(ctx context.Context, groupID int64) error {
 			return fmt.Errorf("группа не найдена")
 		},
 	}

@@ -1,19 +1,20 @@
 package compare
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/client"
 )
 
 // FetchFunc is the type for resource fetch functions used by simple compare commands.
-type FetchFunc func(cli client.ClientInterface, projectID int64) ([]ItemInfo, error)
+type FetchFunc func(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error)
 
 // --- Fetch functions for all simple resources ---
 
 // fetchGroupItems fetches all groups for a project and returns them as ItemInfo slice.
-func fetchGroupItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	groups, err := cli.GetGroups(projectID)
+func fetchGroupItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	groups, err := cli.GetGroups(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -26,8 +27,8 @@ func fetchGroupItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, e
 }
 
 // fetchLabelItems fetches all labels for a project and returns them as ItemInfo slice.
-func fetchLabelItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	labels, err := cli.GetLabels(projectID)
+func fetchLabelItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	labels, err := cli.GetLabels(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -40,8 +41,8 @@ func fetchLabelItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, e
 }
 
 // fetchMilestoneItems fetches all milestones for a project and returns them as ItemInfo slice.
-func fetchMilestoneItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	milestones, err := cli.GetMilestones(projectID)
+func fetchMilestoneItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	milestones, err := cli.GetMilestones(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +55,8 @@ func fetchMilestoneItems(cli client.ClientInterface, projectID int64) ([]ItemInf
 }
 
 // fetchPlanItems fetches all plans for a project and returns them as ItemInfo slice.
-func fetchPlanItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	plans, err := cli.GetPlans(projectID)
+func fetchPlanItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	plans, err := cli.GetPlans(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,8 +69,8 @@ func fetchPlanItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, er
 }
 
 // fetchRunItems fetches all runs for a project and returns them as ItemInfo slice.
-func fetchRunItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	runs, err := cli.GetRuns(projectID)
+func fetchRunItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	runs, err := cli.GetRuns(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -82,8 +83,8 @@ func fetchRunItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, err
 }
 
 // fetchSharedStepItems fetches all shared steps for a project and returns them as ItemInfo slice.
-func fetchSharedStepItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	steps, err := cli.GetSharedSteps(projectID)
+func fetchSharedStepItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	steps, err := cli.GetSharedSteps(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -96,8 +97,8 @@ func fetchSharedStepItems(cli client.ClientInterface, projectID int64) ([]ItemIn
 }
 
 // fetchTemplateItems fetches all templates for a project and returns them as ItemInfo slice.
-func fetchTemplateItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	templates, err := cli.GetTemplates(projectID)
+func fetchTemplateItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	templates, err := cli.GetTemplates(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -111,8 +112,8 @@ func fetchTemplateItems(cli client.ClientInterface, projectID int64) ([]ItemInfo
 
 // fetchConfigurationItems fetches all configurations for a project and returns them as ItemInfo slice.
 // Includes both config groups and individual configs (formatted as "Group / Config").
-func fetchConfigurationItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	groups, err := cli.GetConfigs(projectID)
+func fetchConfigurationItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	groups, err := cli.GetConfigs(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +132,8 @@ func fetchConfigurationItems(cli client.ClientInterface, projectID int64) ([]Ite
 }
 
 // fetchDatasetItems fetches all datasets for a project and returns them as ItemInfo slice.
-func fetchDatasetItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	datasets, err := cli.GetDatasets(projectID)
+func fetchDatasetItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+	datasets, err := cli.GetDatasets(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}

@@ -17,6 +17,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
+			ctx := cmd.Context()
 
 			projectID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil || projectID <= 0 {
@@ -34,7 +35,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			group, err := client.AddGroup(projectID, name, nil)
+			group, err := client.AddGroup(ctx, projectID, name, nil)
 			if err != nil {
 				return err
 			}

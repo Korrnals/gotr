@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetUserFunc: func(userID int64) (*data.User, error) {
+		GetUserFunc: func(ctx context.Context, userID int64) (*data.User, error) {
 			assert.Equal(t, int64(12345), userID)
 			return &data.User{
 				ID:       12345,
@@ -38,7 +39,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetUserFunc: func(userID int64) (*data.User, error) {
+		GetUserFunc: func(ctx context.Context, userID int64) (*data.User, error) {
 			return nil, fmt.Errorf("user not found")
 		},
 	}

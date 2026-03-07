@@ -17,7 +17,7 @@ import (
 // ConfigChecker проверяет конфигурацию в ~/.gotr/config/
 type ConfigChecker struct{}
 
-func (c ConfigChecker) Name() string   { return "Configuration File" }
+func (c ConfigChecker) Name() string     { return "Configuration File" }
 func (c ConfigChecker) Category() string { return "Configuration" }
 
 func (c ConfigChecker) Check() CheckResult {
@@ -53,12 +53,12 @@ func (c ConfigChecker) Check() CheckResult {
 // BaseDirChecker проверяет структуру ~/.testrail/
 type BaseDirChecker struct{}
 
-func (c BaseDirChecker) Name() string   { return "Base Directory Structure" }
+func (c BaseDirChecker) Name() string     { return "Base Directory Structure" }
 func (c BaseDirChecker) Category() string { return "Configuration" }
 
 func (c BaseDirChecker) Check() CheckResult {
 	missing := []string{}
-	
+
 	// Проверяем все директории
 	dirChecks := []struct {
 		name string
@@ -81,7 +81,7 @@ func (c BaseDirChecker) Check() CheckResult {
 				Error:   err,
 			}
 		}
-		
+
 		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 			missing = append(missing, check.name)
 			// Автоматически создаём
@@ -110,7 +110,7 @@ type BinaryInfoChecker struct {
 	BuildTime string
 }
 
-func (c BinaryInfoChecker) Name() string   { return "Binary Information" }
+func (c BinaryInfoChecker) Name() string     { return "Binary Information" }
 func (c BinaryInfoChecker) Category() string { return "System" }
 
 func (c BinaryInfoChecker) Check() CheckResult {
@@ -124,7 +124,7 @@ func (c BinaryInfoChecker) Check() CheckResult {
 // GoEnvChecker проверяет окружение Go
 type GoEnvChecker struct{}
 
-func (c GoEnvChecker) Name() string   { return "Go Environment" }
+func (c GoEnvChecker) Name() string     { return "Go Environment" }
 func (c GoEnvChecker) Category() string { return "System" }
 
 func (c GoEnvChecker) Check() CheckResult {
@@ -143,7 +143,7 @@ func (c GoEnvChecker) Check() CheckResult {
 // AllTestsChecker запускает все тесты проекта
 type AllTestsChecker struct{}
 
-func (c AllTestsChecker) Name() string   { return "All Unit Tests" }
+func (c AllTestsChecker) Name() string     { return "All Unit Tests" }
 func (c AllTestsChecker) Category() string { return "Tests" }
 
 func (c AllTestsChecker) Check() CheckResult {
@@ -153,7 +153,7 @@ func (c AllTestsChecker) Check() CheckResult {
 	output, err := cmd.CombinedOutput()
 
 	outStr := string(output)
-	
+
 	// Считаем результаты
 	passed := countMatches(outStr, "--- PASS:")
 	failed := countMatches(outStr, "--- FAIL:")
@@ -182,15 +182,15 @@ func (c AllTestsChecker) Check() CheckResult {
 		os.MkdirAll(reportDir, 0755)
 		timestamp := time.Now().Format("2006-01-02_150405")
 		reportPath := filepath.Join(reportDir, fmt.Sprintf("test-report-%s.log", timestamp))
-		
+
 		// Добавляем мета-информацию
 		reportContent := fmt.Sprintf("Test Report generated: %s\n", time.Now().Format(time.RFC3339))
 		reportContent += fmt.Sprintf("Results: %d passed, %d failed, %d skipped\n\n", passed, failed, skipped)
 		reportContent += outStr
-		
+
 		if writeErr := os.WriteFile(reportPath, []byte(reportContent), 0644); writeErr == nil {
 			result.Details += fmt.Sprintf(" | Report: %s", reportPath)
-			
+
 			// Обновляем симлинк latest
 			latestLink := filepath.Join(reportDir, "latest.log")
 			os.Remove(latestLink) // Игнорируем ошибку если не существует
@@ -204,7 +204,7 @@ func (c AllTestsChecker) Check() CheckResult {
 // CoverageChecker проверяет покрытие кода
 type CoverageChecker struct{}
 
-func (c CoverageChecker) Name() string   { return "Code Coverage" }
+func (c CoverageChecker) Name() string     { return "Code Coverage" }
 func (c CoverageChecker) Category() string { return "Coverage" }
 
 func (c CoverageChecker) Check() CheckResult {
@@ -282,7 +282,7 @@ func getProjectRoot() string {
 func parsePackageResults(output string) string {
 	var results []string
 	lines := strings.Split(output, "\n")
-	
+
 	for _, line := range lines {
 		// Ищем строки вида "ok   	pkg/path	0.123s  coverage: 45.0%"
 		if strings.HasPrefix(line, "ok  ") || strings.HasPrefix(line, "FAIL") {
@@ -298,7 +298,7 @@ func parsePackageResults(output string) string {
 			}
 		}
 	}
-	
+
 	if len(results) > 5 {
 		return fmt.Sprintf("%s +%d more", strings.Join(results[:5], ", "), len(results)-5)
 	}

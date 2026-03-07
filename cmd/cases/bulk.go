@@ -79,7 +79,8 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateCases(suiteID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateCases(ctx, suiteID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update cases: %w", err)
 			}
@@ -137,7 +138,8 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			if err := cli.DeleteCases(suiteID, &req); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteCases(ctx, suiteID, &req); err != nil {
 				return fmt.Errorf("failed to delete cases: %w", err)
 			}
 
@@ -191,7 +193,8 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			if err := cli.CopyCasesToSection(sectionID, &req); err != nil {
+			ctx := cmd.Context()
+			if err := cli.CopyCasesToSection(ctx, sectionID, &req); err != nil {
 				return fmt.Errorf("failed to copy cases: %w", err)
 			}
 
@@ -245,7 +248,8 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			if err := cli.MoveCasesToSection(sectionID, &req); err != nil {
+			ctx := cmd.Context()
+			if err := cli.MoveCasesToSection(ctx, sectionID, &req); err != nil {
 				return fmt.Errorf("failed to move cases: %w", err)
 			}
 

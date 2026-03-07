@@ -2,6 +2,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -22,12 +23,12 @@ func NewTestService(client client.ClientInterface) *TestService {
 }
 
 // Get получает тест по ID
-func (s *TestService) Get(testID int64) (*data.Test, error) {
+func (s *TestService) Get(ctx context.Context, testID int64) (*data.Test, error) {
 	if testID <= 0 {
 		return nil, fmt.Errorf("ID теста должен быть положительным числом")
 	}
 
-	test, err := s.client.GetTest(testID)
+	test, err := s.client.GetTest(ctx, testID)
 	if err != nil {
 		return nil, err
 	}
@@ -36,12 +37,12 @@ func (s *TestService) Get(testID int64) (*data.Test, error) {
 }
 
 // GetForRun получает список тестов для рана
-func (s *TestService) GetForRun(runID int64, filters map[string]string) ([]data.Test, error) {
+func (s *TestService) GetForRun(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 	if runID <= 0 {
 		return nil, fmt.Errorf("ID рана должен быть положительным числом")
 	}
 
-	tests, err := s.client.GetTests(runID, filters)
+	tests, err := s.client.GetTests(ctx, runID, filters)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func (s *TestService) GetForRun(runID int64, filters map[string]string) ([]data.
 }
 
 // Update обновляет тест
-func (s *TestService) Update(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+func (s *TestService) Update(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 	if testID <= 0 {
 		return nil, fmt.Errorf("ID теста должен быть положительным числом")
 	}
@@ -64,7 +65,7 @@ func (s *TestService) Update(testID int64, req *data.UpdateTestRequest) (*data.T
 		return nil, fmt.Errorf("status_id не может быть отрицательным")
 	}
 
-	test, err := s.client.UpdateTest(testID, req)
+	test, err := s.client.UpdateTest(ctx, testID, req)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +74,7 @@ func (s *TestService) Update(testID int64, req *data.UpdateTestRequest) (*data.T
 }
 
 // ParseID парсит ID из аргументов командной строки
-func (s *TestService) ParseID(args []string, index int) (int64, error) {
+func (s *TestService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if len(args) <= index {
 		return 0, fmt.Errorf("необходимо указать ID")
 	}
@@ -91,11 +92,11 @@ func (s *TestService) ParseID(args []string, index int) (int64, error) {
 }
 
 // PrintSuccess выводит сообщение об успехе
-func (s *TestService) PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
+func (s *TestService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	utils.PrintSuccess(cmd, format, args...)
 }
 
 // Output выводит результат в JSON
-func (s *TestService) Output(cmd *cobra.Command, data interface{}) error {
+func (s *TestService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return utils.OutputResult(cmd, data)
 }

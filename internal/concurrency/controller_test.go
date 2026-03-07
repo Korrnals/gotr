@@ -521,4 +521,3 @@ func TestParallelController_MultipleSuitesWithTruncation(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result.Cases), expectedMinimum,
 		"Truncation in one suite must not stop fetching for that suite")
 }
-

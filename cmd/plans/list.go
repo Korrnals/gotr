@@ -25,7 +25,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetPlans(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetPlans(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list plans: %w", err)
 			}

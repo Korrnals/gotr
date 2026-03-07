@@ -1,6 +1,7 @@
 package variables
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateVariableFunc: func(variableID int64, name string) (*data.Variable, error) {
+		UpdateVariableFunc: func(ctx context.Context, variableID int64, name string) (*data.Variable, error) {
 			assert.Equal(t, int64(789), variableID)
 			assert.Equal(t, "new_name", name)
 			return &data.Variable{ID: 789, Name: name}, nil
@@ -28,7 +29,7 @@ func TestUpdateCmd_Success(t *testing.T) {
 
 func TestUpdateCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateVariableFunc: func(variableID int64, name string) (*data.Variable, error) {
+		UpdateVariableFunc: func(ctx context.Context, variableID int64, name string) (*data.Variable, error) {
 			return &data.Variable{ID: 789, Name: name}, nil
 		},
 	}
@@ -74,7 +75,7 @@ func TestUpdateCmd_MissingName(t *testing.T) {
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateVariableFunc: func(variableID int64, name string) (*data.Variable, error) {
+		UpdateVariableFunc: func(ctx context.Context, variableID int64, name string) (*data.Variable, error) {
 			return nil, fmt.Errorf("переменная не найдена")
 		},
 	}

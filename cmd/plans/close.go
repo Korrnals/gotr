@@ -35,7 +35,8 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.ClosePlan(planID)
+			ctx := cmd.Context()
+			resp, err := cli.ClosePlan(ctx, planID)
 			if err != nil {
 				return fmt.Errorf("failed to close plan: %w", err)
 			}

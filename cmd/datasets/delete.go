@@ -41,7 +41,8 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteDataset(datasetID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteDataset(ctx, datasetID); err != nil {
 				return fmt.Errorf("не удалось удалить датасет: %w", err)
 			}
 

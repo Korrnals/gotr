@@ -16,7 +16,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetConfigsResponse{
 				{
@@ -49,7 +49,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return data.GetConfigsResponse{
 				{ID: 1, Name: "Browsers"},
 			}, nil
@@ -66,7 +66,7 @@ func TestListCmd_WithSave(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return data.GetConfigsResponse{}, nil
 		},
 	}
@@ -81,7 +81,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return nil, fmt.Errorf("проект не найден")
 		},
 	}

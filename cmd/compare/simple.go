@@ -22,6 +22,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 		Long:  long,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -31,7 +32,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 				return err
 			}
 
-			project1Name, project2Name, err := GetProjectNames(cli, pid1, pid2)
+			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
 				return err
 			}
@@ -75,7 +76,7 @@ func compareSimpleInternal(
 
 	results, err := concurrency.FetchParallel(ctx, []int64{pid1, pid2},
 		func(pid int64) ([]ItemInfo, error) {
-			return fetchFn(cli, pid)
+			return fetchFn(ctx, cli, pid)
 		},
 	)
 	if err != nil {

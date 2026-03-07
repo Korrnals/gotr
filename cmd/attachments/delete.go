@@ -29,7 +29,8 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			if err := client.DeleteAttachment(attachmentID); err != nil {
+			ctx := cmd.Context()
+			if err := client.DeleteAttachment(ctx, attachmentID); err != nil {
 				return fmt.Errorf("failed to delete attachment: %w", err)
 			}
 

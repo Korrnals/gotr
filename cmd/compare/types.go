@@ -1,6 +1,7 @@
 package compare
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -41,13 +42,13 @@ type CompareResult struct {
 }
 
 // GetProjectNames retrieves project names for both project IDs
-func GetProjectNames(cli client.ClientInterface, pid1, pid2 int64) (string, string, error) {
-	proj1, err := cli.GetProject(pid1)
+func GetProjectNames(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64) (string, string, error) {
+	proj1, err := cli.GetProject(ctx, pid1)
 	if err != nil {
 		return "", "", fmt.Errorf("ошибка получения проекта %d: %w", pid1, err)
 	}
 
-	proj2, err := cli.GetProject(pid2)
+	proj2, err := cli.GetProject(ctx, pid2)
 	if err != nil {
 		return "", "", fmt.Errorf("ошибка получения проекта %d: %w", pid2, err)
 	}
@@ -589,7 +590,7 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 
 // GetProjectName retrieves a single project name (helper for tests)
 func GetProjectName(cli client.ClientInterface, projectID int64) (string, error) {
-	proj, err := cli.GetProject(projectID)
+	proj, err := cli.GetProject(context.Background(), projectID)
 	if err != nil {
 		return "", fmt.Errorf("ошибка получения проекта %d: %w", projectID, err)
 	}
@@ -650,5 +651,3 @@ func parseFlags(cmd *cobra.Command) (pid1, pid2 int64, field string, err error) 
 
 	return pid1, pid2, field, nil
 }
-
-

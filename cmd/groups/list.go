@@ -32,7 +32,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetGroups(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetGroups(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить список групп: %w", err)
 			}

@@ -1,10 +1,10 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 )
 
 // paginationLimit — стандартный размер страницы TestRail API.
@@ -64,7 +64,7 @@ func decodeListResponse[T any](body []byte, itemsField string) (items []T, pageL
 //   - endpoint:   путь API, например "get_runs/30"
 //   - baseQuery:  базовые query-параметры, к которым добавятся offset/limit; может быть nil
 //   - itemsField: имя JSON-ключа элементов в paginated-ответе, например "runs", "plans"
-func fetchAllPages[T any](c *HTTPClient, endpoint string, baseQuery map[string]string, itemsField string) ([]T, error) {
+func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, baseQuery map[string]string, itemsField string) ([]T, error) {
 	var all []T
 	offset := 0
 
@@ -77,18 +77,12 @@ func fetchAllPages[T any](c *HTTPClient, endpoint string, baseQuery map[string]s
 		query["offset"] = fmt.Sprintf("%d", offset)
 		query["limit"] = fmt.Sprintf("%d", paginationLimit)
 
-		resp, err := c.Get(endpoint, query)
+		resp, err := c.Get(ctx, endpoint, query)
 		if err != nil {
 			return nil, fmt.Errorf("fetchAllPages %s (offset=%d): %w", endpoint, offset, err)
 		}
 
 		// Явное закрытие в теле цикла — избегаем defer-накопление
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			return nil, fmt.Errorf("API вернул %s для %s: %s", resp.Status, endpoint, string(body))
-		}
-
 		body, readErr := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if readErr != nil {

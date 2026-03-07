@@ -17,6 +17,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
+			ctx := cmd.Context()
 
 			groupID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil || groupID <= 0 {
@@ -29,7 +30,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			if err := client.DeleteGroup(groupID); err != nil {
+			if err := client.DeleteGroup(ctx, groupID); err != nil {
 				return err
 			}
 

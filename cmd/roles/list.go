@@ -25,7 +25,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
-			resp, err := cli.GetRoles()
+			ctx := cmd.Context()
+			resp, err := cli.GetRoles(ctx)
 			if err != nil {
 				return fmt.Errorf("не удалось получить список ролей: %w", err)
 			}

@@ -37,7 +37,8 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteConfig(configID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteConfig(ctx, configID); err != nil {
 				return fmt.Errorf("не удалось удалить конфигурацию: %w", err)
 			}
 

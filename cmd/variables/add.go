@@ -45,7 +45,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddVariable(datasetID, name)
+			ctx := cmd.Context()
+			resp, err := cli.AddVariable(ctx, datasetID, name)
 			if err != nil {
 				return fmt.Errorf("не удалось создать переменную: %w", err)
 			}

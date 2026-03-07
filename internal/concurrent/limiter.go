@@ -24,7 +24,7 @@ func NewRateLimiter(requestsPerMinute int) *RateLimiter {
 
 	// Convert requests per minute to rate per second
 	ratePerSecond := rate.Limit(float64(requestsPerMinute) / 60.0)
-	
+
 	// Burst size: allow 15% of the rate or minimum 10
 	burst := requestsPerMinute * 15 / 100
 	if burst < 10 {
@@ -76,9 +76,9 @@ func (rl *RateLimiter) Tokens() int {
 
 // Reservation represents a reservation of tokens.
 type Reservation struct {
-	limiter   *RateLimiter
-	reserved  bool
-	delay     time.Duration
+	limiter  *RateLimiter
+	reserved bool
+	delay    time.Duration
 }
 
 // Reserve reserves a token for future use.
@@ -120,12 +120,12 @@ func (r *Reservation) Cancel() {
 
 // AdaptiveRateLimiter adjusts rate based on API responses.
 type AdaptiveRateLimiter struct {
-	baseLimiter *RateLimiter
-	targetRPS   float64
-	currentRPS  float64
-	sampleSize  int
+	baseLimiter   *RateLimiter
+	targetRPS     float64
+	currentRPS    float64
+	sampleSize    int
 	responseTimes []time.Duration
-	mu          sync.Mutex
+	mu            sync.Mutex
 }
 
 // NewAdaptiveRateLimiter creates an adaptive rate limiter.

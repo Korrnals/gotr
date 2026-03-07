@@ -5,6 +5,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,9 +17,9 @@ import (
 // ==================== Groups API ====================
 
 // GetGroups получает список групп проекта
-func (c *HTTPClient) GetGroups(projectID int64) (data.GetGroupsResponse, error) {
+func (c *HTTPClient) GetGroups(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 	endpoint := fmt.Sprintf("get_groups/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting groups for project %d: %w", projectID, err)
 	}
@@ -37,9 +38,9 @@ func (c *HTTPClient) GetGroups(projectID int64) (data.GetGroupsResponse, error) 
 }
 
 // GetGroup получает группу по ID
-func (c *HTTPClient) GetGroup(groupID int64) (*data.Group, error) {
+func (c *HTTPClient) GetGroup(ctx context.Context, groupID int64) (*data.Group, error) {
 	endpoint := fmt.Sprintf("get_group/%d", groupID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting group %d: %w", groupID, err)
 	}
@@ -58,7 +59,7 @@ func (c *HTTPClient) GetGroup(groupID int64) (*data.Group, error) {
 }
 
 // AddGroup создает новую группу
-func (c *HTTPClient) AddGroup(projectID int64, name string, userIDs []int64) (*data.Group, error) {
+func (c *HTTPClient) AddGroup(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error) {
 	endpoint := fmt.Sprintf("add_group/%d", projectID)
 	req := map[string]interface{}{
 		"name":     name,
@@ -66,7 +67,7 @@ func (c *HTTPClient) AddGroup(projectID int64, name string, userIDs []int64) (*d
 	}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating group: %w", err)
 	}
@@ -85,7 +86,7 @@ func (c *HTTPClient) AddGroup(projectID int64, name string, userIDs []int64) (*d
 }
 
 // UpdateGroup обновляет группу
-func (c *HTTPClient) UpdateGroup(groupID int64, name string, userIDs []int64) (*data.Group, error) {
+func (c *HTTPClient) UpdateGroup(ctx context.Context, groupID int64, name string, userIDs []int64) (*data.Group, error) {
 	endpoint := fmt.Sprintf("update_group/%d", groupID)
 	req := map[string]interface{}{
 		"name":     name,
@@ -93,7 +94,7 @@ func (c *HTTPClient) UpdateGroup(groupID int64, name string, userIDs []int64) (*
 	}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating group: %w", err)
 	}
@@ -112,9 +113,9 @@ func (c *HTTPClient) UpdateGroup(groupID int64, name string, userIDs []int64) (*
 }
 
 // DeleteGroup удаляет группу
-func (c *HTTPClient) DeleteGroup(groupID int64) error {
+func (c *HTTPClient) DeleteGroup(ctx context.Context, groupID int64) error {
 	endpoint := fmt.Sprintf("delete_group/%d", groupID)
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting group: %w", err)
 	}
@@ -130,8 +131,8 @@ func (c *HTTPClient) DeleteGroup(groupID int64) error {
 // ==================== Roles API ====================
 
 // GetRoles получает список ролей
-func (c *HTTPClient) GetRoles() (data.GetRolesResponse, error) {
-	resp, err := c.Get("get_roles", nil)
+func (c *HTTPClient) GetRoles(ctx context.Context) (data.GetRolesResponse, error) {
+	resp, err := c.Get(ctx, "get_roles", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting roles: %w", err)
 	}
@@ -150,9 +151,9 @@ func (c *HTTPClient) GetRoles() (data.GetRolesResponse, error) {
 }
 
 // GetRole получает роль по ID
-func (c *HTTPClient) GetRole(roleID int64) (*data.Role, error) {
+func (c *HTTPClient) GetRole(ctx context.Context, roleID int64) (*data.Role, error) {
 	endpoint := fmt.Sprintf("get_role/%d", roleID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting role %d: %w", roleID, err)
 	}
@@ -173,8 +174,8 @@ func (c *HTTPClient) GetRole(roleID int64) (*data.Role, error) {
 // ==================== ResultFields API ====================
 
 // GetResultFields получает список полей результата
-func (c *HTTPClient) GetResultFields() (data.GetResultFieldsResponse, error) {
-	resp, err := c.Get("get_result_fields", nil)
+func (c *HTTPClient) GetResultFields(ctx context.Context) (data.GetResultFieldsResponse, error) {
+	resp, err := c.Get(ctx, "get_result_fields", nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting result fields: %w", err)
 	}
@@ -195,9 +196,9 @@ func (c *HTTPClient) GetResultFields() (data.GetResultFieldsResponse, error) {
 // ==================== Datasets API ====================
 
 // GetDatasets получает список наборов данных проекта
-func (c *HTTPClient) GetDatasets(projectID int64) (data.GetDatasetsResponse, error) {
+func (c *HTTPClient) GetDatasets(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 	endpoint := fmt.Sprintf("get_datasets/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting datasets for project %d: %w", projectID, err)
 	}
@@ -216,9 +217,9 @@ func (c *HTTPClient) GetDatasets(projectID int64) (data.GetDatasetsResponse, err
 }
 
 // GetDataset получает набор данных по ID
-func (c *HTTPClient) GetDataset(datasetID int64) (*data.Dataset, error) {
+func (c *HTTPClient) GetDataset(ctx context.Context, datasetID int64) (*data.Dataset, error) {
 	endpoint := fmt.Sprintf("get_dataset/%d", datasetID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting dataset %d: %w", datasetID, err)
 	}
@@ -237,12 +238,12 @@ func (c *HTTPClient) GetDataset(datasetID int64) (*data.Dataset, error) {
 }
 
 // AddDataset создает новый набор данных
-func (c *HTTPClient) AddDataset(projectID int64, name string) (*data.Dataset, error) {
+func (c *HTTPClient) AddDataset(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 	endpoint := fmt.Sprintf("add_dataset/%d", projectID)
 	req := map[string]string{"name": name}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating dataset: %w", err)
 	}
@@ -261,12 +262,12 @@ func (c *HTTPClient) AddDataset(projectID int64, name string) (*data.Dataset, er
 }
 
 // UpdateDataset обновляет набор данных
-func (c *HTTPClient) UpdateDataset(datasetID int64, name string) (*data.Dataset, error) {
+func (c *HTTPClient) UpdateDataset(ctx context.Context, datasetID int64, name string) (*data.Dataset, error) {
 	endpoint := fmt.Sprintf("update_dataset/%d", datasetID)
 	req := map[string]string{"name": name}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating dataset: %w", err)
 	}
@@ -285,9 +286,9 @@ func (c *HTTPClient) UpdateDataset(datasetID int64, name string) (*data.Dataset,
 }
 
 // DeleteDataset удаляет набор данных
-func (c *HTTPClient) DeleteDataset(datasetID int64) error {
+func (c *HTTPClient) DeleteDataset(ctx context.Context, datasetID int64) error {
 	endpoint := fmt.Sprintf("delete_dataset/%d", datasetID)
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting dataset: %w", err)
 	}
@@ -303,9 +304,9 @@ func (c *HTTPClient) DeleteDataset(datasetID int64) error {
 // ==================== Variables API ====================
 
 // GetVariables получает список переменных набора данных
-func (c *HTTPClient) GetVariables(datasetID int64) (data.GetVariablesResponse, error) {
+func (c *HTTPClient) GetVariables(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
 	endpoint := fmt.Sprintf("get_variables/%d", datasetID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting variables for dataset %d: %w", datasetID, err)
 	}
@@ -324,12 +325,12 @@ func (c *HTTPClient) GetVariables(datasetID int64) (data.GetVariablesResponse, e
 }
 
 // AddVariable добавляет переменную в набор данных
-func (c *HTTPClient) AddVariable(datasetID int64, name string) (*data.Variable, error) {
+func (c *HTTPClient) AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
 	endpoint := fmt.Sprintf("add_variable/%d", datasetID)
 	req := map[string]string{"name": name}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating variable: %w", err)
 	}
@@ -348,12 +349,12 @@ func (c *HTTPClient) AddVariable(datasetID int64, name string) (*data.Variable, 
 }
 
 // UpdateVariable обновляет переменную
-func (c *HTTPClient) UpdateVariable(variableID int64, name string) (*data.Variable, error) {
+func (c *HTTPClient) UpdateVariable(ctx context.Context, variableID int64, name string) (*data.Variable, error) {
 	endpoint := fmt.Sprintf("update_variable/%d", variableID)
 	req := map[string]string{"name": name}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating variable: %w", err)
 	}
@@ -372,9 +373,9 @@ func (c *HTTPClient) UpdateVariable(variableID int64, name string) (*data.Variab
 }
 
 // DeleteVariable удаляет переменную
-func (c *HTTPClient) DeleteVariable(variableID int64) error {
+func (c *HTTPClient) DeleteVariable(ctx context.Context, variableID int64) error {
 	endpoint := fmt.Sprintf("delete_variable/%d", variableID)
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting variable: %w", err)
 	}
@@ -390,9 +391,9 @@ func (c *HTTPClient) DeleteVariable(variableID int64) error {
 // ==================== BDDs API ====================
 
 // GetBDD получает BDD сценарий для кейса
-func (c *HTTPClient) GetBDD(caseID int64) (*data.BDD, error) {
+func (c *HTTPClient) GetBDD(ctx context.Context, caseID int64) (*data.BDD, error) {
 	endpoint := fmt.Sprintf("get_bdd/%d", caseID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting BDD for case %d: %w", caseID, err)
 	}
@@ -411,12 +412,12 @@ func (c *HTTPClient) GetBDD(caseID int64) (*data.BDD, error) {
 }
 
 // AddBDD добавляет BDD сценарий к кейсу
-func (c *HTTPClient) AddBDD(caseID int64, content string) (*data.BDD, error) {
+func (c *HTTPClient) AddBDD(ctx context.Context, caseID int64, content string) (*data.BDD, error) {
 	endpoint := fmt.Sprintf("add_bdd/%d", caseID)
 	req := map[string]string{"content": content}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating BDD: %w", err)
 	}
@@ -437,12 +438,12 @@ func (c *HTTPClient) AddBDD(caseID int64, content string) (*data.BDD, error) {
 // ==================== Labels API ====================
 
 // UpdateTestLabels обновляет labels для теста
-func (c *HTTPClient) UpdateTestLabels(testID int64, labels []string) error {
+func (c *HTTPClient) UpdateTestLabels(ctx context.Context, testID int64, labels []string) error {
 	endpoint := fmt.Sprintf("update_test_labels/%d", testID)
 	req := data.UpdateLabelsRequest{Labels: labels}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return fmt.Errorf("error updating test labels: %w", err)
 	}
@@ -456,7 +457,7 @@ func (c *HTTPClient) UpdateTestLabels(testID int64, labels []string) error {
 }
 
 // UpdateTestsLabels обновляет labels для нескольких тестов
-func (c *HTTPClient) UpdateTestsLabels(runID int64, testIDs []int64, labels []string) error {
+func (c *HTTPClient) UpdateTestsLabels(ctx context.Context, runID int64, testIDs []int64, labels []string) error {
 	endpoint := fmt.Sprintf("update_tests_labels/%d", runID)
 	req := data.UpdateTestsLabelsRequest{
 		TestIDs: testIDs,
@@ -464,7 +465,7 @@ func (c *HTTPClient) UpdateTestsLabels(runID int64, testIDs []int64, labels []st
 	}
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return fmt.Errorf("error updating tests labels: %w", err)
 	}
@@ -478,9 +479,9 @@ func (c *HTTPClient) UpdateTestsLabels(runID int64, testIDs []int64, labels []st
 }
 
 // GetLabels получает список меток проекта
-func (c *HTTPClient) GetLabels(projectID int64) (data.GetLabelsResponse, error) {
+func (c *HTTPClient) GetLabels(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 	endpoint := fmt.Sprintf("get_labels/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting labels for project %d: %w", projectID, err)
 	}
@@ -499,9 +500,9 @@ func (c *HTTPClient) GetLabels(projectID int64) (data.GetLabelsResponse, error) 
 }
 
 // GetLabel получает метку по ID
-func (c *HTTPClient) GetLabel(labelID int64) (*data.Label, error) {
+func (c *HTTPClient) GetLabel(ctx context.Context, labelID int64) (*data.Label, error) {
 	endpoint := fmt.Sprintf("get_label/%d", labelID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting label %d: %w", labelID, err)
 	}
@@ -520,11 +521,11 @@ func (c *HTTPClient) GetLabel(labelID int64) (*data.Label, error) {
 }
 
 // UpdateLabel обновляет метку
-func (c *HTTPClient) UpdateLabel(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+func (c *HTTPClient) UpdateLabel(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 	endpoint := fmt.Sprintf("update_label/%d", labelID)
 	jsonBody, _ := json.Marshal(req)
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating label: %w", err)
 	}

@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			assert.Equal(t, int64(12345), testID)
 			return &data.Test{
 				ID:       testID,
@@ -96,7 +97,7 @@ func TestGetCmd_NoArgs(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			return nil, fmt.Errorf("тест не найден")
 		},
 	}
@@ -113,7 +114,7 @@ func TestGetCmd_APIError(t *testing.T) {
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			return &data.Test{
 				ID:       testID,
 				CaseID:   100,

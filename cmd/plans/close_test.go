@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -25,7 +26,7 @@ func TestCloseCmd_DryRun(t *testing.T) {
 
 func TestCloseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		ClosePlanFunc: func(planID int64) (*data.Plan, error) {
+		ClosePlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
 			assert.Equal(t, int64(12345), planID)
 			return &data.Plan{ID: 12345, Name: "Test Plan", IsCompleted: true}, nil
 		},
@@ -41,7 +42,7 @@ func TestCloseCmd_Success(t *testing.T) {
 
 func TestCloseCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		ClosePlanFunc: func(planID int64) (*data.Plan, error) {
+		ClosePlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
 			return nil, fmt.Errorf("plan already closed")
 		},
 	}

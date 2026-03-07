@@ -5,6 +5,7 @@ package attachments
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentFunc: func(attachmentID int64) (*data.Attachment, error) {
+		GetAttachmentFunc: func(ctx context.Context, attachmentID int64) (*data.Attachment, error) {
 			assert.Equal(t, int64(12345), attachmentID)
 			return &data.Attachment{
 				ID:          12345,
@@ -59,7 +60,7 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 	defer os.Setenv("HOME", origHome)
 
 	mock := &client.MockClient{
-		GetAttachmentFunc: func(attachmentID int64) (*data.Attachment, error) {
+		GetAttachmentFunc: func(ctx context.Context, attachmentID int64) (*data.Attachment, error) {
 			return &data.Attachment{
 				ID:          12345,
 				Name:        "test-file.pdf",
@@ -124,7 +125,7 @@ func TestGetCmd_ZeroAttachmentID(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentFunc: func(attachmentID int64) (*data.Attachment, error) {
+		GetAttachmentFunc: func(ctx context.Context, attachmentID int64) (*data.Attachment, error) {
 			return nil, fmt.Errorf("attachment not found")
 		},
 	}

@@ -1,6 +1,7 @@
 package groups
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddGroupFunc: func(projectID int64, name string, userIDs []int64) (*data.Group, error) {
+		AddGroupFunc: func(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "QA Team", name)
 			return &data.Group{
@@ -35,7 +36,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_WithDifferentName(t *testing.T) {
 	mock := &client.MockClient{
-		AddGroupFunc: func(projectID int64, name string, userIDs []int64) (*data.Group, error) {
+		AddGroupFunc: func(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error) {
 			assert.Equal(t, int64(5), projectID)
 			assert.Equal(t, "Developers", name)
 			return &data.Group{
@@ -68,7 +69,7 @@ func TestAddCmd_DryRun(t *testing.T) {
 
 func TestAddCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		AddGroupFunc: func(projectID int64, name string, userIDs []int64) (*data.Group, error) {
+		AddGroupFunc: func(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

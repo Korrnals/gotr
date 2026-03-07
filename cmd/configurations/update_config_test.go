@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 func TestUpdateConfigCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateConfigFunc: func(configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
+		UpdateConfigFunc: func(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
 			assert.Equal(t, int64(10), configID)
 			assert.Equal(t, "Chrome 120", req.Name)
 			return &data.Config{ID: 10, Name: req.Name}, nil
@@ -58,7 +59,7 @@ func TestUpdateConfigCmd_MissingName(t *testing.T) {
 
 func TestUpdateConfigCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateConfigFunc: func(configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
+		UpdateConfigFunc: func(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
 			return nil, fmt.Errorf("конфигурация не найдена")
 		},
 	}

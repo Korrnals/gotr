@@ -1,6 +1,7 @@
 package bdds
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -18,7 +19,7 @@ func TestAddCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
-		AddBDDFunc: func(caseID int64, content string) (*data.BDD, error) {
+		AddBDDFunc: func(ctx context.Context, caseID int64, content string) (*data.BDD, error) {
 			assert.Equal(t, int64(12345), caseID)
 			assert.Contains(t, content, "Feature: Login")
 			return &data.BDD{ID: 1, CaseID: caseID, Content: content}, nil
@@ -87,7 +88,7 @@ func TestAddCmd_ClientError(t *testing.T) {
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
-		AddBDDFunc: func(caseID int64, content string) (*data.BDD, error) {
+		AddBDDFunc: func(ctx context.Context, caseID int64, content string) (*data.BDD, error) {
 			return nil, fmt.Errorf("кейс не найден")
 		},
 	}

@@ -1,6 +1,7 @@
 package datasets
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateDatasetFunc: func(datasetID int64, name string) (*data.Dataset, error) {
+		UpdateDatasetFunc: func(ctx context.Context, datasetID int64, name string) (*data.Dataset, error) {
 			assert.Equal(t, int64(123), datasetID)
 			assert.Equal(t, "Updated Name", name)
 			return &data.Dataset{ID: 123, Name: name}, nil
@@ -30,7 +31,7 @@ func TestUpdateCmd_Success(t *testing.T) {
 
 func TestUpdateCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateDatasetFunc: func(datasetID int64, name string) (*data.Dataset, error) {
+		UpdateDatasetFunc: func(ctx context.Context, datasetID int64, name string) (*data.Dataset, error) {
 			return &data.Dataset{ID: 456, Name: name}, nil
 		},
 	}
@@ -45,7 +46,7 @@ func TestUpdateCmd_WithSaveFlag(t *testing.T) {
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateDatasetFunc: func(datasetID int64, name string) (*data.Dataset, error) {
+		UpdateDatasetFunc: func(ctx context.Context, datasetID int64, name string) (*data.Dataset, error) {
 			return nil, fmt.Errorf("датасет не найден")
 		},
 	}

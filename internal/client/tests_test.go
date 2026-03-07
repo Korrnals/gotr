@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -48,7 +49,6 @@ func TestGetTest(t *testing.T) {
 					t.Errorf("expected GET, got %s", r.Method)
 				}
 
-
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockResp != nil {
 					json.NewEncoder(w).Encode(tt.mockResp)
@@ -57,7 +57,8 @@ func TestGetTest(t *testing.T) {
 			defer server.Close()
 
 			client, _ := NewClient(server.URL, "test@test.com", "testpass", false)
-			test, err := client.GetTest(tt.testID)
+			ctx := context.Background()
+			test, err := client.GetTest(ctx, tt.testID)
 
 			if tt.wantErr {
 				if err == nil {
@@ -145,7 +146,8 @@ func TestGetTests(t *testing.T) {
 			defer server.Close()
 
 			client, _ := NewClient(server.URL, "test@test.com", "testpass", false)
-			tests, err := client.GetTests(tt.runID, tt.filters)
+			ctx := context.Background()
+			tests, err := client.GetTests(ctx, tt.runID, tt.filters)
 
 			if tt.wantErr {
 				if err == nil {
@@ -240,7 +242,8 @@ func TestUpdateTest(t *testing.T) {
 			defer server.Close()
 
 			client, _ := NewClient(server.URL, "test@test.com", "testpass", false)
-			test, err := client.UpdateTest(tt.testID, tt.request)
+			ctx := context.Background()
+			test, err := client.UpdateTest(ctx, tt.testID, tt.request)
 
 			if tt.wantErr {
 				if err == nil {

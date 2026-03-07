@@ -28,7 +28,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetPlan(planID)
+			ctx := cmd.Context()
+			resp, err := cli.GetPlan(ctx, planID)
 			if err != nil {
 				return fmt.Errorf("failed to get plan: %w", err)
 			}

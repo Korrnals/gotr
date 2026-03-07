@@ -44,7 +44,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateDataset(datasetID, name)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateDataset(ctx, datasetID, name)
 			if err != nil {
 				return fmt.Errorf("не удалось обновить датасет: %w", err)
 			}

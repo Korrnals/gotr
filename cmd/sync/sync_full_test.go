@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -28,23 +29,23 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	addCase := false
 
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addShared = true
 			return &data.SharedStep{ID: 100}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCase = true
 			return &data.Case{ID: 100}, nil
 		},
@@ -75,23 +76,23 @@ func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 	addCase := false
 
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addShared = true
 			return &data.SharedStep{ID: 100}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 && suiteID == 10 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCase = true
 			return &data.Case{ID: 100}, nil
 		},

@@ -1,6 +1,7 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultFunc: func(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultFunc: func(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 			assert.Equal(t, int64(12345), testID)
 			assert.Equal(t, int64(1), req.StatusID)
 			return &data.Result{
@@ -36,7 +37,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_WithDefects(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultFunc: func(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultFunc: func(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 			assert.Equal(t, int64(5), req.StatusID)
 			assert.Equal(t, "BUG-123", req.Defects)
 			return &data.Result{ID: 1}, nil
@@ -87,7 +88,7 @@ func TestAddCmd_InvalidTestID(t *testing.T) {
 
 func TestAddCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultFunc: func(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultFunc: func(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 			return nil, fmt.Errorf("test not found")
 		},
 	}
@@ -105,7 +106,7 @@ func TestAddCmd_APIError(t *testing.T) {
 
 func TestAddCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultForCaseFunc: func(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultForCaseFunc: func(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, int64(200), caseID)
 			assert.Equal(t, int64(1), req.StatusID)

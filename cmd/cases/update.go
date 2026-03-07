@@ -65,7 +65,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateCase(caseID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateCase(ctx, caseID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update case: %w", err)
 			}

@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +51,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateTest(testID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateTest(ctx, testID, &req)
 			if err != nil {
 				return fmt.Errorf("не удалось обновить тест: %w", err)
 			}

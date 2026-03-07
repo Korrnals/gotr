@@ -23,10 +23,10 @@ type ResultAggregator struct {
 	doneCh   chan struct{}
 
 	// Storage
-	cases    []data.Case
-	casesMu  sync.RWMutex
-	seenIDs  map[int64]struct{}
-	seenMu   sync.RWMutex
+	cases   []data.Case
+	casesMu sync.RWMutex
+	seenIDs map[int64]struct{}
+	seenMu  sync.RWMutex
 
 	// Error handling
 	errors   []error
@@ -40,9 +40,9 @@ type ResultAggregator struct {
 	endTime     time.Time
 
 	// State
-	started  bool
-	stopped  bool
-	mu       sync.Mutex
+	started bool
+	stopped bool
+	mu      sync.Mutex
 }
 
 // NewResultAggregator creates a new result aggregator
@@ -261,12 +261,12 @@ func (ra *ResultAggregator) GetResults() ([]data.Case, []error) {
 // Stats returns current aggregation statistics
 func (ra *ResultAggregator) Stats() AggregationStats {
 	return AggregationStats{
-		TotalCases:   int(atomic.LoadInt64(&ra.totalCases)),
-		TotalPages:   int(atomic.LoadInt64(&ra.totalPages)),
-		FailedPages:  int(atomic.LoadInt64(&ra.failedPages)),
-		ErrorCount:   len(ra.getErrors()),
-		Duration:     ra.getDuration(),
-		IsRunning:    ra.IsRunning(),
+		TotalCases:  int(atomic.LoadInt64(&ra.totalCases)),
+		TotalPages:  int(atomic.LoadInt64(&ra.totalPages)),
+		FailedPages: int(atomic.LoadInt64(&ra.failedPages)),
+		ErrorCount:  len(ra.getErrors()),
+		Duration:    ra.getDuration(),
+		IsRunning:   ra.IsRunning(),
 	}
 }
 
@@ -310,9 +310,9 @@ type AggregationStats struct {
 	CompletedSuites int
 	StartTime       time.Time
 	EndTime         time.Time
-	ExpectedCases   int64 // sum of API totalSize across all suites (-1 per suite if unknown)
-	SuitesWithTotal int   // how many suites reported totalSize
-	SuitesVerified  int   // suites with all pages fetched, exhaustion confirmed, no permanent errors
+	ExpectedCases   int64             // sum of API totalSize across all suites (-1 per suite if unknown)
+	SuitesWithTotal int               // how many suites reported totalSize
+	SuitesVerified  int               // suites with all pages fetched, exhaustion confirmed, no permanent errors
 	SuiteResults    []SuiteResultInfo // per-suite fetch details
 }
 

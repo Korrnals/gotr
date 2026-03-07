@@ -2,6 +2,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -181,7 +182,8 @@ func TestRunService_ParseID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			id, err := svc.ParseID(tt.args, tt.index)
+			ctx := context.Background()
+			id, err := svc.ParseID(ctx, tt.args, tt.index)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMatch)

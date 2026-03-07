@@ -35,7 +35,8 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeletePlan(planID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeletePlan(ctx, planID); err != nil {
 				return fmt.Errorf("failed to delete plan: %w", err)
 			}
 

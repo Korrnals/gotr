@@ -15,7 +15,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-config <config_id>",
 		Short: "Обновить конфигурацию",
-		Long: `Обновляет название существующей конфигурации.`,
+		Long:  `Обновляет название существующей конфигурации.`,
 		Example: `  # Изменить название конфигурации
   gotr configurations update-config 10 --name="Chrome 120"
 
@@ -41,7 +41,8 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 			req := data.UpdateConfigRequest{Name: name}
 			cli := getClient(cmd)
-			resp, err := cli.UpdateConfig(configID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateConfig(ctx, configID, &req)
 			if err != nil {
 				return fmt.Errorf("не удалось обновить конфигурацию: %w", err)
 			}

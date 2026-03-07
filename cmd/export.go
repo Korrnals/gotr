@@ -27,6 +27,7 @@ var exportCmd = &cobra.Command{
 	Args: cobra.MinimumNArgs(2), // resource и endpoint обязательны
 	RunE: func(cmd *cobra.Command, args []string) error {
 		client := GetClient(cmd)
+		ctx := cmd.Context()
 
 		resource := args[0]
 		endpoint := args[1]
@@ -50,13 +51,13 @@ var exportCmd = &cobra.Command{
 
 		// Запрос
 		start := time.Now()
-		resp, err := client.Get(fullEndpoint, queryParams)
+		resp, err := client.Get(ctx, fullEndpoint, queryParams)
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
 
-		data, err := client.ReadResponse(resp, time.Since(start), "json")
+		data, err := client.ReadResponse(ctx, resp, time.Since(start), "json")
 		if err != nil {
 			return fmt.Errorf("response reading error: %w", err)
 		}
@@ -84,7 +85,7 @@ var exportCmd = &cobra.Command{
 			if mainID != "" {
 				filename = fmt.Sprintf("%s/%s_%s_%s.json", exportDir, resource, mainID, time.Now().Format("20060102_150405"))
 			}
-			if err := client.SaveResponseToFile(data, filename, "json"); err != nil {
+			if err := client.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
 				return fmt.Errorf("ошибка экспорта в файл %s: %w", filename, err)
 			}
 			if !quiet {

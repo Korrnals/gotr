@@ -45,7 +45,8 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 			req := data.AddConfigRequest{Name: name}
 			cli := getClient(cmd)
-			resp, err := cli.AddConfig(groupID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddConfig(ctx, groupID, &req)
 			if err != nil {
 				return fmt.Errorf("не удалось добавить конфигурацию: %w", err)
 			}

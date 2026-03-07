@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestSectionGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionFunc: func(sectionID int64) (*data.Section, error) {
+		GetSectionFunc: func(ctx context.Context, sectionID int64) (*data.Section, error) {
 			assert.Equal(t, int64(100), sectionID)
 			return &data.Section{
 				ID:      100,
@@ -81,7 +82,7 @@ func TestSectionGetCmd_NoArgs(t *testing.T) {
 
 func TestSectionGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionFunc: func(sectionID int64) (*data.Section, error) {
+		GetSectionFunc: func(ctx context.Context, sectionID int64) (*data.Section, error) {
 			return nil, fmt.Errorf("section not found")
 		},
 	}
@@ -99,7 +100,7 @@ func TestSectionGetCmd_APIError(t *testing.T) {
 
 func TestSectionsListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(0), suiteID)
 			return data.GetSectionsResponse{
@@ -119,7 +120,7 @@ func TestSectionsListCmd_Success(t *testing.T) {
 
 func TestSectionsListCmd_WithSuiteID(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			return data.GetSectionsResponse{
@@ -184,7 +185,7 @@ func TestSectionsListCmd_NoArgs(t *testing.T) {
 
 func TestSectionsListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

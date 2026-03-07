@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestCreateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, "Smoke Tests", req.Name)
 			assert.Equal(t, int64(20069), req.SuiteID)
@@ -31,7 +32,7 @@ func TestCreateCmd_Success(t *testing.T) {
 
 func TestCreateCmd_WithDescription(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, "Regression", req.Name)
 			assert.Equal(t, "Full regression suite", req.Description)
 			return &data.Run{ID: 124}, nil
@@ -48,7 +49,7 @@ func TestCreateCmd_WithDescription(t *testing.T) {
 
 func TestCreateCmd_WithAssignedTo(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(5), req.AssignedTo)
 			return &data.Run{ID: 125}, nil
 		},
@@ -86,7 +87,7 @@ func TestCreateCmd_InvalidProjectID(t *testing.T) {
 
 func TestCreateCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -114,7 +115,7 @@ func TestCreateCmd_NilClient(t *testing.T) {
 
 func TestCreateCmd_WithCaseIDs(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, "Test with cases", req.Name)
 			assert.Equal(t, []int64{123, 456, 789}, req.CaseIDs)
@@ -132,7 +133,7 @@ func TestCreateCmd_WithCaseIDs(t *testing.T) {
 
 func TestCreateCmd_WithConfigIDs(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, []int64{1, 2}, req.ConfigIDs)
 			return &data.Run{ID: 127}, nil
@@ -149,7 +150,7 @@ func TestCreateCmd_WithConfigIDs(t *testing.T) {
 
 func TestCreateCmd_WithMilestoneID(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(100), req.MilestoneID)
 			return &data.Run{ID: 128}, nil
@@ -166,7 +167,7 @@ func TestCreateCmd_WithMilestoneID(t *testing.T) {
 
 func TestCreateCmd_WithIncludeAllFalse(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.False(t, req.IncludeAll)
 			return &data.Run{ID: 129}, nil

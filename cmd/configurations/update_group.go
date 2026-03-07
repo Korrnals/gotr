@@ -15,7 +15,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-group <group_id>",
 		Short: "Обновить группу конфигураций",
-		Long: `Обновляет название существующей группы конфигураций.`,
+		Long:  `Обновляет название существующей группы конфигураций.`,
 		Example: `  # Изменить название группы
   gotr configurations update-group 5 --name="Новое название"
 
@@ -41,7 +41,8 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 			req := data.UpdateConfigGroupRequest{Name: name}
 			cli := getClient(cmd)
-			resp, err := cli.UpdateConfigGroup(groupID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateConfigGroup(ctx, groupID, &req)
 			if err != nil {
 				return fmt.Errorf("не удалось обновить группу: %w", err)
 			}

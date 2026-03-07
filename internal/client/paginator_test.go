@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -106,7 +107,9 @@ func TestFetchAllPages_FlatArray_BackwardCompat(t *testing.T) {
 	})
 	defer srv.Close()
 
-	items, err := fetchAllPages[testItem](c, "get_items/1", nil, "items")
+	ctx := context.Background()
+
+	items, err := fetchAllPages[testItem](ctx, c, "get_items/1", nil, "items")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -133,7 +136,9 @@ func TestFetchAllPages_SinglePage_PaginatedWrapper(t *testing.T) {
 	})
 	defer srv.Close()
 
-	got, err := fetchAllPages[testItem](c, "get_items/1", nil, "results")
+	ctx := context.Background()
+
+	got, err := fetchAllPages[testItem](ctx, c, "get_items/1", nil, "results")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -155,11 +160,11 @@ func TestFetchAllPages_MultiPage(t *testing.T) {
 
 	makeWrapper := func(items []testItem, field string) []byte {
 		b, _ := json.Marshal(map[string]interface{}{
-			"offset":  0,
-			"limit":   250,
-			"size":    len(items),
-			"_links":  map[string]interface{}{"next": nil, "prev": nil},
-			field:     items,
+			"offset": 0,
+			"limit":  250,
+			"size":   len(items),
+			"_links": map[string]interface{}{"next": nil, "prev": nil},
+			field:    items,
 		})
 		return b
 	}
@@ -176,7 +181,9 @@ func TestFetchAllPages_MultiPage(t *testing.T) {
 	})
 	defer srv.Close()
 
-	got, err := fetchAllPages[testItem](c, "get_runs/1", nil, "runs")
+	ctx := context.Background()
+
+	got, err := fetchAllPages[testItem](ctx, c, "get_runs/1", nil, "runs")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -195,7 +202,9 @@ func TestFetchAllPages_ServerError(t *testing.T) {
 	})
 	defer srv.Close()
 
-	_, err := fetchAllPages[testItem](c, "get_items/1", nil, "items")
+	ctx := context.Background()
+
+	_, err := fetchAllPages[testItem](ctx, c, "get_items/1", nil, "items")
 	if err == nil {
 		t.Fatal("expected error for 500 response, got nil")
 	}
@@ -215,7 +224,8 @@ func TestFetchAllPages_BaseQueryPreserved(t *testing.T) {
 	defer srv.Close()
 
 	baseQuery := map[string]string{"suite_id": "42"}
-	_, err := fetchAllPages[testItem](c, "get_sections/1", baseQuery, "sections")
+	ctx := context.Background()
+	_, err := fetchAllPages[testItem](ctx, c, "get_sections/1", baseQuery, "sections")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -11,9 +12,9 @@ import (
 )
 
 // GetSharedSteps получает список shared steps для проекта (поддерживает пагинацию).
-func (c *HTTPClient) GetSharedSteps(projectID int64) (data.GetSharedStepsResponse, error) {
+func (c *HTTPClient) GetSharedSteps(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 	endpoint := fmt.Sprintf("get_shared_steps/%d", projectID)
-	steps, err := fetchAllPages[data.SharedStep](c, endpoint, nil, "shared_steps")
+	steps, err := fetchAllPages[data.SharedStep](ctx, c, endpoint, nil, "shared_steps")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSharedSteps проекта %d: %w", projectID, err)
 	}
@@ -21,9 +22,9 @@ func (c *HTTPClient) GetSharedSteps(projectID int64) (data.GetSharedStepsRespons
 }
 
 // GetSharedStep получает один shared step по ID.
-func (c *HTTPClient) GetSharedStep(stepID int64) (*data.SharedStep, error) {
+func (c *HTTPClient) GetSharedStep(ctx context.Context, stepID int64) (*data.SharedStep, error) {
 	endpoint := fmt.Sprintf("get_shared_step/%d", stepID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSharedStep %d: %w", stepID, err)
 	}
@@ -44,9 +45,9 @@ func (c *HTTPClient) GetSharedStep(stepID int64) (*data.SharedStep, error) {
 }
 
 // GetSharedStepHistory получает историю изменений shared step.
-func (c *HTTPClient) GetSharedStepHistory(stepID int64) (*data.GetSharedStepHistoryResponse, error) {
+func (c *HTTPClient) GetSharedStepHistory(ctx context.Context, stepID int64) (*data.GetSharedStepHistoryResponse, error) {
 	endpoint := fmt.Sprintf("get_shared_step_history/%d", stepID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSharedStepHistory %d: %w", stepID, err)
 	}
@@ -68,7 +69,7 @@ func (c *HTTPClient) GetSharedStepHistory(stepID int64) (*data.GetSharedStepHist
 
 // AddSharedStep создаёт новый shared step в указанном проекте.
 // Требует Title в запросе.
-func (c *HTTPClient) AddSharedStep(projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+func (c *HTTPClient) AddSharedStep(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 	endpoint := fmt.Sprintf("add_shared_step/%d", projectID)
 
 	bodyBytes, err := json.Marshal(req)
@@ -76,7 +77,7 @@ func (c *HTTPClient) AddSharedStep(projectID int64, req *data.AddSharedStepReque
 		return nil, fmt.Errorf("ошибка маршалинга AddSharedStepRequest: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddSharedStep в проекте %d: %w", projectID, err)
 	}
@@ -98,14 +99,14 @@ func (c *HTTPClient) AddSharedStep(projectID int64, req *data.AddSharedStepReque
 
 // UpdateSharedStep обновляет существующий shared step.
 // Поддерживает частичные обновления.
-func (c *HTTPClient) UpdateSharedStep(stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
+func (c *HTTPClient) UpdateSharedStep(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга UpdateSharedStepRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_shared_step/%d", stepID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateSharedStep %d: %w", stepID, err)
 	}
@@ -127,13 +128,13 @@ func (c *HTTPClient) UpdateSharedStep(stepID int64, req *data.UpdateSharedStepRe
 
 // DeleteSharedStep удаляет shared step по ID.
 // keepInCases: 1 — сохранить шаг в кейсах, 0 — удалить полностью.
-func (c *HTTPClient) DeleteSharedStep(stepID int64, keepInCases int) error {
+func (c *HTTPClient) DeleteSharedStep(ctx context.Context, stepID int64, keepInCases int) error {
 	endpoint := fmt.Sprintf("delete_shared_step/%d", stepID)
 	query := map[string]string{
 		"keep_in_cases": fmt.Sprintf("%d", keepInCases),
 	}
 
-	resp, err := c.Post(endpoint, nil, query)
+	resp, err := c.Post(ctx, endpoint, nil, query)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса DeleteSharedStep %d: %w", stepID, err)
 	}

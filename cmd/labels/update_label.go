@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -40,12 +40,13 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
+			ctx := cmd.Context()
 			req := data.UpdateLabelRequest{
 				ProjectID: projectID,
 				Title:     title,
 			}
 
-			resp, err := client.UpdateLabel(labelID, req)
+			resp, err := client.UpdateLabel(ctx, labelID, req)
 			if err != nil {
 				return fmt.Errorf("failed to update label: %w", err)
 			}

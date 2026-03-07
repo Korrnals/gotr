@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,15 +15,15 @@ type ResponseData struct {
 	Status     string              `json:"status"`
 	StatusCode int                 `json:"status_code"`
 	Headers    map[string][]string `json:"headers"`
-	Body       interface{}         `json:"body"`       		   // распарсенный JSON
-    RawBody    []byte              `json:"raw_body,omitempty"` // сырые байты (опционально в JSON)
+	Body       interface{}         `json:"body"`               // распарсенный JSON
+	RawBody    []byte              `json:"raw_body,omitempty"` // сырые байты (опционально в JSON)
 	Timestamp  time.Time           `json:"timestamp"`
 	Duration   time.Duration       `json:"duration"`
 }
 
 // PrintResponse — красивый вывод универсального (с типом interface{}) ответа
 // Чтение ЛЮБОГО ответа
-func (c *HTTPClient) ReadResponse(resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
+func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
 	// Считываем поток ответа (сырые данные) в переменную
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -48,54 +49,53 @@ func (c *HTTPClient) ReadResponse(resp *http.Response, duration time.Duration, o
 }
 
 // ReadJSONResponse — универсальный метод для чтения ответа в любую структуру (не в interface{})
-func (c *HTTPClient) ReadJSONResponse(resp *http.Response, target any) error {
-    if resp.StatusCode != http.StatusOK {
-        body, _ := io.ReadAll(resp.Body)
-        return fmt.Errorf("ошибка API: %s, тело: %s", resp.Status, string(body))
-    }
-    defer resp.Body.Close()
+func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, target any) error {
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("ошибка API: %s, тело: %s", resp.Status, string(body))
+	}
+	defer resp.Body.Close()
 
-    if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-        return fmt.Errorf("ошибка декодирования: %w", err)
-    }
-    return nil
-}
-
-// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body), с нетипизированным телом ответа
-func (c *HTTPClient) PrintResponseFromData(data ResponseData, outputFormat string) {
-    switch outputFormat {
-    case "json":
-        pretty, _ := json.MarshalIndent(data.Body, "", "  ")
-        fmt.Println(string(pretty))
-    case "json-full":
-        pretty, _ := json.MarshalIndent(data, "", "  ")
-        fmt.Println(string(pretty))
-    default: // table
-        printTable(data)
-    }
-}
-
-// SaveResponseToFile — сохранение не типизированного ответа
-func (c *HTTPClient) SaveResponseToFile(data ResponseData, filename string, outputFormat string) error {
-	var toSave []byte
-    switch outputFormat {
-    case "json":
-        toSave, _ = json.MarshalIndent(data.Body, "", "  ")
-    case "json-full":
-        toSave, _ = json.MarshalIndent(data, "", "  ")
-    default: // table
-        // Для table сохраняем как json-full (или можно сделать отдельный формат)
-        toSave, _ = json.MarshalIndent(data, "", "  ")
-    }
-
-    if err := os.WriteFile(filename, toSave, 0644); err != nil {
-        return err
-    }
-    fmt.Printf("Ответ сохранён в файл %s (формат: %s)\n", filename, outputFormat)
-
+	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+		return fmt.Errorf("ошибка декодирования: %w", err)
+	}
 	return nil
 }
 
+// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body), с нетипизированным телом ответа
+func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseData, outputFormat string) {
+	switch outputFormat {
+	case "json":
+		pretty, _ := json.MarshalIndent(data.Body, "", "  ")
+		fmt.Println(string(pretty))
+	case "json-full":
+		pretty, _ := json.MarshalIndent(data, "", "  ")
+		fmt.Println(string(pretty))
+	default: // table
+		printTable(data)
+	}
+}
+
+// SaveResponseToFile — сохранение не типизированного ответа
+func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, filename string, outputFormat string) error {
+	var toSave []byte
+	switch outputFormat {
+	case "json":
+		toSave, _ = json.MarshalIndent(data.Body, "", "  ")
+	case "json-full":
+		toSave, _ = json.MarshalIndent(data, "", "  ")
+	default: // table
+		// Для table сохраняем как json-full (или можно сделать отдельный формат)
+		toSave, _ = json.MarshalIndent(data, "", "  ")
+	}
+
+	if err := os.WriteFile(filename, toSave, 0644); err != nil {
+		return err
+	}
+	fmt.Printf("Ответ сохранён в файл %s (формат: %s)\n", filename, outputFormat)
+
+	return nil
+}
 
 // Вспомогательные приватные функции //
 // 'printTable' - формирует таблицу ответа

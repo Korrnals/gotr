@@ -32,6 +32,7 @@ var suitesCmd = &cobra.Command{
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
@@ -55,7 +56,7 @@ var suitesCmd = &cobra.Command{
 		pm := progress.NewManager()
 
 		progress.Describe(pm.NewSpinner(""), "Загрузка suites...")
-		sourceSuites, targetSuites, err := m.FetchSuitesData()
+		sourceSuites, targetSuites, err := m.FetchSuitesData(ctx)
 		if err != nil {
 			return err
 		}
@@ -90,7 +91,7 @@ var suitesCmd = &cobra.Command{
 
 		// Шаг 3) Подтверждение и импорт
 		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d suites...", len(filtered)))
-		if err := m.ImportSuites(filtered, false); err != nil {
+		if err := m.ImportSuites(ctx, filtered, false); err != nil {
 			return err
 		}
 

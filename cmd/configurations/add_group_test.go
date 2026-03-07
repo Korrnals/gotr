@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 func TestAddGroupCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddConfigGroupFunc: func(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+		AddConfigGroupFunc: func(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Browsers", req.Name)
 			return &data.ConfigGroup{ID: 10, Name: req.Name}, nil
@@ -28,7 +29,7 @@ func TestAddGroupCmd_Success(t *testing.T) {
 
 func TestAddGroupCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		AddConfigGroupFunc: func(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+		AddConfigGroupFunc: func(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 			return &data.ConfigGroup{ID: 5, Name: req.Name}, nil
 		},
 	}
@@ -74,7 +75,7 @@ func TestAddGroupCmd_MissingName(t *testing.T) {
 
 func TestAddGroupCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddConfigGroupFunc: func(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+		AddConfigGroupFunc: func(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 			return nil, fmt.Errorf("проект не найден")
 		},
 	}

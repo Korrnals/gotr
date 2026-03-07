@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"time"
@@ -46,6 +47,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -62,7 +64,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(cli)
+				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
 				if err != nil {
 					return err
 				}
@@ -79,11 +81,11 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			// Если указан конкретный suite-id — используем его
 			if suiteID != 0 {
-				return fetchAndOutputCases(command, cli, projectID, suiteID, sectionID, start)
+				return fetchAndOutputCases(ctx, command, cli, projectID, suiteID, sectionID, start)
 			}
 
 			// Получаем список сьютов проекта
-			suites, err := cli.GetSuites(projectID)
+			suites, err := cli.GetSuites(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
 			}
@@ -94,13 +96,13 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			// Если --all-suites — собираем кейсы из всех сьютов
 			if allSuites {
-				return fetchCasesFromAllSuites(command, cli, projectID, suites, sectionID, start)
+				return fetchCasesFromAllSuites(ctx, command, cli, projectID, suites, sectionID, start)
 			}
 
 			// Если только один сьют — используем его автоматически
 			if len(suites) == 1 {
 				fmt.Printf("В проекте найден один сьют (ID: %d), используем его автоматически...\n", suites[0].ID)
-				return fetchAndOutputCases(command, cli, projectID, suites[0].ID, sectionID, start)
+				return fetchAndOutputCases(ctx, command, cli, projectID, suites[0].ID, sectionID, start)
 			}
 
 			// Несколько сьютов — интерактивный выбор
@@ -109,7 +111,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 				return err
 			}
 
-			return fetchAndOutputCases(command, cli, projectID, selectedSuiteID, sectionID, start)
+			return fetchAndOutputCases(ctx, command, cli, projectID, selectedSuiteID, sectionID, start)
 		},
 	}
 
@@ -131,6 +133,7 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -141,7 +144,7 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				return fmt.Errorf("некорректный ID кейса: %w", err)
 			}
 
-			kase, err := cli.GetCase(id)
+			kase, err := cli.GetCase(ctx, id)
 			if err != nil {
 				return err
 			}
@@ -152,8 +155,8 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 }
 
 // fetchAndOutputCases получает кейсы и выводит результат
-func fetchAndOutputCases(cmd *cobra.Command, client client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
-	cases, err := client.GetCases(projectID, suiteID, sectionID)
+func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, client client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
+	cases, err := client.GetCases(ctx, projectID, suiteID, sectionID)
 	if err != nil {
 		return err
 	}
@@ -162,7 +165,7 @@ func fetchAndOutputCases(cmd *cobra.Command, client client.ClientInterface, proj
 }
 
 // fetchCasesFromAllSuites получает кейсы из всех сьютов проекта
-func fetchCasesFromAllSuites(cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
+func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
 	// Create progress manager
 	pm := progress.NewManager()
 
@@ -174,7 +177,7 @@ func fetchCasesFromAllSuites(cmd *cobra.Command, client client.ClientInterface, 
 
 	allCases := make(data.GetCasesResponse, 0)
 	for _, suite := range suites {
-		cases, err := client.GetCases(projectID, suite.ID, sectionID)
+		cases, err := client.GetCases(ctx, projectID, suite.ID, sectionID)
 		if err != nil {
 			bar.Add(1)
 			continue // Skip suites that fail

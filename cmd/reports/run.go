@@ -35,7 +35,8 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Запуск генерации отчёта...")
 
 			cli := getClient(cmd)
-			resp, err := cli.RunReport(templateID)
+			ctx := cmd.Context()
+			resp, err := cli.RunReport(ctx, templateID)
 			if err != nil {
 				return fmt.Errorf("failed to run report: %w", err)
 			}

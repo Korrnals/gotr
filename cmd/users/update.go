@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -45,6 +45,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 
 			req := data.UpdateUserRequest{}
 			if cmd.Flags().Changed("name") {
@@ -65,13 +66,13 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 			if cmd.Flags().Changed("inactive") {
 				if isActive {
-					req.IsActive = 0  // inactive = true means is_active = 0
+					req.IsActive = 0 // inactive = true means is_active = 0
 				} else {
-					req.IsActive = 1  // inactive = false means is_active = 1
+					req.IsActive = 1 // inactive = false means is_active = 1
 				}
 			}
 
-			user, err := cli.UpdateUser(userID, req)
+			user, err := cli.UpdateUser(ctx, userID, req)
 			if err != nil {
 				return fmt.Errorf("failed to update user: %w", err)
 			}

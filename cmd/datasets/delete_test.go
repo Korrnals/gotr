@@ -1,6 +1,7 @@
 package datasets
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteDatasetFunc: func(datasetID int64) error {
+		DeleteDatasetFunc: func(ctx context.Context, datasetID int64) error {
 			assert.Equal(t, int64(123), datasetID)
 			return nil
 		},
@@ -28,7 +29,7 @@ func TestDeleteCmd_Success(t *testing.T) {
 
 func TestDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteDatasetFunc: func(datasetID int64) error {
+		DeleteDatasetFunc: func(ctx context.Context, datasetID int64) error {
 			return fmt.Errorf("датасет не найден")
 		},
 	}

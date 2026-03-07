@@ -31,7 +31,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetMilestone(milestoneID)
+			ctx := cmd.Context()
+			resp, err := cli.GetMilestone(ctx, milestoneID)
 			if err != nil {
 				return fmt.Errorf("failed to get milestone: %w", err)
 			}

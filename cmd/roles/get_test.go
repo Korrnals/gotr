@@ -1,6 +1,7 @@
 package roles
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
 			assert.Equal(t, int64(1), roleID)
 			return &data.Role{
 				ID:   1,
@@ -33,7 +34,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
 			return &data.Role{ID: 2, Name: "Tester"}, nil
 		},
 	}
@@ -48,7 +49,7 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
 			return nil, fmt.Errorf("роль не найдена")
 		},
 	}

@@ -31,7 +31,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			sectionID, _ := cmd.Flags().GetInt64("section-id")
 
 			cli := getClient(cmd)
-			resp, err := cli.GetCases(projectID, suiteID, sectionID)
+			ctx := cmd.Context()
+			resp, err := cli.GetCases(ctx, projectID, suiteID, sectionID)
 			if err != nil {
 				return fmt.Errorf("failed to list cases: %w", err)
 			}

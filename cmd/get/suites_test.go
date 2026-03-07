@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 
 func TestSuitesCmd_WithProjectID(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Master Suite", ProjectID: 30},
@@ -34,7 +35,7 @@ func TestSuitesCmd_WithProjectID(t *testing.T) {
 
 func TestSuitesCmd_WithProjectIDFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Master Suite", ProjectID: 30},
@@ -52,7 +53,7 @@ func TestSuitesCmd_WithProjectIDFlag(t *testing.T) {
 
 func TestSuitesCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{}, nil
 		},
 	}
@@ -90,7 +91,7 @@ func TestSuitesCmd_InvalidProjectIDFlag(t *testing.T) {
 
 func TestSuitesCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -108,7 +109,7 @@ func TestSuitesCmd_APIError(t *testing.T) {
 
 func TestSuiteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuiteFunc: func(suiteID int64) (*data.Suite, error) {
+		GetSuiteFunc: func(ctx context.Context, suiteID int64) (*data.Suite, error) {
 			assert.Equal(t, int64(20069), suiteID)
 			return &data.Suite{
 				ID:          20069,
@@ -153,7 +154,7 @@ func TestSuiteCmd_NoArgs(t *testing.T) {
 
 func TestSuiteCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuiteFunc: func(suiteID int64) (*data.Suite, error) {
+		GetSuiteFunc: func(ctx context.Context, suiteID int64) (*data.Suite, error) {
 			return nil, fmt.Errorf("suite not found")
 		},
 	}

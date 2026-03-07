@@ -30,9 +30,9 @@ var sharedStepsCmd = &cobra.Command{
 	gotr sync shared-steps --src-project 30 --src-suite 20069 --dst-project 31 --approve --save-mapping
 `,
 
-
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -47,7 +47,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект (откуда копировать shared steps):")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект (откуда копировать shared steps):")
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ var sharedStepsCmd = &cobra.Command{
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-				srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
+				srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
 				if err != nil {
 					return err
 				}
@@ -69,7 +69,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект (куда копировать shared steps):")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект (куда копировать shared steps):")
 			if err != nil {
 				return err
 			}
@@ -88,13 +88,13 @@ var sharedStepsCmd = &cobra.Command{
 		pm := progress.NewManager()
 
 		progress.Describe(pm.NewSpinner(""), "Загрузка shared steps...")
-		sourceSteps, targetSteps, err := m.FetchSharedStepsData()
+		sourceSteps, targetSteps, err := m.FetchSharedStepsData(ctx)
 		if err != nil {
 			return err
 		}
 
 		// Шаг 2) Получение кейсов source для определения использования shared steps
-		sourceCases, err := m.Client.GetCases(srcProject, srcSuite, 0)
+		sourceCases, err := m.Client.GetCases(ctx, srcProject, srcSuite, 0)
 		if err != nil {
 			return err
 		}
@@ -135,7 +135,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Шаг 5) Импорт
 		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d shared steps...", len(filtered)))
-		err = m.ImportSharedSteps(filtered, false)
+		err = m.ImportSharedSteps(ctx, filtered, false)
 		if err != nil {
 			return err
 		}

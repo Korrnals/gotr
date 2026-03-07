@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -29,13 +30,13 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 	// Подготавливаем мок-клиент, который сигнализирует о существовании секции
 	addCalled := false
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			if projectID == 1 {
 				return data.GetSectionsResponse{{ID: 11, Name: "Sec 1"}}, nil
 			}
 			return data.GetSectionsResponse{}, nil
 		},
-		AddSectionFunc: func(projectID int64, r *data.AddSectionRequest) (*data.Section, error) {
+		AddSectionFunc: func(ctx context.Context, projectID int64, r *data.AddSectionRequest) (*data.Section, error) {
 			addCalled = true
 			return &data.Section{ID: 200, Name: r.Name}, nil
 		},
@@ -68,13 +69,13 @@ func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 	// Подготавливаем мок-клиент и отслеживаем вызов AddSection
 	addCalled := false
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			if projectID == 1 {
 				return data.GetSectionsResponse{{ID: 11, Name: "Sec 1"}}, nil
 			}
 			return data.GetSectionsResponse{}, nil
 		},
-		AddSectionFunc: func(projectID int64, r *data.AddSectionRequest) (*data.Section, error) {
+		AddSectionFunc: func(ctx context.Context, projectID int64, r *data.AddSectionRequest) (*data.Section, error) {
 			addCalled = true
 			return &data.Section{ID: 200, Name: r.Name}, nil
 		},

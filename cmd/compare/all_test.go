@@ -3,6 +3,7 @@ package compare
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -88,43 +89,43 @@ func TestSaveAllResult_InvalidPath(t *testing.T) {
 func TestAllCmd_WithErrors(t *testing.T) {
 	// Мок который возвращает ошибки для некоторых ресурсов
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return nil, errors.New("suites error")
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return []data.Case{}, nil
 		},
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			return nil, errors.New("sections error")
 		},
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			return []data.SharedStep{}, nil
 		},
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return []data.Run{}, nil
 		},
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return []data.Plan{}, nil
 		},
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return []data.Milestone{}, nil
 		},
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{}, nil
 		},
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return []data.Group{}, nil
 		},
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{}, nil
 		},
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{}, nil
 		},
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return []data.ConfigGroup{}, nil
 		},
 	}
@@ -145,43 +146,43 @@ func TestAllCmd_WithErrors(t *testing.T) {
 
 func TestAllCmd_SaveYAML(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return []data.Case{}, nil
 		},
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			return []data.Section{}, nil
 		},
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			return []data.SharedStep{}, nil
 		},
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return []data.Run{}, nil
 		},
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return []data.Plan{}, nil
 		},
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return []data.Milestone{}, nil
 		},
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{}, nil
 		},
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return []data.Group{}, nil
 		},
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{}, nil
 		},
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{}, nil
 		},
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return []data.ConfigGroup{}, nil
 		},
 	}

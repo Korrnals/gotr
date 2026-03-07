@@ -3,6 +3,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,10 +14,10 @@ import (
 
 // GetMilestone получает информацию о milestone по ID
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#getmilestone
-func (c *HTTPClient) GetMilestone(milestoneID int64) (*data.Milestone, error) {
+func (c *HTTPClient) GetMilestone(ctx context.Context, milestoneID int64) (*data.Milestone, error) {
 	endpoint := fmt.Sprintf("get_milestone/%d", milestoneID)
-	
-	resp, err := c.Get(endpoint, nil)
+
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetMilestone для milestone %d: %w", milestoneID, err)
 	}
@@ -38,9 +39,9 @@ func (c *HTTPClient) GetMilestone(milestoneID int64) (*data.Milestone, error) {
 
 // GetMilestones получает список milestone для проекта (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#getmilestones
-func (c *HTTPClient) GetMilestones(projectID int64) ([]data.Milestone, error) {
+func (c *HTTPClient) GetMilestones(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 	endpoint := fmt.Sprintf("get_milestones/%d", projectID)
-	milestones, err := fetchAllPages[data.Milestone](c, endpoint, nil, "milestones")
+	milestones, err := fetchAllPages[data.Milestone](ctx, c, endpoint, nil, "milestones")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetMilestones для проекта %d: %w", projectID, err)
 	}
@@ -49,7 +50,7 @@ func (c *HTTPClient) GetMilestones(projectID int64) ([]data.Milestone, error) {
 
 // AddMilestone создает новый milestone
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#addmilestone
-func (c *HTTPClient) AddMilestone(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+func (c *HTTPClient) AddMilestone(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 	if req == nil {
 		return nil, fmt.Errorf("тело запроса обязательно")
 	}
@@ -60,8 +61,8 @@ func (c *HTTPClient) AddMilestone(projectID int64, req *data.AddMilestoneRequest
 	}
 
 	endpoint := fmt.Sprintf("add_milestone/%d", projectID)
-	
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddMilestone для проекта %d: %w", projectID, err)
 	}
@@ -83,7 +84,7 @@ func (c *HTTPClient) AddMilestone(projectID int64, req *data.AddMilestoneRequest
 
 // UpdateMilestone обновляет milestone
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#updatemilestone
-func (c *HTTPClient) UpdateMilestone(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
+func (c *HTTPClient) UpdateMilestone(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
 	if req == nil {
 		return nil, fmt.Errorf("тело запроса обязательно")
 	}
@@ -94,8 +95,8 @@ func (c *HTTPClient) UpdateMilestone(milestoneID int64, req *data.UpdateMileston
 	}
 
 	endpoint := fmt.Sprintf("update_milestone/%d", milestoneID)
-	
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateMilestone для milestone %d: %w", milestoneID, err)
 	}
@@ -117,10 +118,10 @@ func (c *HTTPClient) UpdateMilestone(milestoneID int64, req *data.UpdateMileston
 
 // DeleteMilestone удаляет milestone
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#deletemilestone
-func (c *HTTPClient) DeleteMilestone(milestoneID int64) error {
+func (c *HTTPClient) DeleteMilestone(ctx context.Context, milestoneID int64) error {
 	endpoint := fmt.Sprintf("delete_milestone/%d", milestoneID)
-	
-	resp, err := c.Post(endpoint, nil, nil)
+
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса DeleteMilestone для milestone %d: %w", milestoneID, err)
 	}

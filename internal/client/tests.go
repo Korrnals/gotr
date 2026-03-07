@@ -3,6 +3,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -14,10 +15,10 @@ import (
 
 // GetTest получает информацию о тесте по ID
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#gettest
-func (c *HTTPClient) GetTest(testID int64) (*data.Test, error) {
+func (c *HTTPClient) GetTest(ctx context.Context, testID int64) (*data.Test, error) {
 	endpoint := fmt.Sprintf("get_test/%d", testID)
-	
-	resp, err := c.Get(endpoint, nil)
+
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetTest для теста %d: %w", testID, err)
 	}
@@ -40,9 +41,9 @@ func (c *HTTPClient) GetTest(testID int64) (*data.Test, error) {
 // GetTests получает список тестов для тест-рана (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#gettests
 // Поддерживает фильтры: status_id, assignedto_id
-func (c *HTTPClient) GetTests(runID int64, filters map[string]string) ([]data.Test, error) {
+func (c *HTTPClient) GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 	endpoint := fmt.Sprintf("get_tests/%d", runID)
-	tests, err := fetchAllPages[data.Test](c, endpoint, filters, "tests")
+	tests, err := fetchAllPages[data.Test](ctx, c, endpoint, filters, "tests")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetTests для рана %d: %w", runID, err)
 	}
@@ -51,7 +52,7 @@ func (c *HTTPClient) GetTests(runID int64, filters map[string]string) ([]data.Te
 
 // UpdateTest обновляет тест (статус, назначение)
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#updatetest
-func (c *HTTPClient) UpdateTest(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 	if req == nil {
 		return nil, fmt.Errorf("тело запроса обязательно")
 	}
@@ -62,8 +63,8 @@ func (c *HTTPClient) UpdateTest(testID int64, req *data.UpdateTestRequest) (*dat
 	}
 
 	endpoint := fmt.Sprintf("update_test/%d", testID)
-	
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateTest для теста %d: %w", testID, err)
 	}
@@ -86,17 +87,17 @@ func (c *HTTPClient) UpdateTest(testID int64, req *data.UpdateTestRequest) (*dat
 // Helper методы для удобства
 
 // GetTestsByStatus получает тесты с определенным статусом
-func (c *HTTPClient) GetTestsByStatus(runID int64, statusID int64) ([]data.Test, error) {
+func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID int64, statusID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"status_id": strconv.FormatInt(statusID, 10),
 	}
-	return c.GetTests(runID, filters)
+	return c.GetTests(ctx, runID, filters)
 }
 
 // GetTestsAssignedTo получает тесты, назначенные на пользователя
-func (c *HTTPClient) GetTestsAssignedTo(runID int64, userID int64) ([]data.Test, error) {
+func (c *HTTPClient) GetTestsAssignedTo(ctx context.Context, runID int64, userID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"assignedto_id": strconv.FormatInt(userID, 10),
 	}
-	return c.GetTests(runID, filters)
+	return c.GetTests(ctx, runID, filters)
 }

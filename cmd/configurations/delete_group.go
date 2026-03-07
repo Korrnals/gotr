@@ -38,7 +38,8 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteConfigGroup(groupID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteConfigGroup(ctx, groupID); err != nil {
 				return fmt.Errorf("не удалось удалить группу: %w", err)
 			}
 

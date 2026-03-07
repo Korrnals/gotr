@@ -25,26 +25,26 @@ var casesCmd = newCasesCmd()
 
 // projectDataStats contains structural statistics about a single project.
 type projectDataStats struct {
-	Suites         int // количество сьюитов  (из GetSuites API)
-	Sections       int // уникальных секций   (из SectionID в кейсах)
-	CasesRaw       int // всего raw-кейсов до дедупликации
-	CasesUnique    int // уникальных кейсов   (после ID-dedup)
-	CasesExpected  int // ожидаемых кейсов по данным API (сумма totalSize по всем сьютам; -1 если неизвестно)
-	SuitesWithTotal int // сколько сьютов сообщили totalSize
-	SuitesVerified  int // сьютов с подтверждённой полнотой (все страницы загружены, exhaustion чистый)
-	SuiteDetailsSum   int // сумма кейсов по всем сьютам (для проверки целостности)
-	SuiteDetailsEmpty int // количество пустых сьютов (0 кейсов)
-	SuiteDetailsCount int // количество сьютов с трекингом
-	TotalPages     int // общее количество запрошенных страниц
-	FailedPages    int // страниц с ошибками
-	UniqueTitles   int // уникальных заголовков (для контроля)
-	EmptyTitles    int // кейсов без заголовка
-	Elapsed        time.Duration // время загрузки этого проекта
+	Suites            int           // количество сьюитов  (из GetSuites API)
+	Sections          int           // уникальных секций   (из SectionID в кейсах)
+	CasesRaw          int           // всего raw-кейсов до дедупликации
+	CasesUnique       int           // уникальных кейсов   (после ID-dedup)
+	CasesExpected     int           // ожидаемых кейсов по данным API (сумма totalSize по всем сьютам; -1 если неизвестно)
+	SuitesWithTotal   int           // сколько сьютов сообщили totalSize
+	SuitesVerified    int           // сьютов с подтверждённой полнотой (все страницы загружены, exhaustion чистый)
+	SuiteDetailsSum   int           // сумма кейсов по всем сьютам (для проверки целостности)
+	SuiteDetailsEmpty int           // количество пустых сьютов (0 кейсов)
+	SuiteDetailsCount int           // количество сьютов с трекингом
+	TotalPages        int           // общее количество запрошенных страниц
+	FailedPages       int           // страниц с ошибками
+	UniqueTitles      int           // уникальных заголовков (для контроля)
+	EmptyTitles       int           // кейсов без заголовка
+	Elapsed           time.Duration // время загрузки этого проекта
 }
 
 type casesExecutionStats struct {
-	Project1       projectDataStats
-	Project2       projectDataStats
+	Project1           projectDataStats
+	Project2           projectDataStats
 	LoadErrorsP1       int
 	LoadErrorsP2       int
 	FailedPagesBefore  int
@@ -84,6 +84,7 @@ func newCasesCmd() *cobra.Command {
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -101,7 +102,7 @@ func newCasesCmd() *cobra.Command {
 			}
 
 			// Get project names
-			project1Name, project2Name, err := GetProjectNames(cli, pid1, pid2)
+			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
 				return err
 			}
@@ -110,7 +111,7 @@ func newCasesCmd() *cobra.Command {
 			startTime := time.Now()
 
 			// Execute comparison
-			result, execStats, err := compareCasesInternal(cmd, cli, pid1, pid2, field)
+			result, execStats, err := compareCasesInternal(ctx, cmd, cli, pid1, pid2, field)
 			if err != nil {
 				return err
 			}
@@ -157,13 +158,13 @@ func getCaseKey(item ItemInfo, field string) string {
 
 // compareCasesInternal compares cases between two projects and returns the result.
 // Uses ui.Display for live progress — no mpb, no progress.Monitor.
-func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string) (*CompareResult, casesExecutionStats, error) {
+func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string) (*CompareResult, casesExecutionStats, error) {
 	execStats := casesExecutionStats{}
 	// Phase 1: Get suites for both projects (quick operation)
 	utils.DebugPrint("[Compare] Phase 1: Fetching suites for projects %d and %d", pid1, pid2)
 	ui.Infof(os.Stderr, "Получение структуры проектов %d и %d...", pid1, pid2)
 
-	suitesMap, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2, nil)
+	suitesMap, err := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
 	if err != nil && len(suitesMap) == 0 {
 		return nil, execStats, fmt.Errorf("ошибка получения сьютов: %w", err)
 	}
@@ -201,14 +202,14 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 
 	// Load Project 1
 	go func() {
-		cases1, failedPages1, stats1, err1 = fetchCasesForProject(cli, pid1, suites1, task1, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
+		cases1, failedPages1, stats1, err1 = fetchCasesForProject(ctx, cli, pid1, suites1, task1, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
 		task1.Finish()
 		close(done1)
 	}()
 
 	// Load Project 2
 	go func() {
-		cases2, failedPages2, stats2, err2 = fetchCasesForProject(cli, pid2, suites2, task2, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
+		cases2, failedPages2, stats2, err2 = fetchCasesForProject(ctx, cli, pid2, suites2, task2, runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.Timeout, runtimeConfig.RateLimit, runtimeConfig.PageRetries)
 		task2.Finish()
 		close(done2)
 	}()
@@ -264,6 +265,7 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 			ui.Phase(os.Stderr, "Запуск авто-ретрая failed pages...")
 			execStats.RetryAttempted = true
 			remaining, retryStats, retryErr := executeRetryFailedPages(
+				ctx,
 				cli,
 				allFailedPages,
 				retryFailedPagesOptions{
@@ -312,13 +314,13 @@ func compareCasesInternal(cmd *cobra.Command, cli client.ClientInterface, pid1, 
 
 // fetchCasesForProject loads all cases for a single project.
 // task is a *ui.Task implementing concurrency.PaginatedProgressReporter — gets live updates.
-func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
+func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
 	fetchStart := time.Now()
 	pds := projectDataStats{Suites: len(suites)}
 
 	if len(suites) == 0 {
 		utils.DebugPrint("[Project %d] No suites, fetching all cases", projectID)
-		cases, err := cli.GetCases(projectID, 0, 0)
+		cases, err := cli.GetCases(ctx, projectID, 0, 0)
 		if err != nil {
 			return nil, nil, pds, err
 		}
@@ -359,7 +361,7 @@ func fetchCasesForProject(cli client.ClientInterface, projectID int64, suites da
 
 	utils.DebugPrint("[Project %d] Starting GetCasesParallelCtx (streaming) with parallelSuites=%d, parallelPages=%d, timeout=%s",
 		projectID, parallelSuites, parallelPages, timeout)
-	ctx := context.Background()
+	ctx = context.Background()
 	cases, result, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config)
 
 	if err != nil && len(cases) == 0 {
@@ -507,8 +509,8 @@ func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath s
 	}
 
 	payload := struct {
-		GeneratedAt string                `json:"generated_at"`
-		Total       int                   `json:"total"`
+		GeneratedAt string                   `json:"generated_at"`
+		Total       int                      `json:"total"`
 		FailedPages []concurrency.FailedPage `json:"failed_pages"`
 	}{
 		GeneratedAt: time.Now().Format(time.RFC3339),
@@ -589,8 +591,8 @@ func analyzeCases(cases1, cases2 []ItemInfo, pid1, pid2 int64, field string) *Co
 }
 
 // printCasesFieldDiff prints differences by field for cases.
-func printCasesFieldDiff(cli client.ClientInterface, pid1, pid2 int64, field string) {
-	diff, err := cli.DiffCasesData(pid1, pid2, field)
+func printCasesFieldDiff(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, field string) {
+	diff, err := cli.DiffCasesData(ctx, pid1, pid2, field)
 	if err != nil {
 		fmt.Printf("\nОшибка получения различий по полю '%s': %v\n", field, err)
 		return

@@ -66,6 +66,7 @@ func newAllCmd() *cobra.Command {
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -77,7 +78,7 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Get project names
-			project1Name, project2Name, err := GetProjectNames(cli, pid1, pid2)
+			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
 				return err
 			}
@@ -89,14 +90,14 @@ func newAllCmd() *cobra.Command {
 			errors := make(map[string]error)
 
 			// Cases
-			if casesResult, _, err := compareCasesInternal(cmd, cli, pid1, pid2, "title"); err == nil {
+			if casesResult, _, err := compareCasesInternal(ctx, cmd, cli, pid1, pid2, "title"); err == nil {
 				result.Cases = casesResult
 			} else {
 				errors["cases"] = err
 			}
 
 			// Suites
-			if suitesResult, err := compareSuitesInternal(cli, pid1, pid2); err == nil {
+			if suitesResult, err := compareSuitesInternal(ctx, cli, pid1, pid2); err == nil {
 				result.Suites = suitesResult
 			} else {
 				errors["suites"] = err
@@ -434,5 +435,3 @@ func saveAllResult(result *allResult, format, savePath string) error {
 
 	return saveToFile(output, savePath)
 }
-
-

@@ -18,7 +18,7 @@ import (
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			assert.Equal(t, int64(12345), testID)
 			assert.Equal(t, int64(1), req.StatusID)
 			return &data.Test{ID: testID, StatusID: 1}, nil
@@ -36,7 +36,7 @@ func TestUpdateCmd_Success(t *testing.T) {
 
 func TestUpdateCmd_WithAssignedTo(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			assert.Equal(t, int64(5), req.AssignedTo)
 			return &data.Test{ID: testID, AssignedTo: 5}, nil
 		},
@@ -54,7 +54,7 @@ func TestUpdateCmd_WithAssignedTo(t *testing.T) {
 func TestUpdateCmd_WithOutput(t *testing.T) {
 	t.Skip("TODO: fix output file test")
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			return &data.Test{ID: testID, StatusID: 1}, nil
 		},
 	}
@@ -110,7 +110,7 @@ func TestUpdateCmd_NoArgs(t *testing.T) {
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			return nil, fmt.Errorf("тест не найден")
 		},
 	}

@@ -19,6 +19,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
+			ctx := cmd.Context()
 
 			runID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil || runID <= 0 {
@@ -43,7 +44,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			tests, err := client.GetTests(runID, filters)
+			tests, err := client.GetTests(ctx, runID, filters)
 			if err != nil {
 				return err
 			}

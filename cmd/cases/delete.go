@@ -35,7 +35,8 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteCase(caseID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteCase(ctx, caseID); err != nil {
 				return fmt.Errorf("failed to delete case: %w", err)
 			}
 

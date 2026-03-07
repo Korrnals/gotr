@@ -52,7 +52,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddPlan(projectID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddPlan(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create plan: %w", err)
 			}

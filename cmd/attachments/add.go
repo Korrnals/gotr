@@ -46,7 +46,8 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToCase(caseID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToCase(ctx, caseID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -93,7 +94,8 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToPlan(planID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToPlan(ctx, planID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -141,7 +143,8 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToPlanEntry(planID, entryID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToPlanEntry(ctx, planID, entryID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -188,7 +191,8 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToResult(resultID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToResult(ctx, resultID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -235,7 +239,8 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToRun(runID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToRun(ctx, runID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -264,4 +269,3 @@ func validateFileExists(filePath string) error {
 	}
 	return nil
 }
-

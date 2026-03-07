@@ -42,7 +42,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateVariable(variableID, name)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateVariable(ctx, variableID, name)
 			if err != nil {
 				return fmt.Errorf("не удалось обновить переменную: %w", err)
 			}

@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,15 +16,15 @@ import (
 
 func TestCaseHistoryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetHistoryForCaseFunc: func(caseID int64) (*data.GetHistoryForCaseResponse, error) {
+		GetHistoryForCaseFunc: func(ctx context.Context, caseID int64) (*data.GetHistoryForCaseResponse, error) {
 			assert.Equal(t, int64(12345), caseID)
 			return &data.GetHistoryForCaseResponse{
 				History: []struct {
-					ID        int64           "json:\"id\""
-					TypeID    int64           "json:\"type_id\""
-					CreatedOn int64           "json:\"created_on\""
-					UserID    int64           "json:\"user_id\""
-					Changes   []data.Change   "json:\"changes\""
+					ID        int64         "json:\"id\""
+					TypeID    int64         "json:\"type_id\""
+					CreatedOn int64         "json:\"created_on\""
+					UserID    int64         "json:\"user_id\""
+					Changes   []data.Change "json:\"changes\""
 				}{
 					{
 						ID:        1,
@@ -72,7 +73,7 @@ func TestCaseHistoryCmd_NoArgs(t *testing.T) {
 
 func TestCaseHistoryCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetHistoryForCaseFunc: func(caseID int64) (*data.GetHistoryForCaseResponse, error) {
+		GetHistoryForCaseFunc: func(ctx context.Context, caseID int64) (*data.GetHistoryForCaseResponse, error) {
 			return nil, fmt.Errorf("case not found")
 		},
 	}
@@ -90,15 +91,15 @@ func TestCaseHistoryCmd_APIError(t *testing.T) {
 
 func TestSharedStepHistoryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepHistoryFunc: func(stepID int64) (*data.GetSharedStepHistoryResponse, error) {
+		GetSharedStepHistoryFunc: func(ctx context.Context, stepID int64) (*data.GetSharedStepHistoryResponse, error) {
 			assert.Equal(t, int64(56789), stepID)
 			return &data.GetSharedStepHistoryResponse{
 				History: []struct {
-					ID                   int64          "json:\"id\""
-					Timestamp            int64          "json:\"timestamp\""
-					UserID               int64          "json:\"user_id\""
-					CustomStepsSeparated []data.Step    "json:\"custom_steps_separated,omitempty\""
-					Title                string         "json:\"title,omitempty\""
+					ID                   int64       "json:\"id\""
+					Timestamp            int64       "json:\"timestamp\""
+					UserID               int64       "json:\"user_id\""
+					CustomStepsSeparated []data.Step "json:\"custom_steps_separated,omitempty\""
+					Title                string      "json:\"title,omitempty\""
 				}{
 					{
 						ID:        1,
@@ -144,7 +145,7 @@ func TestSharedStepHistoryCmd_NoArgs(t *testing.T) {
 
 func TestSharedStepHistoryCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepHistoryFunc: func(stepID int64) (*data.GetSharedStepHistoryResponse, error) {
+		GetSharedStepHistoryFunc: func(ctx context.Context, stepID int64) (*data.GetSharedStepHistoryResponse, error) {
 			return nil, fmt.Errorf("shared step not found")
 		},
 	}

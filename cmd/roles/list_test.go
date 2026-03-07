@@ -17,7 +17,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
 			return []data.Role{
 				{ID: 1, Name: "Administrator"},
 				{ID: 2, Name: "Tester"},
@@ -36,7 +36,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
 			return []data.Role{}, nil
 		},
 	}
@@ -51,7 +51,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
 			return nil, fmt.Errorf("ошибка подключения к API")
 		},
 	}
@@ -67,7 +67,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 func TestListCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
 			return []data.Role{
 				{ID: 1, Name: "Administrator"},
 			}, nil

@@ -31,7 +31,7 @@ func TestPriorityQueue_Basic(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, int64(3), task.SuiteID)
 	assert.Equal(t, PriorityHigh, task.GetPriority())
-	
+
 	// Now pop it
 	task, ok = pq.Pop()
 	assert.True(t, ok)
@@ -162,11 +162,11 @@ func TestPriorityQueue_GetStats(t *testing.T) {
 	assert.Equal(t, 0, stats.Total)
 
 	// Add items with different priorities
-	pq.Push(SuiteTask{SuiteID: 1, EstimatedSize: 50})    // Low
-	pq.Push(SuiteTask{SuiteID: 2, EstimatedSize: 500})   // Medium
-	pq.Push(SuiteTask{SuiteID: 3, EstimatedSize: 1500})  // High
-	pq.Push(SuiteTask{SuiteID: 4, EstimatedSize: 100})   // Medium
-	pq.Push(SuiteTask{SuiteID: 5, EstimatedSize: 2000})  // High
+	pq.Push(SuiteTask{SuiteID: 1, EstimatedSize: 50})   // Low
+	pq.Push(SuiteTask{SuiteID: 2, EstimatedSize: 500})  // Medium
+	pq.Push(SuiteTask{SuiteID: 3, EstimatedSize: 1500}) // High
+	pq.Push(SuiteTask{SuiteID: 4, EstimatedSize: 100})  // Medium
+	pq.Push(SuiteTask{SuiteID: 5, EstimatedSize: 2000}) // High
 
 	stats = pq.GetStats()
 	assert.Equal(t, 5, stats.Total)

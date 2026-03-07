@@ -27,9 +27,9 @@ var sectionsCmd = &cobra.Command{
 	gotr sync sections --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve
 `,
 
-
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -44,7 +44,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект:")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект:")
 			if err != nil {
 				return err
 			}
@@ -52,7 +52,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект:")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект:")
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Выберите DESTINATION сьют:")
 			if err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Шаг 1) Получение sections из source и target
 		progress.Describe(pm.NewSpinner(""), "Загрузка sections...")
-		sourceSections, targetSections, err := m.FetchSectionsData()
+		sourceSections, targetSections, err := m.FetchSectionsData(ctx)
 		if err != nil {
 			return err
 		}
@@ -123,7 +123,7 @@ var sectionsCmd = &cobra.Command{
 		}
 
 		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d sections...", len(filtered)))
-		if err := m.ImportSections(filtered, false); err != nil {
+		if err := m.ImportSections(ctx, filtered, false); err != nil {
 			return err
 		}
 

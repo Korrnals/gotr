@@ -44,6 +44,7 @@ var casesCmd = &cobra.Command{
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -58,7 +59,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект (откуда копировать):")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект (откуда копировать):")
 			if err != nil {
 				return err
 			}
@@ -66,7 +67,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
 			if err != nil {
 				return err
 			}
@@ -74,7 +75,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект (куда копировать):")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект (куда копировать):")
 			if err != nil {
 				return err
 			}
@@ -82,7 +83,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Выберите DESTINATION сьют:")
 			if err != nil {
 				return err
 			}
@@ -119,7 +120,7 @@ var casesCmd = &cobra.Command{
 		}
 
 		progress.Describe(pm.NewSpinner(""), "Загрузка кейсов...")
-		sourceCases, targetCases, err := m.FetchCasesData()
+		sourceCases, targetCases, err := m.FetchCasesData(ctx)
 		if err != nil {
 			return err
 		}
@@ -163,7 +164,7 @@ var casesCmd = &cobra.Command{
 		}
 
 		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d кейсов...", len(filtered)))
-		createdIDs, importErrors, err := m.ImportCasesReport(filtered, false)
+		createdIDs, importErrors, err := m.ImportCasesReport(ctx, filtered, false)
 		if err != nil {
 			return err
 		}

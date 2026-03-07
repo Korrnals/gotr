@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -106,10 +107,10 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 			InsecureSkipVerify: cfg.insecure,
 		},
 		TLSHandshakeTimeout: cfg.tlsHandshakeTimeout,
-		MaxIdleConns:         200,
-		MaxIdleConnsPerHost:  200,
-		MaxConnsPerHost:      0, // unlimited — concurrency governed by parallel settings
-		IdleConnTimeout:      90 * time.Second,
+		MaxIdleConns:        200,
+		MaxIdleConnsPerHost: 200,
+		MaxConnsPerHost:     0, // unlimited — concurrency governed by parallel settings
+		IdleConnTimeout:     90 * time.Second,
 	}
 	// Создаем транспорт с Basic Auth, который будет добавляться в каждый запрос
 	auth := authTransport{
@@ -129,7 +130,7 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 
 // DoRequest — универсальный метод для любого HTTP-запроса
 // DoRequest — универсальный метод, формирует URL вручную для TestRail
-func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
+func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
 	// Очищаем endpoint от ведущего слеша
 	cleanEndpoint := strings.TrimPrefix(endpoint, "/")
 	utils.DebugPrint("{DoRequest} - cleanEndpoint: %s", cleanEndpoint)
@@ -154,7 +155,7 @@ func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryPar
 
 	utils.DebugPrint("{DoRequest} - Формируемый URL: %s", fullURL)
 	// Создаем сам запрос
-	req, err := http.NewRequest(method, fullURL, body)
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +175,8 @@ func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryPar
 }
 
 // Get — обёртка для GET-запросов с умной обработкой ошибок
-func (c *HTTPClient) Get(endpoint string, queryParams map[string]string) (*http.Response, error) {
-	resp, err := c.DoRequest("GET", endpoint, nil, queryParams)
+func (c *HTTPClient) Get(ctx context.Context, endpoint string, queryParams map[string]string) (*http.Response, error) {
+	resp, err := c.DoRequest(ctx, "GET", endpoint, nil, queryParams)
 	if err != nil {
 		return nil, err
 	}
@@ -189,8 +190,8 @@ func (c *HTTPClient) Get(endpoint string, queryParams map[string]string) (*http.
 }
 
 // Post — обёртка для POST-запросов с умной обработкой ошибок
-func (c *HTTPClient) Post(endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
-	resp, err := c.DoRequest("POST", endpoint, body, queryParams)
+func (c *HTTPClient) Post(ctx context.Context, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
+	resp, err := c.DoRequest(ctx, "POST", endpoint, body, queryParams)
 	if err != nil {
 		return nil, err
 	}

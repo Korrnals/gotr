@@ -3,6 +3,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,9 +14,9 @@ import (
 
 // GetPlan получает тест-план по ID
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#getplan
-func (c *HTTPClient) GetPlan(planID int64) (*data.Plan, error) {
+func (c *HTTPClient) GetPlan(ctx context.Context, planID int64) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("get_plan/%d", planID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting plan %d: %w", planID, err)
 	}
@@ -35,9 +36,9 @@ func (c *HTTPClient) GetPlan(planID int64) (*data.Plan, error) {
 
 // GetPlans получает список тест-планов проекта (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#getplans
-func (c *HTTPClient) GetPlans(projectID int64) (data.GetPlansResponse, error) {
+func (c *HTTPClient) GetPlans(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 	endpoint := fmt.Sprintf("get_plans/%d", projectID)
-	plans, err := fetchAllPages[data.Plan](c, endpoint, nil, "plans")
+	plans, err := fetchAllPages[data.Plan](ctx, c, endpoint, nil, "plans")
 	if err != nil {
 		return nil, fmt.Errorf("error getting plans for project %d: %w", projectID, err)
 	}
@@ -46,7 +47,7 @@ func (c *HTTPClient) GetPlans(projectID int64) (data.GetPlansResponse, error) {
 
 // AddPlan создает новый тест-план
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplan
-func (c *HTTPClient) AddPlan(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+func (c *HTTPClient) AddPlan(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan/%d", projectID)
 
 	jsonBody, err := json.Marshal(req)
@@ -54,7 +55,7 @@ func (c *HTTPClient) AddPlan(projectID int64, req *data.AddPlanRequest) (*data.P
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating plan: %w", err)
 	}
@@ -74,7 +75,7 @@ func (c *HTTPClient) AddPlan(projectID int64, req *data.AddPlanRequest) (*data.P
 
 // UpdatePlan обновляет существующий тест-план
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplan
-func (c *HTTPClient) UpdatePlan(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+func (c *HTTPClient) UpdatePlan(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan/%d", planID)
 
 	jsonBody, err := json.Marshal(req)
@@ -82,7 +83,7 @@ func (c *HTTPClient) UpdatePlan(planID int64, req *data.UpdatePlanRequest) (*dat
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan %d: %w", planID, err)
 	}
@@ -102,10 +103,10 @@ func (c *HTTPClient) UpdatePlan(planID int64, req *data.UpdatePlanRequest) (*dat
 
 // ClosePlan закрывает тест-план
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#closeplan
-func (c *HTTPClient) ClosePlan(planID int64) (*data.Plan, error) {
+func (c *HTTPClient) ClosePlan(ctx context.Context, planID int64) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("close_plan/%d", planID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error closing plan %d: %w", planID, err)
 	}
@@ -125,10 +126,10 @@ func (c *HTTPClient) ClosePlan(planID int64) (*data.Plan, error) {
 
 // DeletePlan удаляет тест-план
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#deleteplan
-func (c *HTTPClient) DeletePlan(planID int64) error {
+func (c *HTTPClient) DeletePlan(ctx context.Context, planID int64) error {
 	endpoint := fmt.Sprintf("delete_plan/%d", planID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting plan %d: %w", planID, err)
 	}
@@ -143,7 +144,7 @@ func (c *HTTPClient) DeletePlan(planID int64) error {
 
 // AddPlanEntry добавляет entry в существующий тест-план
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplanentry
-func (c *HTTPClient) AddPlanEntry(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
+func (c *HTTPClient) AddPlanEntry(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan_entry/%d", planID)
 
 	jsonBody, err := json.Marshal(req)
@@ -151,7 +152,7 @@ func (c *HTTPClient) AddPlanEntry(planID int64, req *data.AddPlanEntryRequest) (
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error adding plan entry: %w", err)
 	}
@@ -171,7 +172,7 @@ func (c *HTTPClient) AddPlanEntry(planID int64, req *data.AddPlanEntryRequest) (
 
 // UpdatePlanEntry обновляет entry в тест-плане
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplanentry
-func (c *HTTPClient) UpdatePlanEntry(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
+func (c *HTTPClient) UpdatePlanEntry(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan_entry/%d/%s", planID, entryID)
 
 	jsonBody, err := json.Marshal(req)
@@ -179,7 +180,7 @@ func (c *HTTPClient) UpdatePlanEntry(planID int64, entryID string, req *data.Upd
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan entry %s: %w", entryID, err)
 	}
@@ -199,10 +200,10 @@ func (c *HTTPClient) UpdatePlanEntry(planID int64, entryID string, req *data.Upd
 
 // DeletePlanEntry удаляет entry из тест-плана
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#deleteplanentry
-func (c *HTTPClient) DeletePlanEntry(planID int64, entryID string) error {
+func (c *HTTPClient) DeletePlanEntry(ctx context.Context, planID int64, entryID string) error {
 	endpoint := fmt.Sprintf("delete_plan_entry/%d/%s", planID, entryID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting plan entry %s: %w", entryID, err)
 	}

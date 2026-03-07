@@ -1,11 +1,12 @@
 package run
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
 )
@@ -15,40 +16,40 @@ type runServiceWrapper struct {
 	svc *service.RunService
 }
 
-func (w *runServiceWrapper) Delete(runID int64) error {
-	return w.svc.Delete(runID)
+func (w *runServiceWrapper) Delete(ctx context.Context, runID int64) error {
+	return w.svc.Delete(ctx, runID)
 }
 
-func (w *runServiceWrapper) ParseID(args []string, index int) (int64, error) {
-	return w.svc.ParseID(args, index)
+func (w *runServiceWrapper) ParseID(ctx context.Context, args []string, index int) (int64, error) {
+	return w.svc.ParseID(ctx, args, index)
 }
 
-func (w *runServiceWrapper) PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
-	w.svc.PrintSuccess(cmd, format, args...)
+func (w *runServiceWrapper) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
+	w.svc.PrintSuccess(ctx, cmd, format, args...)
 }
 
-func (w *runServiceWrapper) Create(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
-	return w.svc.Create(projectID, req)
+func (w *runServiceWrapper) Create(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+	return w.svc.Create(ctx, projectID, req)
 }
 
-func (w *runServiceWrapper) Output(cmd *cobra.Command, data interface{}) error {
-	return w.svc.Output(cmd, data)
+func (w *runServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
+	return w.svc.Output(ctx, cmd, data)
 }
 
-func (w *runServiceWrapper) Close(runID int64) (*data.Run, error) {
-	return w.svc.Close(runID)
+func (w *runServiceWrapper) Close(ctx context.Context, runID int64) (*data.Run, error) {
+	return w.svc.Close(ctx, runID)
 }
 
-func (w *runServiceWrapper) Update(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
-	return w.svc.Update(runID, req)
+func (w *runServiceWrapper) Update(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+	return w.svc.Update(ctx, runID, req)
 }
 
-func (w *runServiceWrapper) Get(runID int64) (*data.Run, error) {
-	return w.svc.Get(runID)
+func (w *runServiceWrapper) Get(ctx context.Context, runID int64) (*data.Run, error) {
+	return w.svc.Get(ctx, runID)
 }
 
-func (w *runServiceWrapper) GetByProject(projectID int64) (data.GetRunsResponse, error) {
-	return w.svc.GetByProject(projectID)
+func (w *runServiceWrapper) GetByProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+	return w.svc.GetByProject(ctx, projectID)
 }
 
 // newRunServiceFromInterface создаёт сервис из клиента-интерфейса
@@ -91,12 +92,13 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
 			svc := newRunServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
+			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
 				return fmt.Errorf("некорректный ID test run: %w", err)
 			}
@@ -114,11 +116,11 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return nil
 			}
 
-			if err := svc.Delete(runID); err != nil {
+			if err := svc.Delete(ctx, runID); err != nil {
 				return fmt.Errorf("ошибка удаления test run: %w", err)
 			}
 
-			svc.PrintSuccess(cmd, "Test run %d удалён успешно", runID)
+			svc.PrintSuccess(ctx, cmd, "Test run %d удалён успешно", runID)
 			return nil
 		},
 	}

@@ -1,6 +1,7 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
@@ -12,7 +13,7 @@ import (
 
 // projectSelector интерфейс для выбора проекта (для тестирования)
 type projectSelector interface {
-	SelectProjectInteractively(httpClient client.ClientInterface) (int64, error)
+	SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error)
 }
 
 // runSelector интерфейс для выбора run (для тестирования)
@@ -23,8 +24,8 @@ type runSelector interface {
 // defaultSelectors используется по умолчанию
 type defaultSelectors struct{}
 
-func (d *defaultSelectors) SelectProjectInteractively(httpClient client.ClientInterface) (int64, error) {
-	return interactive.SelectProjectInteractively(httpClient)
+func (d *defaultSelectors) SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
+	return interactive.SelectProjectInteractively(ctx, httpClient)
 }
 
 func (d *defaultSelectors) SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
@@ -59,6 +60,7 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -76,13 +78,13 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				}
 			} else {
 				// Интерактивный выбор: проект → run
-				projectID, err := selectors.SelectProjectInteractively(cli)
+				projectID, err := selectors.SelectProjectInteractively(ctx, cli)
 				if err != nil {
 					return err
 				}
 
 				// Получаем список runs проекта
-				runs, err := svc.GetRunsForProject(projectID)
+				runs, err := svc.GetRunsForProject(ctx, projectID)
 				if err != nil {
 					return fmt.Errorf("ошибка получения списка runs: %w", err)
 				}
@@ -98,12 +100,12 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				}
 			}
 
-			results, err := svc.GetForRun(runID)
+			results, err := svc.GetForRun(ctx, runID)
 			if err != nil {
 				return fmt.Errorf("ошибка получения результатов: %w", err)
 			}
 
-			return svc.Output(cmd, results)
+			return svc.Output(ctx, cmd, results)
 		},
 	}
 }

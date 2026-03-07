@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -59,7 +59,8 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForCase(caseID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForCase(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -83,7 +84,8 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForPlan(planID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForPlan(ctx, planID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -107,7 +109,8 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForPlanEntry(planID, args[1])
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForPlanEntry(ctx, planID, args[1])
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -131,7 +134,8 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForRun(runID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForRun(ctx, runID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -155,7 +159,8 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForTest(testID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForTest(ctx, testID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}

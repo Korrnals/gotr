@@ -47,7 +47,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddBDD(caseID, content)
+			ctx := cmd.Context()
+			resp, err := cli.AddBDD(ctx, caseID, content)
 			if err != nil {
 				return fmt.Errorf("не удалось добавить BDD: %w", err)
 			}

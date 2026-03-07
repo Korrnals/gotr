@@ -31,6 +31,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -49,7 +50,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(cli)
+				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
 				if err != nil {
 					return err
 				}
@@ -65,7 +66,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 			spinner := pm.NewSpinner("")
 			spinner.Describe("Загрузка shared steps...")
 
-			steps, err := cli.GetSharedSteps(projectID)
+			steps, err := cli.GetSharedSteps(ctx, projectID)
 			if err != nil {
 				return err
 			}
@@ -90,6 +91,7 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -100,7 +102,7 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 				return fmt.Errorf("некорректный ID шага: %w", err)
 			}
 
-			step, err := cli.GetSharedStep(id)
+			step, err := cli.GetSharedStep(ctx, id)
 			if err != nil {
 				return err
 			}

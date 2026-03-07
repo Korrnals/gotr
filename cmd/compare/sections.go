@@ -29,6 +29,7 @@ func newSectionsCmd() *cobra.Command {
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -40,7 +41,7 @@ func newSectionsCmd() *cobra.Command {
 			}
 
 			// Get project names
-			project1Name, project2Name, err := GetProjectNames(cli, pid1, pid2)
+			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
 				return err
 			}
@@ -88,16 +89,16 @@ func compareSectionsInternal(cli client.ClientInterface, pid1, pid2 int64) (*Com
 
 // fetchSectionItems fetches all sections for a project, parallelizing across suites
 // using FetchParallelBySuite.
-func fetchSectionItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
+func fetchSectionItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
 	// Get all suites for the project
-	suites, err := cli.GetSuites(projectID)
+	suites, err := cli.GetSuites(ctx, projectID)
 	if err != nil {
 		return nil, err
 	}
 
 	// If no suites, try without suite filter
 	if len(suites) == 0 {
-		sections, err := cli.GetSections(projectID, 0)
+		sections, err := cli.GetSections(ctx, projectID, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -117,10 +118,10 @@ func fetchSectionItems(cli client.ClientInterface, projectID int64) ([]ItemInfo,
 	}
 
 	// Fetch sections from all suites in parallel
-	ctx := context.Background()
+	ctx = context.Background()
 	allSections, err := concurrency.FetchParallelBySuite(ctx, suiteIDs,
 		func(suiteID int64) ([]ItemInfo, error) {
-			sections, sErr := cli.GetSections(projectID, suiteID)
+			sections, sErr := cli.GetSections(ctx, projectID, suiteID)
 			if sErr != nil {
 				return nil, sErr
 			}

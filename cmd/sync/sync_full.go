@@ -26,9 +26,9 @@ var fullCmd = &cobra.Command{
 	gotr sync full --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve --save-mapping
 `,
 
-
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -43,7 +43,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект:")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект:")
 			if err != nil {
 				return err
 			}
@@ -51,7 +51,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
 			if err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект:")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект:")
 			if err != nil {
 				return err
 			}
@@ -67,7 +67,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Выберите DESTINATION сьют:")
 			if err != nil {
 				return err
 			}
@@ -85,7 +85,7 @@ var fullCmd = &cobra.Command{
 
 		// Шаг 1) Миграция shared steps (Fetch → Filter → Import)
 		progress.Describe(pm.NewSpinner(""), "Шаг 1/2: Миграция shared steps...")
-		if err := m.MigrateSharedSteps(dryRun || !autoApprove); err != nil { // если dry-run — без импорта
+		if err := m.MigrateSharedSteps(ctx, dryRun || !autoApprove); err != nil { // если dry-run — без импорта
 			return err
 		}
 
@@ -96,7 +96,7 @@ var fullCmd = &cobra.Command{
 
 		// Шаг 2) Миграция cases (Fetch → Filter → Import)
 		progress.Describe(pm.NewSpinner(""), "Шаг 2/2: Миграция cases...")
-		if err := m.MigrateCases(dryRun); err != nil {
+		if err := m.MigrateCases(ctx, dryRun); err != nil {
 			return err
 		}
 

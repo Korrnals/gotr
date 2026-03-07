@@ -25,7 +25,8 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
   gotr reports list-cross-project -o json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
-			reports, err := client.GetCrossProjectReports()
+			ctx := cmd.Context()
+			reports, err := client.GetCrossProjectReports(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to list cross-project reports: %w", err)
 			}

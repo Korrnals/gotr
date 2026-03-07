@@ -1,6 +1,7 @@
 package datasets
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddDatasetFunc: func(projectID int64, name string) (*data.Dataset, error) {
+		AddDatasetFunc: func(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "New Dataset", name)
 			return &data.Dataset{ID: 100, Name: name, ProjectID: projectID}, nil
@@ -30,7 +31,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		AddDatasetFunc: func(projectID int64, name string) (*data.Dataset, error) {
+		AddDatasetFunc: func(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 			return &data.Dataset{ID: 200, Name: name}, nil
 		},
 	}
@@ -45,7 +46,7 @@ func TestAddCmd_WithSaveFlag(t *testing.T) {
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddDatasetFunc: func(projectID int64, name string) (*data.Dataset, error) {
+		AddDatasetFunc: func(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 			return nil, fmt.Errorf("проект не найден")
 		},
 	}

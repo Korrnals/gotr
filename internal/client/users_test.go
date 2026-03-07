@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -35,11 +36,12 @@ func TestGetUsers(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetUsersFunc = func() (data.GetUsersResponse, error) {
+			mockClient.GetUsersFunc = func(ctx context.Context) (data.GetUsersResponse, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetUsers()
+			ctx := context.Background()
+			result, err := mockClient.GetUsers(ctx)
 
 			if tc.wantErr {
 				if err == nil {
@@ -80,11 +82,12 @@ func TestGetUser(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetUserFunc = func(userID int64) (*data.User, error) {
+			mockClient.GetUserFunc = func(ctx context.Context, userID int64) (*data.User, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetUser(tc.userID)
+			ctx := context.Background()
+			result, err := mockClient.GetUser(ctx, tc.userID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -125,11 +128,12 @@ func TestGetUserByEmail(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetUserByEmailFunc = func(email string) (*data.User, error) {
+			mockClient.GetUserByEmailFunc = func(ctx context.Context, email string) (*data.User, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetUserByEmail(tc.email)
+			ctx := context.Background()
+			result, err := mockClient.GetUserByEmail(ctx, tc.email)
 
 			if tc.wantErr {
 				if err == nil {
@@ -170,11 +174,12 @@ func TestGetPriorities(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetPrioritiesFunc = func() (data.GetPrioritiesResponse, error) {
+			mockClient.GetPrioritiesFunc = func(ctx context.Context) (data.GetPrioritiesResponse, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetPriorities()
+			ctx := context.Background()
+			result, err := mockClient.GetPriorities(ctx)
 
 			if tc.wantErr {
 				if err == nil {
@@ -214,11 +219,12 @@ func TestGetStatuses(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetStatusesFunc = func() (data.GetStatusesResponse, error) {
+			mockClient.GetStatusesFunc = func(ctx context.Context) (data.GetStatusesResponse, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetStatuses()
+			ctx := context.Background()
+			result, err := mockClient.GetStatuses(ctx)
 
 			if tc.wantErr {
 				if err == nil {
@@ -259,11 +265,12 @@ func TestGetTemplates(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetTemplatesFunc = func(projectID int64) (data.GetTemplatesResponse, error) {
+			mockClient.GetTemplatesFunc = func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetTemplates(tc.projectID)
+			ctx := context.Background()
+			result, err := mockClient.GetTemplates(ctx, tc.projectID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -297,7 +304,8 @@ func TestHTTPGetUsers(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	users, err := client.GetUsers()
+	ctx := context.Background()
+	users, err := client.GetUsers(ctx)
 	if err != nil {
 		t.Fatalf("GetUsers() error: %v", err)
 	}
@@ -321,7 +329,8 @@ func TestHTTPGetPriorities(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	priorities, err := client.GetPriorities()
+	ctx := context.Background()
+	priorities, err := client.GetPriorities(ctx)
 	if err != nil {
 		t.Fatalf("GetPriorities() error: %v", err)
 	}

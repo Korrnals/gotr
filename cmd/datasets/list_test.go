@@ -16,7 +16,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return []data.Dataset{
 				{ID: 101, Name: "Login Data", ProjectID: 1},
@@ -35,7 +35,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{}, nil
 		},
 	}
@@ -50,7 +50,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return nil, fmt.Errorf("проект не найден")
 		},
 	}
@@ -66,7 +66,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 func TestListCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{{ID: 1, Name: "Test Data"}}, nil
 		},
 	}

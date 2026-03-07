@@ -16,11 +16,12 @@ func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cob
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
-			types, err := cli.GetCaseTypes()
+			types, err := cli.GetCaseTypes(ctx)
 			if err != nil {
 				return err
 			}
@@ -38,11 +39,12 @@ func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
-			fields, err := cli.GetCaseFields()
+			fields, err := cli.GetCaseFields(ctx)
 			if err != nil {
 				return err
 			}

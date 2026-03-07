@@ -31,7 +31,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetRole(roleID)
+			ctx := cmd.Context()
+			resp, err := cli.GetRole(ctx, roleID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить роль: %w", err)
 			}

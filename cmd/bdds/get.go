@@ -31,7 +31,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetBDD(caseID)
+			ctx := cmd.Context()
+			resp, err := cli.GetBDD(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить BDD: %w", err)
 			}

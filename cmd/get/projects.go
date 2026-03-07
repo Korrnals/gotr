@@ -17,11 +17,12 @@ func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobr
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
-			projects, err := cli.GetProjects()
+			projects, err := cli.GetProjects(ctx)
 			if err != nil {
 				return err
 			}
@@ -40,6 +41,7 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -50,7 +52,7 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 				return fmt.Errorf("некорректный ID проекта: %w", err)
 			}
 
-			project, err := cli.GetProject(id)
+			project, err := cli.GetProject(ctx, id)
 			if err != nil {
 				return err
 			}

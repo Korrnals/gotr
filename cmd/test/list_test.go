@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Empty(t, filters)
 			return []data.Test{
@@ -34,7 +35,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_WithStatusFilter(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, "5", filters["status_id"])
 			return []data.Test{
@@ -54,7 +55,7 @@ func TestListCmd_WithStatusFilter(t *testing.T) {
 
 func TestListCmd_WithAssignedToFilter(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, "10", filters["assignedto_id"])
 			return []data.Test{
@@ -74,7 +75,7 @@ func TestListCmd_WithAssignedToFilter(t *testing.T) {
 
 func TestListCmd_WithMultipleFilters(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, "5", filters["status_id"])
 			assert.Equal(t, "10", filters["assignedto_id"])
@@ -95,7 +96,7 @@ func TestListCmd_WithMultipleFilters(t *testing.T) {
 
 func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			return []data.Test{
 				{ID: 1, CaseID: 101, RunID: runID, Title: "Test 1", StatusID: 1},
 			}, nil
@@ -150,7 +151,7 @@ func TestListCmd_NoArgs(t *testing.T) {
 
 func TestListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			return nil, fmt.Errorf("ран не найден")
 		},
 	}
@@ -167,7 +168,7 @@ func TestListCmd_APIError(t *testing.T) {
 
 func TestListCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			return []data.Test{}, nil
 		},
 	}

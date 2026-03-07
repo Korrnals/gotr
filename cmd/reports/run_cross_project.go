@@ -35,7 +35,8 @@ func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Запуск генерации кросс-проектного отчёта...")
 
 			cli := getClient(cmd)
-			resp, err := cli.RunCrossProjectReport(templateID)
+			ctx := cmd.Context()
+			resp, err := cli.RunCrossProjectReport(ctx, templateID)
 			if err != nil {
 				return fmt.Errorf("failed to run cross-project report: %w", err)
 			}

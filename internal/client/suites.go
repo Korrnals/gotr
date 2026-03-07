@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -10,9 +11,9 @@ import (
 )
 
 // GetSuites получает список всех тест-сюит проекта.
-func (c *HTTPClient) GetSuites(projectID int64) (data.GetSuitesResponse, error) {
+func (c *HTTPClient) GetSuites(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 	endpoint := fmt.Sprintf("get_suites/%d", projectID)
-	suites, err := fetchAllPages[data.Suite](c, endpoint, nil, "suites")
+	suites, err := fetchAllPages[data.Suite](ctx, c, endpoint, nil, "suites")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSuites для проекта %d: %w", projectID, err)
 	}
@@ -20,9 +21,9 @@ func (c *HTTPClient) GetSuites(projectID int64) (data.GetSuitesResponse, error) 
 }
 
 // GetSuite получает одну тест-сюиту по ID.
-func (c *HTTPClient) GetSuite(suiteID int64) (*data.Suite, error) {
+func (c *HTTPClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, error) {
 	endpoint := fmt.Sprintf("get_suite/%d", suiteID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSuite %d: %w", suiteID, err)
 	}
@@ -42,14 +43,14 @@ func (c *HTTPClient) GetSuite(suiteID int64) (*data.Suite, error) {
 }
 
 // AddSuite создаёт новую тест-сюиту в проекте.
-func (c *HTTPClient) AddSuite(projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddSuiteRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_suite/%d", projectID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddSuite для проекта %d: %w", projectID, err)
 	}
@@ -69,14 +70,14 @@ func (c *HTTPClient) AddSuite(projectID int64, req *data.AddSuiteRequest) (*data
 }
 
 // UpdateSuite обновляет существующую тест-сюиту.
-func (c *HTTPClient) UpdateSuite(suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+func (c *HTTPClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга UpdateSuiteRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_suite/%d", suiteID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateSuite %d: %w", suiteID, err)
 	}
@@ -97,9 +98,9 @@ func (c *HTTPClient) UpdateSuite(suiteID int64, req *data.UpdateSuiteRequest) (*
 
 // DeleteSuite удаляет тест-сюиту по ID.
 // Удаление необратимо — все кейсы в сюите удаляются.
-func (c *HTTPClient) DeleteSuite(suiteID int64) error {
+func (c *HTTPClient) DeleteSuite(ctx context.Context, suiteID int64) error {
 	endpoint := fmt.Sprintf("delete_suite/%d", suiteID)
-	resp, err := c.Post(endpoint, nil, nil)
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса DeleteSuite %d: %w", suiteID, err)
 	}

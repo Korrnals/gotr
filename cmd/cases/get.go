@@ -28,7 +28,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetCase(caseID)
+			ctx := cmd.Context()
+			resp, err := cli.GetCase(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("failed to get case: %w", err)
 			}

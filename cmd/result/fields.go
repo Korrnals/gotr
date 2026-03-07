@@ -21,6 +21,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 и доступных полей для заполнения.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -38,7 +39,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return nil
 			}
 
-			fields, err := cli.GetResultFields()
+			fields, err := cli.GetResultFields(ctx)
 			if err != nil {
 				return fmt.Errorf("ошибка получения полей результатов: %w", err)
 			}

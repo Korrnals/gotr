@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetReportsFunc: func(projectID int64) (data.GetReportsResponse, error) {
+		GetReportsFunc: func(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetReportsResponse{
 				{ID: 100, Name: "Summary Report", Description: "Project summary"},
@@ -33,7 +34,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetReportsFunc: func(projectID int64) (data.GetReportsResponse, error) {
+		GetReportsFunc: func(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 			return data.GetReportsResponse{}, nil
 		},
 	}
@@ -48,7 +49,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetReportsFunc: func(projectID int64) (data.GetReportsResponse, error) {
+		GetReportsFunc: func(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

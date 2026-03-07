@@ -1,6 +1,7 @@
 package attachments
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -72,7 +73,7 @@ func TestNewAddCaseCmd_Success(t *testing.T) {
 
 	mockCalled := false
 	mock := &client.MockClient{
-		AddAttachmentToCaseFunc: func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToCaseFunc: func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 			mockCalled = true
 			assert.Equal(t, int64(12345), caseID)
 			return &data.AttachmentResponse{
@@ -177,7 +178,7 @@ func TestNewAddCaseCmd_APIError(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToCaseFunc: func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToCaseFunc: func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 			return nil, fmt.Errorf("API error: case not found")
 		},
 	}
@@ -204,7 +205,7 @@ func TestNewAddCaseCmd_WithSaveFlag(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToCaseFunc: func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToCaseFunc: func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 			return &data.AttachmentResponse{
 				AttachmentID: 888,
 				URL:          "https://example.com/attachment/888",
@@ -244,7 +245,7 @@ func TestNewAddPlanCmd_Success(t *testing.T) {
 
 	mockCalled := false
 	mock := &client.MockClient{
-		AddAttachmentToPlanFunc: func(planID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToPlanFunc: func(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error) {
 			mockCalled = true
 			assert.Equal(t, int64(100), planID)
 			return &data.AttachmentResponse{
@@ -313,7 +314,7 @@ func TestNewAddPlanCmd_APIError(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToPlanFunc: func(planID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToPlanFunc: func(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error) {
 			return nil, fmt.Errorf("plan not found")
 		},
 	}
@@ -367,7 +368,7 @@ func TestNewAddPlanEntryCmd_Success(t *testing.T) {
 
 	mockCalled := false
 	mock := &client.MockClient{
-		AddAttachmentToPlanEntryFunc: func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToPlanEntryFunc: func(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
 			mockCalled = true
 			assert.Equal(t, int64(200), planID)
 			assert.Equal(t, "entry-abc123", entryID)
@@ -437,7 +438,7 @@ func TestNewAddPlanEntryCmd_APIError(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToPlanEntryFunc: func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToPlanEntryFunc: func(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
 			return nil, fmt.Errorf("entry not found")
 		},
 	}
@@ -508,7 +509,7 @@ func TestNewAddResultCmd_Success(t *testing.T) {
 
 	mockCalled := false
 	mock := &client.MockClient{
-		AddAttachmentToResultFunc: func(resultID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToResultFunc: func(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
 			mockCalled = true
 			assert.Equal(t, int64(98765), resultID)
 			return &data.AttachmentResponse{
@@ -577,7 +578,7 @@ func TestNewAddResultCmd_APIError(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToResultFunc: func(resultID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToResultFunc: func(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
 			return nil, fmt.Errorf("result not found")
 		},
 	}
@@ -631,7 +632,7 @@ func TestNewAddRunCmd_Success(t *testing.T) {
 
 	mockCalled := false
 	mock := &client.MockClient{
-		AddAttachmentToRunFunc: func(runID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToRunFunc: func(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error) {
 			mockCalled = true
 			assert.Equal(t, int64(555), runID)
 			return &data.AttachmentResponse{
@@ -700,7 +701,7 @@ func TestNewAddRunCmd_APIError(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToRunFunc: func(runID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToRunFunc: func(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
@@ -742,7 +743,7 @@ func TestNewAddRunCmd_FileNotFound(t *testing.T) {
 
 func TestOutputResult_Stdout(t *testing.T) {
 	mock := &client.MockClient{
-		AddAttachmentToCaseFunc: func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToCaseFunc: func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 			return &data.AttachmentResponse{
 				AttachmentID: 100,
 				URL:          "https://example.com/attachment/100",

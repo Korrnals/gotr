@@ -4,13 +4,14 @@
 package labels
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -34,7 +35,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			labels, err := client.GetLabels(projectID)
+			ctx := cmd.Context()
+			labels, err := client.GetLabels(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list labels: %w", err)
 			}
@@ -64,5 +66,5 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
 // Verify interface compliance
 var _ interface {
-	GetLabels(projectID int64) (data.GetLabelsResponse, error)
+	GetLabels(ctx context.Context, projectID int64) (data.GetLabelsResponse, error)
 } = (*client.MockClient)(nil)

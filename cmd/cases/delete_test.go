@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -25,7 +26,7 @@ func TestDeleteCmd_DryRun(t *testing.T) {
 func TestDeleteCmd_Success(t *testing.T) {
 	deleteCalled := false
 	mock := &client.MockClient{
-		DeleteCaseFunc: func(caseID int64) error {
+		DeleteCaseFunc: func(ctx context.Context, caseID int64) error {
 			assert.Equal(t, int64(12345), caseID)
 			deleteCalled = true
 			return nil
@@ -43,7 +44,7 @@ func TestDeleteCmd_Success(t *testing.T) {
 
 func TestDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteCaseFunc: func(caseID int64) error {
+		DeleteCaseFunc: func(ctx context.Context, caseID int64) error {
 			return fmt.Errorf("cannot delete: case has associated results")
 		},
 	}

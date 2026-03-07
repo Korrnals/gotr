@@ -52,7 +52,7 @@ func WithProgressMonitor(monitor ProgressMonitor) PoolOption {
 // NewWorkerPool creates a new worker pool with the given options.
 func NewWorkerPool(opts ...PoolOption) *WorkerPool {
 	pool := &WorkerPool{
-		maxWorkers: 5, // Default: 5 concurrent workers
+		maxWorkers: 5,                   // Default: 5 concurrent workers
 		limiter:    NewRateLimiter(150), // Default: 150 req/min (TestRail limit)
 	}
 
@@ -158,10 +158,10 @@ func ParallelForEach[T any](items []T, maxWorkers int, fn func(T, int) error) er
 
 // BatchProcessor processes items in batches with rate limiting.
 type BatchProcessor[T any] struct {
-	batchSize     int
-	delayBetween  time.Duration
-	maxRetries    int
-	retryDelay    time.Duration
+	batchSize    int
+	delayBetween time.Duration
+	maxRetries   int
+	retryDelay   time.Duration
 }
 
 // BatchOption configures the BatchProcessor.

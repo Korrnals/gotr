@@ -4,6 +4,7 @@ package interactive
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -14,8 +15,8 @@ import (
 )
 
 // SelectProjectInteractively показывает список проектов и просит выбрать
-func SelectProjectInteractively(httpClient client.ClientInterface) (int64, error) {
-	projects, err := httpClient.GetProjects()
+func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
+	projects, err := httpClient.GetProjects(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("не удалось получить список проектов: %w", err)
 	}

@@ -1,19 +1,20 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestFieldsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultFieldsFunc: func() (data.GetResultFieldsResponse, error) {
+		GetResultFieldsFunc: func(ctx context.Context) (data.GetResultFieldsResponse, error) {
 			return []data.ResultField{
 				{ID: 1, Name: "Status", SystemName: "status_id", IsActive: true},
 				{ID: 2, Name: "Comment", SystemName: "comment", IsActive: true},
@@ -32,7 +33,7 @@ func TestFieldsCmd_Success(t *testing.T) {
 
 func TestFieldsCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultFieldsFunc: func() (data.GetResultFieldsResponse, error) {
+		GetResultFieldsFunc: func(ctx context.Context) (data.GetResultFieldsResponse, error) {
 			return []data.ResultField{}, nil
 		},
 	}
@@ -47,7 +48,7 @@ func TestFieldsCmd_EmptyList(t *testing.T) {
 
 func TestFieldsCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultFieldsFunc: func() (data.GetResultFieldsResponse, error) {
+		GetResultFieldsFunc: func(ctx context.Context) (data.GetResultFieldsResponse, error) {
 			return nil, fmt.Errorf("failed to get result fields")
 		},
 	}

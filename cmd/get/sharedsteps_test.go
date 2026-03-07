@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 
 func TestSharedStepsCmd_WithProjectID(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSharedStepsResponse{
 				{ID: 1, Title: "Shared Step 1", ProjectID: 30},
@@ -34,7 +35,7 @@ func TestSharedStepsCmd_WithProjectID(t *testing.T) {
 
 func TestSharedStepsCmd_WithProjectIDFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSharedStepsResponse{
 				{ID: 1, Title: "Shared Step 1", ProjectID: 30},
@@ -75,7 +76,7 @@ func TestSharedStepsCmd_InvalidProjectIDFlag(t *testing.T) {
 
 func TestSharedStepsCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -93,7 +94,7 @@ func TestSharedStepsCmd_APIError(t *testing.T) {
 
 func TestSharedStepCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepFunc: func(stepID int64) (*data.SharedStep, error) {
+		GetSharedStepFunc: func(ctx context.Context, stepID int64) (*data.SharedStep, error) {
 			assert.Equal(t, int64(12345), stepID)
 			return &data.SharedStep{
 				ID:        12345,
@@ -136,7 +137,7 @@ func TestSharedStepCmd_NoArgs(t *testing.T) {
 
 func TestSharedStepCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepFunc: func(stepID int64) (*data.SharedStep, error) {
+		GetSharedStepFunc: func(ctx context.Context, stepID int64) (*data.SharedStep, error) {
 			return nil, fmt.Errorf("shared step not found")
 		},
 	}

@@ -2,6 +2,7 @@
 package compare
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -15,8 +16,9 @@ import (
 // ==================== Тесты для compareSuitesInternal ====================
 
 func TestCompareSuitesInternal_Success(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			if projectID == 1 {
 				return []data.Suite{
 					{ID: 1, Name: "Suite A"},
@@ -30,7 +32,7 @@ func TestCompareSuitesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(ctx, mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -44,9 +46,10 @@ func TestCompareSuitesInternal_Success(t *testing.T) {
 }
 
 func TestCompareSuitesInternal_FirstError(t *testing.T) {
+	ctx := context.Background()
 	// Using GetSuitesParallelFunc to test fault-tolerant behavior
 	mock := &client.MockClient{
-		GetSuitesParallelFunc: func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+		GetSuitesParallelFunc: func(ctx context.Context, projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
 			results := make(map[int64]data.GetSuitesResponse)
 			// Return partial results (project 2 only) with error
 			results[2] = []data.Suite{}
@@ -54,7 +57,7 @@ func TestCompareSuitesInternal_FirstError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(ctx, mock, 1, 2)
 
 	// Parallel implementation is fault-tolerant: returns partial results with warning
 	assert.NoError(t, err)
@@ -63,9 +66,10 @@ func TestCompareSuitesInternal_FirstError(t *testing.T) {
 }
 
 func TestCompareSuitesInternal_SecondError(t *testing.T) {
+	ctx := context.Background()
 	// Using GetSuitesParallelFunc to test fault-tolerant behavior
 	mock := &client.MockClient{
-		GetSuitesParallelFunc: func(projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+		GetSuitesParallelFunc: func(ctx context.Context, projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
 			results := make(map[int64]data.GetSuitesResponse)
 			// Return partial results (project 1 only) with error
 			results[1] = []data.Suite{}
@@ -73,7 +77,7 @@ func TestCompareSuitesInternal_SecondError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(ctx, mock, 1, 2)
 
 	// Parallel implementation is fault-tolerant: returns partial results with warning
 	// Only returns error if BOTH projects fail
@@ -83,13 +87,14 @@ func TestCompareSuitesInternal_SecondError(t *testing.T) {
 }
 
 func TestCompareSuitesInternal_Empty(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
 	}
 
-	result, err := compareSuitesInternal(mock, 1, 2)
+	result, err := compareSuitesInternal(ctx, mock, 1, 2)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -101,11 +106,12 @@ func TestCompareSuitesInternal_Empty(t *testing.T) {
 // ==================== Тесты для compareCasesInternal ====================
 
 func TestCompareCasesInternal_Success(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{}, nil // No suites, uses GetCases without suite filter
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 {
 				return []data.Case{
 					{ID: 1, Title: "Case A"},
@@ -124,7 +130,7 @@ func TestCompareCasesInternal_Success(t *testing.T) {
 	cmd.Flags().Int("parallel-pages", 3, "")
 	cmd.Flags().Duration("timeout", 5*time.Minute, "")
 
-	result, _, err := compareCasesInternal(cmd, mock, 1, 2, "title")
+	result, _, err := compareCasesInternal(ctx, cmd, mock, 1, 2, "title")
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -135,11 +141,12 @@ func TestCompareCasesInternal_Success(t *testing.T) {
 }
 
 func TestCompareCasesInternal_Error(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -149,7 +156,7 @@ func TestCompareCasesInternal_Error(t *testing.T) {
 	cmd.Flags().Int("parallel-pages", 3, "")
 	cmd.Flags().Duration("timeout", 5*time.Minute, "")
 
-	result, _, err := compareCasesInternal(cmd, mock, 1, 2, "title")
+	result, _, err := compareCasesInternal(ctx, cmd, mock, 1, 2, "title")
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -159,10 +166,10 @@ func TestCompareCasesInternal_Error(t *testing.T) {
 
 func TestCompareSectionsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{{ID: 1, Name: "Suite 1"}}, nil
 		},
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			if projectID == 1 {
 				return []data.Section{
 					{ID: 1, Name: "Section A", SuiteID: 1},
@@ -184,7 +191,7 @@ func TestCompareSectionsInternal_Success(t *testing.T) {
 
 func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -199,7 +206,7 @@ func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 
 func TestComparePlansInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			if projectID == 1 {
 				return []data.Plan{
 					{ID: 1, Name: "Plan A"},
@@ -221,7 +228,7 @@ func TestComparePlansInternal_Success(t *testing.T) {
 
 func TestComparePlansInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -236,7 +243,7 @@ func TestComparePlansInternal_Error(t *testing.T) {
 
 func TestCompareRunsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			if projectID == 1 {
 				return []data.Run{
 					{ID: 1, Name: "Run A"},
@@ -258,7 +265,7 @@ func TestCompareRunsInternal_Success(t *testing.T) {
 
 func TestCompareRunsInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -273,7 +280,7 @@ func TestCompareRunsInternal_Error(t *testing.T) {
 
 func TestCompareMilestonesInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			if projectID == 1 {
 				return []data.Milestone{
 					{ID: 1, Name: "Milestone A"},
@@ -295,7 +302,7 @@ func TestCompareMilestonesInternal_Success(t *testing.T) {
 
 func TestCompareMilestonesInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -310,7 +317,7 @@ func TestCompareMilestonesInternal_Error(t *testing.T) {
 
 func TestCompareDatasetsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			if projectID == 1 {
 				return []data.Dataset{
 					{ID: 1, Name: "Dataset A"},
@@ -332,7 +339,7 @@ func TestCompareDatasetsInternal_Success(t *testing.T) {
 
 func TestCompareDatasetsInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -347,7 +354,7 @@ func TestCompareDatasetsInternal_Error(t *testing.T) {
 
 func TestCompareGroupsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			if projectID == 1 {
 				return []data.Group{
 					{ID: 1, Name: "Group A"},
@@ -369,7 +376,7 @@ func TestCompareGroupsInternal_Success(t *testing.T) {
 
 func TestCompareGroupsInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -384,7 +391,7 @@ func TestCompareGroupsInternal_Error(t *testing.T) {
 
 func TestCompareLabelsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			if projectID == 1 {
 				return []data.Label{
 					{ID: 1, Name: "Label A"},
@@ -406,7 +413,7 @@ func TestCompareLabelsInternal_Success(t *testing.T) {
 
 func TestCompareLabelsInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -421,7 +428,7 @@ func TestCompareLabelsInternal_Error(t *testing.T) {
 
 func TestCompareTemplatesInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			if projectID == 1 {
 				return []data.Template{
 					{ID: 1, Name: "Template A"},
@@ -443,7 +450,7 @@ func TestCompareTemplatesInternal_Success(t *testing.T) {
 
 func TestCompareTemplatesInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -458,7 +465,7 @@ func TestCompareTemplatesInternal_Error(t *testing.T) {
 
 func TestCompareConfigurationsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			if projectID == 1 {
 				return []data.ConfigGroup{
 					{ID: 1, Name: "Group A"},
@@ -480,7 +487,7 @@ func TestCompareConfigurationsInternal_Success(t *testing.T) {
 
 func TestCompareConfigurationsInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -495,7 +502,7 @@ func TestCompareConfigurationsInternal_Error(t *testing.T) {
 
 func TestCompareSharedStepsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			if projectID == 1 {
 				return []data.SharedStep{
 					{ID: 1, Title: "Step A"},
@@ -517,7 +524,7 @@ func TestCompareSharedStepsInternal_Success(t *testing.T) {
 
 func TestCompareSharedStepsInternal_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}

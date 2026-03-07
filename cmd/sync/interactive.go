@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -11,8 +12,8 @@ import (
 )
 
 // selectProjectInteractively показывает список проектов и просит выбрать
-func selectProjectInteractively(cli client.ClientInterface, prompt string) (int64, error) {
-	projects, err := cli.GetProjects()
+func selectProjectInteractively(ctx context.Context, cli client.ClientInterface, prompt string) (int64, error) {
+	projects, err := cli.GetProjects(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("не удалось получить список проектов: %w", err)
 	}
@@ -50,8 +51,8 @@ func selectProjectInteractively(cli client.ClientInterface, prompt string) (int6
 }
 
 // selectSuiteInteractively показывает список сьютов проекта и просит выбрать
-func selectSuiteInteractively(cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
-	suites, err := cli.GetSuites(projectID)
+func selectSuiteInteractively(ctx context.Context, cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
+	suites, err := cli.GetSuites(ctx, projectID)
 	if err != nil {
 		return 0, fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
 	}

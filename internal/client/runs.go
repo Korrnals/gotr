@@ -3,6 +3,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,9 +14,9 @@ import (
 
 // GetRun получает информацию о тест-ране
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#getrun
-func (c *HTTPClient) GetRun(runID int64) (*data.Run, error) {
+func (c *HTTPClient) GetRun(ctx context.Context, runID int64) (*data.Run, error) {
 	endpoint := fmt.Sprintf("get_run/%d", runID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetRun для рана %d: %w", runID, err)
 	}
@@ -37,9 +38,9 @@ func (c *HTTPClient) GetRun(runID int64) (*data.Run, error) {
 
 // GetRuns получает список тест-ранов проекта (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#getruns
-func (c *HTTPClient) GetRuns(projectID int64) (data.GetRunsResponse, error) {
+func (c *HTTPClient) GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	endpoint := fmt.Sprintf("get_runs/%d", projectID)
-	runs, err := fetchAllPages[data.Run](c, endpoint, nil, "runs")
+	runs, err := fetchAllPages[data.Run](ctx, c, endpoint, nil, "runs")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetRuns для проекта %d: %w", projectID, err)
 	}
@@ -48,14 +49,14 @@ func (c *HTTPClient) GetRuns(projectID int64) (data.GetRunsResponse, error) {
 
 // AddRun создаёт новый тест-ран
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#addrun
-func (c *HTTPClient) AddRun(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+func (c *HTTPClient) AddRun(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddRunRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_run/%d", projectID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddRun для проекта %d: %w", projectID, err)
 	}
@@ -77,14 +78,14 @@ func (c *HTTPClient) AddRun(projectID int64, req *data.AddRunRequest) (*data.Run
 
 // UpdateRun обновляет существующий тест-ран
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#updaterun
-func (c *HTTPClient) UpdateRun(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+func (c *HTTPClient) UpdateRun(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга UpdateRunRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_run/%d", runID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateRun для рана %d: %w", runID, err)
 	}
@@ -106,9 +107,9 @@ func (c *HTTPClient) UpdateRun(runID int64, req *data.UpdateRunRequest) (*data.R
 
 // CloseRun закрывает тест-ран
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#closerun
-func (c *HTTPClient) CloseRun(runID int64) (*data.Run, error) {
+func (c *HTTPClient) CloseRun(ctx context.Context, runID int64) (*data.Run, error) {
 	endpoint := fmt.Sprintf("close_run/%d", runID)
-	resp, err := c.Post(endpoint, nil, nil)
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса CloseRun для рана %d: %w", runID, err)
 	}
@@ -130,9 +131,9 @@ func (c *HTTPClient) CloseRun(runID int64) (*data.Run, error) {
 
 // DeleteRun удаляет тест-ран
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#deleterun
-func (c *HTTPClient) DeleteRun(runID int64) error {
+func (c *HTTPClient) DeleteRun(ctx context.Context, runID int64) error {
 	endpoint := fmt.Sprintf("delete_run/%d", runID)
-	resp, err := c.Post(endpoint, nil, nil)
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса DeleteRun для рана %d: %w", runID, err)
 	}

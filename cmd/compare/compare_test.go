@@ -2,6 +2,7 @@
 package compare
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -80,8 +81,9 @@ func TestCollectNames_ZeroSize(t *testing.T) {
 // ==================== Тесты для GetProjectNames ====================
 
 func TestGetProjectNames_Success(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{
 				ID:   projectID,
 				Name: "Test Project " + string(rune('0'+projectID)),
@@ -89,7 +91,7 @@ func TestGetProjectNames_Success(t *testing.T) {
 		},
 	}
 
-	name1, name2, err := GetProjectNames(mock, 1, 2)
+	name1, name2, err := GetProjectNames(ctx, mock, 1, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Project 1", name1)
 	assert.Equal(t, "Test Project 2", name2)
@@ -97,7 +99,7 @@ func TestGetProjectNames_Success(t *testing.T) {
 
 func TestGetProjectName_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{
 				ID:   projectID,
 				Name: "Test Project",
@@ -150,5 +152,3 @@ func TestIDMappingPair(t *testing.T) {
 	assert.Equal(t, int64(2), pair.ID2)
 	assert.Equal(t, "Test", pair.Name)
 }
-
-

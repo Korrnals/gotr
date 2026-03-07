@@ -6,8 +6,8 @@ package users
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +35,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr users add --name "Admin User" --email "admin@example.com" --admin --role 1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 
 			req := data.AddUserRequest{
 				Name:     name,
@@ -46,7 +47,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				req.IsAdmin = 1
 			}
 
-			user, err := cli.AddUser(req)
+			user, err := cli.AddUser(ctx, req)
 			if err != nil {
 				return fmt.Errorf("failed to add user: %w", err)
 			}

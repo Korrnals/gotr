@@ -31,7 +31,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetVariables(datasetID)
+			ctx := cmd.Context()
+			resp, err := cli.GetVariables(ctx, datasetID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить список переменных: %w", err)
 			}

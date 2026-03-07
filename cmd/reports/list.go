@@ -31,7 +31,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetReports(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetReports(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list reports: %w", err)
 			}

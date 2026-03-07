@@ -18,6 +18,7 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -28,7 +29,7 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 				return fmt.Errorf("некорректный ID кейса: %w", err)
 			}
 
-			history, err := cli.GetHistoryForCase(id)
+			history, err := cli.GetHistoryForCase(ctx, id)
 			if err != nil {
 				return err
 			}
@@ -47,6 +48,7 @@ func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterfa
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -57,7 +59,7 @@ func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterfa
 				return fmt.Errorf("некорректный ID шага: %w", err)
 			}
 
-			history, err := cli.GetSharedStepHistory(id)
+			history, err := cli.GetSharedStepHistory(ctx, id)
 			if err != nil {
 				return err
 			}

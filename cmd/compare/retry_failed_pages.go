@@ -1,6 +1,7 @@
 package compare
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,8 +20,8 @@ import (
 var retryFailedPagesCmd = newRetryFailedPagesCmd()
 
 type failedPagesFile struct {
-	GeneratedAt string                `json:"generated_at"`
-	Total       int                   `json:"total"`
+	GeneratedAt string                   `json:"generated_at"`
+	Total       int                      `json:"total"`
 	FailedPages []concurrency.FailedPage `json:"failed_pages"`
 }
 
@@ -65,6 +66,7 @@ func newRetryFailedPagesCmd() *cobra.Command {
 
 func runRetryFailedPages(cmd *cobra.Command, _ []string) error {
 	cli := getClientSafe(cmd)
+	ctx := cmd.Context()
 	if cli == nil {
 		return fmt.Errorf("HTTP клиент не инициализирован")
 	}
@@ -86,7 +88,7 @@ func runRetryFailedPages(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
-	_, _, err = executeRetryFailedPages(cli, failedPages, resolvedOpts, fromPath, saveRemainingPath)
+	_, _, err = executeRetryFailedPages(ctx, cli, failedPages, resolvedOpts, fromPath, saveRemainingPath)
 	return err
 }
 
@@ -119,6 +121,7 @@ func resolveRetryFailedPagesOptionsFromConfig(cmd *cobra.Command) (retryFailedPa
 }
 
 func executeRetryFailedPages(
+	ctx context.Context,
 	cli client.ClientInterface,
 	failedPages []concurrency.FailedPage,
 	opts retryFailedPagesOptions,
@@ -175,7 +178,7 @@ func executeRetryFailedPages(
 				var fetched int
 
 				for attempt := 1; attempt <= opts.Attempts; attempt++ {
-					cases, err := cli.GetCasesPage(page.ProjectID, page.SuiteID, page.Offset, page.Limit)
+					cases, err := cli.GetCasesPage(ctx, page.ProjectID, page.SuiteID, page.Offset, page.Limit)
 					if err == nil {
 						fetched = len(cases)
 						lastErr = nil

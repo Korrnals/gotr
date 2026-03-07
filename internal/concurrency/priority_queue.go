@@ -56,9 +56,9 @@ func (h *priorityHeap) Pop() interface{} {
 
 // PriorityQueue is a thread-safe priority queue for SuiteTasks
 type PriorityQueue struct {
-	heap  priorityHeap
-	mu    sync.RWMutex
-	cond  *sync.Cond
+	heap   priorityHeap
+	mu     sync.RWMutex
+	cond   *sync.Cond
 	closed bool
 }
 

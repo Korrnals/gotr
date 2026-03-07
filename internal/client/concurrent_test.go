@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -21,7 +22,7 @@ func TestGetCasesParallel(t *testing.T) {
 			workers:  2,
 			wantErr:  false,
 			setupMock: func(m *MockClient) {
-				m.GetCasesFunc = func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+				m.GetCasesFunc = func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 					return data.GetCasesResponse{
 						{ID: suiteID * 100, Title: "Case 1", SuiteID: suiteID},
 						{ID: suiteID*100 + 1, Title: "Case 2", SuiteID: suiteID},
@@ -44,7 +45,7 @@ func TestGetCasesParallel(t *testing.T) {
 			workers:  0, // Should use default
 			wantErr:  false,
 			setupMock: func(m *MockClient) {
-				m.GetCasesFunc = func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+				m.GetCasesFunc = func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 					return data.GetCasesResponse{
 						{ID: suiteID, Title: "Case", SuiteID: suiteID},
 					}, nil
@@ -57,7 +58,7 @@ func TestGetCasesParallel(t *testing.T) {
 			workers:  2,
 			wantErr:  true,
 			setupMock: func(m *MockClient) {
-				m.GetCasesFunc = func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+				m.GetCasesFunc = func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 					if suiteID == 2 {
 						return nil, fmt.Errorf("suite %d not found", suiteID)
 					}
@@ -74,7 +75,8 @@ func TestGetCasesParallel(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			results, err := mock.GetCasesParallel(30, tt.suiteIDs, tt.workers, nil)
+			ctx := context.Background()
+			results, err := mock.GetCasesParallel(ctx, 30, tt.suiteIDs, tt.workers, nil)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCasesParallel() error = %v, wantErr %v", err, tt.wantErr)
@@ -105,7 +107,7 @@ func TestGetSuitesParallel(t *testing.T) {
 			workers:    2,
 			wantErr:    false,
 			setupMock: func(m *MockClient) {
-				m.GetSuitesFunc = func(projectID int64) (data.GetSuitesResponse, error) {
+				m.GetSuitesFunc = func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 					return data.GetSuitesResponse{
 						{ID: projectID * 10, Name: "Suite 1", ProjectID: projectID},
 						{ID: projectID*10 + 1, Name: "Suite 2", ProjectID: projectID},
@@ -126,7 +128,7 @@ func TestGetSuitesParallel(t *testing.T) {
 			workers:    5,
 			wantErr:    false,
 			setupMock: func(m *MockClient) {
-				m.GetSuitesFunc = func(projectID int64) (data.GetSuitesResponse, error) {
+				m.GetSuitesFunc = func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 					return data.GetSuitesResponse{{ID: 1, Name: "Only Suite"}}, nil
 				}
 			},
@@ -140,7 +142,8 @@ func TestGetSuitesParallel(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			results, err := mock.GetSuitesParallel(tt.projectIDs, tt.workers, nil)
+			ctx := context.Background()
+			results, err := mock.GetSuitesParallel(ctx, tt.projectIDs, tt.workers, nil)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetSuitesParallel() error = %v, wantErr %v", err, tt.wantErr)
@@ -170,7 +173,7 @@ func TestGetCasesForSuitesParallel(t *testing.T) {
 			workers:  2,
 			wantErr:  false,
 			setupMock: func(m *MockClient) {
-				m.GetCasesFunc = func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+				m.GetCasesFunc = func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 					return data.GetCasesResponse{
 						{ID: suiteID*100 + 1, Title: "Case 1", SuiteID: suiteID},
 						{ID: suiteID*100 + 2, Title: "Case 2", SuiteID: suiteID},
@@ -179,10 +182,10 @@ func TestGetCasesForSuitesParallel(t *testing.T) {
 			},
 		},
 		{
-			name:     "empty suite list",
-			suiteIDs: []int64{},
-			workers:  5,
-			wantErr:  false,
+			name:      "empty suite list",
+			suiteIDs:  []int64{},
+			workers:   5,
+			wantErr:   false,
 			setupMock: func(m *MockClient) {},
 		},
 	}
@@ -194,7 +197,8 @@ func TestGetCasesForSuitesParallel(t *testing.T) {
 				tt.setupMock(mock)
 			}
 
-			cases, err := mock.GetCasesForSuitesParallel(30, tt.suiteIDs, tt.workers, nil)
+			ctx := context.Background()
+			cases, err := mock.GetCasesForSuitesParallel(ctx, 30, tt.suiteIDs, tt.workers, nil)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetCasesForSuitesParallel() error = %v, wantErr %v", err, tt.wantErr)

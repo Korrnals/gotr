@@ -31,6 +31,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -49,7 +50,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(cli)
+				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
 				if err != nil {
 					return err
 				}
@@ -65,7 +66,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			spinner := pm.NewSpinner("")
 			spinner.Describe("Загрузка сьютов...")
 
-			suites, err := cli.GetSuites(projectID)
+			suites, err := cli.GetSuites(ctx, projectID)
 			if err != nil {
 				return err
 			}
@@ -94,6 +95,7 @@ func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -104,7 +106,7 @@ func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 				return fmt.Errorf("некорректный ID сюиты: %w", err)
 			}
 
-			suite, err := cli.GetSuite(id)
+			suite, err := cli.GetSuite(ctx, id)
 			if err != nil {
 				return err
 			}

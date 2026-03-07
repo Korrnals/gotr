@@ -3,6 +3,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,13 +14,13 @@ import (
 
 // GetSections — получает секции для suite в проекте (поддерживает пагинацию)
 // suite_id обязательно для multi-suite проектов
-func (c *HTTPClient) GetSections(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+func (c *HTTPClient) GetSections(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 	endpoint := fmt.Sprintf("get_sections/%d", projectID)
 	var baseQuery map[string]string
 	if suiteID != 0 {
 		baseQuery = map[string]string{"suite_id": fmt.Sprintf("%d", suiteID)}
 	}
-	sections, err := fetchAllPages[data.Section](c, endpoint, baseQuery, "sections")
+	sections, err := fetchAllPages[data.Section](ctx, c, endpoint, baseQuery, "sections")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSections для проекта %d, suite %d: %w", projectID, suiteID, err)
 	}
@@ -27,9 +28,9 @@ func (c *HTTPClient) GetSections(projectID, suiteID int64) (data.GetSectionsResp
 }
 
 // GetSection — получает одну секцию по ID
-func (c *HTTPClient) GetSection(sectionID int64) (*data.Section, error) {
+func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Section, error) {
 	endpoint := fmt.Sprintf("get_section/%d", sectionID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetSection %d: %w", sectionID, err)
 	}
@@ -49,14 +50,14 @@ func (c *HTTPClient) GetSection(sectionID int64) (*data.Section, error) {
 }
 
 // AddSection — создаёт новую секцию в suite проекта
-func (c *HTTPClient) AddSection(projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddSectionRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_section/%d", projectID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddSection для проекта %d: %w", projectID, err)
 	}
@@ -76,14 +77,14 @@ func (c *HTTPClient) AddSection(projectID int64, req *data.AddSectionRequest) (*
 }
 
 // UpdateSection — обновляет секцию (name, description, parent_id для перемещения)
-func (c *HTTPClient) UpdateSection(sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга UpdateSectionRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_section/%d", sectionID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateSection %d: %w", sectionID, err)
 	}
@@ -103,9 +104,9 @@ func (c *HTTPClient) UpdateSection(sectionID int64, req *data.UpdateSectionReque
 }
 
 // DeleteSection — удаляет секцию (необратимо, удаляет cases/results)
-func (c *HTTPClient) DeleteSection(sectionID int64) error {
+func (c *HTTPClient) DeleteSection(ctx context.Context, sectionID int64) error {
 	endpoint := fmt.Sprintf("delete_section/%d", sectionID)
-	resp, err := c.Post(endpoint, nil, nil)
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса DeleteSection %d: %w", sectionID, err)
 	}

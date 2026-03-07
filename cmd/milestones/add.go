@@ -60,7 +60,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddMilestone(projectID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddMilestone(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create milestone: %w", err)
 			}

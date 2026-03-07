@@ -60,7 +60,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateMilestone(milestoneID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateMilestone(ctx, milestoneID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update milestone: %w", err)
 			}

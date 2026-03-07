@@ -40,6 +40,7 @@ func init() {
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
 	if len(args) < 2 {
 		return fmt.Errorf("необходимо указать endpoint и id: gotr delete <endpoint> <id>")
 	}
@@ -63,18 +64,18 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Маршрутизация по endpoint
 	switch endpoint {
 	case "project":
-		return cli.DeleteProject(id)
+		return cli.DeleteProject(ctx, id)
 	case "suite":
-		return cli.DeleteSuite(id)
+		return cli.DeleteSuite(ctx, id)
 	case "section":
-		return cli.DeleteSection(id)
+		return cli.DeleteSection(ctx, id)
 	case "case":
-		return cli.DeleteCase(id)
+		return cli.DeleteCase(ctx, id)
 	case "run":
-		return cli.DeleteRun(id)
+		return cli.DeleteRun(ctx, id)
 	case "shared-step":
 		// Для shared step есть специальный флаг keep_in_cases
-		return cli.DeleteSharedStep(id, 0)
+		return cli.DeleteSharedStep(ctx, id, 0)
 	default:
 		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
 	}

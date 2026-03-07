@@ -1,6 +1,7 @@
 package groups
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupFunc: func(groupID int64) (*data.Group, error) {
+		GetGroupFunc: func(ctx context.Context, groupID int64) (*data.Group, error) {
 			assert.Equal(t, int64(1), groupID)
 			return &data.Group{
 				ID:      1,
@@ -33,7 +34,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupFunc: func(groupID int64) (*data.Group, error) {
+		GetGroupFunc: func(ctx context.Context, groupID int64) (*data.Group, error) {
 			return &data.Group{ID: 5, Name: "Developers"}, nil
 		},
 	}
@@ -48,7 +49,7 @@ func TestGetCmd_WithSave(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupFunc: func(groupID int64) (*data.Group, error) {
+		GetGroupFunc: func(ctx context.Context, groupID int64) (*data.Group, error) {
 			return nil, fmt.Errorf("группа не найдена")
 		},
 	}

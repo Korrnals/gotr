@@ -56,27 +56,27 @@ func (r Result) ResetColor() string {
 
 // CheckResult результат одной проверки
 type CheckResult struct {
-	Name        string        `json:"name"`        // Название проверки
-	Category    string        `json:"category"`    // Категория (config, api, tests, etc)
-	Result      Result        `json:"result"`      // Статус
-	Message     string        `json:"message"`     // Человекочитаемое сообщение
-	Details     string        `json:"details"`     // Детали (опционально)
-	Duration    time.Duration `json:"duration"`    // Время выполнения
-	Error       error         `json:"-"`           // Ошибка (не сериализуется)
-	CanFix      bool          `json:"can_fix"`     // Можно ли автоматически исправить
-	FixCommand  string        `json:"fix_command"` // Команда для исправления
+	Name       string        `json:"name"`        // Название проверки
+	Category   string        `json:"category"`    // Категория (config, api, tests, etc)
+	Result     Result        `json:"result"`      // Статус
+	Message    string        `json:"message"`     // Человекочитаемое сообщение
+	Details    string        `json:"details"`     // Детали (опционально)
+	Duration   time.Duration `json:"duration"`    // Время выполнения
+	Error      error         `json:"-"`           // Ошибка (не сериализуется)
+	CanFix     bool          `json:"can_fix"`     // Можно ли автоматически исправить
+	FixCommand string        `json:"fix_command"` // Команда для исправления
 }
 
 // Report полный отчёт о self-test
 type Report struct {
-	Timestamp   time.Time     `json:"timestamp"`   // Время запуска
-	Version     string        `json:"version"`     // Версия gotr
-	Commit      string        `json:"commit"`      // Git commit
-	GoVersion   string        `json:"go_version"`  // Версия Go
-	Platform    string        `json:"platform"`    // OS/Arch
-	Checks      []CheckResult `json:"checks"`      // Все проверки
-	Duration    time.Duration `json:"duration"`    // Общее время
-	Health      Result        `json:"health"`      // Общий статус
+	Timestamp   time.Time     `json:"timestamp"`  // Время запуска
+	Version     string        `json:"version"`    // Версия gotr
+	Commit      string        `json:"commit"`     // Git commit
+	GoVersion   string        `json:"go_version"` // Версия Go
+	Platform    string        `json:"platform"`   // OS/Arch
+	Checks      []CheckResult `json:"checks"`     // Все проверки
+	Duration    time.Duration `json:"duration"`   // Общее время
+	Health      Result        `json:"health"`     // Общий статус
 	TotalPassed int           `json:"total_passed"`
 	TotalFailed int           `json:"total_failed"`
 	TotalWarn   int           `json:"total_warn"`

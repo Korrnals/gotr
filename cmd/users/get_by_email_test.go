@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestGetByEmailCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetUserByEmailFunc: func(email string) (*data.User, error) {
+		GetUserByEmailFunc: func(ctx context.Context, email string) (*data.User, error) {
 			assert.Equal(t, "john@example.com", email)
 			return &data.User{
 				ID:       12345,
@@ -38,7 +39,7 @@ func TestGetByEmailCmd_Success(t *testing.T) {
 
 func TestGetByEmailCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetUserByEmailFunc: func(email string) (*data.User, error) {
+		GetUserByEmailFunc: func(ctx context.Context, email string) (*data.User, error) {
 			return nil, fmt.Errorf("user not found")
 		},
 	}
@@ -54,7 +55,7 @@ func TestGetByEmailCmd_NotFound(t *testing.T) {
 
 func TestGetByEmailCmd_InvalidEmail(t *testing.T) {
 	mock := &client.MockClient{
-		GetUserByEmailFunc: func(email string) (*data.User, error) {
+		GetUserByEmailFunc: func(ctx context.Context, email string) (*data.User, error) {
 			return nil, fmt.Errorf("invalid email format")
 		},
 	}

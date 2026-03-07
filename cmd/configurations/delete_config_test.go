@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 
 func TestDeleteConfigCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteConfigFunc: func(configID int64) error {
+		DeleteConfigFunc: func(ctx context.Context, configID int64) error {
 			assert.Equal(t, int64(10), configID)
 			return nil
 		},
@@ -46,7 +47,7 @@ func TestDeleteConfigCmd_InvalidID(t *testing.T) {
 
 func TestDeleteConfigCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteConfigFunc: func(configID int64) error {
+		DeleteConfigFunc: func(ctx context.Context, configID int64) error {
 			return fmt.Errorf("конфигурация не найдена")
 		},
 	}

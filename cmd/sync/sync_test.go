@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -79,7 +79,7 @@ func TestGetClientSafe_WithNilAccessor(t *testing.T) {
 	// Создаём команду с контекстом
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
-	
+
 	result := getClientSafe(cmd)
 	assert.Nil(t, result)
 }
@@ -179,7 +179,7 @@ func TestGetClientInterface_WithNilAccessor(t *testing.T) {
 	// Создаём команду с контекстом
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
-	
+
 	result := getClientInterface(cmd)
 	assert.Nil(t, result)
 }

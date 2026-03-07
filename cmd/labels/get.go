@@ -31,7 +31,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			resp, err := client.GetLabel(labelID)
+			ctx := cmd.Context()
+			resp, err := client.GetLabel(ctx, labelID)
 			if err != nil {
 				return fmt.Errorf("failed to get label: %w", err)
 			}

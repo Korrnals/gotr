@@ -53,8 +53,8 @@ func (st SuiteTask) GetPriority() Priority {
 // PageRequest represents a request to fetch a specific page of cases
 type PageRequest struct {
 	SuiteTask
-	Offset int
-	Limit  int
+	Offset  int
+	Limit   int
 	PageNum int // For debugging/metrics
 }
 
@@ -156,13 +156,13 @@ type ControllerConfig struct {
 // DefaultControllerConfig returns a default configuration
 func DefaultControllerConfig() *ControllerConfig {
 	return &ControllerConfig{
-		MaxConcurrentSuites: 5,
-		MaxConcurrentPages:  3,
-		RequestsPerMinute:   180,
-		Timeout:             5 * time.Minute,
-		PageSize:            250,
-		MaxRetries:                5,
-		MaxConsecutiveErrorWaves:  3,
+		MaxConcurrentSuites:      5,
+		MaxConcurrentPages:       3,
+		RequestsPerMinute:        180,
+		Timeout:                  5 * time.Minute,
+		PageSize:                 250,
+		MaxRetries:               5,
+		MaxConsecutiveErrorWaves: 3,
 	}
 }
 

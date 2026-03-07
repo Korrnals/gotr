@@ -1,6 +1,7 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteMilestoneFunc: func(milestoneID int64) error {
+		DeleteMilestoneFunc: func(ctx context.Context, milestoneID int64) error {
 			assert.Equal(t, int64(12345), milestoneID)
 			return nil
 		},
@@ -28,7 +29,7 @@ func TestDeleteCmd_Success(t *testing.T) {
 
 func TestDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteMilestoneFunc: func(milestoneID int64) error {
+		DeleteMilestoneFunc: func(ctx context.Context, milestoneID int64) error {
 			return fmt.Errorf("milestone not found")
 		},
 	}

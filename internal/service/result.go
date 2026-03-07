@@ -3,6 +3,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -16,14 +17,14 @@ import (
 
 // resultClientInterface определяет методы клиента, необходимые для ResultService
 type resultClientInterface interface {
-	GetResults(testID int64) (data.GetResultsResponse, error)
-	GetResultsForCase(runID, caseID int64) (data.GetResultsResponse, error)
-	GetResultsForRun(runID int64) (data.GetResultsResponse, error)
-	GetRuns(projectID int64) (data.GetRunsResponse, error)
-	AddResult(testID int64, req *data.AddResultRequest) (*data.Result, error)
-	AddResultForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
-	AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
-	AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
+	GetResults(ctx context.Context, testID int64) (data.GetResultsResponse, error)
+	GetResultsForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error)
+	GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error)
+	GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error)
+	AddResult(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddResultForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
+	AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
 // ResultService предоставляет методы для работы с результатами тестов
@@ -42,42 +43,42 @@ func NewResultServiceFromInterface(cli client.ClientInterface) *ResultService {
 }
 
 // GetForTest получает результаты для test ID
-func (s *ResultService) GetForTest(testID int64) (data.GetResultsResponse, error) {
+func (s *ResultService) GetForTest(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(testID, "test_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetResults(testID)
+	return s.client.GetResults(ctx, testID)
 }
 
 // GetForCase получает результаты для case в run
-func (s *ResultService) GetForCase(runID, caseID int64) (data.GetResultsResponse, error) {
+func (s *ResultService) GetForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
 	}
 	if err := s.validateID(caseID, "case_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetResultsForCase(runID, caseID)
+	return s.client.GetResultsForCase(ctx, runID, caseID)
 }
 
 // GetForRun получает результаты для run ID
-func (s *ResultService) GetForRun(runID int64) (data.GetResultsResponse, error) {
+func (s *ResultService) GetForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetResultsForRun(runID)
+	return s.client.GetResultsForRun(ctx, runID)
 }
 
 // GetRunsForProject получает список runs для проекта (для интерактивного выбора)
-func (s *ResultService) GetRunsForProject(projectID int64) (data.GetRunsResponse, error) {
+func (s *ResultService) GetRunsForProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	if err := s.validateID(projectID, "project_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetRuns(projectID)
+	return s.client.GetRuns(ctx, projectID)
 }
 
 // AddForTest добавляет результат для test с валидацией
-func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+func (s *ResultService) AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 	log.L().Info("adding result for test",
 		zap.Int64("test_id", testID),
 		zap.Int64("status_id", req.StatusID),
@@ -92,7 +93,7 @@ func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*d
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
 
-	result, err := s.client.AddResult(testID, req)
+	result, err := s.client.AddResult(ctx, testID, req)
 	if err != nil {
 		log.L().Error("failed to add result", zap.Int64("test_id", testID), zap.Error(err))
 		return nil, err
@@ -107,7 +108,7 @@ func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*d
 }
 
 // AddForCase добавляет результат для case в run с валидацией
-func (s *ResultService) AddForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 	log.L().Info("adding result for case",
 		zap.Int64("run_id", runID),
 		zap.Int64("case_id", caseID),
@@ -127,7 +128,7 @@ func (s *ResultService) AddForCase(runID, caseID int64, req *data.AddResultReque
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
 
-	result, err := s.client.AddResultForCase(runID, caseID, req)
+	result, err := s.client.AddResultForCase(ctx, runID, caseID, req)
 	if err != nil {
 		log.L().Error("failed to add result", zap.Int64("run_id", runID), zap.Int64("case_id", caseID), zap.Error(err))
 		return nil, err
@@ -143,7 +144,7 @@ func (s *ResultService) AddForCase(runID, caseID int64, req *data.AddResultReque
 }
 
 // AddResults добавляет несколько результатов (bulk) с валидацией
-func (s *ResultService) AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 	log.L().Info("adding bulk results",
 		zap.Int64("run_id", runID),
 		zap.Int("count", len(req.Results)),
@@ -158,7 +159,7 @@ func (s *ResultService) AddResults(runID int64, req *data.AddResultsRequest) (da
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
 
-	results, err := s.client.AddResults(runID, req)
+	results, err := s.client.AddResults(ctx, runID, req)
 	if err != nil {
 		log.L().Error("failed to add bulk results", zap.Int64("run_id", runID), zap.Error(err))
 		return nil, err
@@ -172,28 +173,28 @@ func (s *ResultService) AddResults(runID int64, req *data.AddResultsRequest) (da
 }
 
 // AddResultsForCases добавляет результаты для кейсов (bulk) с валидацией
-func (s *ResultService) AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
 	}
 	if err := s.validateAddResultsForCasesRequest(req); err != nil {
 		return nil, fmt.Errorf("валидация запроса: %w", err)
 	}
-	return s.client.AddResultsForCases(runID, req)
+	return s.client.AddResultsForCases(ctx, runID, req)
 }
 
 // Output выводит результат в JSON и сохраняет в файл
-func (s *ResultService) Output(cmd *cobra.Command, data interface{}) error {
+func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return utils.OutputResult(cmd, data)
 }
 
 // PrintSuccess выводит сообщение об успехе
-func (s *ResultService) PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
+func (s *ResultService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	utils.PrintSuccess(cmd, format, args...)
 }
 
 // ParseID парсит ID из аргументов
-func (s *ResultService) ParseID(args []string, index int) (int64, error) {
+func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
 		return 0, fmt.Errorf("отсутствует аргумент с ID на позиции %d", index)
 	}

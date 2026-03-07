@@ -17,6 +17,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
+			ctx := cmd.Context()
 
 			groupID, err := strconv.ParseInt(args[0], 10, 64)
 			if err != nil || groupID <= 0 {
@@ -34,7 +35,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			group, err := client.UpdateGroup(groupID, name, nil)
+			group, err := client.UpdateGroup(ctx, groupID, name, nil)
 			if err != nil {
 				return err
 			}

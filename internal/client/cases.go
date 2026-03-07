@@ -63,13 +63,13 @@ func decodeCasesResponseWithSize(body []byte) ([]data.Case, int64, error) {
 // GetCases получает **все** кейсы проекта (с пагинацией).
 // suiteID и sectionID — опционально (0 = не использовать).
 // Возвращает полный список кейсов.
-func (c *HTTPClient) GetCases(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
-	return c.GetCasesWithProgress(projectID, suiteID, sectionID, nil)
+func (c *HTTPClient) GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+	return c.GetCasesWithProgress(ctx, projectID, suiteID, sectionID, nil)
 }
 
 // GetCasesPage получает одну страницу кейсов по точным offset/limit.
 // Используется для точечного ретрая сбойных страниц без полного перепрогона.
-func (c *HTTPClient) GetCasesPage(projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+func (c *HTTPClient) GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
 	endpoint := fmt.Sprintf("get_cases/%d", projectID)
 	query := map[string]string{
 		"suite_id": fmt.Sprintf("%d", suiteID),
@@ -77,7 +77,7 @@ func (c *HTTPClient) GetCasesPage(projectID int64, suiteID int64, offset int, li
 		"limit":    fmt.Sprintf("%d", limit),
 	}
 
-	resp, err := c.Get(endpoint, query)
+	resp, err := c.Get(ctx, endpoint, query)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetCasesPage project=%d suite=%d offset=%d limit=%d: %w",
 			projectID, suiteID, offset, limit, err)
@@ -101,7 +101,7 @@ func (c *HTTPClient) GetCasesPage(projectID int64, suiteID int64, offset int, li
 
 // GetCasesWithProgress получает **все** кейсы проекта с отслеживанием прогресса.
 // monitor вызывается после каждой страницы (каждые 250 кейсов).
-func (c *HTTPClient) GetCasesWithProgress(projectID int64, suiteID int64, sectionID int64, monitor ProgressMonitor) (data.GetCasesResponse, error) {
+func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID int64, suiteID int64, sectionID int64, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	var all data.GetCasesResponse
 	offset := int64(0)
 	limit := int64(250)
@@ -119,7 +119,7 @@ func (c *HTTPClient) GetCasesWithProgress(projectID int64, suiteID int64, sectio
 			query["section_id"] = fmt.Sprintf("%d", sectionID)
 		}
 
-		resp, err := c.Get(endpoint, query)
+		resp, err := c.Get(ctx, endpoint, query)
 		if err != nil {
 			return nil, fmt.Errorf("ошибка запроса GetCases для проекта %d: %w", projectID, err)
 		}
@@ -160,9 +160,9 @@ func (c *HTTPClient) GetCasesWithProgress(projectID int64, suiteID int64, sectio
 
 // GetCase получает информацию о конкретном кейсе по ID.
 // Возвращает указатель на Case.
-func (c *HTTPClient) GetCase(caseID int64) (*data.Case, error) {
+func (c *HTTPClient) GetCase(ctx context.Context, caseID int64) (*data.Case, error) {
 	endpoint := fmt.Sprintf("get_case/%d", caseID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetCase %d: %w", caseID, err)
 	}
@@ -183,9 +183,9 @@ func (c *HTTPClient) GetCase(caseID int64) (*data.Case, error) {
 }
 
 // GetHistoryForCase получает историю изменений кейса.
-func (c *HTTPClient) GetHistoryForCase(caseID int64) (*data.GetHistoryForCaseResponse, error) {
+func (c *HTTPClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data.GetHistoryForCaseResponse, error) {
 	endpoint := fmt.Sprintf("get_history_for_case/%d", caseID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetHistoryForCase %d: %w", caseID, err)
 	}
@@ -207,14 +207,14 @@ func (c *HTTPClient) GetHistoryForCase(caseID int64) (*data.GetHistoryForCaseRes
 
 // AddCase создаёт новый кейс в секции.
 // Требует sectionID и Title в запросе.
-func (c *HTTPClient) AddCase(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddCaseRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_case/%d", sectionID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddCase в секции %d: %w", sectionID, err)
 	}
@@ -236,14 +236,14 @@ func (c *HTTPClient) AddCase(sectionID int64, req *data.AddCaseRequest) (*data.C
 
 // UpdateCase обновляет существующий кейс.
 // Поддерживает частичные обновления.
-func (c *HTTPClient) UpdateCase(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга UpdateCaseRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_case/%d", caseID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateCase %d: %w", caseID, err)
 	}
@@ -264,14 +264,14 @@ func (c *HTTPClient) UpdateCase(caseID int64, req *data.UpdateCaseRequest) (*dat
 }
 
 // UpdateCases — bulk-обновление кейсов в suite.
-func (c *HTTPClient) UpdateCases(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
+func (c *HTTPClient) UpdateCases(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга UpdateCasesRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_cases/%d", suiteID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса UpdateCases в suite %d: %w", suiteID, err)
 	}
@@ -293,9 +293,9 @@ func (c *HTTPClient) UpdateCases(suiteID int64, req *data.UpdateCasesRequest) (*
 
 // DeleteCase удаляет кейс по ID.
 // Удаление необратимо.
-func (c *HTTPClient) DeleteCase(caseID int64) error {
+func (c *HTTPClient) DeleteCase(ctx context.Context, caseID int64) error {
 	endpoint := fmt.Sprintf("delete_case/%d", caseID)
-	resp, err := c.Post(endpoint, nil, nil)
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса DeleteCase %d: %w", caseID, err)
 	}
@@ -310,14 +310,14 @@ func (c *HTTPClient) DeleteCase(caseID int64) error {
 }
 
 // DeleteCases — bulk-удаление кейсов в suite.
-func (c *HTTPClient) DeleteCases(suiteID int64, req *data.DeleteCasesRequest) error {
+func (c *HTTPClient) DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("ошибка маршалинга DeleteCasesRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("delete_cases/%d", suiteID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса DeleteCases в suite %d: %w", suiteID, err)
 	}
@@ -332,9 +332,9 @@ func (c *HTTPClient) DeleteCases(suiteID int64, req *data.DeleteCasesRequest) er
 }
 
 // GetCaseTypes получает список всех типов кейсов.
-func (c *HTTPClient) GetCaseTypes() (data.GetCaseTypesResponse, error) {
+func (c *HTTPClient) GetCaseTypes(ctx context.Context) (data.GetCaseTypesResponse, error) {
 	endpoint := "get_case_types"
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetCaseTypes: %w", err)
 	}
@@ -354,9 +354,9 @@ func (c *HTTPClient) GetCaseTypes() (data.GetCaseTypesResponse, error) {
 }
 
 // GetCaseFields получает список всех полей кейсов.
-func (c *HTTPClient) GetCaseFields() (data.GetCaseFieldsResponse, error) {
+func (c *HTTPClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsResponse, error) {
 	endpoint := "get_case_fields"
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetCaseFields: %w", err)
 	}
@@ -376,14 +376,14 @@ func (c *HTTPClient) GetCaseFields() (data.GetCaseFieldsResponse, error) {
 }
 
 // AddCaseField создаёт новое поле кейса.
-func (c *HTTPClient) AddCaseField(req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error) {
+func (c *HTTPClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddCaseFieldRequest: %w", err)
 	}
 
 	endpoint := "add_case_field"
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddCaseField: %w", err)
 	}
@@ -405,26 +405,26 @@ func (c *HTTPClient) AddCaseField(req *data.AddCaseFieldRequest) (*data.AddCaseF
 // DiffCasesData — сравнивает кейсы двух проектов по указанному полю.
 // Возвращает DiffCasesResponse с разницей.
 // Использует параллельную загрузку для ускорения.
-func (c *HTTPClient) DiffCasesData(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
+func (c *HTTPClient) DiffCasesData(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
 	// Параллельная загрузка кейсов из обоих проектов
 	type result struct {
 		cases data.GetCasesResponse
 		err   error
 		pid   int64
 	}
-	
+
 	resultChan := make(chan result, 2)
-	
+
 	go func() {
-		cases, err := c.GetCases(pid1, 0, 0)
+		cases, err := c.GetCases(ctx, pid1, 0, 0)
 		resultChan <- result{cases, err, pid1}
 	}()
-	
+
 	go func() {
-		cases, err := c.GetCases(pid2, 0, 0)
+		cases, err := c.GetCases(ctx, pid2, 0, 0)
 		resultChan <- result{cases, err, pid2}
 	}()
-	
+
 	var cases1, cases2 data.GetCasesResponse
 	for i := 0; i < 2; i++ {
 		res := <-resultChan
@@ -504,14 +504,14 @@ func casesEqualByField(c1, c2 data.Case, field string) bool {
 
 // CopyCasesToSection копирует кейсы в указанную секцию
 // POST index.php?/api/v2/copy_cases_to_section/:section_id
-func (c *HTTPClient) CopyCasesToSection(sectionID int64, req *data.CopyCasesRequest) error {
+func (c *HTTPClient) CopyCasesToSection(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("ошибка маршалинга CopyCasesRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("copy_cases_to_section/%d", sectionID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса CopyCasesToSection для секции %d: %w", sectionID, err)
 	}
@@ -527,14 +527,14 @@ func (c *HTTPClient) CopyCasesToSection(sectionID int64, req *data.CopyCasesRequ
 
 // MoveCasesToSection перемещает кейсы в указанную секцию
 // POST index.php?/api/v2/move_cases_to_section/:section_id
-func (c *HTTPClient) MoveCasesToSection(sectionID int64, req *data.MoveCasesRequest) error {
+func (c *HTTPClient) MoveCasesToSection(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("ошибка маршалинга MoveCasesRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("move_cases_to_section/%d", sectionID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return fmt.Errorf("ошибка запроса MoveCasesToSection для секции %d: %w", sectionID, err)
 	}
@@ -605,7 +605,7 @@ func (f *casesFetcher) FetchPageCtx(ctx context.Context, req concurrency.PageReq
 		"limit":    fmt.Sprintf("%d", req.Limit),
 	}
 
-	resp, err := f.client.Get(endpoint, query)
+	resp, err := f.client.Get(ctx, endpoint, query)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -618,4 +618,3 @@ func (f *casesFetcher) FetchPageCtx(ctx context.Context, req concurrency.PageReq
 
 	return decodeCasesResponseWithSize(body)
 }
-

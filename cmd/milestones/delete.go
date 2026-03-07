@@ -39,7 +39,8 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteMilestone(milestoneID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteMilestone(ctx, milestoneID); err != nil {
 				return fmt.Errorf("failed to delete milestone: %w", err)
 			}
 

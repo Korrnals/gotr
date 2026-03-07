@@ -4,6 +4,7 @@
 package labels
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 
 func TestUpdateLabelCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			assert.Equal(t, int64(1), labelID)
 			assert.Equal(t, int64(10), req.ProjectID)
 			assert.Equal(t, "Updated Label", req.Title)
@@ -37,7 +38,7 @@ func TestUpdateLabelCmd_Success(t *testing.T) {
 
 func TestUpdateLabelCmd_WithShortFlags(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			assert.Equal(t, int64(5), labelID)
 			assert.Equal(t, int64(20), req.ProjectID)
 			assert.Equal(t, "New Title", req.Title)
@@ -58,7 +59,7 @@ func TestUpdateLabelCmd_WithShortFlags(t *testing.T) {
 
 func TestUpdateLabelCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return &data.Label{ID: 3, Name: "Saved Label"}, nil
 		},
 	}
@@ -73,7 +74,7 @@ func TestUpdateLabelCmd_WithSave(t *testing.T) {
 
 func TestUpdateLabelCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return &data.Label{ID: 7, Name: "JSON Label"}, nil
 		},
 	}
@@ -90,7 +91,7 @@ func TestUpdateLabelCmd_WithSaveFlag(t *testing.T) {
 
 func TestUpdateLabelCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return nil, fmt.Errorf("label not found")
 		},
 	}
@@ -106,7 +107,7 @@ func TestUpdateLabelCmd_NotFound(t *testing.T) {
 
 func TestUpdateLabelCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return nil, fmt.Errorf("permission denied")
 		},
 	}
@@ -122,7 +123,7 @@ func TestUpdateLabelCmd_APIError(t *testing.T) {
 
 func TestUpdateLabelCmd_ProjectNotFound(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -210,7 +211,7 @@ func TestUpdateLabelCmd_MissingTitleFlag(t *testing.T) {
 
 func TestUpdateLabelCmd_EmptyTitle(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			// API might return an error for empty title
 			if req.Title == "" {
 				return nil, fmt.Errorf("title cannot be empty")

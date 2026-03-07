@@ -40,7 +40,8 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteVariable(variableID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteVariable(ctx, variableID); err != nil {
 				return fmt.Errorf("не удалось удалить переменную: %w", err)
 			}
 

@@ -162,7 +162,7 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 		"11 - Smoke & Sanity",
 		"12 - Usability",
 	}
-	
+
 	var typeStr string
 	if err := survey.AskOne(&survey.Select{
 		Message: "Тип кейса:",
@@ -177,11 +177,11 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 	// Приоритет
 	priorityOptions := []string{
 		"1 - Critical",
-		"2 - High", 
+		"2 - High",
 		"3 - Medium",
 		"4 - Low",
 	}
-	
+
 	var priorityStr string
 	if err := survey.AskOne(&survey.Select{
 		Message: "Приоритет:",

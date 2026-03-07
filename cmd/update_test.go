@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -20,7 +20,7 @@ func setupUpdateTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 		Long:  updateCmd.Long,
 		RunE:  runUpdate,
 	}
-	
+
 	// Добавляем флаги
 	cmd.Flags().StringP("name", "n", "", "Название ресурса")
 	cmd.Flags().String("description", "", "Описание")
@@ -38,27 +38,27 @@ func setupUpdateTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd.Flags().Bool("include-all", false, "Включить все кейсы (для run)")
 	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
 	output.AddFlag(cmd)
-	
+
 	// Создаем контекст с mock клиентом
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
-	
+
 	return cmd
 }
 
 // TestUpdate_Project_Success проверяет обновление проекта
 func TestUpdate_Project_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateProjectFunc: func(projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+		UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Updated Project", req.Name)
 			return &data.GetProjectResponse{ID: projectID, Name: req.Name}, nil
 		},
 	}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"project", "1", "--name", "Updated Project"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -66,16 +66,16 @@ func TestUpdate_Project_Success(t *testing.T) {
 // TestUpdate_Suite_Success проверяет обновление сьюта
 func TestUpdate_Suite_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateSuiteFunc: func(suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+		UpdateSuiteFunc: func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
 			assert.Equal(t, int64(100), suiteID)
 			assert.Equal(t, "Updated Suite", req.Name)
 			return &data.Suite{ID: suiteID, Name: req.Name}, nil
 		},
 	}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"suite", "100", "--name", "Updated Suite"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -83,16 +83,16 @@ func TestUpdate_Suite_Success(t *testing.T) {
 // TestUpdate_Section_Success проверяет обновление секции
 func TestUpdate_Section_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateSectionFunc: func(sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+		UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
 			assert.Equal(t, int64(200), sectionID)
 			assert.Equal(t, "Updated Section", req.Name)
 			return &data.Section{ID: sectionID, Name: req.Name}, nil
 		},
 	}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"section", "200", "--name", "Updated Section"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -100,7 +100,7 @@ func TestUpdate_Section_Success(t *testing.T) {
 // TestUpdate_Case_Success проверяет обновление кейса
 func TestUpdate_Case_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCaseFunc: func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			// Title передается как указатель
 			assert.NotNil(t, req.Title)
@@ -108,10 +108,10 @@ func TestUpdate_Case_Success(t *testing.T) {
 			return &data.Case{ID: caseID, Title: *req.Title}, nil
 		},
 	}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"case", "12345", "--title", "Updated Case", "--priority-id", "1"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -119,7 +119,7 @@ func TestUpdate_Case_Success(t *testing.T) {
 // TestUpdate_Run_Success проверяет обновление рана
 func TestUpdate_Run_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateRunFunc: func(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(1000), runID)
 			// Name передается как указатель
 			assert.NotNil(t, req.Name)
@@ -127,10 +127,10 @@ func TestUpdate_Run_Success(t *testing.T) {
 			return &data.Run{ID: runID, Name: *req.Name}, nil
 		},
 	}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"run", "1000", "--name", "Updated Run"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -138,16 +138,16 @@ func TestUpdate_Run_Success(t *testing.T) {
 // TestUpdate_SharedStep_Success проверяет обновление shared step
 func TestUpdate_SharedStep_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateSharedStepFunc: func(stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
+		UpdateSharedStepFunc: func(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
 			assert.Equal(t, int64(50), stepID)
 			assert.Equal(t, "Updated Step", req.Title)
 			return &data.SharedStep{ID: stepID, Title: req.Title}, nil
 		},
 	}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"shared-step", "50", "--title", "Updated Step"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -155,10 +155,10 @@ func TestUpdate_SharedStep_Success(t *testing.T) {
 // TestUpdate_NoArgs проверяет ошибку при отсутствии аргументов
 func TestUpdate_NoArgs(t *testing.T) {
 	mock := &client.MockClient{}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{})
-	
+
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "endpoint и id")
@@ -167,10 +167,10 @@ func TestUpdate_NoArgs(t *testing.T) {
 // TestUpdate_InvalidID проверяет ошибку при неверном ID
 func TestUpdate_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"project", "invalid"})
-	
+
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "ID")
@@ -179,10 +179,10 @@ func TestUpdate_InvalidID(t *testing.T) {
 // TestUpdate_UnsupportedEndpoint проверяет ошибку при неподдерживаемом endpoint
 func TestUpdate_UnsupportedEndpoint(t *testing.T) {
 	mock := &client.MockClient{}
-	
+
 	cmd := setupUpdateTest(t, mock)
 	cmd.SetArgs([]string{"unsupported", "1"})
-	
+
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "неподдерживаемый")

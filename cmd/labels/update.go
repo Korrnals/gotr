@@ -42,7 +42,8 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.UpdateTestLabels(testID, labels); err != nil {
+			ctx := cmd.Context()
+			if err := cli.UpdateTestLabels(ctx, testID, labels); err != nil {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 
@@ -98,7 +99,8 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.UpdateTestsLabels(runID, testIDs, labels); err != nil {
+			ctx := cmd.Context()
+			if err := cli.UpdateTestsLabels(ctx, runID, testIDs, labels); err != nil {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 

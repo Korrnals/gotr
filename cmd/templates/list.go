@@ -31,7 +31,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetTemplates(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetTemplates(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list templates: %w", err)
 			}

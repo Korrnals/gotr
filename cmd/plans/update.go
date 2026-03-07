@@ -48,7 +48,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdatePlan(planID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdatePlan(ctx, planID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update plan: %w", err)
 			}

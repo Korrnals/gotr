@@ -14,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetBDDFunc: func(caseID int64) (*data.BDD, error) {
+		GetBDDFunc: func(ctx context.Context, caseID int64) (*data.BDD, error) {
 			assert.Equal(t, int64(12345), caseID)
 			return &data.BDD{
 				ID:      1,
@@ -34,7 +34,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetBDDFunc: func(caseID int64) (*data.BDD, error) {
+		GetBDDFunc: func(ctx context.Context, caseID int64) (*data.BDD, error) {
 			return &data.BDD{ID: 1, CaseID: caseID, Content: "Feature: Test"}, nil
 		},
 	}
@@ -49,7 +49,7 @@ func TestGetCmd_WithSave(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetBDDFunc: func(caseID int64) (*data.BDD, error) {
+		GetBDDFunc: func(ctx context.Context, caseID int64) (*data.BDD, error) {
 			return nil, fmt.Errorf("BDD не найден")
 		},
 	}

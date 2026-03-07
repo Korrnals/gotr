@@ -2,6 +2,7 @@
 package migration // white-box тесты — в том же пакете
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -22,12 +23,12 @@ func TestMigration_ImportSharedSteps(t *testing.T) {
 			tt.filtered = data.GetSharedStepsResponse{{ID: 1, Title: "Test"}}
 		case 1: // успешный импорт — проверяем обновление mapping.Count (API работает)
 			tt.filtered = data.GetSharedStepsResponse{{ID: 1, Title: "Test"}}
-			tt.mockFunc = func(projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 				return &data.SharedStep{ID: 100}, nil // симулируем успешный ответ API
 			}
 		case 2: // ошибка импорта — проверяем устойчивость (не паникуем, mapping не обновляется)
 			tt.filtered = data.GetSharedStepsResponse{{ID: 1, Title: "Test"}}
-			tt.mockFunc = func(projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 				return nil, errors.New("API error") // симулируем ошибку API
 			}
 		case 3: // concurrency — много элементов, проверяем параллельный импорт (race detector pass)
@@ -36,7 +37,7 @@ func TestMigration_ImportSharedSteps(t *testing.T) {
 				{ID: 2, Title: "B"},
 				{ID: 3, Title: "C"},
 			}
-			tt.mockFunc = func(projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 				return &data.SharedStep{ID: int64(len(req.Title)) + 100}, nil // заглушка по длине Title
 			}
 		}
@@ -44,7 +45,7 @@ func TestMigration_ImportSharedSteps(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &MockClient{}
 			if tt.mockFunc != nil {
-				mock.AddSharedStepFunc = tt.mockFunc.(func(int64, *data.AddSharedStepRequest) (*data.SharedStep, error))
+				mock.AddSharedStepFunc = tt.mockFunc.(func(context.Context, int64, *data.AddSharedStepRequest) (*data.SharedStep, error))
 			}
 
 			m, err := NewMigration(mock, 1, 1, 2, 2, "title", logDir())
@@ -53,7 +54,7 @@ func TestMigration_ImportSharedSteps(t *testing.T) {
 			}
 			defer m.Close()
 
-			err = m.ImportSharedSteps(tt.filtered, tt.dryRun)
+			err = m.ImportSharedSteps(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 { // ошибка ожидаема только в кейсе ошибки
 				t.Errorf("неожиданная ошибка: %v", err)
 			}
@@ -74,12 +75,12 @@ func TestMigration_ImportSuites(t *testing.T) {
 			tt.filtered = data.GetSuitesResponse{{ID: 1, Name: "Test Suite"}}
 		case 1: // успешный импорт — проверяем обновление mapping.Count
 			tt.filtered = data.GetSuitesResponse{{ID: 1, Name: "Test Suite"}}
-			tt.mockFunc = func(projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 				return &data.Suite{ID: 100}, nil
 			}
 		case 2: // ошибка импорта — проверяем устойчивость
 			tt.filtered = data.GetSuitesResponse{{ID: 1, Name: "Test Suite"}}
-			tt.mockFunc = func(projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 				return nil, errors.New("API error")
 			}
 		case 3: // concurrency — проверяем параллельный импорт
@@ -88,7 +89,7 @@ func TestMigration_ImportSuites(t *testing.T) {
 				{ID: 2, Name: "B"},
 				{ID: 3, Name: "C"},
 			}
-			tt.mockFunc = func(projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 				return &data.Suite{ID: int64(len(req.Name)) + 100}, nil
 			}
 		}
@@ -96,7 +97,7 @@ func TestMigration_ImportSuites(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &MockClient{}
 			if tt.mockFunc != nil {
-				mock.AddSuiteFunc = tt.mockFunc.(func(int64, *data.AddSuiteRequest) (*data.Suite, error))
+				mock.AddSuiteFunc = tt.mockFunc.(func(context.Context, int64, *data.AddSuiteRequest) (*data.Suite, error))
 			}
 
 			m, err := NewMigration(mock, 1, 1, 2, 2, "title", logDir())
@@ -105,7 +106,7 @@ func TestMigration_ImportSuites(t *testing.T) {
 			}
 			defer m.Close()
 
-			err = m.ImportSuites(tt.filtered, tt.dryRun)
+			err = m.ImportSuites(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 {
 				t.Errorf("неожиданная ошибка: %v", err)
 			}
@@ -126,12 +127,12 @@ func TestMigration_ImportCases(t *testing.T) {
 			tt.filtered = data.GetCasesResponse{{ID: 1, Title: "Test Case"}}
 		case 1: // успешный импорт — проверяем imported (не меняет mapping)
 			tt.filtered = data.GetCasesResponse{{ID: 1, Title: "Test Case"}}
-			tt.mockFunc = func(suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			tt.mockFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
 				return &data.Case{ID: 100}, nil
 			}
 		case 2: // ошибка импорта — проверяем устойчивость
 			tt.filtered = data.GetCasesResponse{{ID: 1, Title: "Test Case"}}
-			tt.mockFunc = func(suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			tt.mockFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
 				return nil, errors.New("API error")
 			}
 		case 3: // concurrency — проверяем параллельный импорт
@@ -140,7 +141,7 @@ func TestMigration_ImportCases(t *testing.T) {
 				{ID: 2, Title: "B"},
 				{ID: 3, Title: "C"},
 			}
-			tt.mockFunc = func(suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			tt.mockFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
 				return &data.Case{ID: int64(len(req.Title)) + 100}, nil
 			}
 		}
@@ -148,7 +149,7 @@ func TestMigration_ImportCases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &MockClient{}
 			if tt.mockFunc != nil {
-				mock.AddCaseFunc = tt.mockFunc.(func(int64, *data.AddCaseRequest) (*data.Case, error))
+				mock.AddCaseFunc = tt.mockFunc.(func(context.Context, int64, *data.AddCaseRequest) (*data.Case, error))
 			}
 
 			m, err := NewMigration(mock, 1, 1, 2, 2, "title", logDir())
@@ -157,7 +158,7 @@ func TestMigration_ImportCases(t *testing.T) {
 			}
 			defer m.Close()
 
-			err = m.ImportCases(tt.filtered, tt.dryRun)
+			err = m.ImportCases(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 {
 				t.Errorf("неожиданная ошибка: %v", err)
 			}
@@ -177,12 +178,12 @@ func TestMigration_ImportSections(t *testing.T) {
 			tt.filtered = data.GetSectionsResponse{{ID: 1, Name: "Test Section"}}
 		case 1: // успешный импорт — проверяем обновление mapping.Count
 			tt.filtered = data.GetSectionsResponse{{ID: 1, Name: "Test Section"}}
-			tt.mockFunc = func(projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 				return &data.Section{ID: 100}, nil
 			}
 		case 2: // ошибка импорта — проверяем устойчивость
 			tt.filtered = data.GetSectionsResponse{{ID: 1, Name: "Test Section"}}
-			tt.mockFunc = func(projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 				return nil, errors.New("API error")
 			}
 		case 3: // concurrency — проверяем параллельный импорт
@@ -191,7 +192,7 @@ func TestMigration_ImportSections(t *testing.T) {
 				{ID: 2, Name: "B"},
 				{ID: 3, Name: "C"},
 			}
-			tt.mockFunc = func(projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 				return &data.Section{ID: int64(len(req.Name)) + 100}, nil
 			}
 		}
@@ -199,7 +200,7 @@ func TestMigration_ImportSections(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &MockClient{}
 			if tt.mockFunc != nil {
-				mock.AddSectionFunc = tt.mockFunc.(func(int64, *data.AddSectionRequest) (*data.Section, error))
+				mock.AddSectionFunc = tt.mockFunc.(func(context.Context, int64, *data.AddSectionRequest) (*data.Section, error))
 			}
 
 			m, err := NewMigration(mock, 1, 1, 2, 2, "title", logDir())
@@ -208,7 +209,7 @@ func TestMigration_ImportSections(t *testing.T) {
 			}
 			defer m.Close()
 
-			err = m.ImportSections(tt.filtered, tt.dryRun)
+			err = m.ImportSections(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 {
 				t.Errorf("неожиданная ошибка: %v", err)
 			}

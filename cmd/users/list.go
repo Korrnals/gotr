@@ -4,13 +4,14 @@
 package users
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -35,9 +36,10 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr users list -s output.json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 
 			if len(args) == 0 {
-				return listAllUsers(cmd, cli)
+				return listAllUsers(ctx, cmd, cli)
 			}
 
 			projectID, err := strconv.ParseInt(args[0], 10, 64)
@@ -45,7 +47,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("invalid project_id: %s", args[0])
 			}
 
-			return listProjectUsers(cmd, cli, projectID)
+			return listProjectUsers(ctx, cmd, cli, projectID)
 		},
 	}
 
@@ -55,15 +57,15 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 }
 
 type usersClient interface {
-	GetUsers() (data.GetUsersResponse, error)
-	GetUsersByProject(projectID int64) (data.GetUsersResponse, error)
+	GetUsers(ctx context.Context) (data.GetUsersResponse, error)
+	GetUsersByProject(ctx context.Context, projectID int64) (data.GetUsersResponse, error)
 }
 
-func listAllUsers(cmd *cobra.Command, cli usersClient) error {
+func listAllUsers(ctx context.Context, cmd *cobra.Command, cli usersClient) error {
 	pm := progress.NewManager()
 	progress.Describe(pm.NewSpinner(""), "Загрузка пользователей...")
 
-	users, err := cli.GetUsers()
+	users, err := cli.GetUsers(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to list users: %w", err)
 	}
@@ -87,11 +89,11 @@ func listAllUsers(cmd *cobra.Command, cli usersClient) error {
 	return w.Flush()
 }
 
-func listProjectUsers(cmd *cobra.Command, cli usersClient, projectID int64) error {
+func listProjectUsers(ctx context.Context, cmd *cobra.Command, cli usersClient, projectID int64) error {
 	pm := progress.NewManager()
 	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка пользователей проекта %d...", projectID))
 
-	users, err := cli.GetUsersByProject(projectID)
+	users, err := cli.GetUsersByProject(ctx, projectID)
 	if err != nil {
 		return fmt.Errorf("failed to list project users: %w", err)
 	}

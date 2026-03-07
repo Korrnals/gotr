@@ -1,6 +1,7 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsFunc: func(testID int64) (data.GetResultsResponse, error) {
+		GetResultsFunc: func(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), testID)
 			return data.GetResultsResponse{
 				{ID: 1, TestID: testID, StatusID: 1, Comment: "Test passed"},
@@ -57,7 +58,7 @@ func TestGetCmd_MissingTestID(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsFunc: func(testID int64) (data.GetResultsResponse, error) {
+		GetResultsFunc: func(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("test not found")
 		},
 	}
@@ -73,7 +74,7 @@ func TestGetCmd_APIError(t *testing.T) {
 
 func TestGetCmd_EmptyResults(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsFunc: func(testID int64) (data.GetResultsResponse, error) {
+		GetResultsFunc: func(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 			return data.GetResultsResponse{}, nil
 		},
 	}
@@ -99,7 +100,7 @@ func TestGetCmd_NilClient(t *testing.T) {
 
 func TestGetCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForCaseFunc: func(runID, caseID int64) (data.GetResultsResponse, error) {
+		GetResultsForCaseFunc: func(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, int64(200), caseID)
 			return data.GetResultsResponse{
@@ -153,7 +154,7 @@ func TestGetCaseCmd_MissingArgs(t *testing.T) {
 
 func TestGetCaseCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForCaseFunc: func(runID, caseID int64) (data.GetResultsResponse, error) {
+		GetResultsForCaseFunc: func(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("case not found in run")
 		},
 	}
@@ -169,7 +170,7 @@ func TestGetCaseCmd_APIError(t *testing.T) {
 
 func TestGetCaseCmd_ZeroIDs(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForCaseFunc: func(runID, caseID int64) (data.GetResultsResponse, error) {
+		GetResultsForCaseFunc: func(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("invalid id")
 		},
 	}
@@ -181,4 +182,3 @@ func TestGetCaseCmd_ZeroIDs(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 }
-

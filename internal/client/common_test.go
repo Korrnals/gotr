@@ -37,7 +37,7 @@ func newMockServerWithRecorder(responseCode int, responseBody interface{}) *mock
 		// Читаем тело запроса
 		body := make([]byte, r.ContentLength)
 		r.Body.Read(body)
-		
+
 		// Сохраняем запрос
 		ms.requests = append(ms.requests, mockRequest{
 			Method:  r.Method,
@@ -45,7 +45,7 @@ func newMockServerWithRecorder(responseCode int, responseBody interface{}) *mock
 			Headers: r.Header,
 			Body:    body,
 		})
-		
+
 		// Отправляем ответ
 		w.WriteHeader(responseCode)
 		if responseBody != nil {

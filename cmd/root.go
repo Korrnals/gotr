@@ -86,10 +86,10 @@ var rootCmd = &cobra.Command{
 	// Run: func(cmd *cobra.Command, args []string) { } // Можно оставить пустым — будет показывать help
 }
 
-// Execute — вызывается из main.go
-func Execute() {
+// Execute — вызывается из main.go с контекстом (поддерживает signal.NotifyContext)
+func Execute(ctx context.Context) {
 	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date)
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }

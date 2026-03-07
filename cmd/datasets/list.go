@@ -32,7 +32,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetDatasets(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetDatasets(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("не удалось получить список датасетов: %w", err)
 			}

@@ -2,6 +2,7 @@
 package migration
 
 import (
+	"context"
 	"fmt"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"sync"
@@ -10,7 +11,7 @@ import (
 // ImportSharedSteps — импортирует отфильтрованные shared steps параллельно
 // Обновляет mapping (AddPair для новых ID, status "created")
 // Добавляет записи в лог из горутин (успех/ошибки)
-func (m *Migration) ImportSharedSteps(filtered data.GetSharedStepsResponse, dryRun bool) error {
+func (m *Migration) ImportSharedSteps(ctx context.Context, filtered data.GetSharedStepsResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run или нет данных — импорт shared steps пропущен", "count", len(filtered))
 		return nil
@@ -42,7 +43,7 @@ func (m *Migration) ImportSharedSteps(filtered data.GetSharedStepsResponse, dryR
 			}
 
 			// Создание в target проекте
-			created, err := m.Client.AddSharedStep(m.dstProject, req)
+			created, err := m.Client.AddSharedStep(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
 				m.logger.Errorw("Ошибка импорта shared step", "title", s.Title, "error", err)
@@ -66,7 +67,7 @@ func (m *Migration) ImportSharedSteps(filtered data.GetSharedStepsResponse, dryR
 // ImportSuites — импортирует отфильтрованные suites параллельно
 // Обновляет mapping (AddPair для новых ID, status "created")
 // Добавляет записи в лог
-func (m *Migration) ImportSuites(filtered data.GetSuitesResponse, dryRun bool) error {
+func (m *Migration) ImportSuites(ctx context.Context, filtered data.GetSuitesResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run или нет данных — импорт suites пропущен", "count", len(filtered))
 		return nil
@@ -89,7 +90,7 @@ func (m *Migration) ImportSuites(filtered data.GetSuitesResponse, dryRun bool) e
 			}
 
 			// Создание в target проекте
-			created, err := m.Client.AddSuite(m.dstProject, req)
+			created, err := m.Client.AddSuite(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
 				m.logger.Errorw("Ошибка импорта suite", "name", s.Name, "error", err)
@@ -113,7 +114,7 @@ func (m *Migration) ImportSuites(filtered data.GetSuitesResponse, dryRun bool) e
 // ImportSections — импортирует отфильтрованные sections параллельно
 // Обновляет mapping (AddPair для новых ID, status "created")
 // Добавляет записи в лог
-func (m *Migration) ImportSections(filtered data.GetSectionsResponse, dryRun bool) error {
+func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSectionsResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run или нет данных — импорт sections пропущен", "count", len(filtered))
 		return nil
@@ -138,7 +139,7 @@ func (m *Migration) ImportSections(filtered data.GetSectionsResponse, dryRun boo
 			}
 
 			// Создание в target проекте
-			created, err := m.Client.AddSection(m.dstProject, req)
+			created, err := m.Client.AddSection(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
 				m.logger.Errorw("Ошибка импорта section", "name", s.Name, "error", err)
@@ -162,7 +163,7 @@ func (m *Migration) ImportSections(filtered data.GetSectionsResponse, dryRun boo
 // ImportCases — импортирует отфильтрованные cases параллельно
 // Заменяет SharedStepID по mapping
 // Добавляет записи в лог
-func (m *Migration) ImportCases(filtered data.GetCasesResponse, dryRun bool) error {
+func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run или нет данных — импорт cases пропущен", "count", len(filtered))
 		return nil
@@ -212,7 +213,7 @@ func (m *Migration) ImportCases(filtered data.GetCasesResponse, dryRun bool) err
 			}
 
 			// Создание в target suite
-			created, err := m.Client.AddCase(m.dstSuite, req)
+			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
 			if err != nil {
 				mu.Lock()
 				m.logger.Errorw("Ошибка импорта кейса", "title", caseData.Title, "error", err)
@@ -233,7 +234,7 @@ func (m *Migration) ImportCases(filtered data.GetCasesResponse, dryRun bool) err
 }
 
 // ImportCasesReport — как ImportCases, но возвращает список созданных ID и ошибок для использования в CLI
-func (m *Migration) ImportCasesReport(filtered data.GetCasesResponse, dryRun bool) ([]int64, []string, error) {
+func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) ([]int64, []string, error) {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run или нет данных — импорт cases пропущен", "count", len(filtered))
 		return nil, nil, nil
@@ -285,7 +286,7 @@ func (m *Migration) ImportCasesReport(filtered data.GetCasesResponse, dryRun boo
 			}
 
 			// Создание в target suite
-			created, err := m.Client.AddCase(m.dstSuite, req)
+			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
 			if err != nil {
 				mu.Lock()
 				errors = append(errors, fmt.Sprintf("кейс %q: %v", caseData.Title, err))

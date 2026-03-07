@@ -74,7 +74,8 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddPlanEntry(planID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddPlanEntry(ctx, planID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to add plan entry: %w", err)
 			}
@@ -128,7 +129,8 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdatePlanEntry(planID, entryID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdatePlanEntry(ctx, planID, entryID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update plan entry: %w", err)
 			}
@@ -177,7 +179,8 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeletePlanEntry(planID, entryID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeletePlanEntry(ctx, planID, entryID); err != nil {
 				return fmt.Errorf("failed to delete plan entry: %w", err)
 			}
 

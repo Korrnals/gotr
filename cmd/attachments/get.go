@@ -33,7 +33,8 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			client := getClient(cmd)
-			resp, err := client.GetAttachment(attachmentID)
+			ctx := cmd.Context()
+			resp, err := client.GetAttachment(ctx, attachmentID)
 			if err != nil {
 				return fmt.Errorf("failed to get attachment: %w", err)
 			}

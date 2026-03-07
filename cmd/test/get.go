@@ -3,8 +3,8 @@ package test
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
 )
@@ -26,17 +26,18 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			httpClient := getClient(cmd)
+			ctx := cmd.Context()
 			if httpClient == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
 			svc := service.NewTestService(httpClient)
-			testID, err := svc.ParseID(args, 0)
+			testID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
 				return fmt.Errorf("некорректный ID теста: %w", err)
 			}
 
-			test, err := svc.Get(testID)
+			test, err := svc.Get(ctx, testID)
 			if err != nil {
 				return fmt.Errorf("ошибка получения теста: %w", err)
 			}
@@ -49,12 +50,12 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 					return fmt.Errorf("ошибка сохранения: %w", err)
 				}
 				if filepath != "" {
-					svc.PrintSuccess(cmd, "Тест сохранён в %s", filepath)
+					svc.PrintSuccess(ctx, cmd, "Тест сохранён в %s", filepath)
 				}
 				return nil
 			}
 
-			return svc.Output(cmd, test)
+			return svc.Output(ctx, cmd, test)
 		},
 	}
 

@@ -3,9 +3,9 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -34,12 +34,13 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
 
 			svc := newRunServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
+			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
 				return fmt.Errorf("некорректный ID test run: %w", err)
 			}
@@ -85,13 +86,13 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return nil
 			}
 
-			run, err := svc.Update(runID, req)
+			run, err := svc.Update(ctx, runID, req)
 			if err != nil {
 				return fmt.Errorf("ошибка обновления test run: %w", err)
 			}
 
-			svc.PrintSuccess(cmd, "Test run обновлён успешно:")
-			return svc.Output(cmd, run)
+			svc.PrintSuccess(ctx, cmd, "Test run обновлён успешно:")
+			return svc.Output(ctx, cmd, run)
 		},
 	}
 

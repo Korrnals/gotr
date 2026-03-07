@@ -1,6 +1,7 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -25,7 +26,7 @@ func TestAddBulkCmd_Success(t *testing.T) {
 	}
 
 	mock := &client.MockClient{
-		AddResultsFunc: func(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+		AddResultsFunc: func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Len(t, req.Results, 2)
 			return []data.Result{
@@ -56,7 +57,7 @@ func TestAddBulkCmd_WithCases(t *testing.T) {
 	}
 
 	mock := &client.MockClient{
-		AddResultsForCasesFunc: func(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+		AddResultsForCasesFunc: func(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Len(t, req.Results, 2)
 			return []data.Result{
@@ -160,7 +161,7 @@ func TestAddBulkCmd_APIError(t *testing.T) {
 	}
 
 	mock := &client.MockClient{
-		AddResultsFunc: func(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+		AddResultsFunc: func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}

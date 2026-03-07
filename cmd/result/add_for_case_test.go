@@ -1,6 +1,7 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestAddForCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultForCaseFunc: func(runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Equal(t, int64(678), caseID)
 			assert.Equal(t, int64(1), req.StatusID)
@@ -53,7 +54,7 @@ func TestAddForCaseCmd_DryRun(t *testing.T) {
 
 func TestAddForCaseCmd_WithAllFlags(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultForCaseFunc: func(runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Equal(t, int64(678), caseID)
 			assert.Equal(t, int64(5), req.StatusID)
@@ -96,7 +97,7 @@ func TestAddForCaseCmd_InvalidIDs(t *testing.T) {
 
 func TestAddForCaseCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultForCaseFunc: func(runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 			return nil, fmt.Errorf("run is closed")
 		},
 	}

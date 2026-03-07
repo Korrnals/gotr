@@ -38,11 +38,11 @@ func TestPrintCasesStats(t *testing.T) {
 	// Verify output contains key information
 	assert.Contains(t, output, "СТАТИСТИКА: cases")
 	assert.Contains(t, output, "1.5s") // elapsed time
-	assert.Contains(t, output, "4")   // total cases (2 + 1 + 1)
-	assert.Contains(t, output, "30")  // project 1 ID
-	assert.Contains(t, output, "34")  // project 2 ID
-	assert.Contains(t, output, "2")   // only in first
-	assert.Contains(t, output, "1")   // only in second / common
+	assert.Contains(t, output, "4")    // total cases (2 + 1 + 1)
+	assert.Contains(t, output, "30")   // project 1 ID
+	assert.Contains(t, output, "34")   // project 2 ID
+	assert.Contains(t, output, "2")    // only in first
+	assert.Contains(t, output, "1")    // only in second / common
 }
 
 func TestPrintCasesStats_ZeroCases(t *testing.T) {

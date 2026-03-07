@@ -21,9 +21,9 @@ type mockReporter struct {
 	errorsTotal    atomic.Int32
 }
 
-func (m *mockReporter) OnItemComplete()    { m.itemsCompleted.Add(1) }
+func (m *mockReporter) OnItemComplete()       { m.itemsCompleted.Add(1) }
 func (m *mockReporter) OnBatchReceived(n int) { m.batchesTotal.Add(int32(n)) }
-func (m *mockReporter) OnError()           { m.errorsTotal.Add(1) }
+func (m *mockReporter) OnError()              { m.errorsTotal.Add(1) }
 
 // --- FetchParallel tests ---
 

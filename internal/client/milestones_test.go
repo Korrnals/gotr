@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -44,16 +45,17 @@ func TestGetMilestone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
 			if tc.mockResponse != nil {
-				mockClient.GetMilestoneFunc = func(id int64) (*data.Milestone, error) {
+				mockClient.GetMilestoneFunc = func(ctx context.Context, id int64) (*data.Milestone, error) {
 					return tc.mockResponse, nil
 				}
 			} else {
-				mockClient.GetMilestoneFunc = func(id int64) (*data.Milestone, error) {
+				mockClient.GetMilestoneFunc = func(ctx context.Context, id int64) (*data.Milestone, error) {
 					return nil, fmt.Errorf("milestone %d not found", id)
 				}
 			}
 
-			result, err := mockClient.GetMilestone(tc.milestoneID)
+			ctx := context.Background()
+			result, err := mockClient.GetMilestone(ctx, tc.milestoneID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -100,11 +102,12 @@ func TestGetMilestones(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetMilestonesFunc = func(projectID int64) ([]data.Milestone, error) {
+			mockClient.GetMilestonesFunc = func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetMilestones(tc.projectID)
+			ctx := context.Background()
+			result, err := mockClient.GetMilestones(ctx, tc.projectID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -150,11 +153,12 @@ func TestAddMilestone(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.AddMilestoneFunc = func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+			mockClient.AddMilestoneFunc = func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.AddMilestone(tc.projectID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.AddMilestone(ctx, tc.projectID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -199,11 +203,12 @@ func TestUpdateMilestone(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.UpdateMilestoneFunc = func(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
+			mockClient.UpdateMilestoneFunc = func(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.UpdateMilestone(tc.milestoneID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.UpdateMilestone(ctx, tc.milestoneID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -243,16 +248,17 @@ func TestDeleteMilestone(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
 			if tc.wantErr {
-				mockClient.DeleteMilestoneFunc = func(milestoneID int64) error {
+				mockClient.DeleteMilestoneFunc = func(ctx context.Context, milestoneID int64) error {
 					return fmt.Errorf("milestone %d not found", milestoneID)
 				}
 			} else {
-				mockClient.DeleteMilestoneFunc = func(milestoneID int64) error {
+				mockClient.DeleteMilestoneFunc = func(ctx context.Context, milestoneID int64) error {
 					return nil
 				}
 			}
 
-			err := mockClient.DeleteMilestone(tc.milestoneID)
+			ctx := context.Background()
+			err := mockClient.DeleteMilestone(ctx, tc.milestoneID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -284,7 +290,8 @@ func TestHTTPGetMilestone(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	milestone, err := client.GetMilestone(1)
+	ctx := context.Background()
+	milestone, err := client.GetMilestone(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetMilestone() error: %v", err)
 	}
@@ -309,7 +316,8 @@ func TestHTTPGetMilestones(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	milestones, err := client.GetMilestones(1)
+	ctx := context.Background()
+	milestones, err := client.GetMilestones(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetMilestones() error: %v", err)
 	}
@@ -338,7 +346,8 @@ func TestHTTPAddMilestone(t *testing.T) {
 		Name: "New Milestone",
 	}
 
-	milestone, err := client.AddMilestone(1, req)
+	ctx := context.Background()
+	milestone, err := client.AddMilestone(ctx, 1, req)
 	if err != nil {
 		t.Fatalf("AddMilestone() error: %v", err)
 	}
@@ -367,7 +376,8 @@ func TestHTTPUpdateMilestone(t *testing.T) {
 		Name: "Updated Milestone",
 	}
 
-	milestone, err := client.UpdateMilestone(1, req)
+	ctx := context.Background()
+	milestone, err := client.UpdateMilestone(ctx, 1, req)
 	if err != nil {
 		t.Fatalf("UpdateMilestone() error: %v", err)
 	}
@@ -389,7 +399,8 @@ func TestHTTPDeleteMilestone(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	err := client.DeleteMilestone(1)
+	ctx := context.Background()
+	err := client.DeleteMilestone(ctx, 1)
 	if err != nil {
 		t.Fatalf("DeleteMilestone() error: %v", err)
 	}

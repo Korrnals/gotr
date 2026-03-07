@@ -3,6 +3,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,14 +14,14 @@ import (
 
 // AddResult добавляет результат для теста
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresult
-func (c *HTTPClient) AddResult(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+func (c *HTTPClient) AddResult(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddResultRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_result/%d", testID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddResult для теста %d: %w", testID, err)
 	}
@@ -42,14 +43,14 @@ func (c *HTTPClient) AddResult(testID int64, req *data.AddResultRequest) (*data.
 
 // AddResultForCase добавляет результат для кейса в ране
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresultforcase
-func (c *HTTPClient) AddResultForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+func (c *HTTPClient) AddResultForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddResultRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_result_for_case/%d/%d", runID, caseID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddResultForCase для рана %d, кейса %d: %w", runID, caseID, err)
 	}
@@ -71,14 +72,14 @@ func (c *HTTPClient) AddResultForCase(runID, caseID int64, req *data.AddResultRe
 
 // AddResults добавляет результаты для нескольких тестов в ране (bulk)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresults
-func (c *HTTPClient) AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+func (c *HTTPClient) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddResultsRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_results/%d", runID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddResults для рана %d: %w", runID, err)
 	}
@@ -100,14 +101,14 @@ func (c *HTTPClient) AddResults(runID int64, req *data.AddResultsRequest) (data.
 
 // AddResultsForCases добавляет результаты для кейсов в ране (bulk)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresultsforcases
-func (c *HTTPClient) AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+func (c *HTTPClient) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка маршалинга AddResultsForCasesRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_results_for_cases/%d", runID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса AddResultsForCases для рана %d: %w", runID, err)
 	}
@@ -129,9 +130,9 @@ func (c *HTTPClient) AddResultsForCases(runID int64, req *data.AddResultsForCase
 
 // GetResults получает результаты для теста (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#getresults
-func (c *HTTPClient) GetResults(testID int64) (data.GetResultsResponse, error) {
+func (c *HTTPClient) GetResults(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 	endpoint := fmt.Sprintf("get_results/%d", testID)
-	results, err := fetchAllPages[data.Result](c, endpoint, nil, "results")
+	results, err := fetchAllPages[data.Result](ctx, c, endpoint, nil, "results")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetResults для теста %d: %w", testID, err)
 	}
@@ -140,9 +141,9 @@ func (c *HTTPClient) GetResults(testID int64) (data.GetResultsResponse, error) {
 
 // GetResultsForRun получает результаты для рана (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#getresultsforrun
-func (c *HTTPClient) GetResultsForRun(runID int64) (data.GetResultsResponse, error) {
+func (c *HTTPClient) GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 	endpoint := fmt.Sprintf("get_results_for_run/%d", runID)
-	results, err := fetchAllPages[data.Result](c, endpoint, nil, "results")
+	results, err := fetchAllPages[data.Result](ctx, c, endpoint, nil, "results")
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetResultsForRun для рана %d: %w", runID, err)
 	}
@@ -151,9 +152,9 @@ func (c *HTTPClient) GetResultsForRun(runID int64) (data.GetResultsResponse, err
 
 // GetResultsForCase получает результаты для кейса в ране
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#getresultsforcase
-func (c *HTTPClient) GetResultsForCase(runID, caseID int64) (data.GetResultsResponse, error) {
+func (c *HTTPClient) GetResultsForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 	endpoint := fmt.Sprintf("get_results_for_case/%d/%d", runID, caseID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("ошибка запроса GetResultsForCase для рана %d, кейса %d: %w", runID, caseID, err)
 	}

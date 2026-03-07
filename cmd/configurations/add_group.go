@@ -45,7 +45,8 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 			req := data.AddConfigGroupRequest{Name: name}
 			cli := getClient(cmd)
-			resp, err := cli.AddConfigGroup(projectID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddConfigGroup(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("не удалось создать группу: %w", err)
 			}

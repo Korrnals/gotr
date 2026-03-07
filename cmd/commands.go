@@ -159,7 +159,7 @@ func registerExportCmd() {
 	exportCmd.Flags().StringP("suite-id", "s", "", "ID тест-сюиты (для get_cases)")
 	exportCmd.Flags().String("section-id", "", "ID секции (для get_cases)")
 	exportCmd.Flags().String("milestone-id", "", "ID milestone (для get_runs)")
-	
+
 	// Флаг --save для сохранения в ~/.gotr/exports/
 	exportCmd.Flags().Bool("save", false, "Сохранить ответ в ~/.gotr/exports/export/")
 

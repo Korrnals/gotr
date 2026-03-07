@@ -31,7 +31,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetMilestones(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetMilestones(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list milestones: %w", err)
 			}

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +37,7 @@ ID, название, описание, статистика тестов (passe
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP клиент не инициализирован")
 			}
@@ -59,7 +60,7 @@ ID, название, описание, статистика тестов (passe
 				if !ok {
 					return fmt.Errorf("интерактивный режим недоступен в тестовом режиме, укажите project-id")
 				}
-				projectID, err = interactive.SelectProjectInteractively(httpClient)
+				projectID, err = interactive.SelectProjectInteractively(ctx, httpClient)
 				if err != nil {
 					return err
 				}
@@ -78,12 +79,12 @@ ID, название, описание, статистика тестов (passe
 				return nil
 			}
 
-			runs, err := svc.GetByProject(projectID)
+			runs, err := svc.GetByProject(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("ошибка получения списка test runs: %w", err)
 			}
 
-			return svc.Output(cmd, runs)
+			return svc.Output(ctx, cmd, runs)
 		},
 	}
 

@@ -44,7 +44,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddDataset(projectID, name)
+			ctx := cmd.Context()
+			resp, err := cli.AddDataset(ctx, projectID, name)
 			if err != nil {
 				return fmt.Errorf("не удалось создать датасет: %w", err)
 			}

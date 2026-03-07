@@ -1,16 +1,17 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -67,7 +68,7 @@ func TestSaveToFile_InvalidPath(t *testing.T) {
 
 func TestResultServiceWrapper_AddResults(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsFunc: func(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+		AddResultsFunc: func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Len(t, req.Results, 2)
 			return data.GetResultsResponse{
@@ -82,8 +83,9 @@ func TestResultServiceWrapper_AddResults(t *testing.T) {
 	var _ ResultServiceInterface = wrapper
 
 	// Создадим сервис через конструктор
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResults(12345, &data.AddResultsRequest{
+	results, err := svc.AddResults(ctx, 12345, &data.AddResultsRequest{
 		Results: []data.ResultEntry{
 			{TestID: 101, StatusID: 1},
 			{TestID: 102, StatusID: 5},
@@ -96,13 +98,14 @@ func TestResultServiceWrapper_AddResults(t *testing.T) {
 
 func TestResultServiceWrapper_AddResults_Error(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsFunc: func(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+		AddResultsFunc: func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResults(99999, &data.AddResultsRequest{
+	results, err := svc.AddResults(ctx, 99999, &data.AddResultsRequest{
 		Results: []data.ResultEntry{{TestID: 101, StatusID: 1}},
 	})
 
@@ -112,7 +115,7 @@ func TestResultServiceWrapper_AddResults_Error(t *testing.T) {
 
 func TestResultServiceWrapper_AddResultsForCases(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsForCasesFunc: func(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+		AddResultsForCasesFunc: func(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Len(t, req.Results, 2)
 			return data.GetResultsResponse{
@@ -122,8 +125,9 @@ func TestResultServiceWrapper_AddResultsForCases(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResultsForCases(12345, &data.AddResultsForCasesRequest{
+	results, err := svc.AddResultsForCases(ctx, 12345, &data.AddResultsForCasesRequest{
 		Results: []data.ResultForCaseEntry{
 			{CaseID: 301, StatusID: 1},
 			{CaseID: 302, StatusID: 1},
@@ -136,13 +140,14 @@ func TestResultServiceWrapper_AddResultsForCases(t *testing.T) {
 
 func TestResultServiceWrapper_AddResultsForCases_Error(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsForCasesFunc: func(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+		AddResultsForCasesFunc: func(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("invalid case_id")
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResultsForCases(12345, &data.AddResultsForCasesRequest{
+	results, err := svc.AddResultsForCases(ctx, 12345, &data.AddResultsForCasesRequest{
 		Results: []data.ResultForCaseEntry{{CaseID: 301, StatusID: 1}},
 	})
 
@@ -152,7 +157,7 @@ func TestResultServiceWrapper_AddResultsForCases_Error(t *testing.T) {
 
 func TestResultServiceWrapper_GetRunsForProject(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetRunsResponse{
 				{ID: 101, Name: "Run 1", ProjectID: 1},
@@ -161,8 +166,9 @@ func TestResultServiceWrapper_GetRunsForProject(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	runs, err := svc.GetRunsForProject(1)
+	runs, err := svc.GetRunsForProject(ctx, 1)
 
 	assert.NoError(t, err)
 	assert.Len(t, runs, 2)
@@ -171,13 +177,14 @@ func TestResultServiceWrapper_GetRunsForProject(t *testing.T) {
 
 func TestResultServiceWrapper_GetRunsForProject_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	runs, err := svc.GetRunsForProject(999)
+	runs, err := svc.GetRunsForProject(ctx, 999)
 
 	assert.Error(t, err)
 	assert.Nil(t, runs)
@@ -308,7 +315,7 @@ type mockProjectSelector struct {
 	err       error
 }
 
-func (m *mockProjectSelector) SelectProjectInteractively(httpClient client.ClientInterface) (int64, error) {
+func (m *mockProjectSelector) SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
 	return m.projectID, m.err
 }
 
@@ -337,13 +344,13 @@ func TestListCmd_Interactive_Success(t *testing.T) {
 	runSelectors = &mockRunSelector{runID: 12345, err: nil}
 
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetRunsResponse{
 				{ID: 12345, Name: "Test Run", ProjectID: 1},
 			}, nil
 		},
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			return []data.Result{{ID: 1, TestID: 100, StatusID: 1}}, nil
 		},
@@ -390,7 +397,7 @@ func TestListCmd_Interactive_GetRunsError(t *testing.T) {
 	selectors = &mockProjectSelector{projectID: 1, err: nil}
 
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return nil, fmt.Errorf("failed to get runs")
 		},
 	}
@@ -415,7 +422,7 @@ func TestListCmd_Interactive_EmptyRuns(t *testing.T) {
 	selectors = &mockProjectSelector{projectID: 1, err: nil}
 
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{}, nil
 		},
 	}
@@ -443,7 +450,7 @@ func TestListCmd_Interactive_SelectRunError(t *testing.T) {
 	runSelectors = &mockRunSelector{runID: 0, err: fmt.Errorf("user cancelled selection")}
 
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{
 				{ID: 12345, Name: "Test Run", ProjectID: 1},
 			}, nil
@@ -463,7 +470,7 @@ func TestListCmd_Interactive_SelectRunError(t *testing.T) {
 
 func TestOutputResult_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return []data.Result{{ID: 1, TestID: 100, StatusID: 1}}, nil
 		},
 	}
@@ -485,12 +492,13 @@ func TestAddBulkResults_ParseError(t *testing.T) {
 	// Тест для покрытия ветки ошибки парсинга JSON в AddBulkResults
 	mock := &client.MockClient{}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
 	// Передаем некорректный JSON который не парсится ни в один формат
 	invalidJSON := []byte(`{"invalid": "json"}`)
 
-	result, err := svc.AddBulkResults(12345, invalidJSON)
+	result, err := svc.AddBulkResults(ctx, 12345, invalidJSON)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -528,12 +536,13 @@ func TestResultServiceWrapper_AddBulkResults_EmptyArray(t *testing.T) {
 	// Тест для покрытия ветки с пустым массивом в JSON
 	mock := &client.MockClient{}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
 	// Пустой массив
 	emptyJSON := []byte(`[]`)
 
-	result, err := svc.AddBulkResults(12345, emptyJSON)
+	result, err := svc.AddBulkResults(ctx, 12345, emptyJSON)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -544,12 +553,13 @@ func TestResultServiceWrapper_AddBulkResults_InvalidJSON(t *testing.T) {
 	// Тест для покрытия ветки с невалидным JSON
 	mock := &client.MockClient{}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
 	// Невалидный JSON
 	invalidJSON := []byte(`{invalid json`)
 
-	result, err := svc.AddBulkResults(12345, invalidJSON)
+	result, err := svc.AddBulkResults(ctx, 12345, invalidJSON)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -557,45 +567,47 @@ func TestResultServiceWrapper_AddBulkResults_InvalidJSON(t *testing.T) {
 
 func TestResultServiceWrapper_AllMethods(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsFunc: func(testID int64) (data.GetResultsResponse, error) {
+		GetResultsFunc: func(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 			return []data.Result{{ID: 1, TestID: testID}}, nil
 		},
-		GetResultsForCaseFunc: func(runID, caseID int64) (data.GetResultsResponse, error) {
+		GetResultsForCaseFunc: func(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 			return []data.Result{{ID: 1, TestID: 100}}, nil
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
 	// Test GetForTest
-	results, err := svc.GetForTest(123)
+	results, err := svc.GetForTest(ctx, 123)
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 
 	// Test GetForCase
-	results, err = svc.GetForCase(1, 100)
+	results, err = svc.GetForCase(ctx, 1, 100)
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 
 	// Test GetForRun
-	mock.GetResultsForRunFunc = func(runID int64) (data.GetResultsResponse, error) {
+	mock.GetResultsForRunFunc = func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 		return []data.Result{{ID: 1, TestID: 200}}, nil
 	}
-	results, err = svc.GetForRun(456)
+	results, err = svc.GetForRun(ctx, 456)
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 }
 
 func TestResultServiceWrapper_ParseID(t *testing.T) {
 	mock := &client.MockClient{}
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
 	// Test valid ID
-	id, err := svc.ParseID([]string{"123"}, 0)
+	id, err := svc.ParseID(ctx, []string{"123"}, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(123), id)
 
 	// Test invalid ID
-	_, err = svc.ParseID([]string{"abc"}, 0)
+	_, err = svc.ParseID(ctx, []string{"abc"}, 0)
 	assert.Error(t, err)
 }

@@ -41,6 +41,7 @@ gotr.exe
 !jq-macos-amd64
 !jq-windows-i386.exe.history/
 .history/
+.playwright-mcp/
 
 # System development files (not for git)
 # Contains: API_ANALYSIS.md, API_AUDIT.md, CHECKLIST.md, PLAN.md, AGENTS.md
@@ -49,6 +50,21 @@ gotr.exe
 # Protocols directory (AI collaboration protocols)
 # Contains: core/, agents/, project-*/, templates/, guides/
 .protocols/
+
+# GitHub Copilot configuration and system files (ignored since instructions are private)
+.github/
+
+# Archives for old protocols/systems
+.archives/
+
+# Playwright, MCP, workspace storage and VSCode temp dirs
+.playwright-mcp/
+workspaceStorage/
+.vscode/
+
+# Copilot runtime directories (should never be committed)
+.github/copilot/
+
 
 # Compressed binaries (for releases)
 *.gz

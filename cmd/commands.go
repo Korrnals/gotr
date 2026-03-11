@@ -73,6 +73,9 @@ func initGlobalFlags() {
 	// Quiet mode (тихий режим для CI/CD)
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (только результат, без прогресса)")
 
+	// Формат вывода (глобальный)
+	rootCmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, csv, md, html")
+
 	// Биндим к Viper
 	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
 	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))

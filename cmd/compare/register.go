@@ -56,10 +56,8 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	// Add persistent flags FIRST (before subcommands) for completion to work
 	Cmd.PersistentFlags().StringP("pid1", "1", "", "ID первого проекта (обязательно)")
 	Cmd.PersistentFlags().StringP("pid2", "2", "", "ID второго проекта (обязательно)")
-	Cmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, yaml, csv")
 	Cmd.PersistentFlags().Bool("save", false, "Сохранить результат в файл (по умолчанию в ~/.gotr/exports/)")
 	Cmd.PersistentFlags().String("save-to", "", "Сохранить результат в указанный файл")
-	Cmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (без статистики и прогресса)")
 	Cmd.PersistentFlags().Int("rate-limit", -1, "Лимит API-запросов в минуту. -1 = авто по profile/deployment, 0 = без лимита, >0 = фиксированное значение.")
 	Cmd.PersistentFlags().Int("parallel-suites", 10, "Максимальное количество параллельных сьютов")
 	Cmd.PersistentFlags().Int("parallel-pages", 6, "Максимальное количество параллельных страниц внутри сьюта")

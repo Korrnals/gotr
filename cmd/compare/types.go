@@ -13,6 +13,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	outpututils "github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -125,7 +126,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 	// Otherwise, print to stdout
 	switch format {
 	case "json":
-		return printJSON(result)
+		return ui.JSON(cmd, result)
 	case "yaml":
 		return printYAML(result)
 	case "csv":
@@ -364,6 +365,7 @@ func printIDMappingTable(items []CommonItemInfo) {
 }
 
 // printJSON prints the result as JSON
+// Deprecated: use ui.JSON(cmd, result) directly in new code
 func printJSON(result CompareResult) error {
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {

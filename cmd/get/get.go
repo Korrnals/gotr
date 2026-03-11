@@ -8,6 +8,7 @@ import (
 	embed "github.com/Korrnals/gotr/embedded"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -115,8 +116,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 	if !quiet {
 		switch outputFormat {
 		case "json":
-			pretty, _ := json.MarshalIndent(data, "", "  ")
-			fmt.Println(string(pretty))
+			return ui.JSON(command, data)
 		case "json-full":
 			full := struct {
 				Status     string        `json:"status"`
@@ -131,8 +131,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 				Timestamp:  time.Now(),
 				Data:       data,
 			}
-			pretty, _ := json.MarshalIndent(full, "", "  ")
-			fmt.Println(string(pretty))
+			return ui.JSON(command, full)
 		default:
 			fmt.Println("Table output not implemented yet")
 		}

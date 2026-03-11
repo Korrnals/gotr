@@ -7,11 +7,12 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"text/tabwriter"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -51,12 +52,13 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME")
+			t := ui.NewTable(cmd)
+			t.AppendHeader(table.Row{"ID", "NAME"})
 			for _, l := range labels {
-				fmt.Fprintf(w, "%d\t%s\n", l.ID, l.Name)
+				t.AppendRow(table.Row{l.ID, l.Name})
 			}
-			return w.Flush()
+			ui.Table(cmd, t)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)

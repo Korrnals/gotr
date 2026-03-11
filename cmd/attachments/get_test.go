@@ -108,7 +108,7 @@ func TestGetCmd_InvalidAttachmentID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid attachment_id")
+	assert.Contains(t, err.Error(), "attachment_id")
 }
 
 func TestGetCmd_ZeroAttachmentID(t *testing.T) {
@@ -120,7 +120,7 @@ func TestGetCmd_ZeroAttachmentID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid attachment_id")
+	assert.Contains(t, err.Error(), "attachment_id")
 }
 
 func TestGetCmd_APIError(t *testing.T) {

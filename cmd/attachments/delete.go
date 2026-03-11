@@ -5,8 +5,8 @@ package attachments
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/spf13/cobra"
 )
 
@@ -23,9 +23,9 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr attachments delete 12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			attachmentID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || attachmentID <= 0 {
-				return fmt.Errorf("invalid attachment_id: %s", args[0])
+			attachmentID, err := flags.ValidateRequiredID(args, 0, "attachment_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)

@@ -113,7 +113,7 @@ func TestListCaseCmd_InvalidCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestListCaseCmd_ZeroCaseID(t *testing.T) {
@@ -125,7 +125,7 @@ func TestListCaseCmd_ZeroCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestListCaseCmd_APIError(t *testing.T) {
@@ -188,7 +188,7 @@ func TestListPlanCmd_InvalidPlanID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestListPlanCmd_APIError(t *testing.T) {
@@ -241,7 +241,7 @@ func TestListPlanEntryCmd_InvalidPlanID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestListPlanEntryCmd_APIError(t *testing.T) {
@@ -315,7 +315,7 @@ func TestListRunCmd_InvalidRunID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid run_id")
+	assert.Contains(t, err.Error(), "run_id")
 }
 
 func TestListRunCmd_APIError(t *testing.T) {
@@ -367,7 +367,7 @@ func TestListTestCmd_InvalidTestID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid test_id")
+	assert.Contains(t, err.Error(), "test_id")
 }
 
 func TestListTestCmd_ZeroTestID(t *testing.T) {
@@ -379,7 +379,7 @@ func TestListTestCmd_ZeroTestID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid test_id")
+	assert.Contains(t, err.Error(), "test_id")
 }
 
 func TestListTestCmd_APIError(t *testing.T) {

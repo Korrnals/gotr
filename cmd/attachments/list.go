@@ -5,8 +5,8 @@ package attachments
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -54,9 +54,9 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений тест-кейса",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
@@ -79,9 +79,9 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений тест-плана",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
@@ -104,9 +104,9 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений записи плана",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
@@ -129,9 +129,9 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений тест-рана",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || runID <= 0 {
-				return fmt.Errorf("invalid run_id: %s", args[0])
+			runID, err := flags.ValidateRequiredID(args, 0, "run_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
@@ -154,9 +154,9 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений теста",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || testID <= 0 {
-				return fmt.Errorf("invalid test_id: %s", args[0])
+			testID, err := flags.ValidateRequiredID(args, 0, "test_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)

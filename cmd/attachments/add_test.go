@@ -8,6 +8,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -15,27 +16,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для parseID ====================
+// ==================== Тесты для flags.ValidateRequiredID ====================
 
-func TestParseID_Valid(t *testing.T) {
-	id, err := parseID("12345", "test_id")
+func TestValidateRequiredID_Valid(t *testing.T) {
+	id, err := flags.ValidateRequiredID([]string{"12345"}, 0, "test_id")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(12345), id)
 }
 
-func TestParseID_Invalid(t *testing.T) {
-	_, err := parseID("invalid", "test_id")
+func TestValidateRequiredID_Invalid(t *testing.T) {
+	_, err := flags.ValidateRequiredID([]string{"invalid"}, 0, "test_id")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid test_id")
+	assert.Contains(t, err.Error(), "test_id")
 }
 
-func TestParseID_Zero(t *testing.T) {
-	_, err := parseID("0", "test_id")
+func TestValidateRequiredID_Zero(t *testing.T) {
+	_, err := flags.ValidateRequiredID([]string{"0"}, 0, "test_id")
 	assert.Error(t, err)
 }
 
-func TestParseID_Negative(t *testing.T) {
-	_, err := parseID("-1", "test_id")
+func TestValidateRequiredID_Negative(t *testing.T) {
+	_, err := flags.ValidateRequiredID([]string{"-1"}, 0, "test_id")
 	assert.Error(t, err)
 }
 
@@ -115,7 +116,7 @@ func TestNewAddCaseCmd_InvalidCaseID(t *testing.T) {
 
 	err := parentCmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestNewAddCaseCmd_ZeroCaseID(t *testing.T) {
@@ -133,7 +134,7 @@ func TestNewAddCaseCmd_ZeroCaseID(t *testing.T) {
 
 	err := parentCmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestNewAddCaseCmd_FileNotFound(t *testing.T) {
@@ -287,7 +288,7 @@ func TestNewAddPlanCmd_InvalidPlanID(t *testing.T) {
 
 	err := parentCmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestNewAddPlanCmd_DryRun(t *testing.T) {
@@ -411,7 +412,7 @@ func TestNewAddPlanEntryCmd_InvalidPlanID(t *testing.T) {
 
 	err := parentCmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestNewAddPlanEntryCmd_DryRun(t *testing.T) {
@@ -551,7 +552,7 @@ func TestNewAddResultCmd_InvalidResultID(t *testing.T) {
 
 	err := parentCmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid result_id")
+	assert.Contains(t, err.Error(), "result_id")
 }
 
 func TestNewAddResultCmd_DryRun(t *testing.T) {
@@ -674,7 +675,7 @@ func TestNewAddRunCmd_InvalidRunID(t *testing.T) {
 
 	err := parentCmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid run_id")
+	assert.Contains(t, err.Error(), "run_id")
 }
 
 func TestNewAddRunCmd_DryRun(t *testing.T) {

@@ -40,7 +40,7 @@ git push -u origin release-X.Y.Z
 
 **Важно:**
 - Всегда создавать от `origin/main` (не от локального `main`)
-- Именование: `release-` + semver, например `release-2.8.0`
+- Именование: `release-` + semver, например `release-3.0.0`
 - Одна release-ветка на один релиз
 
 ---
@@ -119,7 +119,7 @@ git push -u origin release-X.Y.Z
 
 | Тип | Шаблон | Пример |
 |-----|--------|--------|
-| Release | `release-X.Y.Z` | `release-2.8.0` |
+| Release | `release-X.Y.Z` | `release-3.0.0` |
 | Feature/Stage | `stage-N.M-description` | `stage-6.8-concurrency-unification` |
 | Hotfix | `fix-description` | `fix-reporter-alignment` |
 
@@ -129,7 +129,7 @@ git push -u origin release-X.Y.Z
 
 ```
 main
-  └── release-2.8.0         ← от origin/main
+  └── release-3.0.0         ← от origin/main
          ↑
          ├── PR: stage-6.7-recursive-parallelization
          │       (параллелизация + reporter rewrite)
@@ -137,7 +137,7 @@ main
          └── PR: stage-6.8-concurrency-unification
                  (generic compare + concurrency package)
 
-release-2.8.0 → PR → main → tag v2.8.0
+release-3.0.0 → PR → main → tag v3.0.0
 ```
 
 ---

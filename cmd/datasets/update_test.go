@@ -47,7 +47,7 @@ func TestUpdateCmd_WithSaveFlag(t *testing.T) {
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateDatasetFunc: func(ctx context.Context, datasetID int64, name string) (*data.Dataset, error) {
-			return nil, fmt.Errorf("датасет не найден")
+			return nil, fmt.Errorf("dataset not found")
 		},
 	}
 
@@ -57,7 +57,7 @@ func TestUpdateCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "датасет не найден")
+	assert.Contains(t, err.Error(), "dataset not found")
 }
 
 // ==================== Dry-run тесты ====================
@@ -114,5 +114,5 @@ func TestUpdateCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }

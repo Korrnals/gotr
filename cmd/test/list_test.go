@@ -122,7 +122,7 @@ func TestListCmd_InvalidRunID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID")
+	assert.Contains(t, err.Error(), "invalid ID")
 }
 
 func TestListCmd_ZeroRunID(t *testing.T) {
@@ -152,7 +152,7 @@ func TestListCmd_NoArgs(t *testing.T) {
 func TestListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
 		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
-			return nil, fmt.Errorf("ран не найден")
+			return nil, fmt.Errorf("run not found")
 		},
 	}
 
@@ -163,7 +163,7 @@ func TestListCmd_APIError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ран не найден")
+	assert.Contains(t, err.Error(), "run not found")
 }
 
 func TestListCmd_EmptyList(t *testing.T) {

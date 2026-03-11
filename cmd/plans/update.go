@@ -2,8 +2,8 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -23,9 +23,9 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans update 12345 --description="Новое описание"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			req := data.UpdatePlanRequest{}

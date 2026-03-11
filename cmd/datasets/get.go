@@ -2,8 +2,8 @@ package datasets
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,16 +25,16 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr datasets get 456 -o dataset.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
+			datasetID, err := flags.ValidateRequiredID(args, 0, "dataset_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			resp, err := cli.GetDataset(ctx, datasetID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить датасет: %w", err)
+				return fmt.Errorf("failed to get dataset: %w", err)
 			}
 
 			return output.OutputResult(cmd, resp, "datasets")

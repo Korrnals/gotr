@@ -48,7 +48,7 @@ func OpenEditor(filepath string) error {
 	return cmd.Run()
 }
 
-// GetFieldValue возвращает строковое представление значения поля структуры по имени.
+// GetFieldValue возвращает строковое представление значения field структуры по имени.
 // Поддерживает case-insensitive поиск (title/Title — найдёт оба варианта).
 // Если поле не найдено — возвращает пустую строку.
 //
@@ -132,10 +132,10 @@ func LoadMapping(file string) (map[int64]int64, error) {
 
 // getProjectRoot — возвращает корневую директорию проекта (где лежит go.mod)
 func getProjectRoot() string {
-	// 1. Получаем путь к текущему файлу теста
+	// 1. Получаем путь к текущему файлу test
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		panic("не удалось получить путь к файлу теста")
+		panic("failed to get test file path")
 	}
 
 	// 2. Идем вверх по дереву папок, пока не найдем go.mod
@@ -147,7 +147,7 @@ func getProjectRoot() string {
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			panic("корень проекта (go.mod) не найден")
+			panic("project root (go.mod) not found")
 		}
 		dir = parent
 	}
@@ -175,7 +175,7 @@ func ParseID(s string) (int64, error) {
 func SaveToFile(filename string, data interface{}) error {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка сериализации: %w", err)
+		return fmt.Errorf("serialization error: %w", err)
 	}
 	return os.WriteFile(filename, jsonData, 0644)
 }
@@ -200,7 +200,7 @@ func OutputResult(cmd *cobra.Command, data interface{}) error {
 	if !quiet {
 		pretty, err := json.MarshalIndent(data, "", "  ")
 		if err != nil {
-			return fmt.Errorf("ошибка форматирования JSON: %w", err)
+			return fmt.Errorf("JSON formatting error: %w", err)
 		}
 		fmt.Println(string(pretty))
 	}

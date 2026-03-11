@@ -2,8 +2,8 @@ package variables
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,14 +25,14 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr variables update 789 --name="new_name" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			variableID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || variableID <= 0 {
-				return fmt.Errorf("некорректный variable_id: %s", args[0])
+			variableID, err := flags.ValidateRequiredID(args, 0, "variable_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -45,7 +45,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			ctx := cmd.Context()
 			resp, err := cli.UpdateVariable(ctx, variableID, name)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить переменную: %w", err)
+				return fmt.Errorf("failed to update variable: %w", err)
 			}
 
 			fmt.Printf("✅ Переменная %d обновлена\n", variableID)

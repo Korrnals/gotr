@@ -6,12 +6,12 @@ import (
 	"github.com/Korrnals/gotr/internal/utils"
 )
 
-// FilterSharedSteps — фильтрация shared steps по использованию в suite и дубликатам в target
+// FilterSharedSteps — фильтрация shared steps по использованию in suite и дубликатам в target
 // Кандидаты — shared steps, не используемые в source suite (по CaseIDs)
 // Дубликаты — добавляются в mapping (status "existing")
 // Новые — возвращаются для импорта
 func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse, sourceCaseIDs map[int64]struct{}) (filtered data.GetSharedStepsResponse, err error) {
-	m.logger.Info("Начало фильтрации shared steps по использованию в suite")
+	m.logger.Info("Начало фильтрации shared steps по использованию in suite")
 
 	var candidates data.GetSharedStepsResponse
 	for _, step := range source {
@@ -26,7 +26,7 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 			candidates = append(candidates, step)
 		}
 	}
-	m.logger.Infow("Найдено кандидатов на перенос (не используются в suite)", "count", len(candidates))
+	m.logger.Infow("Найдено кандидатов на перенос (не используются in suite)", "count", len(candidates))
 
 	m.logger.Info("Проверка дубликатов в target проекте")
 	targetMap := make(map[string]int64)
@@ -79,7 +79,7 @@ func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtere
 
 // FilterCases — фильтрация cases по дубликатам (по compareField)
 func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered data.GetCasesResponse, err error) {
-	m.logger.Info("Начало фильтрации кейсов по дубликатам")
+	m.logger.Info("Начало фильтрации cases по дубликатам")
 
 	targetMap := make(map[string]int64)
 	for _, t := range target {
@@ -94,17 +94,17 @@ func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered 
 		if _, exists := targetMap[val]; !exists {
 			filtered = append(filtered, c)
 		} else {
-			m.logger.Infow("Дубликат кейса найден — пропущен", "title", c.Title)
+			m.logger.Infow("Дубликат case найден — пропущен", "title", c.Title)
 		}
 	}
 
-	m.logger.Infow("Готово к импорту новых кейсов", "count", len(filtered))
+	m.logger.Infow("Готово к импорту новых cases", "count", len(filtered))
 	return filtered, nil
 }
 
 // FilterSections — фильтрация sections по дубликатам в target suite (по name)
 func (m *Migration) FilterSections(source, target data.GetSectionsResponse) (filtered data.GetSectionsResponse, err error) {
-	m.logger.Info("Начало фильтрации sections по дубликатам (по name в suite)")
+	m.logger.Info("Начало фильтрации sections по дубликатам (по name in suite)")
 
 	targetMap := make(map[string]int64)
 	for _, t := range target {

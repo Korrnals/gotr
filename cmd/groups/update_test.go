@@ -116,7 +116,7 @@ func TestUpdateCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestUpdateCmd_EmptyName(t *testing.T) {
@@ -128,7 +128,7 @@ func TestUpdateCmd_EmptyName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestUpdateCmd_NoArgs(t *testing.T) {

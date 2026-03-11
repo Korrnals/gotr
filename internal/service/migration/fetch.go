@@ -30,22 +30,22 @@ func (m *Migration) FetchSharedStepsData(ctx context.Context) (source data.GetSh
 
 // FetchCasesData — получает кейсы из source и target сюит
 func (m *Migration) FetchCasesData(ctx context.Context) (source data.GetCasesResponse, target data.GetCasesResponse, err error) {
-	m.logger.Info("Начало получения кейсов из source suite")
+	m.logger.Info("Начало получения cases из source suite")
 
 	source, err = m.Client.GetCases(ctx, m.srcProject, m.srcSuite, 0)
 	if err != nil {
 		m.logger.Errorw("Ошибка получения source cases", "error", err)
 		return nil, nil, err
 	}
-	m.logger.Infow("Получено кейсов из source", "count", len(source))
+	m.logger.Infow("Получено cases из source", "count", len(source))
 
-	m.logger.Info("Начало получения кейсов из target suite")
+	m.logger.Info("Начало получения cases из target suite")
 	target, err = m.Client.GetCases(ctx, m.dstProject, m.dstSuite, 0)
 	if err != nil {
 		m.logger.Errorw("Ошибка получения target cases", "error", err)
 		return nil, nil, err
 	}
-	m.logger.Infow("Получено кейсов из target", "count", len(target))
+	m.logger.Infow("Получено cases из target", "count", len(target))
 
 	return source, target, nil
 }

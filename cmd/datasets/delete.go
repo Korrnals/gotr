@@ -2,8 +2,8 @@ package datasets
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -28,9 +28,9 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr datasets delete 123 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
+			datasetID, err := flags.ValidateRequiredID(args, 0, "dataset_id")
+			if err != nil {
+				return err
 			}
 
 			// Check dry-run
@@ -43,7 +43,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			if err := cli.DeleteDataset(ctx, datasetID); err != nil {
-				return fmt.Errorf("не удалось удалить датасет: %w", err)
+				return fmt.Errorf("failed to delete dataset: %w", err)
 			}
 
 			fmt.Printf("✅ Датасет %d удалён\n", datasetID)

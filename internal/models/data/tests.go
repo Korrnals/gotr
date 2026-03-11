@@ -3,7 +3,7 @@ package data
 
 import "encoding/json"
 
-// Test — тест (конкретный тест-кейс в рамках тест-рана)
+// Test — тест (конкретный тест-кейс в рамках тест-run)
 // Соответствует документации TestRail API v2
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests
 type Test struct {
@@ -32,7 +32,7 @@ type GetTestResponse Test
 
 // UpdateTestRequest — запрос для update_test
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#updatetest
-// Позволяет изменить статус и назначение теста
+// Позволяет изменить статус и назначение test
 type UpdateTestRequest struct {
 	StatusID   int64 `json:"status_id,omitempty"`     // The ID of the test status
 	AssignedTo int64 `json:"assignedto_id,omitempty"` // The ID of the user to assign the test to

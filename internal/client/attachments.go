@@ -56,7 +56,7 @@ func (c *HTTPClient) GetAttachment(ctx context.Context, attachmentID int64) (*da
 	return &attachment, nil
 }
 
-// GetAttachmentsForCase получает список вложений для тест-кейса
+// GetAttachmentsForCase получает список вложений для тест-case
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforcase
 func (c *HTTPClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_case/%d", caseID)
@@ -125,7 +125,7 @@ func (c *HTTPClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int6
 	return attachments, nil
 }
 
-// GetAttachmentsForRun получает список вложений для тест-рана
+// GetAttachmentsForRun получает список вложений для тест-run
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforrun
 func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_run/%d", runID)
@@ -148,7 +148,7 @@ func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (dat
 	return attachments, nil
 }
 
-// GetAttachmentsForTest получает список вложений для теста
+// GetAttachmentsForTest получает список вложений for test
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsfortest
 func (c *HTTPClient) GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_test/%d", testID)
@@ -192,7 +192,7 @@ func (c *HTTPClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64,
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }
 
-// AddAttachmentToResult добавляет вложение к результату теста
+// AddAttachmentToResult добавляет вложение к результату test
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttoresult
 func (c *HTTPClient) AddAttachmentToResult(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_result/%d", resultID)

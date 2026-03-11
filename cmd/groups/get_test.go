@@ -50,7 +50,7 @@ func TestGetCmd_WithSave(t *testing.T) {
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
 		GetGroupFunc: func(ctx context.Context, groupID int64) (*data.Group, error) {
-			return nil, fmt.Errorf("группа не найдена")
+			return nil, fmt.Errorf("group not found")
 		},
 	}
 
@@ -60,7 +60,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "группа не найдена")
+	assert.Contains(t, err.Error(), "group not found")
 }
 
 // ==================== Тесты валидации ====================

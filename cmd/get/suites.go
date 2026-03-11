@@ -2,10 +2,10 @@ package get
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
@@ -33,7 +33,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Получаем ID проекта
@@ -55,9 +55,9 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 					return err
 				}
 			} else {
-				projectID, err = strconv.ParseInt(projectIDStr, 10, 64)
+				projectID, err = flags.ParseID(projectIDStr)
 				if err != nil {
-					return fmt.Errorf("некорректный ID проекта: %w", err)
+					return fmt.Errorf("invalid project ID: %w", err)
 				}
 			}
 
@@ -97,13 +97,13 @@ func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			idStr := args[0]
-			id, err := strconv.ParseInt(idStr, 10, 64)
+			id, err := flags.ParseID(idStr)
 			if err != nil {
-				return fmt.Errorf("некорректный ID сюиты: %w", err)
+				return fmt.Errorf("invalid suite ID: %w", err)
 			}
 
 			suite, err := cli.GetSuite(ctx, id)

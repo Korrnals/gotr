@@ -8,7 +8,7 @@ import (
 )
 
 // DefaultConfigValues — дефолтные placeholder'ы в шаблоне конфигурации.
-// Эти значения используются как при создании конфига, так и для проверки валидности.
+// Эти значения используются как creating конфига, так и для проверки валидности.
 const (
 	DefaultBaseURL  = "https://yourcompany.testrail.io/"
 	DefaultUsername = "your-email@example.com"
@@ -66,13 +66,13 @@ func (c *Config) WithDefaults() *Config {
 func (c *Config) Create() error {
 	dir := filepath.Dir(c.Path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("не удалось создать директорию: %w", err)
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	content := []byte(c.renderTemplate())
 
 	if err := os.WriteFile(c.Path, content, 0644); err != nil {
-		return fmt.Errorf("не удалось записать файл %s: %w", c.Path, err)
+		return fmt.Errorf("failed to write file %s: %w", c.Path, err)
 	}
 
 	fmt.Printf("Создан конфиг-файл: %s\n", c.Path)

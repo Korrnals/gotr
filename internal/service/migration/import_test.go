@@ -56,11 +56,11 @@ func TestMigration_ImportSharedSteps(t *testing.T) {
 
 			err = m.ImportSharedSteps(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 { // ошибка ожидаема только в кейсе ошибки
-				t.Errorf("неожиданная ошибка: %v", err)
+				t.Errorf("unexpected error: %v", err)
 			}
 
 			if m.mapping.Count != tt.wantCount {
-				t.Errorf("mapping.Count = %d, ожидалось %d", m.mapping.Count, tt.wantCount)
+				t.Errorf("mapping.Count = %d, expected %d", m.mapping.Count, tt.wantCount)
 			}
 		})
 	}
@@ -108,11 +108,11 @@ func TestMigration_ImportSuites(t *testing.T) {
 
 			err = m.ImportSuites(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 {
-				t.Errorf("неожиданная ошибка: %v", err)
+				t.Errorf("unexpected error: %v", err)
 			}
 
 			if m.mapping.Count != tt.wantCount {
-				t.Errorf("mapping.Count = %d, ожидалось %d", m.mapping.Count, tt.wantCount)
+				t.Errorf("mapping.Count = %d, expected %d", m.mapping.Count, tt.wantCount)
 			}
 		})
 	}
@@ -160,7 +160,7 @@ func TestMigration_ImportCases(t *testing.T) {
 
 			err = m.ImportCases(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 {
-				t.Errorf("неожиданная ошибка: %v", err)
+				t.Errorf("unexpected error: %v", err)
 			}
 
 			// Для Cases mapping.Count не меняется — проверяем importedCases (если добавишь counter)
@@ -211,11 +211,11 @@ func TestMigration_ImportSections(t *testing.T) {
 
 			err = m.ImportSections(context.Background(), tt.filtered, tt.dryRun)
 			if err != nil && i != 2 {
-				t.Errorf("неожиданная ошибка: %v", err)
+				t.Errorf("unexpected error: %v", err)
 			}
 
 			if m.mapping.Count != tt.wantCount {
-				t.Errorf("mapping.Count = %d, ожидалось %d", m.mapping.Count, tt.wantCount)
+				t.Errorf("mapping.Count = %d, expected %d", m.mapping.Count, tt.wantCount)
 			}
 		})
 	}

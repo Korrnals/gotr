@@ -31,7 +31,7 @@ func TestGetRuns_Cancellation(t *testing.T) {
 	_, err = cli.GetRuns(ctx, 1)
 
 	if !errors.Is(err, context.Canceled) {
-		t.Errorf("ожидалась context.Canceled, получено: %v", err)
+		t.Errorf("expected context.Canceled, got: %v", err)
 	}
 }
 
@@ -53,7 +53,7 @@ func TestHTTPClient_CancelledContext(t *testing.T) {
 	_, err = cli.DoRequest(ctx, http.MethodGet, "get_runs/1", nil, nil)
 
 	if !errors.Is(err, context.Canceled) {
-		t.Errorf("DoRequest: ожидалась context.Canceled, получено: %v", err)
+		t.Errorf("DoRequest: expected context.Canceled, got: %v", err)
 	}
 }
 

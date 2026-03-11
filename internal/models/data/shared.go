@@ -12,7 +12,7 @@ type Pagination struct {
 	} `json:"_links,omitempty"`
 }
 
-// Step — шаг кейса (custom_steps_separated)
+// Step — шаг case (custom_steps_separated)
 type Step struct {
 	Content        string `json:"content,omitempty"`
 	AdditionalInfo string `json:"additional_info,omitempty"`
@@ -21,7 +21,7 @@ type Step struct {
 	SharedStepID   int64  `json:"shared_step_id,omitempty"`
 }
 
-// Label — метка кейса (используется в Case.Labels)
+// Label — метка case (используется в Case.Labels)
 type Label struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`

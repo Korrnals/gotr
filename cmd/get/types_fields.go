@@ -18,7 +18,7 @@ func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cob
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			types, err := cli.GetCaseTypes(ctx)
@@ -41,7 +41,7 @@ func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			fields, err := cli.GetCaseFields(ctx)

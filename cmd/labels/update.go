@@ -2,9 +2,9 @@ package labels
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -23,9 +23,9 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
   gotr labels update test 99999 --labels="regression" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || testID <= 0 {
-				return fmt.Errorf("invalid test_id: %s", args[0])
+			testID, err := flags.ValidateRequiredID(args, 0, "test_id")
+			if err != nil {
+				return err
 			}
 
 			labelsFlag, _ := cmd.Flags().GetString("labels")
@@ -140,7 +140,7 @@ func parseIntList(s string) []int64 {
 		if part == "" {
 			continue
 		}
-		id, err := strconv.ParseInt(part, 10, 64)
+		id, err := flags.ParseID(part)
 		if err == nil && id > 0 {
 			ids = append(ids, id)
 		}

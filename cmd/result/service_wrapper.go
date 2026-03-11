@@ -96,7 +96,7 @@ func (w *resultServiceWrapper) AddBulkResults(ctx context.Context, runID int64, 
 		return w.svc.AddResultsForCases(ctx, runID, req)
 	}
 
-	return nil, fmt.Errorf("не удалось распарсить JSON файл: ожидается массив с test_id или case_id")
+	return nil, fmt.Errorf("failed to parse JSON file: expected array with test_id or case_id")
 }
 
 // newResultServiceFromInterface создаёт сервис из клиента-интерфейса

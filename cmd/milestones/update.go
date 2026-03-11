@@ -2,8 +2,8 @@ package milestones
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -32,9 +32,9 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr milestones update 12345 --name="Новое название" --description="Новое описание"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			milestoneID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || milestoneID <= 0 {
-				return fmt.Errorf("invalid milestone_id: %s", args[0])
+			milestoneID, err := flags.ValidateRequiredID(args, 0, "milestone_id")
+			if err != nil {
+				return err
 			}
 
 			req := data.UpdateMilestoneRequest{}

@@ -52,7 +52,7 @@ func TestListCmd_Empty(t *testing.T) {
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
-			return nil, fmt.Errorf("ошибка подключения к API")
+			return nil, fmt.Errorf("API connection error")
 		},
 	}
 

@@ -24,5 +24,5 @@ func (m *Migration) LoadMappingFromFile(file string) error {
 		return nil
 	}
 
-	return fmt.Errorf("не удалось загрузить mapping из файла %s", file)
+	return fmt.Errorf("failed to load mapping from file %s", file)
 }

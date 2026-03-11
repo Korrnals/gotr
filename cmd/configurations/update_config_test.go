@@ -60,7 +60,7 @@ func TestUpdateConfigCmd_MissingName(t *testing.T) {
 func TestUpdateConfigCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateConfigFunc: func(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
-			return nil, fmt.Errorf("конфигурация не найдена")
+			return nil, fmt.Errorf("configuration not found")
 		},
 	}
 

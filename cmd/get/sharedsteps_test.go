@@ -60,7 +60,7 @@ func TestSharedStepsCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID проекта")
+	assert.Contains(t, err.Error(), "invalid project ID")
 }
 
 func TestSharedStepsCmd_InvalidProjectIDFlag(t *testing.T) {
@@ -121,7 +121,7 @@ func TestSharedStepCmd_InvalidStepID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID шага")
+	assert.Contains(t, err.Error(), "invalid step ID")
 }
 
 func TestSharedStepCmd_NoArgs(t *testing.T) {
@@ -161,7 +161,7 @@ func TestSharedStepsCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestSharedStepCmd_NilClient(t *testing.T) {
@@ -174,5 +174,5 @@ func TestSharedStepCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

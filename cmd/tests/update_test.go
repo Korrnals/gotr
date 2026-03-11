@@ -111,7 +111,7 @@ func TestUpdateCmd_NoArgs(t *testing.T) {
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
-			return nil, fmt.Errorf("тест не найден")
+			return nil, fmt.Errorf("test not found")
 		},
 	}
 
@@ -122,7 +122,7 @@ func TestUpdateCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "тест не найден")
+	assert.Contains(t, err.Error(), "test not found")
 }
 
 func TestGetClientForTests_NilCmd(t *testing.T) {

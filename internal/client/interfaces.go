@@ -25,7 +25,7 @@ type ProjectsAPI interface {
 	DeleteProject(ctx context.Context, projectID int64) error
 }
 
-// CasesAPI — операции с кейсами
+// CasesAPI — операции с caseми
 type CasesAPI interface {
 	GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error)
 	GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error)
@@ -95,7 +95,7 @@ type RunsAPI interface {
 	DeleteRun(ctx context.Context, runID int64) error
 }
 
-// ResultsAPI — операции с результатами тестов
+// ResultsAPI — операции с resultми тестов
 type ResultsAPI interface {
 	GetResults(ctx context.Context, testID int64) (data.GetResultsResponse, error)
 	GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error)
@@ -106,7 +106,7 @@ type ResultsAPI interface {
 	AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
-// TestsAPI — операции с тестами
+// TestsAPI — операции с testми
 type TestsAPI interface {
 	GetTest(ctx context.Context, testID int64) (*data.Test, error)
 	GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error)

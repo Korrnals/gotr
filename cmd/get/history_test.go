@@ -57,7 +57,7 @@ func TestCaseHistoryCmd_InvalidCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID кейса")
+	assert.Contains(t, err.Error(), "invalid case ID")
 }
 
 func TestCaseHistoryCmd_NoArgs(t *testing.T) {
@@ -129,7 +129,7 @@ func TestSharedStepHistoryCmd_InvalidStepID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID шага")
+	assert.Contains(t, err.Error(), "invalid step ID")
 }
 
 func TestSharedStepHistoryCmd_NoArgs(t *testing.T) {
@@ -169,7 +169,7 @@ func TestCaseHistoryCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestSharedStepHistoryCmd_NilClient(t *testing.T) {
@@ -182,5 +182,5 @@ func TestSharedStepHistoryCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

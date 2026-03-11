@@ -2,8 +2,8 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -23,14 +23,14 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
   gotr configurations update-group 5 --name="Новое название" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("некорректный group_id: %s", args[0])
+			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -44,7 +44,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			ctx := cmd.Context()
 			resp, err := cli.UpdateConfigGroup(ctx, groupID, &req)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить группу: %w", err)
+				return fmt.Errorf("failed to update group: %w", err)
 			}
 
 			fmt.Printf("✅ Группа %d обновлена\n", groupID)

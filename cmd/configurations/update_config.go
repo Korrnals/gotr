@@ -2,8 +2,8 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -23,14 +23,14 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
   gotr configurations update-config 10 --name="Chrome 120" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || configID <= 0 {
-				return fmt.Errorf("некорректный config_id: %s", args[0])
+			configID, err := flags.ValidateRequiredID(args, 0, "config_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -44,7 +44,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 			ctx := cmd.Context()
 			resp, err := cli.UpdateConfig(ctx, configID, &req)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить конфигурацию: %w", err)
+				return fmt.Errorf("failed to update configuration: %w", err)
 			}
 
 			fmt.Printf("✅ Конфигурация %d обновлена\n", configID)

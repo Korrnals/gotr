@@ -216,7 +216,7 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
 			if err != nil {
 				mu.Lock()
-				m.logger.Errorw("Ошибка импорта кейса", "title", caseData.Title, "error", err)
+				m.logger.Errorw("Ошибка импорта case", "title", caseData.Title, "error", err)
 				mu.Unlock()
 				return
 			}
@@ -290,7 +290,7 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 			if err != nil {
 				mu.Lock()
 				errors = append(errors, fmt.Sprintf("кейс %q: %v", caseData.Title, err))
-				m.logger.Errorw("Ошибка импорта кейса", "title", caseData.Title, "error", err)
+				m.logger.Errorw("Ошибка импорта case", "title", caseData.Title, "error", err)
 				mu.Unlock()
 				return
 			}

@@ -28,7 +28,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			ctx := cmd.Context()
 			resp, err := cli.GetRoles(ctx)
 			if err != nil {
-				return fmt.Errorf("не удалось получить список ролей: %w", err)
+				return fmt.Errorf("failed to get roles list: %w", err)
 			}
 
 			return output.OutputResult(cmd, resp, "roles")

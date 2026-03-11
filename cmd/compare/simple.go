@@ -24,7 +24,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 			cli := getClientSafe(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
@@ -41,7 +41,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 
 			result, err := compareSimpleInternal(cli, pid1, pid2, resource, fetchFn)
 			if err != nil {
-				return fmt.Errorf("ошибка сравнения %s: %w", resource, err)
+				return fmt.Errorf("comparison error %s: %w", resource, err)
 			}
 
 			elapsed := time.Since(startTime)

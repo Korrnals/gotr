@@ -67,7 +67,7 @@ var configPathCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Default()
 		if err != nil {
-			return fmt.Errorf("не удалось определить путь к конфигу: %w", err)
+			return fmt.Errorf("failed to determine config path: %w", err)
 		}
 
 		used := viper.ConfigFileUsed()
@@ -95,14 +95,14 @@ var configViewCmd = &cobra.Command{
 		used := viper.ConfigFileUsed()
 		if used == "" {
 			cfg, _ := config.Default()
-			fmt.Printf("Конфиг-файл не найден: %s\n", cfg.PathString())
+			fmt.Printf("Конфиг-file not found: %s\n", cfg.PathString())
 			fmt.Println("Создайте его: gotr config init")
 			return nil
 		}
 
 		data, err := os.ReadFile(used)
 		if err != nil {
-			return fmt.Errorf("не удалось прочитать конфиг: %w", err)
+			return fmt.Errorf("failed to read config: %w", err)
 		}
 
 		fmt.Printf("Содержимое конфиг-файла %s:\n\n%s\n", used, string(data))
@@ -132,16 +132,16 @@ var configEditCmd = &cobra.Command{
 		if used == "" {
 			cfg, err := config.Default()
 			if err != nil {
-				return fmt.Errorf("не удалось определить путь к конфигу: %w", err)
+				return fmt.Errorf("failed to determine config path: %w", err)
 			}
-			fmt.Printf("Конфиг-файл не найден: %s\n", cfg.PathString())
+			fmt.Printf("Конфиг-file not found: %s\n", cfg.PathString())
 			fmt.Println("Создайте его командой: gotr config init")
 			return nil
 		}
 
 		// Запускаем редактор
 		if err := utils.OpenEditor(used); err != nil {
-			return fmt.Errorf("не удалось открыть редактор: %w", err)
+			return fmt.Errorf("failed to open editor: %w", err)
 		}
 
 		fmt.Printf("Конфиг-файл открыт в редакторе: %s\n", used)

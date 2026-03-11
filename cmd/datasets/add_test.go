@@ -47,7 +47,7 @@ func TestAddCmd_WithSaveFlag(t *testing.T) {
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		AddDatasetFunc: func(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
-			return nil, fmt.Errorf("проект не найден")
+			return nil, fmt.Errorf("project not found")
 		},
 	}
 
@@ -57,7 +57,7 @@ func TestAddCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "проект не найден")
+	assert.Contains(t, err.Error(), "project not found")
 }
 
 // ==================== Dry-run тесты ====================
@@ -114,5 +114,5 @@ func TestAddCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }

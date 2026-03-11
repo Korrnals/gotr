@@ -94,7 +94,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 		}
 		filepath, err := output.Output(command, toSave, "get", "json")
 		if err != nil {
-			return fmt.Errorf("ошибка сохранения: %w", err)
+			return fmt.Errorf("save error: %w", err)
 		}
 		if !quiet && filepath != "" {
 			fmt.Printf("Ответ сохранён в %s\n", filepath)
@@ -105,7 +105,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 	if jqEnabled || jqFilter != "" {
 		toSave, err := json.Marshal(data)
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга для jq: %w", err)
+			return fmt.Errorf("jq marshal error: %w", err)
 		}
 		if err := embed.RunEmbeddedJQ(toSave, jqFilter); err != nil {
 			return err

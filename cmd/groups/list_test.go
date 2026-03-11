@@ -52,7 +52,7 @@ func TestListCmd_Empty(t *testing.T) {
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
-			return nil, fmt.Errorf("ошибка подключения к API")
+			return nil, fmt.Errorf("API connection error")
 		},
 	}
 

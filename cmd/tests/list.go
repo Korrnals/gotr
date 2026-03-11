@@ -2,8 +2,8 @@ package tests
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -21,9 +21,9 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
-			runID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || runID <= 0 {
-				return fmt.Errorf("run_id должен быть положительным числом")
+			runID, err := flags.ValidateRequiredID(args, 0, "run_id")
+			if err != nil {
+				return err
 			}
 
 			statusID, _ := cmd.Flags().GetInt64("status-id")

@@ -23,7 +23,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Проверяем dry-run режим
@@ -41,7 +41,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 			fields, err := cli.GetResultFields(ctx)
 			if err != nil {
-				return fmt.Errorf("ошибка получения полей результатов: %w", err)
+				return fmt.Errorf("failed to get result fields: %w", err)
 			}
 
 			return output.OutputResult(cmd, fields, "results")
@@ -57,7 +57,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 func saveToFile(data interface{}, filename string) error {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка сериализации JSON: %w", err)
+		return fmt.Errorf("JSON serialization error: %w", err)
 	}
 	return os.WriteFile(filename, jsonBytes, 0644)
 }
@@ -66,7 +66,7 @@ func saveToFile(data interface{}, filename string) error {
 func printJSON(data interface{}) error {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка сериализации JSON: %w", err)
+		return fmt.Errorf("JSON serialization error: %w", err)
 	}
 	fmt.Println(string(jsonBytes))
 	return nil

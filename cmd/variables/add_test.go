@@ -70,13 +70,13 @@ func TestAddCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		AddVariableFunc: func(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
-			return nil, fmt.Errorf("датасет не найден")
+			return nil, fmt.Errorf("dataset not found")
 		},
 	}
 

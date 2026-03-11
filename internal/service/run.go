@@ -48,7 +48,7 @@ func (s *RunService) Get(ctx context.Context, runID int64) (*data.Run, error) {
 	return s.client.GetRun(ctx, runID)
 }
 
-// GetByProject получает список runs для проекта
+// GetByProject получает список runs for project
 func (s *RunService) GetByProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	if err := s.validateID(projectID, "project_id"); err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s *RunService) Create(ctx context.Context, projectID int64, req *data.AddR
 	}
 	if err := s.validateCreateRequest(req); err != nil {
 		log.L().Error("validation failed", zap.Error(err))
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 
 	run, err := s.client.AddRun(ctx, projectID, req)
@@ -162,7 +162,7 @@ func (s *RunService) PrintSuccess(ctx context.Context, cmd *cobra.Command, forma
 // ParseID парсит ID из аргументов команды
 func (s *RunService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
-		return 0, fmt.Errorf("отсутствует аргумент с ID на позиции %d", index)
+		return 0, fmt.Errorf("missing ID argument at position %d", index)
 	}
 	return utils.ParseID(args[index])
 }
@@ -170,7 +170,7 @@ func (s *RunService) ParseID(ctx context.Context, args []string, index int) (int
 // validateID проверяет что ID положительный
 func (s *RunService) validateID(id int64, fieldName string) error {
 	if id <= 0 {
-		return fmt.Errorf("%s должен быть положительным числом, получено: %d", fieldName, id)
+		return fmt.Errorf("%s must be a positive number, got: %d", fieldName, id)
 	}
 	return nil
 }

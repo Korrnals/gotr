@@ -48,7 +48,7 @@ func TestDeleteConfigCmd_InvalidID(t *testing.T) {
 func TestDeleteConfigCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		DeleteConfigFunc: func(ctx context.Context, configID int64) error {
-			return fmt.Errorf("конфигурация не найдена")
+			return fmt.Errorf("configuration not found")
 		},
 	}
 

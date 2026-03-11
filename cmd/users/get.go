@@ -2,8 +2,8 @@ package users
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,9 +25,9 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr users get 12345 -o user.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			userID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || userID <= 0 {
-				return fmt.Errorf("invalid user_id: %s", args[0])
+			userID, err := flags.ValidateRequiredID(args, 0, "user_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)

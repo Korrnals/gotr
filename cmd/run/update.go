@@ -36,13 +36,13 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newRunServiceFromInterface(cli)
 			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			// Собираем параметры из флагов (только изменённые)
@@ -88,7 +88,7 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 			run, err := svc.Update(ctx, runID, req)
 			if err != nil {
-				return fmt.Errorf("ошибка обновления test run: %w", err)
+				return fmt.Errorf("failed to update test run: %w", err)
 			}
 
 			svc.PrintSuccess(ctx, cmd, "Test run обновлён успешно:")

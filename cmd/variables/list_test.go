@@ -49,7 +49,7 @@ func TestListCmd_Empty(t *testing.T) {
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		GetVariablesFunc: func(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
-			return nil, fmt.Errorf("датасет не найден")
+			return nil, fmt.Errorf("dataset not found")
 		},
 	}
 

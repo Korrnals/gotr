@@ -25,7 +25,7 @@ type Plan struct {
 }
 
 // PlanEntry — запись (entry) в тест-плане
-// Каждый entry представляет собой конфигурацию рана в плане
+// Каждый entry представляет собой конфигурацию run в плане
 type PlanEntry struct {
 	ID          string    `json:"id"`                    // The unique ID of the test plan entry
 	Name        string    `json:"name"`                  // The name of the test plan entry

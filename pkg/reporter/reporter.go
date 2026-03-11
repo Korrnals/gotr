@@ -262,8 +262,8 @@ func CompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond, comm
 		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
 		Stat("📦", "Всего обработано", total).
 		Section("Результат сравнения").
-		Stat("🔹", fmt.Sprintf("Только в проекте %d", pid1), onlyFirst).
-		Stat("🔹", fmt.Sprintf("Только в проекте %d", pid2), onlySecond).
+		Stat("🔹", fmt.Sprintf("Только in project %d", pid1), onlyFirst).
+		Stat("🔹", fmt.Sprintf("Только in project %d", pid2), onlySecond).
 		Stat("🔗", "Общих", common)
 }
 

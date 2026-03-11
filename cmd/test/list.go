@@ -39,13 +39,13 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 			httpClient := getClient(cmd)
 			ctx := cmd.Context()
 			if httpClient == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := service.NewTestService(httpClient)
 			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID рана: %w", err)
+				return fmt.Errorf("invalid run ID: %w", err)
 			}
 
 			// Собираем фильтры
@@ -63,7 +63,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 
 			tests, err := svc.GetForRun(ctx, runID, filters)
 			if err != nil {
-				return fmt.Errorf("ошибка получения списка тестов: %w", err)
+				return fmt.Errorf("failed to get test list: %w", err)
 			}
 
 			// Проверяем нужно ли сохранить в файл
@@ -71,7 +71,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 			if saveFlag {
 				filepath, err := output.Output(cmd, tests, "test", "json")
 				if err != nil {
-					return fmt.Errorf("ошибка сохранения: %w", err)
+					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
 					svc.PrintSuccess(ctx, cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)

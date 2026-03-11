@@ -2,8 +2,8 @@ package cases
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -22,9 +22,9 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr cases delete 12345 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
+			if err != nil {
+				return err
 			}
 
 			// Check dry-run

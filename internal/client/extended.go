@@ -173,7 +173,7 @@ func (c *HTTPClient) GetRole(ctx context.Context, roleID int64) (*data.Role, err
 
 // ==================== ResultFields API ====================
 
-// GetResultFields получает список полей результата
+// GetResultFields получает список полей result
 func (c *HTTPClient) GetResultFields(ctx context.Context) (data.GetResultFieldsResponse, error) {
 	resp, err := c.Get(ctx, "get_result_fields", nil)
 	if err != nil {
@@ -390,7 +390,7 @@ func (c *HTTPClient) DeleteVariable(ctx context.Context, variableID int64) error
 
 // ==================== BDDs API ====================
 
-// GetBDD получает BDD сценарий для кейса
+// GetBDD получает BDD сценарий для case
 func (c *HTTPClient) GetBDD(ctx context.Context, caseID int64) (*data.BDD, error) {
 	endpoint := fmt.Sprintf("get_bdd/%d", caseID)
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -437,7 +437,7 @@ func (c *HTTPClient) AddBDD(ctx context.Context, caseID int64, content string) (
 
 // ==================== Labels API ====================
 
-// UpdateTestLabels обновляет labels для теста
+// UpdateTestLabels обновляет labels for test
 func (c *HTTPClient) UpdateTestLabels(ctx context.Context, testID int64, labels []string) error {
 	endpoint := fmt.Sprintf("update_test_labels/%d", testID)
 	req := data.UpdateLabelsRequest{Labels: labels}

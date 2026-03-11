@@ -50,7 +50,7 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
 		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
-			return nil, fmt.Errorf("роль не найдена")
+			return nil, fmt.Errorf("role not found")
 		},
 	}
 
@@ -60,7 +60,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "роль не найдена")
+	assert.Contains(t, err.Error(), "role not found")
 }
 
 // ==================== Тесты валидации ====================

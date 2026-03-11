@@ -50,7 +50,7 @@ func TestGetCmd_WithSave(t *testing.T) {
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
 		GetBDDFunc: func(ctx context.Context, caseID int64) (*data.BDD, error) {
-			return nil, fmt.Errorf("BDD не найден")
+			return nil, fmt.Errorf("BDD not found")
 		},
 	}
 

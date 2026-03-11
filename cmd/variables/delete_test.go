@@ -68,7 +68,7 @@ func TestDeleteCmd_NoArgs(t *testing.T) {
 func TestDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		DeleteVariableFunc: func(ctx context.Context, variableID int64) error {
-			return fmt.Errorf("переменная не найдена")
+			return fmt.Errorf("variable not found")
 		},
 	}
 

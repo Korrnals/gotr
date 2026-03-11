@@ -30,7 +30,7 @@ func TestDeleteCmd_Success(t *testing.T) {
 func TestDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		DeleteDatasetFunc: func(ctx context.Context, datasetID int64) error {
-			return fmt.Errorf("датасет не найден")
+			return fmt.Errorf("dataset not found")
 		},
 	}
 
@@ -40,7 +40,7 @@ func TestDeleteCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "датасет не найден")
+	assert.Contains(t, err.Error(), "dataset not found")
 }
 
 // ==================== Dry-run тесты ====================

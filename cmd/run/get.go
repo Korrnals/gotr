@@ -34,13 +34,13 @@ Test run — это экземпляр тест-сюиты, запущенный
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newRunServiceFromInterface(cli)
 			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			// Проверяем dry-run режим
@@ -58,7 +58,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 
 			run, err := svc.Get(ctx, runID)
 			if err != nil {
-				return fmt.Errorf("ошибка получения test run: %w", err)
+				return fmt.Errorf("failed to get test run: %w", err)
 			}
 
 			return svc.Output(ctx, cmd, run)

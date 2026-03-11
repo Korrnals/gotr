@@ -34,7 +34,7 @@ func newSuitesCmd() *cobra.Command {
 			cli := getClientSafe(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Parse flags
@@ -55,7 +55,7 @@ func newSuitesCmd() *cobra.Command {
 			// Compare suites
 			result, err := compareSuitesInternal(ctx, cli, pid1, pid2)
 			if err != nil {
-				return fmt.Errorf("ошибка сравнения сюитов: %w", err)
+				return fmt.Errorf("suites comparison error: %w", err)
 			}
 
 			elapsed := time.Since(startTime)
@@ -93,7 +93,7 @@ func compareSuitesInternal(ctx context.Context, cli client.ClientInterface, pid1
 	// Fetch suites from both projects in parallel
 	suitesByProject, err := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
 	if err != nil && len(suitesByProject) == 0 {
-		return nil, fmt.Errorf("ошибка получения сюитов: %w", err)
+		return nil, fmt.Errorf("failed to get suites: %w", err)
 	}
 
 	// Convert to ItemInfo slices

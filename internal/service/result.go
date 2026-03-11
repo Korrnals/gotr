@@ -1,5 +1,5 @@
 // internal/service/result.go
-// Сервис для работы с результатами тестов
+// Сервис для работы с resultми тестов
 package service
 
 import (
@@ -27,12 +27,12 @@ type resultClientInterface interface {
 	AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
-// ResultService предоставляет методы для работы с результатами тестов
+// ResultService предоставляет методы для работы с resultми тестов
 type ResultService struct {
 	client resultClientInterface
 }
 
-// NewResultService создаёт новый сервис для работы с результатами
+// NewResultService создаёт новый сервис для работы с resultми
 func NewResultService(client *client.HTTPClient) *ResultService {
 	return &ResultService{client: client}
 }
@@ -69,7 +69,7 @@ func (s *ResultService) GetForRun(ctx context.Context, runID int64) (data.GetRes
 	return s.client.GetResultsForRun(ctx, runID)
 }
 
-// GetRunsForProject получает список runs для проекта (для интерактивного выбора)
+// GetRunsForProject получает список runs for project (для интерактивного выбора)
 func (s *ResultService) GetRunsForProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	if err := s.validateID(projectID, "project_id"); err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (s *ResultService) AddForTest(ctx context.Context, testID int64, req *data.
 	}
 	if err := s.validateAddResultRequest(req); err != nil {
 		log.L().Error("validation failed", zap.Error(err))
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 
 	result, err := s.client.AddResult(ctx, testID, req)
@@ -125,7 +125,7 @@ func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req
 	}
 	if err := s.validateAddResultRequest(req); err != nil {
 		log.L().Error("validation failed", zap.Error(err))
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 
 	result, err := s.client.AddResultForCase(ctx, runID, caseID, req)
@@ -143,7 +143,7 @@ func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req
 	return result, nil
 }
 
-// AddResults добавляет несколько результатов (bulk) с валидацией
+// AddResults добавляет несколько results (bulk) с валидацией
 func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 	log.L().Info("adding bulk results",
 		zap.Int64("run_id", runID),
@@ -156,7 +156,7 @@ func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.A
 	}
 	if err := s.validateAddResultsRequest(req); err != nil {
 		log.L().Error("validation failed", zap.Error(err))
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 
 	results, err := s.client.AddResults(ctx, runID, req)
@@ -172,13 +172,13 @@ func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.A
 	return results, nil
 }
 
-// AddResultsForCases добавляет результаты для кейсов (bulk) с валидацией
+// AddResultsForCases добавляет результаты для cases (bulk) с валидацией
 func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
 	}
 	if err := s.validateAddResultsForCasesRequest(req); err != nil {
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 	return s.client.AddResultsForCases(ctx, runID, req)
 }
@@ -196,7 +196,7 @@ func (s *ResultService) PrintSuccess(ctx context.Context, cmd *cobra.Command, fo
 // ParseID парсит ID из аргументов
 func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
-		return 0, fmt.Errorf("отсутствует аргумент с ID на позиции %d", index)
+		return 0, fmt.Errorf("missing ID argument at position %d", index)
 	}
 	return utils.ParseID(args[index])
 }
@@ -204,12 +204,12 @@ func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (
 // validateID проверяет что ID положительный
 func (s *ResultService) validateID(id int64, fieldName string) error {
 	if id <= 0 {
-		return fmt.Errorf("%s должен быть положительным числом, получено: %d", fieldName, id)
+		return fmt.Errorf("%s must be a positive number, got: %d", fieldName, id)
 	}
 	return nil
 }
 
-// validateAddResultRequest валидирует запрос добавления результата
+// validateAddResultRequest валидирует запрос добавления result
 func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) error {
 	if req == nil {
 		return errors.New("запрос не может быть nil")
@@ -226,30 +226,30 @@ func (s *ResultService) validateAddResultsRequest(req *data.AddResultsRequest) e
 		return errors.New("запрос не может быть nil")
 	}
 	if len(req.Results) == 0 {
-		return errors.New("список результатов не может быть пустым")
+		return errors.New("список results не может быть пустым")
 	}
 	for i, r := range req.Results {
 		if r.StatusID <= 0 {
-			return fmt.Errorf("result[%d]: status_id должен быть положительным", i)
+			return fmt.Errorf("result[%d]: status_id must be positive", i)
 		}
 	}
 	return nil
 }
 
-// validateAddResultsForCasesRequest валидирует bulk запрос для кейсов
+// validateAddResultsForCasesRequest валидирует bulk запрос для cases
 func (s *ResultService) validateAddResultsForCasesRequest(req *data.AddResultsForCasesRequest) error {
 	if req == nil {
 		return errors.New("запрос не может быть nil")
 	}
 	if len(req.Results) == 0 {
-		return errors.New("список результатов не может быть пустым")
+		return errors.New("список results не может быть пустым")
 	}
 	for i, r := range req.Results {
 		if r.CaseID <= 0 {
-			return fmt.Errorf("result[%d]: case_id должен быть положительным", i)
+			return fmt.Errorf("result[%d]: case_id must be positive", i)
 		}
 		if r.StatusID <= 0 {
-			return fmt.Errorf("result[%d]: status_id должен быть положительным", i)
+			return fmt.Errorf("result[%d]: status_id must be positive", i)
 		}
 	}
 	return nil

@@ -94,13 +94,13 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newRunServiceFromInterface(cli)
 			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			// Проверяем dry-run режим
@@ -117,7 +117,7 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			}
 
 			if err := svc.Delete(ctx, runID); err != nil {
-				return fmt.Errorf("ошибка удаления test run: %w", err)
+				return fmt.Errorf("failed to delete test run: %w", err)
 			}
 
 			svc.PrintSuccess(ctx, cmd, "Test run %d удалён успешно", runID)

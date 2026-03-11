@@ -2,9 +2,9 @@ package cases
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
@@ -273,7 +273,7 @@ func parseIDList(args []string) []int64 {
 			if part == "" {
 				continue
 			}
-			id, err := strconv.ParseInt(part, 10, 64)
+			id, err := flags.ParseID(part)
 			if err == nil && id > 0 {
 				ids = append(ids, id)
 			}

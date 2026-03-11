@@ -78,7 +78,7 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 	// Парсим, но игнорируем ошибки — будем строить заново
 	parsed, err := url.Parse(strings.TrimSpace(baseURLStr))
 	if err != nil || parsed.Host == "" {
-		return nil, fmt.Errorf("неверный или пустой base URL: %s", baseURLStr)
+		return nil, fmt.Errorf("invalid or empty base URL: %s", baseURLStr)
 	}
 
 	// Создаём новый URL только с scheme и host
@@ -210,7 +210,7 @@ func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("API вернул %s, но не удалось прочитать тело ошибки: %w", resp.Status, err)
+		return fmt.Errorf("API returned %s, failed to read error body: %w", resp.Status, err)
 	}
 
 	// Пытаемся распарсить как JSON с полем "error"
@@ -219,9 +219,9 @@ func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 	}
 	if json.Unmarshal(bodyBytes, &errStruct) == nil && errStruct.Error != "" {
 		// Go автоматически декодирует \uXXXX в нормальный UTF-8 текст
-		return fmt.Errorf("API вернул %s: %s", resp.Status, errStruct.Error)
+		return fmt.Errorf("API returned %s: %s", resp.Status, errStruct.Error)
 	}
 
 	// Если не получилось распарсить как JSON с error — выводим тело как есть
-	return fmt.Errorf("API вернул %s: %s", resp.Status, string(bodyBytes))
+	return fmt.Errorf("API returned %s: %s", resp.Status, string(bodyBytes))
 }

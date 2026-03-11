@@ -2,8 +2,8 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -27,14 +27,14 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
   gotr configurations add-group 1 --name="OS" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("некорректный project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -48,7 +48,7 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 			ctx := cmd.Context()
 			resp, err := cli.AddConfigGroup(ctx, projectID, &req)
 			if err != nil {
-				return fmt.Errorf("не удалось создать группу: %w", err)
+				return fmt.Errorf("failed to create group: %w", err)
 			}
 
 			fmt.Printf("✅ Группа создана (ID: %d)\n", resp.ID)

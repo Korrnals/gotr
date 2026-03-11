@@ -2,8 +2,8 @@ package variables
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -28,14 +28,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr variables add 123 --name="password" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
+			datasetID, err := flags.ValidateRequiredID(args, 0, "dataset_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -48,7 +48,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			ctx := cmd.Context()
 			resp, err := cli.AddVariable(ctx, datasetID, name)
 			if err != nil {
-				return fmt.Errorf("не удалось создать переменную: %w", err)
+				return fmt.Errorf("failed to create variable: %w", err)
 			}
 
 			fmt.Printf("✅ Переменная создана (ID: %d)\n", resp.ID)

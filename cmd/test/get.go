@@ -28,18 +28,18 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 			httpClient := getClient(cmd)
 			ctx := cmd.Context()
 			if httpClient == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := service.NewTestService(httpClient)
 			testID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID теста: %w", err)
+				return fmt.Errorf("invalid test ID: %w", err)
 			}
 
 			test, err := svc.Get(ctx, testID)
 			if err != nil {
-				return fmt.Errorf("ошибка получения теста: %w", err)
+				return fmt.Errorf("failed to get test: %w", err)
 			}
 
 			// Проверяем нужно ли сохранить в файл
@@ -47,7 +47,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 			if saveFlag {
 				filepath, err := output.Output(cmd, test, "test", "json")
 				if err != nil {
-					return fmt.Errorf("ошибка сохранения: %w", err)
+					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
 					svc.PrintSuccess(ctx, cmd, "Тест сохранён в %s", filepath)

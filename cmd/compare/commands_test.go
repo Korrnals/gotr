@@ -74,7 +74,7 @@ func TestSuitesCmd_NoClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestSuitesCmd_InvalidPid1(t *testing.T) {

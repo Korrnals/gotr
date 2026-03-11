@@ -2,8 +2,8 @@ package groups
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -19,9 +19,9 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("group_id должен быть положительным числом")
+			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
+			if err != nil {
+				return err
 			}
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")

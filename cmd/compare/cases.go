@@ -86,7 +86,7 @@ func newCasesCmd() *cobra.Command {
 			cli := getClientSafe(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Parse flags
@@ -166,7 +166,7 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 
 	suitesMap, err := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
 	if err != nil && len(suitesMap) == 0 {
-		return nil, execStats, fmt.Errorf("ошибка получения сьютов: %w", err)
+		return nil, execStats, fmt.Errorf("failed to get suites: %w", err)
 	}
 
 	suites1 := suitesMap[pid1]
@@ -291,10 +291,10 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	}
 
 	if err1 != nil {
-		return nil, execStats, fmt.Errorf("ошибка загрузки проекта %d: %w", pid1, err1)
+		return nil, execStats, fmt.Errorf("failed to load project %d: %w", pid1, err1)
 	}
 	if err2 != nil {
-		return nil, execStats, fmt.Errorf("ошибка загрузки проекта %d: %w", pid2, err2)
+		return nil, execStats, fmt.Errorf("failed to load project %d: %w", pid2, err2)
 	}
 
 	// Phase 3: Analysis
@@ -496,14 +496,14 @@ func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath s
 	if path == "" {
 		exportsDir, _ := outpututils.GetExportsDir("compare")
 		if err := os.MkdirAll(exportsDir, 0755); err != nil {
-			return "", fmt.Errorf("создание директории отчётов: %w", err)
+			return "", fmt.Errorf("creating reports directory: %w", err)
 		}
 		path = filepath.Join(exportsDir, fmt.Sprintf("failed_pages_%s.json", time.Now().Format("2006-01-02_15-04-05")))
 	} else {
 		dir := filepath.Dir(path)
 		if dir != "" && dir != "." {
 			if err := os.MkdirAll(dir, 0755); err != nil {
-				return "", fmt.Errorf("создание директории %s: %w", dir, err)
+				return "", fmt.Errorf("creating directory %s: %w", dir, err)
 			}
 		}
 	}
@@ -524,7 +524,7 @@ func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath s
 	}
 
 	if err := os.WriteFile(path, data, 0644); err != nil {
-		return "", fmt.Errorf("запись отчёта %s: %w", path, err)
+		return "", fmt.Errorf("writing report %s: %w", path, err)
 	}
 
 	return path, nil

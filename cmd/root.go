@@ -55,9 +55,9 @@ var rootCmd = &cobra.Command{
 		if config.IsDefaultValue(baseURL, config.DefaultBaseURL) ||
 			config.IsDefaultValue(username, config.DefaultUsername) ||
 			config.IsDefaultValue(apiKey, config.DefaultAPIKey) {
-			return fmt.Errorf("конфигурация не задана или содержит дефолтные значения\n" +
-				"Запустите 'gotr config init' для создания конфигурации,\n" +
-				"затем отредактируйте файл ~/.gotr/config/default.yaml")
+			return fmt.Errorf("configuration not set or contains default values\n" +
+				"Run 'gotr config init' to create configuration,\n" +
+				"then edit the file ~/.gotr/config/default.yaml")
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
@@ -71,7 +71,7 @@ var rootCmd = &cobra.Command{
 
 		httpClient, err := client.NewClient(baseURL, username, apiKey, debug, opts...)
 		if err != nil {
-			return fmt.Errorf("не удалось создать клиент: %w", err)
+			return fmt.Errorf("failed to create client: %w", err)
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
@@ -98,7 +98,7 @@ func Execute(ctx context.Context) {
 func GetClient(cmd *cobra.Command) *client.HTTPClient {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
-		panic("gotr: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
+		panic("gotr: HTTP client not initialized. Check --username, --api-key and --url")
 	}
 	return val.(*client.HTTPClient)
 }
@@ -107,7 +107,7 @@ func GetClient(cmd *cobra.Command) *client.HTTPClient {
 func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
-		panic("gotr: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
+		panic("gotr: HTTP client not initialized. Check --username, --api-key and --url")
 	}
 	// Поддерживаем как *client.HTTPClient, так и *client.MockClient
 	if cli, ok := val.(client.ClientInterface); ok {

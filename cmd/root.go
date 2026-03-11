@@ -98,8 +98,7 @@ func Execute(ctx context.Context) {
 func GetClient(cmd *cobra.Command) *client.HTTPClient {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
-		fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
-		os.Exit(1)
+		panic("gotr: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
 	}
 	return val.(*client.HTTPClient)
 }
@@ -108,8 +107,7 @@ func GetClient(cmd *cobra.Command) *client.HTTPClient {
 func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
-		fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
-		os.Exit(1)
+		panic("gotr: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
 	}
 	// Поддерживаем как *client.HTTPClient, так и *client.MockClient
 	if cli, ok := val.(client.ClientInterface); ok {

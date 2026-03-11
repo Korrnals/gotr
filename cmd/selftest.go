@@ -42,18 +42,12 @@ Examples:
 	RunE: runSelfTest,
 }
 
-var (
-	jsonOutput     bool
-	failuresOnly   bool
-	includeSkipped bool
-)
-
 func init() {
 	rootCmd.AddCommand(selfTestCmd)
 
-	selfTestCmd.Flags().BoolVar(&jsonOutput, "json", false, "Output results as JSON")
-	selfTestCmd.Flags().BoolVar(&failuresOnly, "failures-only", false, "Show only failed checks")
-	selfTestCmd.Flags().BoolVar(&includeSkipped, "include-skipped", false, "Include skipped checks in output")
+	selfTestCmd.Flags().Bool("json", false, "Output results as JSON")
+	selfTestCmd.Flags().Bool("failures-only", false, "Show only failed checks")
+	selfTestCmd.Flags().Bool("include-skipped", false, "Include skipped checks in output")
 }
 
 func runSelfTest(cmd *cobra.Command, args []string) error {
@@ -82,11 +76,13 @@ func runSelfTest(cmd *cobra.Command, args []string) error {
 	report.Platform = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 
 	// Выводим результаты
+	jsonOutput, _ := cmd.Flags().GetBool("json")
 	if jsonOutput {
 		return outputJSON(report)
 	}
 
-	return outputHuman(report)
+	failuresOnly, _ := cmd.Flags().GetBool("failures-only")
+	return outputHuman(report, failuresOnly)
 }
 
 func outputJSON(report *selftest.Report) error {
@@ -95,7 +91,7 @@ func outputJSON(report *selftest.Report) error {
 	return encoder.Encode(report)
 }
 
-func outputHuman(report *selftest.Report) error {
+func outputHuman(report *selftest.Report, failuresOnly bool) error {
 	// Показываем путь к последнему отчёту
 	if selftestDir, err := paths.SelftestDirPath(); err == nil {
 		fmt.Fprintf(os.Stderr, "Detailed reports saved to: %s/latest.log\n\n", selftestDir)

@@ -15,11 +15,6 @@ import (
 // newUpdateLabelCmd создаёт команду 'labels update-label'
 // Эндпоинт: POST /update_label/{label_id}
 func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
-	var (
-		projectID int64
-		title     string
-	)
-
 	cmd := &cobra.Command{
 		Use:   "update-label <label_id>",
 		Short: "Обновить метку",
@@ -41,6 +36,10 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 
 			client := getClient(cmd)
 			ctx := cmd.Context()
+
+			projectID, _ := cmd.Flags().GetInt64("project")
+			title, _ := cmd.Flags().GetString("title")
+
 			req := data.UpdateLabelRequest{
 				ProjectID: projectID,
 				Title:     title,
@@ -56,8 +55,8 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64VarP(&projectID, "project", "p", 0, "ID проекта (обязательно)")
-	cmd.Flags().StringVarP(&title, "title", "t", "", "Новое название метки (обязательно, max 20 символов)")
+	cmd.Flags().Int64P("project", "p", 0, "ID проекта (обязательно)")
+	cmd.Flags().StringP("title", "t", "", "Новое название метки (обязательно, max 20 символов)")
 	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("project")

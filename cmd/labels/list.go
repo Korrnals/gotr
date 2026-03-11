@@ -15,7 +15,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'labels list'
 // Эндпоинт: GET /get_labels/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{

@@ -6,10 +6,11 @@ package attachments
 import (
 	"fmt"
 	"strconv"
-	"text/tabwriter"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -184,10 +185,11 @@ func outputAttachmentsList(cmd *cobra.Command, attachments data.GetAttachmentsRe
 		return nil
 	}
 
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tSIZE\tCREATED_ON")
+	t := ui.NewTable(cmd)
+	t.AppendHeader(table.Row{"ID", "NAME", "SIZE", "CREATED_ON"})
 	for _, a := range attachments {
-		fmt.Fprintf(w, "%d\t%s\t%d\t%d\n", a.ID, a.Name, a.Size, a.CreatedOn)
+		t.AppendRow(table.Row{a.ID, a.Name, a.Size, a.CreatedOn})
 	}
-	return w.Flush()
+	ui.Table(cmd, t)
+	return nil
 }

@@ -7,16 +7,16 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"text/tabwriter"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'users list'
 // Эндпоинты: GET /get_users, GET /get_users/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
@@ -81,12 +81,13 @@ func listAllUsers(ctx context.Context, cmd *cobra.Command, cli usersClient) erro
 		return nil
 	}
 
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tEMAIL\tIS_ADMIN\tROLE_ID")
+	t := ui.NewTable(cmd)
+	t.AppendHeader(table.Row{"ID", "NAME", "EMAIL", "IS_ADMIN", "ROLE_ID"})
 	for _, u := range users {
-		fmt.Fprintf(w, "%d\t%s\t%s\t%v\t%d\n", u.ID, u.Name, u.Email, u.IsAdmin, u.RoleID)
+		t.AppendRow(table.Row{u.ID, u.Name, u.Email, u.IsAdmin, u.RoleID})
 	}
-	return w.Flush()
+	ui.Table(cmd, t)
+	return nil
 }
 
 func listProjectUsers(ctx context.Context, cmd *cobra.Command, cli usersClient, projectID int64) error {
@@ -109,12 +110,13 @@ func listProjectUsers(ctx context.Context, cmd *cobra.Command, cli usersClient, 
 		return nil
 	}
 
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tEMAIL\tIS_ADMIN\tROLE_ID")
+	t := ui.NewTable(cmd)
+	t.AppendHeader(table.Row{"ID", "NAME", "EMAIL", "IS_ADMIN", "ROLE_ID"})
 	for _, u := range users {
-		fmt.Fprintf(w, "%d\t%s\t%s\t%v\t%d\n", u.ID, u.Name, u.Email, u.IsAdmin, u.RoleID)
+		t.AppendRow(table.Row{u.ID, u.Name, u.Email, u.IsAdmin, u.RoleID})
 	}
-	return w.Flush()
+	ui.Table(cmd, t)
+	return nil
 }
 
 // Verify interface compliance

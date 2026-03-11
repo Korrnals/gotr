@@ -193,7 +193,7 @@ func (c *HTTPClient) GetStatuses(ctx context.Context) (data.GetStatusesResponse,
 	return statuses, nil
 }
 
-// GetTemplates получает список шаблонов для проекта
+// GetTemplates получает список шаблонов for project
 // https://support.testrail.com/hc/en-us/articles/7077792420884-Templates#gettemplates
 func (c *HTTPClient) GetTemplates(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 	endpoint := fmt.Sprintf("get_templates/%d", projectID)

@@ -68,14 +68,14 @@ func runRetryFailedPages(cmd *cobra.Command, _ []string) error {
 	cli := getClientSafe(cmd)
 	ctx := cmd.Context()
 	if cli == nil {
-		return fmt.Errorf("HTTP клиент не инициализирован")
+		return fmt.Errorf("HTTP client not initialized")
 	}
 
 	fromPath, _ := cmd.Flags().GetString("from")
 	saveRemainingPath, _ := cmd.Flags().GetString("save-remaining")
 
 	if strings.TrimSpace(fromPath) == "" {
-		return fmt.Errorf("флаг --from обязателен")
+		return fmt.Errorf("--from flag is required")
 	}
 
 	failedPages, err := loadFailedPages(fromPath)
@@ -250,7 +250,7 @@ func executeRetryFailedPages(
 
 	reportPath, saveErr := saveFailedPagesReport(remaining, saveRemainingPath)
 	if saveErr != nil {
-		return remaining, stats, fmt.Errorf("ошибка сохранения остатка failed pages: %w", saveErr)
+		return remaining, stats, fmt.Errorf("save remaining failed pages error: %w", saveErr)
 	}
 	stats.SaveRemainingTo = reportPath
 	ui.Infof(os.Stderr, "Остаток failed pages сохранён: %s", reportPath)
@@ -261,12 +261,12 @@ func executeRetryFailedPages(
 func loadFailedPages(path string) ([]concurrency.FailedPage, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("не удалось прочитать файл %s: %w", path, err)
+		return nil, fmt.Errorf("failed to read file %s: %w", path, err)
 	}
 
 	var report failedPagesFile
 	if err := json.Unmarshal(data, &report); err != nil {
-		return nil, fmt.Errorf("не удалось распарсить JSON отчёт %s: %w", path, err)
+		return nil, fmt.Errorf("failed to parse JSON report %s: %w", path, err)
 	}
 
 	if report.FailedPages == nil {

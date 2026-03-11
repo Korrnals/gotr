@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -25,9 +25,9 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr cases add 100 --json-file=case.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sectionID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || sectionID <= 0 {
-				return fmt.Errorf("invalid section_id: %s", args[0])
+			sectionID, err := flags.ValidateRequiredID(args, 0, "section_id")
+			if err != nil {
+				return err
 			}
 
 			// Check JSON file

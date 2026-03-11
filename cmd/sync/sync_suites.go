@@ -42,7 +42,7 @@ var suitesCmd = &cobra.Command{
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
 		if srcProject == 0 || dstProject == 0 {
-			return fmt.Errorf("укажите обязательные IDs: --src-project и --dst-project")
+			return fmt.Errorf("required IDs: --src-project and --dst-project")
 		}
 
 		logDir := utils.LogDir()

@@ -1,7 +1,7 @@
 // internal/models/data/templates.go
 package data
 
-// Template — шаблон тест-кейса
+// Template — шаблон тест-case
 type Template struct {
 	ID        int64  `json:"id"`         // Уникальный ID шаблона
 	Name      string `json:"name"`       // Название шаблона

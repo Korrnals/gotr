@@ -70,13 +70,13 @@ func TestAddGroupCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestAddGroupCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		AddConfigGroupFunc: func(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
-			return nil, fmt.Errorf("проект не найден")
+			return nil, fmt.Errorf("project not found")
 		},
 	}
 

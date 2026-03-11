@@ -161,7 +161,7 @@ func TestListCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestListCmd_MockClientTypeAssertion(t *testing.T) {
@@ -183,7 +183,7 @@ func TestListCmd_MockClientTypeAssertion(t *testing.T) {
 	err := cmd.Execute()
 	// Should fail with specific error about interactive mode
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "интерактивный режим недоступен в тестовом режиме")
+	assert.Contains(t, err.Error(), "interactive mode not available in test mode")
 }
 
 func TestListCmd_InvalidProjectIDFormat(t *testing.T) {
@@ -195,5 +195,5 @@ func TestListCmd_InvalidProjectIDFormat(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID проекта")
+	assert.Contains(t, err.Error(), "invalid project ID")
 }

@@ -20,32 +20,32 @@ func (c *HTTPClient) GetTest(ctx context.Context, testID int64) (*data.Test, err
 
 	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetTest для теста %d: %w", testID, err)
+		return nil, fmt.Errorf("request error GetTest for test %d: %w", testID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении теста %d: %s",
+		return nil, fmt.Errorf("API returned %s getting test %d: %s",
 			resp.Status, testID, string(body))
 	}
 
 	var test data.Test
 	if err := json.NewDecoder(resp.Body).Decode(&test); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования теста: %w", err)
+		return nil, fmt.Errorf("decode error test: %w", err)
 	}
 
 	return &test, nil
 }
 
-// GetTests получает список тестов для тест-рана (поддерживает пагинацию)
+// GetTests получает список тестов для тест-run (поддерживает пагинацию)
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#gettests
 // Поддерживает фильтры: status_id, assignedto_id
 func (c *HTTPClient) GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 	endpoint := fmt.Sprintf("get_tests/%d", runID)
 	tests, err := fetchAllPages[data.Test](ctx, c, endpoint, filters, "tests")
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetTests для рана %d: %w", runID, err)
+		return nil, fmt.Errorf("request error GetTests for run %d: %w", runID, err)
 	}
 	return tests, nil
 }
@@ -54,31 +54,31 @@ func (c *HTTPClient) GetTests(ctx context.Context, runID int64, filters map[stri
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#updatetest
 func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 	if req == nil {
-		return nil, fmt.Errorf("тело запроса обязательно")
+		return nil, fmt.Errorf("request body is required")
 	}
 
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка маршалинга UpdateTestRequest: %w", err)
+		return nil, fmt.Errorf("marshal error UpdateTestRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_test/%d", testID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса UpdateTest для теста %d: %w", testID, err)
+		return nil, fmt.Errorf("request error UpdateTest for test %d: %w", testID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при обновлении теста %d: %s",
+		return nil, fmt.Errorf("API returned %s updating test %d: %s",
 			resp.Status, testID, string(body))
 	}
 
 	var test data.Test
 	if err := json.NewDecoder(resp.Body).Decode(&test); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования теста: %w", err)
+		return nil, fmt.Errorf("decode error test: %w", err)
 	}
 
 	return &test, nil

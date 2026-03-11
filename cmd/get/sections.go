@@ -2,10 +2,10 @@ package get
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -39,12 +39,12 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			sectionID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || sectionID <= 0 {
-				return fmt.Errorf("section_id должен быть положительным числом")
+			sectionID, err := flags.ValidateRequiredID(args, 0, "section_id")
+			if err != nil {
+				return err
 			}
 
 			// Create progress manager and spinner
@@ -77,12 +77,12 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("project_id должен быть положительным числом")
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			suiteID, _ := command.Flags().GetInt64("suite-id")

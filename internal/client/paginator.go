@@ -58,7 +58,7 @@ func decodeListResponse[T any](body []byte, itemsField string) (items []T, pageL
 }
 
 // fetchAllPages загружает ВСЕ страницы из paginated list-endpoint'а TestRail API.
-// Прозрачно обрабатывает оба формата ответа: paginated wrapper и flat array.
+// Прозрачно обрабатывает оба формата response: paginated wrapper и flat array.
 //
 //   - c:          HTTP-клиент TestRail
 //   - endpoint:   путь API, например "get_runs/30"

@@ -31,7 +31,7 @@ func newSectionsCmd() *cobra.Command {
 			cli := getClientSafe(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Parse flags
@@ -52,7 +52,7 @@ func newSectionsCmd() *cobra.Command {
 			// Compare sections
 			result, err := compareSectionsInternal(cli, pid1, pid2)
 			if err != nil {
-				return fmt.Errorf("ошибка сравнения секций: %w", err)
+				return fmt.Errorf("sections comparison error: %w", err)
 			}
 
 			elapsed := time.Since(startTime)

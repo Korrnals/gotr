@@ -21,10 +21,10 @@ type ResponseData struct {
 	Duration   time.Duration       `json:"duration"`
 }
 
-// PrintResponse — красивый вывод универсального (с типом interface{}) ответа
-// Чтение ЛЮБОГО ответа
+// PrintResponse — красивый вывод универсального (с типом interface{}) response
+// Чтение ЛЮБОГО response
 func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
-	// Считываем поток ответа (сырые данные) в переменную
+	// Считываем поток response (сырые данные) в переменную
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ResponseData{}, err
@@ -48,21 +48,21 @@ func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, dura
 	return data, nil
 }
 
-// ReadJSONResponse — универсальный метод для чтения ответа в любую структуру (не в interface{})
+// ReadJSONResponse — универсальный метод для чтения response в любую структуру (не в interface{})
 func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, target any) error {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("ошибка API: %s, тело: %s", resp.Status, string(body))
+		return fmt.Errorf("API error: %s, body: %s", resp.Status, string(body))
 	}
 	defer resp.Body.Close()
 
 	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-		return fmt.Errorf("ошибка декодирования: %w", err)
+		return fmt.Errorf("decode error: %w", err)
 	}
 	return nil
 }
 
-// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body), с нетипизированным телом ответа
+// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body), с нетипизированным телом response
 func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseData, outputFormat string) {
 	switch outputFormat {
 	case "json":
@@ -76,7 +76,7 @@ func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseDat
 	}
 }
 
-// SaveResponseToFile — сохранение не типизированного ответа
+// SaveResponseToFile — сохранение не типизированного response
 func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, filename string, outputFormat string) error {
 	var toSave []byte
 	switch outputFormat {
@@ -98,7 +98,7 @@ func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, 
 }
 
 // Вспомогательные приватные функции //
-// 'printTable' - формирует таблицу ответа
+// 'printTable' - формирует таблицу response
 func printTable(data ResponseData) {
 	fmt.Printf("Status: %s (%d)\n", data.Status, data.StatusCode)
 	fmt.Printf("Duration: %v\n", data.Duration)

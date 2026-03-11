@@ -60,7 +60,7 @@ func TestAddConfigCmd_MissingName(t *testing.T) {
 func TestAddConfigCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		AddConfigFunc: func(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
-			return nil, fmt.Errorf("группа не найдена")
+			return nil, fmt.Errorf("group not found")
 		},
 	}
 

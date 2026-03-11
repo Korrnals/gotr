@@ -23,12 +23,12 @@ type Role struct {
 // GetRolesResponse — ответ на get_roles
 type GetRolesResponse []Role
 
-// ResultField — поле результата
+// ResultField — поле result
 type ResultField struct {
-	ID         int64  `json:"id"`          // Уникальный ID поля
-	Name       string `json:"name"`        // Название поля
+	ID         int64  `json:"id"`          // Уникальный ID field
+	Name       string `json:"name"`        // Название field
 	SystemName string `json:"system_name"` // Системное название
-	TypeID     int    `json:"type_id"`     // Тип поля
+	TypeID     int    `json:"type_id"`     // Тип field
 	IsActive   bool   `json:"is_active"`   // Активно ли поле
 }
 
@@ -55,14 +55,14 @@ type Variable struct {
 // GetVariablesResponse — ответ на get_variables
 type GetVariablesResponse []Variable
 
-// BDD — BDD сценарий для кейса
+// BDD — BDD сценарий для case
 type BDD struct {
 	ID      int64  `json:"id"`      // Уникальный ID
-	CaseID  int64  `json:"case_id"` // ID кейса
+	CaseID  int64  `json:"case_id"` // ID case
 	Content string `json:"content"` // Содержимое BDD сценария
 }
 
-// UpdateLabelsRequest — запрос на обновление labels теста
+// UpdateLabelsRequest — запрос на обновление labels test
 type UpdateLabelsRequest struct {
 	Labels []string `json:"labels"` // Список labels
 }

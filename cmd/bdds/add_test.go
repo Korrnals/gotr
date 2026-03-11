@@ -78,7 +78,7 @@ func TestAddCmd_FileNotFound(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не удалось прочитать файл")
+	assert.Contains(t, err.Error(), "failed to read file")
 }
 
 func TestAddCmd_ClientError(t *testing.T) {
@@ -89,7 +89,7 @@ func TestAddCmd_ClientError(t *testing.T) {
 
 	mock := &client.MockClient{
 		AddBDDFunc: func(ctx context.Context, caseID int64, content string) (*data.BDD, error) {
-			return nil, fmt.Errorf("кейс не найден")
+			return nil, fmt.Errorf("case not found")
 		},
 	}
 
@@ -99,5 +99,5 @@ func TestAddCmd_ClientError(t *testing.T) {
 
 	err = cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "кейс не найден")
+	assert.Contains(t, err.Error(), "case not found")
 }

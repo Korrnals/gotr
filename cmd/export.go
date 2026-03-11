@@ -70,7 +70,7 @@ var exportCmd = &cobra.Command{
 			// Сохранение через output.Output в ~/.gotr/exports/export/
 			filepath, err := output.Output(cmd, data, "export", "json")
 			if err != nil {
-				return fmt.Errorf("ошибка сохранения: %w", err)
+				return fmt.Errorf("save error: %w", err)
 			}
 			if !quiet && filepath != "" {
 				fmt.Printf("Данные экспортированы в %s\n", filepath)
@@ -79,14 +79,14 @@ var exportCmd = &cobra.Command{
 			// Сохранение в .testrail/ (legacy behavior)
 			exportDir := ".testrail"
 			if err := os.MkdirAll(exportDir, 0755); err != nil {
-				return fmt.Errorf("не удалось создать директорию %s: %w", exportDir, err)
+				return fmt.Errorf("failed to create directory %s: %w", exportDir, err)
 			}
 			filename := fmt.Sprintf("%s/%s_%s.json", exportDir, resource, time.Now().Format("20060102_150405"))
 			if mainID != "" {
 				filename = fmt.Sprintf("%s/%s_%s_%s.json", exportDir, resource, mainID, time.Now().Format("20060102_150405"))
 			}
 			if err := client.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
-				return fmt.Errorf("ошибка экспорта в файл %s: %w", filename, err)
+				return fmt.Errorf("file export error %s: %w", filename, err)
 			}
 			if !quiet {
 				fmt.Printf("Данные экспортированы в %s\n", filename)

@@ -10,16 +10,16 @@ type Attachment struct {
 	ContentType string `json:"content_type"` // MIME-тип содержимого
 	CreatedOn   int64  `json:"created_on"`   // Timestamp создания
 	ProjectID   int64  `json:"project_id"`   // ID проекта
-	CaseID      int64  `json:"case_id"`      // ID кейса (если привязано к кейсу)
-	RunID       int64  `json:"run_id"`       // ID рана (если привязано к рану)
+	CaseID      int64  `json:"case_id"`      // ID case (если привязано к кейсу)
+	RunID       int64  `json:"run_id"`       // ID run (если привязано к рану)
 	PlanID      int64  `json:"plan_id"`      // ID плана (если привязано к плану)
-	ResultID    int64  `json:"result_id"`    // ID результата (если привязано к результату)
+	ResultID    int64  `json:"result_id"`    // ID result (если привязано к результату)
 	UserID      int64  `json:"user_id"`      // ID пользователя, загрузившего файл
 }
 
-// AttachmentResponse ответ от API при добавлении вложения
+// AttachmentResponse ответ от API adding вложения
 type AttachmentResponse struct {
-	AttachmentID int64  `json:"attachment_id"` // ID созданного вложения
+	AttachmentID int64  `json:"attachment_id"` // ID created вложения
 	URL          string `json:"url"`           // URL для доступа к вложению
 	Name         string `json:"name"`          // Имя файла
 	Size         int64  `json:"size"`          // Размер файла

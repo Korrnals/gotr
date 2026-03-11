@@ -15,7 +15,7 @@ func (c *HTTPClient) GetSuites(ctx context.Context, projectID int64) (data.GetSu
 	endpoint := fmt.Sprintf("get_suites/%d", projectID)
 	suites, err := fetchAllPages[data.Suite](ctx, c, endpoint, nil, "suites")
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetSuites для проекта %d: %w", projectID, err)
+		return nil, fmt.Errorf("request error GetSuites for project %d: %w", projectID, err)
 	}
 	return data.GetSuitesResponse(suites), nil
 }
@@ -25,45 +25,45 @@ func (c *HTTPClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, 
 	endpoint := fmt.Sprintf("get_suite/%d", suiteID)
 	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetSuite %d: %w", suiteID, err)
+		return nil, fmt.Errorf("request error GetSuite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении сюиты %d: %s", resp.Status, suiteID, string(body))
+		return nil, fmt.Errorf("API returned %s getting suite %d: %s", resp.Status, suiteID, string(body))
 	}
 
 	var suite data.Suite
 	if err := json.NewDecoder(resp.Body).Decode(&suite); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования сюиты %d: %w", suiteID, err)
+		return nil, fmt.Errorf("decode error suite %d: %w", suiteID, err)
 	}
 
 	return &suite, nil
 }
 
-// AddSuite создаёт новую тест-сюиту в проекте.
+// AddSuite создаёт новую тест-сюиту in project.
 func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка маршалинга AddSuiteRequest: %w", err)
+		return nil, fmt.Errorf("marshal error AddSuiteRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("add_suite/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса AddSuite для проекта %d: %w", projectID, err)
+		return nil, fmt.Errorf("request error AddSuite for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при создании сюиты в проекте %d: %s", resp.Status, projectID, string(body))
+		return nil, fmt.Errorf("API returned %s creating suite in project %d: %s", resp.Status, projectID, string(body))
 	}
 
 	var suite data.Suite
 	if err := json.NewDecoder(resp.Body).Decode(&suite); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования созданной сюиты: %w", err)
+		return nil, fmt.Errorf("decode error created suite: %w", err)
 	}
 
 	return &suite, nil
@@ -73,24 +73,24 @@ func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.Ad
 func (c *HTTPClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка маршалинга UpdateSuiteRequest: %w", err)
+		return nil, fmt.Errorf("marshal error UpdateSuiteRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_suite/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса UpdateSuite %d: %w", suiteID, err)
+		return nil, fmt.Errorf("request error UpdateSuite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при обновлении сюиты %d: %s", resp.Status, suiteID, string(body))
+		return nil, fmt.Errorf("API returned %s updating suite %d: %s", resp.Status, suiteID, string(body))
 	}
 
 	var suite data.Suite
 	if err := json.NewDecoder(resp.Body).Decode(&suite); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования обновлённой сюиты %d: %w", suiteID, err)
+		return nil, fmt.Errorf("decode error updated suite %d: %w", suiteID, err)
 	}
 
 	return &suite, nil
@@ -102,13 +102,13 @@ func (c *HTTPClient) DeleteSuite(ctx context.Context, suiteID int64) error {
 	endpoint := fmt.Sprintf("delete_suite/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
-		return fmt.Errorf("ошибка запроса DeleteSuite %d: %w", suiteID, err)
+		return fmt.Errorf("request error DeleteSuite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("ошибка удаления сюиты %d: %s, тело: %s", suiteID, resp.Status, string(body))
+		return fmt.Errorf("delete error suite %d: %s, body: %s", suiteID, resp.Status, string(body))
 	}
 
 	return nil

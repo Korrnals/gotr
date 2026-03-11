@@ -136,7 +136,7 @@ func TestCasesCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID проекта")
+	assert.Contains(t, err.Error(), "invalid project ID")
 }
 
 func TestCasesCmd_InvalidProjectIDFlag(t *testing.T) {
@@ -228,7 +228,7 @@ func TestCaseCmd_InvalidCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID кейса")
+	assert.Contains(t, err.Error(), "invalid case ID")
 }
 
 func TestCaseCmd_NoArgs(t *testing.T) {
@@ -317,7 +317,7 @@ func TestCasesCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestCaseCmd_NilClient(t *testing.T) {
@@ -331,5 +331,5 @@ func TestCaseCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

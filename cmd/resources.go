@@ -222,7 +222,7 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 	case "json":
 		data, err := json.MarshalIndent(paths, "", "  ")
 		if err != nil {
-			return nil, fmt.Errorf("ошибка формирования JSON: %w", err)
+			return nil, fmt.Errorf("JSON formatting error: %w", err)
 		}
 		fmt.Println(string(data))
 		return nil, err
@@ -231,14 +231,14 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 		for _, p := range paths {
 			fmt.Printf("%s %s\n", p.Method, p.URI)
 		}
-		return nil, fmt.Errorf("ошибка формирования короткого списка ресурсов")
+		return nil, fmt.Errorf("failed to format short resource list")
 	// Краткий вывод — только URI
 	case "list":
 		for _, p := range paths {
 			name := extractGetEndpointName(p.URI)
 			endpoints = append(endpoints, name)
 		}
-		return endpoints, fmt.Errorf("ошибка формирования списка ресурсов")
+		return endpoints, fmt.Errorf("failed to format resource list")
 	default:
 		fmt.Printf("Эндпоинты для %s (%d):\n\n", resource, len(paths))
 		for _, p := range paths {

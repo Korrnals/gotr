@@ -219,7 +219,7 @@ func (d *Display) render() {
 
 	// Legend line
 	if len(d.tasks) > 0 {
-		buf.WriteString("   ⓘ  проект: кейсов (стр.) | сьюты | скорость | время\n")
+		buf.WriteString("   ⓘ  проект: cases (стр.) | сьюты | скорость | время\n")
 		lineCount++
 	}
 
@@ -246,7 +246,7 @@ func (d *Display) render() {
 		sb.WriteString(t.Name)
 		sb.WriteString(": ")
 		sb.WriteString(fmtCount(cases))
-		sb.WriteString(" кейсов")
+		sb.WriteString(" cases")
 
 		// Pages
 		if pages > 0 {

@@ -15,11 +15,11 @@ import (
 func selectProjectInteractively(ctx context.Context, cli client.ClientInterface, prompt string) (int64, error) {
 	projects, err := cli.GetProjects(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("не удалось получить список проектов: %w", err)
+		return 0, fmt.Errorf("failed to get projects list: %w", err)
 	}
 
 	if len(projects) == 0 {
-		return 0, fmt.Errorf("не найдено проектов")
+		return 0, fmt.Errorf("no projects found")
 	}
 
 	fmt.Printf("\n%s\n", prompt)
@@ -35,13 +35,13 @@ func selectProjectInteractively(ctx context.Context, cli client.ClientInterface,
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
+		return 0, fmt.Errorf("input read error: %w", err)
 	}
 
 	input = strings.TrimSpace(input)
 	choice, err := strconv.Atoi(input)
 	if err != nil || choice < 1 || choice > len(projects) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(projects))
+		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(projects))
 	}
 
 	selected := projects[choice-1]
@@ -54,11 +54,11 @@ func selectProjectInteractively(ctx context.Context, cli client.ClientInterface,
 func selectSuiteInteractively(ctx context.Context, cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
 	suites, err := cli.GetSuites(ctx, projectID)
 	if err != nil {
-		return 0, fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
+		return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
 	}
 
 	if len(suites) == 0 {
-		return 0, fmt.Errorf("в проекте %d не найдено сьютов", projectID)
+		return 0, fmt.Errorf("no suites found in project %d", projectID)
 	}
 
 	// Если только один сьют — выбираем автоматически
@@ -88,13 +88,13 @@ func selectSuiteInteractively(ctx context.Context, cli client.ClientInterface, p
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
+		return 0, fmt.Errorf("input read error: %w", err)
 	}
 
 	input = strings.TrimSpace(input)
 	choice, err := strconv.Atoi(input)
 	if err != nil || choice < 1 || choice > len(suites) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(suites))
+		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(suites))
 	}
 
 	selected := suites[choice-1]

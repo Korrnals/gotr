@@ -82,7 +82,7 @@ func TestListCmd_Empty(t *testing.T) {
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
-			return nil, fmt.Errorf("проект не найден")
+			return nil, fmt.Errorf("project not found")
 		},
 	}
 
@@ -92,7 +92,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "проект не найден")
+	assert.Contains(t, err.Error(), "project not found")
 }
 
 // ==================== Тесты валидации ====================

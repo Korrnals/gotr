@@ -112,7 +112,7 @@ var casesCmd = &cobra.Command{
 		if mappingFile != "" {
 			progress.Describe(pm.NewSpinner(""), "Загрузка маппинга...")
 			if err := m.LoadMappingFromFile(mappingFile); err != nil {
-				return fmt.Errorf("ошибка загрузки mapping: %w", err)
+				return fmt.Errorf("failed to load mapping: %w", err)
 			}
 			fmt.Printf("Загружен mapping: %d записей\n", len(m.Mapping()))
 		} else {

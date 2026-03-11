@@ -1,7 +1,7 @@
 // internal/models/data/statuses.go
 package data
 
-// Status — статус результата теста
+// Status — статус result test
 type Status struct {
 	ID          int64  `json:"id"`           // Уникальный ID статуса
 	Name        string `json:"name"`         // Название статуса (например, "Passed", "Failed")

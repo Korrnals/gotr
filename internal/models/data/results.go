@@ -3,7 +3,7 @@ package data
 
 import "encoding/json"
 
-// Result — результат выполнения теста
+// Result — результат выполнения test
 // Соответствует документации TestRail API v2
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results
 type Result struct {
@@ -20,7 +20,7 @@ type Result struct {
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"` // Custom fields (varies by project configuration)
 }
 
-// GetResultsResponse — ответ на get_results (массив результатов)
+// GetResultsResponse — ответ на get_results (массив results)
 type GetResultsResponse []Result
 
 // GetResultResponse — ответ на get_result (один результат)
@@ -41,7 +41,7 @@ type AddResultRequest struct {
 }
 
 // AddResultForCaseRequest — запрос для add_result_for_case
-// Использует те же поля что и AddResultRequest
+// Использует те же field что и AddResultRequest
 type AddResultForCaseRequest AddResultRequest
 
 // AddResultsRequest — запрос для bulk add_results
@@ -50,7 +50,7 @@ type AddResultsRequest struct {
 	Results []ResultEntry `json:"results"` // Array of result entries
 }
 
-// ResultEntry — отдельная запись результата для bulk операций
+// ResultEntry — отдельная запись result для bulk операций
 type ResultEntry struct {
 	TestID     int64  `json:"test_id"`                 // The ID of the test
 	StatusID   int64  `json:"status_id"`               // The ID of the test status
@@ -67,7 +67,7 @@ type AddResultsForCasesRequest struct {
 	Results []ResultForCaseEntry `json:"results"` // Array of result entries with case_id
 }
 
-// ResultForCaseEntry — отдельная запись результата для кейса (используется с run_id)
+// ResultForCaseEntry — отдельная запись result для case (используется с run_id)
 type ResultForCaseEntry struct {
 	CaseID     int64  `json:"case_id"`                 // The ID of the test case
 	StatusID   int64  `json:"status_id"`               // The ID of the test status

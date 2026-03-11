@@ -2,8 +2,8 @@ package datasets
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -26,14 +26,14 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr datasets update 123 --name="Новое название" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
+			datasetID, err := flags.ValidateRequiredID(args, 0, "dataset_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			// Check dry-run
@@ -47,7 +47,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			ctx := cmd.Context()
 			resp, err := cli.UpdateDataset(ctx, datasetID, name)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить датасет: %w", err)
+				return fmt.Errorf("failed to update dataset: %w", err)
 			}
 
 			fmt.Printf("✅ Датасет %d обновлён\n", datasetID)

@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -42,13 +42,13 @@ func init() {
 func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	if len(args) < 2 {
-		return fmt.Errorf("необходимо указать endpoint и id: gotr delete <endpoint> <id>")
+		return fmt.Errorf("endpoint and id required: gotr delete <endpoint> <id>")
 	}
 
 	endpoint := args[0]
-	id, err := strconv.ParseInt(args[1], 10, 64)
+	id, err := flags.ValidateRequiredID(args, 1, "ID")
 	if err != nil {
-		return fmt.Errorf("неверный ID: %w", err)
+		return err
 	}
 
 	// Проверяем dry-run режим
@@ -77,7 +77,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		// Для shared step есть специальный флаг keep_in_cases
 		return cli.DeleteSharedStep(ctx, id, 0)
 	default:
-		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
+		return fmt.Errorf("unsupported endpoint: %s", endpoint)
 	}
 }
 
@@ -105,7 +105,7 @@ func runDeleteDryRun(dr *output.DryRunPrinter, endpoint string, id int64) error 
 		method = "POST"
 		url = fmt.Sprintf("/index.php?/api/v2/delete_shared_step/%d", id)
 	default:
-		return fmt.Errorf("неподдерживаемый endpoint для dry-run: %s", endpoint)
+		return fmt.Errorf("unsupported endpoint for dry-run: %s", endpoint)
 	}
 
 	dr.PrintOperation(

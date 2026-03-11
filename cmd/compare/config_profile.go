@@ -96,7 +96,7 @@ func resolveCompareCasesRuntimeConfig(
 	if timeoutText != "" {
 		parsed, err := time.ParseDuration(timeoutText)
 		if err != nil {
-			return compareCasesRuntimeConfig{}, fmt.Errorf("некорректный compare.cases.timeout в конфиге: %w", err)
+			return compareCasesRuntimeConfig{}, fmt.Errorf("invalid compare.cases.timeout in config: %w", err)
 		}
 		timeout = parsed
 	}
@@ -125,7 +125,7 @@ func resolveCompareCasesRuntimeConfig(
 	if retryDelayText != "" {
 		parsed, err := time.ParseDuration(retryDelayText)
 		if err != nil {
-			return compareCasesRuntimeConfig{}, fmt.Errorf("некорректный compare.cases.retry.delay в конфиге: %w", err)
+			return compareCasesRuntimeConfig{}, fmt.Errorf("invalid compare.cases.retry.delay in config: %w", err)
 		}
 		retryDelay = parsed
 	}

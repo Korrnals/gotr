@@ -23,7 +23,7 @@ const defaultWorkers = 5
 //   - monitor: опциональный монитор прогресса (может быть nil)
 //
 // Возвращает:
-//   - map[suiteID] => список кейсов
+//   - map[suiteID] => список cases
 //   - ошибку, если хотя бы один запрос не удался
 //
 // Пример без прогресса:
@@ -179,7 +179,7 @@ func (c *HTTPClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 }
 
 // GetCasesForSuitesParallel получает все кейсы для списка сьютов одного проекта.
-// Объединяет результаты в плоский список кейсов.
+// Объединяет результаты в плоский список cases.
 //
 // Параметры:
 //   - projectID: ID проекта
@@ -188,7 +188,7 @@ func (c *HTTPClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 //   - monitor: опциональный монитор прогресса (может быть nil)
 //
 // Возвращает:
-//   - плоский список всех кейсов из всех сьютов
+//   - плоский список всех cases из всех сьютов
 //   - ошибку, если хотя бы один запрос не удался
 func (c *HTTPClient) GetCasesForSuitesParallel(ctx context.Context, projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	if len(suiteIDs) == 0 {

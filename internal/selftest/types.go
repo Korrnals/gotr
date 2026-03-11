@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// Result статус результата проверки
+// Result статус result проверки
 type Result string
 
 const (
@@ -17,7 +17,7 @@ const (
 	ResultSkip Result = "SKIP" // Пропущено
 )
 
-// String возвращает emoji представление результата
+// String возвращает emoji представление result
 func (r Result) String() string {
 	switch r {
 	case ResultPass:
@@ -33,7 +33,7 @@ func (r Result) String() string {
 	}
 }
 
-// Color возвращает ANSI цвет для результата
+// Color возвращает ANSI цвет для result
 func (r Result) Color() string {
 	switch r {
 	case ResultPass:

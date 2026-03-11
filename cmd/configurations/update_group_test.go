@@ -60,7 +60,7 @@ func TestUpdateGroupCmd_MissingName(t *testing.T) {
 func TestUpdateGroupCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateConfigGroupFunc: func(ctx context.Context, groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
-			return nil, fmt.Errorf("группа не найдена")
+			return nil, fmt.Errorf("group not found")
 		},
 	}
 

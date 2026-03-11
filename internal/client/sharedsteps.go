@@ -11,12 +11,12 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetSharedSteps получает список shared steps для проекта (поддерживает пагинацию).
+// GetSharedSteps получает список shared steps for project (поддерживает пагинацию).
 func (c *HTTPClient) GetSharedSteps(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 	endpoint := fmt.Sprintf("get_shared_steps/%d", projectID)
 	steps, err := fetchAllPages[data.SharedStep](ctx, c, endpoint, nil, "shared_steps")
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetSharedSteps проекта %d: %w", projectID, err)
+		return nil, fmt.Errorf("request error GetSharedSteps project %d: %w", projectID, err)
 	}
 	return data.GetSharedStepsResponse(steps), nil
 }
@@ -26,19 +26,19 @@ func (c *HTTPClient) GetSharedStep(ctx context.Context, stepID int64) (*data.Sha
 	endpoint := fmt.Sprintf("get_shared_step/%d", stepID)
 	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetSharedStep %d: %w", stepID, err)
+		return nil, fmt.Errorf("request error GetSharedStep %d: %w", stepID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении shared step %d: %s",
+		return nil, fmt.Errorf("API returned %s getting shared step %d: %s",
 			resp.Status, stepID, string(body))
 	}
 
 	var step data.SharedStep
 	if err := json.NewDecoder(resp.Body).Decode(&step); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования shared step %d: %w", stepID, err)
+		return nil, fmt.Errorf("decode error shared step %d: %w", stepID, err)
 	}
 
 	return &step, nil
@@ -49,19 +49,19 @@ func (c *HTTPClient) GetSharedStepHistory(ctx context.Context, stepID int64) (*d
 	endpoint := fmt.Sprintf("get_shared_step_history/%d", stepID)
 	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetSharedStepHistory %d: %w", stepID, err)
+		return nil, fmt.Errorf("request error GetSharedStepHistory %d: %w", stepID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении истории shared step %d: %s",
+		return nil, fmt.Errorf("API returned %s getting shared step history %d: %s",
 			resp.Status, stepID, string(body))
 	}
 
 	var result data.GetSharedStepHistoryResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования истории shared step %d: %w", stepID, err)
+		return nil, fmt.Errorf("decode error shared step history %d: %w", stepID, err)
 	}
 
 	return &result, nil
@@ -74,24 +74,24 @@ func (c *HTTPClient) AddSharedStep(ctx context.Context, projectID int64, req *da
 
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка маршалинга AddSharedStepRequest: %w", err)
+		return nil, fmt.Errorf("marshal error AddSharedStepRequest: %w", err)
 	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса AddSharedStep в проекте %d: %w", projectID, err)
+		return nil, fmt.Errorf("request error AddSharedStep in project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при создании shared step в проекте %d: %s",
+		return nil, fmt.Errorf("API returned %s creating shared step in project %d: %s",
 			resp.Status, projectID, string(body))
 	}
 
 	var result data.SharedStep
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования созданного shared step: %w", err)
+		return nil, fmt.Errorf("decode error created shared step: %w", err)
 	}
 
 	return &result, nil
@@ -102,32 +102,32 @@ func (c *HTTPClient) AddSharedStep(ctx context.Context, projectID int64, req *da
 func (c *HTTPClient) UpdateSharedStep(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка маршалинга UpdateSharedStepRequest: %w", err)
+		return nil, fmt.Errorf("marshal error UpdateSharedStepRequest: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("update_shared_step/%d", stepID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса UpdateSharedStep %d: %w", stepID, err)
+		return nil, fmt.Errorf("request error UpdateSharedStep %d: %w", stepID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при обновлении shared step %d: %s",
+		return nil, fmt.Errorf("API returned %s updating shared step %d: %s",
 			resp.Status, stepID, string(body))
 	}
 
 	var result data.SharedStep
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования обновлённого shared step %d: %w", stepID, err)
+		return nil, fmt.Errorf("decode error updated shared step %d: %w", stepID, err)
 	}
 
 	return &result, nil
 }
 
 // DeleteSharedStep удаляет shared step по ID.
-// keepInCases: 1 — сохранить шаг в кейсах, 0 — удалить полностью.
+// keepInCases: 1 — сохранить шаг в caseх, 0 — удалить полностью.
 func (c *HTTPClient) DeleteSharedStep(ctx context.Context, stepID int64, keepInCases int) error {
 	endpoint := fmt.Sprintf("delete_shared_step/%d", stepID)
 	query := map[string]string{
@@ -136,13 +136,13 @@ func (c *HTTPClient) DeleteSharedStep(ctx context.Context, stepID int64, keepInC
 
 	resp, err := c.Post(ctx, endpoint, nil, query)
 	if err != nil {
-		return fmt.Errorf("ошибка запроса DeleteSharedStep %d: %w", stepID, err)
+		return fmt.Errorf("request error DeleteSharedStep %d: %w", stepID, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("ошибка удаления shared step %d: %s, тело: %s",
+		return fmt.Errorf("delete error shared step %d: %s, body: %s",
 			stepID, resp.Status, string(body))
 	}
 

@@ -2,8 +2,8 @@ package groups
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -19,14 +19,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("project_id должен быть положительным числом")
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")

@@ -22,7 +22,7 @@ type SuiteAnswers struct {
 	IsCompleted bool
 }
 
-// CaseAnswers содержит ответы для создания/обновления кейса
+// CaseAnswers содержит ответы для создания/обновления case
 type CaseAnswers struct {
 	Title      string
 	SectionID  int64
@@ -41,7 +41,7 @@ type RunAnswers struct {
 	IncludeAll  bool
 }
 
-// AskProject запускает wizard для проекта
+// AskProject запускает wizard for project
 func AskProject(isUpdate bool) (*ProjectAnswers, error) {
 	answers := &ProjectAnswers{}
 
@@ -122,7 +122,7 @@ func AskSuite(isUpdate bool) (*SuiteAnswers, error) {
 	return answers, nil
 }
 
-// AskCase запускает wizard для тест-кейса
+// AskCase запускает wizard для тест-case
 func AskCase(isUpdate bool) (*CaseAnswers, error) {
 	answers := &CaseAnswers{}
 
@@ -140,14 +140,14 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 		questions = append(questions, &survey.Question{
 			Name: "sectionId",
 			Prompt: &survey.Input{
-				Message: "ID секции:",
+				Message: "ID section:",
 				Default: "0",
 			},
 			Validate: survey.Required,
 		})
 	}
 
-	// Тип кейса
+	// Тип case
 	typeOptions := []string{
 		"1 - Acceptance",
 		"2 - Accessibility",
@@ -165,7 +165,7 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 
 	var typeStr string
 	if err := survey.AskOne(&survey.Select{
-		Message: "Тип кейса:",
+		Message: "Тип case:",
 		Options: typeOptions,
 		Default: typeOptions[0],
 	}, &typeStr); err != nil {

@@ -5,8 +5,8 @@ package labels
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -29,9 +29,9 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
   gotr labels update-label 123 --project 1 --title "Bug" -o json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			labelID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || labelID <= 0 {
-				return fmt.Errorf("invalid label_id: %s", args[0])
+			labelID, err := flags.ValidateRequiredID(args, 0, "label_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)

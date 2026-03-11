@@ -37,13 +37,13 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newRunServiceFromInterface(cli)
 			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			// Проверяем dry-run режим
@@ -61,7 +61,7 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			run, err := svc.Close(ctx, runID)
 			if err != nil {
-				return fmt.Errorf("ошибка закрытия test run: %w", err)
+				return fmt.Errorf("failed to close test run: %w", err)
 			}
 
 			svc.PrintSuccess(ctx, cmd, "Test run закрыт успешно:")

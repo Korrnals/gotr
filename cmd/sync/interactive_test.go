@@ -83,7 +83,7 @@ func TestSelectProjectInteractively_GetProjectsError(t *testing.T) {
 
 	id, err := selectProjectInteractively(ctx, mock, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не удалось получить список проектов")
+	assert.Contains(t, err.Error(), "failed to get projects list")
 	assert.Equal(t, int64(0), id)
 }
 
@@ -97,7 +97,7 @@ func TestSelectProjectInteractively_NoProjects(t *testing.T) {
 
 	id, err := selectProjectInteractively(ctx, mock, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не найдено проектов")
+	assert.Contains(t, err.Error(), "no projects found")
 	assert.Equal(t, int64(0), id)
 }
 
@@ -118,7 +118,7 @@ func TestSelectProjectInteractively_InvalidInput(t *testing.T) {
 
 	id, err := selectProjectInteractively(ctx, mock, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неверный выбор")
+	assert.Contains(t, err.Error(), "invalid choice")
 	assert.Equal(t, int64(0), id)
 }
 
@@ -139,7 +139,7 @@ func TestSelectProjectInteractively_OutOfRange(t *testing.T) {
 
 	id, err := selectProjectInteractively(ctx, mock, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неверный выбор")
+	assert.Contains(t, err.Error(), "invalid choice")
 	assert.Equal(t, int64(0), id)
 }
 
@@ -228,7 +228,7 @@ func TestSelectSuiteInteractively_InvalidInput(t *testing.T) {
 
 	id, err := selectSuiteInteractively(ctx, mock, 1, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неверный выбор")
+	assert.Contains(t, err.Error(), "invalid choice")
 	assert.Equal(t, int64(0), id)
 }
 
@@ -249,7 +249,7 @@ func TestSelectSuiteInteractively_OutOfRange(t *testing.T) {
 
 	id, err := selectSuiteInteractively(ctx, mock, 1, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неверный выбор")
+	assert.Contains(t, err.Error(), "invalid choice")
 	assert.Equal(t, int64(0), id)
 }
 

@@ -6,9 +6,9 @@ package users
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
@@ -42,9 +42,9 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return listAllUsers(ctx, cmd, cli)
 			}
 
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			return listProjectUsers(ctx, cmd, cli, projectID)

@@ -11,7 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetReports получает список шаблонов отчётов для проекта
+// GetReports получает список шаблонов отчётов for project
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#getreports
 func (c *HTTPClient) GetReports(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 	endpoint := fmt.Sprintf("get_reports/%d", projectID)

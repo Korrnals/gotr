@@ -98,7 +98,7 @@ func TestGetCmd_NoArgs(t *testing.T) {
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
 		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
-			return nil, fmt.Errorf("тест не найден")
+			return nil, fmt.Errorf("test not found")
 		},
 	}
 
@@ -109,7 +109,7 @@ func TestGetCmd_APIError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "тест не найден")
+	assert.Contains(t, err.Error(), "test not found")
 }
 
 func TestGetCmd_WithSave(t *testing.T) {

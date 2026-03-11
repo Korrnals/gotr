@@ -48,7 +48,7 @@ func TestDeleteGroupCmd_InvalidID(t *testing.T) {
 func TestDeleteGroupCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		DeleteConfigGroupFunc: func(ctx context.Context, groupID int64) error {
-			return fmt.Errorf("группа не найдена")
+			return fmt.Errorf("group not found")
 		},
 	}
 

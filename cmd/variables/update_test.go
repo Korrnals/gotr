@@ -70,13 +70,13 @@ func TestUpdateCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateVariableFunc: func(ctx context.Context, variableID int64, name string) (*data.Variable, error) {
-			return nil, fmt.Errorf("переменная не найдена")
+			return nil, fmt.Errorf("variable not found")
 		},
 	}
 

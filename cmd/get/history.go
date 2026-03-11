@@ -2,10 +2,10 @@ package get
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/spf13/cobra"
 )
 
@@ -20,13 +20,13 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			idStr := args[0]
-			id, err := strconv.ParseInt(idStr, 10, 64)
+			id, err := flags.ParseID(idStr)
 			if err != nil {
-				return fmt.Errorf("некорректный ID кейса: %w", err)
+				return fmt.Errorf("invalid case ID: %w", err)
 			}
 
 			history, err := cli.GetHistoryForCase(ctx, id)
@@ -50,13 +50,13 @@ func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterfa
 			cli := getClient(command)
 			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			idStr := args[0]
-			id, err := strconv.ParseInt(idStr, 10, 64)
+			id, err := flags.ParseID(idStr)
 			if err != nil {
-				return fmt.Errorf("некорректный ID шага: %w", err)
+				return fmt.Errorf("invalid step ID: %w", err)
 			}
 
 			history, err := cli.GetSharedStepHistory(ctx, id)

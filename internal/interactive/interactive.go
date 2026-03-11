@@ -18,11 +18,11 @@ import (
 func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
 	projects, err := httpClient.GetProjects(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("не удалось получить список проектов: %w", err)
+		return 0, fmt.Errorf("failed to get projects list: %w", err)
 	}
 
 	if len(projects) == 0 {
-		return 0, fmt.Errorf("не найдено проектов")
+		return 0, fmt.Errorf("no projects found")
 	}
 
 	fmt.Println("\nДоступные проекты:")
@@ -38,13 +38,13 @@ func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInt
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
+		return 0, fmt.Errorf("input read error: %w", err)
 	}
 
 	input = strings.TrimSpace(input)
 	choice, err := strconv.Atoi(input)
 	if err != nil || choice < 1 || choice > len(projects) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(projects))
+		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(projects))
 	}
 
 	selected := projects[choice-1]
@@ -75,13 +75,13 @@ func SelectSuiteInteractively(suites data.GetSuitesResponse) (int64, error) {
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
+		return 0, fmt.Errorf("input read error: %w", err)
 	}
 
 	input = strings.TrimSpace(input)
 	choice, err := strconv.Atoi(input)
 	if err != nil || choice < 1 || choice > len(suites) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(suites))
+		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(suites))
 	}
 
 	selectedSuite := suites[choice-1]
@@ -109,13 +109,13 @@ func SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
+		return 0, fmt.Errorf("input read error: %w", err)
 	}
 
 	input = strings.TrimSpace(input)
 	choice, err := strconv.Atoi(input)
 	if err != nil || choice < 1 || choice > len(runs) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(runs))
+		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(runs))
 	}
 
 	selected := runs[choice-1]

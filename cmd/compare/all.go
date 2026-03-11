@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/pkg/reporter"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -68,7 +68,7 @@ func newAllCmd() *cobra.Command {
 			cli := getClientSafe(cmd)
 			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Parse flags
@@ -215,7 +215,7 @@ func newAllCmd() *cobra.Command {
 				case "table":
 					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath, time.Since(startTime))
 				default:
-					return fmt.Errorf("неподдерживаемый формат '%s' для сохранения, используйте json, yaml или table", format)
+					return fmt.Errorf("unsupported format '%s' for save, use json, yaml or table", format)
 				}
 				return nil
 			}
@@ -240,15 +240,15 @@ var allCmd = newAllCmd()
 //   - "" if neither flag was used
 func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath string, err error) {
 	pid1Str, _ := cmd.Flags().GetString("pid1")
-	pid1, err = strconv.ParseInt(pid1Str, 10, 64)
+	pid1, err = flags.ParseID(pid1Str)
 	if err != nil || pid1 <= 0 {
-		return 0, 0, "", "", fmt.Errorf("укажите корректный pid1 (--pid1)")
+		return 0, 0, "", "", fmt.Errorf("specify valid pid1 (--pid1)")
 	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
-	pid2, err = strconv.ParseInt(pid2Str, 10, 64)
+	pid2, err = flags.ParseID(pid2Str)
 	if err != nil || pid2 <= 0 {
-		return 0, 0, "", "", fmt.Errorf("укажите корректный pid2 (--pid2)")
+		return 0, 0, "", "", fmt.Errorf("specify valid pid2 (--pid2)")
 	}
 
 	format, _ = cmd.Flags().GetString("format")
@@ -360,7 +360,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 	oldStdout := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
-		return fmt.Errorf("ошибка создания pipe: %w", err)
+		return fmt.Errorf("pipe create error: %w", err)
 	}
 	os.Stdout = w
 
@@ -389,7 +389,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 	select {
 	case output = <-outChan:
 	case err := <-errChan:
-		return fmt.Errorf("ошибка чтения вывода: %w", err)
+		return fmt.Errorf("output read error: %w", err)
 	}
 
 	// Determine file path
@@ -406,7 +406,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 
 	// Write to file
 	if err := os.WriteFile(filePath, []byte(output), 0644); err != nil {
-		return fmt.Errorf("ошибка записи файла: %w", err)
+		return fmt.Errorf("file write error: %w", err)
 	}
 
 	// Print on new line after progress bar
@@ -426,11 +426,11 @@ func saveAllResult(result *allResult, format, savePath string) error {
 	case "yaml":
 		output, err = yaml.Marshal(result)
 	default:
-		return fmt.Errorf("формат '%s' не поддерживается для сохранения всех ресурсов, используйте json или yaml", format)
+		return fmt.Errorf("format '%s' not supported for saving all resources, use json or yaml", format)
 	}
 
 	if err != nil {
-		return fmt.Errorf("ошибка форматирования: %w", err)
+		return fmt.Errorf("formatting error: %w", err)
 	}
 
 	return saveToFile(output, savePath)

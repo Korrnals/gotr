@@ -2,9 +2,9 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -45,9 +45,9 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans entry add 100 --suite-id=50 --config-ids="1,2,3"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
@@ -105,9 +105,9 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans entry update 100 abc123 --name="Обновлённая запись"`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			entryID := args[1]
@@ -161,9 +161,9 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans entry delete 100 abc123 --dry-run`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			entryID := args[1]
@@ -202,7 +202,7 @@ func parseIntList(s string) []int64 {
 		if part == "" {
 			continue
 		}
-		id, err := strconv.ParseInt(part, 10, 64)
+		id, err := flags.ParseID(part)
 		if err == nil && id > 0 {
 			ids = append(ids, id)
 		}

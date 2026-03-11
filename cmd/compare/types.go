@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -46,12 +46,12 @@ type CompareResult struct {
 func GetProjectNames(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64) (string, string, error) {
 	proj1, err := cli.GetProject(ctx, pid1)
 	if err != nil {
-		return "", "", fmt.Errorf("ошибка получения проекта %d: %w", pid1, err)
+		return "", "", fmt.Errorf("failed to get project %d: %w", pid1, err)
 	}
 
 	proj2, err := cli.GetProject(ctx, pid2)
 	if err != nil {
-		return "", "", fmt.Errorf("ошибка получения проекта %d: %w", pid2, err)
+		return "", "", fmt.Errorf("failed to get project %d: %w", pid2, err)
 	}
 
 	return proj1.Name, proj2.Name, nil
@@ -118,7 +118,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 			// Save table as text
 			return saveTableToFile(cmd, result, project1Name, project2Name, savePath)
 		default:
-			return fmt.Errorf("неподдерживаемый формат: %s", format)
+			return fmt.Errorf("unsupported format: %s", format)
 		}
 		return nil
 	}
@@ -369,7 +369,7 @@ func printIDMappingTable(items []CommonItemInfo) {
 func printJSON(result CompareResult) error {
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+		return fmt.Errorf("JSON marshal error: %w", err)
 	}
 	fmt.Println(string(data))
 	return nil
@@ -379,7 +379,7 @@ func printJSON(result CompareResult) error {
 func printYAML(result CompareResult) error {
 	data, err := yaml.Marshal(result)
 	if err != nil {
-		return fmt.Errorf("ошибка маршалинга YAML: %w", err)
+		return fmt.Errorf("YAML marshal error: %w", err)
 	}
 	fmt.Println(string(data))
 	return nil
@@ -432,11 +432,11 @@ func saveCompareResult(result CompareResult, format, savePath string) error {
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
-		return fmt.Errorf("формат '%s' не поддерживается для сохранения", format)
+		return fmt.Errorf("format '%s' not supported for save", format)
 	}
 
 	if err != nil {
-		return fmt.Errorf("ошибка форматирования: %w", err)
+		return fmt.Errorf("formatting error: %w", err)
 	}
 
 	return saveToFile(data, savePath)
@@ -446,7 +446,7 @@ func saveCompareResult(result CompareResult, format, savePath string) error {
 func saveCSV(result CompareResult, savePath string) error {
 	file, err := os.Create(savePath)
 	if err != nil {
-		return fmt.Errorf("ошибка создания файла: %w", err)
+		return fmt.Errorf("file create error: %w", err)
 	}
 	defer file.Close()
 
@@ -488,7 +488,7 @@ func saveCSV(result CompareResult, savePath string) error {
 // saveToFile saves data to a file
 func saveToFile(data []byte, savePath string) error {
 	if err := os.WriteFile(savePath, data, 0644); err != nil {
-		return fmt.Errorf("ошибка записи файла: %w", err)
+		return fmt.Errorf("file write error: %w", err)
 	}
 	// Print on new line after progress bar
 	fmt.Println()
@@ -502,7 +502,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	oldStdout := os.Stdout
 	r, w, err := os.Pipe()
 	if err != nil {
-		return fmt.Errorf("ошибка создания pipe: %w", err)
+		return fmt.Errorf("pipe create error: %w", err)
 	}
 	os.Stdout = w
 
@@ -531,7 +531,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	select {
 	case output = <-outChan:
 	case err := <-errChan:
-		return fmt.Errorf("ошибка чтения вывода: %w", err)
+		return fmt.Errorf("output read error: %w", err)
 	}
 
 	if printErr != nil {
@@ -552,7 +552,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 
 	// Write to file
 	if err := os.WriteFile(filePath, []byte(output), 0644); err != nil {
-		return fmt.Errorf("ошибка записи файла: %w", err)
+		return fmt.Errorf("file write error: %w", err)
 	}
 
 	// Print on new line after progress bar
@@ -570,12 +570,12 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 	case "json":
 		data, err = json.MarshalIndent(result, "", "  ")
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+			return fmt.Errorf("JSON marshal error: %w", err)
 		}
 	case "yaml":
 		data, err = yaml.Marshal(result)
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга YAML: %w", err)
+			return fmt.Errorf("YAML marshal error: %w", err)
 		}
 	case "csv":
 		return saveCSV(result, savePath)
@@ -583,7 +583,7 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 		// Default to JSON for unknown formats
 		data, err = json.MarshalIndent(result, "", "  ")
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+			return fmt.Errorf("JSON marshal error: %w", err)
 		}
 	}
 
@@ -594,7 +594,7 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 func GetProjectName(cli client.ClientInterface, projectID int64) (string, error) {
 	proj, err := cli.GetProject(context.Background(), projectID)
 	if err != nil {
-		return "", fmt.Errorf("ошибка получения проекта %d: %w", projectID, err)
+		return "", fmt.Errorf("failed to get project %d: %w", projectID, err)
 	}
 	if proj == nil {
 		return fmt.Sprintf("Project %d", projectID), nil
@@ -635,15 +635,15 @@ func getClientSafe(cmd *cobra.Command) client.ClientInterface {
 // parseFlags parses common flags for compare commands
 func parseFlags(cmd *cobra.Command) (pid1, pid2 int64, field string, err error) {
 	pid1Str, _ := cmd.Flags().GetString("pid1")
-	pid1, err = strconv.ParseInt(pid1Str, 10, 64)
+	pid1, err = flags.ParseID(pid1Str)
 	if err != nil || pid1 <= 0 {
-		return 0, 0, "", fmt.Errorf("укажите корректный pid1 (--pid1)")
+		return 0, 0, "", fmt.Errorf("specify valid pid1 (--pid1)")
 	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
-	pid2, err = strconv.ParseInt(pid2Str, 10, 64)
+	pid2, err = flags.ParseID(pid2Str)
 	if err != nil || pid2 <= 0 {
-		return 0, 0, "", fmt.Errorf("укажите корректный pid2 (--pid2)")
+		return 0, 0, "", fmt.Errorf("specify valid pid2 (--pid2)")
 	}
 
 	field, _ = cmd.Flags().GetString("field")

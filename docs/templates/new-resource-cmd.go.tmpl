@@ -1,0 +1,35 @@
+// Package <resource> implements CLI commands for managing TestRail <resource>.
+//
+// Commands:
+//   - gotr <resource> add    — create a new <resource>
+//   - gotr <resource> get    — get a <resource> by ID
+//   - gotr <resource> list   — list <resource>s for a project
+//   - gotr <resource> update — update a <resource>
+//   - gotr <resource> delete — delete a <resource>
+package RESOURCE_PACKAGE
+
+import (
+	"github.com/Korrnals/gotr/internal/client"
+	"github.com/spf13/cobra"
+)
+
+// GetClientFunc returns a ClientInterface from a cobra.Command.
+type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
+
+// Register adds the <resource> command and its subcommands to rootCmd.
+func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
+	resourceCmd := &cobra.Command{
+		Use:   "<resource>",
+		Short: "Manage TestRail <resource>s",
+	}
+
+	resourceCmd.AddCommand(
+		newGetCmd(clientFn),
+		newListCmd(clientFn),
+		// newAddCmd(clientFn),
+		// newUpdateCmd(clientFn),
+		// newDeleteCmd(clientFn),
+	)
+
+	rootCmd.AddCommand(resourceCmd)
+}

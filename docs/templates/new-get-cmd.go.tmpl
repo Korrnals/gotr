@@ -1,0 +1,41 @@
+package RESOURCE_PACKAGE
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/spf13/cobra"
+)
+
+func newGetCmd(clientFn GetClientFunc) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "get <id>",
+		Short: "Get a <resource> by ID",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cli := clientFn(cmd)
+			ctx := cmd.Context()
+
+			// 1. Validate input
+			id, err := flags.ValidateRequiredID(args, 0, "<resource>_id")
+			if err != nil {
+				return err
+			}
+
+			// 2. Call API
+			result, err := cli.GetResource(ctx, id)
+			if err != nil {
+				return fmt.Errorf("failed to get <resource> %d: %w", id, err)
+			}
+
+			// 3. Output result
+			return output.OutputResult(cmd, result, "<resource>")
+		},
+	}
+
+	output.AddFlag(cmd)
+	return cmd
+}

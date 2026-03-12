@@ -43,7 +43,7 @@ func TestSectionGetCmd_InvalidSectionID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "section_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid section_id")
 }
 
 func TestSectionGetCmd_ZeroSectionID(t *testing.T) {
@@ -55,7 +55,7 @@ func TestSectionGetCmd_ZeroSectionID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "section_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid section_id")
 }
 
 func TestSectionGetCmd_NegativeSectionID(t *testing.T) {
@@ -146,7 +146,7 @@ func TestSectionsListCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestSectionsListCmd_ZeroProjectID(t *testing.T) {
@@ -158,7 +158,7 @@ func TestSectionsListCmd_ZeroProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestSectionsListCmd_NegativeProjectID(t *testing.T) {

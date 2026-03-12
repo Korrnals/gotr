@@ -193,7 +193,7 @@ func TestSelectSuiteInteractively_GetSuitesError(t *testing.T) {
 
 	id, err := selectSuiteInteractively(ctx, mock, 1, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не удалось получить список сьютов")
+	assert.Contains(t, err.Error(), "failed to get suites")
 	assert.Equal(t, int64(0), id)
 }
 
@@ -207,7 +207,7 @@ func TestSelectSuiteInteractively_NoSuites(t *testing.T) {
 
 	id, err := selectSuiteInteractively(ctx, mock, 1, "Test prompt:")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не найдено сьютов")
+	assert.Contains(t, err.Error(), "no suites found")
 	assert.Equal(t, int64(0), id)
 }
 

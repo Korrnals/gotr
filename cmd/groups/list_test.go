@@ -62,7 +62,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ошибка подключения")
+	assert.Contains(t, err.Error(), "connection error")
 }
 
 func TestListCmd_WithSave(t *testing.T) {
@@ -92,7 +92,7 @@ func TestListCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestListCmd_ZeroID(t *testing.T) {
@@ -103,7 +103,7 @@ func TestListCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestListCmd_NoArgs(t *testing.T) {

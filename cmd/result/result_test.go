@@ -51,7 +51,7 @@ func TestSaveToFile_InvalidData(t *testing.T) {
 
 	err := saveToFile(invalidData, filename)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "сериализации")
+	assert.Contains(t, err.Error(), "serialization")
 }
 
 func TestSaveToFile_InvalidPath(t *testing.T) {
@@ -276,7 +276,7 @@ func TestRegister(t *testing.T) {
 	// Создаем корневую команду
 	rootCmd := &cobra.Command{Use: "gotr"}
 
-	// Mock функция получения клиента
+	// Mock функция получения clientа
 	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	}
@@ -433,7 +433,7 @@ func TestListCmd_Interactive_EmptyRuns(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не найдено")
+	assert.Contains(t, err.Error(), "no test runs found")
 }
 
 func TestListCmd_Interactive_SelectRunError(t *testing.T) {
@@ -495,14 +495,14 @@ func TestAddBulkResults_ParseError(t *testing.T) {
 	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
-	// Передаем некорректный JSON который не парсится ни в один формат
+	// Передаем invalid JSON который не парсится ни в один формат
 	invalidJSON := []byte(`{"invalid": "json"}`)
 
 	result, err := svc.AddBulkResults(ctx, 12345, invalidJSON)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "не удалось распарсить")
+	assert.Contains(t, err.Error(), "failed to parse")
 }
 
 func TestPrintJSON_Error(t *testing.T) {
@@ -512,7 +512,7 @@ func TestPrintJSON_Error(t *testing.T) {
 	err := printJSON(invalidData)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "сериализации")
+	assert.Contains(t, err.Error(), "serialization")
 }
 
 // ==================== Тесты для defaultSelectors ====================
@@ -533,7 +533,7 @@ func TestDefaultSelectors_SelectRunInteractively(t *testing.T) {
 // ==================== Дополнительные тесты для service_wrapper ====================
 
 func TestResultServiceWrapper_AddBulkResults_EmptyArray(t *testing.T) {
-	// Тест для покрытия ветки с пустым массивом в JSON
+	// Тест для покрытия ветки с empty массивом в JSON
 	mock := &client.MockClient{}
 
 	ctx := context.Background()
@@ -546,7 +546,7 @@ func TestResultServiceWrapper_AddBulkResults_EmptyArray(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "не удалось распарсить")
+	assert.Contains(t, err.Error(), "failed to parse")
 }
 
 func TestResultServiceWrapper_AddBulkResults_InvalidJSON(t *testing.T) {

@@ -136,7 +136,7 @@ func TestCasesCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid project ID")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestCasesCmd_InvalidProjectIDFlag(t *testing.T) {
@@ -163,7 +163,7 @@ func TestCasesCmd_NoSuites(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не найдено сьютов")
+	assert.Contains(t, err.Error(), "no suites found")
 }
 
 func TestCasesCmd_APIError(t *testing.T) {
@@ -195,7 +195,7 @@ func TestCasesCmd_GetSuitesError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не удалось получить список сьютов")
+	assert.Contains(t, err.Error(), "failed to get suites")
 }
 
 // ==================== Тесты для get case ====================
@@ -307,7 +307,7 @@ func TestCasesCmd_AllSuites_WithSectionID(t *testing.T) {
 }
 
 func TestCasesCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда клиент не инициализирован
+	// Тестируем случай когда client not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
@@ -321,7 +321,7 @@ func TestCasesCmd_NilClient(t *testing.T) {
 }
 
 func TestCaseCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда клиент не инициализирован
+	// Тестируем случай когда client not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}

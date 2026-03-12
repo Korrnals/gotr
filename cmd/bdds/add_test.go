@@ -67,7 +67,7 @@ func TestAddCmd_MissingContent(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не может быть пустым")
+	assert.Contains(t, err.Error(), "cannot be empty")
 }
 
 func TestAddCmd_FileNotFound(t *testing.T) {

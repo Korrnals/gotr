@@ -158,7 +158,7 @@ func TestHandleOutput_JQFilterOnly(t *testing.T) {
 func TestRegister(t *testing.T) {
 	rootCmd := &cobra.Command{Use: "test"}
 
-	// Создаем mock функцию для получения клиента
+	// Создаем mock функцию для получения clientа
 	mockClientFn := func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	}

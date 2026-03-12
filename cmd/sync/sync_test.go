@@ -89,10 +89,10 @@ func TestGetClientSafe_WithAccessorReturnsClient(t *testing.T) {
 	oldAccessor := clientAccessor
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём mock HTTP клиент
+	// Создаём mock HTTP client
 	mockClient := &client.HTTPClient{}
 
-	// Создаём accessor, который возвращает клиент
+	// Создаём accessor, который возвращает client
 	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
 		return mockClient
 	})
@@ -101,7 +101,7 @@ func TestGetClientSafe_WithAccessorReturnsClient(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
-	// Должен вернуть клиент от accessor
+	// Должен вернуть client от accessor
 	result := getClientSafe(cmd)
 	assert.Equal(t, mockClient, result)
 }
@@ -116,15 +116,15 @@ func TestGetClientSafe_WithAccessorReturnsNil_UsesContextFallback(t *testing.T) 
 		return nil
 	})
 
-	// Создаём mock HTTP клиент
+	// Создаём mock HTTP client
 	mockClient := &client.HTTPClient{}
 
-	// Создаём команду с контекстом, содержащим клиент по старому ключу
+	// Создаём команду с контекстом, содержащим client по старому ключу
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), testHTTPClientKey, mockClient)
 	cmd.SetContext(ctx)
 
-	// Должен вернуть клиент из контекста (fallback)
+	// Должен вернуть client из контекста (fallback)
 	result := getClientSafe(cmd)
 	assert.Equal(t, mockClient, result)
 }
@@ -201,7 +201,7 @@ func TestGetClientInterface_WithMockInContext(t *testing.T) {
 	cmd := &cobra.Command{}
 	SetTestClient(cmd, mock)
 
-	// Проверяем, что getClientInterface возвращает mock клиент
+	// Проверяем, что getClientInterface возвращает mock client
 	result := getClientInterface(cmd)
 	assert.NotNil(t, result)
 }
@@ -247,7 +247,7 @@ func TestSetTestClient_WithNilContext(t *testing.T) {
 	// Не должно паниковать при nil контексте
 	SetTestClient(cmd, mock)
 
-	// Проверяем, что клиент установлен
+	// Проверяем, что client установлен
 	result := getClientInterface(cmd)
 	assert.Equal(t, mock, result)
 }
@@ -260,7 +260,7 @@ func TestSetTestClient_WithExistingContext(t *testing.T) {
 	// Не должно паниковать при существующем контексте
 	SetTestClient(cmd, mock)
 
-	// Проверяем, что клиент установлен
+	// Проверяем, что client установлен
 	result := getClientInterface(cmd)
 	assert.Equal(t, mock, result)
 }

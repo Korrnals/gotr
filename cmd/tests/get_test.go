@@ -56,7 +56,7 @@ func TestGetCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid")
 }
 
 func TestGetCmd_ZeroID(t *testing.T) {

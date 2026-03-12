@@ -39,7 +39,7 @@ func setupUpdateTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
 	output.AddFlag(cmd)
 
-	// Создаем контекст с mock клиентом
+	// Создаем контекст с mock clientом
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
 
@@ -161,7 +161,7 @@ func TestUpdate_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "endpoint и id")
+	assert.Contains(t, err.Error(), "endpoint and id")
 }
 
 // TestUpdate_InvalidID проверяет ошибку при неверном ID
@@ -185,5 +185,5 @@ func TestUpdate_UnsupportedEndpoint(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неподдерживаемый")
+	assert.Contains(t, err.Error(), "unsupported")
 }

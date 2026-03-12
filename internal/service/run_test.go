@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockRunClient — мок клиента для тестирования RunService
+// mockRunClient — мок clientа для тестирования RunService
 type mockRunClient struct {
 	getRun    func(int64) (*data.Run, error)
 	getRuns   func(int64) (data.GetRunsResponse, error)
@@ -169,7 +169,7 @@ func TestRunService_ParseID(t *testing.T) {
 			args:     []string{"123"},
 			index:    5,
 			wantErr:  true,
-			errMatch: "отсутствует аргумент",
+			errMatch: "missing ID argument",
 		},
 		{
 			name:     "invalid string",

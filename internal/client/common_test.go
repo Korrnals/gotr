@@ -1,5 +1,5 @@
 // internal/client/common_test.go
-// Общая инфраструктура для тестов HTTP клиента
+// Общая инфраструктура для тестов HTTP clientа
 package client
 
 import (
@@ -55,7 +55,7 @@ func newMockServerWithRecorder(responseCode int, responseBody interface{}) *mock
 	return ms
 }
 
-// mockClient создаёт клиент с тестовым сервером
+// mockClient создаёт client с тестовым сервером
 func mockClient(t *testing.T, handler http.HandlerFunc) (*HTTPClient, *mockServer) {
 	server := newMockServer(handler)
 	client, err := NewClient(server.URL, "test@test.com", "testpass", false)

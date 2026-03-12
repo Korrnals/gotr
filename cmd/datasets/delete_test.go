@@ -65,7 +65,7 @@ func TestDeleteCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный dataset_id")
+	assert.Contains(t, err.Error(), "invalid dataset_id")
 }
 
 func TestDeleteCmd_ZeroID(t *testing.T) {
@@ -76,7 +76,7 @@ func TestDeleteCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный dataset_id")
+	assert.Contains(t, err.Error(), "invalid dataset_id")
 }
 
 func TestDeleteCmd_NoArgs(t *testing.T) {

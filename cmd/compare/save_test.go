@@ -32,7 +32,7 @@ func TestSaveToFile_Success(t *testing.T) {
 func TestSaveToFile_InvalidPath(t *testing.T) {
 	err := saveToFile([]byte("test"), "/nonexistent/path/file.txt")
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ошибка записи файла")
+	assert.Contains(t, err.Error(), "file write error")
 }
 
 // ==================== Тесты для saveCompareResult ====================
@@ -110,7 +110,7 @@ func TestSaveCompareResult_InvalidFormat(t *testing.T) {
 
 	err := saveCompareResult(result, "txt", path)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не поддерживается")
+	assert.Contains(t, err.Error(), "not supported")
 }
 
 func TestSaveCompareResult_InvalidPath(t *testing.T) {

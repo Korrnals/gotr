@@ -121,7 +121,7 @@ func TestResultService_validateAddResultsRequest(t *testing.T) {
 			name:    "empty results",
 			req:     &data.AddResultsRequest{Results: []data.ResultEntry{}},
 			wantErr: true,
-			errMsg:  "пустым",
+			errMsg:  "empty",
 		},
 		{
 			name: "valid single result",
@@ -176,7 +176,7 @@ func TestResultService_validateAddResultsForCasesRequest(t *testing.T) {
 			name:    "empty results",
 			req:     &data.AddResultsForCasesRequest{Results: []data.ResultForCaseEntry{}},
 			wantErr: true,
-			errMsg:  "пустым",
+			errMsg:  "empty",
 		},
 		{
 			name: "valid result",

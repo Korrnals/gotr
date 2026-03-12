@@ -28,7 +28,7 @@ func resetCasesFlags() {
 func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	addCalled := false
 
-	// Создаём mock клиент который реализует оба интерфейса (client.ClientInterface и migration.ClientInterface)
+	// Создаём mock client который реализует оба интерфейса (client.ClientInterface и migration.ClientInterface)
 	mock := &client.MockClient{
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 {
@@ -47,7 +47,7 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Устанавливаем mock клиент через SetTestClient
+	// Устанавливаем mock client через SetTestClient
 	resetCasesFlags()
 	cmd := casesCmd
 	SetTestClient(cmd, mock)

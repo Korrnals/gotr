@@ -37,7 +37,7 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd.Flags().String("refs", "", "Ссылки (references)")
 	cmd.Flags().String("comment", "", "Комментарий (для result)")
 	cmd.Flags().Int64("status-id", 0, "ID статуса (для result)")
-	cmd.Flags().String("elapsed", "", "Время выполнения (для result)")
+	cmd.Flags().String("elapsed", "", "Time выполнения (для result)")
 	cmd.Flags().String("defects", "", "Дефекты (для result)")
 	cmd.Flags().Int64("assignedto-id", 0, "ID назначенного пользователя")
 	cmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
@@ -45,7 +45,7 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
 	output.AddFlag(cmd)
 
-	// Создаем контекст с mock клиентом
+	// Создаем контекст с mock clientом
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
 
@@ -171,7 +171,7 @@ func TestAdd_UnsupportedEndpoint(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неподдерживаемый")
+	assert.Contains(t, err.Error(), "unsupported")
 }
 
 // ==================== Attachment Tests ====================
@@ -302,7 +302,7 @@ func TestAdd_Attachment_MissingArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "тип вложения")
+	assert.Contains(t, err.Error(), "attachment type")
 }
 
 // TestAdd_Attachment_InvalidCaseID проверяет ошибку при неверном case_id
@@ -326,7 +326,7 @@ func TestAdd_Attachment_UnsupportedType(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неподдерживаемый тип")
+	assert.Contains(t, err.Error(), "unsupported attachment type")
 }
 
 // TestAdd_Attachment_MissingFilePath проверяет ошибку при отсутствии пути к файлу
@@ -338,7 +338,7 @@ func TestAdd_Attachment_MissingFilePath(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "использование")
+	assert.Contains(t, err.Error(), "usage")
 }
 
 // TestAdd_Attachment_MissingPlanEntryArgs проверяет ошибку при недостаточных аргументах для plan-entry
@@ -350,5 +350,5 @@ func TestAdd_Attachment_MissingPlanEntryArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "использование")
+	assert.Contains(t, err.Error(), "usage")
 }

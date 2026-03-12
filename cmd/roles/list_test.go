@@ -62,7 +62,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ошибка подключения")
+	assert.Contains(t, err.Error(), "connection error")
 }
 
 func TestListCmd_WithSaveFlag(t *testing.T) {

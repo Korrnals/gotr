@@ -12,7 +12,7 @@ import (
 )
 
 func TestMigration_ImportSharedSteps(t *testing.T) {
-	// Используем named response-тип напрямую — это отражает реальный контракт клиента
+	// Используем named response-тип напрямую — это отражает реальный контракт clientа
 	cases := getImportTestCases[data.GetSharedStepsResponse]()
 	for i, base := range cases {
 		tt := base // копия для модификации

@@ -1,7 +1,7 @@
 # Архитектура gotr
 
 > Общее описание архитектуры CLI-утилиты gotr для пользователей  
-> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-03-05 (v2.8.0-dev) — Stage 6.8: Concurrency Unification + Generic Compare Factory.
+> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-03-12 (v3.0.0-dev) — Stage 9.0: Standards.
 
 ## Что такое gotr
 
@@ -12,24 +12,26 @@
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  CLI Layer (cmd/*)                                          │
-│  • Парсинг аргументов и флагов                              │
+│  • Парсинг аргументов и флагов (flags.*)                    │
 │  • Интерактивный выбор (internal/interactive)               │
-│  • Вызов сервисов                                           │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
+│  • Вывод данных (ui.*, output.*)                            │
+│  • Вызов сервисов и клиента                                 │
+└──────────────┬──────────────────────┬───────────────────────┘
+               │                      │
+    ┌──────────▼──────────┐  ┌────────▼──────────┐
+    │  UI Layer           │  │  Flags Layer       │
+    │  (internal/ui/)     │  │  (internal/flags/) │
+    │  • Table, JSON      │  │  • ValidateID      │
+    │  • Info, Success,   │  │  • GetFlag[T]      │
+    │    Warning, Error   │  │  • ParseID         │
+    │  • Live display     │  └───────────────────┘
+    └─────────────────────┘
+               │
+┌──────────────▼──────────────────────────────────────────────┐
 │  Service Layer (internal/service/*)                         │
 │  • Бизнес-логика                                            │
 │  • Валидация данных                                         │
 │  • Миграция данных (migration)                              │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│  Concurrent Layer (internal/concurrent/*)                   │
-│  • WorkerPool — параллельная обработка запросов            │
-│  • RateLimiter — контроль 180 запросов/минуту              │
-│  • Retry — повторные попытки с экспоненциальной задержкой  │
-│  • CircuitBreaker — защита от каскадных ошибок             │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
@@ -43,16 +45,48 @@
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
+│  Concurrent Layer (internal/concurrent/*)                   │
+│  • WorkerPool — параллельная обработка запросов            │
+│  • RateLimiter — контроль 180 запросов/минуту              │
+│  • Retry — повторные попытки с экспоненциальной задержкой  │
+│  • CircuitBreaker — защита от каскадных ошибок             │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
 │  Client Layer (internal/client/*)                           │
 │  • HTTPClient — реальный клиент                             │
-│  • ClientInterface — абстракция для тестов                  │
+│  • ClientInterface — абстракция для тестов (106 endpoints)  │
 │  • MockClient — реализация для тестирования                 │
+│  • fetchAllPages[T] — generic-пагинатор (Stage 6.9)        │
 └──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  Output Layer (internal/output/*)                           │
+│  • OutputResult — вывод + сохранение в файл                │
+│  • DryRunPrinter — вывод для dry-run режима                │
+│  • --save / --save-to управление                            │
+└─────────────────────────────────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
 │  TestRail API v2                                            │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Правила зависимостей
+
+| Слой | Может зависеть от | НЕ может зависеть от |
+| ---- | ----------------- | -------------------- |
+| `cmd/*` | `internal/service`, `internal/client`, `internal/ui`, `internal/flags`, `internal/interactive`, `internal/output`, `pkg/*` | — |
+| `internal/service` | `internal/client`, `internal/concurrency`, `internal/concurrent`, `internal/models` | `cmd/*`, `internal/ui` |
+| `internal/client` | `internal/concurrent`, `internal/models/data` | `cmd/*`, `internal/service` |
+| `internal/ui` | stdlib, `go-pretty/v6` | `internal/client`, `internal/service` |
+| `internal/concurrency` | stdlib | `internal/client`, `cmd/*` |
+| `pkg/*` | stdlib, `go-pretty/v6` | `internal/*`, `cmd/*` |
+
+**Запрещено:**
+- `service/` → `cmd/` (обращение вверх)
+- `client/` → `ui/` (клиент не знает о UI)
+- `pkg/` → `internal/` (публичный не импортирует приватный)
 
 ## Слои подробно
 
@@ -63,21 +97,59 @@
 **Структура:**
 ```
 cmd/
-├── common/              # Общие компоненты
-│   ├── client.go       #   ClientAccessor — единый доступ к HTTP клиенту
-│   └── flags.go        #   Парсинг общих флагов
-├── get/                # GET команды
-├── result/             # Команды для работы с результатами
-├── run/                # Команды для работы с test runs
-├── sync/               # Команды миграции данных
-├── root.go             # Корневая команда
-└── commands.go         # Регистрация всех команд
+├── root.go              # Корневая команда, Execute(ctx)
+├── commands.go          # Регистрация всех подкоманд (init())
+├── add.go               # gotr add <resource>
+├── update.go            # gotr update <resource>
+├── delete.go            # gotr delete <resource>
+├── list.go              # gotr list <resource>
+├── export.go            # gotr export
+├── config.go            # gotr config {init|path|view|edit}
+├── resources.go         # gotr resources (API endpoints)
+├── selftest.go          # gotr selftest
+├── completion.go        # gotr completion {bash|zsh|fish}
+├── <resource>/          # Подкоманды для ресурса
+│   ├── <resource>.go   #   Register() + getClient()
+│   ├── add.go          #   newAddCmd(clientFn)
+│   ├── get.go          #   newGetCmd(clientFn)
+│   ├── list.go         #   newListCmd(clientFn)
+│   ├── update.go       #   newUpdateCmd(clientFn)
+│   ├── delete.go       #   newDeleteCmd(clientFn)
+│   └── *_test.go       #   Table-driven тесты
+├── compare/             # gotr compare <resource> --pid1 X --pid2 Y
+├── sync/                # gotr sync {cases|sections|suites|...}
+└── internal/            # Общие тестовые хелперы (testhelper)
+```
+
+**Паттерн команды (Stage 7.0+):**
+```go
+func newXxxCmd(clientFn func(*cobra.Command) client.ClientInterface) *cobra.Command {
+    cmd := &cobra.Command{
+        Use:   "xxx",
+        Short: "Brief description",
+        Args:  cobra.ExactArgs(1),
+        RunE: func(cmd *cobra.Command, args []string) error {
+            cli := clientFn(cmd)
+            ctx := cmd.Context()
+
+            id, err := flags.ValidateRequiredID(args, 0, "resource_id")
+            if err != nil { return err }
+
+            result, err := cli.GetXxx(ctx, id)
+            if err != nil { return err }
+
+            return output.OutputResult(cmd, result, "xxx")
+        },
+    }
+    output.AddFlag(cmd)
+    return cmd
+}
 ```
 
 **Пример:**
 ```bash
 gotr run get 12345 --jq
-# cmd/run/get.go → RunService.Get(12345) → вывод с jq-фильтром
+# cmd/run/get.go → client.GetRun(ctx, 12345) → вывод через output.OutputResult
 ```
 
 ### 2. Service Layer (`internal/service/`)
@@ -110,10 +182,13 @@ gotr run get 12345 --jq
 **Структура:**
 ```
 internal/client/
-├── client.go           # HTTPClient — основной HTTP клиент
+├── client.go           # HTTPClient — конструктор, DoRequest (http.NewRequestWithContext)
 ├── interfaces.go       # ClientInterface + 14 API групп (106 endpoints)
 ├── mock.go             # MockClient для тестирования
 ├── paginator.go        # Generic fetchAllPages[T] — автопагинация list-методов (Stage 6.9)
+├── request.go          # sendRequest(), debug вывод
+├── accessor.go         # ClientAccessor — lazy init
+├── concurrent.go       # Thread-safe обёртки
 ├── projects.go         # ProjectsAPI (5 endpoints)
 ├── cases.go            # CasesAPI (14 endpoints)
 ├── suites.go           # SuitesAPI (5 endpoints)
@@ -121,27 +196,21 @@ internal/client/
 ├── sharedsteps.go      # SharedStepsAPI (6 endpoints)
 ├── runs.go             # RunsAPI (6 endpoints)
 ├── results.go          # ResultsAPI (7 endpoints)
-├── tests.go            # TestsAPI (3 endpoints) — Stage 4
-├── milestones.go       # MilestonesAPI (5 endpoints) — Stage 4
-├── plans.go            # PlansAPI (9 endpoints) — Stage 4
-├── attachments.go      # AttachmentsAPI (5 endpoints) — Stage 4
-├── configs.go          # ConfigurationsAPI (7 endpoints) — Stage 4
-├── users.go            # UsersAPI (4 endpoints) — Stage 4
-├── reports.go          # ReportsAPI (3 endpoints) — Stage 4
-└── extended.go         # ExtendedAPI (21 endpoint) — Stage 4
+├── tests.go            # TestsAPI (3 endpoints)
+├── milestones.go       # MilestonesAPI (5 endpoints)
+├── plans.go            # PlansAPI (9 endpoints)
+├── attachments.go      # AttachmentsAPI (5 endpoints)
+├── configs.go          # ConfigurationsAPI (7 endpoints)
+├── users.go            # UsersAPI (4 endpoints)
+├── reports.go          # ReportsAPI (3 endpoints)
+└── extended.go         # ExtendedAPI (21 endpoint)
 ```
 
-**ClientInterface:**
-- 106 endpoints полностью покрыты
-- 118 методов (включая вспомогательные)
-- Композиция из 14 интерфейсов по доменам
-- Поддержка mock-реализации для тестов
-- 100% покрытие TestRail API v2
-
-**Generic Paginator (`paginator.go`):**
-- `fetchAllPages[T]` — прозрачная загрузка всех страниц для list-эндпоинтов
-- Обрабатывает оба формата TestRail: paginated wrapper `{"runs":[...],"offset":0}` и flat array `[...]`
-- 9 критичных методов мигрированы: GetRuns, GetPlans, GetSections, GetSharedSteps, GetMilestones, GetResults, GetResultsForRun, GetTests, GetSuites
+**Ключевые факты (Stage 7.0+):**
+- Каждый метод принимает `ctx context.Context` первым аргументом
+- List-методы используют `fetchAllPages[T]` для автопагинации
+- Отмена через context (Ctrl+C → signal.NotifyContext)
+- 14 интерфейсов по ISP, 106 endpoints, 100% покрытие TestRail API v2
 
 ### 4. Concurrent Layer (`internal/concurrent/`)
 
@@ -190,12 +259,61 @@ internal/client/
 
 ### 6. UI Layer (`internal/ui/` + `pkg/reporter/`)
 
-**Ответственность:** Унифицированный вывод для всех команд.
+**Ответственность:** Унифицированный вывод для всех команд (Stage 8.0).
 
 **Компоненты:**
+
 - **internal/ui/display.go** — ANSI live display с динамическими задачами (для `compare cases`)
-- **internal/ui/helpers.go** — `Infof`, `Warningf`, `Successf`, `Phase`, `Section`, `Stat` — стилизованные сообщения
-- **pkg/reporter/** — builder pattern для вывода статистики (`Section/Stat/StatIf/StatFmt/Blank/Separator/Print`), ANSI-цвета, go-pretty
+  - `New()`, `SetHeader()`, `AddTask()`, `Finish()` — lifecycle
+  - Реализует `ProgressReporter`, `PaginatedProgressReporter` из `concurrency/`
+
+- **internal/ui/table.go** — статический вывод данных
+  - `NewTable(cmd)` — go-pretty таблица с учётом `--format` (table/json/csv/md/html)
+  - `Table(cmd, t)` — рендеринг таблицы
+  - `JSON(cmd, data)` — JSON-вывод с учётом `--quiet`
+  - `IsJSON(cmd)`, `IsQuiet(cmd)` — проверки формата
+
+- **internal/ui/helpers.go** — стилизованные сообщения (Stage 8.0)
+  - `Info(w, msg)` — ℹ️ информация
+  - `Success(w, msg)` — ✅ успех
+  - `Warning(w, msg)` — ⚠️ предупреждение
+  - `Error(w, msg)` — ❌ ошибка
+  - `Phase(w, msg)` — 🔄 фаза
+  - `Stat(w, icon, label, val)` — статистика
+  - `Section(w, msg)` — заголовок секции
+  - `Preview(w, title, fields)` — окно предпросмотра
+
+- **pkg/reporter/** — builder-pattern для структурированных отчётов (ANSI + go-pretty)
+
+**Правила:**
+- Весь пользовательский вывод — через `ui.*` (кроме интерактивных промптов и debug)
+- Emoji-префиксы только в `ui.*` — никаких хардкоженных emoji в cmd/
+- Первый аргумент — `io.Writer` (обычно `os.Stdout`)
+
+### 7. Flags Layer (`internal/flags/`)
+
+**Ответственность:** Типобезопасная валидация аргументов и флагов CLI.
+
+**Функции:**
+```go
+flags.ValidateRequiredID(args, index, name)   // Парсинг ID из аргументов
+flags.GetFlagInt64(cmd, name)                 // int64 флаг
+flags.GetFlagString(cmd, name)                // string флаг
+flags.GetFlagBool(cmd, name)                  // bool флаг
+flags.ParseID(s)                              // строка → int64
+```
+
+### 8. Output Layer (`internal/output/`)
+
+**Ответственность:** Сохранение результатов в файлы, dry-run, форматирование.
+
+**Функции:**
+```go
+output.AddFlag(cmd)                       // Регистрация --save, --save-to
+output.OutputResult(cmd, data, resource)  // Вывод + сохранение
+output.Output(cmd, data, dir, format)     // Сохранение в ~/.gotr/exports/
+output.NewDryRunPrinter(cmd)              // Вывод для dry-run
+```
 
 **Использование:**
 - `gotr compare cases` — live display с прогрессом в реальном времени
@@ -295,66 +413,98 @@ TestRail API (src) → Migration → TestRail API (dst)
 
 ```
 gotr/
-├── cmd/                          # CLI команды
-│   ├── get/                     #   GET команды
-│   ├── result/                  #   Команды results
-│   ├── run/                     #   Команды runs
-│   ├── sync/                    #   Команды миграции
-│   ├── compare/                 #   Команды сравнения
-│   ├── attachments/             #   Команды для вложений
-│   ├── config/                  #   Команды конфигурации
-│   ├── root.go                  #   Корневая команда
-│   └── commands.go              #   Регистрация команд
-├── docs/                         # Документация
+├── cmd/                          # CLI команды (Cobra)
+│   ├── root.go                  #   Execute(ctx), initConfig()
+│   ├── commands.go              #   init() — регистрация всех подкоманд
+│   ├── add.go                   #   gotr add <endpoint>
+│   ├── update.go                #   gotr update <endpoint>
+│   ├── delete.go                #   gotr delete <endpoint>
+│   ├── list.go                  #   gotr list <resource>
+│   ├── export.go                #   gotr export <resource>
+│   ├── config.go                #   gotr config {init|path|view|edit}
+│   ├── resources.go             #   gotr resources
+│   ├── selftest.go              #   gotr selftest
+│   ├── completion.go            #   gotr completion {bash|zsh|fish}
+│   ├── attachments/             #   gotr attachments {add|get|list|delete}
+│   ├── bdds/                    #   gotr bdds {add|get}
+│   ├── cases/                   #   gotr cases {add|get|list|update|delete|bulk}
+│   ├── compare/                 #   gotr compare {cases|suites|sections|...}
+│   ├── configurations/          #   gotr configurations {add|list|update|delete}
+│   ├── datasets/                #   gotr datasets
+│   ├── get/                     #   gotr get {project|suite|case|...}
+│   ├── groups/                  #   gotr groups
+│   ├── labels/                  #   gotr labels
+│   ├── milestones/              #   gotr milestones
+│   ├── plans/                   #   gotr plans
+│   ├── reports/                 #   gotr reports
+│   ├── result/                  #   gotr result {get|list|add}
+│   ├── roles/                   #   gotr roles
+│   ├── run/                     #   gotr run {get|list|create|update|close|delete}
+│   ├── sync/                    #   gotr sync {full|cases|shared-steps|suites|sections}
+│   ├── templates/               #   gotr templates
+│   ├── test/                    #   gotr test
+│   ├── tests/                   #   gotr tests
+│   ├── users/                   #   gotr users
+│   ├── variables/               #   gotr variables
+│   └── internal/                #   Тестовые хелперы (testhelper)
+├── docs/                         # Документация (русский)
 │   ├── architecture.md          #   Этот файл
+│   ├── standards.md             #   Стандарты кодирования
 │   ├── concurrent.md            #   Параллельная обработка
 │   ├── configuration.md         #   Настройка
 │   ├── get-commands.md          #   GET команды
 │   ├── sync-commands.md         #   SYNC команды
 │   ├── installation.md          #   Установка
 │   ├── interactive-mode.md      #   Интерактивный режим
+│   ├── progress.md              #   Прогресс-бары
 │   └── other-commands.md        #   Прочие команды
 ├── embedded/                     # Встроенные утилиты
-│   └── jq.go                    #   Встроенный jq
+│   └── jq_embed.go             #   Встроенный jq
 ├── internal/                     # Внутренний код
-│   ├── client/                  #   HTTP клиент
-│   │   ├── client.go           #     HTTPClient
-│   │   ├── accessor.go         #     ClientAccessor (singleton)
-│   │   ├── interfaces.go       #     ClientInterface (106 endpoints)
-│   │   ├── mock.go             #     MockClient
-│   │   ├── projects.go         #     ProjectsAPI
-│   │   ├── cases.go            #     CasesAPI
-│   │   ├── suites.go           #     SuitesAPI
-│   │   ├── sections.go         #     SectionsAPI
-│   │   ├── sharedsteps.go      #     SharedStepsAPI
-│   │   ├── runs.go             #     RunsAPI
-│   │   └── results.go          #     ResultsAPI
-│   ├── concurrent/             #   Параллельная обработка
+│   ├── client/                  #   HTTP клиент TestRail API
+│   │   ├── client.go           #     HTTPClient (DoRequest + http.NewRequestWithContext)
+│   │   ├── interfaces.go       #     ClientInterface (14 интерфейсов, 106 endpoints)
+│   │   ├── mock.go             #     MockClient для тестов
+│   │   ├── paginator.go        #     fetchAllPages[T] — generic-пагинатор
+│   │   ├── accessor.go         #     ClientAccessor (lazy init)
+│   │   └── <domain>.go         #     Endpoints по доменам
+│   ├── concurrent/             #   Параллельная обработка (низкоуровневая)
 │   │   ├── pool.go            #     WorkerPool, ParallelMap
 │   │   ├── limiter.go         #     RateLimiter (150 req/min)
 │   │   ├── retry.go           #     Retry с backoff
 │   │   └── circuit.go         #     CircuitBreaker
-│   ├── concurrency/            #   Унифицированная конкурентность (Stage 6.8)
-│   │   ├── types.go           #     ProgressReporter, PaginatedProgressReporter, FetchOption
-│   │   ├── fetch_parallel.go  #     FetchParallel[T] — лёгкая стратегия
-│   │   ├── fetch_by_suite.go  #     FetchParallelBySuite[T] — средняя стратегия
-│   │   ├── controller.go      #     ParallelController — тяжёлая pipeline pagination
-│   │   ├── priority_queue.go  #     PriorityQueue (heap-based)
-│   │   ├── aggregator.go      #     ResultAggregator
-│   │   └── doc.go             #     Документация пакета
-│   ├── ui/                     #   Унифицированный вывод
-│   │   └── display.go         #     ANSI live display + helpers
+│   ├── concurrency/            #   Стратегии параллелизации (высокоуровневая)
+│   │   ├── types.go           #     ProgressReporter, FetchOption
+│   │   ├── fetch_parallel.go  #     FetchParallel[T]
+│   │   ├── fetch_by_suite.go  #     FetchParallelBySuite[T]
+│   │   ├── controller.go      #     ParallelController (pipeline)
+│   │   ├── priority_queue.go  #     PriorityQueue (heap)
+│   │   └── aggregator.go      #     ResultAggregator
+│   ├── ui/                     #   Унифицированный вывод (Stage 8.0)
+│   │   ├── display.go         #     ANSI live display + Task reporter
+│   │   ├── table.go           #     Table(), JSON(), NewTable(), --format
+│   │   └── helpers.go         #     Info, Success, Warning, Error, Phase, Preview
+│   ├── flags/                  #   Валидация флагов и аргументов (Stage 8.0)
+│   │   └── helpers.go         #     ValidateRequiredID, GetFlag*, ParseID
+│   ├── output/                 #   Сохранение результатов
+│   │   ├── save.go            #     OutputResult, AddFlag, SaveToFile
+│   │   ├── dryrun.go          #     DryRunPrinter
+│   │   ├── filename.go        #     GenerateTimestamp, BuildFilename
+│   │   └── paths.go           #     GetExportsDir, EnsureDir
 │   ├── progress/               #   Прогресс-бары (mpb)
 │   │   ├── progress.go        #     ProgressManager
 │   │   ├── monitor.go         #     WithMonitorCtx
 │   │   └── async.go           #     Async helpers
 │   ├── interactive/            #   Интерактивный выбор
+│   │   ├── interactive.go     #     SelectProject, SelectSuite, SelectRun
 │   │   └── wizard.go          #     InteractiveWizard
-│   ├── output/                 #   Вывод и сохранение
-│   │   ├── save.go            #     Сохранение в файл
-│   │   └── dryrun.go          #     Dry-run режим
-│   ├── flags/                  #   Хелперы для флагов
-│   │   └── helpers.go         #     Парсинг флагов
+│   ├── paths/                  #   Управление путями
+│   │   └── paths.go           #     BaseDir, ConfigFile, EnsureAllDirs
+│   ├── log/                    #   Структурное логирование (zap)
+│   │   └── logger.go          #     Init, L(), WithField, WithFields
+│   ├── selftest/               #   Самодиагностика
+│   │   ├── types.go           #     CheckResult, Report
+│   │   └── checks.go          #     ConfigChecker, BaseDirChecker, ...
 │   ├── service/                #   Бизнес-логика
 │   │   ├── run.go              #     RunService
 │   │   ├── result.go           #     ResultService
@@ -367,33 +517,35 @@ gotr/
 │   │       ├── mapping.go     #       Mapping ID
 │   │       └── log.go         #       Логирование
 │   ├── models/                 #   Модели данных
-│   │   └── data/              #     DTO для API
-│   │       ├── projects.go    #       Project
-│   │       ├── cases.go       #       Case
-│   │       ├── suites.go      #       Suite
-│   │       ├── sections.go    #       Section
-│   │       ├── sharedsteps.go #       SharedStep
-│   │       ├── runs.go        #       Run, Test
-│   │       ├── results.go     #       Result
-│   │       └── statuses.go    #       Status
-│   └── utils/                  #   Утилиты
-│       ├── helpers.go         #     Вспомогательные функции
-│       └── log.go             #     Работа с логами
+│   │   └── data/              #     DTO для TestRail API
+│   └── utils/                  #   Утилиты (legacy, сокращается)
+│       ├── helpers.go         #     ParseID, SaveToFile, LoadMapping
+│       └── log.go             #     LogDir
 ├── pkg/                          # Публичные пакеты
-│   ├── reporter/               #   Builder-pattern для статистики
-│   │   └── reporter.go        #     Section/Stat/StatFmt/Print (ANSI + go-pretty)
+│   ├── reporter/               #   Builder-pattern репортер (Section/Stat/Print)
+│   │   └── reporter.go
 │   └── testrailapi/            #   Описания API endpoints
 │       └── api_paths.go
-├── .systems/                     # Системная документация
-│   └── ARCHITECTURE.md         #   Детальная архитектура для разработчиков
-├── dist/                         # Артефакты сборки (в .gitignore)
-├── main.go                       # Точка входа
+├── main.go                       # Точка входа (signal.NotifyContext + ExecuteContext)
 ├── go.mod                        # Go модули
 ├── Makefile                     # Сборка
+├── CHANGELOG.md                 # История изменений
 └── README.md                    # Основная документация
 ```
 
 ## Доступные команды
+
+### Получение данных (`gotr get`)
+| Команда | Описание |
+|---------|----------|
+| `gotr get projects` | Все проекты |
+| `gotr get project <id>` | Конкретный проект |
+| `gotr get suites [project-id]` | Сьюты проекта |
+| `gotr get suite <id>` | Конкретный сьют |
+| `gotr get cases [project-id]` | Кейсы (интерактивный выбор сьюта) |
+| `gotr get case <id>` | Конкретный кейс |
+| `gotr get sharedsteps <project-id>` | Shared steps |
+| `gotr get sections <project-id>` | Секции |
 
 ### Управление test runs (`gotr run`)
 | Команда | Описание |
@@ -415,6 +567,15 @@ gotr/
 | `gotr result add-case <run-id>` | Добавить результат для case |
 | `gotr result add-bulk <run-id>` | Массовое добавление из файла |
 
+### Сравнение проектов (`gotr compare`)
+| Команда | Описание |
+|---------|----------|
+| `gotr compare cases --pid1 X --pid2 Y` | Сравнение кейсов (параллельно) |
+| `gotr compare suites --pid1 X --pid2 Y` | Сравнение сьютов |
+| `gotr compare sections --pid1 X --pid2 Y` | Сравнение секций |
+| `gotr compare runs --pid1 X --pid2 Y` | Сравнение ранов |
+| `gotr compare all --pid1 X --pid2 Y` | Полное сравнение (13 ресурсов) |
+
 ### Миграция данных (`gotr sync`)
 | Команда | Описание |
 |---------|----------|
@@ -424,30 +585,31 @@ gotr/
 | `gotr sync suites` | Миграция suites |
 | `gotr sync sections` | Миграция sections |
 
-### Получение данных (`gotr get`)
-| Команда | Описание |
-|---------|----------|
-| `gotr get projects` | Все проекты |
-| `gotr get project <id>` | Конкретный проект |
-| `gotr get suites [project-id]` | Сьютs проекта |
-| `gotr get suite <id>` | Конкретный сьют |
-| `gotr get cases [project-id]` | Кейсы (интерактивный выбор сьюта) |
-| `gotr get case <id>` | Конкретный кейс |
-| `gotr get sharedsteps <project-id>` | Shared steps |
-| `gotr get sections <project-id>` | Секции |
-
 ### Прочие команды
 | Команда | Описание |
 |---------|----------|
-| `gotr add <endpoint>` | POST запросы |
-| `gotr update <endpoint>` | UPDATE запросы |
+| `gotr add <endpoint>` | POST запросы к API |
+| `gotr update <endpoint>` | POST/PATCH запросы |
 | `gotr delete <endpoint>` | DELETE запросы |
 | `gotr list <resource>` | Список API endpoints |
-| `gotr export <resource>` | Экспорт данных |
-| `gotr import <resource>` | Импорт данных |
-| `gotr compare` | Сравнение проектов |
-| `gotr config` | Управление конфигурацией |
-| `gotr self-test` | Самодиагностика |
+| `gotr export <resource>` | Экспорт данных (JSON) |
+| `gotr config init` | Инициализация конфигурации |
+| `gotr selftest` | Самодиагностика |
+| `gotr completion {bash\|zsh\|fish}` | Автодополнение |
+
+### Глобальные флаги
+
+| Флаг | Описание |
+|------|----------|
+| `--url` | URL TestRail инстанса |
+| `--username` | Имя пользователя |
+| `--api-key` | API ключ |
+| `--format {table\|json\|csv\|md\|html}` | Формат вывода (Stage 8.0) |
+| `--quiet` | Минимальный вывод |
+| `--debug` | Отладочный вывод |
+| `--insecure` | Пропуск проверки TLS |
+| `--save` | Сохранить результат в файл |
+| `--save-to <path>` | Сохранить в конкретный путь |
 
 ## Почему такая архитектура
 

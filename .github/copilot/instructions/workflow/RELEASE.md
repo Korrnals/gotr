@@ -46,14 +46,31 @@ All four stages merged via PRs.
 ### Step 4: Finalize release-3.0.0 ⏳
 
 1. Verify on release branch:
-   - `go test ./...` — all tests pass
-   - `go build ./...` — build succeeds
+   - `go test ./...` — all tests pass ✅
+   - `go build ./...` — build succeeds ✅
+   - `go vet ./...` — no warnings ✅
    - `gotr compare cases` — smoke test with real TestRail
    - `gotr compare all` — smoke test orchestrator
-2. Update CHANGELOG.md
-3. PR: `release-3.0.0` → `main`
-4. Merge PR
+2. Update CHANGELOG.md ✅
+3. PR: `release-3.0.0` → `main` (ONLY via Pull Request!)
+4. Review & Merge PR
 5. Tag: `v3.0.0`
+
+---
+
+## Branch Protection Rules
+
+**`main` branch is protected** (configured 2026-03-12):
+
+- **Direct push:** FORBIDDEN
+- **Direct merge:** FORBIDDEN
+- **Only via Pull Request:** YES
+- **Enforce for admins:** YES
+- **Force push:** FORBIDDEN
+- **Branch deletion:** FORBIDDEN
+
+> **НИКОГДА** не мержить напрямую в `main`! Только через PR.
+> Это правило действует для всех, включая admin.
 
 ---
 

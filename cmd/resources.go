@@ -3,10 +3,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/utils"
-	"github.com/Korrnals/gotr/pkg/testrailapi"
+	"os"
 	"sort"
 	"strings"
+
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/pkg/testrailapi"
 
 	"github.com/spf13/cobra"
 )
@@ -203,7 +206,8 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 	case "bdds":
 		paths = api.BDDs.Paths()
 	default:
-		fmt.Printf("Неизвестный ресурс: %s\n\nДоступные ресурсы:\n", resource)
+		ui.Warningf(os.Stdout, "Unknown resource: %s", resource)
+		fmt.Println("\nAvailable resources:")
 		fmt.Println("  all, cases, casefields, casetypes, configurations, projects, priorities,")
 		fmt.Println("  runs, tests, suites, sections, statuses, milestones, plans, results,")
 		fmt.Println("  resultfields, reports, attachments, users, roles, templates, groups,")
@@ -222,7 +226,7 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 	case "json":
 		data, err := json.MarshalIndent(paths, "", "  ")
 		if err != nil {
-			return nil, fmt.Errorf("ошибка формирования JSON: %w", err)
+			return nil, fmt.Errorf("JSON formatting error: %w", err)
 		}
 		fmt.Println(string(data))
 		return nil, err
@@ -231,20 +235,20 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 		for _, p := range paths {
 			fmt.Printf("%s %s\n", p.Method, p.URI)
 		}
-		return nil, fmt.Errorf("ошибка формирования короткого списка ресурсов")
+		return nil, fmt.Errorf("failed to format short resource list")
 	// Краткий вывод — только URI
 	case "list":
 		for _, p := range paths {
 			name := extractGetEndpointName(p.URI)
 			endpoints = append(endpoints, name)
 		}
-		return endpoints, fmt.Errorf("ошибка формирования списка ресурсов")
+		return endpoints, fmt.Errorf("failed to format resource list")
 	default:
-		fmt.Printf("Эндпоинты для %s (%d):\n\n", resource, len(paths))
+		fmt.Printf("Endpoints for %s (%d):\n\n", resource, len(paths))
 		for _, p := range paths {
 			fmt.Printf("  %s %s\n      %s\n", p.Method, p.URI, p.Description)
 			if len(p.Params) > 0 {
-				fmt.Print("      Параметры:\n")
+				fmt.Print("      Parameters:\n")
 				for name, desc := range p.Params {
 					fmt.Printf("        - %s: %s\n", name, desc)
 				}
@@ -341,10 +345,10 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 		if !strings.Contains(fullEndpoint, mainID) {
 			fullEndpoint += "/" + mainID
 		}
-		utils.DebugPrint("{resources} - fullEndpoint после ID: %s", fullEndpoint)
+		utils.DebugPrint("{resources} - fullEndpoint after ID: %s", fullEndpoint)
 	}
 
-	// Query-параметры — только если значение не пустое
+	// Query params — только если значение не пустое
 	flags := []struct {
 		flagName string // имя флага в Cobra
 		queryKey string // имя в TestRail API
@@ -364,7 +368,7 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 	for _, f := range flags {
 		if val, err := cmd.Flags().GetString(f.flagName); err == nil && val != "" {
 			queryParams[f.queryKey] = val
-			utils.DebugPrint("{resources} - Добавлен параметр: %s = %s", f.queryKey, val)
+			utils.DebugPrint("{resources} - Added parameter: %s = %s", f.queryKey, val)
 		}
 	}
 

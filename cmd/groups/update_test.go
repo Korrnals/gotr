@@ -1,6 +1,7 @@
 package groups
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateGroupFunc: func(groupID int64, name string, userIDs []int64) (*data.Group, error) {
+		UpdateGroupFunc: func(ctx context.Context, groupID int64, name string, userIDs []int64) (*data.Group, error) {
 			assert.Equal(t, int64(123), groupID)
 			assert.Equal(t, "Updated Group Name", name)
 			return &data.Group{
@@ -34,7 +35,7 @@ func TestUpdateCmd_Success(t *testing.T) {
 
 func TestUpdateCmd_DifferentGroup(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateGroupFunc: func(groupID int64, name string, userIDs []int64) (*data.Group, error) {
+		UpdateGroupFunc: func(ctx context.Context, groupID int64, name string, userIDs []int64) (*data.Group, error) {
 			assert.Equal(t, int64(456), groupID)
 			assert.Equal(t, "New Name", name)
 			return &data.Group{
@@ -66,7 +67,7 @@ func TestUpdateCmd_DryRun(t *testing.T) {
 
 func TestUpdateCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateGroupFunc: func(groupID int64, name string, userIDs []int64) (*data.Group, error) {
+		UpdateGroupFunc: func(ctx context.Context, groupID int64, name string, userIDs []int64) (*data.Group, error) {
 			return nil, fmt.Errorf("group not found")
 		},
 	}
@@ -91,7 +92,7 @@ func TestUpdateCmd_InvalidGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestUpdateCmd_ZeroGroupID(t *testing.T) {
@@ -103,7 +104,7 @@ func TestUpdateCmd_ZeroGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestUpdateCmd_MissingName(t *testing.T) {
@@ -115,7 +116,7 @@ func TestUpdateCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestUpdateCmd_EmptyName(t *testing.T) {
@@ -127,7 +128,7 @@ func TestUpdateCmd_EmptyName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestUpdateCmd_NoArgs(t *testing.T) {

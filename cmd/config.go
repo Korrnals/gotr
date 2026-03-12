@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/models/config"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -67,15 +68,15 @@ var configPathCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Default()
 		if err != nil {
-			return fmt.Errorf("не удалось определить путь к конфигу: %w", err)
+			return fmt.Errorf("failed to determine config path: %w", err)
 		}
 
 		used := viper.ConfigFileUsed()
 		if used == "" {
-			fmt.Printf("Конфиг-файл не найден.\nОжидаемое расположение: %s\n", cfg.PathString())
-			fmt.Println("Создайте его командой: gotr config init")
+			ui.Warningf(os.Stdout, "Config file not found.\nExpected location: %s", cfg.PathString())
+			ui.Info(os.Stdout, "Create it with: gotr config init")
 		} else {
-			fmt.Printf("Текущий конфиг-файл: %s\n", used)
+			ui.Infof(os.Stdout, "Current config file: %s", used)
 		}
 		return nil
 	},
@@ -95,17 +96,17 @@ var configViewCmd = &cobra.Command{
 		used := viper.ConfigFileUsed()
 		if used == "" {
 			cfg, _ := config.Default()
-			fmt.Printf("Конфиг-файл не найден: %s\n", cfg.PathString())
-			fmt.Println("Создайте его: gotr config init")
+			ui.Warningf(os.Stdout, "Config file not found: %s", cfg.PathString())
+			ui.Info(os.Stdout, "Create it with: gotr config init")
 			return nil
 		}
 
 		data, err := os.ReadFile(used)
 		if err != nil {
-			return fmt.Errorf("не удалось прочитать конфиг: %w", err)
+			return fmt.Errorf("failed to read config: %w", err)
 		}
 
-		fmt.Printf("Содержимое конфиг-файла %s:\n\n%s\n", used, string(data))
+		ui.Infof(os.Stdout, "Config file contents %s:\n\n%s", used, string(data))
 		return nil
 	},
 }
@@ -132,19 +133,19 @@ var configEditCmd = &cobra.Command{
 		if used == "" {
 			cfg, err := config.Default()
 			if err != nil {
-				return fmt.Errorf("не удалось определить путь к конфигу: %w", err)
+				return fmt.Errorf("failed to determine config path: %w", err)
 			}
-			fmt.Printf("Конфиг-файл не найден: %s\n", cfg.PathString())
-			fmt.Println("Создайте его командой: gotr config init")
+			ui.Warningf(os.Stdout, "Config file not found: %s", cfg.PathString())
+			ui.Info(os.Stdout, "Create it with: gotr config init")
 			return nil
 		}
 
 		// Запускаем редактор
 		if err := utils.OpenEditor(used); err != nil {
-			return fmt.Errorf("не удалось открыть редактор: %w", err)
+			return fmt.Errorf("failed to open editor: %w", err)
 		}
 
-		fmt.Printf("Конфиг-файл открыт в редакторе: %s\n", used)
+		ui.Infof(os.Stdout, "Config file opened in editor: %s", used)
 		return nil
 	},
 }

@@ -2,12 +2,14 @@ package cases
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 	"strings"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -79,13 +81,14 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateCases(suiteID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateCases(ctx, suiteID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update cases: %w", err)
 			}
 
-			fmt.Printf("✅ Updated %d cases\n", len(caseIDs))
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Updated %d cases", len(caseIDs))
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 
@@ -137,11 +140,12 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			if err := cli.DeleteCases(suiteID, &req); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteCases(ctx, suiteID, &req); err != nil {
 				return fmt.Errorf("failed to delete cases: %w", err)
 			}
 
-			fmt.Printf("✅ Deleted %d cases\n", len(caseIDs))
+			ui.Successf(os.Stdout, "Deleted %d cases", len(caseIDs))
 			return nil
 		},
 	}
@@ -191,11 +195,12 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			if err := cli.CopyCasesToSection(sectionID, &req); err != nil {
+			ctx := cmd.Context()
+			if err := cli.CopyCasesToSection(ctx, sectionID, &req); err != nil {
 				return fmt.Errorf("failed to copy cases: %w", err)
 			}
 
-			fmt.Printf("✅ Copied %d cases to section %d\n", len(caseIDs), sectionID)
+			ui.Successf(os.Stdout, "Copied %d cases to section %d", len(caseIDs), sectionID)
 			return nil
 		},
 	}
@@ -245,11 +250,12 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
 
 			cli := getClient(cmd)
-			if err := cli.MoveCasesToSection(sectionID, &req); err != nil {
+			ctx := cmd.Context()
+			if err := cli.MoveCasesToSection(ctx, sectionID, &req); err != nil {
 				return fmt.Errorf("failed to move cases: %w", err)
 			}
 
-			fmt.Printf("✅ Moved %d cases to section %d\n", len(caseIDs), sectionID)
+			ui.Successf(os.Stdout, "Moved %d cases to section %d", len(caseIDs), sectionID)
 			return nil
 		},
 	}
@@ -269,17 +275,11 @@ func parseIDList(args []string) []int64 {
 			if part == "" {
 				continue
 			}
-			id, err := strconv.ParseInt(part, 10, 64)
+			id, err := flags.ParseID(part)
 			if err == nil && id > 0 {
 				ids = append(ids, id)
 			}
 		}
 	}
 	return ids
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "cases", "json")
-	return err
 }

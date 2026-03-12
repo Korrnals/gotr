@@ -2,8 +2,8 @@ package templates
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,28 +25,23 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr templates list 1 -o templates.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetTemplates(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetTemplates(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list templates: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "templates")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "templates", "json")
-	return err
 }

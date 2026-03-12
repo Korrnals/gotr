@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -23,7 +24,7 @@ func TestEntryAddCmd_DryRun(t *testing.T) {
 
 func TestEntryAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanEntryFunc: func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
+		AddPlanEntryFunc: func(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(100), planID)
 			assert.Equal(t, int64(50), req.SuiteID)
 			assert.Equal(t, "Entry 1", req.Name)
@@ -41,7 +42,7 @@ func TestEntryAddCmd_Success(t *testing.T) {
 
 func TestEntryAddCmd_WithConfigIDs(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanEntryFunc: func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
+		AddPlanEntryFunc: func(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(100), planID)
 			assert.Equal(t, []int64{1, 2, 3}, req.ConfigIDs)
 			return &data.Plan{ID: 100}, nil
@@ -81,7 +82,7 @@ func TestEntryUpdateCmd_DryRun(t *testing.T) {
 
 func TestEntryUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdatePlanEntryFunc: func(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
+		UpdatePlanEntryFunc: func(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(100), planID)
 			assert.Equal(t, "abc123", entryID)
 			assert.Equal(t, "Updated Entry", req.Name)
@@ -122,7 +123,7 @@ func TestEntryDeleteCmd_DryRun(t *testing.T) {
 func TestEntryDeleteCmd_Success(t *testing.T) {
 	deleteCalled := false
 	mock := &client.MockClient{
-		DeletePlanEntryFunc: func(planID int64, entryID string) error {
+		DeletePlanEntryFunc: func(ctx context.Context, planID int64, entryID string) error {
 			assert.Equal(t, int64(100), planID)
 			assert.Equal(t, "abc123", entryID)
 			deleteCalled = true
@@ -141,7 +142,7 @@ func TestEntryDeleteCmd_Success(t *testing.T) {
 
 func TestEntryDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeletePlanEntryFunc: func(planID int64, entryID string) error {
+		DeletePlanEntryFunc: func(ctx context.Context, planID int64, entryID string) error {
 			return fmt.Errorf("entry not found")
 		},
 	}
@@ -201,7 +202,7 @@ func TestEntryAddCmd_ZeroPlanID(t *testing.T) {
 
 func TestEntryAddCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanEntryFunc: func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
+		AddPlanEntryFunc: func(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 			return nil, fmt.Errorf("plan not found")
 		},
 	}
@@ -227,7 +228,7 @@ func TestEntryUpdateCmd_InvalidPlanID(t *testing.T) {
 
 func TestEntryUpdateCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdatePlanEntryFunc: func(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
+		UpdatePlanEntryFunc: func(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 			return nil, fmt.Errorf("entry not found")
 		},
 	}

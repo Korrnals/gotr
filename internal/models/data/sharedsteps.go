@@ -54,5 +54,5 @@ type UpdateSharedStepRequest struct {
 
 // DeleteSharedStepRequest — запрос для delete_shared_step
 type DeleteSharedStepRequest struct {
-	KeepInCases int `json:"keep_in_cases"` // 1 — сохранить в кейсах, 0 — удалить
+	KeepInCases int `json:"keep_in_cases"` // 1 — сохранить в caseх, 0 — удалить
 }

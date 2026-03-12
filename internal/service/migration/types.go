@@ -20,7 +20,7 @@ type Migration struct {
 	dstProject    int64
 	dstSuite      int64
 	compareField  string
-	importedCases int // количество успешно импортированных кейсов
+	importedCases int // количество успешно импортированных cases
 
 	mapping *SharedStepMapping // mapping shared steps (из mapping.go)
 	logger  *zap.SugaredLogger
@@ -30,7 +30,7 @@ type Migration struct {
 func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, dstSuite int64, compareField, logDir string) (*Migration, error) {
 	// Создаём директорию для логов
 	if err := os.MkdirAll(logDir, 0755); err != nil {
-		return nil, fmt.Errorf("не удалось создать директорию лога %s: %w", logDir, err)
+		return nil, fmt.Errorf("failed to create log directory %s: %w", logDir, err)
 	}
 
 	// Файл для JSON-лога

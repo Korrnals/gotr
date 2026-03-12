@@ -1,6 +1,7 @@
 package test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			assert.Equal(t, int64(12345), testID)
 			return &data.Test{
 				ID:       testID,
@@ -36,7 +37,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			assert.Equal(t, int64(12345), testID)
 			return &data.Test{
 				ID:       testID,
@@ -67,7 +68,7 @@ func TestGetCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID")
+	assert.Contains(t, err.Error(), "invalid ID")
 }
 
 func TestGetCmd_ZeroID(t *testing.T) {
@@ -108,8 +109,8 @@ func TestGetCmd_NoArgs(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
-			return nil, fmt.Errorf("тест не найден")
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
+			return nil, fmt.Errorf("test not found")
 		},
 	}
 
@@ -120,7 +121,7 @@ func TestGetCmd_APIError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "тест не найден")
+	assert.Contains(t, err.Error(), "test not found")
 }
 
 func TestGetCmd_NilClient(t *testing.T) {
@@ -131,12 +132,12 @@ func TestGetCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не инициализирован")
+	assert.Contains(t, err.Error(), "not initialized")
 }
 
 func TestGetCmd_InvalidOutputPath(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			return &data.Test{ID: testID}, nil
 		},
 	}
@@ -152,7 +153,7 @@ func TestGetCmd_InvalidOutputPath(t *testing.T) {
 
 func TestGetCmd_WithSaveEnabled(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			return &data.Test{ID: testID}, nil
 		},
 	}

@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -45,11 +46,12 @@ func TestGetConfigs(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetConfigsFunc = func(projectID int64) (data.GetConfigsResponse, error) {
+			mockClient.GetConfigsFunc = func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetConfigs(tc.projectID)
+			ctx := context.Background()
+			result, err := mockClient.GetConfigs(ctx, tc.projectID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -94,11 +96,12 @@ func TestAddConfigGroup(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.AddConfigGroupFunc = func(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+			mockClient.AddConfigGroupFunc = func(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.AddConfigGroup(tc.projectID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.AddConfigGroup(ctx, tc.projectID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -142,11 +145,12 @@ func TestAddConfig(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.AddConfigFunc = func(groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
+			mockClient.AddConfigFunc = func(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.AddConfig(tc.groupID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.AddConfig(ctx, tc.groupID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -190,11 +194,12 @@ func TestUpdateConfigGroup(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.UpdateConfigGroupFunc = func(groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
+			mockClient.UpdateConfigGroupFunc = func(ctx context.Context, groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.UpdateConfigGroup(tc.groupID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.UpdateConfigGroup(ctx, tc.groupID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -228,11 +233,12 @@ func TestDeleteConfigGroup(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.DeleteConfigGroupFunc = func(groupID int64) error {
+			mockClient.DeleteConfigGroupFunc = func(ctx context.Context, groupID int64) error {
 				return nil
 			}
 
-			err := mockClient.DeleteConfigGroup(tc.groupID)
+			ctx := context.Background()
+			err := mockClient.DeleteConfigGroup(ctx, tc.groupID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -268,7 +274,8 @@ func TestHTTPGetConfigs(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	configs, err := client.GetConfigs(1)
+	ctx := context.Background()
+	configs, err := client.GetConfigs(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetConfigs() error: %v", err)
 	}

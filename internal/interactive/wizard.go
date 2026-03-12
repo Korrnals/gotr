@@ -22,7 +22,7 @@ type SuiteAnswers struct {
 	IsCompleted bool
 }
 
-// CaseAnswers содержит ответы для создания/обновления кейса
+// CaseAnswers содержит ответы для создания/обновления case
 type CaseAnswers struct {
 	Title      string
 	SectionID  int64
@@ -41,7 +41,7 @@ type RunAnswers struct {
 	IncludeAll  bool
 }
 
-// AskProject запускает wizard для проекта
+// AskProject запускает wizard for project
 func AskProject(isUpdate bool) (*ProjectAnswers, error) {
 	answers := &ProjectAnswers{}
 
@@ -49,20 +49,20 @@ func AskProject(isUpdate bool) (*ProjectAnswers, error) {
 		{
 			Name: "name",
 			Prompt: &survey.Input{
-				Message: "Название проекта:",
+				Message: "Project name:",
 			},
 			Validate: survey.Required,
 		},
 		{
 			Name: "announcement",
 			Prompt: &survey.Multiline{
-				Message: "Announcement (опционально):",
+				Message: "Announcement (optional):",
 			},
 		},
 		{
 			Name: "showAnnouncement",
 			Prompt: &survey.Confirm{
-				Message: "Показывать announcement?",
+				Message: "Show announcement?",
 				Default: true,
 			},
 		},
@@ -72,7 +72,7 @@ func AskProject(isUpdate bool) (*ProjectAnswers, error) {
 		questions = append(questions, &survey.Question{
 			Name: "isCompleted",
 			Prompt: &survey.Confirm{
-				Message: "Отметить как завершённый?",
+				Message: "Mark as completed?",
 				Default: false,
 			},
 		})
@@ -93,14 +93,14 @@ func AskSuite(isUpdate bool) (*SuiteAnswers, error) {
 		{
 			Name: "name",
 			Prompt: &survey.Input{
-				Message: "Название сьюта:",
+				Message: "Suite name:",
 			},
 			Validate: survey.Required,
 		},
 		{
 			Name: "description",
 			Prompt: &survey.Multiline{
-				Message: "Описание (опционально):",
+				Message: "Description (optional):",
 			},
 		},
 	}
@@ -109,7 +109,7 @@ func AskSuite(isUpdate bool) (*SuiteAnswers, error) {
 		questions = append(questions, &survey.Question{
 			Name: "isCompleted",
 			Prompt: &survey.Confirm{
-				Message: "Отметить как завершённый?",
+				Message: "Mark as completed?",
 				Default: false,
 			},
 		})
@@ -122,7 +122,7 @@ func AskSuite(isUpdate bool) (*SuiteAnswers, error) {
 	return answers, nil
 }
 
-// AskCase запускает wizard для тест-кейса
+// AskCase запускает wizard для тест-case
 func AskCase(isUpdate bool) (*CaseAnswers, error) {
 	answers := &CaseAnswers{}
 
@@ -130,7 +130,7 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 		{
 			Name: "title",
 			Prompt: &survey.Input{
-				Message: "Заголовок (title):",
+				Message: "Title:",
 			},
 			Validate: survey.Required,
 		},
@@ -140,14 +140,14 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 		questions = append(questions, &survey.Question{
 			Name: "sectionId",
 			Prompt: &survey.Input{
-				Message: "ID секции:",
+				Message: "ID section:",
 				Default: "0",
 			},
 			Validate: survey.Required,
 		})
 	}
 
-	// Тип кейса
+	// Тип case
 	typeOptions := []string{
 		"1 - Acceptance",
 		"2 - Accessibility",
@@ -162,10 +162,10 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 		"11 - Smoke & Sanity",
 		"12 - Usability",
 	}
-	
+
 	var typeStr string
 	if err := survey.AskOne(&survey.Select{
-		Message: "Тип кейса:",
+		Message: "Case type:",
 		Options: typeOptions,
 		Default: typeOptions[0],
 	}, &typeStr); err != nil {
@@ -177,14 +177,14 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 	// Приоритет
 	priorityOptions := []string{
 		"1 - Critical",
-		"2 - High", 
+		"2 - High",
 		"3 - Medium",
 		"4 - Low",
 	}
-	
+
 	var priorityStr string
 	if err := survey.AskOne(&survey.Select{
-		Message: "Приоритет:",
+		Message: "Priority:",
 		Options: priorityOptions,
 		Default: priorityOptions[2],
 	}, &priorityStr); err != nil {
@@ -194,7 +194,7 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 
 	// Refs
 	if err := survey.AskOne(&survey.Input{
-		Message: "Ссылки/референсы (через запятую):",
+		Message: "References (comma-separated):",
 	}, &answers.Refs); err != nil {
 		return nil, err
 	}
@@ -210,14 +210,14 @@ func AskRun(isUpdate bool) (*RunAnswers, error) {
 		{
 			Name: "name",
 			Prompt: &survey.Input{
-				Message: "Название test run:",
+				Message: "Test run name:",
 			},
 			Validate: survey.Required,
 		},
 		{
 			Name: "description",
 			Prompt: &survey.Multiline{
-				Message: "Описание (опционально):",
+				Message: "Description (optional):",
 			},
 		},
 	}
@@ -226,7 +226,7 @@ func AskRun(isUpdate bool) (*RunAnswers, error) {
 		questions = append(questions, &survey.Question{
 			Name: "suiteId",
 			Prompt: &survey.Input{
-				Message: "ID сьюта:",
+				Message: "Suite ID:",
 			},
 			Validate: survey.Required,
 		})
@@ -238,7 +238,7 @@ func AskRun(isUpdate bool) (*RunAnswers, error) {
 
 	// Include all cases
 	if err := survey.AskOne(&survey.Confirm{
-		Message: "Включить все кейсы сьюта?",
+		Message: "Include all cases from suite?",
 		Default: true,
 	}, &answers.IncludeAll); err != nil {
 		return nil, err

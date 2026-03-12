@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetUsersFunc: func() (data.GetUsersResponse, error) {
+		GetUsersFunc: func(ctx context.Context) (data.GetUsersResponse, error) {
 			return []data.User{
 				{ID: 1, Name: "John Doe", Email: "john@example.com", IsActive: true, Role: "Lead"},
 				{ID: 2, Name: "Jane Smith", Email: "jane@example.com", IsActive: true, Role: "Tester"},
@@ -32,7 +33,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetUsersFunc: func() (data.GetUsersResponse, error) {
+		GetUsersFunc: func(ctx context.Context) (data.GetUsersResponse, error) {
 			return []data.User{}, nil
 		},
 	}
@@ -47,7 +48,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetUsersFunc: func() (data.GetUsersResponse, error) {
+		GetUsersFunc: func(ctx context.Context) (data.GetUsersResponse, error) {
 			return nil, fmt.Errorf("API error")
 		},
 	}
@@ -62,7 +63,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 func TestListCmd_WithProjectID(t *testing.T) {
 	mock := &client.MockClient{
-		GetUsersByProjectFunc: func(projectID int64) (data.GetUsersResponse, error) {
+		GetUsersByProjectFunc: func(ctx context.Context, projectID int64) (data.GetUsersResponse, error) {
 			assert.Equal(t, int64(123), projectID)
 			return []data.User{
 				{ID: 1, Name: "Project User", Email: "user@example.com", IsActive: true, Role: "Tester"},
@@ -80,7 +81,7 @@ func TestListCmd_WithProjectID(t *testing.T) {
 
 func TestListCmd_WithProjectID_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetUsersByProjectFunc: func(projectID int64) (data.GetUsersResponse, error) {
+		GetUsersByProjectFunc: func(ctx context.Context, projectID int64) (data.GetUsersResponse, error) {
 			return []data.User{}, nil
 		},
 	}
@@ -95,7 +96,7 @@ func TestListCmd_WithProjectID_Empty(t *testing.T) {
 
 func TestListCmd_WithProjectID_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetUsersByProjectFunc: func(projectID int64) (data.GetUsersResponse, error) {
+		GetUsersByProjectFunc: func(ctx context.Context, projectID int64) (data.GetUsersResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -129,5 +130,3 @@ func TestListCmd_ZeroProjectID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 }
-
-

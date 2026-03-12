@@ -1,6 +1,7 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestAddCmd_DryRun_WithDueDate(t *testing.T) {
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Release 1.0", req.Name)
 			assert.Equal(t, "2026-03-01", req.DueOn)
@@ -53,7 +54,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_Success_Minimal(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(5), projectID)
 			assert.Equal(t, "Sprint 1", req.Name)
 			return &data.Milestone{ID: 200, Name: req.Name}, nil
@@ -70,7 +71,7 @@ func TestAddCmd_Success_Minimal(t *testing.T) {
 
 func TestAddCmd_WithDescription(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Release 2.0", req.Name)
 			assert.Equal(t, "Major release", req.Description)
@@ -88,7 +89,7 @@ func TestAddCmd_WithDescription(t *testing.T) {
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

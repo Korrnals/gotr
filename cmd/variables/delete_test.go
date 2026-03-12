@@ -1,6 +1,7 @@
 package variables
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,7 +11,7 @@ import (
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteVariableFunc: func(variableID int64) error {
+		DeleteVariableFunc: func(ctx context.Context, variableID int64) error {
 			assert.Equal(t, int64(789), variableID)
 			return nil
 		},
@@ -66,8 +67,8 @@ func TestDeleteCmd_NoArgs(t *testing.T) {
 
 func TestDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteVariableFunc: func(variableID int64) error {
-			return fmt.Errorf("переменная не найдена")
+		DeleteVariableFunc: func(ctx context.Context, variableID int64) error {
+			return fmt.Errorf("variable not found")
 		},
 	}
 

@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -119,7 +120,8 @@ func TestAddSharedStep(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			step, err := client.AddSharedStep(tt.projectID, tt.request)
+			ctx := context.Background()
+			step, err := client.AddSharedStep(ctx, tt.projectID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -190,7 +192,8 @@ func TestUpdateSharedStep(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			step, err := client.UpdateSharedStep(tt.sharedStepID, tt.request)
+			ctx := context.Background()
+			step, err := client.UpdateSharedStep(ctx, tt.sharedStepID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -242,7 +245,8 @@ func TestDeleteSharedStep(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.DeleteSharedStep(tt.sharedStepID, 0)
+			ctx := context.Background()
+			err := client.DeleteSharedStep(ctx, tt.sharedStepID, 0)
 
 			if tt.wantErr {
 				assert.Error(t, err)

@@ -3,6 +3,7 @@ package compare
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"testing"
 
@@ -39,10 +40,10 @@ func TestGetClientSafe_NilClient(t *testing.T) {
 
 func TestSuitesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
 	}
@@ -73,7 +74,7 @@ func TestSuitesCmd_NoClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestSuitesCmd_InvalidPid1(t *testing.T) {
@@ -92,7 +93,7 @@ func TestSuitesCmd_InvalidPid1(t *testing.T) {
 
 func TestSuitesCmd_ProjectError(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return nil, errors.New("project not found")
 		},
 	}
@@ -112,13 +113,13 @@ func TestSuitesCmd_ProjectError(t *testing.T) {
 
 func TestCasesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return []data.Case{}, nil
 		},
 	}
@@ -136,16 +137,16 @@ func TestCasesCmd_Success(t *testing.T) {
 
 func TestCasesCmd_WithField(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return []data.Case{}, nil
 		},
-		DiffCasesDataFunc: func(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
+		DiffCasesDataFunc: func(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
 			return &data.DiffCasesResponse{
 				DiffByField: []struct {
 					CaseID int64     `json:"case_id"`
@@ -171,10 +172,10 @@ func TestCasesCmd_WithField(t *testing.T) {
 
 func TestPlansCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return []data.Plan{}, nil
 		},
 	}
@@ -182,7 +183,7 @@ func TestPlansCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newPlansCmd()
+	cmd := newSimpleCompareCmd("plans", "plans", "test", "test", fetchPlanItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -194,10 +195,10 @@ func TestPlansCmd_Success(t *testing.T) {
 
 func TestRunsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return []data.Run{}, nil
 		},
 	}
@@ -205,7 +206,7 @@ func TestRunsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newRunsCmd()
+	cmd := newSimpleCompareCmd("runs", "runs", "test", "test", fetchRunItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -217,13 +218,13 @@ func TestRunsCmd_Success(t *testing.T) {
 
 func TestSectionsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			return []data.Section{}, nil
 		},
 	}
@@ -243,10 +244,10 @@ func TestSectionsCmd_Success(t *testing.T) {
 
 func TestMilestonesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return []data.Milestone{}, nil
 		},
 	}
@@ -254,7 +255,7 @@ func TestMilestonesCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newMilestonesCmd()
+	cmd := newSimpleCompareCmd("milestones", "milestones", "test", "test", fetchMilestoneItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -266,10 +267,10 @@ func TestMilestonesCmd_Success(t *testing.T) {
 
 func TestDatasetsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{}, nil
 		},
 	}
@@ -277,7 +278,7 @@ func TestDatasetsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newDatasetsCmd()
+	cmd := newSimpleCompareCmd("datasets", "datasets", "test", "test", fetchDatasetItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -289,10 +290,10 @@ func TestDatasetsCmd_Success(t *testing.T) {
 
 func TestGroupsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return []data.Group{}, nil
 		},
 	}
@@ -300,7 +301,7 @@ func TestGroupsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newGroupsCmd()
+	cmd := newSimpleCompareCmd("groups", "groups", "test", "test", fetchGroupItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -312,10 +313,10 @@ func TestGroupsCmd_Success(t *testing.T) {
 
 func TestLabelsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{}, nil
 		},
 	}
@@ -323,7 +324,7 @@ func TestLabelsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newLabelsCmd()
+	cmd := newSimpleCompareCmd("labels", "labels", "test", "test", fetchLabelItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -335,10 +336,10 @@ func TestLabelsCmd_Success(t *testing.T) {
 
 func TestTemplatesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{}, nil
 		},
 	}
@@ -346,7 +347,7 @@ func TestTemplatesCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newTemplatesCmd()
+	cmd := newSimpleCompareCmd("templates", "templates", "test", "test", fetchTemplateItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -358,10 +359,10 @@ func TestTemplatesCmd_Success(t *testing.T) {
 
 func TestConfigurationsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return []data.ConfigGroup{}, nil
 		},
 	}
@@ -369,7 +370,7 @@ func TestConfigurationsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newConfigurationsCmd()
+	cmd := newSimpleCompareCmd("configurations", "configurations", "test", "test", fetchConfigurationItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -381,10 +382,10 @@ func TestConfigurationsCmd_Success(t *testing.T) {
 
 func TestSharedStepsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			return []data.SharedStep{}, nil
 		},
 	}
@@ -392,7 +393,7 @@ func TestSharedStepsCmd_Success(t *testing.T) {
 		return mock
 	})
 
-	cmd := newSharedStepsCmd()
+	cmd := newSimpleCompareCmd("sharedsteps", "sharedsteps", "test", "test", fetchSharedStepItems)
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
 
@@ -404,43 +405,43 @@ func TestSharedStepsCmd_Success(t *testing.T) {
 
 func TestAllCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return []data.Case{}, nil
 		},
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			return []data.Section{}, nil
 		},
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			return []data.SharedStep{}, nil
 		},
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return []data.Run{}, nil
 		},
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return []data.Plan{}, nil
 		},
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return []data.Milestone{}, nil
 		},
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{}, nil
 		},
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return []data.Group{}, nil
 		},
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{}, nil
 		},
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{}, nil
 		},
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return []data.ConfigGroup{}, nil
 		},
 	}
@@ -461,43 +462,43 @@ func TestAllCmd_Success(t *testing.T) {
 
 func TestAllCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return []data.Suite{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return []data.Case{}, nil
 		},
-		GetSectionsFunc: func(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 			return []data.Section{}, nil
 		},
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			return []data.SharedStep{}, nil
 		},
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return []data.Run{}, nil
 		},
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return []data.Plan{}, nil
 		},
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return []data.Milestone{}, nil
 		},
-		GetDatasetsFunc: func(projectID int64) (data.GetDatasetsResponse, error) {
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 			return []data.Dataset{}, nil
 		},
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return []data.Group{}, nil
 		},
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{}, nil
 		},
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{}, nil
 		},
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return []data.ConfigGroup{}, nil
 		},
 	}
@@ -519,8 +520,9 @@ func TestAllCmd_WithSave(t *testing.T) {
 // ==================== Тесты для printCasesFieldDiff ====================
 
 func TestPrintCasesFieldDiff_WithDiff(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		DiffCasesDataFunc: func(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
+		DiffCasesDataFunc: func(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
 			return &data.DiffCasesResponse{
 				DiffByField: []struct {
 					CaseID int64     `json:"case_id"`
@@ -541,12 +543,13 @@ func TestPrintCasesFieldDiff_WithDiff(t *testing.T) {
 	old := captureStdout(&buf)
 	defer restoreStdout(old)
 
-	printCasesFieldDiff(mock, 1, 2, "priority_id")
+	printCasesFieldDiff(ctx, mock, 1, 2, "priority_id")
 }
 
 func TestPrintCasesFieldDiff_NoDiff(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		DiffCasesDataFunc: func(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
+		DiffCasesDataFunc: func(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
 			return &data.DiffCasesResponse{
 				DiffByField: []struct {
 					CaseID int64     `json:"case_id"`
@@ -561,12 +564,13 @@ func TestPrintCasesFieldDiff_NoDiff(t *testing.T) {
 	old := captureStdout(&buf)
 	defer restoreStdout(old)
 
-	printCasesFieldDiff(mock, 1, 2, "priority_id")
+	printCasesFieldDiff(ctx, mock, 1, 2, "priority_id")
 }
 
 func TestPrintCasesFieldDiff_Error(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		DiffCasesDataFunc: func(pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
+		DiffCasesDataFunc: func(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
 			return nil, errors.New("API error")
 		},
 	}
@@ -575,7 +579,7 @@ func TestPrintCasesFieldDiff_Error(t *testing.T) {
 	old := captureStdout(&buf)
 	defer restoreStdout(old)
 
-	printCasesFieldDiff(mock, 1, 2, "priority_id")
+	printCasesFieldDiff(ctx, mock, 1, 2, "priority_id")
 }
 
 // Helper functions для перехвата stdout

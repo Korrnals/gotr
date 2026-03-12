@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 
 func TestCasesCmd_WithSuiteID(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			assert.Equal(t, int64(0), sectionID)
@@ -36,7 +37,7 @@ func TestCasesCmd_WithSuiteID(t *testing.T) {
 
 func TestCasesCmd_WithProjectIDFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			return data.GetCasesResponse{
@@ -55,7 +56,7 @@ func TestCasesCmd_WithProjectIDFlag(t *testing.T) {
 
 func TestCasesCmd_WithSectionID(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			assert.Equal(t, int64(100), sectionID)
@@ -75,13 +76,13 @@ func TestCasesCmd_WithSectionID(t *testing.T) {
 
 func TestCasesCmd_AutoSelectSingleSuite(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Master Suite"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			return data.GetCasesResponse{
@@ -100,14 +101,14 @@ func TestCasesCmd_AutoSelectSingleSuite(t *testing.T) {
 
 func TestCasesCmd_AllSuites(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Suite 1"},
 				{ID: 20070, Name: "Suite 2"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			if suiteID == 20069 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
 			}
@@ -135,7 +136,7 @@ func TestCasesCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID проекта")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestCasesCmd_InvalidProjectIDFlag(t *testing.T) {
@@ -151,7 +152,7 @@ func TestCasesCmd_InvalidProjectIDFlag(t *testing.T) {
 
 func TestCasesCmd_NoSuites(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{}, nil // Нет сьютов
 		},
 	}
@@ -162,12 +163,12 @@ func TestCasesCmd_NoSuites(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не найдено сьютов")
+	assert.Contains(t, err.Error(), "no suites found")
 }
 
 func TestCasesCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -183,7 +184,7 @@ func TestCasesCmd_APIError(t *testing.T) {
 
 func TestCasesCmd_GetSuitesError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return nil, fmt.Errorf("failed to get suites")
 		},
 	}
@@ -194,14 +195,14 @@ func TestCasesCmd_GetSuitesError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не удалось получить список сьютов")
+	assert.Contains(t, err.Error(), "failed to get suites")
 }
 
 // ==================== Тесты для get case ====================
 
 func TestCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFunc: func(caseID int64) (*data.Case, error) {
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			return &data.Case{
 				ID:    12345,
@@ -227,7 +228,7 @@ func TestCaseCmd_InvalidCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID кейса")
+	assert.Contains(t, err.Error(), "invalid case ID")
 }
 
 func TestCaseCmd_NoArgs(t *testing.T) {
@@ -243,7 +244,7 @@ func TestCaseCmd_NoArgs(t *testing.T) {
 
 func TestCaseCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFunc: func(caseID int64) (*data.Case, error) {
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
 			return nil, fmt.Errorf("case not found")
 		},
 	}
@@ -261,13 +262,13 @@ func TestCaseCmd_APIError(t *testing.T) {
 
 func TestFetchCasesFromAllSuites_WithError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Suite 1"},
 				{ID: 20070, Name: "Suite 2"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			if suiteID == 20070 {
 				return nil, fmt.Errorf("suite not found")
 			}
@@ -286,12 +287,12 @@ func TestFetchCasesFromAllSuites_WithError(t *testing.T) {
 
 func TestCasesCmd_AllSuites_WithSectionID(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Suite 1"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(100), sectionID)
 			return data.GetCasesResponse{{ID: 1, Title: "Case in Section"}}, nil
 		},
@@ -306,7 +307,7 @@ func TestCasesCmd_AllSuites_WithSectionID(t *testing.T) {
 }
 
 func TestCasesCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда клиент не инициализирован
+	// Тестируем случай когда client not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
@@ -316,11 +317,11 @@ func TestCasesCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestCaseCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда клиент не инициализирован
+	// Тестируем случай когда client not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
@@ -330,5 +331,5 @@ func TestCaseCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -25,7 +26,7 @@ func TestDeleteCmd_DryRun(t *testing.T) {
 func TestDeleteCmd_Success(t *testing.T) {
 	deleteCalled := false
 	mock := &client.MockClient{
-		DeletePlanFunc: func(planID int64) error {
+		DeletePlanFunc: func(ctx context.Context, planID int64) error {
 			assert.Equal(t, int64(12345), planID)
 			deleteCalled = true
 			return nil
@@ -43,7 +44,7 @@ func TestDeleteCmd_Success(t *testing.T) {
 
 func TestDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeletePlanFunc: func(planID int64) error {
+		DeletePlanFunc: func(ctx context.Context, planID int64) error {
 			return fmt.Errorf("cannot delete: plan has active runs")
 		},
 	}

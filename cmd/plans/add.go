@@ -2,10 +2,12 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -23,9 +25,9 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans add 1 --name="Регрессия" --description="Полный набор регрессионных тестов"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -52,13 +54,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddPlan(projectID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddPlan(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create plan: %w", err)
 			}
 
-			fmt.Printf("✅ Plan created (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Plan created (ID: %d)", resp.ID)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
@@ -69,10 +72,4 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "plans", "json")
-	return err
 }

@@ -32,7 +32,8 @@ func newGetByEmailCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetUserByEmail(email)
+			ctx := cmd.Context()
+			resp, err := cli.GetUserByEmail(ctx, email)
 			if err != nil {
 				return fmt.Errorf("failed to get user by email: %w", err)
 			}

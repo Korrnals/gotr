@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -25,9 +26,9 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr cases update 12345 --json-file=update.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
+			if err != nil {
+				return err
 			}
 
 			jsonFile, _ := cmd.Flags().GetString("json-file")
@@ -65,13 +66,14 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateCase(caseID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateCase(ctx, caseID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update case: %w", err)
 			}
 
-			fmt.Printf("✅ Case %d updated\n", caseID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Case %d updated", caseID)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 
@@ -81,7 +83,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().String("title", "", "Новое название")
 	cmd.Flags().Int64("type-id", 0, "Новый ID типа")
 	cmd.Flags().Int64("priority-id", 0, "Новый ID приоритета")
-	cmd.Flags().String("refs", "", "Новые ссылки")
+	cmd.Flags().String("refs", "", "New ссылки")
 
 	return cmd
 }

@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetPlansResponse{
 				{ID: 100, Name: "Plan 1"},
@@ -32,7 +33,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return data.GetPlansResponse{}, nil
 		},
 	}
@@ -47,7 +48,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetPlansFunc: func(projectID int64) (data.GetPlansResponse, error) {
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

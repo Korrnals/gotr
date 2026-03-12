@@ -2,10 +2,10 @@ package get
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/spf13/cobra"
 )
 
@@ -13,15 +13,16 @@ import (
 func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "projects",
-		Short: "Получить все проекты",
+		Short: "Получить все projects",
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			projects, err := cli.GetProjects()
+			projects, err := cli.GetProjects(ctx)
 			if err != nil {
 				return err
 			}
@@ -40,17 +41,18 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			idStr := args[0]
-			id, err := strconv.ParseInt(idStr, 10, 64)
+			id, err := flags.ParseID(idStr)
 			if err != nil {
-				return fmt.Errorf("некорректный ID проекта: %w", err)
+				return fmt.Errorf("invalid project_id: %w", err)
 			}
 
-			project, err := cli.GetProject(id)
+			project, err := cli.GetProject(ctx, id)
 			if err != nil {
 				return err
 			}

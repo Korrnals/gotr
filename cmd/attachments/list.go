@@ -5,11 +5,12 @@ package attachments
 
 import (
 	"fmt"
-	"strconv"
-	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -53,13 +54,14 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений тест-кейса",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForCase(caseID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForCase(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -77,13 +79,14 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений тест-плана",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForPlan(planID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForPlan(ctx, planID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -101,13 +104,14 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений записи плана",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForPlanEntry(planID, args[1])
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForPlanEntry(ctx, planID, args[1])
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -125,13 +129,14 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений тест-рана",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || runID <= 0 {
-				return fmt.Errorf("invalid run_id: %s", args[0])
+			runID, err := flags.ValidateRequiredID(args, 0, "run_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForRun(runID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForRun(ctx, runID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -149,13 +154,14 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Список вложений теста",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || testID <= 0 {
-				return fmt.Errorf("invalid test_id: %s", args[0])
+			testID, err := flags.ValidateRequiredID(args, 0, "test_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForTest(testID)
+			ctx := cmd.Context()
+			attachments, err := client.GetAttachmentsForTest(ctx, testID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -179,10 +185,11 @@ func outputAttachmentsList(cmd *cobra.Command, attachments data.GetAttachmentsRe
 		return nil
 	}
 
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tSIZE\tCREATED_ON")
+	t := ui.NewTable(cmd)
+	t.AppendHeader(table.Row{"ID", "NAME", "SIZE", "CREATED_ON"})
 	for _, a := range attachments {
-		fmt.Fprintf(w, "%d\t%s\t%d\t%d\n", a.ID, a.Name, a.Size, a.CreatedOn)
+		t.AppendRow(table.Row{a.ID, a.Name, a.Size, a.CreatedOn})
 	}
-	return w.Flush()
+	ui.Table(cmd, t)
+	return nil
 }

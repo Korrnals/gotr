@@ -5,9 +5,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,7 +21,7 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 		Long:  addCmd.Long,
 		RunE:  runAdd,
 	}
-	
+
 	// Добавляем флаги
 	cmd.Flags().StringP("name", "n", "", "Название ресурса")
 	cmd.Flags().String("description", "", "Описание/announcement")
@@ -37,32 +37,32 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd.Flags().String("refs", "", "Ссылки (references)")
 	cmd.Flags().String("comment", "", "Комментарий (для result)")
 	cmd.Flags().Int64("status-id", 0, "ID статуса (для result)")
-	cmd.Flags().String("elapsed", "", "Время выполнения (для result)")
+	cmd.Flags().String("elapsed", "", "Time выполнения (для result)")
 	cmd.Flags().String("defects", "", "Дефекты (для result)")
 	cmd.Flags().Int64("assignedto-id", 0, "ID назначенного пользователя")
 	cmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
 	cmd.Flags().Bool("include-all", true, "Включить все кейсы (для run)")
 	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
 	output.AddFlag(cmd)
-	
-	// Создаем контекст с mock клиентом
+
+	// Создаем контекст с mock clientом
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
-	
+
 	return cmd
 }
 
 // TestAdd_Project_Success проверяет создание проекта
 func TestAdd_Project_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddProjectFunc: func(req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+		AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: 999, Name: req.Name}, nil
 		},
 	}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{"project", "--name", "Test Project", "--announcement", "Test Announcement"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -70,15 +70,15 @@ func TestAdd_Project_Success(t *testing.T) {
 // TestAdd_Suite_Success проверяет создание сьюта
 func TestAdd_Suite_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddSuiteFunc: func(projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+		AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 			assert.Equal(t, int64(1), projectID)
 			return &data.Suite{ID: 100, Name: req.Name}, nil
 		},
 	}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{"suite", "1", "--name", "Test Suite", "--description", "Suite desc"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -86,16 +86,16 @@ func TestAdd_Suite_Success(t *testing.T) {
 // TestAdd_Case_Success проверяет создание кейса
 func TestAdd_Case_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddCaseFunc: func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(100), sectionID)
 			assert.Equal(t, "Test Case", req.Title)
 			return &data.Case{ID: 999, Title: req.Title}, nil
 		},
 	}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{"case", "100", "--title", "Test Case", "--template-id", "1", "--priority-id", "2"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -103,16 +103,16 @@ func TestAdd_Case_Success(t *testing.T) {
 // TestAdd_Run_Success проверяет создание рана
 func TestAdd_Run_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddRunFunc: func(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Test Run", req.Name)
 			return &data.Run{ID: 999, Name: req.Name}, nil
 		},
 	}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{"run", "1", "--name", "Test Run", "--suite-id", "100"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -120,16 +120,16 @@ func TestAdd_Run_Success(t *testing.T) {
 // TestAdd_Result_Success проверяет добавление результата
 func TestAdd_Result_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultFunc: func(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+		AddResultFunc: func(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 			assert.Equal(t, int64(12345), testID)
 			assert.Equal(t, int64(1), req.StatusID)
 			return &data.Result{ID: 999, StatusID: req.StatusID}, nil
 		},
 	}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{"result", "12345", "--status-id", "1", "--comment", "Test passed"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -137,15 +137,15 @@ func TestAdd_Result_Success(t *testing.T) {
 // TestAdd_SharedStep_Success проверяет создание shared step
 func TestAdd_SharedStep_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddSharedStepFunc: func(projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			assert.Equal(t, int64(1), projectID)
 			return &data.SharedStep{ID: 999, Title: req.Title}, nil
 		},
 	}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{"shared-step", "1", "--title", "Test Shared Step"})
-	
+
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
@@ -153,10 +153,10 @@ func TestAdd_SharedStep_Success(t *testing.T) {
 // TestAdd_NoEndpoint проверяет ошибку при отсутствии endpoint
 func TestAdd_NoEndpoint(t *testing.T) {
 	mock := &client.MockClient{}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{})
-	
+
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "endpoint")
@@ -165,15 +165,14 @@ func TestAdd_NoEndpoint(t *testing.T) {
 // TestAdd_UnsupportedEndpoint проверяет ошибку при неподдерживаемом endpoint
 func TestAdd_UnsupportedEndpoint(t *testing.T) {
 	mock := &client.MockClient{}
-	
+
 	cmd := setupAddTest(t, mock)
 	cmd.SetArgs([]string{"unsupported", "1"})
-	
+
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неподдерживаемый")
+	assert.Contains(t, err.Error(), "unsupported")
 }
-
 
 // ==================== Attachment Tests ====================
 
@@ -187,7 +186,7 @@ func TestAdd_AttachmentCase_Success(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToCaseFunc: func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToCaseFunc: func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 			assert.Equal(t, int64(12345), caseID)
 			assert.Equal(t, tmpFile.Name(), filePath)
 			return &data.AttachmentResponse{AttachmentID: 999, URL: "https://example.com/attachment/999"}, nil
@@ -210,7 +209,7 @@ func TestAdd_AttachmentPlan_Success(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToPlanFunc: func(planID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToPlanFunc: func(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error) {
 			assert.Equal(t, int64(100), planID)
 			assert.Equal(t, tmpFile.Name(), filePath)
 			return &data.AttachmentResponse{AttachmentID: 888, URL: "https://example.com/attachment/888"}, nil
@@ -233,7 +232,7 @@ func TestAdd_AttachmentPlanEntry_Success(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToPlanEntryFunc: func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToPlanEntryFunc: func(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
 			assert.Equal(t, int64(200), planID)
 			assert.Equal(t, "entry-abc123", entryID)
 			assert.Equal(t, tmpFile.Name(), filePath)
@@ -257,7 +256,7 @@ func TestAdd_AttachmentResult_Success(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToResultFunc: func(resultID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToResultFunc: func(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
 			assert.Equal(t, int64(98765), resultID)
 			assert.Equal(t, tmpFile.Name(), filePath)
 			return &data.AttachmentResponse{AttachmentID: 666, URL: "https://example.com/attachment/666"}, nil
@@ -280,7 +279,7 @@ func TestAdd_AttachmentRun_Success(t *testing.T) {
 	tmpFile.Close()
 
 	mock := &client.MockClient{
-		AddAttachmentToRunFunc: func(runID int64, filePath string) (*data.AttachmentResponse, error) {
+		AddAttachmentToRunFunc: func(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error) {
 			assert.Equal(t, int64(555), runID)
 			assert.Equal(t, tmpFile.Name(), filePath)
 			return &data.AttachmentResponse{AttachmentID: 555, URL: "https://example.com/attachment/555"}, nil
@@ -303,7 +302,7 @@ func TestAdd_Attachment_MissingArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "тип вложения")
+	assert.Contains(t, err.Error(), "attachment type")
 }
 
 // TestAdd_Attachment_InvalidCaseID проверяет ошибку при неверном case_id
@@ -327,7 +326,7 @@ func TestAdd_Attachment_UnsupportedType(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "неподдерживаемый тип")
+	assert.Contains(t, err.Error(), "unsupported attachment type")
 }
 
 // TestAdd_Attachment_MissingFilePath проверяет ошибку при отсутствии пути к файлу
@@ -339,7 +338,7 @@ func TestAdd_Attachment_MissingFilePath(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "использование")
+	assert.Contains(t, err.Error(), "usage")
 }
 
 // TestAdd_Attachment_MissingPlanEntryArgs проверяет ошибку при недостаточных аргументах для plan-entry
@@ -351,5 +350,5 @@ func TestAdd_Attachment_MissingPlanEntryArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "использование")
+	assert.Contains(t, err.Error(), "usage")
 }

@@ -25,22 +25,17 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
-			resp, err := cli.GetRoles()
+			ctx := cmd.Context()
+			resp, err := cli.GetRoles(ctx)
 			if err != nil {
-				return fmt.Errorf("не удалось получить список ролей: %w", err)
+				return fmt.Errorf("failed to get roles list: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "roles")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "roles", "json")
-	return err
 }

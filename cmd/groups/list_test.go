@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return []data.Group{
 				{ID: 1, Name: "QA Team"},
@@ -35,7 +36,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return []data.Group{}, nil
 		},
 	}
@@ -50,8 +51,8 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
-			return nil, fmt.Errorf("ошибка подключения к API")
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
+			return nil, fmt.Errorf("API connection error")
 		},
 	}
 
@@ -61,12 +62,12 @@ func TestListCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ошибка подключения")
+	assert.Contains(t, err.Error(), "connection error")
 }
 
 func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetGroupsFunc: func(projectID int64) (data.GetGroupsResponse, error) {
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 			return []data.Group{
 				{ID: 1, Name: "QA Team"},
 			}, nil
@@ -91,7 +92,7 @@ func TestListCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestListCmd_ZeroID(t *testing.T) {
@@ -102,7 +103,7 @@ func TestListCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestListCmd_NoArgs(t *testing.T) {
@@ -145,7 +146,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("save", "", "")
 
-	err := outputResult(cmd, badData)
+	err := output.OutputResult(cmd, badData, "groups")
 	assert.Error(t, err)
 }
 

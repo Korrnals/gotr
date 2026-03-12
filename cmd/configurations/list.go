@@ -2,8 +2,8 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -29,28 +29,23 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr configurations list 5 -o configs.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("некорректный project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetConfigs(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetConfigs(ctx, projectID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить конфигурации: %w", err)
+				return fmt.Errorf("failed to get configurations: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "configurations", "json")
-	return err
 }

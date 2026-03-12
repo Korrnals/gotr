@@ -1,14 +1,14 @@
 // internal/models/data/sections.go
 package data
 
-// Section — структура секции TestRail
+// Section — структура section TestRail
 type Section struct {
 	Depth        int64  `json:"depth,omitempty"`         // Глубина вложенности
-	Description  string `json:"description,omitempty"`   // Описание секции
+	Description  string `json:"description,omitempty"`   // Описание section
 	DisplayOrder int64  `json:"display_order,omitempty"` // Порядок отображения
 	ID           int64  `json:"id"`                      // Уникальный ID (обязательное)
-	Name         string `json:"name"`                    // Название секции (обязательное)
-	ParentID     int64  `json:"parent_id,omitempty"`     // ID родительской секции (0 если нет)
+	Name         string `json:"name"`                    // Название section (обязательное)
+	ParentID     int64  `json:"parent_id,omitempty"`     // ID родительской section (0 если нет)
 	SuiteID      int64  `json:"suite_id,omitempty"`      // ID сьюты (может быть 0 для базовых)
 }
 

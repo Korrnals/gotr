@@ -1,10 +1,11 @@
 package result
 
 import (
+	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
@@ -12,7 +13,7 @@ import (
 
 // projectSelector интерфейс для выбора проекта (для тестирования)
 type projectSelector interface {
-	SelectProjectInteractively(httpClient client.ClientInterface) (int64, error)
+	SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error)
 }
 
 // runSelector интерфейс для выбора run (для тестирования)
@@ -23,8 +24,8 @@ type runSelector interface {
 // defaultSelectors используется по умолчанию
 type defaultSelectors struct{}
 
-func (d *defaultSelectors) SelectProjectInteractively(httpClient client.ClientInterface) (int64, error) {
-	return interactive.SelectProjectInteractively(httpClient)
+func (d *defaultSelectors) SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
+	return interactive.SelectProjectInteractively(ctx, httpClient)
 }
 
 func (d *defaultSelectors) SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
@@ -59,8 +60,9 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newResultServiceFromInterface(cli)
@@ -70,25 +72,25 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 
 			if len(args) > 0 {
 				// Явно указан run-id
-				runID, err = strconv.ParseInt(args[0], 10, 64)
+				runID, err = flags.ValidateRequiredID(args, 0, "run")
 				if err != nil {
-					return fmt.Errorf("некорректный ID run: %w", err)
+					return err
 				}
 			} else {
 				// Интерактивный выбор: проект → run
-				projectID, err := selectors.SelectProjectInteractively(cli)
+				projectID, err := selectors.SelectProjectInteractively(ctx, cli)
 				if err != nil {
 					return err
 				}
 
 				// Получаем список runs проекта
-				runs, err := svc.GetRunsForProject(projectID)
+				runs, err := svc.GetRunsForProject(ctx, projectID)
 				if err != nil {
-					return fmt.Errorf("ошибка получения списка runs: %w", err)
+					return fmt.Errorf("failed to get runs list: %w", err)
 				}
 
 				if len(runs) == 0 {
-					return fmt.Errorf("в проекте %d не найдено test runs", projectID)
+					return fmt.Errorf("no test runs found in project %d", projectID)
 				}
 
 				// Выбираем run интерактивно
@@ -98,12 +100,12 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				}
 			}
 
-			results, err := svc.GetForRun(runID)
+			results, err := svc.GetForRun(ctx, runID)
 			if err != nil {
-				return fmt.Errorf("ошибка получения результатов: %w", err)
+				return fmt.Errorf("failed to get results: %w", err)
 			}
 
-			return svc.Output(cmd, results)
+			return svc.Output(ctx, cmd, results)
 		},
 	}
 }

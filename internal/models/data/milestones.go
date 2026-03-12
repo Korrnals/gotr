@@ -1,8 +1,6 @@
 // internal/models/data/milestones.go
 package data
 
-
-
 // Milestone — майлстоун (версия релиза) в TestRail
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones
 type Milestone struct {

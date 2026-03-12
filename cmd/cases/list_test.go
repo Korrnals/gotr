@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, int64(0), suiteID)
 			assert.Equal(t, int64(0), sectionID)
@@ -37,7 +38,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_WithSuite(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, int64(100), suiteID)
 			assert.Equal(t, int64(0), sectionID)
@@ -60,7 +61,7 @@ func TestListCmd_WithSuite(t *testing.T) {
 
 func TestListCmd_WithSection(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, int64(100), suiteID)
 			assert.Equal(t, int64(50), sectionID)
@@ -83,7 +84,7 @@ func TestListCmd_WithSection(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

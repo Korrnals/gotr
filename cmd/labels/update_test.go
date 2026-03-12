@@ -2,6 +2,7 @@ package labels
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -103,7 +104,7 @@ func TestNewUpdateTestCmd_Creation(t *testing.T) {
 // TestNewUpdateTestCmd_Success tests successful label update
 func TestNewUpdateTestCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestLabelsFunc: func(testID int64, labels []string) error {
+		UpdateTestLabelsFunc: func(ctx context.Context, testID int64, labels []string) error {
 			assert.Equal(t, int64(123), testID)
 			assert.Equal(t, []string{"smoke", "critical"}, labels)
 			return nil
@@ -221,7 +222,7 @@ func TestNewUpdateTestCmd_EmptyLabelsFlag(t *testing.T) {
 // TestNewUpdateTestCmd_APIError tests API error handling
 func TestNewUpdateTestCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestLabelsFunc: func(testID int64, labels []string) error {
+		UpdateTestLabelsFunc: func(ctx context.Context, testID int64, labels []string) error {
 			return fmt.Errorf("connection refused")
 		},
 	}
@@ -277,7 +278,7 @@ func TestNewUpdateTestsCmd_Creation(t *testing.T) {
 // TestNewUpdateTestsCmd_Success tests successful labels update
 func TestNewUpdateTestsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestsLabelsFunc: func(runID int64, testIDs []int64, labels []string) error {
+		UpdateTestsLabelsFunc: func(ctx context.Context, runID int64, testIDs []int64, labels []string) error {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, []int64{1, 2, 3}, testIDs)
 			assert.Equal(t, []string{"smoke", "critical"}, labels)
@@ -446,7 +447,7 @@ func TestNewUpdateTestsCmd_EmptyLabelsFlag(t *testing.T) {
 // TestNewUpdateTestsCmd_APIError tests API error handling
 func TestNewUpdateTestsCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestsLabelsFunc: func(runID int64, testIDs []int64, labels []string) error {
+		UpdateTestsLabelsFunc: func(ctx context.Context, runID int64, testIDs []int64, labels []string) error {
 			return fmt.Errorf("permission denied")
 		},
 	}
@@ -464,7 +465,7 @@ func TestNewUpdateTestsCmd_APIError(t *testing.T) {
 // TestNewUpdateTestsCmd_SingleTestID tests with single test ID
 func TestNewUpdateTestsCmd_SingleTestID(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestsLabelsFunc: func(runID int64, testIDs []int64, labels []string) error {
+		UpdateTestsLabelsFunc: func(ctx context.Context, runID int64, testIDs []int64, labels []string) error {
 			assert.Equal(t, []int64{42}, testIDs)
 			return nil
 		},

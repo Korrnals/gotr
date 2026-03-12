@@ -2,11 +2,13 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 	"strings"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -45,9 +47,9 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans entry add 100 --suite-id=50 --config-ids="1,2,3"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
@@ -74,13 +76,14 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddPlanEntry(planID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddPlanEntry(ctx, planID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to add plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry added to plan %d\n", planID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Entry added to plan %d", planID)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
@@ -104,9 +107,9 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans entry update 100 abc123 --name="Обновлённая запись"`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			entryID := args[1]
@@ -128,13 +131,14 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdatePlanEntry(planID, entryID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdatePlanEntry(ctx, planID, entryID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry %s updated in plan %d\n", entryID, planID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Entry %s updated in plan %d", entryID, planID)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
@@ -159,9 +163,9 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans entry delete 100 abc123 --dry-run`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			entryID := args[1]
@@ -177,11 +181,12 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeletePlanEntry(planID, entryID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeletePlanEntry(ctx, planID, entryID); err != nil {
 				return fmt.Errorf("failed to delete plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry %s deleted from plan %d\n", entryID, planID)
+			ui.Successf(os.Stdout, "Entry %s deleted from plan %d", entryID, planID)
 			return nil
 		},
 	}
@@ -199,7 +204,7 @@ func parseIntList(s string) []int64 {
 		if part == "" {
 			continue
 		}
-		id, err := strconv.ParseInt(part, 10, 64)
+		id, err := flags.ParseID(part)
 		if err == nil && id > 0 {
 			ids = append(ids, id)
 		}

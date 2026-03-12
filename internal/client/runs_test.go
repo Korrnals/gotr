@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -108,7 +109,8 @@ func TestAddRun(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			run, err := client.AddRun(tt.projectID, tt.request)
+			ctx := context.Background()
+			run, err := client.AddRun(ctx, tt.projectID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -191,7 +193,8 @@ func TestUpdateRun(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			run, err := client.UpdateRun(tt.runID, tt.request)
+			ctx := context.Background()
+			run, err := client.UpdateRun(ctx, tt.runID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -212,8 +215,8 @@ func TestCloseRun(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name:   "successful close",
-			runID:  12345,
+			name:       "successful close",
+			runID:      12345,
 			mockStatus: http.StatusOK,
 			mockResponse: data.Run{
 				ID:          12345,
@@ -256,7 +259,8 @@ func TestCloseRun(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			run, err := client.CloseRun(tt.runID)
+			ctx := context.Background()
+			run, err := client.CloseRun(ctx, tt.runID)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -309,7 +313,8 @@ func TestDeleteRun(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.DeleteRun(tt.runID)
+			ctx := context.Background()
+			err := client.DeleteRun(ctx, tt.runID)
 
 			if tt.wantErr {
 				assert.Error(t, err)

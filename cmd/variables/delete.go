@@ -2,9 +2,11 @@ package variables
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -28,9 +30,9 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr variables delete 789 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			variableID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || variableID <= 0 {
-				return fmt.Errorf("некорректный variable_id: %s", args[0])
+			variableID, err := flags.ValidateRequiredID(args, 0, "variable_id")
+			if err != nil {
+				return err
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -40,11 +42,12 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteVariable(variableID); err != nil {
-				return fmt.Errorf("не удалось удалить переменную: %w", err)
+			ctx := cmd.Context()
+			if err := cli.DeleteVariable(ctx, variableID); err != nil {
+				return fmt.Errorf("failed to delete variable: %w", err)
 			}
 
-			fmt.Printf("✅ Переменная %d удалена\n", variableID)
+			ui.Successf(os.Stdout, "Variable %d deleted", variableID)
 			return nil
 		},
 	}

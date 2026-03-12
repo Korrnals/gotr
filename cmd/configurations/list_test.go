@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +16,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetConfigsResponse{
 				{
@@ -48,7 +49,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return data.GetConfigsResponse{
 				{ID: 1, Name: "Browsers"},
 			}, nil
@@ -65,7 +66,7 @@ func TestListCmd_WithSave(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 			return data.GetConfigsResponse{}, nil
 		},
 	}
@@ -80,8 +81,8 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetConfigsFunc: func(projectID int64) (data.GetConfigsResponse, error) {
-			return nil, fmt.Errorf("проект не найден")
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
+			return nil, fmt.Errorf("project not found")
 		},
 	}
 
@@ -91,7 +92,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "проект не найден")
+	assert.Contains(t, err.Error(), "project not found")
 }
 
 // ==================== Тесты валидации ====================
@@ -104,7 +105,7 @@ func TestListCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestListCmd_ZeroID(t *testing.T) {
@@ -115,7 +116,7 @@ func TestListCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestListCmd_NoArgs(t *testing.T) {
@@ -158,7 +159,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("save", "", "")
 
-	err := outputResult(cmd, badData)
+	err := output.OutputResult(cmd, badData, "configurations")
 	assert.Error(t, err)
 }
 

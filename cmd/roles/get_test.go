@@ -1,6 +1,7 @@
 package roles
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
 			assert.Equal(t, int64(1), roleID)
 			return &data.Role{
 				ID:   1,
@@ -33,7 +34,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
 			return &data.Role{ID: 2, Name: "Tester"}, nil
 		},
 	}
@@ -48,8 +49,8 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
-			return nil, fmt.Errorf("роль не найдена")
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
+			return nil, fmt.Errorf("role not found")
 		},
 	}
 
@@ -59,7 +60,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "роль не найдена")
+	assert.Contains(t, err.Error(), "role not found")
 }
 
 // ==================== Тесты валидации ====================
@@ -72,7 +73,7 @@ func TestGetCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный role_id")
+	assert.Contains(t, err.Error(), "invalid role_id")
 }
 
 func TestGetCmd_ZeroID(t *testing.T) {
@@ -83,7 +84,7 @@ func TestGetCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный role_id")
+	assert.Contains(t, err.Error(), "invalid role_id")
 }
 
 func TestGetCmd_NoArgs(t *testing.T) {

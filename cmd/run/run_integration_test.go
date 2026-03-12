@@ -12,7 +12,7 @@ func TestNewRunServiceFromInterface_Mocked(t *testing.T) {
 	// Test the else branch where mock client is used
 	mock := &client.MockClient{}
 	wrapper := newRunServiceFromInterface(mock)
-	
+
 	assert.NotNil(t, wrapper)
 	assert.NotNil(t, wrapper.svc)
 }
@@ -22,10 +22,10 @@ func TestNewRunServiceFromInterface_HTTPClient(t *testing.T) {
 	// Create a real HTTPClient (without valid credentials)
 	// This tests the type assertion branch in newRunServiceFromInterface
 	httpClient := &client.HTTPClient{}
-	
+
 	// This should exercise the HTTPClient branch
 	wrapper := newRunServiceFromInterface(httpClient)
-	
+
 	// The wrapper should be created successfully
 	assert.NotNil(t, wrapper)
 	assert.NotNil(t, wrapper.svc)
@@ -58,7 +58,7 @@ func TestSubCommandsExist(t *testing.T) {
 	// Verify subcommands were added to Cmd
 	subcommands := Cmd.Commands()
 	assert.GreaterOrEqual(t, len(subcommands), 0)
-	
+
 	// The commands are registered via package-level vars
 	// We just verify they're not nil
 	assert.NotNil(t, getCmd)

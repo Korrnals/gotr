@@ -7,47 +7,7 @@
 
 ---
 
-## [3.1.0] - 2026-06-XX
-
-### Added
-
-#### Stage 8.0: UI/Output Refactoring
-
-- **`internal/ui/`** — новые универсальные хелперы:
-  - `ui.Table(headers, rows)` — обёртка над go-pretty вместо прямого tabwriter
-  - `ui.JSON(v)` — форматированный JSON-вывод через go-pretty
-  - `ui.Success()`, `ui.Warn()`, `ui.Error()`, `ui.Info()` — цветные сообщения
-  - `ui.Print()`, `ui.Printf()`, `ui.Println()` — обёртки для стандартного вывода
-
-- **Массовая миграция вывода**:
-  - `tabwriter.NewWriter` → `ui.Table` во всех list/get командах
-  - `json.MarshalIndent` → `ui.JSON` для JSON-вывода
-  - `fmt.Print*` → `ui.*` в 49 файлах (+272/−185 строк)
-
-- **`--format` PersistentFlag** — глобальный флаг формата вывода на root-уровне
-
-### Changed
-
-- **`internal/flags/`** — миграция `*Var` → `GetFlag`:
-  - Все ручные парсинги флагов заменены на `flags.GetFlag`, `flags.ValidateRequiredID`
-  - Ошибки флагов теперь пробрасываются (не `os.Exit`, а `return err`)
-
-- **`os.Exit` → `panic`** в `GetClient*` функциях — для тестируемости
-
-- **114 `fmt.Print*` вызовов оставлены** — осознанно:
-  - Interactive prompts (bufio.Scanner, fmt.Scanf)
-  - Data output через ui.* не требуется (промпты к пользователю)
-  - Debug/verbose output
-
-### Documentation
-
-- **`.github/copilot/instructions/STANDARDS.md`** — стандарты кодирования проекта
-- **`.github/copilot/instructions/ROADMAP.md`** — дорожная карта (Stages 1–12)
-- **`.github/copilot/instructions/STAGE_{9-12}.0_DESIGN.md`** — детальные планы для Stages 9.0–12.0
-
----
-
-## [3.0.0] - 2026-03-06
+## [3.0.0] - 2026-03-12
 
 ### Added
 
@@ -134,6 +94,42 @@
 - `compare all --pid1 30 --pid2 34`: 20 509 кейсов (87 стр.) + 116 009 кейсов (475 стр.) — пагинация подтверждена на реальных данных
 - `compare runs`, `compare plans`, `compare milestones`, `compare sections`, `compare sharedsteps`: все работают корректно
 - `go test ./...` — все тесты зелёные
+
+---
+
+#### Stage 7.0: Context Propagation
+
+### Added
+
+- **`context.Context`** во все ~100 методов `ClientInterface`
+  - `signal.NotifyContext` → корректное завершение по Ctrl+C
+  - Контекст пробрасывается CLI → Service → Client → HTTP
+
+### Changed
+
+- Все API-методы принимают `ctx context.Context` первым аргументом
+- `cmd.ExecuteContext()` вместо `cmd.Execute()`
+- `MockClient` обновлён под новые сигнатуры
+
+---
+
+#### Stage 8.0: UI/Output Refactoring
+
+### Added
+
+- **`internal/ui/`** — универсальные хелперы:
+  - `ui.Table(headers, rows)` — обёртка над go-pretty вместо tabwriter
+  - `ui.JSON(v)` — форматированный JSON-вывод
+  - `ui.Success()`, `ui.Warn()`, `ui.Error()`, `ui.Info()` — цветные сообщения
+  - `ui.Print()`, `ui.Printf()`, `ui.Println()` — обёртки стандартного вывода
+- **`--format` PersistentFlag** — глобальный флаг формата вывода на root-уровне
+- Массовая миграция: `tabwriter` → `ui.Table`, `json.MarshalIndent` → `ui.JSON`, `fmt.Print*` → `ui.*` (49 файлов)
+
+### Changed
+
+- `internal/flags/`: `*Var` → `GetFlag`, `ValidateRequiredID`
+- `os.Exit` → `panic` в `GetClient*` (тестируемость)
+- Все error messages переведены на английский
 
 ---
 

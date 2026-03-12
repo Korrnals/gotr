@@ -27,7 +27,7 @@ func resetSectionsFlags() {
 // TestSyncSections_DryRun_NoAddSection проверяет, что при режиме dry-run
 // реальные HTTP-вызовы к AddSection не выполняются.
 func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
-	// Подготавливаем мок-клиент, который сигнализирует о существовании секции
+	// Подготавливаем мок-client, который сигнализирует о существовании секции
 	addCalled := false
 	mock := &client.MockClient{
 		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
@@ -42,12 +42,12 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 		},
 	}
 
-	// Переопределяем фабрику миграции, чтобы она использовала наш мок-клиент
+	// Переопределяем фабрику миграции, чтобы она использовала наш мок-client
 	old := newMigration
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Подготавливаем команду с флагами и mock клиентом
+	// Подготавливаем команду с флагами и mock clientом
 	resetSectionsFlags()
 	cmd := sectionsCmd
 	SetTestClient(cmd, mock)
@@ -66,7 +66,7 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 // TestSyncSections_Confirm_TriggersAddSection проверяет, что после интерактивного подтверждения
 // выполняется вызов AddSection для создания отсутствующих секций
 func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
-	// Подготавливаем мок-клиент и отслеживаем вызов AddSection
+	// Подготавливаем мок-client и отслеживаем вызов AddSection
 	addCalled := false
 	mock := &client.MockClient{
 		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {

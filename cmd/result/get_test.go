@@ -93,7 +93,7 @@ func TestGetCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "клиент")
+	assert.Contains(t, err.Error(), "client")
 }
 
 // ==================== Тесты для result get-case ====================

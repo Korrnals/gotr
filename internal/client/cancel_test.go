@@ -10,9 +10,9 @@ import (
 )
 
 // TestGetRuns_Cancellation проверяет критерий Stage 7.0:
-// отменённый контекст должен возвращать context.Canceled из клиентских методов.
+// отменённый контекст должен возвращать context.Canceled из clientских методов.
 func TestGetRuns_Cancellation(t *testing.T) {
-	// Сервер, который отвечает успешно (но клиент не должен до него дойти)
+	// Сервер, который отвечает успешно (но client не должен до него дойти)
 	server := newMockServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"runs":[],"offset":0,"limit":250,"size":0}`))

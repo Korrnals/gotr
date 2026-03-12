@@ -94,7 +94,7 @@ func TestAddCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestAddCmd_ZeroProjectID(t *testing.T) {
@@ -106,7 +106,7 @@ func TestAddCmd_ZeroProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestAddCmd_MissingName(t *testing.T) {

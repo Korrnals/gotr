@@ -81,7 +81,7 @@ func TestDeleteCmd_InvalidGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestDeleteCmd_ZeroGroupID(t *testing.T) {
@@ -93,7 +93,7 @@ func TestDeleteCmd_ZeroGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestDeleteCmd_NoArgs(t *testing.T) {

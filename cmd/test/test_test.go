@@ -127,7 +127,7 @@ func TestCmd_Properties(t *testing.T) {
 	assert.NotEmpty(t, Cmd.Long)
 }
 
-// TestGetClientInterface_WithMockClientInContext проверяет получение mock клиента из контекста
+// TestGetClientInterface_WithMockClientInContext проверяет получение mock clientа из контекста
 func TestGetClientInterface_WithMockClientInContext(t *testing.T) {
 	mock := &client.MockClient{}
 

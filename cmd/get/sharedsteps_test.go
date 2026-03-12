@@ -60,7 +60,7 @@ func TestSharedStepsCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid project ID")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestSharedStepsCmd_InvalidProjectIDFlag(t *testing.T) {

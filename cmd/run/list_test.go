@@ -195,5 +195,5 @@ func TestListCmd_InvalidProjectIDFormat(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid project ID")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }

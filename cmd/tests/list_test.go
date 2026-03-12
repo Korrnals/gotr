@@ -74,7 +74,7 @@ func TestListCmd_InvalidRunID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid")
 }
 
 func TestListCmd_ZeroRunID(t *testing.T) {

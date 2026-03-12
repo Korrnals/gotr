@@ -20,12 +20,12 @@ func TestNew(t *testing.T) {
 func TestEmptyReport(t *testing.T) {
 	var buf bytes.Buffer
 	New("empty").Writer(&buf).
-		Section("Пусто").
-		Stat("📦", "Тест", 0).
+		Section("Empty").
+		Stat("📦", "Test", 0).
 		Print()
 
 	out := buf.String()
-	if !strings.Contains(out, "СТАТИСТИКА: empty") {
+	if !strings.Contains(out, "STATS: empty") {
 		t.Errorf("missing title in output:\n%s", out)
 	}
 	// go-pretty uses rounded borders ╭╮╰╯
@@ -135,14 +135,14 @@ func TestCompareStats(t *testing.T) {
 	out := buf.String()
 
 	checks := []string{
-		"СТАТИСТИКА: suites",
-		"Общая статистика",
-		"Время выполнения",
-		"Всего обработано: 50",
-		"Результат сравнения",
-		"Только в проекте 30: 5",
-		"Только в проекте 31: 3",
-		"Общих: 42",
+		"STATS: suites",
+		"General statistics",
+		"Execution time",
+		"Total processed: 50",
+		"Comparison results",
+		"Only in project 30: 5",
+		"Only in project 31: 3",
+		"Common: 42",
 	}
 
 	for _, check := range checks {
@@ -154,7 +154,7 @@ func TestCompareStats(t *testing.T) {
 
 func TestCompareResultShort(t *testing.T) {
 	s := CompareResultShort("runs", 10, 20, 5, 3, 42)
-	expected := "runs: П10=5, П20=3, общих=42"
+	expected := "runs: P10=5, P20=3, common=42"
 	if s != expected {
 		t.Errorf("expected %q, got %q", expected, s)
 	}
@@ -165,10 +165,10 @@ func TestFormatDuration(t *testing.T) {
 		d    time.Duration
 		want string
 	}{
-		{500 * time.Millisecond, "500мс"},
-		{5 * time.Second, "5с"},
-		{90 * time.Second, "1м30с"},
-		{3*time.Minute + 5*time.Second, "3м05с"},
+		{500 * time.Millisecond, "500ms"},
+		{5 * time.Second, "5s"},
+		{90 * time.Second, "1m30s"},
+		{3*time.Minute + 5*time.Second, "3m05s"},
 	}
 	for _, tt := range tests {
 		got := FormatDuration(tt.d)
@@ -184,7 +184,7 @@ func TestStringMethod(t *testing.T) {
 		Stat("📦", "Val", 1).
 		String()
 
-	if !strings.Contains(s, "СТАТИСТИКА: test") {
+	if !strings.Contains(s, "STATS: test") {
 		t.Error("String() should return rendered report")
 	}
 }
@@ -240,7 +240,7 @@ func TestStripEmoji(t *testing.T) {
 		{"10/10 сьютов завершены ✅", "10/10 сьютов завершены (OK)"},
 		{"ошибка ⚠️ найдена", "ошибка (!) найдена"},
 		{"всё ❌ плохо", "всё (X) плохо"},
-		{"нет emoji", "нет emoji"},
+		{"no emoji", "no emoji"},
 		{"OK ✅ и ⚠️ рядом", "OK (OK) и (!) рядом"},
 	}
 	for _, tt := range tests {
@@ -256,10 +256,10 @@ func TestNoEmojiInOutput(t *testing.T) {
 	New("noemoji").
 		Writer(&buf).
 		Section("Test").
-		Stat("⏱️", "Время", "1s").
-		Stat("📦", "Кейсов", 100).
-		Stat("⚠️", "Ошибок", 0).
-		Stat("📊", "Итого", "all good").
+		Stat("⏱️", "Time", "1s").
+		Stat("📦", "Cases", 100).
+		Stat("⚠️", "Errors", 0).
+		Stat("📊", "Total", "all good").
 		Print()
 
 	out := buf.String()
@@ -279,10 +279,10 @@ func TestConsistentLineWidth(t *testing.T) {
 	New("align").
 		Writer(&buf).
 		Section("Тест").
-		Stat("⏱️", "Время", "1s").
-		Stat("📦", "Кейсов", 100).
-		Stat("⚠️", "Ошибок", 0).
-		Stat("📊", "Итого", "all good").
+		Stat("⏱️", "Time", "1s").
+		Stat("📦", "Cases", 100).
+		Stat("⚠️", "Errors", 0).
+		Stat("📊", "Total", "all good").
 		Print()
 
 	out := buf.String()
@@ -344,7 +344,7 @@ func TestInlineEmojiStripped(t *testing.T) {
 	New("strip").
 		Writer(&buf).
 		Stat("📈", "Полнота", "10/10 сьютов завершены ✅").
-		Stat("⚠️", "Проблема", "ошибка ⚠️ найдена").
+		Stat("⚠️", "Проблема", "error found").
 		Print()
 
 	out := buf.String()

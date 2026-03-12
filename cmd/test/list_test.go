@@ -190,5 +190,5 @@ func TestListCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не инициализирован")
+	assert.Contains(t, err.Error(), "not initialized")
 }

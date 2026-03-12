@@ -73,7 +73,7 @@ func TestGetCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный role_id")
+	assert.Contains(t, err.Error(), "invalid role_id")
 }
 
 func TestGetCmd_ZeroID(t *testing.T) {
@@ -84,7 +84,7 @@ func TestGetCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный role_id")
+	assert.Contains(t, err.Error(), "invalid role_id")
 }
 
 func TestGetCmd_NoArgs(t *testing.T) {

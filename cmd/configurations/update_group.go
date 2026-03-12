@@ -2,10 +2,12 @@ package configurations
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +49,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update group: %w", err)
 			}
 
-			fmt.Printf("✅ Group %d updated\n", groupID)
+			ui.Successf(os.Stdout, "Group %d updated", groupID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}

@@ -2,9 +2,11 @@ package groups
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -31,7 +33,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			if dryRun {
-				fmt.Printf("[DRY-RUN] Will update group %d, new name: '%s'\n", groupID, name)
+				ui.Infof(os.Stdout, "[DRY-RUN] Will update group %d, new name: '%s'", groupID, name)
 				return nil
 			}
 

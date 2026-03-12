@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -52,7 +53,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
@@ -100,7 +101,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
@@ -149,7 +150,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
@@ -197,7 +198,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
@@ -245,7 +246,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}

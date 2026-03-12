@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,7 +34,7 @@ func OpenEditor(filepath string) error {
 		} else {
 			editor = "vi" // или "nano" — vim более универсальный
 		}
-		fmt.Printf("EDITOR not set. Using fallback: %s\n", editor)
+		ui.Warningf(os.Stdout, "EDITOR not set. Using fallback: %s", editor)
 	}
 
 	// Создаём команду
@@ -192,7 +193,7 @@ func OutputResult(cmd *cobra.Command, data interface{}) error {
 			return err
 		}
 		if !quiet {
-			fmt.Printf("Response saved to %s\n", output)
+			ui.Infof(os.Stdout, "Response saved to %s", output)
 		}
 	}
 
@@ -212,6 +213,6 @@ func OutputResult(cmd *cobra.Command, data interface{}) error {
 func PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	if !quiet {
-		fmt.Printf(format+"\n", args...)
+		ui.Successf(os.Stdout, format, args...)
 	}
 }

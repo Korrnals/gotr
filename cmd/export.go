@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 )
@@ -73,7 +74,7 @@ var exportCmd = &cobra.Command{
 				return fmt.Errorf("save error: %w", err)
 			}
 			if !quiet && filepath != "" {
-				fmt.Printf("Data exported to %s\n", filepath)
+				ui.Infof(os.Stdout, "Data exported to %s", filepath)
 			}
 		} else {
 			// Сохранение в .testrail/ (legacy behavior)
@@ -89,7 +90,7 @@ var exportCmd = &cobra.Command{
 				return fmt.Errorf("file export error %s: %w", filename, err)
 			}
 			if !quiet {
-				fmt.Printf("Data exported to %s\n", filename)
+				ui.Infof(os.Stdout, "Data exported to %s", filename)
 			}
 		}
 

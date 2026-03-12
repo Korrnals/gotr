@@ -2,9 +2,11 @@ package variables
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +53,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to create variable: %w", err)
 			}
 
-			fmt.Printf("✅ Variable created (ID: %d)\n", resp.ID)
+			ui.Successf(os.Stdout, "Variable created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "variables")
 		},
 	}

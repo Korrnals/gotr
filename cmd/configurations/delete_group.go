@@ -2,9 +2,11 @@ package configurations
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -43,7 +45,7 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete group: %w", err)
 			}
 
-			fmt.Printf("✅ Group %d deleted\n", groupID)
+			ui.Successf(os.Stdout, "Group %d deleted", groupID)
 			return nil
 		},
 	}

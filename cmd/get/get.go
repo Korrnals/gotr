@@ -3,6 +3,7 @@ package get
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	embed "github.com/Korrnals/gotr/embedded"
@@ -97,7 +98,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 			return fmt.Errorf("save error: %w", err)
 		}
 		if !quiet && filepath != "" {
-			fmt.Printf("Response saved to %s\n", filepath)
+			ui.Infof(os.Stdout, "Response saved to %s", filepath)
 		}
 		return nil
 	}
@@ -133,7 +134,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 			}
 			return ui.JSON(command, full)
 		default:
-			fmt.Println("Table output not implemented yet")
+			ui.Warning(os.Stdout, "Table output not implemented yet")
 		}
 	}
 

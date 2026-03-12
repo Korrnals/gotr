@@ -2,9 +2,11 @@ package variables
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -45,7 +47,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete variable: %w", err)
 			}
 
-			fmt.Printf("✅ Variable %d deleted\n", variableID)
+			ui.Successf(os.Stdout, "Variable %d deleted", variableID)
 			return nil
 		},
 	}

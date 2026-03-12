@@ -1,9 +1,10 @@
 package groups
 
 import (
-	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +27,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			if dryRun {
-				fmt.Printf("[DRY-RUN] Will delete group %d\n", groupID)
+				ui.Infof(os.Stdout, "[DRY-RUN] Will delete group %d", groupID)
 				return nil
 			}
 

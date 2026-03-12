@@ -6,6 +6,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -53,7 +54,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add BDD: %w", err)
 			}
 
-			fmt.Printf("✅ BDD added to case %d\n", caseID)
+			ui.Successf(os.Stdout, "BDD added to case %d", caseID)
 			return output.OutputResult(cmd, resp, "bdds")
 		},
 	}

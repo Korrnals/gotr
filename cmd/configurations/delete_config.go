@@ -2,9 +2,11 @@ package configurations
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -42,7 +44,7 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Configuration %d deleted\n", configID)
+			ui.Successf(os.Stdout, "Configuration %d deleted", configID)
 			return nil
 		},
 	}

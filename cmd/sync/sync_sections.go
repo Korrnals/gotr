@@ -2,9 +2,12 @@ package sync
 
 import (
 	"fmt"
-	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/Korrnals/gotr/internal/utils"
+	"os"
 	"strings"
+
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -97,27 +100,27 @@ var sectionsCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nReady to import: %d new sections\n", len(filtered))
+		ui.Infof(os.Stdout, "Ready to import: %d new sections", len(filtered))
 
 		// Шаг 3) Обработка dry-run
 		if dryRun {
-			fmt.Println("Dry-run: import skipped")
+			ui.Info(os.Stdout, "Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("No new sections")
+			ui.Info(os.Stdout, "No new sections")
 			return nil
 		}
 
 		// Шаг 4) Подтверждение и импорт
 		if !autoApprove {
-			fmt.Printf("Confirm import of %d sections...\n", len(filtered))
+			ui.Infof(os.Stdout, "Confirm import of %d sections...", len(filtered))
 			fmt.Print("Continue? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Cancelled")
+				ui.Cancelled(os.Stdout)
 				return nil
 			}
 		}

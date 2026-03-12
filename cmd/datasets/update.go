@@ -2,9 +2,11 @@ package datasets
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +52,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update dataset: %w", err)
 			}
 
-			fmt.Printf("✅ Dataset %d updated\n", datasetID)
+			ui.Successf(os.Stdout, "Dataset %d updated", datasetID)
 			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}

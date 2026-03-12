@@ -2,9 +2,11 @@ package datasets
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +52,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to create dataset: %w", err)
 			}
 
-			fmt.Printf("✅ Dataset created (ID: %d)\n", resp.ID)
+			ui.Successf(os.Stdout, "Dataset created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}

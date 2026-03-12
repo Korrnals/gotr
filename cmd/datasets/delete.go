@@ -2,9 +2,11 @@ package datasets
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -46,7 +48,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete dataset: %w", err)
 			}
 
-			fmt.Printf("✅ Dataset %d deleted\n", datasetID)
+			ui.Successf(os.Stdout, "Dataset %d deleted", datasetID)
 			return nil
 		},
 	}

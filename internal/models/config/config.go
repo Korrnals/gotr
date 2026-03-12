@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/Korrnals/gotr/internal/ui"
 )
 
 // DefaultConfigValues — дефолтные placeholder'ы в шаблоне конфигурации.
@@ -75,7 +77,7 @@ func (c *Config) Create() error {
 		return fmt.Errorf("failed to write file %s: %w", c.Path, err)
 	}
 
-	fmt.Printf("Config file created: %s\n", c.Path)
+	ui.Infof(os.Stdout, "Config file created: %s", c.Path)
 	return nil
 }
 

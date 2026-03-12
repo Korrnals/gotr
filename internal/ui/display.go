@@ -342,3 +342,22 @@ func Stat(w io.Writer, icon, label string, value interface{}) {
 
 // Section prints a section header.
 func Section(w io.Writer, msg string) { fmt.Fprintf(w, "\n📊 %s\n", msg) }
+
+// Cancelled prints a cancellation message.
+func Cancelled(w io.Writer) { fmt.Fprintln(w, "\n❌ Cancelled") }
+
+// PreviewField is a label–value pair for Preview output.
+type PreviewField struct {
+	Label string
+	Value interface{}
+}
+
+// Preview prints a bordered preview box with a title and field list.
+func Preview(w io.Writer, title string, fields []PreviewField) {
+	const line = "────────────────────────────────────────────────────────────"
+	fmt.Fprintf(w, "\n%s\n📋 PREVIEW: %s\n%s\n", line, title, line)
+	for _, f := range fields {
+		fmt.Fprintf(w, "%-17s%v\n", f.Label+":", f.Value)
+	}
+	fmt.Fprintln(w, line)
+}

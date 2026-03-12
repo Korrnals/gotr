@@ -8,6 +8,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/config"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -121,7 +122,7 @@ func initConfig() {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		// Не паникуем — просто продолжаем без home-пути
-		fmt.Printf("Warning: cannot get user home directory: %v\n", err)
+		ui.Warningf(os.Stderr, "cannot get user home directory: %v", err)
 	} else {
 		configDir := filepath.Join(home, ".gotr", "config")
 		viper.AddConfigPath(configDir) // ~/.gotr/config
@@ -142,7 +143,7 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			// Если ошибка не "файл не найден" — можно залогировать
-			fmt.Printf("{rootCmd} - Config file error: %v\n", err)
+			ui.Warningf(os.Stderr, "Config file error: %v", err)
 		}
 		// Файл не обязателен — используем defaults
 	}

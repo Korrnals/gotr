@@ -2,9 +2,11 @@ package plans
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -41,7 +43,7 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to close plan: %w", err)
 			}
 
-			fmt.Printf("✅ Plan %d closed\n", planID)
+			ui.Successf(os.Stdout, "Plan %d closed", planID)
 			return output.OutputResult(cmd, resp, "plans")
 		},
 	}

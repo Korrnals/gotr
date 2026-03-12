@@ -2,10 +2,12 @@ package plans
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +56,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update plan: %w", err)
 			}
 
-			fmt.Printf("✅ Plan %d updated\n", planID)
+			ui.Successf(os.Stdout, "Plan %d updated", planID)
 			return output.OutputResult(cmd, resp, "plans")
 		},
 	}

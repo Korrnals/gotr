@@ -10,6 +10,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/flags"
 	outpututils "github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/pkg/reporter"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -211,7 +212,7 @@ func newAllCmd() *cobra.Command {
 					}
 					// Print on new line after progress bar
 					fmt.Println()
-					fmt.Printf("Result saved to %s\n", savePath)
+					ui.Infof(os.Stdout, "Result saved to %s", savePath)
 				case "table":
 					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath, time.Since(startTime))
 				default:
@@ -411,7 +412,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 
 	// Print on new line after progress bar
 	fmt.Println()
-	fmt.Printf("Result saved to %s\n", filePath)
+	ui.Infof(os.Stdout, "Result saved to %s", filePath)
 	return nil
 }
 

@@ -3,10 +3,13 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/utils"
-	"github.com/Korrnals/gotr/pkg/testrailapi"
+	"os"
 	"sort"
 	"strings"
+
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/pkg/testrailapi"
 
 	"github.com/spf13/cobra"
 )
@@ -203,7 +206,8 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 	case "bdds":
 		paths = api.BDDs.Paths()
 	default:
-		fmt.Printf("Unknown resource: %s\n\nAvailable resources:\n", resource)
+		ui.Warningf(os.Stdout, "Unknown resource: %s", resource)
+		fmt.Println("\nAvailable resources:")
 		fmt.Println("  all, cases, casefields, casetypes, configurations, projects, priorities,")
 		fmt.Println("  runs, tests, suites, sections, statuses, milestones, plans, results,")
 		fmt.Println("  resultfields, reports, attachments, users, roles, templates, groups,")

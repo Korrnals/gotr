@@ -2,11 +2,13 @@ package plans
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -80,7 +82,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry added to plan %d\n", planID)
+			ui.Successf(os.Stdout, "Entry added to plan %d", planID)
 			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
@@ -135,7 +137,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry %s updated in plan %d\n", entryID, planID)
+			ui.Successf(os.Stdout, "Entry %s updated in plan %d", entryID, planID)
 			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
@@ -184,7 +186,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry %s deleted from plan %d\n", entryID, planID)
+			ui.Successf(os.Stdout, "Entry %s deleted from plan %d", entryID, planID)
 			return nil
 		},
 	}

@@ -594,12 +594,12 @@ func analyzeCases(cases1, cases2 []ItemInfo, pid1, pid2 int64, field string) *Co
 func printCasesFieldDiff(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, field string) {
 	diff, err := cli.DiffCasesData(ctx, pid1, pid2, field)
 	if err != nil {
-		fmt.Printf("\nError getting differences for field '%s': %v\n", field, err)
+		ui.Warningf(os.Stdout, "Error getting differences for field '%s': %v", field, err)
 		return
 	}
 
 	if len(diff.DiffByField) == 0 {
-		fmt.Printf("\nNo differences found for field '%s' not found.\n", field)
+		ui.Infof(os.Stdout, "No differences found for field '%s'", field)
 		return
 	}
 

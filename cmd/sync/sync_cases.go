@@ -3,13 +3,15 @@ package sync
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/Korrnals/gotr/internal/utils"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -114,9 +116,9 @@ var casesCmd = &cobra.Command{
 			if err := m.LoadMappingFromFile(mappingFile); err != nil {
 				return fmt.Errorf("failed to load mapping: %w", err)
 			}
-			fmt.Printf("Mapping loaded: %d entries\n", len(m.Mapping()))
+			ui.Infof(os.Stdout, "Mapping loaded: %d entries", len(m.Mapping()))
 		} else {
-			fmt.Println("Warning: mapping not loaded — shared_step_id will NOT be replaced")
+			ui.Warning(os.Stdout, "mapping not loaded — shared_step_id will NOT be replaced")
 		}
 
 		progress.Describe(pm.NewSpinner(""), "Загрузка кейсов...")
@@ -147,18 +149,18 @@ var casesCmd = &cobra.Command{
 		fmt.Printf("  New: %d\n", len(filtered))
 
 		if dryRun {
-			fmt.Println("\nDry-run: import NOT performed (safe).")
+			ui.Info(os.Stdout, "Dry-run: import NOT performed (safe).")
 			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
 
-		fmt.Printf("\nConfirm import of %d new cases...\n", len(filtered))
+		ui.Infof(os.Stdout, "Confirm import of %d new cases...", len(filtered))
 		fmt.Print("Continue? [y/N]: ")
 		var confirm string
 		fmt.Scanln(&confirm)
 		confirm = strings.ToLower(strings.TrimSpace(confirm))
 		if confirm != "y" && confirm != "yes" {
-			fmt.Println("Cancelled.")
+			ui.Cancelled(os.Stdout)
 			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
@@ -169,10 +171,10 @@ var casesCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nImport complete: %d new cases\n", len(createdIDs))
+		ui.Successf(os.Stdout, "Import complete: %d new cases", len(createdIDs))
 
 		if len(importErrors) > 0 {
-			fmt.Println("\nErrors:")
+			ui.Error(os.Stdout, "Errors:")
 			for _, e := range importErrors {
 				fmt.Printf("  - %s\n", e)
 			}
@@ -195,5 +197,5 @@ func saveLog(file string, matches, filtered data.GetCasesResponse, errors []stri
 	}
 	jsonData, _ := json.MarshalIndent(result, "", "  ")
 	os.WriteFile(file, jsonData, 0644)
-	fmt.Printf("Log saved: %s\n", file)
+	ui.Infof(os.Stdout, "Log saved: %s", file)
 }

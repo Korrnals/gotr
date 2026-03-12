@@ -1,8 +1,10 @@
 package sync
 
 import (
-	"fmt"
+	"os"
+
 	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
@@ -90,7 +92,7 @@ var fullCmd = &cobra.Command{
 		}
 
 		if dryRun {
-			fmt.Println("Dry-run complete")
+			ui.Info(os.Stdout, "Dry-run complete")
 			return nil
 		}
 
@@ -104,7 +106,7 @@ var fullCmd = &cobra.Command{
 			m.ExportMapping(logDir)
 		}
 
-		fmt.Println("Full migration complete!")
+		ui.Success(os.Stdout, "Full migration complete!")
 		return nil
 	},
 }

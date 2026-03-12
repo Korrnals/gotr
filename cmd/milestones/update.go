@@ -2,10 +2,12 @@ package milestones
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +68,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update milestone: %w", err)
 			}
 
-			fmt.Printf("✅ Milestone %d updated\n", milestoneID)
+			ui.Successf(os.Stdout, "Milestone %d updated", milestoneID)
 			return output.OutputResult(cmd, resp, "milestones")
 		},
 	}

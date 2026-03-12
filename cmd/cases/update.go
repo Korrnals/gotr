@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -71,7 +72,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update case: %w", err)
 			}
 
-			fmt.Printf("✅ Case %d updated\n", caseID)
+			ui.Successf(os.Stdout, "Case %d updated", caseID)
 			return output.OutputResult(cmd, resp, "cases")
 		},
 	}

@@ -2,10 +2,12 @@ package configurations
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +53,7 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to create group: %w", err)
 			}
 
-			fmt.Printf("✅ Group created (ID: %d)\n", resp.ID)
+			ui.Successf(os.Stdout, "Group created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}

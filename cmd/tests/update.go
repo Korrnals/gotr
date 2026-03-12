@@ -2,11 +2,13 @@ package tests
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +59,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update test: %w", err)
 			}
 
-			fmt.Printf("✅ Test %d updated\n", testID)
+			ui.Successf(os.Stdout, "Test %d updated", testID)
 			return printJSON(cmd, resp, time.Now())
 		},
 	}

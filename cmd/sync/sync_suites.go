@@ -2,9 +2,12 @@ package sync
 
 import (
 	"fmt"
-	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/Korrnals/gotr/internal/utils"
+	"os"
 	"strings"
+
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -66,25 +69,25 @@ var suitesCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nReady to import: %d new suites\n", len(filtered))
+		ui.Infof(os.Stdout, "Ready to import: %d new suites", len(filtered))
 
 		if dryRun {
-			fmt.Println("Dry-run: import skipped")
+			ui.Info(os.Stdout, "Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("No new suites")
+			ui.Info(os.Stdout, "No new suites")
 			return nil
 		}
 
 		if !autoApprove {
-			fmt.Printf("Confirm import of %d suites...\n", len(filtered))
+			ui.Infof(os.Stdout, "Confirm import of %d suites...", len(filtered))
 			fmt.Print("Continue? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Cancelled")
+				ui.Cancelled(os.Stdout)
 				return nil
 			}
 		}

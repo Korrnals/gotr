@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/models/config"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -72,10 +73,10 @@ var configPathCmd = &cobra.Command{
 
 		used := viper.ConfigFileUsed()
 		if used == "" {
-			fmt.Printf("Config file not found.\nExpected location: %s\n", cfg.PathString())
-			fmt.Println("Create it with: gotr config init")
+			ui.Warningf(os.Stdout, "Config file not found.\nExpected location: %s", cfg.PathString())
+			ui.Info(os.Stdout, "Create it with: gotr config init")
 		} else {
-			fmt.Printf("Current config file: %s\n", used)
+			ui.Infof(os.Stdout, "Current config file: %s", used)
 		}
 		return nil
 	},
@@ -95,8 +96,8 @@ var configViewCmd = &cobra.Command{
 		used := viper.ConfigFileUsed()
 		if used == "" {
 			cfg, _ := config.Default()
-			fmt.Printf("Config file not found: %s\n", cfg.PathString())
-			fmt.Println("Create it with: gotr config init")
+			ui.Warningf(os.Stdout, "Config file not found: %s", cfg.PathString())
+			ui.Info(os.Stdout, "Create it with: gotr config init")
 			return nil
 		}
 
@@ -105,7 +106,7 @@ var configViewCmd = &cobra.Command{
 			return fmt.Errorf("failed to read config: %w", err)
 		}
 
-		fmt.Printf("Config file contents %s:\n\n%s\n", used, string(data))
+		ui.Infof(os.Stdout, "Config file contents %s:\n\n%s", used, string(data))
 		return nil
 	},
 }
@@ -134,8 +135,8 @@ var configEditCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to determine config path: %w", err)
 			}
-			fmt.Printf("Config file not found: %s\n", cfg.PathString())
-			fmt.Println("Create it with: gotr config init")
+			ui.Warningf(os.Stdout, "Config file not found: %s", cfg.PathString())
+			ui.Info(os.Stdout, "Create it with: gotr config init")
 			return nil
 		}
 
@@ -144,7 +145,7 @@ var configEditCmd = &cobra.Command{
 			return fmt.Errorf("failed to open editor: %w", err)
 		}
 
-		fmt.Printf("Config file opened in editor: %s\n", used)
+		ui.Infof(os.Stdout, "Config file opened in editor: %s", used)
 		return nil
 	},
 }

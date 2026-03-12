@@ -3,6 +3,7 @@ package get
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -10,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -101,7 +103,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			// Если только один сьют — используем его автоматически
 			if len(suites) == 1 {
-				fmt.Printf("Project has one suite (ID: %d), using automatically...\n", suites[0].ID)
+				ui.Infof(os.Stdout, "Project has one suite (ID: %d), using automatically...", suites[0].ID)
 				return fetchAndOutputCases(ctx, command, cli, projectID, suites[0].ID, sectionID, start)
 			}
 

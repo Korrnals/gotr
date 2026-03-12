@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -152,19 +153,17 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 PREVIEW: Update Project")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Project ID:      %d\n", id)
-	fmt.Printf("Name:            %s\n", answers.Name)
-	fmt.Printf("Announcement:    %s\n", answers.Announcement)
-	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
-	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Update Project", []ui.PreviewField{
+		{"Project ID", id},
+		{"Name", answers.Name},
+		{"Announcement", answers.Announcement},
+		{"Show announce", answers.ShowAnnouncement},
+		{"Is completed", answers.IsCompleted},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Cancelled")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -180,7 +179,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		return fmt.Errorf("failed to update project: %w", err)
 	}
 
-	fmt.Printf("\n✅ Project updated (ID: %d)\n", project.ID)
+	ui.Successf(os.Stdout, "Project updated (ID: %d)", project.ID)
 	return outputUpdateResult(cmd, project)
 }
 
@@ -192,18 +191,16 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 PREVIEW: Update Suite")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Suite ID:        %d\n", id)
-	fmt.Printf("Name:            %s\n", answers.Name)
-	fmt.Printf("Description:     %s\n", answers.Description)
-	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Update Suite", []ui.PreviewField{
+		{"Suite ID", id},
+		{"Name", answers.Name},
+		{"Description", answers.Description},
+		{"Is completed", answers.IsCompleted},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Cancelled")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -218,7 +215,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 		return fmt.Errorf("failed to update suite: %w", err)
 	}
 
-	fmt.Printf("\n✅ Suite updated (ID: %d)\n", suite.ID)
+	ui.Successf(os.Stdout, "Suite updated (ID: %d)", suite.ID)
 	return outputUpdateResult(cmd, suite)
 }
 
@@ -230,18 +227,16 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 PREVIEW: Update Case")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Case ID:         %d\n", id)
-	fmt.Printf("Title:           %s\n", answers.Title)
-	fmt.Printf("Type ID:         %d\n", answers.TypeID)
-	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Update Case", []ui.PreviewField{
+		{"Case ID", id},
+		{"Title", answers.Title},
+		{"Type ID", answers.TypeID},
+		{"Priority ID", answers.PriorityID},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Cancelled")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -257,7 +252,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		return fmt.Errorf("failed to update case: %w", err)
 	}
 
-	fmt.Printf("\n✅ Case updated (ID: %d)\n", caseResp.ID)
+	ui.Successf(os.Stdout, "Case updated (ID: %d)", caseResp.ID)
 	return outputUpdateResult(cmd, caseResp)
 }
 
@@ -644,7 +639,7 @@ func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) 
 		return fmt.Errorf("failed to update labels: %w", err)
 	}
 
-	fmt.Printf("✅ Labels updated for test %d: %v\n", testID, labels)
+	ui.Successf(os.Stdout, "Labels updated for test %d: %v", testID, labels)
 	return nil
 }
 

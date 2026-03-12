@@ -1,7 +1,23 @@
 # Стандарты кодирования gotr
 
-> Стандарты разработки CLI-утилиты gotr.
-> Обновлено: 2026-03-12 (Stage 9.0).
+> Полные стандарты разработки CLI-утилиты gotr.
+> Обновлено: 2026-03-12 (Stage 9.0, rev.2).
+
+---
+
+## Содержание
+
+1. [Общие принципы](#1-общие-принципы)
+2. [Архитектура слоёв](#2-архитектура-слоёв)
+3. [Структура пакетов](#3-структура-пакетов)
+4. [Правила кодирования](#4-правила-кодирования)
+5. [Паттерны проекта](#5-паттерны-проекта)
+6. [Конфигурация и окружение](#6-конфигурация-и-окружение)
+7. [Конкурентность и устойчивость](#7-конкурентность-и-устойчивость)
+8. [Логирование](#8-логирование)
+9. [Тестирование](#9-тестирование)
+10. [Сборка и релиз](#10-сборка-и-релиз)
+11. [Контрольный список](#11-контрольный-список-checklist)
 
 ---
 
@@ -26,6 +42,7 @@ cmd/ → service/ → client/ → HTTP (TestRail API)
 cmd/ → ui.*      (вывод)
 cmd/ → flags.*   (валидация)
 cmd/ → output.*  (сохранение)
+cmd/ → log.*     (логирование)
 ```
 
 ### 2.1. Правила зависимостей
@@ -33,15 +50,20 @@ cmd/ → output.*  (сохранение)
 | Слой | Может зависеть от | НЕ может зависеть от |
 | ---- | ----------------- | -------------------- |
 | `cmd/*` | `internal/*`, `pkg/*` | — |
-| `internal/service` | `internal/client`, `internal/concurrency`, `internal/models` | `cmd/*`, `internal/ui` |
+| `internal/service` | `internal/client`, `internal/concurrency`, `internal/concurrent`, `internal/models` | `cmd/*`, `internal/ui` |
 | `internal/client` | `internal/concurrent`, `internal/models/data` | `cmd/*`, `internal/service` |
 | `internal/ui` | stdlib, `go-pretty/v6` | `internal/client`, `internal/service` |
+| `internal/concurrency` | stdlib | `internal/client`, `cmd/*` |
+| `internal/concurrent` | `golang.org/x/time/rate`, `golang.org/x/sync/errgroup` | `cmd/*`, `internal/service` |
+| `internal/log` | `go.uber.org/zap`, `internal/paths` | `cmd/*`, `internal/client` |
+| `internal/paths` | stdlib | всё остальное |
 | `pkg/*` | stdlib, `go-pretty/v6` | `internal/*`, `cmd/*` |
 
 **Запрещено:**
 - `service/` → `cmd/` (обращение вверх по слоям)
 - `client/` → `ui/` (клиент не знает о UI)
 - `pkg/` → `internal/` (публичный API не импортирует приватный)
+- Циклические зависимости между пакетами
 
 ---
 
@@ -54,28 +76,285 @@ cmd/ → output.*  (сохранение)
 - Используем `RunE` (не `Run`) — ошибки возвращаются Cobra
 - Контекст: `ctx := cmd.Context()` — пробрасывается во все вызовы
 
+**Регистрация команд:** Все подпакеты вызывают `Register(rootCmd, clientFn)` в `cmd/commands.go`:
+
+```go
+func init() {
+    initConfig()
+    initGlobalFlags()
+    // ...
+    cases.Register(rootCmd, GetClientInterface)
+    compare.Register(rootCmd, GetClientInterface)
+    sync.Register(rootCmd, GetClient)
+}
+```
+
 ### 3.2. `internal/client/` — HTTP-клиент
 
-- Каждый метод: `func (c *HTTPClient) GetXxx(ctx context.Context, ...)` 
+- Каждый метод: `func (c *HTTPClient) GetXxx(ctx context.Context, ...)`
 - List-методы: `fetchAllPages[T]` для автопагинации
+- 14 интерфейсов по ISP, 106 endpoints, 100% покрытие TestRail API v2
 - Новый endpoint: добавить в `interfaces.go` + `mock.go` + доменный файл
 
-### 3.3. `internal/ui/` — Вывод
+### 3.3. `internal/service/` — Бизнес-логика
 
-- `ui.Table(cmd, t)` — таблица с учётом `--format`
-- `ui.JSON(cmd, data)` — JSON-вывод
-- `ui.Info(w, msg)`, `ui.Success(w, msg)` и т.д. — стилизованные сообщения
-- Emoji-префиксы только в `ui.*`
+Сервисный слой инкапсулирует бизнес-правила и валидацию:
 
-### 3.4. `internal/flags/` — Валидация
+- `RunService` — создание/обновление/закрытие test runs (валидация параметров)
+- `ResultService` — работа с результатами тестов
+- `TestService` — операции с тестами
+- `migration/` — подсистема миграции данных между проектами TestRail:
+  - `types.go` — контекст миграции (`Migration` struct)
+  - `fetch.go` — загрузка source/target данных
+  - `filter.go` — фильтрация дубликатов
+  - `import.go` — импорт сущностей
+  - `export.go` — экспорт данных и маппингов
+  - `mapping.go` — управление mapping ID (source→target)
+  - `mapping_loader.go` — загрузка маппингов из файлов
+  - `log.go` — логирование операций миграции
+  - `migrate.go` — оркестрация полной миграции
 
-- `flags.ValidateRequiredID(args, index, name)` — парсинг ID
-- `flags.GetFlagInt64(cmd, name)` — типобезопасный флаг
+### 3.4. `internal/ui/` — Вывод
 
-### 3.5. `internal/output/` — Сохранение
+- `ui.NewTable(cmd)` — создание go-pretty таблицы с учётом `--format`
+- `ui.Table(cmd, t)` — рендеринг таблицы (table/json/csv/md/html)
+- `ui.JSON(cmd, data)` — JSON-вывод с учётом `--quiet`
+- `ui.IsJSON(cmd)`, `ui.IsQuiet(cmd)` — проверки формата
+- Стилизованные сообщения (emoji-префиксы только здесь!):
+  - `ui.Info(w, msg)` — ℹ️ информация
+  - `ui.Success(w, msg)` — ✅ успех
+  - `ui.Warning(w, msg)` — ⚠️ предупреждение
+  - `ui.Error(w, msg)` — ❌ ошибка
+  - `ui.Phase(w, msg)` — 🔄 фаза
+  - `ui.Stat(w, icon, label, val)` — статистика
+  - `ui.Section(w, msg)` — заголовок секции
+  - `ui.Preview(w, title, fields)` — окно предпросмотра
+- `display.go` — ANSI live display с динамическими задачами (для `compare cases`)
 
-- `output.AddFlag(cmd)` — регистрация `--save`, `--save-to`
-- `output.OutputResult(cmd, data, resource)` — вывод + сохранение
+**Правила:**
+- Весь пользовательский вывод — через `ui.*` (кроме интерактивных промптов и debug)
+- Emoji-префиксы только в `ui.*` — никаких хардкоженных emoji в `cmd/`
+- Первый аргумент — `io.Writer` (обычно `os.Stdout`)
+
+### 3.5. `internal/flags/` — Валидация
+
+```go
+flags.ValidateRequiredID(args, index, name)   // Парсинг ID из аргументов
+flags.GetFlagInt64(cmd, name)                 // int64 флаг
+flags.GetFlagString(cmd, name)                // string флаг
+flags.GetFlagBool(cmd, name)                  // bool флаг
+flags.ParseID(s)                              // строка → int64
+```
+
+### 3.6. `internal/output/` — Сохранение
+
+```go
+output.AddFlag(cmd)                       // Регистрация --save, --save-to
+output.OutputResult(cmd, data, resource)  // Вывод + сохранение
+output.Output(cmd, data, dir, format)     // Сохранение в ~/.gotr/exports/
+output.NewDryRunPrinter(cmd)              // Вывод для dry-run режима
+```
+
+### 3.7. `internal/log/` — Структурированное логирование
+
+Централизованное логирование через `go.uber.org/zap`:
+
+```go
+log.InitDefault()     // В main.go — инициализация с дефолтным конфигом
+defer log.Sync()      // Сброс буферов при выходе
+log.L()               // Глобальный логгер (fallback → zap.NewNop())
+log.Debug("msg")      // Отладочное сообщение
+```
+
+**Конфигурация** (`log.Config`):
+- `Level` — уровень (`debug`, `info`, `warn`, `error`)
+- `JSONFormat` — JSON-формат (для machine-parseable логов)
+- `LogDir` — директория логов (по умолчанию `~/.gotr/logs/`)
+- `Development` — режим разработки (stack traces, line numbers)
+
+**Когда что использовать:**
+- `log.L()` — внутренние события, аудит, диагностика (записывается в файл)
+- `ui.Info()` — пользовательский вывод в терминал
+- `utils.DebugPrint()` — отладка по флагу `--debug` (в stderr)
+
+### 3.8. `internal/paths/` — Управление путями
+
+Централизованные пути — все директории gotr в одном месте:
+
+```
+~/.gotr/                    # BaseDir()
+├── config/                 # ConfigDirPath() — конфигурация
+│   └── default.yaml        # Основной конфиг
+├── logs/                   # LogsDirPath() — логи zap
+├── selftest/               # SelftestDirPath() — отчёты selftest
+├── cache/                  # CacheDirPath() — кэш API
+├── exports/                # ExportsDirPath() — экспорт данных (--save)
+└── temp/                   # TempDirPath() — временные файлы (jq)
+```
+
+**Правило:** Все пути через `paths.*` — не конструировать вручную.
+
+### 3.9. `internal/progress/` — Прогресс-бары
+
+Прогресс-бары на `github.com/vbauerster/mpb/v8`:
+
+- `NewManager()` — создание менеджера прогресс-баров
+- `NewBar(total, label)` — отдельный прогресс-бар
+- `WithOutput(w)`, `WithQuiet()` — опции
+- `WithMonitorCtx(ctx)` — мониторинг через context (автоотмена)
+- Автоматически отключается в `--quiet` режиме
+
+**Использование:** sync-команды, get-команды. В compare-командах заменён на `internal/ui/display`.
+
+### 3.10. `internal/interactive/` — Интерактивный выбор
+
+Интерактивные промпты для выбора ресурсов:
+
+```go
+interactive.SelectProjectInteractively(ctx, client)  // Выбор проекта
+interactive.SelectSuiteInteractively(ctx, client, projectID)  // Выбор сьюта
+interactive.SelectRunInteractively(ctx, client, projectID)    // Выбор рана
+```
+
+**Использование:** Когда пользователь не указал ID — автоматический промпт.
+
+### 3.11. `internal/selftest/` — Самодиагностика
+
+Пакет для `gotr selftest` — проверка окружения:
+
+**Интерфейс:**
+```go
+type Checker interface {
+    Name() string
+    Category() string
+    Check() CheckResult
+}
+```
+
+**Результаты:** `PASS` (✓), `FAIL` (✗), `WARN` (⚠), `SKIP` (⊘) — с ANSI-цветами.
+
+**Встроенные проверки:**
+- `ConfigChecker` — конфиг-файл существует и валиден
+- `BaseDirChecker` — структура `~/.gotr/` (6 поддиректорий)
+- Самовосстановление: `CanFix: true` + `FixCommand: "gotr config init"`
+
+### 3.12. `internal/models/` — Модели данных
+
+**`models/config/`** — Конфигурация приложения:
+```go
+type ConfigData struct {
+    BaseURL  string `yaml:"base_url"`
+    Username string `yaml:"username"`
+    APIKey   string `yaml:"api_key"`
+    Insecure bool   `yaml:"insecure"`
+    JqFormat bool   `yaml:"jq_format"`
+    Debug    bool   `yaml:"debug"`
+}
+```
+
+Builder: `config.Default()` → `.WithDefaults()` → `.Create()`
+
+**`models/data/`** — DTO для TestRail API (20+ файлов):
+- Cases, Projects, Runs, Results, Suites, Sections
+- SharedSteps, Milestones, Plans, Attachments
+- Configs, Users, Reports, Roles, Templates, Tests
+- Groups, Labels, Datasets, BDDs
+- Status, Priority — константы
+
+### 3.13. `internal/utils/` — Утилиты (legacy)
+
+> **⚠️ God-package.** Расформирование запланировано в Stage 10.0.
+
+- `DebugPrint(format, args...)` — вывод при `--debug`
+- `OpenEditor(path)` — открытие файла в `$EDITOR` (fallback: vi/notepad)
+- `GetFieldValue(obj, field)` — reflection-based извлечение поля (case-insensitive)
+- `LoadMapping(path)` — загрузка JSON/YAML маппингов `map[int64]int64`
+
+### 3.14. `pkg/reporter/` — Builder для отчётов
+
+Builder-паттерн для структурированных отчётов (go-pretty):
+
+```go
+reporter.New("cases").
+    Section("General statistics").
+    Stat("⏱️", "Execution time", elapsed).
+    Stat("📦", "Total processed", total).
+    Section("Comparison results").
+    Stat("✅", "Only in P1", 145).
+    StatIf("⚠️", "Errors", errs, errs > 0).  // Условный вывод
+    Print()
+
+// Или быстрый вариант:
+reporter.CompareStats("suites", pid1, pid2, onlyIn1, onlyIn2, common, elapsed).Print()
+```
+
+**Emoji → ANSI:** Emoji передаются как hint, reporter маппит их в ANSI-colored width-1 символы (решает проблему alignment в разных терминалах).
+
+### 3.15. `pkg/testrailapi/` — API-справочник
+
+Структурированное представление всех TestRail API v2 endpoints:
+
+```go
+api := testrailapi.New()
+allPaths := api.Paths()           // Все endpoints (для gotr resources)
+casePaths := api.Cases.Paths()    // Endpoints ресурса Cases
+```
+
+Типы: `APIPath{Method, URI, Description, Params}`, 26 ресурсов.
+
+### 3.16. `embedded/` — Встроенный jq
+
+Встроенные бинарники jq через `//go:embed`:
+
+- `jq-linux-amd64`, `jq-macos-amd64`, `jq-windows-i386.exe`
+- `RunEmbeddedJQ(rawBody, filter)` — извлечение → temp файл → выполнение → очистка
+- Авто-определение платформы через `runtime.GOOS`
+- Вызывается для `--jq` флага (фильтрация JSON-ответов)
+
+### 3.17. `cmd/compare/` — Подсистема сравнения
+
+Архитектура 13 compare-подкоманд:
+
+**Типы данных:**
+- `CompareResult` — результат сравнения (OnlyInFirst, OnlyInSecond, Common)
+- `ItemInfo` — ID + Name
+- `CommonItemInfo` — Name + ID1 + ID2 + IDsMatch
+
+**Профили конфигурации** (`config_profile.go`):
+- Авто-определение deployment: Cloud vs Server по URL
+- Cloud rate limits: professional (180 req/min), enterprise (300 req/min)
+- Server: без ограничений
+- `resolveCompareCasesRuntimeConfig()` — расчёт параметров
+
+**Экспорт** — multi-format: JSON, YAML, CSV, Table (авто по расширению файла).
+
+**Generic Factory** — `newSimpleCompareCmd[T]()` для DRY 13 подкоманд.
+
+### 3.18. `cmd/sync/` — Подсистема синхронизации
+
+Пакет для синхронизации данных между проектами:
+
+**Структура:**
+- `sync.go` — регистрация и оркестрация
+- `sync_full.go` — полная миграция (SharedSteps → Suites → Sections → Cases)
+- `sync_cases.go`, `sync_suites.go`, `sync_sections.go`, `sync_shared_steps.go` — per-resource
+- `sync_flags.go` — валидация флагов `--src-project`, `--dst-project`
+- `sync_helpers.go` — общие хелперы
+- `interactive.go` — интерактивный выбор source/destination
+- `sync_test_helper.go`, `sync_test_skip.go` — тестовая инфраструктура
+
+**Порядок sync full:** SharedSteps → Suites → Sections → Cases (зависимости!).
+
+### 3.19. `cmd/internal/testhelper` — Тестовые утилиты
+
+Общий пакет для тестирования CLI-команд (доступен только внутри `cmd/`):
+
+```go
+testhelper.HTTPClientKey                          // Ключ контекста для mock
+testhelper.SetupTestCmd(t, mock)                  // Команда + mock в контексте
+testhelper.SetupTestCmdWithBuffer(t, mock)        // + буфер вывода
+testhelper.GetClientForTests(cmd)                 // Извлечение mock из контекста
+```
 
 ---
 
@@ -90,6 +369,8 @@ cmd/ → output.*  (сохранение)
 | Приватные | camelCase | `fetchAllPages`, `parseResponse` |
 | Файлы | snake_case | `sync_cases.go`, `add_config.go` |
 | Тесты | `<file>_test.go` | `add_test.go` |
+| Константы | CamelCase | `DefaultBaseURL`, `ResultPass` |
+| Context key | Типизированный тип | `type ctxKey string` (не `string` напрямую) |
 
 ### 4.2. Обработка ошибок
 
@@ -106,32 +387,52 @@ if err != nil { return err }
 if err != nil { os.Exit(1) }
 ```
 
+**Иерархия обработки:**
+1. Библиотечный код — возвращает `error` с контекстом (`%w`)
+2. Сервисный слой — валидирует входные данные, оборачивает ошибки
+3. CLI слой (`RunE`) — возвращает ошибку Cobra (Cobra печатает в stderr)
+4. `GetClient*` — единственное место с `panic` (невозможно продолжить без клиента)
+
 ### 4.3. Context
 
 - Все I/O функции принимают `ctx context.Context` первым аргументом
 - `cmd.Context()` — источник контекста в CLI-слое
 - Ctrl+C работает через `signal.NotifyContext` (Stage 7.0)
+- `http.NewRequestWithContext(ctx, ...)` — в HTTP-транспорте
+- Context key: всегда типизированный, не `string` напрямую
 
-### 4.4. Тестирование
-
-| Требование | Описание |
-| ---------- | -------- |
-| Покрытие | ≥ 85% для каждого пакета (цель 90%+) |
-| Паттерн | Table-driven tests |
-| Моки | `client.MockClient` |
-| DI | `newXxxCmd(clientFn)` для инъекции |
-| Naming | `TestXxx_Success`, `TestXxx_Error` |
-| Без сети | Unit-тесты без внешних вызовов |
-
-### 4.5. Язык
+### 4.4. Язык
 
 | Контекст | Язык |
 | -------- | ---- |
 | Исходный код (переменные, функции) | Английский |
 | Пользовательский вывод (UI) | Английский |
 | Ошибки (`fmt.Errorf`) | Английский |
-| Документация (`docs/`, `README*.md`) | Русский |
 | Комментарии в коде | Английский |
+| Документация (`docs/`, `README*.md`) | Русский |
+
+### 4.5. Глобальные флаги
+
+| Флаг | Короткий | Тип | Описание |
+| ---- | -------- | --- | -------- |
+| `--url` | — | string | Базовый URL TestRail |
+| `--username` | `-u` | string | Email пользователя |
+| `--api-key` | `-k` | string | API ключ |
+| `--insecure` | — | bool | Пропустить проверку TLS |
+| `--config` | `-c` | bool | Создание дефолтного конфига |
+| `--debug` | `-d` | bool | Отладочный вывод (скрытый) |
+| `--quiet` | `-q` | bool | Тихий режим (CI/CD) |
+| `--format` | `-f` | string | Формат: `table`, `json`, `csv`, `md`, `html` |
+
+### 4.6. Форматы вывода
+
+| Формат | Описание | Пример |
+| ------ | -------- | ------ |
+| `table` | ASCII-таблица (go-pretty), по умолчанию | `gotr cases list 30` |
+| `json` | JSON output | `gotr cases list 30 -f json` |
+| `csv` | CSV (для Excel/скриптов) | `gotr cases list 30 -f csv` |
+| `md` | Markdown таблица | `gotr cases list 30 -f md` |
+| `html` | HTML таблица | `gotr cases list 30 -f html` |
 
 ---
 
@@ -155,33 +456,347 @@ func newSimpleCompareCmd[T any](cfg simpleCompareCfg[T]) *cobra.Command { ... }
 ### 5.3. Functional Options
 
 ```go
+// WorkerPool
+pool := concurrent.NewWorkerPool(
+    concurrent.WithMaxWorkers(5),
+    concurrent.WithRateLimit(150),
+    concurrent.WithProgressMonitor(monitor),
+)
+
+// FetchParallel
 result, err := concurrency.FetchParallel(ctx, fetchFn,
     concurrency.WithReporter(reporter),
     concurrency.WithMaxConcurrency(5),
+    concurrency.WithContinueOnError(),
 )
 ```
 
-### 5.4. Builder Pattern (Reporter)
+### 5.4. Builder Pattern
 
 ```go
-reporter.New("Compare Results").
+// Reporter
+reporter.New("cases").
     Section("Projects").
     Stat("📁", "Project 1", p1Name).
     Print()
+
+// Config
+config.Default().WithDefaults().Create()
+```
+
+### 5.5. PersistentPreRunE Override
+
+Некоторые команды (например, `config`) не требуют клиента TestRail. Для них отключается `PersistentPreRunE`:
+
+```go
+configCmd := &cobra.Command{
+    PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+        return nil // Пропускаем создание клиента
+    },
+}
+```
+
+### 5.6. Entry Point Pattern
+
+```go
+func main() {
+    log.InitDefault()          // 1. Инициализация логгера
+    defer log.Sync()           // 2. Сброс буферов при выходе
+    ctx, stop := signal.NotifyContext(context.Background(),
+        os.Interrupt, syscall.SIGTERM)
+    defer stop()               // 3. Ctrl+C → отмена контекста
+    cmd.Execute(ctx)           // 4. Запуск CLI
+}
 ```
 
 ---
 
-## 6. Контрольный список (Checklist)
+## 6. Конфигурация и окружение
 
-- [ ] `ctx context.Context` передаётся во все I/O вызовы
+### 6.1. Приоритет конфигурации
+
+1. **CLI flags** — наивысший приоритет (`--url`, `--username`, `--api-key`)
+2. **Environment variables** — `TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`
+3. **Config file** — `~/.gotr/config/default.yaml`
+
+### 6.2. Viper-интеграция
+
+- `viper.AutomaticEnv()` — автоматическое чтение env-переменных
+- `viper.BindPFlag(key, flag)` — привязка CLI-флагов к Viper-ключам
+- `TESTRAIL_*` — префикс для env-переменных
+- `TESTRAIL_PASSWORD` имеет приоритет над `TESTRAIL_API_KEY` (обратная совместимость)
+
+### 6.3. Config-команды
+
+| Команда | Описание |
+| ------- | -------- |
+| `gotr config init` | Создать `~/.gotr/config/default.yaml` с placeholder'ами |
+| `gotr config path` | Показать путь к конфигу |
+| `gotr config view` | Вывести текущий конфиг |
+| `gotr config edit` | Открыть конфиг в `$EDITOR` |
+
+### 6.4. Структура `~/.gotr/`
+
+```
+~/.gotr/
+├── config/default.yaml     # Конфигурация (base_url, username, api_key, ...)
+├── logs/                   # Логи zap (ежедневная ротация)
+├── selftest/               # Отчёты gotr selftest
+├── cache/                  # Кэш API-ответов
+├── exports/                # Экспорт данных (--save, --save-to)
+└── temp/                   # Временные файлы (jq бинарник и т.д.)
+```
+
+---
+
+## 7. Конкурентность и устойчивость
+
+Два уровня абстракции:
+
+### 7.1. `internal/concurrent/` — Низкоуровневые примитивы
+
+**WorkerPool** — пул горутин на `errgroup`:
+```go
+pool := concurrent.NewWorkerPool(
+    concurrent.WithMaxWorkers(5),       // 5 параллельных воркеров
+    concurrent.WithRateLimit(150),      // 150 req/min
+)
+pool.Submit(func() error { return doWork() })
+err := pool.Wait()
+```
+
+**RateLimiter** — token bucket (`golang.org/x/time/rate`):
+- Преобразование req/min → rate/sec
+- Burst: 15% от rate (минимум 10)
+- Дефолт: 150 req/min (безопасный предел TestRail)
+- `Wait()`, `WaitWithTimeout(timeout)`, `Allow()`, `Tokens()`
+
+**Retry** — экспоненциальная задержка:
+```go
+config := &concurrent.RetryConfig{
+    MaxRetries:   5,           // Количество попыток
+    InitialDelay: 1 * time.Second,
+    MaxDelay:     30 * time.Second,
+    Multiplier:   2.0,         // 1s → 2s → 4s → 8s → 16s
+}
+err := concurrent.Retry(config, func() error { return apiCall() })
+// Или с context:
+err := concurrent.RetryWithContext(ctx, config, fn)
+```
+
+**CircuitBreaker** — защита от каскадных ошибок:
+- Состояния: Closed → Open (при N ошибках) → HalfOpen (после timeout) → Closed
+- `NewCircuitBreaker(maxFailures, timeout)`
+- `Execute(fn)` — выполнение с защитой
+
+### 7.2. `internal/concurrency/` — Высокоуровневые стратегии
+
+Для compare-подкоманд — три стратегии параллелизации:
+
+| Стратегия | Паттерн | Пример |
+| --------- | ------- | ------ |
+| `FetchParallel[T]` | Лёгкая: N проектов параллельно | compare suites/milestones |
+| `FetchParallelBySuite[T]` | Средняя: per-suite параллельно | compare sections |
+| `ParallelController` | Тяжёлая: pipeline pagination | compare cases |
+
+**FetchOption-паттерн:** `WithReporter()`, `WithContinueOnError()`, `WithMaxConcurrency(n)`
+
+**Интерфейсы прогресса:**
+- `ProgressReporter` — `OnItemComplete`, `OnBatchReceived`, `OnError`
+- `PaginatedProgressReporter` — расширение: `OnPageFetched`
+
+**Конфигурационные флаги (compare cases):**
+- `--parallel-suites` — параллельность по сьютам
+- `--parallel-pages` — параллельность по страницам
+- `--page-retries` — количество повторов для страниц
+- `--rate-limit` — лимит запросов
+- `--timeout` — таймаут
+
+### 7.3. Правила конкурентности
+
+- Горутины **всегда** получают `context.Context`
+- `errgroup.WithContext()` — для управления группой горутин
+- Мьютексы: `sync.Mutex` для shared state, `sync.Once` для инициализации
+- Каналы: предпочитать каналы мьютексам для коммуникации
+- Race detection: `go test -race ./...` — обязательно в CI
+
+---
+
+## 8. Логирование
+
+### 8.1. Три уровня вывода
+
+| Уровень | Инструмент | Куда | Когда |
+| ------- | ---------- | ---- | ----- |
+| **Пользовательский** | `ui.Info()`, `ui.Success()`, etc. | stdout | Всегда (кроме `--quiet`) |
+| **Отладочный** | `utils.DebugPrint()` | stderr | Только при `--debug` |
+| **Структурированный** | `log.L().Info()`, `log.L().Error()` | `~/.gotr/logs/` | Всегда (в файл) |
+
+### 8.2. Когда что использовать
+
+```go
+// Пользователь должен увидеть в терминале:
+ui.Info(os.Stdout, "Loading cases...")
+ui.Success(os.Stdout, "Done!")
+
+// Debug-вывод (только с --debug):
+utils.DebugPrint("{syncCases} Processing suite %d", suiteID)
+
+// В файл для диагностики:
+log.L().Info("API call completed",
+    zap.Int64("project_id", pid),
+    zap.Duration("elapsed", elapsed),
+)
+log.L().Error("API request failed",
+    zap.Error(err),
+    zap.String("endpoint", url),
+)
+```
+
+---
+
+## 9. Тестирование
+
+### 9.1. Общие требования
+
+| Требование | Описание |
+| ---------- | -------- |
+| Покрытие | ≥ 85% для каждого пакета (цель 90%+) |
+| Паттерн | Table-driven tests |
+| Моки | `client.MockClient` |
+| DI | `newXxxCmd(clientFn)` для инъекции |
+| Naming | `TestXxx_Success`, `TestXxx_Error`, `TestXxx_EdgeCase` |
+| Без сети | Unit-тесты без внешних вызовов |
+| Race | `go test -race ./...` — 0 data races |
+
+### 9.2. Тестовый паттерн CMD
+
+Стандартный паттерн для тестирования CLI-команд:
+
+```go
+func TestGetCase_Success(t *testing.T) {
+    mock := &client.MockClient{
+        GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
+            return &data.Case{ID: caseID, Title: "Test"}, nil
+        },
+    }
+    cmd := testhelper.SetupTestCmd(t, mock)
+
+    getCmd := newGetCmd(testhelper.GetClientForTests)
+    getCmd.SetArgs([]string{"123"})
+    getCmd.SetContext(cmd.Context())
+
+    err := getCmd.Execute()
+    assert.NoError(t, err)
+}
+```
+
+### 9.3. Тестовый паттерн Service
+
+```go
+func TestRunService_Create_ValidatesProjectID(t *testing.T) {
+    tests := []struct {
+        name      string
+        projectID int64
+        wantErr   bool
+    }{
+        {"valid", 30, false},
+        {"zero", 0, true},
+        {"negative", -1, true},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            svc := NewRunService(mockClient)
+            _, err := svc.Create(ctx, tt.projectID, req)
+            if tt.wantErr {
+                assert.Error(t, err)
+            } else {
+                assert.NoError(t, err)
+            }
+        })
+    }
+}
+```
+
+---
+
+## 10. Сборка и релиз
+
+### 10.1. Makefile targets
+
+| Target | Описание |
+| ------ | -------- |
+| `make build` | Сборка с версией из `cmd/root.go` |
+| `make build VERSION=v3.0.0` | Сборка с явной версией |
+| `make test` | Запуск тестов (`go test ./... -v`) |
+| `make install` | Установка в `/usr/local/bin` (sudo) |
+| `make release` | Cross-compilation: Linux + macOS + Windows |
+| `make release-compressed` | То же + UPX сжатие |
+| `make tag VERSION=v3.0.0` | Создание git tag + push |
+| `make clean` | Удаление бинарника |
+
+### 10.2. Версионирование
+
+Версия встраивается через `-ldflags` при сборке:
+
+```go
+var (
+    Version = "2.7.0"   // Значение по умолчанию (для go run)
+    Commit  = "unknown"
+    Date    = "unknown"
+)
+```
+
+`cmd/root.go` → `rootCmd.Version = Version` → `gotr --version`
+
+### 10.3. Кросс-компиляция
+
+Поддерживаемые платформы:
+- `linux/amd64`
+- `darwin/amd64`
+- `windows/amd64`
+
+UPX сжатие опционально (если установлен). Для macOS — `--force-macos`.
+
+### 10.4. Линтинг
+
+```bash
+export PATH="$PATH:$(go env GOPATH)/bin"
+golangci-lint run --timeout 5m
+```
+
+Конфигурация: `.golangci.yml` (11 линтеров). Baseline: 208 замечаний (Stage 9.0).
+
+---
+
+## 11. Контрольный список (Checklist)
+
+### Новая команда
+
+- [ ] Конструктор: `newXxxCmd(clientFn)`
+- [ ] `ctx := cmd.Context()` передаётся во все I/O вызовы
 - [ ] Ошибки обёрнуты: `fmt.Errorf("... : %w", err)`
 - [ ] Вывод — через `ui.*` (не `fmt.Printf`)
 - [ ] Валидация — через `flags.*`
 - [ ] Сохранение — через `output.*`
-- [ ] Конструктор: `newXxxCmd(clientFn)`
-- [ ] Тест: ≥ success + error + edge case
+- [ ] Регистрация в `commands.go` через `Register(rootCmd, clientFn)`
+- [ ] Тест: ≥ success + error + edge case (через `testhelper`)
 - [ ] Нет дублирования (≥ 3 раз → хелпер)
-- [ ] Нет кириллицы в коде
+
+### Новый API-метод
+
+- [ ] Сигнатура: `func (c *HTTPClient) GetXxx(ctx context.Context, ...)`
+- [ ] Добавлен в `interfaces.go` (соответствующий интерфейс)
+- [ ] Добавлен в `mock.go` (`MockClient`)
+- [ ] List-методы: `fetchAllPages[T]`
+- [ ] Тест с `MockClient`
+
+### Общая проверка
+
+- [ ] Нет кириллицы в коде (только `docs/` и `README`)
 - [ ] `go vet ./...` — 0 предупреждений
 - [ ] `go build ./...` — 0 ошибок
+- [ ] `go test ./...` — 0 FAIL
+- [ ] `go test -race ./...` — 0 data races
+- [ ] Пути через `paths.*` (не хардкоженные)
+- [ ] Логирование: `ui.*` для терминала, `log.L()` для файла

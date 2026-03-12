@@ -27,7 +27,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientInterfaceFunc) {
 	// Create main compare command
 	Cmd = &cobra.Command{
 		Use:   "compare",
-		Short: "Сравнение данных между проектами",
+		Short: "Comparison данных между проектами",
 		Long: `Выполнение сравнения ресурсов между двумя проектами.
 
 Поддерживаемые ресурсы:

@@ -59,7 +59,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект (откуда копировать):")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project (copy from):")
 			if err != nil {
 				return err
 			}
@@ -67,7 +67,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
 				return err
 			}
@@ -75,7 +75,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект (куда копировать):")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project (copy to):")
 			if err != nil {
 				return err
 			}
@@ -83,7 +83,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
 				return err
 			}
@@ -114,9 +114,9 @@ var casesCmd = &cobra.Command{
 			if err := m.LoadMappingFromFile(mappingFile); err != nil {
 				return fmt.Errorf("failed to load mapping: %w", err)
 			}
-			fmt.Printf("Загружен mapping: %d записей\n", len(m.Mapping()))
+			fmt.Printf("Mapping loaded: %d entries\n", len(m.Mapping()))
 		} else {
-			fmt.Println("Warning: mapping не загружен — shared_step_id НЕ будут заменены")
+			fmt.Println("Warning: mapping not loaded — shared_step_id will NOT be replaced")
 		}
 
 		progress.Describe(pm.NewSpinner(""), "Загрузка кейсов...")
@@ -142,23 +142,23 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("\nРезультат анализа:\n")
-		fmt.Printf("  Совпадения: %d\n", len(matches))
-		fmt.Printf("  Новые: %d\n", len(filtered))
+		fmt.Printf("\nAnalysis result:\n")
+		fmt.Printf("  Matches: %d\n", len(matches))
+		fmt.Printf("  New: %d\n", len(filtered))
 
 		if dryRun {
-			fmt.Println("\nDry-run: импорт НЕ выполнен (безопасно).")
+			fmt.Println("\nDry-run: import NOT performed (safe).")
 			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
 
-		fmt.Printf("\nПодтверждение импорта %d новых кейсов...\n", len(filtered))
-		fmt.Print("Продолжить? [y/N]: ")
+		fmt.Printf("\nConfirm import of %d new cases...\n", len(filtered))
+		fmt.Print("Continue? [y/N]: ")
 		var confirm string
 		fmt.Scanln(&confirm)
 		confirm = strings.ToLower(strings.TrimSpace(confirm))
 		if confirm != "y" && confirm != "yes" {
-			fmt.Println("Отменено.")
+			fmt.Println("Cancelled.")
 			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
@@ -169,10 +169,10 @@ var casesCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nИмпорт завершён: %d новых кейсов\n", len(createdIDs))
+		fmt.Printf("\nImport complete: %d new cases\n", len(createdIDs))
 
 		if len(importErrors) > 0 {
-			fmt.Println("\nОшибки:")
+			fmt.Println("\nErrors:")
 			for _, e := range importErrors {
 				fmt.Printf("  - %s\n", e)
 			}
@@ -195,5 +195,5 @@ func saveLog(file string, matches, filtered data.GetCasesResponse, errors []stri
 	}
 	jsonData, _ := json.MarshalIndent(result, "", "  ")
 	os.WriteFile(file, jsonData, 0644)
-	fmt.Printf("Лог сохранён: %s\n", file)
+	fmt.Printf("Log saved: %s\n", file)
 }

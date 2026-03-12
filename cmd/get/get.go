@@ -30,7 +30,7 @@ var Cmd = &cobra.Command{
 	case-history       - получить историю изменений кейса по ID кейса
 
 	project            - получить один проект по ID проекта
-	projects           - получить все проекты
+	projects           - получить все projects
 
 	sharedstep         - получить один shared step по ID шага
 	sharedsteps        - получить shared steps проекта (требует ID проекта)
@@ -97,7 +97,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 			return fmt.Errorf("save error: %w", err)
 		}
 		if !quiet && filepath != "" {
-			fmt.Printf("Ответ сохранён в %s\n", filepath)
+			fmt.Printf("Response saved to %s\n", filepath)
 		}
 		return nil
 	}

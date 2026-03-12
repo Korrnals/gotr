@@ -75,7 +75,7 @@ func (c *Config) Create() error {
 		return fmt.Errorf("failed to write file %s: %w", c.Path, err)
 	}
 
-	fmt.Printf("Создан конфиг-файл: %s\n", c.Path)
+	fmt.Printf("Config file created: %s\n", c.Path)
 	return nil
 }
 

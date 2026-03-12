@@ -31,7 +31,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			if dryRun {
-				fmt.Printf("[DRY-RUN] Будет создана группа '%s' в проекте %d\n", name, projectID)
+				fmt.Printf("[DRY-RUN] Will create group '%s' in project %d\n", name, projectID)
 				return nil
 			}
 

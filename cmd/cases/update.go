@@ -82,7 +82,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().String("title", "", "Новое название")
 	cmd.Flags().Int64("type-id", 0, "Новый ID типа")
 	cmd.Flags().Int64("priority-id", 0, "Новый ID приоритета")
-	cmd.Flags().String("refs", "", "Новые ссылки")
+	cmd.Flags().String("refs", "", "New ссылки")
 
 	return cmd
 }

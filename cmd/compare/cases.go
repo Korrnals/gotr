@@ -226,13 +226,13 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 
 	// Print summary
 	ui.Section(os.Stderr, "Результаты загрузки")
-	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Проект %d", pid1),
+	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid1),
 		fmt.Sprintf("%d кейсов за %s", len(cases1), task1.Elapsed().Round(time.Second)))
-	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Проект %d", pid2),
+	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid2),
 		fmt.Sprintf("%d кейсов за %s", len(cases2), task2.Elapsed().Round(time.Second)))
 
 	if task1.Errors() > 0 || task2.Errors() > 0 {
-		ui.Warningf(os.Stderr, "Ошибки: П%d=%d, П%d=%d", pid1, task1.Errors(), pid2, task2.Errors())
+		ui.Warningf(os.Stderr, "Errors: П%d=%d, П%d=%d", pid1, task1.Errors(), pid2, task2.Errors())
 	}
 	execStats.LoadErrorsP1 = int(task1.Errors())
 	execStats.LoadErrorsP2 = int(task2.Errors())
@@ -594,23 +594,23 @@ func analyzeCases(cases1, cases2 []ItemInfo, pid1, pid2 int64, field string) *Co
 func printCasesFieldDiff(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, field string) {
 	diff, err := cli.DiffCasesData(ctx, pid1, pid2, field)
 	if err != nil {
-		fmt.Printf("\nОшибка получения различий по полю '%s': %v\n", field, err)
+		fmt.Printf("\nError getting differences for field '%s': %v\n", field, err)
 		return
 	}
 
 	if len(diff.DiffByField) == 0 {
-		fmt.Printf("\nОтличий по полю '%s' не найдено.\n", field)
+		fmt.Printf("\nNo differences found for field '%s' not found.\n", field)
 		return
 	}
 
-	fmt.Printf("\n=== Отличия по полю '%s' ===\n", field)
+	fmt.Printf("\n=== Differences for field '%s' ===\n", field)
 	for _, d := range diff.DiffByField {
 		firstValue := getFieldValue(d.First, field)
 		secondValue := getFieldValue(d.Second, field)
 
-		fmt.Printf("\nКейс: %s (ID: %d)\n", d.First.Title, d.CaseID)
-		fmt.Printf("  Проект %d: %s\n", pid1, firstValue)
-		fmt.Printf("  Проект %d: %s\n", pid2, secondValue)
+		fmt.Printf("\nCase: %s (ID: %d)\n", d.First.Title, d.CaseID)
+		fmt.Printf("  Project %d: %s\n", pid1, firstValue)
+		fmt.Printf("  Project %d: %s\n", pid2, secondValue)
 	}
 }
 
@@ -643,13 +643,13 @@ func printCasesStats(result *CompareResult, elapsed time.Duration) {
 	totalCases := len(result.OnlyInFirst) + len(result.OnlyInSecond) + len(result.Common)
 
 	r := reporter.New("cases").
-		Section("Общая статистика").
-		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
+		Section("General statistics").
+		Stat("⏱️", "Execution time", elapsed.Round(time.Millisecond)).
 		Stat("📦", "Всего кейсов обработано", totalCases).
-		Section("Результат сравнения").
-		Stat("🔹", fmt.Sprintf("Только в проекте %d", result.Project1ID), len(result.OnlyInFirst)).
-		Stat("🔹", fmt.Sprintf("Только в проекте %d", result.Project2ID), len(result.OnlyInSecond)).
-		Stat("🔗", "Общих кейсов", len(result.Common))
+		Section("Comparison results").
+		Stat("🔹", fmt.Sprintf("Only in project %d", result.Project1ID), len(result.OnlyInFirst)).
+		Stat("🔹", fmt.Sprintf("Only in project %d", result.Project2ID), len(result.OnlyInSecond)).
+		Stat("🔗", "Common cases", len(result.Common))
 
 	r.Print()
 }

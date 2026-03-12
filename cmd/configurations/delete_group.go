@@ -43,7 +43,7 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete group: %w", err)
 			}
 
-			fmt.Printf("✅ Группа %d удалена\n", groupID)
+			fmt.Printf("✅ Group %d deleted\n", groupID)
 			return nil
 		},
 	}

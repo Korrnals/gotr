@@ -9,7 +9,7 @@ import (
 // FilterSharedSteps — фильтрация shared steps по использованию in suite и дубликатам в target
 // Кандидаты — shared steps, не используемые в source suite (по CaseIDs)
 // Дубликаты — добавляются в mapping (status "existing")
-// Новые — возвращаются для импорта
+// New — возвращаются для импорта
 func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse, sourceCaseIDs map[int64]struct{}) (filtered data.GetSharedStepsResponse, err error) {
 	m.logger.Info("Начало фильтрации shared steps по использованию in suite")
 
@@ -47,13 +47,13 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 		}
 	}
 
-	m.logger.Infow("Готово к импорту новых shared steps", "count", len(filtered))
+	m.logger.Infow("Ready to import new shared steps", "count", len(filtered))
 	return filtered, nil
 }
 
 // FilterSuites — фильтрация suites по дубликатам (по name)
 // Дубликаты — добавляются в mapping (status "existing")
-// Новые — возвращаются для импорта
+// New — возвращаются для импорта
 func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtered data.GetSuitesResponse, err error) {
 	m.logger.Info("Начало фильтрации suites по дубликатам (по name)")
 
@@ -73,7 +73,7 @@ func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtere
 		}
 	}
 
-	m.logger.Infow("Готово к импорту новых suites", "count", len(filtered))
+	m.logger.Infow("Ready to import new suites", "count", len(filtered))
 	return filtered, nil
 }
 
@@ -98,7 +98,7 @@ func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered 
 		}
 	}
 
-	m.logger.Infow("Готово к импорту новых cases", "count", len(filtered))
+	m.logger.Infow("Ready to import новых cases", "count", len(filtered))
 	return filtered, nil
 }
 
@@ -122,6 +122,6 @@ func (m *Migration) FilterSections(source, target data.GetSectionsResponse) (fil
 		}
 	}
 
-	m.logger.Infow("Готово к импорту новых sections", "count", len(filtered))
+	m.logger.Infow("Ready to import new sections", "count", len(filtered))
 	return filtered, nil
 }

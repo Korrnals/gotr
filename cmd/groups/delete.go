@@ -26,7 +26,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			if dryRun {
-				fmt.Printf("[DRY-RUN] Будет удалена группа %d\n", groupID)
+				fmt.Printf("[DRY-RUN] Will delete group %d\n", groupID)
 				return nil
 			}
 
@@ -36,7 +36,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			if !quiet {
-				color.New(color.FgGreen).Fprintf(cmd.OutOrStdout(), "✓ Группа %d удалена\n", groupID)
+				color.New(color.FgGreen).Fprintf(cmd.OutOrStdout(), "✓ Group %d deleted\n", groupID)
 			}
 
 			return nil

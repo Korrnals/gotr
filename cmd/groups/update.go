@@ -31,7 +31,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			if dryRun {
-				fmt.Printf("[DRY-RUN] Будет обновлена группа %d, новое название: '%s'\n", groupID, name)
+				fmt.Printf("[DRY-RUN] Will update group %d, new name: '%s'\n", groupID, name)
 				return nil
 			}
 

@@ -16,15 +16,15 @@
 // Usage (dynamic builder):
 //
 //	reporter.New("cases").
-//	    Section("Общая статистика").
-//	    Stat("⏱️", "Время выполнения", elapsed).
-//	    Stat("📦", "Всего обработано", total).
-//	    Section("Проект 30").
-//	    Stat("📋", "Сьютов", 15).
-//	    Stat("📄", "Кейсов", 8250).
-//	    Section("Результат сравнения").
-//	    Stat("✅", "Только в П30", 145).
-//	    Stat("🔗", "Общих", 12273).
+//	    Section("General statistics").
+//	    Stat("⏱️", "Execution time", elapsed).
+//	    Stat("📦", "Total processed", total).
+//	    Section("Project 30").
+//	    Stat("📋", "Suites", 15).
+//	    Stat("📄", "Cases", 8250).
+//	    Section("Comparison results").
+//	    Stat("✅", "Only in P30", 145).
+//	    Stat("🔗", "Common", 12273).
 //	    Print()
 package reporter
 
@@ -217,7 +217,7 @@ func (r *Report) String() string {
 	tw.SetStyle(table.StyleRounded)
 
 	// Title row — no emoji, just colored text.
-	tw.SetTitle(fmt.Sprintf("%s%sСТАТИСТИКА: %s%s", ansiBold, ansiCyan, r.title, ansiReset))
+	tw.SetTitle(fmt.Sprintf("%s%sSTATS: %s%s", ansiBold, ansiCyan, r.title, ansiReset))
 
 	// Center the title.
 	tw.Style().Title.Align = text.AlignCenter
@@ -258,32 +258,32 @@ func (r *Report) String() string {
 func CompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int, elapsed time.Duration) *Report {
 	total := onlyFirst + onlySecond + common
 	return New(resource).
-		Section("Общая статистика").
-		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
-		Stat("📦", "Всего обработано", total).
-		Section("Результат сравнения").
-		Stat("🔹", fmt.Sprintf("Только in project %d", pid1), onlyFirst).
-		Stat("🔹", fmt.Sprintf("Только in project %d", pid2), onlySecond).
-		Stat("🔗", "Общих", common)
+		Section("General statistics").
+		Stat("⏱️", "Execution time", elapsed.Round(time.Millisecond)).
+		Stat("📦", "Total processed", total).
+		Section("Comparison results").
+		Stat("🔹", fmt.Sprintf("Only in project %d", pid1), onlyFirst).
+		Stat("🔹", fmt.Sprintf("Only in project %d", pid2), onlySecond).
+		Stat("🔗", "Common", common)
 }
 
 // CompareResultShort returns a single-line summary string.
 func CompareResultShort(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int) string {
-	return fmt.Sprintf("%s: П%d=%d, П%d=%d, общих=%d",
+	return fmt.Sprintf("%s: P%d=%d, P%d=%d, common=%d",
 		resource, pid1, onlyFirst, pid2, onlySecond, common)
 }
 
 // FormatDuration formats a duration for human-readable display.
 func FormatDuration(d time.Duration) string {
 	if d < time.Second {
-		return fmt.Sprintf("%dмс", d.Milliseconds())
+		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
 	m := int(d.Minutes())
 	s := int(d.Seconds()) % 60
 	if m > 0 {
-		return fmt.Sprintf("%dм%02dс", m, s)
+		return fmt.Sprintf("%dm%02ds", m, s)
 	}
-	return fmt.Sprintf("%dс", s)
+	return fmt.Sprintf("%ds", s)
 }
 
 // StripEmoji removes common emoji from text, replacing them with ASCII equivalents.

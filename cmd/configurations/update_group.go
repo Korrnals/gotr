@@ -47,7 +47,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update group: %w", err)
 			}
 
-			fmt.Printf("✅ Группа %d обновлена\n", groupID)
+			fmt.Printf("✅ Group %d updated\n", groupID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}

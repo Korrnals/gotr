@@ -21,8 +21,8 @@ var addCmd = &cobra.Command{
 
 Поддерживаемые эндпоинты:
   project              Создать проект
-  suite <project_id>   Создать сьют в проекте
-  section <project_id> Создать секцию в проекте/сьюте
+  suite <project_id>   Создать сьют in project
+  section <project_id> Создать секцию in project/сьюте
   case <section_id>    Создать тест-кейс в секции
   run <project_id>     Создать тест-ран
   result <test_id>     Добавить результат теста
@@ -212,16 +212,16 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 
 	// Предпросмотр
 	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Project")
+	fmt.Println("📋 PREVIEW: Create Project")
 	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Название:        %s\n", answers.Name)
+	fmt.Printf("Name:            %s\n", answers.Name)
 	fmt.Printf("Announcement:    %s\n", answers.Announcement)
 	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		fmt.Println("\n❌ Cancelled")
 		return nil
 	}
 
@@ -236,7 +236,7 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 		return fmt.Errorf("failed to create project: %w", err)
 	}
 
-	fmt.Printf("\n✅ Проект создан (ID: %d)\n", project.ID)
+	fmt.Printf("\n✅ Project created (ID: %d)\n", project.ID)
 	return output.OutputResult(cmd, project, "result")
 }
 
@@ -249,16 +249,16 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 
 	// Предпросмотр
 	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Suite")
+	fmt.Println("📋 PREVIEW: Create Suite")
 	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Описание:        %s\n", answers.Description)
+	fmt.Printf("Name:            %s\n", answers.Name)
+	fmt.Printf("Description:     %s\n", answers.Description)
 	fmt.Printf("Project ID:      %d\n", projectID)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		fmt.Println("\n❌ Cancelled")
 		return nil
 	}
 
@@ -272,7 +272,7 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 		return fmt.Errorf("failed to create suite: %w", err)
 	}
 
-	fmt.Printf("\n✅ Сьют создан (ID: %d)\n", suite.ID)
+	fmt.Printf("\n✅ Suite created (ID: %d)\n", suite.ID)
 	return output.OutputResult(cmd, suite, "result")
 }
 
@@ -285,9 +285,9 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 
 	// Предпросмотр
 	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Case")
+	fmt.Println("📋 PREVIEW: Create Case")
 	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Заголовок:       %s\n", answers.Title)
+	fmt.Printf("Title:           %s\n", answers.Title)
 	fmt.Printf("Section ID:      %d\n", sectionID)
 	fmt.Printf("Type ID:         %d\n", answers.TypeID)
 	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
@@ -295,7 +295,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		fmt.Println("\n❌ Cancelled")
 		return nil
 	}
 
@@ -312,7 +312,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 		return fmt.Errorf("failed to create case: %w", err)
 	}
 
-	fmt.Printf("\n✅ Кейс создан (ID: %d)\n", caseResp.ID)
+	fmt.Printf("\n✅ Case created (ID: %d)\n", caseResp.ID)
 	return output.OutputResult(cmd, caseResp, "result")
 }
 
@@ -325,10 +325,10 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 
 	// Предпросмотр
 	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Run")
+	fmt.Println("📋 PREVIEW: Create Run")
 	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Описание:        %s\n", answers.Description)
+	fmt.Printf("Name:            %s\n", answers.Name)
+	fmt.Printf("Description:     %s\n", answers.Description)
 	fmt.Printf("Suite ID:        %d\n", answers.SuiteID)
 	fmt.Printf("Include all:     %v\n", answers.IncludeAll)
 	fmt.Printf("Project ID:      %d\n", projectID)
@@ -336,7 +336,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		fmt.Println("\n❌ Cancelled")
 		return nil
 	}
 
@@ -352,7 +352,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 		return fmt.Errorf("failed to create run: %w", err)
 	}
 
-	fmt.Printf("\n✅ Run создан (ID: %d)\n", run.ID)
+	fmt.Printf("\n✅ Run created (ID: %d)\n", run.ID)
 	return output.OutputResult(cmd, run, "result")
 }
 
@@ -881,7 +881,7 @@ func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID 
 		return fmt.Errorf("failed to add attachment to case: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("✅ Attachment added (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
 	return output.OutputResult(cmd, resp, "result")
 }
@@ -904,7 +904,7 @@ func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID 
 		return fmt.Errorf("failed to add attachment to plan: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("✅ Attachment added (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
 	return output.OutputResult(cmd, resp, "result")
 }
@@ -927,7 +927,7 @@ func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, pl
 		return fmt.Errorf("failed to add attachment to plan entry: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("✅ Attachment added (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
 	return output.OutputResult(cmd, resp, "result")
 }
@@ -950,7 +950,7 @@ func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resul
 		return fmt.Errorf("failed to add attachment to result: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("✅ Attachment added (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
 	return output.OutputResult(cmd, resp, "result")
 }
@@ -973,7 +973,7 @@ func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID in
 		return fmt.Errorf("failed to add attachment to run: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
+	fmt.Printf("✅ Attachment added (ID: %d)\n", resp.AttachmentID)
 	fmt.Printf("   URL: %s\n", resp.URL)
 	return output.OutputResult(cmd, resp, "result")
 }

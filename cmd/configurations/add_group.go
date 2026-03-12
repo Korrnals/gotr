@@ -51,7 +51,7 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to create group: %w", err)
 			}
 
-			fmt.Printf("✅ Группа создана (ID: %d)\n", resp.ID)
+			fmt.Printf("✅ Group created (ID: %d)\n", resp.ID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}

@@ -153,10 +153,10 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 	// Предпросмотр
 	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Update Project")
+	fmt.Println("📋 PREVIEW: Update Project")
 	fmt.Println("────────────────────────────────────────────────────────────")
 	fmt.Printf("Project ID:      %d\n", id)
-	fmt.Printf("Название:        %s\n", answers.Name)
+	fmt.Printf("Name:            %s\n", answers.Name)
 	fmt.Printf("Announcement:    %s\n", answers.Announcement)
 	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
 	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
@@ -164,7 +164,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		fmt.Println("\n❌ Cancelled")
 		return nil
 	}
 
@@ -180,7 +180,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		return fmt.Errorf("failed to update project: %w", err)
 	}
 
-	fmt.Printf("\n✅ Проект обновлён (ID: %d)\n", project.ID)
+	fmt.Printf("\n✅ Project updated (ID: %d)\n", project.ID)
 	return outputUpdateResult(cmd, project)
 }
 
@@ -193,17 +193,17 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 
 	// Предпросмотр
 	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Update Suite")
+	fmt.Println("📋 PREVIEW: Update Suite")
 	fmt.Println("────────────────────────────────────────────────────────────")
 	fmt.Printf("Suite ID:        %d\n", id)
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Описание:        %s\n", answers.Description)
+	fmt.Printf("Name:            %s\n", answers.Name)
+	fmt.Printf("Description:     %s\n", answers.Description)
 	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		fmt.Println("\n❌ Cancelled")
 		return nil
 	}
 
@@ -218,7 +218,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 		return fmt.Errorf("failed to update suite: %w", err)
 	}
 
-	fmt.Printf("\n✅ Сьют обновлён (ID: %d)\n", suite.ID)
+	fmt.Printf("\n✅ Suite updated (ID: %d)\n", suite.ID)
 	return outputUpdateResult(cmd, suite)
 }
 
@@ -231,17 +231,17 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 
 	// Предпросмотр
 	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Update Case")
+	fmt.Println("📋 PREVIEW: Update Case")
 	fmt.Println("────────────────────────────────────────────────────────────")
 	fmt.Printf("Case ID:         %d\n", id)
-	fmt.Printf("Заголовок:       %s\n", answers.Title)
+	fmt.Printf("Title:           %s\n", answers.Title)
 	fmt.Printf("Type ID:         %d\n", answers.TypeID)
 	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
 	fmt.Println("────────────────────────────────────────────────────────────")
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		fmt.Println("\n❌ Cancelled")
 		return nil
 	}
 
@@ -257,7 +257,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		return fmt.Errorf("failed to update case: %w", err)
 	}
 
-	fmt.Printf("\n✅ Кейс обновлён (ID: %d)\n", caseResp.ID)
+	fmt.Printf("\n✅ Case updated (ID: %d)\n", caseResp.ID)
 	return outputUpdateResult(cmd, caseResp)
 }
 
@@ -644,7 +644,7 @@ func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) 
 		return fmt.Errorf("failed to update labels: %w", err)
 	}
 
-	fmt.Printf("✅ Метки обновлены для теста %d: %v\n", testID, labels)
+	fmt.Printf("✅ Labels updated for test %d: %v\n", testID, labels)
 	return nil
 }
 

@@ -46,8 +46,8 @@ var exportCmd = &cobra.Command{
 			return err
 		}
 
-		utils.DebugPrint("{exportCmd} - Финальный эндпоинт: %s", fullEndpoint)
-		utils.DebugPrint("{exportCmd} - Query-параметры: %v", queryParams)
+		utils.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)
+		utils.DebugPrint("{exportCmd} - Query params: %v", queryParams)
 
 		// Запрос
 		start := time.Now()
@@ -73,7 +73,7 @@ var exportCmd = &cobra.Command{
 				return fmt.Errorf("save error: %w", err)
 			}
 			if !quiet && filepath != "" {
-				fmt.Printf("Данные экспортированы в %s\n", filepath)
+				fmt.Printf("Data exported to %s\n", filepath)
 			}
 		} else {
 			// Сохранение в .testrail/ (legacy behavior)
@@ -89,7 +89,7 @@ var exportCmd = &cobra.Command{
 				return fmt.Errorf("file export error %s: %w", filename, err)
 			}
 			if !quiet {
-				fmt.Printf("Данные экспортированы в %s\n", filename)
+				fmt.Printf("Data exported to %s\n", filename)
 			}
 		}
 

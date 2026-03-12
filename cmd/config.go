@@ -72,10 +72,10 @@ var configPathCmd = &cobra.Command{
 
 		used := viper.ConfigFileUsed()
 		if used == "" {
-			fmt.Printf("Конфиг-файл не найден.\nОжидаемое расположение: %s\n", cfg.PathString())
-			fmt.Println("Создайте его командой: gotr config init")
+			fmt.Printf("Config file not found.\nExpected location: %s\n", cfg.PathString())
+			fmt.Println("Create it with: gotr config init")
 		} else {
-			fmt.Printf("Текущий конфиг-файл: %s\n", used)
+			fmt.Printf("Current config file: %s\n", used)
 		}
 		return nil
 	},
@@ -95,8 +95,8 @@ var configViewCmd = &cobra.Command{
 		used := viper.ConfigFileUsed()
 		if used == "" {
 			cfg, _ := config.Default()
-			fmt.Printf("Конфиг-file not found: %s\n", cfg.PathString())
-			fmt.Println("Создайте его: gotr config init")
+			fmt.Printf("Config file not found: %s\n", cfg.PathString())
+			fmt.Println("Create it with: gotr config init")
 			return nil
 		}
 
@@ -105,7 +105,7 @@ var configViewCmd = &cobra.Command{
 			return fmt.Errorf("failed to read config: %w", err)
 		}
 
-		fmt.Printf("Содержимое конфиг-файла %s:\n\n%s\n", used, string(data))
+		fmt.Printf("Config file contents %s:\n\n%s\n", used, string(data))
 		return nil
 	},
 }
@@ -134,8 +134,8 @@ var configEditCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to determine config path: %w", err)
 			}
-			fmt.Printf("Конфиг-file not found: %s\n", cfg.PathString())
-			fmt.Println("Создайте его командой: gotr config init")
+			fmt.Printf("Config file not found: %s\n", cfg.PathString())
+			fmt.Println("Create it with: gotr config init")
 			return nil
 		}
 
@@ -144,7 +144,7 @@ var configEditCmd = &cobra.Command{
 			return fmt.Errorf("failed to open editor: %w", err)
 		}
 
-		fmt.Printf("Конфиг-файл открыт в редакторе: %s\n", used)
+		fmt.Printf("Config file opened in editor: %s\n", used)
 		return nil
 	},
 }

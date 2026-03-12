@@ -30,7 +30,7 @@ func selectProjectInteractively(ctx context.Context, cli client.ClientInterface,
 	}
 
 	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Выберите номер проекта (1-%d): ", len(projects))
+	fmt.Printf("Select project number (1-%d): ", len(projects))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
@@ -45,7 +45,7 @@ func selectProjectInteractively(ctx context.Context, cli client.ClientInterface,
 	}
 
 	selected := projects[choice-1]
-	fmt.Printf("✓ Выбран проект: %s (ID: %d)\n\n", selected.Name, selected.ID)
+	fmt.Printf("✓ Selected project: %s (ID: %d)\n\n", selected.Name, selected.ID)
 
 	return selected.ID, nil
 }
@@ -63,7 +63,7 @@ func selectSuiteInteractively(ctx context.Context, cli client.ClientInterface, p
 
 	// Если только один сьют — выбираем автоматически
 	if len(suites) == 1 {
-		fmt.Printf("В проекте найден один сьют: %s (ID: %d)\n✓ Используем автоматически.\n\n",
+		fmt.Printf("Project has one suite: %s (ID: %d)\n✓ Using automatically.\n\n",
 			suites[0].Name, suites[0].ID)
 		return suites[0].ID, nil
 	}
@@ -83,7 +83,7 @@ func selectSuiteInteractively(ctx context.Context, cli client.ClientInterface, p
 	}
 
 	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Выберите номер сьюта (1-%d): ", len(suites))
+	fmt.Printf("Select suite number (1-%d): ", len(suites))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
@@ -98,7 +98,7 @@ func selectSuiteInteractively(ctx context.Context, cli client.ClientInterface, p
 	}
 
 	selected := suites[choice-1]
-	fmt.Printf("✓ Выбран сьют: %s (ID: %d)\n\n", selected.Name, selected.ID)
+	fmt.Printf("✓ Selected suite: %s (ID: %d)\n\n", selected.Name, selected.ID)
 
 	return selected.ID, nil
 }

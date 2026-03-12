@@ -40,7 +40,7 @@ type Case struct {
 type GetCasesResponse []Case
 
 // PaginatedCasesResponse — обёрточный формат response TestRail API v2 (6.7+).
-// Новые версии TestRail возвращают:
+// New версии TestRail возвращают:
 //
 //	{"offset": 0, "limit": 250, "size": 5000, "_links": {...}, "cases": [...]}
 //

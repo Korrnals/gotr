@@ -207,7 +207,7 @@ func printSeparator(widths []int) {
 
 // printTable prints the result in table format
 func printTable(result CompareResult, project1Name, project2Name string) error {
-	fmt.Printf("\n=== Сравнение: %s (проекты %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
+	fmt.Printf("\n=== Comparison: %s (projects %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
 
 	// Table 1: Only in Project 1
 	printOnlyInProjectTable(result.OnlyInFirst, result.Project1ID, project1Name)
@@ -235,7 +235,7 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 	totalInnerWidth := idWidth + nameWidth + 3*len(widths) - 1
 
 	// Title
-	title := fmt.Sprintf("Только в проекте %d - \"%s\"", projectID, projectName)
+	title := fmt.Sprintf("Только in project %d - \"%s\"", projectID, projectName)
 	printHorizontalBorder("┌", "┬", "┐", widths)
 	printHeader(title, totalInnerWidth)
 
@@ -481,7 +481,7 @@ func saveCSV(result CompareResult, savePath string) error {
 
 	// Print on new line after progress bar
 	fmt.Println()
-	fmt.Printf("Результат сохранён в %s\n", savePath)
+	fmt.Printf("Result saved to %s\n", savePath)
 	return nil
 }
 
@@ -492,7 +492,7 @@ func saveToFile(data []byte, savePath string) error {
 	}
 	// Print on new line after progress bar
 	fmt.Println()
-	fmt.Printf("Результат сохранён в %s\n", savePath)
+	fmt.Printf("Result saved to %s\n", savePath)
 	return nil
 }
 
@@ -557,7 +557,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 
 	// Print on new line after progress bar
 	fmt.Println()
-	fmt.Printf("Результат сохранён в %s\n", filePath)
+	fmt.Printf("Result saved to %s\n", filePath)
 	return nil
 }
 

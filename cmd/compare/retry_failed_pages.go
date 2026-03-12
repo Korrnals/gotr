@@ -155,7 +155,7 @@ func executeRetryFailedPages(
 		ui.Infof(os.Stderr, "Источник: %s", sourceLabel)
 	}
 	ui.Infof(os.Stderr, "Страниц в отчёте: %d (уникальных: %d)", len(failedPages), len(uniquePages))
-	ui.Infof(os.Stderr, "Параметры: attempts=%d, workers=%d, retry-delay=%s", opts.Attempts, opts.Workers, opts.Delay)
+	ui.Infof(os.Stderr, "Parameters: attempts=%d, workers=%d, retry-delay=%s", opts.Attempts, opts.Workers, opts.Delay)
 
 	type retryResult struct {
 		page  concurrency.FailedPage

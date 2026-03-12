@@ -25,7 +25,7 @@ func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInt
 		return 0, fmt.Errorf("no projects found")
 	}
 
-	fmt.Println("\nДоступные проекты:")
+	fmt.Println("\nAvailable projects:")
 	fmt.Println(strings.Repeat("-", 70))
 
 	for i, p := range projects {
@@ -33,7 +33,7 @@ func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInt
 	}
 
 	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Выберите номер проекта (1-%d): ", len(projects))
+	fmt.Printf("Select project number (1-%d): ", len(projects))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
@@ -48,14 +48,14 @@ func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInt
 	}
 
 	selected := projects[choice-1]
-	fmt.Printf("\nВыбран проект: %s (ID: %d)\n\n", selected.Name, selected.ID)
+	fmt.Printf("\nSelected project: %s (ID: %d)\n\n", selected.Name, selected.ID)
 
 	return selected.ID, nil
 }
 
 // SelectSuiteInteractively показывает список сьютов и просит выбрать
 func SelectSuiteInteractively(suites data.GetSuitesResponse) (int64, error) {
-	fmt.Println("\nВ проекте найдено несколько сьютов:")
+	fmt.Println("\nProject has multiple suites:")
 	fmt.Println(strings.Repeat("-", 60))
 
 	for i, suite := range suites {
@@ -70,7 +70,7 @@ func SelectSuiteInteractively(suites data.GetSuitesResponse) (int64, error) {
 	}
 
 	fmt.Println(strings.Repeat("-", 60))
-	fmt.Printf("Выберите номер сьюта (1-%d): ", len(suites))
+	fmt.Printf("Select suite number (1-%d): ", len(suites))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
@@ -85,14 +85,14 @@ func SelectSuiteInteractively(suites data.GetSuitesResponse) (int64, error) {
 	}
 
 	selectedSuite := suites[choice-1]
-	fmt.Printf("\nВыбран сьют: %s (ID: %d)\n\n", selectedSuite.Name, selectedSuite.ID)
+	fmt.Printf("\nSelected suite: %s (ID: %d)\n\n", selectedSuite.Name, selectedSuite.ID)
 
 	return selectedSuite.ID, nil
 }
 
 // SelectRunInteractively показывает список runs и просит выбрать
 func SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
-	fmt.Println("\nДоступные test runs:")
+	fmt.Println("\nAvailable test runs:")
 	fmt.Println(strings.Repeat("-", 70))
 
 	for i, run := range runs {
@@ -104,7 +104,7 @@ func SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
 	}
 
 	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Выберите номер run (1-%d): ", len(runs))
+	fmt.Printf("Select run number (1-%d): ", len(runs))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
@@ -119,7 +119,7 @@ func SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
 	}
 
 	selected := runs[choice-1]
-	fmt.Printf("\nВыбран run: %s (ID: %d)\n\n", selected.Name, selected.ID)
+	fmt.Printf("\nSelected run: %s (ID: %d)\n\n", selected.Name, selected.ID)
 
 	return selected.ID, nil
 }

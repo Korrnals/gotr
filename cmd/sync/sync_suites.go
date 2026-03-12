@@ -66,25 +66,25 @@ var suitesCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nГотово к импорту: %d новых suites\n", len(filtered))
+		fmt.Printf("\nReady to import: %d new suites\n", len(filtered))
 
 		if dryRun {
-			fmt.Println("Dry-run: импорт не выполнен")
+			fmt.Println("Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("Нет новых suites")
+			fmt.Println("No new suites")
 			return nil
 		}
 
 		if !autoApprove {
-			fmt.Printf("Подтверждение импорта %d suites...\n", len(filtered))
-			fmt.Print("Продолжить? [y/N]: ")
+			fmt.Printf("Confirm import of %d suites...\n", len(filtered))
+			fmt.Print("Continue? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Отменено")
+				fmt.Println("Cancelled")
 				return nil
 			}
 		}
@@ -99,7 +99,7 @@ var suitesCmd = &cobra.Command{
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nСохранить mapping? [y/N]: ")
+			fmt.Print("\nSave mapping? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {

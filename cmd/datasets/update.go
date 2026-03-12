@@ -50,7 +50,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update dataset: %w", err)
 			}
 
-			fmt.Printf("✅ Датасет %d обновлён\n", datasetID)
+			fmt.Printf("✅ Dataset %d updated\n", datasetID)
 			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}

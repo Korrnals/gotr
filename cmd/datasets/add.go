@@ -50,7 +50,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to create dataset: %w", err)
 			}
 
-			fmt.Printf("✅ Датасет создан (ID: %d)\n", resp.ID)
+			fmt.Printf("✅ Dataset created (ID: %d)\n", resp.ID)
 			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}

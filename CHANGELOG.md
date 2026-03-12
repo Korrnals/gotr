@@ -41,9 +41,9 @@
 
 ### Documentation
 
-- **`docs/standards.md`** — стандарты кодирования проекта
-- **`docs/roadmap.md`** — дорожная карта (Stages 1–12)
-- **`docs/stages/`** — детальные планы для Stages 9.0–12.0
+- **`.github/copilot/instructions/STANDARDS.md`** — стандарты кодирования проекта
+- **`.github/copilot/instructions/ROADMAP.md`** — дорожная карта (Stages 1–12)
+- **`.github/copilot/instructions/STAGE_{9-12}.0_DESIGN.md`** — детальные планы для Stages 9.0–12.0
 
 ---
 

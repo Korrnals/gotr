@@ -2,9 +2,8 @@ package tests
 
 import (
 	"fmt"
-	"strconv"
-	"time"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -19,12 +18,12 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 Для фильтрации по статусу используйте флаг --status-id.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			start := time.Now()
 			client := getClient(cmd)
+			ctx := cmd.Context()
 
-			runID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || runID <= 0 {
-				return fmt.Errorf("run_id должен быть положительным числом")
+			runID, err := flags.ValidateRequiredID(args, 0, "run_id")
+			if err != nil {
+				return err
 			}
 
 			statusID, _ := cmd.Flags().GetInt64("status-id")
@@ -45,12 +44,12 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			tests, err := client.GetTests(runID, filters)
+			tests, err := client.GetTests(ctx, runID, filters)
 			if err != nil {
 				return err
 			}
 
-			return outputResult(cmd, tests, start)
+			return output.OutputResult(cmd, tests, "tests")
 		},
 	}
 

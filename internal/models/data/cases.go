@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 )
 
-// Case — основная структура одного кейса (используется в get_case и get_cases)
+// Case — основная структура одного case (используется в get_case и get_cases)
 type Case struct {
 	ID                   int64   `json:"id"`
 	Title                string  `json:"title,omitempty"`
@@ -36,8 +36,20 @@ type Case struct {
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"`
 }
 
-// GetCasesResponse — ответ на get_cases (пагинированный список кейсов)
+// GetCasesResponse — ответ на get_cases (пагинированный список cases)
 type GetCasesResponse []Case
+
+// PaginatedCasesResponse — обёрточный формат response TestRail API v2 (6.7+).
+// New версии TestRail возвращают:
+//
+//	{"offset": 0, "limit": 250, "size": 5000, "_links": {...}, "cases": [...]}
+//
+// Старые версии возвращают плоский массив []Case.
+// Используется для попытки быстрого получения Size (total count) одним API-вызовом.
+type PaginatedCasesResponse struct {
+	Pagination
+	Cases []Case `json:"cases"`
+}
 
 // GetCaseResponse — ответ на get_case (один кейс напрямую)
 type GetCaseResponse Case
@@ -54,7 +66,7 @@ type GetHistoryForCaseResponse struct {
 	} `json:"history"`
 }
 
-// Change — изменение в истории
+// Change — изменение в history
 type Change struct {
 	TypeID   int64  `json:"type_id"`
 	OldText  string `json:"old_text,omitempty"`
@@ -86,7 +98,7 @@ type AddCaseRequest struct {
 // Используются указатели для различения "не задано" от "пустое значение"
 type UpdateCaseRequest struct {
 	Title                *string `json:"title,omitempty"`
-	TypeID               *int64  `json:"type_id,omitempty"` // Для изменения типа кейса
+	TypeID               *int64  `json:"type_id,omitempty"` // Для изменения типа case
 	PriorityID           *int64  `json:"priority_id,omitempty"`
 	Estimate             *string `json:"estimate,omitempty"`
 	CustomPreconds       *string `json:"custom_preconds,omitempty"`
@@ -193,7 +205,7 @@ type AddCaseFieldResponse struct {
 	TemplateIDs  []any  `json:"template_ids"`
 }
 
-// DiffCasesResponse — результат сравнения кейсов двух проектов
+// DiffCasesResponse — результат сравнения cases двух проектов
 type DiffCasesResponse struct {
 	OnlyInFirst  []Case `json:"only_in_first"`  // Есть только в pid1
 	OnlyInSecond []Case `json:"only_in_second"` // Есть только в pid2

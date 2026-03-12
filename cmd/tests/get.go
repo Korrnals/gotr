@@ -2,9 +2,8 @@ package tests
 
 import (
 	"fmt"
-	"strconv"
-	"time"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -20,12 +19,12 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 в рамках тестового прогона.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			start := time.Now()
 			client := getClient(cmd)
+			ctx := cmd.Context()
 
-			testID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || testID <= 0 {
-				return fmt.Errorf("test_id должен быть положительным числом")
+			testID, err := flags.ValidateRequiredID(args, 0, "test_id")
+			if err != nil {
+				return err
 			}
 
 			// Проверяем dry-run режим
@@ -35,12 +34,12 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			test, err := client.GetTest(testID)
+			test, err := client.GetTest(ctx, testID)
 			if err != nil {
 				return err
 			}
 
-			return outputResult(cmd, test, start)
+			return output.OutputResult(cmd, test, "tests")
 		},
 	}
 

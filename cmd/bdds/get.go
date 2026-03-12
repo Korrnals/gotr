@@ -2,8 +2,8 @@ package bdds
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,27 +25,23 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr bdds get 12345 -o bdd.feature`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("некорректный case_id: %s", args[0])
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetBDD(caseID)
+			ctx := cmd.Context()
+			resp, err := cli.GetBDD(ctx, caseID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить BDD: %w", err)
+				return fmt.Errorf("failed to get BDD: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "bdds")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "bdds", "json")
-	return err
 }

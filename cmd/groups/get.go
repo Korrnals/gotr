@@ -2,8 +2,8 @@ package groups
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,18 +25,19 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr groups get 5 -o group.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("некорректный group_id: %s", args[0])
+			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetGroup(groupID)
+			ctx := cmd.Context()
+			resp, err := cli.GetGroup(ctx, groupID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить группу: %w", err)
+				return fmt.Errorf("failed to get group: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "groups")
 		},
 	}
 

@@ -13,10 +13,10 @@ import (
 
 // RetryConfig configures retry behavior.
 type RetryConfig struct {
-	MaxRetries   int
-	InitialDelay time.Duration
-	MaxDelay     time.Duration
-	Multiplier   float64
+	MaxRetries      int
+	InitialDelay    time.Duration
+	MaxDelay        time.Duration
+	Multiplier      float64
 	RetryableErrors []error // Specific errors that should trigger retry
 }
 
@@ -136,12 +136,12 @@ func isRetryableError(err error, config *RetryConfig) bool {
 
 // CircuitBreaker implements the circuit breaker pattern.
 type CircuitBreaker struct {
-	failures     int
-	maxFailures  int
-	timeout      time.Duration
-	lastFailure  time.Time
-	state        CircuitState
-	mu           sync.Mutex
+	failures    int
+	maxFailures int
+	timeout     time.Duration
+	lastFailure time.Time
+	state       CircuitState
+	mu          sync.Mutex
 }
 
 // CircuitState represents the state of the circuit breaker.

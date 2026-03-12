@@ -1,6 +1,7 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateMilestoneFunc: func(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
+		UpdateMilestoneFunc: func(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(12345), milestoneID)
 			assert.Equal(t, "Updated Name", req.Name)
 			return &data.Milestone{ID: 12345, Name: "Updated Name"}, nil
@@ -30,7 +31,7 @@ func TestUpdateCmd_Success(t *testing.T) {
 
 func TestUpdateCmd_AllFlags(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateMilestoneFunc: func(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
+		UpdateMilestoneFunc: func(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(12345), milestoneID)
 			assert.Equal(t, "Updated", req.Name)
 			assert.Equal(t, "Description", req.Description)
@@ -56,7 +57,7 @@ func TestUpdateCmd_AllFlags(t *testing.T) {
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateMilestoneFunc: func(milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
+		UpdateMilestoneFunc: func(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
 			return nil, fmt.Errorf("milestone not found")
 		},
 	}

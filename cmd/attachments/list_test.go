@@ -5,6 +5,7 @@ package attachments
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -21,7 +22,7 @@ import (
 
 func TestListCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(123), caseID)
 			return data.GetAttachmentsResponse{
 				{ID: 1, Name: "screenshot.png", Size: 1024, CreatedOn: 1704067200},
@@ -48,7 +49,7 @@ func TestListCaseCmd_Success(t *testing.T) {
 
 func TestListCaseCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return data.GetAttachmentsResponse{}, nil
 		},
 	}
@@ -73,7 +74,7 @@ func TestListCaseCmd_WithSaveFlag(t *testing.T) {
 	defer os.Setenv("HOME", origHome)
 
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return data.GetAttachmentsResponse{
 				{ID: 1, Name: "test.pdf", Size: 2048, CreatedOn: 1704067200},
 			}, nil
@@ -112,7 +113,7 @@ func TestListCaseCmd_InvalidCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestListCaseCmd_ZeroCaseID(t *testing.T) {
@@ -124,12 +125,12 @@ func TestListCaseCmd_ZeroCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestListCaseCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("case not found")
 		},
 	}
@@ -158,7 +159,7 @@ func TestListCaseCmd_NoArgs(t *testing.T) {
 
 func TestListPlanCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanFunc: func(planID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanFunc: func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(456), planID)
 			return data.GetAttachmentsResponse{
 				{ID: 3, Name: "plan-doc.pdf", Size: 4096, CreatedOn: 1704067200},
@@ -187,12 +188,12 @@ func TestListPlanCmd_InvalidPlanID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestListPlanCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanFunc: func(planID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanFunc: func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("plan not found")
 		},
 	}
@@ -210,7 +211,7 @@ func TestListPlanCmd_APIError(t *testing.T) {
 
 func TestListPlanEntryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanEntryFunc: func(planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(100), planID)
 			assert.Equal(t, "entry-abc123", entryID)
 			return data.GetAttachmentsResponse{
@@ -240,12 +241,12 @@ func TestListPlanEntryCmd_InvalidPlanID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestListPlanEntryCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanEntryFunc: func(planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("plan entry not found")
 		},
 	}
@@ -285,7 +286,7 @@ func TestListPlanEntryCmd_OnlyOneArg(t *testing.T) {
 
 func TestListRunCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForRunFunc: func(runID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForRunFunc: func(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(789), runID)
 			return data.GetAttachmentsResponse{
 				{ID: 5, Name: "run-report.html", Size: 8192, CreatedOn: 1704067200},
@@ -314,12 +315,12 @@ func TestListRunCmd_InvalidRunID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid run_id")
+	assert.Contains(t, err.Error(), "run_id")
 }
 
 func TestListRunCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForRunFunc: func(runID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForRunFunc: func(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
@@ -337,7 +338,7 @@ func TestListRunCmd_APIError(t *testing.T) {
 
 func TestListTestCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForTestFunc: func(testID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForTestFunc: func(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(321), testID)
 			return data.GetAttachmentsResponse{
 				{ID: 6, Name: "test-screenshot.png", Size: 3072, CreatedOn: 1704067200},
@@ -366,7 +367,7 @@ func TestListTestCmd_InvalidTestID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid test_id")
+	assert.Contains(t, err.Error(), "test_id")
 }
 
 func TestListTestCmd_ZeroTestID(t *testing.T) {
@@ -378,12 +379,12 @@ func TestListTestCmd_ZeroTestID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid test_id")
+	assert.Contains(t, err.Error(), "test_id")
 }
 
 func TestListTestCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForTestFunc: func(testID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForTestFunc: func(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("test not found")
 		},
 	}
@@ -401,7 +402,7 @@ func TestListTestCmd_APIError(t *testing.T) {
 
 func TestOutputAttachmentsList_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return data.GetAttachmentsResponse{}, nil
 		},
 	}

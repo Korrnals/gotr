@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -12,50 +11,17 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
-
-// Вспомогательная функция PrettyYAML - для форматированного ответа
-func PrettyJSON(data interface{}) error {
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetEscapeHTML(true)
-	err := enc.Encode(data)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // DebugPrint печатает сообщение только если --debug включён
 func DebugPrint(format string, args ...interface{}) {
 	if viper.GetBool("debug") {
 		log.Printf("[DEBUG] "+format+"\n", args...)
 	}
-}
-
-// Вспомогательная функция 'StringPrompt' - для интерактивного ввода
-func StringPrompt(q string) bool {
-	var s string
-	// Считываем строку в буфер
-	r := bufio.NewReader(os.Stdin)
-	// 3 раза задаем вопрос, и при пустом ответе завершаем функцию
-	for i := 0; i < 3; i++ {
-		fmt.Fprint(os.Stderr, q+" ")
-		s, _ = r.ReadString('\n')
-		if s != "" {
-			fmt.Println("Выполняется..")
-			break
-		}
-		if i == 2 && s == "" {
-			fmt.Println("Выполнение действия - отменено.")
-			break
-		}
-	}
-	return true
 }
 
 // OpenEditor открывает файл в редакторе по умолчанию
@@ -68,7 +34,7 @@ func OpenEditor(filepath string) error {
 		} else {
 			editor = "vi" // или "nano" — vim более универсальный
 		}
-		fmt.Printf("Переменная EDITOR не задана. Используется fallback: %s\n", editor)
+		ui.Warningf(os.Stdout, "EDITOR not set. Using fallback: %s", editor)
 	}
 
 	// Создаём команду
@@ -83,17 +49,7 @@ func OpenEditor(filepath string) error {
 	return cmd.Run()
 }
 
-// UnixToTime конвертирует Unix timestamp в time.Time
-func UnixToTime(ts int64) time.Time {
-	return time.Unix(ts, 0)
-}
-
-// TimeToUnix конвертирует time.Time в Unix timestamp
-func TimeToUnix(t time.Time) int64 {
-	return t.Unix()
-}
-
-// GetFieldValue возвращает строковое представление значения поля структуры по имени.
+// GetFieldValue возвращает строковое представление значения field структуры по имени.
 // Поддерживает case-insensitive поиск (title/Title — найдёт оба варианта).
 // Если поле не найдено — возвращает пустую строку.
 //
@@ -177,10 +133,10 @@ func LoadMapping(file string) (map[int64]int64, error) {
 
 // getProjectRoot — возвращает корневую директорию проекта (где лежит go.mod)
 func getProjectRoot() string {
-	// 1. Получаем путь к текущему файлу теста
+	// 1. Получаем путь к текущему файлу test
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		panic("не удалось получить путь к файлу теста")
+		panic("failed to get test file path")
 	}
 
 	// 2. Идем вверх по дереву папок, пока не найдем go.mod
@@ -192,7 +148,7 @@ func getProjectRoot() string {
 
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			panic("корень проекта (go.mod) не найден")
+			panic("project root (go.mod) not found")
 		}
 		dir = parent
 	}
@@ -220,7 +176,7 @@ func ParseID(s string) (int64, error) {
 func SaveToFile(filename string, data interface{}) error {
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка сериализации: %w", err)
+		return fmt.Errorf("serialization error: %w", err)
 	}
 	return os.WriteFile(filename, jsonData, 0644)
 }
@@ -237,7 +193,7 @@ func OutputResult(cmd *cobra.Command, data interface{}) error {
 			return err
 		}
 		if !quiet {
-			fmt.Printf("Ответ сохранён в %s\n", output)
+			ui.Infof(os.Stdout, "Response saved to %s", output)
 		}
 	}
 
@@ -245,7 +201,7 @@ func OutputResult(cmd *cobra.Command, data interface{}) error {
 	if !quiet {
 		pretty, err := json.MarshalIndent(data, "", "  ")
 		if err != nil {
-			return fmt.Errorf("ошибка форматирования JSON: %w", err)
+			return fmt.Errorf("JSON formatting error: %w", err)
 		}
 		fmt.Println(string(pretty))
 	}
@@ -257,6 +213,6 @@ func OutputResult(cmd *cobra.Command, data interface{}) error {
 func PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	if !quiet {
-		fmt.Printf(format+"\n", args...)
+		ui.Successf(os.Stdout, format, args...)
 	}
 }

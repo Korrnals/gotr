@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -25,11 +26,11 @@ func TestAddCase(t *testing.T) {
 			name:      "successful case creation",
 			sectionID: 100,
 			request: &data.AddCaseRequest{
-				Title:       "Login test",
-				TypeID:      1,
-				PriorityID:  2,
-				TemplateID:  1,
-				Refs:        "REQ-123",
+				Title:      "Login test",
+				TypeID:     1,
+				PriorityID: 2,
+				TemplateID: 1,
+				Refs:       "REQ-123",
 			},
 			mockStatus: http.StatusOK,
 			mockResponse: data.Case{
@@ -45,10 +46,10 @@ func TestAddCase(t *testing.T) {
 			name:      "case with custom fields",
 			sectionID: 100,
 			request: &data.AddCaseRequest{
-				Title:           "Test with steps",
-				TypeID:          1,
-				CustomSteps:     "Step 1\nStep 2",
-				CustomExpected:  "Expected result",
+				Title:          "Test with steps",
+				TypeID:         1,
+				CustomSteps:    "Step 1\nStep 2",
+				CustomExpected: "Expected result",
 			},
 			mockStatus: http.StatusOK,
 			mockResponse: data.Case{
@@ -89,7 +90,8 @@ func TestAddCase(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			c, err := client.AddCase(tt.sectionID, tt.request)
+			ctx := context.Background()
+			c, err := client.AddCase(ctx, tt.sectionID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -115,10 +117,10 @@ func TestUpdateCase(t *testing.T) {
 			name:   "successful update",
 			caseID: 999,
 			request: &data.UpdateCaseRequest{
-				Title:       ptr("Updated title"),
-				TypeID:      ptr(int64(2)),
-				PriorityID:  ptr(int64(3)),
-				SectionID:   ptr(int64(200)),
+				Title:      ptr("Updated title"),
+				TypeID:     ptr(int64(2)),
+				PriorityID: ptr(int64(3)),
+				SectionID:  ptr(int64(200)),
 			},
 			mockStatus: http.StatusOK,
 			mockResponse: data.Case{
@@ -169,7 +171,8 @@ func TestUpdateCase(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			c, err := client.UpdateCase(tt.caseID, tt.request)
+			ctx := context.Background()
+			c, err := client.UpdateCase(ctx, tt.caseID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -221,7 +224,8 @@ func TestDeleteCase(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.DeleteCase(tt.caseID)
+			ctx := context.Background()
+			err := client.DeleteCase(ctx, tt.caseID)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -284,7 +288,8 @@ func TestCopyCasesToSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.CopyCasesToSection(tt.sectionID, tt.request)
+			ctx := context.Background()
+			err := client.CopyCasesToSection(ctx, tt.sectionID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -347,7 +352,8 @@ func TestMoveCasesToSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.MoveCasesToSection(tt.sectionID, tt.request)
+			ctx := context.Background()
+			err := client.MoveCasesToSection(ctx, tt.sectionID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -357,5 +363,3 @@ func TestMoveCasesToSection(t *testing.T) {
 		})
 	}
 }
-
-

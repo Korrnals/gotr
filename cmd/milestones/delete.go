@@ -2,9 +2,11 @@ package milestones
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +28,9 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr milestones delete 12345 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			milestoneID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || milestoneID <= 0 {
-				return fmt.Errorf("invalid milestone_id: %s", args[0])
+			milestoneID, err := flags.ValidateRequiredID(args, 0, "milestone_id")
+			if err != nil {
+				return err
 			}
 
 			// Check dry-run
@@ -39,11 +41,12 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteMilestone(milestoneID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeleteMilestone(ctx, milestoneID); err != nil {
 				return fmt.Errorf("failed to delete milestone: %w", err)
 			}
 
-			fmt.Printf("✅ Milestone %d deleted\n", milestoneID)
+			ui.Successf(os.Stdout, "Milestone %d deleted", milestoneID)
 			return nil
 		},
 	}

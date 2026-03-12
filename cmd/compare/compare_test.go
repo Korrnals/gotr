@@ -2,6 +2,7 @@
 package compare
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -55,46 +56,6 @@ func TestParseFlags_InvalidPid1(t *testing.T) {
 	assert.Contains(t, err.Error(), "pid1")
 }
 
-// ==================== Тесты для buildResourceDiff ====================
-
-func TestBuildResourceDiff(t *testing.T) {
-	first := []string{"A", "B", "C"}
-	second := []string{"B", "C", "D"}
-
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, "test", diff.Resource)
-	assert.Equal(t, 3, diff.TotalFirst)
-	assert.Equal(t, 3, diff.TotalSecond)
-	assert.Equal(t, 2, len(diff.Common))     // B, C
-	assert.Equal(t, 1, len(diff.OnlyFirst))  // A
-	assert.Equal(t, 1, len(diff.OnlySecond)) // D
-}
-
-func TestBuildResourceDiff_EmptyFirst(t *testing.T) {
-	first := []string{}
-	second := []string{"A", "B", "C"}
-
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, 0, diff.TotalFirst)
-	assert.Equal(t, 3, diff.TotalSecond)
-	assert.Equal(t, 0, len(diff.Common))
-	assert.Equal(t, 0, len(diff.OnlyFirst))
-	assert.Equal(t, 3, len(diff.OnlySecond))
-}
-
-func TestBuildResourceDiff_BothEmpty(t *testing.T) {
-	first := []string{}
-	second := []string{}
-
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, 0, diff.TotalFirst)
-	assert.Equal(t, 0, diff.TotalSecond)
-	assert.Equal(t, 0, len(diff.Common))
-}
-
 // ==================== Тесты для collectNames ====================
 
 func TestCollectNames(t *testing.T) {
@@ -120,8 +81,9 @@ func TestCollectNames_ZeroSize(t *testing.T) {
 // ==================== Тесты для GetProjectNames ====================
 
 func TestGetProjectNames_Success(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{
 				ID:   projectID,
 				Name: "Test Project " + string(rune('0'+projectID)),
@@ -129,7 +91,7 @@ func TestGetProjectNames_Success(t *testing.T) {
 		},
 	}
 
-	name1, name2, err := GetProjectNames(mock, 1, 2)
+	name1, name2, err := GetProjectNames(ctx, mock, 1, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Project 1", name1)
 	assert.Equal(t, "Test Project 2", name2)
@@ -137,7 +99,7 @@ func TestGetProjectNames_Success(t *testing.T) {
 
 func TestGetProjectName_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{
 				ID:   projectID,
 				Name: "Test Project",
@@ -189,24 +151,4 @@ func TestIDMappingPair(t *testing.T) {
 	assert.Equal(t, int64(1), pair.ID1)
 	assert.Equal(t, int64(2), pair.ID2)
 	assert.Equal(t, "Test", pair.Name)
-}
-
-// ==================== Тесты для ResourceDiff ====================
-
-func TestResourceDiff_Struct(t *testing.T) {
-	diff := ResourceDiff{
-		Resource:    "suites",
-		TotalFirst:  5,
-		TotalSecond: 7,
-		Common:      []string{"A", "B"},
-		OnlyFirst:   []string{"C"},
-		OnlySecond:  []string{"D", "E"},
-	}
-
-	assert.Equal(t, "suites", diff.Resource)
-	assert.Equal(t, 5, diff.TotalFirst)
-	assert.Equal(t, 7, diff.TotalSecond)
-	assert.Equal(t, 2, len(diff.Common))
-	assert.Equal(t, 1, len(diff.OnlyFirst))
-	assert.Equal(t, 2, len(diff.OnlySecond))
 }

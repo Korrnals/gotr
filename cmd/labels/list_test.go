@@ -5,6 +5,7 @@ package labels
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
@@ -17,7 +18,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return []data.Label{
 				{ID: 1, Name: "Bug"},
@@ -44,7 +45,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{}, nil
 		},
 	}
@@ -63,7 +64,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{
 				{ID: 1, Name: "Bug"},
 				{ID: 2, Name: "Feature"},
@@ -81,7 +82,7 @@ func TestListCmd_WithSave(t *testing.T) {
 
 func TestListCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return []data.Label{
 				{ID: 1, Name: "Bug"},
 			}, nil
@@ -100,7 +101,7 @@ func TestListCmd_WithSaveFlag(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return nil, fmt.Errorf("API connection error")
 		},
 	}
@@ -116,7 +117,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 func TestListCmd_ProjectNotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelsFunc: func(projectID int64) (data.GetLabelsResponse, error) {
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

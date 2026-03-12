@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -98,7 +99,8 @@ func TestAddResult(t *testing.T) {
 			defer server.Close()
 
 			// Act
-			result, err := client.AddResult(tt.testID, tt.request)
+			ctx := context.Background()
+			result, err := client.AddResult(ctx, tt.testID, tt.request)
 
 			// Assert
 			if tt.wantErr {
@@ -168,7 +170,8 @@ func TestAddResultForCase(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			result, err := client.AddResultForCase(tt.runID, tt.caseID, tt.request)
+			ctx := context.Background()
+			result, err := client.AddResultForCase(ctx, tt.runID, tt.caseID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -190,8 +193,8 @@ func TestAddResults(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name:   "successful bulk add",
-			runID:  100,
+			name:  "successful bulk add",
+			runID: 100,
 			request: &data.AddResultsRequest{
 				Results: []data.ResultEntry{
 					{TestID: 1, StatusID: 1, Comment: "Passed"},
@@ -206,8 +209,8 @@ func TestAddResults(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:   "empty results array",
-			runID:  100,
+			name:  "empty results array",
+			runID: 100,
 			request: &data.AddResultsRequest{
 				Results: []data.ResultEntry{},
 			},
@@ -237,7 +240,8 @@ func TestAddResults(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			results, err := client.AddResults(tt.runID, tt.request)
+			ctx := context.Background()
+			results, err := client.AddResults(ctx, tt.runID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -259,8 +263,8 @@ func TestAddResultsForCases(t *testing.T) {
 		wantErr      bool
 	}{
 		{
-			name:   "successful bulk for cases",
-			runID:  100,
+			name:  "successful bulk for cases",
+			runID: 100,
 			request: &data.AddResultsForCasesRequest{
 				Results: []data.ResultForCaseEntry{
 					{CaseID: 10, StatusID: 1},
@@ -295,7 +299,8 @@ func TestAddResultsForCases(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			results, err := client.AddResultsForCases(tt.runID, tt.request)
+			ctx := context.Background()
+			results, err := client.AddResultsForCases(ctx, tt.runID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)

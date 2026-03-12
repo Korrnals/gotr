@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunFunc: func(runID int64) (*data.Run, error) {
+		GetRunFunc: func(ctx context.Context, runID int64) (*data.Run, error) {
 			assert.Equal(t, int64(12345), runID)
 			return &data.Run{
 				ID:          runID,
@@ -82,7 +83,7 @@ func TestGetCmd_NegativeRunID(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunFunc: func(runID int64) (*data.Run, error) {
+		GetRunFunc: func(ctx context.Context, runID int64) (*data.Run, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
@@ -109,13 +110,13 @@ func TestGetCmd_NoArgs(t *testing.T) {
 
 func TestGetCmd_CompletedRun(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunFunc: func(runID int64) (*data.Run, error) {
+		GetRunFunc: func(ctx context.Context, runID int64) (*data.Run, error) {
 			return &data.Run{
-				ID:          runID,
-				Name:        "Completed Run",
-				IsCompleted: true,
-				PassedCount: 50,
-				FailedCount: 0,
+				ID:           runID,
+				Name:         "Completed Run",
+				IsCompleted:  true,
+				PassedCount:  50,
+				FailedCount:  0,
 				BlockedCount: 0,
 			}, nil
 		},
@@ -138,5 +139,5 @@ func TestGetCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

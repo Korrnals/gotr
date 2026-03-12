@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -37,16 +38,17 @@ func TestGetPlan(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
 			if tc.mockResponse != nil {
-				mockClient.GetPlanFunc = func(id int64) (*data.Plan, error) {
+				mockClient.GetPlanFunc = func(ctx context.Context, id int64) (*data.Plan, error) {
 					return tc.mockResponse, nil
 				}
 			} else {
-				mockClient.GetPlanFunc = func(id int64) (*data.Plan, error) {
+				mockClient.GetPlanFunc = func(ctx context.Context, id int64) (*data.Plan, error) {
 					return nil, fmt.Errorf("plan %d not found", id)
 				}
 			}
 
-			result, err := mockClient.GetPlan(tc.planID)
+			ctx := context.Background()
+			result, err := mockClient.GetPlan(ctx, tc.planID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -93,11 +95,12 @@ func TestGetPlans(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.GetPlansFunc = func(projectID int64) (data.GetPlansResponse, error) {
+			mockClient.GetPlansFunc = func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.GetPlans(tc.projectID)
+			ctx := context.Background()
+			result, err := mockClient.GetPlans(ctx, tc.projectID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -140,11 +143,12 @@ func TestAddPlan(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.AddPlanFunc = func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+			mockClient.AddPlanFunc = func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.AddPlan(tc.projectID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.AddPlan(ctx, tc.projectID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -187,11 +191,12 @@ func TestUpdatePlan(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.UpdatePlanFunc = func(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+			mockClient.UpdatePlanFunc = func(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.UpdatePlan(tc.planID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.UpdatePlan(ctx, tc.planID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -231,11 +236,12 @@ func TestClosePlan(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.ClosePlanFunc = func(planID int64) (*data.Plan, error) {
+			mockClient.ClosePlanFunc = func(ctx context.Context, planID int64) (*data.Plan, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.ClosePlan(tc.planID)
+			ctx := context.Background()
+			result, err := mockClient.ClosePlan(ctx, tc.planID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -256,8 +262,8 @@ func TestClosePlan(t *testing.T) {
 
 func TestDeletePlan(t *testing.T) {
 	testCases := []struct {
-		name   string
-		planID int64
+		name    string
+		planID  int64
 		wantErr bool
 	}{
 		{
@@ -275,16 +281,17 @@ func TestDeletePlan(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
 			if tc.wantErr {
-				mockClient.DeletePlanFunc = func(planID int64) error {
+				mockClient.DeletePlanFunc = func(ctx context.Context, planID int64) error {
 					return fmt.Errorf("plan %d not found", planID)
 				}
 			} else {
-				mockClient.DeletePlanFunc = func(planID int64) error {
+				mockClient.DeletePlanFunc = func(ctx context.Context, planID int64) error {
 					return nil
 				}
 			}
 
-			err := mockClient.DeletePlan(tc.planID)
+			ctx := context.Background()
+			err := mockClient.DeletePlan(ctx, tc.planID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -324,11 +331,12 @@ func TestAddPlanEntry(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.AddPlanEntryFunc = func(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
+			mockClient.AddPlanEntryFunc = func(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.AddPlanEntry(tc.planID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.AddPlanEntry(ctx, tc.planID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -373,11 +381,12 @@ func TestUpdatePlanEntry(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
-			mockClient.UpdatePlanEntryFunc = func(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
+			mockClient.UpdatePlanEntryFunc = func(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 				return tc.mockResponse, nil
 			}
 
-			result, err := mockClient.UpdatePlanEntry(tc.planID, tc.entryID, tc.request)
+			ctx := context.Background()
+			result, err := mockClient.UpdatePlanEntry(ctx, tc.planID, tc.entryID, tc.request)
 
 			if tc.wantErr {
 				if err == nil {
@@ -420,16 +429,17 @@ func TestDeletePlanEntry(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
 			if tc.wantErr {
-				mockClient.DeletePlanEntryFunc = func(planID int64, entryID string) error {
+				mockClient.DeletePlanEntryFunc = func(ctx context.Context, planID int64, entryID string) error {
 					return fmt.Errorf("entry %s not found", entryID)
 				}
 			} else {
-				mockClient.DeletePlanEntryFunc = func(planID int64, entryID string) error {
+				mockClient.DeletePlanEntryFunc = func(ctx context.Context, planID int64, entryID string) error {
 					return nil
 				}
 			}
 
-			err := mockClient.DeletePlanEntry(tc.planID, tc.entryID)
+			ctx := context.Background()
+			err := mockClient.DeletePlanEntry(ctx, tc.planID, tc.entryID)
 
 			if tc.wantErr {
 				if err == nil {
@@ -461,7 +471,8 @@ func TestHTTPGetPlan(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	plan, err := client.GetPlan(1)
+	ctx := context.Background()
+	plan, err := client.GetPlan(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetPlan() error: %v", err)
 	}
@@ -486,7 +497,8 @@ func TestHTTPGetPlans(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	plans, err := client.GetPlans(1)
+	ctx := context.Background()
+	plans, err := client.GetPlans(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetPlans() error: %v", err)
 	}
@@ -515,7 +527,8 @@ func TestHTTPAddPlan(t *testing.T) {
 		Name: "New Plan",
 	}
 
-	plan, err := client.AddPlan(1, req)
+	ctx := context.Background()
+	plan, err := client.AddPlan(ctx, 1, req)
 	if err != nil {
 		t.Fatalf("AddPlan() error: %v", err)
 	}
@@ -537,7 +550,8 @@ func TestHTTPDeletePlan(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	err := client.DeletePlan(1)
+	ctx := context.Background()
+	err := client.DeletePlan(ctx, 1)
 	if err != nil {
 		t.Fatalf("DeletePlan() error: %v", err)
 	}

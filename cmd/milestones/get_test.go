@@ -1,6 +1,7 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetMilestoneFunc: func(milestoneID int64) (*data.Milestone, error) {
+		GetMilestoneFunc: func(ctx context.Context, milestoneID int64) (*data.Milestone, error) {
 			assert.Equal(t, int64(12345), milestoneID)
 			return &data.Milestone{ID: 12345, Name: "Release 1.0", ProjectID: 1}, nil
 		},
@@ -29,7 +30,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetMilestoneFunc: func(milestoneID int64) (*data.Milestone, error) {
+		GetMilestoneFunc: func(ctx context.Context, milestoneID int64) (*data.Milestone, error) {
 			return nil, fmt.Errorf("milestone not found")
 		},
 	}

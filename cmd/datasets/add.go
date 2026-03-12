@@ -2,9 +2,11 @@ package datasets
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -26,14 +28,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr datasets add 1 --name="Test Data" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("некорректный project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			// Check dry-run
@@ -44,13 +46,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddDataset(projectID, name)
+			ctx := cmd.Context()
+			resp, err := cli.AddDataset(ctx, projectID, name)
 			if err != nil {
-				return fmt.Errorf("не удалось создать датасет: %w", err)
+				return fmt.Errorf("failed to create dataset: %w", err)
 			}
 
-			fmt.Printf("✅ Датасет создан (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Dataset created (ID: %d)", resp.ID)
+			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}
 

@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,14 +13,15 @@ import (
 
 func TestGetReports(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.GetReportsFunc = func(projectID int64) (data.GetReportsResponse, error) {
+	mockClient.GetReportsFunc = func(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 		return []data.ReportTemplate{
 			{ID: 1, Name: "Test Summary", Description: "Summary report"},
 			{ID: 2, Name: "Detailed Report", Description: "Detailed report"},
 		}, nil
 	}
 
-	result, err := mockClient.GetReports(1)
+	ctx := context.Background()
+	result, err := mockClient.GetReports(ctx, 1)
 	if err != nil {
 		t.Errorf("GetReports() unexpected error: %v", err)
 		return
@@ -31,7 +33,7 @@ func TestGetReports(t *testing.T) {
 
 func TestRunReport(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.RunReportFunc = func(templateID int64) (*data.RunReportResponse, error) {
+	mockClient.RunReportFunc = func(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 		return &data.RunReportResponse{
 			ReportID: 123,
 			URL:      "https://example.com/report/123",
@@ -39,7 +41,8 @@ func TestRunReport(t *testing.T) {
 		}, nil
 	}
 
-	result, err := mockClient.RunReport(1)
+	ctx := context.Background()
+	result, err := mockClient.RunReport(ctx, 1)
 	if err != nil {
 		t.Errorf("RunReport() unexpected error: %v", err)
 		return
@@ -51,7 +54,7 @@ func TestRunReport(t *testing.T) {
 
 func TestRunCrossProjectReport(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.RunCrossProjectReportFunc = func(templateID int64) (*data.RunReportResponse, error) {
+	mockClient.RunCrossProjectReportFunc = func(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 		return &data.RunReportResponse{
 			ReportID: 456,
 			URL:      "https://example.com/report/456",
@@ -59,7 +62,8 @@ func TestRunCrossProjectReport(t *testing.T) {
 		}, nil
 	}
 
-	result, err := mockClient.RunCrossProjectReport(1)
+	ctx := context.Background()
+	result, err := mockClient.RunCrossProjectReport(ctx, 1)
 	if err != nil {
 		t.Errorf("RunCrossProjectReport() unexpected error: %v", err)
 		return
@@ -84,7 +88,8 @@ func TestHTTPGetReports(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	reports, err := client.GetReports(1)
+	ctx := context.Background()
+	reports, err := client.GetReports(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetReports() error: %v", err)
 	}

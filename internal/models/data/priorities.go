@@ -1,7 +1,7 @@
 // internal/models/data/priorities.go
 package data
 
-// Priority — приоритет тест-кейса
+// Priority — приоритет тест-case
 type Priority struct {
 	ID        int64  `json:"id"`         // Уникальный ID приоритета
 	Name      string `json:"name"`       // Название приоритета (например, "Critical", "High")

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -21,8 +21,9 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 и доступных полей для заполнения.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Проверяем dry-run режим
@@ -38,12 +39,12 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return nil
 			}
 
-			fields, err := cli.GetResultFields()
+			fields, err := cli.GetResultFields(ctx)
 			if err != nil {
-				return fmt.Errorf("ошибка получения полей результатов: %w", err)
+				return fmt.Errorf("failed to get result fields: %w", err)
 			}
 
-			return outputResult(cmd, fields)
+			return output.OutputResult(cmd, fields, "results")
 		},
 	}
 
@@ -52,17 +53,11 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 	return cmd
 }
 
-// outputResult выводит результат в JSON
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "results", "json")
-	return err
-}
-
 // saveToFile сохраняет данные в файл
 func saveToFile(data interface{}, filename string) error {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка сериализации JSON: %w", err)
+		return fmt.Errorf("JSON serialization error: %w", err)
 	}
 	return os.WriteFile(filename, jsonBytes, 0644)
 }
@@ -71,7 +66,7 @@ func saveToFile(data interface{}, filename string) error {
 func printJSON(data interface{}) error {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка сериализации JSON: %w", err)
+		return fmt.Errorf("JSON serialization error: %w", err)
 	}
 	fmt.Println(string(jsonBytes))
 	return nil

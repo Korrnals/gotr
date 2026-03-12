@@ -1,7 +1,7 @@
 // models/data/suites.go
 package data
 
-// Suite — структура тест-сюиты
+// Suite — структура тест-suite
 type Suite struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name,omitempty"`

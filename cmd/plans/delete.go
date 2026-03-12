@@ -2,9 +2,11 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -22,9 +24,9 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans delete 12345 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			// Check dry-run
@@ -35,11 +37,12 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeletePlan(planID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeletePlan(ctx, planID); err != nil {
 				return fmt.Errorf("failed to delete plan: %w", err)
 			}
 
-			fmt.Printf("✅ Plan %d deleted\n", planID)
+			ui.Successf(os.Stdout, "Plan %d deleted", planID)
 			return nil
 		},
 	}

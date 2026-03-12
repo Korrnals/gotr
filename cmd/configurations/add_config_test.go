@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 func TestAddConfigCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddConfigFunc: func(groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
+		AddConfigFunc: func(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
 			assert.Equal(t, int64(5), groupID)
 			assert.Equal(t, "Chrome", req.Name)
 			return &data.Config{ID: 100, Name: req.Name}, nil
@@ -58,8 +59,8 @@ func TestAddConfigCmd_MissingName(t *testing.T) {
 
 func TestAddConfigCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddConfigFunc: func(groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
-			return nil, fmt.Errorf("группа не найдена")
+		AddConfigFunc: func(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
+			return nil, fmt.Errorf("group not found")
 		},
 	}
 

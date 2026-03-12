@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -27,15 +28,15 @@ func resetCasesFlags() {
 func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	addCalled := false
 
-	// Создаём mock клиент который реализует оба интерфейса (client.ClientInterface и migration.ClientInterface)
+	// Создаём mock client который реализует оба интерфейса (client.ClientInterface и migration.ClientInterface)
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCalled = true
 			return &data.Case{ID: 100, Title: r.Title}, nil
 		},
@@ -46,7 +47,7 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Устанавливаем mock клиент через SetTestClient
+	// Устанавливаем mock client через SetTestClient
 	resetCasesFlags()
 	cmd := casesCmd
 	SetTestClient(cmd, mock)
@@ -66,13 +67,13 @@ func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	addCalled := false
 
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
-		AddCaseFunc: func(suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
 			addCalled = true
 			return &data.Case{ID: 100, Title: r.Title}, nil
 		},

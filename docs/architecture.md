@@ -1,7 +1,7 @@
 # Архитектура gotr
 
 > Общее описание архитектуры CLI-утилиты gotr для пользователей  
-> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-02-16 (v2.7.0-dev) — Stage 6: Concurrent API Processing + Progress Bars.
+> **Важно:** Этот файл актуализируется при добавлении новых команд или изменении структуры проекта. Последнее обновление: 2026-03-05 (v2.8.0-dev) — Stage 6.8: Concurrency Unification + Generic Compare Factory.
 
 ## Что такое gotr
 
@@ -27,9 +27,19 @@
 ┌──────────────────────▼──────────────────────────────────────┐
 │  Concurrent Layer (internal/concurrent/*)                   │
 │  • WorkerPool — параллельная обработка запросов            │
-│  • RateLimiter — контроль 150 запросов/минуту              │
+│  • RateLimiter — контроль 180 запросов/минуту              │
 │  • Retry — повторные попытки с экспоненциальной задержкой  │
 │  • CircuitBreaker — защита от каскадных ошибок             │
+└──────────────────────┬──────────────────────────────────────┘
+                       │
+┌──────────────────────▼──────────────────────────────────────┐
+│  Concurrency Layer (internal/concurrency/*)                 │
+│  • ParallelController — pipeline pagination по сьютам      │
+│  • FetchParallel[T] — лёгкая стратегия (по проектам)       │
+│  • FetchParallelBySuite[T] — средняя стратегия (по сьютам) │
+│  • ResultAggregator — сбор результатов из горутин          │
+│  • PriorityQueue — приоритезация больших сьютов            │
+│  • SuiteFetcher — интерфейс для реализаций загрузки        │
 └──────────────────────┬──────────────────────────────────────┘
                        │
 ┌──────────────────────▼──────────────────────────────────────┐
@@ -103,6 +113,7 @@ internal/client/
 ├── client.go           # HTTPClient — основной HTTP клиент
 ├── interfaces.go       # ClientInterface + 14 API групп (106 endpoints)
 ├── mock.go             # MockClient для тестирования
+├── paginator.go        # Generic fetchAllPages[T] — автопагинация list-методов (Stage 6.9)
 ├── projects.go         # ProjectsAPI (5 endpoints)
 ├── cases.go            # CasesAPI (14 endpoints)
 ├── suites.go           # SuitesAPI (5 endpoints)
@@ -126,6 +137,11 @@ internal/client/
 - Композиция из 14 интерфейсов по доменам
 - Поддержка mock-реализации для тестов
 - 100% покрытие TestRail API v2
+
+**Generic Paginator (`paginator.go`):**
+- `fetchAllPages[T]` — прозрачная загрузка всех страниц для list-эндпоинтов
+- Обрабатывает оба формата TestRail: paginated wrapper `{"runs":[...],"offset":0}` и flat array `[...]`
+- 9 критичных методов мигрированы: GetRuns, GetPlans, GetSections, GetSharedSteps, GetMilestones, GetResults, GetResultsForRun, GetTests, GetSuites
 
 ### 4. Concurrent Layer (`internal/concurrent/`)
 
@@ -152,21 +168,57 @@ internal/client/
 
 Подробнее: [docs/concurrent.md](./concurrent.md)
 
-### 5. Progress Layer (`internal/progress/`)
+### 5. Concurrency Layer (`internal/concurrency/`)
 
-**Ответственность:** Отображение прогресса длительных операций.
+**Ответственность:** Унифицированные стратегии параллелизации для всех compare-подкоманд.
+
+**Компоненты:**
+- **FetchParallel[T]** — лёгкая стратегия: загрузка ресурса из N проектов параллельно (generic, Go 1.24+)
+- **FetchParallelBySuite[T]** — средняя стратегия: загрузка per-suite ресурсов параллельно (sections и др.)
+- **ParallelController** — тяжёлая стратегия: pipeline pagination по сьютам (cases)
+- **ResultAggregator** — потокобезопасная агрегация результатов из горутин
+- **PriorityQueue** — heap-based очередь, большие сьюты обрабатываются первыми
+- **SuiteFetcher** — интерфейс (`FetchPageCtx`) для подстановки реальных и mock-реализаций
+- **ProgressReporter** — универсальный интерфейс прогресса (`OnItemComplete`, `OnBatchReceived`, `OnError`)
+- **PaginatedProgressReporter** — расширение для стратегий с пагинацией (`OnPageFetched`)
+
+**FetchOption-паттерн:** `WithReporter()`, `WithContinueOnError()`, `WithMaxConcurrency(n)`
+
+**Конфигурация:** `--parallel-suites`, `--parallel-pages`, `--page-retries`, `--rate-limit`, `--timeout`
+
+Подробнее: [docs/recursive-parallelization-plan.md](./recursive-parallelization-plan.md)
+
+### 6. UI Layer (`internal/ui/` + `pkg/reporter/`)
+
+**Ответственность:** Унифицированный вывод для всех команд.
+
+**Компоненты:**
+- **internal/ui/display.go** — ANSI live display с динамическими задачами (для `compare cases`)
+- **internal/ui/helpers.go** — `Infof`, `Warningf`, `Successf`, `Phase`, `Section`, `Stat` — стилизованные сообщения
+- **pkg/reporter/** — builder pattern для вывода статистики (`Section/Stat/StatIf/StatFmt/Blank/Separator/Print`), ANSI-цвета, go-pretty
 
 **Использование:**
-- `gotr compare all` — прогресс сравнения проектов
+- `gotr compare cases` — live display с прогрессом в реальном времени
+- Все 13 compare-подкоманд — reporter для итогового вывода
+- `gotr compare all` — go-pretty table + reporter для сводной таблицы
+- `ui.Infof(os.Stderr, ...)` — стилизованные сообщения
+
+### 7. Progress Layer (`internal/progress/`)
+
+**Ответственность:** Прогресс-бары для sync/get команд (mpb-based).
+
+**Использование:**
 - `gotr sync full` — прогресс миграции
 - `gotr get cases` — прогресс загрузки кейсов
+
+> **Примечание:** В compare-командах progress.Manager заменён на `internal/ui/reporter` для унифицированного вывода.
 
 **Особенности:**
 - Автоматически отключается в `--quiet` режиме
 - Поддерживает неопределенные операции (спиннеры)
-- Интегрируется с Concurrent Layer
+- `WithMonitorCtx` — мониторинг через context
 
-### 6. Interactive Layer (`internal/interactive/`)
+### 8. Interactive Layer (`internal/interactive/`)
 
 **Ответственность:** Интерактивный выбор проектов, сьютов, ранов.
 
@@ -175,7 +227,7 @@ internal/client/
 - `gotr result list` — выбор проекта → выбор рана → результаты
 - `gotr get cases` — выбор проекта → выбор сьюта
 
-### 7. Models (`internal/models/data/`)
+### 9. Models (`internal/models/data/`)
 
 **Ответственность:** DTO (Data Transfer Objects) для API.
 
@@ -187,7 +239,7 @@ internal/client/
 - `Report`, `Group`, `Role`, `Dataset`
 - `Status`, `Priority` — константы
 
-### 8. Utilities (`internal/utils/`)
+### 10. Utilities (`internal/utils/`)
 
 **Ответственность:** Вспомогательные функции.
 
@@ -282,8 +334,20 @@ gotr/
 │   │   ├── limiter.go         #     RateLimiter (150 req/min)
 │   │   ├── retry.go           #     Retry с backoff
 │   │   └── circuit.go         #     CircuitBreaker
-│   ├── progress/               #   Прогресс-бары
-│   │   └── progress.go        #     ProgressManager
+│   ├── concurrency/            #   Унифицированная конкурентность (Stage 6.8)
+│   │   ├── types.go           #     ProgressReporter, PaginatedProgressReporter, FetchOption
+│   │   ├── fetch_parallel.go  #     FetchParallel[T] — лёгкая стратегия
+│   │   ├── fetch_by_suite.go  #     FetchParallelBySuite[T] — средняя стратегия
+│   │   ├── controller.go      #     ParallelController — тяжёлая pipeline pagination
+│   │   ├── priority_queue.go  #     PriorityQueue (heap-based)
+│   │   ├── aggregator.go      #     ResultAggregator
+│   │   └── doc.go             #     Документация пакета
+│   ├── ui/                     #   Унифицированный вывод
+│   │   └── display.go         #     ANSI live display + helpers
+│   ├── progress/               #   Прогресс-бары (mpb)
+│   │   ├── progress.go        #     ProgressManager
+│   │   ├── monitor.go         #     WithMonitorCtx
+│   │   └── async.go           #     Async helpers
 │   ├── interactive/            #   Интерактивный выбор
 │   │   └── wizard.go          #     InteractiveWizard
 │   ├── output/                 #   Вывод и сохранение
@@ -316,6 +380,8 @@ gotr/
 │       ├── helpers.go         #     Вспомогательные функции
 │       └── log.go             #     Работа с логами
 ├── pkg/                          # Публичные пакеты
+│   ├── reporter/               #   Builder-pattern для статистики
+│   │   └── reporter.go        #     Section/Stat/StatFmt/Print (ANSI + go-pretty)
 │   └── testrailapi/            #   Описания API endpoints
 │       └── api_paths.go
 ├── .systems/                     # Системная документация
@@ -422,8 +488,11 @@ CLI команды не требуют изменений!
 | Новый API метод | `internal/client/*.go` + `interfaces.go` |
 | Новая структура данных | `internal/models/data/*.go` |
 | Интерактивный выбор | `internal/interactive/wizard.go` |
-| Параллельная обработка | `internal/concurrent/*.go` |
-| Прогресс-бары | `internal/progress/*.go` |
+| Параллельная обработка (generic) | `internal/concurrent/*.go` |
+| Стратегии конкурентности | `internal/concurrency/*.go` |
+| Generic compare factory | `cmd/compare/simple.go` |
+| Унифицированный вывод (compare) | `pkg/reporter/*.go` |
+| Прогресс-бары (sync/get) | `internal/progress/*.go` |
 
 Подробная техническая документация: `.systems/ARCHITECTURE.md`
 

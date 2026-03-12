@@ -30,7 +30,7 @@ type Monitor struct {
 //
 //	progressChan := make(chan int, 100)
 //	monitor := progress.NewMonitor(progressChan, totalSuites)
-//	cases, err := client.GetCasesParallelWithMonitor(pid, suiteIDs, 5, monitor)
+//	cases, err := client.GetCasesParallelWithMonitorCtx(pid, suiteIDs, 5, monitor)
 func NewMonitor(ch chan<- int, total int) *Monitor {
 	return &Monitor{
 		ProgressChan: ch,
@@ -99,15 +99,15 @@ type MonitorContext struct {
 	*Monitor
 }
 
-// WithMonitor creates a new context with a progress monitor.
+// WithMonitorCtx creates a new context with a progress monitor.
 // This allows methods to accept a standard context.Context while still
 // supporting progress updates.
 //
 // Example:
 //
-//	ctx, monitor := progress.WithMonitor(context.Background(), progressChan, total)
+//	ctx, monitor := progress.WithMonitorCtx(context.Background(), progressChan, total)
 //	cases, err := client.GetCasesParallelCtx(ctx, pid, suiteIDs, 5)
-func WithMonitor(parent context.Context, ch chan<- int, total int) (context.Context, *Monitor) {
+func WithMonitorCtx(parent context.Context, ch chan<- int, total int) (context.Context, *Monitor) {
 	monitor := NewMonitor(ch, total)
 	return &MonitorContext{
 		Context: parent,

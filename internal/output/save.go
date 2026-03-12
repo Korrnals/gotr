@@ -19,6 +19,13 @@ func AddFlag(cmd *cobra.Command) {
 	cmd.Flags().Bool("save", false, "Save output to file in ~/.gotr/exports/")
 }
 
+// OutputResult is a convenience wrapper for Output with format="json".
+// It discards the file path and returns only the error.
+func OutputResult(cmd *cobra.Command, data interface{}, resource string) error {
+	_, err := Output(cmd, data, resource, "json")
+	return err
+}
+
 // Output checks if --save flag is set and saves data to file if so.
 // If --save is not set, outputs data to stdout as JSON.
 // Returns the saved file path for user notification (empty string if output to stdout).

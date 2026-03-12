@@ -3,10 +3,11 @@ package attachments
 import (
 	"fmt"
 	"os"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +25,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
   gotr attachments add case 99999 ./test-data.json --dry-run`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := parseID(args[0], "case_id")
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
 			if err != nil {
 				return err
 			}
@@ -46,13 +47,14 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToCase(caseID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToCase(ctx, caseID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -73,7 +75,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
   gotr attachments add plan 200 ./summary.docx`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := parseID(args[0], "plan_id")
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
 			if err != nil {
 				return err
 			}
@@ -93,13 +95,14 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToPlan(planID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToPlan(ctx, planID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -120,7 +123,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
   gotr attachments add plan-entry 200 def456 ./notes.txt`,
 		Args: cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := parseID(args[0], "plan_id")
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
 			if err != nil {
 				return err
 			}
@@ -141,13 +144,14 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToPlanEntry(planID, entryID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToPlanEntry(ctx, planID, entryID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -168,7 +172,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
   gotr attachments add result 54321 ./screenshot.png`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			resultID, err := parseID(args[0], "result_id")
+			resultID, err := flags.ValidateRequiredID(args, 0, "result_id")
 			if err != nil {
 				return err
 			}
@@ -188,13 +192,14 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToResult(resultID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToResult(ctx, resultID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
@@ -215,7 +220,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
   gotr attachments add run 777 ./summary.pdf`,
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runID, err := parseID(args[0], "run_id")
+			runID, err := flags.ValidateRequiredID(args, 0, "run_id")
 			if err != nil {
 				return err
 			}
@@ -235,26 +240,18 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
 
 			cli := getClient(cmd)
-			resp, err := cli.AddAttachmentToRun(runID, filePath)
+			ctx := cmd.Context()
+			resp, err := cli.AddAttachmentToRun(ctx, runID, filePath)
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
 
-			fmt.Printf("✅ Attachment added (ID: %d)\n   URL: %s\n", resp.AttachmentID, resp.URL)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
+			return output.OutputResult(cmd, resp, "attachments")
 		},
 	}
 	output.AddFlag(cmd)
 	return cmd
-}
-
-// parseID преобразует строковый ID в int64
-func parseID(s, name string) (int64, error) {
-	id, err := strconv.ParseInt(s, 10, 64)
-	if err != nil || id <= 0 {
-		return 0, fmt.Errorf("invalid %s: %s", name, s)
-	}
-	return id, nil
 }
 
 // validateFileExists проверяет существование файла
@@ -263,10 +260,4 @@ func validateFileExists(filePath string) error {
 		return fmt.Errorf("file not found: %s", filePath)
 	}
 	return nil
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "attachments", "json")
-	return err
 }

@@ -4,17 +4,18 @@
 package labels
 
 import (
+	"context"
 	"fmt"
-	"strconv"
-	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'labels list'
 // Эндпоинт: GET /get_labels/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
@@ -28,13 +29,14 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr labels list 123 -o json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
-			labels, err := client.GetLabels(projectID)
+			ctx := cmd.Context()
+			labels, err := client.GetLabels(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list labels: %w", err)
 			}
@@ -50,12 +52,13 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME")
+			t := ui.NewTable(cmd)
+			t.AppendHeader(table.Row{"ID", "NAME"})
 			for _, l := range labels {
-				fmt.Fprintf(w, "%d\t%s\n", l.ID, l.Name)
+				t.AppendRow(table.Row{l.ID, l.Name})
 			}
-			return w.Flush()
+			ui.Table(cmd, t)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)
@@ -64,5 +67,5 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
 // Verify interface compliance
 var _ interface {
-	GetLabels(projectID int64) (data.GetLabelsResponse, error)
+	GetLabels(ctx context.Context, projectID int64) (data.GetLabelsResponse, error)
 } = (*client.MockClient)(nil)

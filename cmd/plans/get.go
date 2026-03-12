@@ -2,8 +2,8 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -22,18 +22,19 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr plans get 12345 --save`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetPlan(planID)
+			ctx := cmd.Context()
+			resp, err := cli.GetPlan(ctx, planID)
 			if err != nil {
 				return fmt.Errorf("failed to get plan: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 

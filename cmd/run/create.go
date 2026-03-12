@@ -3,9 +3,9 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -40,14 +40,15 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newRunServiceFromInterface(cli)
-			projectID, err := svc.ParseID(args, 0)
+			projectID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID проекта: %w", err)
+				return fmt.Errorf("invalid project ID: %w", err)
 			}
 
 			// Собираем параметры из флагов
@@ -84,13 +85,13 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 				return nil
 			}
 
-			run, err := svc.Create(projectID, req)
+			run, err := svc.Create(ctx, projectID, req)
 			if err != nil {
-				return fmt.Errorf("ошибка создания test run: %w", err)
+				return fmt.Errorf("failed to create test run: %w", err)
 			}
 
-			svc.PrintSuccess(cmd, "Test run создан успешно (ID: %d):", run.ID)
-			return svc.Output(cmd, run)
+			svc.PrintSuccess(ctx, cmd, "Test run создан успешно (ID: %d):", run.ID)
+			return svc.Output(ctx, cmd, run)
 		},
 	}
 

@@ -5,6 +5,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,7 +44,7 @@ func TestOutputResult_JSON(t *testing.T) {
 	cmd.Flags().Bool("save", false, "")
 
 	data := &data.Plan{ID: 1, Name: "Test Plan"}
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "plans")
 	assert.NoError(t, err)
 }
 
@@ -53,7 +54,7 @@ func TestOutputResult_ToFile(t *testing.T) {
 	cmd.ParseFlags([]string{"--save"})
 
 	plan := &data.Plan{ID: 1, Name: "Test Plan"}
-	err := outputResult(cmd, plan)
+	err := output.OutputResult(cmd, plan, "plans")
 	assert.NoError(t, err)
 }
 
@@ -64,6 +65,6 @@ func TestOutputResult_InvalidData(t *testing.T) {
 
 	// Channel cannot be serialized to JSON
 	invalidData := make(chan int)
-	err := outputResult(cmd, invalidData)
+	err := output.OutputResult(cmd, invalidData, "plans")
 	assert.Error(t, err)
 }

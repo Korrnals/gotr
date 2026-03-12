@@ -23,16 +23,16 @@ func TestVersion_Properties(t *testing.T) {
 
 // TestGetClient_NotNilContext проверяет что GetClient требует контекст
 func TestGetClient_NotNilContext(t *testing.T) {
-	// GetClient требует контекст с клиентом
-	// Если контекст пустой, функция вызывает os.Exit(1)
+	// GetClient требует контекст с clientом
+	// Если контекст пустой, функция вызывает panic
 	// Проверяем только что функция существует
 	assert.NotNil(t, GetClient)
 }
 
 // TestGetClientInterface_NotNilContext проверяет что GetClientInterface требует контекст
 func TestGetClientInterface_NotNilContext(t *testing.T) {
-	// GetClientInterface требует контекст с клиентом
-	// Если контекст пустой, функция вызывает os.Exit(1)
+	// GetClientInterface требует контекст с clientом
+	// Если контекст пустой, функция вызывает panic
 	// Проверяем только что функция существует
 	assert.NotNil(t, GetClientInterface)
 }

@@ -2,9 +2,12 @@ package sync
 
 import (
 	"fmt"
-	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/Korrnals/gotr/internal/utils"
+	"os"
 	"strings"
+
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -27,9 +30,9 @@ var sectionsCmd = &cobra.Command{
 	gotr sync sections --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve
 `,
 
-
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -44,7 +47,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект:")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project:")
 			if err != nil {
 				return err
 			}
@@ -52,7 +55,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
 				return err
 			}
@@ -60,7 +63,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект:")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project:")
 			if err != nil {
 				return err
 			}
@@ -68,7 +71,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
 				return err
 			}
@@ -86,7 +89,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Шаг 1) Получение sections из source и target
 		progress.Describe(pm.NewSpinner(""), "Загрузка sections...")
-		sourceSections, targetSections, err := m.FetchSectionsData()
+		sourceSections, targetSections, err := m.FetchSectionsData(ctx)
 		if err != nil {
 			return err
 		}
@@ -97,33 +100,33 @@ var sectionsCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nГотово к импорту: %d новых sections\n", len(filtered))
+		ui.Infof(os.Stdout, "Ready to import: %d new sections", len(filtered))
 
 		// Шаг 3) Обработка dry-run
 		if dryRun {
-			fmt.Println("Dry-run: импорт не выполнен")
+			ui.Info(os.Stdout, "Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("Нет новых sections")
+			ui.Info(os.Stdout, "No new sections")
 			return nil
 		}
 
 		// Шаг 4) Подтверждение и импорт
 		if !autoApprove {
-			fmt.Printf("Подтверждение импорта %d sections...\n", len(filtered))
-			fmt.Print("Продолжить? [y/N]: ")
+			ui.Infof(os.Stdout, "Confirm import of %d sections...", len(filtered))
+			fmt.Print("Continue? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Отменено")
+				ui.Cancelled(os.Stdout)
 				return nil
 			}
 		}
 
 		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d sections...", len(filtered)))
-		if err := m.ImportSections(filtered, false); err != nil {
+		if err := m.ImportSections(ctx, filtered, false); err != nil {
 			return err
 		}
 
@@ -131,7 +134,7 @@ var sectionsCmd = &cobra.Command{
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nСохранить mapping? [y/N]: ")
+			fmt.Print("\nSave mapping? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {

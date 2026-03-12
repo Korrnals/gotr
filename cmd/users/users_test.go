@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -41,7 +42,7 @@ func TestRegister(t *testing.T) {
 
 func TestUpdateCmd_EmailFlag(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateUserFunc: func(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 			assert.Equal(t, int64(123), userID)
 			assert.Equal(t, "newemail@test.com", req.Email)
 			return &data.User{
@@ -62,7 +63,7 @@ func TestUpdateCmd_EmailFlag(t *testing.T) {
 
 func TestUpdateCmd_RoleFlag(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateUserFunc: func(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 			assert.Equal(t, int64(123), userID)
 			assert.Equal(t, int64(5), req.RoleID)
 			return &data.User{
@@ -83,7 +84,7 @@ func TestUpdateCmd_RoleFlag(t *testing.T) {
 
 func TestUpdateCmd_MultipleFlags(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateUserFunc: func(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 			assert.Equal(t, int64(123), userID)
 			assert.Equal(t, "New Name", req.Name)
 			assert.Equal(t, "new@test.com", req.Email)

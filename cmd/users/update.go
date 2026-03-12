@@ -5,24 +5,16 @@ package users
 
 import (
 	"fmt"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
 // newUpdateCmd создаёт команду 'users update'
 // Эндпоинт: POST /update_user/{user_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
-	var (
-		name     string
-		email    string
-		roleID   int64
-		isAdmin  bool
-		isActive bool
-	)
-
 	cmd := &cobra.Command{
 		Use:   "update <user_id>",
 		Short: "Обновить пользователя",
@@ -39,24 +31,29 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr users update 123 --inactive`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			userID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || userID <= 0 {
-				return fmt.Errorf("invalid user_id: %s", args[0])
+			userID, err := flags.ValidateRequiredID(args, 0, "user_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 
 			req := data.UpdateUserRequest{}
 			if cmd.Flags().Changed("name") {
+				name, _ := cmd.Flags().GetString("name")
 				req.Name = name
 			}
 			if cmd.Flags().Changed("email") {
+				email, _ := cmd.Flags().GetString("email")
 				req.Email = email
 			}
 			if cmd.Flags().Changed("role") {
+				roleID, _ := cmd.Flags().GetInt64("role")
 				req.RoleID = roleID
 			}
 			if cmd.Flags().Changed("admin") {
+				isAdmin, _ := cmd.Flags().GetBool("admin")
 				if isAdmin {
 					req.IsAdmin = 1
 				} else {
@@ -64,14 +61,15 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 			if cmd.Flags().Changed("inactive") {
+				isActive, _ := cmd.Flags().GetBool("inactive")
 				if isActive {
-					req.IsActive = 0  // inactive = true means is_active = 0
+					req.IsActive = 0 // inactive = true means is_active = 0
 				} else {
-					req.IsActive = 1  // inactive = false means is_active = 1
+					req.IsActive = 1 // inactive = false means is_active = 1
 				}
 			}
 
-			user, err := cli.UpdateUser(userID, req)
+			user, err := cli.UpdateUser(ctx, userID, req)
 			if err != nil {
 				return fmt.Errorf("failed to update user: %w", err)
 			}
@@ -81,11 +79,11 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&name, "name", "", "Имя пользователя")
-	cmd.Flags().StringVar(&email, "email", "", "Email пользователя")
-	cmd.Flags().Int64Var(&roleID, "role", 0, "ID роли пользователя")
-	cmd.Flags().BoolVar(&isAdmin, "admin", false, "Сделать пользователя администратором")
-	cmd.Flags().BoolVar(&isActive, "inactive", false, "Заблокировать пользователя")
+	cmd.Flags().String("name", "", "Имя пользователя")
+	cmd.Flags().String("email", "", "Email пользователя")
+	cmd.Flags().Int64("role", 0, "ID роли пользователя")
+	cmd.Flags().Bool("admin", false, "Сделать пользователя администратором")
+	cmd.Flags().Bool("inactive", false, "Заблокировать пользователя")
 	output.AddFlag(cmd)
 
 	return cmd

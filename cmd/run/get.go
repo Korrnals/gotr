@@ -3,8 +3,8 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -32,14 +32,15 @@ Test run — это экземпляр тест-сюиты, запущенный
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newRunServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
+			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			// Проверяем dry-run режим
@@ -55,12 +56,12 @@ Test run — это экземпляр тест-сюиты, запущенный
 				return nil
 			}
 
-			run, err := svc.Get(runID)
+			run, err := svc.Get(ctx, runID)
 			if err != nil {
-				return fmt.Errorf("ошибка получения test run: %w", err)
+				return fmt.Errorf("failed to get test run: %w", err)
 			}
 
-			return svc.Output(cmd, run)
+			return svc.Output(ctx, cmd, run)
 		},
 	}
 

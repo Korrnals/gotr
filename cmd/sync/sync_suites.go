@@ -2,9 +2,12 @@ package sync
 
 import (
 	"fmt"
-	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/Korrnals/gotr/internal/utils"
+	"os"
 	"strings"
+
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -32,6 +35,7 @@ var suitesCmd = &cobra.Command{
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
@@ -41,7 +45,7 @@ var suitesCmd = &cobra.Command{
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
 		if srcProject == 0 || dstProject == 0 {
-			return fmt.Errorf("укажите обязательные IDs: --src-project и --dst-project")
+			return fmt.Errorf("required IDs: --src-project and --dst-project")
 		}
 
 		logDir := utils.LogDir()
@@ -55,7 +59,7 @@ var suitesCmd = &cobra.Command{
 		pm := progress.NewManager()
 
 		progress.Describe(pm.NewSpinner(""), "Загрузка suites...")
-		sourceSuites, targetSuites, err := m.FetchSuitesData()
+		sourceSuites, targetSuites, err := m.FetchSuitesData(ctx)
 		if err != nil {
 			return err
 		}
@@ -65,32 +69,32 @@ var suitesCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nГотово к импорту: %d новых suites\n", len(filtered))
+		ui.Infof(os.Stdout, "Ready to import: %d new suites", len(filtered))
 
 		if dryRun {
-			fmt.Println("Dry-run: импорт не выполнен")
+			ui.Info(os.Stdout, "Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("Нет новых suites")
+			ui.Info(os.Stdout, "No new suites")
 			return nil
 		}
 
 		if !autoApprove {
-			fmt.Printf("Подтверждение импорта %d suites...\n", len(filtered))
-			fmt.Print("Продолжить? [y/N]: ")
+			ui.Infof(os.Stdout, "Confirm import of %d suites...", len(filtered))
+			fmt.Print("Continue? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Отменено")
+				ui.Cancelled(os.Stdout)
 				return nil
 			}
 		}
 
 		// Шаг 3) Подтверждение и импорт
 		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d suites...", len(filtered)))
-		if err := m.ImportSuites(filtered, false); err != nil {
+		if err := m.ImportSuites(ctx, filtered, false); err != nil {
 			return err
 		}
 
@@ -98,7 +102,7 @@ var suitesCmd = &cobra.Command{
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nСохранить mapping? [y/N]: ")
+			fmt.Print("\nSave mapping? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {

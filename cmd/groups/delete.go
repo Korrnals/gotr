@@ -1,9 +1,10 @@
 package groups
 
 import (
-	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -17,25 +18,26 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
+			ctx := cmd.Context()
 
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("group_id должен быть положительным числом")
+			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
+			if err != nil {
+				return err
 			}
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")
 			if dryRun {
-				fmt.Printf("[DRY-RUN] Будет удалена группа %d\n", groupID)
+				ui.Infof(os.Stdout, "[DRY-RUN] Will delete group %d", groupID)
 				return nil
 			}
 
-			if err := client.DeleteGroup(groupID); err != nil {
+			if err := client.DeleteGroup(ctx, groupID); err != nil {
 				return err
 			}
 
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			if !quiet {
-				color.New(color.FgGreen).Fprintf(cmd.OutOrStdout(), "✓ Группа %d удалена\n", groupID)
+				color.New(color.FgGreen).Fprintf(cmd.OutOrStdout(), "✓ Group %d deleted\n", groupID)
 			}
 
 			return nil

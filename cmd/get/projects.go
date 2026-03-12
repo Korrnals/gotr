@@ -13,7 +13,7 @@ import (
 func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "projects",
-		Short: "Получить все проекты",
+		Short: "Получить все projects",
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
@@ -49,7 +49,7 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 			idStr := args[0]
 			id, err := flags.ParseID(idStr)
 			if err != nil {
-				return fmt.Errorf("invalid project ID: %w", err)
+				return fmt.Errorf("invalid project_id: %w", err)
 			}
 
 			project, err := cli.GetProject(ctx, id)

@@ -24,64 +24,64 @@ func PrintCasesStatsWithErrors(
 	total := onlyFirst + onlySecond + common
 
 	r := reporter.New("cases").
-		Section("Общая статистика").
-		Stat("⏱️", "Время выполнения", elapsed.Round(time.Millisecond)).
-		Stat("📦", "Всего уникальных кейсов", total).
-		Section(fmt.Sprintf("Проект %d", pid1)).
-		Stat("📋", "Сьютов", stats.Project1.Suites).
-		Stat("📂", "Секций", stats.Project1.Sections).
-		Stat("📄", "Кейсов (уникальных)", stats.Project1.CasesUnique).
+		Section("General statistics").
+		Stat("⏱️", "Execution time", elapsed.Round(time.Millisecond)).
+		Stat("📦", "Total unique cases", total).
+		Section(fmt.Sprintf("Project %d", pid1)).
+		Stat("📋", "Suites", stats.Project1.Suites).
+		Stat("📂", "Sections", stats.Project1.Sections).
+		Stat("📄", "Cases (unique)", stats.Project1.CasesUnique).
 		StatIf(stats.Project1.CasesRaw != stats.Project1.CasesUnique,
-			"📄", "Кейсов (raw до дедупа)", stats.Project1.CasesRaw).
+			"📄", "Cases (raw before dedup)", stats.Project1.CasesRaw).
 		StatIf(stats.Project1.CasesExpected > 0,
-			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
+			"📊", "Cases (expected by API)", fmt.Sprintf("%d from %d suites",
 				stats.Project1.CasesExpected, stats.Project1.SuitesWithTotal)).
-		StatFmt("📈", "Полнота загрузки", "%s",
+		StatFmt("📈", "Download completeness", "%s",
 			formatCompleteness(stats.Project1.CasesRaw, stats.Project1.CasesExpected,
 				stats.Project1.Suites, stats.Project1.SuitesVerified, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.SuiteDetailsCount > 0,
-			"📊", "Всего кейсов в проекте", formatIntegrityCheck(
+			"📊", "Total cases in project", formatIntegrityCheck(
 				stats.Project1.CasesRaw, stats.Project1.SuiteDetailsCount,
 				stats.Project1.SuiteDetailsSum, stats.Project1.SuiteDetailsEmpty)).
 		StatIf(stats.Project1.TotalPages > 0,
-			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
+			"📃", "Pages loaded", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project1.TotalPages, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.EmptyTitles > 0,
-			"⚠️", "Кейсов без заголовка", stats.Project1.EmptyTitles).
-		Stat("⏱️", "Загрузка", stats.Project1.Elapsed.Round(time.Millisecond)).
-		Section(fmt.Sprintf("Проект %d", pid2)).
-		Stat("📋", "Сьютов", stats.Project2.Suites).
-		Stat("📂", "Секций", stats.Project2.Sections).
-		Stat("📄", "Кейсов (уникальных)", stats.Project2.CasesUnique).
+			"⚠️", "Cases without title", stats.Project1.EmptyTitles).
+		Stat("⏱️", "Loading", stats.Project1.Elapsed.Round(time.Millisecond)).
+		Section(fmt.Sprintf("Project %d", pid2)).
+		Stat("📋", "Suites", stats.Project2.Suites).
+		Stat("📂", "Sections", stats.Project2.Sections).
+		Stat("📄", "Cases (unique)", stats.Project2.CasesUnique).
 		StatIf(stats.Project2.CasesRaw != stats.Project2.CasesUnique,
-			"📄", "Кейсов (raw до дедупа)", stats.Project2.CasesRaw).
+			"📄", "Cases (raw before dedup)", stats.Project2.CasesRaw).
 		StatIf(stats.Project2.CasesExpected > 0,
-			"📊", "Кейсов (ожидалось API)", fmt.Sprintf("%d из %d сьютов",
+			"📊", "Cases (expected by API)", fmt.Sprintf("%d from %d suites",
 				stats.Project2.CasesExpected, stats.Project2.SuitesWithTotal)).
-		StatFmt("📈", "Полнота загрузки", "%s",
+		StatFmt("📈", "Download completeness", "%s",
 			formatCompleteness(stats.Project2.CasesRaw, stats.Project2.CasesExpected,
 				stats.Project2.Suites, stats.Project2.SuitesVerified, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.SuiteDetailsCount > 0,
-			"📊", "Всего кейсов в проекте", formatIntegrityCheck(
+			"📊", "Total cases in project", formatIntegrityCheck(
 				stats.Project2.CasesRaw, stats.Project2.SuiteDetailsCount,
 				stats.Project2.SuiteDetailsSum, stats.Project2.SuiteDetailsEmpty)).
 		StatIf(stats.Project2.TotalPages > 0,
-			"📃", "Страниц загружено", fmt.Sprintf("%d (ошибок: %d)",
+			"📃", "Pages loaded", fmt.Sprintf("%d (ошибок: %d)",
 				stats.Project2.TotalPages, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.EmptyTitles > 0,
-			"⚠️", "Кейсов без заголовка", stats.Project2.EmptyTitles).
-		Stat("⏱️", "Загрузка", stats.Project2.Elapsed.Round(time.Millisecond)).
-		Section("Ошибки и ретраи").
-		StatFmt("⚠️", "Ошибки загрузки", "П%d=%d, П%d=%d", pid1, stats.LoadErrorsP1, pid2, stats.LoadErrorsP2).
-		Stat("⚠️", "Failed pages до авто-ретрая", stats.FailedPagesBefore).
-		StatIf(stats.RetryAttempted, "🔄", "Восстановлено страниц",
+			"⚠️", "Cases without title", stats.Project2.EmptyTitles).
+		Stat("⏱️", "Loading", stats.Project2.Elapsed.Round(time.Millisecond)).
+		Section("Errors and retries").
+		StatFmt("⚠️", "Load errors", "П%d=%d, П%d=%d", pid1, stats.LoadErrorsP1, pid2, stats.LoadErrorsP2).
+		Stat("⚠️", "Failed pages before auto-retry", stats.FailedPagesBefore).
+		StatIf(stats.RetryAttempted, "🔄", "Recovered pages",
 			fmt.Sprintf("%d/%d", stats.RetryStats.RecoveredPages, stats.RetryStats.UniquePages)).
-		StatIf(stats.RetryAttempted, "📥", "Получено кейсов при ретрае", stats.RetryStats.RecoveredCases).
-		StatIf(stats.RetryAttempted, "⚠️", "Failed pages после авто-ретрая", stats.FailedPagesAfter).
-		Section("Результат сравнения").
-		Stat("🔹", fmt.Sprintf("Уникальных кейсов в проекте %d", pid1), onlyFirst).
-		Stat("🔹", fmt.Sprintf("Уникальных кейсов в проекте %d", pid2), onlySecond).
-		Stat("🔗", "Общих кейсов", common)
+		StatIf(stats.RetryAttempted, "📥", "Cases recovered on retry", stats.RetryStats.RecoveredCases).
+		StatIf(stats.RetryAttempted, "⚠️", "Failed pages after auto-retry", stats.FailedPagesAfter).
+		Section("Comparison results").
+		Stat("🔹", fmt.Sprintf("Unique cases in project %d", pid1), onlyFirst).
+		Stat("🔹", fmt.Sprintf("Unique cases in project %d", pid2), onlySecond).
+		Stat("🔗", "Common cases", common)
 
 	r.Print()
 }
@@ -94,10 +94,10 @@ func formatCompleteness(actual, expected, totalSuites, suitesVerified, failedPag
 	suiteStatus := ""
 	if totalSuites > 0 {
 		if suitesVerified == totalSuites {
-			suiteStatus = fmt.Sprintf("%d/%d сьютов завершены ✅", suitesVerified, totalSuites)
+			suiteStatus = fmt.Sprintf("%d/%d suites completed ✅", suitesVerified, totalSuites)
 		} else {
 			incomplete := totalSuites - suitesVerified
-			suiteStatus = fmt.Sprintf("%d/%d сьютов ✅, %d неполных ⚠️", suitesVerified, totalSuites, incomplete)
+			suiteStatus = fmt.Sprintf("%d/%d suites ✅, %d incomplete ⚠️", suitesVerified, totalSuites, incomplete)
 		}
 	}
 
@@ -121,20 +121,20 @@ func formatCompleteness(actual, expected, totalSuites, suitesVerified, failedPag
 }
 
 // formatIntegrityCheck shows total cases across all suites in the project.
-// User compares this visually with "Полнота загрузки" to see if everything was fetched.
+// User compares this visually with "Download completeness" to see if everything was fetched.
 func formatIntegrityCheck(casesRaw, suiteCount, suiteSum, emptySuites int) string {
 	if suiteCount == 0 {
 		return ""
 	}
 	emptyNote := ""
 	if emptySuites > 0 {
-		emptyNote = fmt.Sprintf(", пустых: %d", emptySuites)
+		emptyNote = fmt.Sprintf(", empty: %d", emptySuites)
 	}
 	if suiteSum == casesRaw {
-		return fmt.Sprintf("%d (%d сьютов%s)",
+		return fmt.Sprintf("%d (%d suites%s)",
 			suiteSum, suiteCount, emptyNote)
 	}
 	diff := casesRaw - suiteSum
-	return fmt.Sprintf("%d (%d сьютов%s) ⚠️ загружено %d, расхождение %+d",
+	return fmt.Sprintf("%d (%d suites%s) ⚠️ загружено %d, расхождение %+d",
 		suiteSum, suiteCount, emptyNote, casesRaw, diff)
 }

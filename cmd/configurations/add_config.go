@@ -51,7 +51,7 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация добавлена (ID: %d)\n", resp.ID)
+			fmt.Printf("✅ Configuration added (ID: %d)\n", resp.ID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}

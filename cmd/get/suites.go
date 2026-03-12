@@ -57,7 +57,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			} else {
 				projectID, err = flags.ParseID(projectIDStr)
 				if err != nil {
-					return fmt.Errorf("invalid project ID: %w", err)
+					return fmt.Errorf("invalid project_id: %w", err)
 				}
 			}
 

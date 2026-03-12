@@ -223,10 +223,10 @@ func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) err
 // validateAddResultsRequest валидирует bulk запрос
 func (s *ResultService) validateAddResultsRequest(req *data.AddResultsRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if len(req.Results) == 0 {
-		return errors.New("список results не может быть пустым")
+		return errors.New("results list cannot be empty")
 	}
 	for i, r := range req.Results {
 		if r.StatusID <= 0 {
@@ -236,13 +236,13 @@ func (s *ResultService) validateAddResultsRequest(req *data.AddResultsRequest) e
 	return nil
 }
 
-// validateAddResultsForCasesRequest валидирует bulk запрос для cases
+// validateAddResultsForCasesRequest validates bulk request for cases
 func (s *ResultService) validateAddResultsForCasesRequest(req *data.AddResultsForCasesRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if len(req.Results) == 0 {
-		return errors.New("список results не может быть пустым")
+		return errors.New("results list cannot be empty")
 	}
 	for i, r := range req.Results {
 		if r.CaseID <= 0 {

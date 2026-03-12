@@ -48,7 +48,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update variable: %w", err)
 			}
 
-			fmt.Printf("✅ Переменная %d обновлена\n", variableID)
+			fmt.Printf("✅ Variable %d updated\n", variableID)
 			return output.OutputResult(cmd, resp, "variables")
 		},
 	}

@@ -88,8 +88,8 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 	}
 
 	if debug {
-		utils.DebugPrint("{client} - Оригинальный baseURL: %s", baseURLStr)
-		utils.DebugPrint("{client} - Нормализованный baseURL: %s", cleanURL.String())
+		utils.DebugPrint("{client} - Original baseURL: %s", baseURLStr)
+		utils.DebugPrint("{client} - Normalized baseURL: %s", cleanURL.String())
 	}
 	// Создаем конфигурацию с опциями по умолчанию
 	cfg := defaultOptions
@@ -138,9 +138,9 @@ func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, bod
 	// Формируем путь вручную — TestRail требует ? в пути некодированным
 	path := apiPrefix + cleanEndpoint
 	utils.DebugPrint("{DoRequest} - Path: %s", path)
-	// Базовый URL как строка (с trailing слешем, если нужно)
+	// Base URL как строка (с trailing слешем, если нужно)
 	base := strings.TrimSuffix(c.baseURL.String(), "/")
-	utils.DebugPrint("{DoRequest} - Базовый URL: %s", base)
+	utils.DebugPrint("{DoRequest} - Base URL: %s", base)
 	// Полный URL как строка
 	fullURL := base + "/" + path
 
@@ -153,7 +153,7 @@ func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, bod
 		fullURL += "&" + q.Encode() // & вместо ?
 	}
 
-	utils.DebugPrint("{DoRequest} - Формируемый URL: %s", fullURL)
+	utils.DebugPrint("{DoRequest} - Constructed URL: %s", fullURL)
 	// Создаем сам запрос
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {

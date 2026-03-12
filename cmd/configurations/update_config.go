@@ -47,7 +47,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация %d обновлена\n", configID)
+			fmt.Printf("✅ Configuration %d updated\n", configID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}

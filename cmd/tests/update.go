@@ -57,7 +57,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to update test: %w", err)
 			}
 
-			fmt.Printf("✅ Тест %d обновлён\n", testID)
+			fmt.Printf("✅ Test %d updated\n", testID)
 			return printJSON(cmd, resp, time.Now())
 		},
 	}

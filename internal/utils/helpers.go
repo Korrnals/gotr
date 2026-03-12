@@ -33,7 +33,7 @@ func OpenEditor(filepath string) error {
 		} else {
 			editor = "vi" // или "nano" — vim более универсальный
 		}
-		fmt.Printf("Переменная EDITOR не задана. Используется fallback: %s\n", editor)
+		fmt.Printf("EDITOR not set. Using fallback: %s\n", editor)
 	}
 
 	// Создаём команду
@@ -192,7 +192,7 @@ func OutputResult(cmd *cobra.Command, data interface{}) error {
 			return err
 		}
 		if !quiet {
-			fmt.Printf("Ответ сохранён в %s\n", output)
+			fmt.Printf("Response saved to %s\n", output)
 		}
 	}
 

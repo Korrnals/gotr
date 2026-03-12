@@ -28,8 +28,8 @@ var rootCmd = &cobra.Command{
 Поддерживает просмотр доступных эндпоинтов, выполнение запросов и многое другое.`,
 	// Запускается клиент перед каждой субкомандой
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		utils.DebugPrint("{rootCmd} - Запуск команды: %s", cmd.Use)
-		utils.DebugPrint("{rootCmd} - Аргументы: %v", args)
+		utils.DebugPrint("{rootCmd} - Running command: %s", cmd.Use)
+		utils.DebugPrint("{rootCmd} - Arguments: %v", args)
 		// Настройка Viper - поддержка env, флагов, конфигов
 		viper.AutomaticEnv() // автоматически подтягивать переменные из окружения
 
@@ -47,7 +47,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - PersistentPreRunE запущен для команды: %s", cmd.Use)
+		utils.DebugPrint("{rootCmd} - PersistentPreRunE running for command: %s", cmd.Use)
 		utils.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
 		utils.DebugPrint("{rootCmd} - insecure=%v", insecure)
 
@@ -61,7 +61,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - Подключение к %s как %s", baseURL, username)
+		utils.DebugPrint("{rootCmd} - Connecting to %s as %s", baseURL, username)
 
 		// Создаём клиент с опциями
 		opts := []client.ClientOption{}
@@ -75,7 +75,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - Клиент успешно создан и сохранён в контекст")
+		utils.DebugPrint("{rootCmd} - Client created and stored in context")
 
 		// Сохраняем клиент в контекст — будет доступен во всех субкомандах
 		ctx := context.WithValue(cmd.Context(), httpClientKey, httpClient)

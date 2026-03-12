@@ -16,7 +16,7 @@ const defaultWorkers = 5
 // Использует WorkerPool для ограничения параллелизма и RateLimiter
 // для соблюдения лимита запросов к API (150 req/min).
 //
-// Параметры:
+// Parameters:
 //   - projectID: ID проекта
 //   - suiteIDs: список ID сьютов для загрузки
 //   - workers: количество параллельных воркеров (0 = defaultWorkers)
@@ -108,7 +108,7 @@ func (c *HTTPClient) GetCasesParallel(ctx context.Context, projectID int64, suit
 // GetSuitesParallel получает сьюты из нескольких проектов параллельно.
 // Полезно для команд compare all, когда нужно получить сьюты из двух проектов.
 //
-// Параметры:
+// Parameters:
 //   - projectIDs: список ID проектов
 //   - workers: количество параллельных воркеров (0 = defaultWorkers)
 //   - monitor: опциональный монитор прогресса (может быть nil)
@@ -181,7 +181,7 @@ func (c *HTTPClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 // GetCasesForSuitesParallel получает все кейсы для списка сьютов одного проекта.
 // Объединяет результаты в плоский список cases.
 //
-// Параметры:
+// Parameters:
 //   - projectID: ID проекта
 //   - suiteIDs: список ID сьютов
 //   - workers: количество параллельных воркеров

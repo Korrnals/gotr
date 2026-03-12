@@ -51,7 +51,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to create variable: %w", err)
 			}
 
-			fmt.Printf("✅ Переменная создана (ID: %d)\n", resp.ID)
+			fmt.Printf("✅ Variable created (ID: %d)\n", resp.ID)
 			return output.OutputResult(cmd, resp, "variables")
 		},
 	}

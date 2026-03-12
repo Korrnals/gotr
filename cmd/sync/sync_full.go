@@ -43,7 +43,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект:")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project:")
 			if err != nil {
 				return err
 			}
@@ -51,7 +51,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
 				return err
 			}
@@ -59,7 +59,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект:")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project:")
 			if err != nil {
 				return err
 			}
@@ -67,7 +67,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
 				return err
 			}
@@ -90,7 +90,7 @@ var fullCmd = &cobra.Command{
 		}
 
 		if dryRun {
-			fmt.Println("Dry-run завершён")
+			fmt.Println("Dry-run complete")
 			return nil
 		}
 
@@ -104,7 +104,7 @@ var fullCmd = &cobra.Command{
 			m.ExportMapping(logDir)
 		}
 
-		fmt.Println("Полная миграция завершена!")
+		fmt.Println("Full migration complete!")
 		return nil
 	},
 }

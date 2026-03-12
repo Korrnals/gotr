@@ -42,7 +42,7 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация %d удалена\n", configID)
+			fmt.Printf("✅ Configuration %d deleted\n", configID)
 			return nil
 		},
 	}

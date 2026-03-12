@@ -71,7 +71,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			} else {
 				projectID, err = flags.ParseID(projectIDStr)
 				if err != nil {
-					return fmt.Errorf("invalid project ID: %w", err)
+					return fmt.Errorf("invalid project_id: %w", err)
 				}
 			}
 
@@ -101,7 +101,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			// Если только один сьют — используем его автоматически
 			if len(suites) == 1 {
-				fmt.Printf("В проекте найден один сьют (ID: %d), используем его автоматически...\n", suites[0].ID)
+				fmt.Printf("Project has one suite (ID: %d), using automatically...\n", suites[0].ID)
 				return fetchAndOutputCases(ctx, command, cli, projectID, suites[0].ID, sectionID, start)
 			}
 

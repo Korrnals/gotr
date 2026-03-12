@@ -45,7 +45,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to delete variable: %w", err)
 			}
 
-			fmt.Printf("✅ Переменная %d удалена\n", variableID)
+			fmt.Printf("✅ Variable %d deleted\n", variableID)
 			return nil
 		},
 	}

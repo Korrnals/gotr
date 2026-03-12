@@ -211,7 +211,7 @@ func newAllCmd() *cobra.Command {
 					}
 					// Print on new line after progress bar
 					fmt.Println()
-					fmt.Printf("Результат сохранён в %s\n", savePath)
+					fmt.Printf("Result saved to %s\n", savePath)
 				case "table":
 					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath, time.Since(startTime))
 				default:
@@ -281,7 +281,7 @@ func addCommonFlags(cmd *cobra.Command) {
 // using go-pretty tables and reporter for consistent aligned output.
 func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error, elapsed time.Duration) {
 	// Header via reporter
-	rpt := reporter.New("Сравнение проектов").
+	rpt := reporter.New("Comparison проектов").
 		Section("Проекты").
 		StatFmt("📋", "Проект 1", "%s (ID: %d)", project1Name, pid1).
 		StatFmt("📋", "Проект 2", "%s (ID: %d)", project2Name, pid2)
@@ -294,7 +294,7 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 	tw.SetTitle("СВОДКА РЕСУРСОВ")
 	tw.Style().Title.Align = text.AlignCenter
 
-	tw.AppendHeader(table.Row{"Ресурс", "Только в P1", "Только в P2", "Общих", "Статус"})
+	tw.AppendHeader(table.Row{"Resource", "Only in P1", "Only in P2", "Common", "Status"})
 	tw.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignLeft, WidthMin: 16},
 		{Number: 2, Align: text.AlignRight},
@@ -323,7 +323,7 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 	// Footer stats via reporter
 	footer := reporter.New("Итого").
 		Section("Время").
-		Stat("⏱️", "Время выполнения", elapsed.Round(time.Second))
+		Stat("⏱️", "Execution time", elapsed.Round(time.Second))
 
 	if len(errors) > 0 {
 		footer.Section("Ошибки")
@@ -411,7 +411,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 
 	// Print on new line after progress bar
 	fmt.Println()
-	fmt.Printf("Результат сохранён в %s\n", filePath)
+	fmt.Printf("Result saved to %s\n", filePath)
 	return nil
 }
 

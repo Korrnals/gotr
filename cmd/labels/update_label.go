@@ -20,7 +20,7 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 		Short: "Обновить метку",
 		Long: `Обновляет существующую метку.
 
-Требуются права на редактирование меток в проекте.
+Требуются права на редактирование меток in project.
 Максимальная длина названия метки — 20 символов.`,
 		Example: `  # Обновить название метки
   gotr labels update-label 123 --project 1 --title "New Label Name"

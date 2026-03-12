@@ -44,7 +44,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект:")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project:")
 			if err != nil {
 				return err
 			}
@@ -52,7 +52,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
 				return err
 			}
@@ -60,7 +60,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект:")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project:")
 			if err != nil {
 				return err
 			}
@@ -68,7 +68,7 @@ var sectionsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
 				return err
 			}
@@ -97,27 +97,27 @@ var sectionsCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nГотово к импорту: %d новых sections\n", len(filtered))
+		fmt.Printf("\nReady to import: %d new sections\n", len(filtered))
 
 		// Шаг 3) Обработка dry-run
 		if dryRun {
-			fmt.Println("Dry-run: импорт не выполнен")
+			fmt.Println("Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("Нет новых sections")
+			fmt.Println("No new sections")
 			return nil
 		}
 
 		// Шаг 4) Подтверждение и импорт
 		if !autoApprove {
-			fmt.Printf("Подтверждение импорта %d sections...\n", len(filtered))
-			fmt.Print("Продолжить? [y/N]: ")
+			fmt.Printf("Confirm import of %d sections...\n", len(filtered))
+			fmt.Print("Continue? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Отменено")
+				fmt.Println("Cancelled")
 				return nil
 			}
 		}
@@ -131,7 +131,7 @@ var sectionsCmd = &cobra.Command{
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nСохранить mapping? [y/N]: ")
+			fmt.Print("\nSave mapping? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {

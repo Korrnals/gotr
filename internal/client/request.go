@@ -92,7 +92,7 @@ func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, 
 	if err := os.WriteFile(filename, toSave, 0644); err != nil {
 		return err
 	}
-	fmt.Printf("Ответ сохранён в файл %s (формат: %s)\n", filename, outputFormat)
+	fmt.Printf("Response saved to %s (format: %s)\n", filename, outputFormat)
 
 	return nil
 }

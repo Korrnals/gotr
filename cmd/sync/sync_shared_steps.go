@@ -47,7 +47,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(ctx, cli, "Выберите SOURCE проект (откуда копировать shared steps):")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project (copy shared steps from):")
 			if err != nil {
 				return err
 			}
@@ -56,11 +56,11 @@ var sharedStepsCmd = &cobra.Command{
 		// Интерактивный выбор source сьюта (опционально, можно 0)
 		if srcSuite == 0 {
 			// Спрашиваем нужен ли suite
-			fmt.Print("\nУказать source suite? [y/N]: ")
+			fmt.Print("\nSpecify source suite? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-				srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Выберите SOURCE сьют:")
+				srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
 				if err != nil {
 					return err
 				}
@@ -69,7 +69,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(ctx, cli, "Выберите DESTINATION проект (куда копировать shared steps):")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project (copy shared steps to):")
 			if err != nil {
 				return err
 			}
@@ -109,26 +109,26 @@ var sharedStepsCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("\nГотово к импорту: %d новых shared steps\n", len(filtered))
+		fmt.Printf("\nReady to import: %d new shared steps\n", len(filtered))
 
 		if dryRun {
-			fmt.Println("Dry-run: импорт не выполнен")
+			fmt.Println("Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("Нет новых shared steps")
+			fmt.Println("No new shared steps")
 			return nil
 		}
 
-		// Шаг 4) Подтверждение импорта
+		// Шаг 4) Confirm import of
 		if !autoApprove {
-			fmt.Printf("Подтверждение импорта %d shared steps...\n", len(filtered))
-			fmt.Print("Продолжить? [y/N]: ")
+			fmt.Printf("Confirm import of %d shared steps...\n", len(filtered))
+			fmt.Print("Continue? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Отменено")
+				fmt.Println("Cancelled")
 				return nil
 			}
 		}
@@ -144,7 +144,7 @@ var sharedStepsCmd = &cobra.Command{
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nСохранить mapping? [y/N]: ")
+			fmt.Print("\nSave mapping? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
@@ -155,7 +155,7 @@ var sharedStepsCmd = &cobra.Command{
 		if autoSaveFiltered {
 			// Сохранение filtered
 		} else if len(filtered) > 0 {
-			fmt.Print("\nСохранить filtered shared steps? [y/N]: ")
+			fmt.Print("\nSave filtered shared steps? [y/N]: ")
 			var confirm string
 			fmt.Scanln(&confirm)
 			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {

@@ -213,9 +213,9 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 
 	// Предпросмотр
 	ui.Preview(os.Stdout, "Create Project", []ui.PreviewField{
-		{"Name", answers.Name},
-		{"Announcement", answers.Announcement},
-		{"Show announce", answers.ShowAnnouncement},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Announcement", Value: answers.Announcement},
+		{Label: "Show announce", Value: answers.ShowAnnouncement},
 	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
@@ -248,9 +248,9 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 
 	// Предпросмотр
 	ui.Preview(os.Stdout, "Create Suite", []ui.PreviewField{
-		{"Name", answers.Name},
-		{"Description", answers.Description},
-		{"Project ID", projectID},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Description", Value: answers.Description},
+		{Label: "Project ID", Value: projectID},
 	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
@@ -282,10 +282,10 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 
 	// Предпросмотр
 	ui.Preview(os.Stdout, "Create Case", []ui.PreviewField{
-		{"Title", answers.Title},
-		{"Section ID", sectionID},
-		{"Type ID", answers.TypeID},
-		{"Priority ID", answers.PriorityID},
+		{Label: "Title", Value: answers.Title},
+		{Label: "Section ID", Value: sectionID},
+		{Label: "Type ID", Value: answers.TypeID},
+		{Label: "Priority ID", Value: answers.PriorityID},
 	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
@@ -320,11 +320,11 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 
 	// Предпросмотр
 	ui.Preview(os.Stdout, "Create Run", []ui.PreviewField{
-		{"Name", answers.Name},
-		{"Description", answers.Description},
-		{"Suite ID", answers.SuiteID},
-		{"Include all", answers.IncludeAll},
-		{"Project ID", projectID},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Description", Value: answers.Description},
+		{Label: "Suite ID", Value: answers.SuiteID},
+		{Label: "Include all", Value: answers.IncludeAll},
+		{Label: "Project ID", Value: projectID},
 	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")

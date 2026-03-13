@@ -1,7 +1,7 @@
 # Стандарты кодирования gotr
 
 > Полные стандарты разработки CLI-утилиты gotr.
-> Обновлено: 2026-03-12 (Stage 9.0, rev.2).
+> Обновлено: 2026-03-12 (Stage 9.0, rev.3).
 
 ---
 
@@ -96,6 +96,48 @@ func init() {
 - 14 интерфейсов по ISP, 106 endpoints, 100% покрытие TestRail API v2
 - Новый endpoint: добавить в `interfaces.go` + `mock.go` + доменный файл
 
+**HTTP-транспорт (`authTransport`):**
+
+`authTransport` — кастомный `http.RoundTripper`, оборачивающий стандартный транспорт.
+Автоматически добавляет ко всем запросам:
+- `Authorization: Basic ...` — через `req.SetBasicAuth(username, apiKey)`
+- `Content-Type: application/json` — если не задан вызывающим кодом
+- `User-Agent: Mozilla/5.0 (compatible; gotr/2.7; ...)` — **обязателен**, некоторые инсталляции TestRail возвращают 403/401 без браузерного заголовка
+
+**Тюнинг транспорта:**
+
+| Параметр | Значение | Причина |
+| -------- | -------- | ------- |
+| `MaxConnsPerHost` | `0` (unlimited) | Конкурентность управляется `concurrent.WorkerPool`, не транспортом |
+| `MaxIdleConns` | `200` | Пул для повторного использования соединений |
+| `MaxIdleConnsPerHost` | `200` | Совпадает с `MaxIdleConns` (один хост TestRail) |
+| `IdleConnTimeout` | `90s` | Стандартное значение Go |
+| `TLSHandshakeTimeout` | `10s` | Из `defaultOptions` |
+| `Timeout` (Client) | `30s` | Из `defaultOptions`, переопределяется через `WithTimeout()` |
+
+> **Важно:** `MaxConnsPerHost=0` (unlimited) — осознанное решение. При `MaxConnsPerHost=50` и 160 параллельных запросах (2 проекта × 8 сьютов × 10 страниц) 110 запросов встают в очередь внутри Go-транспорта. `http.Client.Timeout` включает время ожидания в очереди → каскадные таймауты → экспоненциальный backoff → 3× замедление.
+
+**Пагинация (`paginator.go`):**
+
+```go
+const paginationLimit = 250  // Стандартный размер страницы TestRail API
+```
+
+- `fetchAllPages[T](ctx, client, endpoint, baseQuery, itemsField)` — загрузка всех страниц
+- `decodeListResponse[T](body, itemsField)` — dual-format детекция:
+  - `{` → Paginated wrapper (TestRail 6.7+): `{"offset":0, "limit":250, "<itemsField>":[...]}`
+  - `[` → Flat array (старые версии TestRail Server): `[item1, item2, ...]`
+- `itemsField` — имя JSON-ключа: `"runs"`, `"plans"`, `"sections"`, `"milestones"` и т.д.
+- Цикл: `offset += paginationLimit` пока `pageLen >= paginationLimit`
+
+**Functional Options:**
+```go
+client.NewClient(baseURL, username, apiKey, debug,
+    client.WithSkipTlsVerify(true),   // --insecure
+    client.WithTimeout(60*time.Second),
+)
+```
+
 ### 3.3. `internal/service/` — Бизнес-логика
 
 Сервисный слой инкапсулирует бизнес-правила и валидацию:
@@ -129,7 +171,16 @@ func init() {
   - `ui.Stat(w, icon, label, val)` — статистика
   - `ui.Section(w, msg)` — заголовок секции
   - `ui.Preview(w, title, fields)` — окно предпросмотра
-- `display.go` — ANSI live display с динамическими задачами (для `compare cases`)
+- `display.go` — ANSI live display с динамическими задачами (для `compare cases`):
+  - `ui.New(opts...)` — создание Display + фоновый refresh loop (~5 Hz)
+  - `d.SetHeader(text)` — заголовок над задачами
+  - `d.AddTask(name, total) *Task` — трекинг задачи; `*Task` реализует `parallel.ProgressReporter`
+  - `t.OnCasesReceived(n)` — обновление счётчика кейсов
+  - `t.OnPageFetched()` — страница загружена
+  - `t.OnSuiteComplete()` — сьют завершён
+  - `d.Finish()` — остановка refresh loop, финальная отрисовка
+  - Опции: `WithWriter(w)`, `WithQuiet(true)` — отключает вывод
+  - Рендеринг: ANSI escape codes для in-place перезаписи строк
 
 **Правила:**
 - Весь пользовательский вывод — через `ui.*` (кроме интерактивных промптов и debug)
@@ -152,8 +203,24 @@ flags.ParseID(s)                              // строка → int64
 output.AddFlag(cmd)                       // Регистрация --save, --save-to
 output.OutputResult(cmd, data, resource)  // Вывод + сохранение
 output.Output(cmd, data, dir, format)     // Сохранение в ~/.gotr/exports/
-output.NewDryRunPrinter(cmd)              // Вывод для dry-run режима
 ```
+
+**DryRunPrinter** — вывод для `--dry-run` режима (в `os.Stderr`):
+
+```go
+printer := output.NewDryRunPrinter("sync cases")
+
+// Полная операция с HTTP-деталями:
+printer.PrintOperation("Create case", "POST", "/api/v2/add_case/1", requestBody)
+
+// Простая операция без body:
+printer.PrintSimple("Delete case", "Would delete case #123")
+
+// Пакетная операция (показывает до 10 элементов):
+printer.PrintBatch("Sync shared steps", []string{"Step 1", "Step 2", ...})
+```
+
+Вывод: ASCII-рамки с метаданными (Command, Operation, HTTP Method, Endpoint, Request Body).
 
 ### 3.7. `internal/log/` — Структурированное логирование
 
@@ -208,13 +275,24 @@ log.Debug("msg")      // Отладочное сообщение
 
 ### 3.10. `internal/interactive/` — Интерактивный выбор
 
-Интерактивные промпты для выбора ресурсов:
+Зависимость: `github.com/AlecAivazis/survey/v2` — интерактивные промпты в терминале.
 
+**Selector-функции** (API загрузка + промпт выбора):
 ```go
 interactive.SelectProjectInteractively(ctx, client)  // Выбор проекта
 interactive.SelectSuiteInteractively(ctx, client, projectID)  // Выбор сьюта
 interactive.SelectRunInteractively(ctx, client, projectID)    // Выбор рана
 ```
+
+**Wizard-функции** (`wizard.go`) — формы создания/обновления ресурсов:
+```go
+interactive.AskProject(isUpdate)  // → *ProjectAnswers
+interactive.AskSuite(isUpdate)    // → *SuiteAnswers
+interactive.AskCase(isUpdate)     // → *CaseAnswers
+interactive.AskRun(isUpdate)      // → *RunAnswers
+```
+
+Типы промптов survey/v2: `survey.Input`, `survey.Multiline`, `survey.Confirm`, `survey.Select`.
 
 **Использование:** Когда пользователь не указал ID — автоматический промпт.
 
@@ -233,10 +311,19 @@ type Checker interface {
 
 **Результаты:** `PASS` (✓), `FAIL` (✗), `WARN` (⚠), `SKIP` (⊘) — с ANSI-цветами.
 
-**Встроенные проверки:**
-- `ConfigChecker` — конфиг-файл существует и валиден
-- `BaseDirChecker` — структура `~/.gotr/` (6 поддиректорий)
-- Самовосстановление: `CanFix: true` + `FixCommand: "gotr config init"`
+**Встроенные проверки (6 checkers):**
+
+| Checker | Категория | Что проверяет |
+| ------- | --------- | ------------ |
+| `ConfigChecker` | Configuration | Конфиг `~/.gotr/config/default.yaml` существует и валиден |
+| `BaseDirChecker` | Configuration | Все 6 поддиректорий `~/.gotr/` (config, logs, selftest, cache, exports, temp); автосоздание через `os.MkdirAll` |
+| `BinaryInfoChecker` | System | Версия, commit, дата сборки (всегда PASS) |
+| `GoEnvChecker` | System | Go version, OS/arch, количество CPU |
+| `AllTestsChecker` | Tests | Запуск `go test ./... -v`; подсчёт passed/failed/skipped; сохранение отчёта в `~/.gotr/selftest/` с симлинком `latest.log` |
+| `CoverageChecker` | Coverage | `go test -coverprofile`; парсинг процента покрытия; WARN если < 50% |
+
+- Самовосстановление: `CanFix: true` + `FixCommand: "gotr config init"` (ConfigChecker)
+- Отчёт: `Report` struct с timestamp, version, platform, все CheckResult, общий Health
 
 ### 3.12. `internal/models/` — Модели данных
 
@@ -524,7 +611,7 @@ func main() {
 - `viper.AutomaticEnv()` — автоматическое чтение env-переменных
 - `viper.BindPFlag(key, flag)` — привязка CLI-флагов к Viper-ключам
 - `TESTRAIL_*` — префикс для env-переменных
-- `TESTRAIL_PASSWORD` имеет приоритет над `TESTRAIL_API_KEY` (обратная совместимость)
+- `TESTRAIL_PASSWORD` имеет приоритет над `TESTRAIL_API_KEY` (обратная совместимость — для пользователей, мигрирующих с password auth)
 
 ### 6.3. Config-команды
 
@@ -551,25 +638,76 @@ func main() {
 
 ## 7. Конкурентность и устойчивость
 
-Два уровня абстракции:
+Два уровня абстракции + профили деплоймента.
+
+### 7.0. Режимы деплоймента и rate limit
+
+gotr автоматически определяет режим деплоймента TestRail и подбирает rate limit.
+
+**Авто-определение** (`config_profile.go`):
+```go
+func detectDeploymentByURL(baseURL string) string {
+    if strings.Contains(url, ".testrail.io") { return "cloud" }
+    return "server"
+}
+```
+
+**Профили rate limit:**
+
+| Deployment | Cloud Tier | Rate Limit | Источник |
+| ---------- | ---------- | ---------- | -------- |
+| **Cloud** | Professional | 180 req/min | Лимит TestRail API (hardcoded) |
+| **Cloud** | Enterprise | 300 req/min | Viper `compare.cloud_rate_limit` (default 300) |
+| **Server** | — | 0 (unlimited) | Viper `compare.server_rate_limit` (default 0) |
+
+**Почему дефолт WorkerPool = 150 req/min:**
+
+TestRail Cloud Professional разрешает 180 req/min. WorkerPool по умолчанию использует 150 — это консервативный предел с запасом ~17%, чтобы:
+- Избежать 429 (Too Many Requests) при burst-нагрузке
+- Оставить запас для burst (15% от rate = 22 токена)
+- Работать стабильно без тюнинга на большинстве инсталляций
+
+**Расчёт burst:** `burst = requestsPerMinute * 15 / 100` (минимум 10).
+При 150 req/min: burst = 22. При 300 req/min: burst = 45.
+
+**RateLimiter fallback:** Если `requestsPerMinute <= 0`, `NewRateLimiter` использует 180 req/min (потолок Professional).
+
+**Viper-ключи конфигурации (compare):**
+
+| Ключ | Default | Описание |
+| ---- | ------- | -------- |
+| `compare.deployment` | `auto` | `auto`, `cloud`, `server` |
+| `compare.cloud_tier` | `professional` | `professional`, `enterprise` |
+| `compare.rate_limit` | `-1` (авто) | Явный лимит (перекрывает профиль) |
+| `compare.cloud_rate_limit` | `300` | Лимит для cloud (когда rate_limit=-1) |
+| `compare.server_rate_limit` | `0` | Лимит для server (0 = без лимита) |
+| `compare.cases.parallel_suites` | `10` | Параллельных сьютов |
+| `compare.cases.parallel_pages` | `6` | Параллельных страниц на сьют |
+| `compare.cases.page_retries` | `5` | Ретраев на страницу |
+| `compare.cases.timeout` | `30m` | Общий таймаут compare cases |
+| `compare.cases.auto_retry_failed_pages` | `true` | Авто-ретрай упавших страниц |
+
+**Приоритет rate limit:** CLI flag `--rate-limit` > Viper `compare.rate_limit` > профиль (по deployment + tier).
 
 ### 7.1. `internal/concurrent/` — Низкоуровневые примитивы
 
 **WorkerPool** — пул горутин на `errgroup`:
 ```go
 pool := concurrent.NewWorkerPool(
-    concurrent.WithMaxWorkers(5),       // 5 параллельных воркеров
-    concurrent.WithRateLimit(150),      // 150 req/min
+    concurrent.WithMaxWorkers(5),       // 5 параллельных воркеров (default)
+    concurrent.WithRateLimit(150),      // 150 req/min (default)
+    concurrent.WithProgressMonitor(m),  // опциональный Increment() callback
 )
 pool.Submit(func() error { return doWork() })
 err := pool.Wait()
 ```
 
 **RateLimiter** — token bucket (`golang.org/x/time/rate`):
-- Преобразование req/min → rate/sec
+- Преобразование req/min → rate/sec: `rate.Limit(float64(rpm) / 60.0)`
 - Burst: 15% от rate (минимум 10)
-- Дефолт: 150 req/min (безопасный предел TestRail)
-- `Wait()`, `WaitWithTimeout(timeout)`, `Allow()`, `Tokens()`
+- Дефолт: 180 req/min (fallback в NewRateLimiter при rpm ≤ 0)
+- WorkerPool дефолт: 150 req/min (консервативный предел)
+- API: `Wait()`, `WaitWithTimeout(timeout)`, `Allow()`, `Tokens()`, `Reserve()`
 
 **Retry** — экспоненциальная задержка:
 ```go
@@ -766,6 +904,22 @@ golangci-lint run --timeout 5m
 ```
 
 Конфигурация: `.golangci.yml` (11 линтеров). Baseline: 208 замечаний (Stage 9.0).
+
+### 10.5. Зависимости (go.mod)
+
+| Зависимость | Версия | Назначение |
+| ----------- | ------ | ---------- |
+| `github.com/spf13/cobra` | v1.10.2 | CLI-фреймворк (команды, флаги, completion) |
+| `github.com/spf13/viper` | v1.21.0 | Конфигурация (yaml, env, pflags) |
+| `go.uber.org/zap` | v1.27.1 | Структурированное логирование |
+| `github.com/jedib0t/go-pretty/v6` | v6.7.8 | Таблицы, рендеринг (table/json/csv/md/html) |
+| `github.com/vbauerster/mpb/v8` | v8.12.0 | Прогресс-бары (sync, get команды) |
+| `github.com/AlecAivazis/survey/v2` | v2.3.7 | Интерактивные промпты (wizard) |
+| `golang.org/x/time` | v0.14.0 | Token bucket rate limiter |
+| `golang.org/x/sync` | v0.19.0 | errgroup (WorkerPool) |
+| `github.com/fatih/color` | v1.18.0 | ANSI-цвета (selftest) |
+| `gopkg.in/yaml.v3` | v3.0.1 | YAML parsing |
+| `github.com/stretchr/testify` | v1.11.1 | Assertions (require, assert) |
 
 ---
 

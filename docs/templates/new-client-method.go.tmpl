@@ -1,0 +1,47 @@
+// Template: new API method for internal/client/
+//
+// Steps to add a new endpoint:
+// 1. Add method to the appropriate interface in interfaces.go
+// 2. Implement in the domain file (this template)
+// 3. Add mock implementation in mock.go
+// 4. Write tests
+
+package client
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/Korrnals/gotr/internal/models/data"
+)
+
+// GetResource returns a single resource by ID.
+// API: GET /api/v2/get_resource/{id}
+func (c *HTTPClient) GetResource(ctx context.Context, id int64) (*data.Resource, error) {
+	url := fmt.Sprintf("get_resource/%d", id)
+	var result data.Resource
+	err := c.sendRequest(ctx, "GET", url, nil, &result)
+	if err != nil {
+		return nil, fmt.Errorf("get resource %d: %w", id, err)
+	}
+	return &result, nil
+}
+
+// GetResources returns all resources for a project (auto-paginated).
+// API: GET /api/v2/get_resources/{project_id}
+func (c *HTTPClient) GetResources(ctx context.Context, projectID int64) ([]data.Resource, error) {
+	url := fmt.Sprintf("get_resources/%d", projectID)
+	return fetchAllPages[data.Resource](ctx, c, url, "resources")
+}
+
+// AddResource creates a new resource.
+// API: POST /api/v2/add_resource/{section_id}
+func (c *HTTPClient) AddResource(ctx context.Context, sectionID int64, req *data.AddResourceRequest) (*data.Resource, error) {
+	url := fmt.Sprintf("add_resource/%d", sectionID)
+	var result data.Resource
+	err := c.sendRequest(ctx, "POST", url, req, &result)
+	if err != nil {
+		return nil, fmt.Errorf("add resource to section %d: %w", sectionID, err)
+	}
+	return &result, nil
+}

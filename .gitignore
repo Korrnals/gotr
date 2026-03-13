@@ -21,7 +21,7 @@ godocker
 # Go workspace file
 go.work
 
-**.go.*
+**.go.old*
 
 gotr
 
@@ -63,7 +63,7 @@ workspaceStorage/
 .vscode/
 
 # Copilot runtime directories (should never be committed)
-.github/copilot/
+.github/copilot/**
 
 
 # Compressed binaries (for releases)

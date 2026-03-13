@@ -154,11 +154,11 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 	// Предпросмотр
 	ui.Preview(os.Stdout, "Update Project", []ui.PreviewField{
-		{"Project ID", id},
-		{"Name", answers.Name},
-		{"Announcement", answers.Announcement},
-		{"Show announce", answers.ShowAnnouncement},
-		{"Is completed", answers.IsCompleted},
+		{Label: "Project ID", Value: id},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Announcement", Value: answers.Announcement},
+		{Label: "Show announce", Value: answers.ShowAnnouncement},
+		{Label: "Is completed", Value: answers.IsCompleted},
 	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
@@ -192,10 +192,10 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 
 	// Предпросмотр
 	ui.Preview(os.Stdout, "Update Suite", []ui.PreviewField{
-		{"Suite ID", id},
-		{"Name", answers.Name},
-		{"Description", answers.Description},
-		{"Is completed", answers.IsCompleted},
+		{Label: "Suite ID", Value: id},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Description", Value: answers.Description},
+		{Label: "Is completed", Value: answers.IsCompleted},
 	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
@@ -228,10 +228,10 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 
 	// Предпросмотр
 	ui.Preview(os.Stdout, "Update Case", []ui.PreviewField{
-		{"Case ID", id},
-		{"Title", answers.Title},
-		{"Type ID", answers.TypeID},
-		{"Priority ID", answers.PriorityID},
+		{Label: "Case ID", Value: id},
+		{Label: "Title", Value: answers.Title},
+		{Label: "Type ID", Value: answers.TypeID},
+		{Label: "Priority ID", Value: answers.PriorityID},
 	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")

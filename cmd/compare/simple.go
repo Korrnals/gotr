@@ -3,10 +3,12 @@ package compare
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrency"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -39,7 +41,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 
 			startTime := time.Now()
 
-			result, err := compareSimpleInternal(cli, pid1, pid2, resource, fetchFn)
+			result, err := compareSimpleInternal(ctx, cli, pid1, pid2, resource, fetchFn)
 			if err != nil {
 				return fmt.Errorf("comparison error %s: %w", resource, err)
 			}
@@ -67,12 +69,13 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 // compareSimpleInternal loads resources from both projects in parallel
 // using FetchParallel[T] and compares them.
 func compareSimpleInternal(
+	ctx context.Context,
 	cli client.ClientInterface,
 	pid1, pid2 int64,
 	resource string,
 	fetchFn FetchFunc,
 ) (*CompareResult, error) {
-	ctx := context.Background()
+	ui.Infof(os.Stderr, "Загрузка %s из проектов %d и %d...", resource, pid1, pid2)
 
 	results, err := concurrency.FetchParallel(ctx, []int64{pid1, pid2},
 		func(pid int64) ([]ItemInfo, error) {

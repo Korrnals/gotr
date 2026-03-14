@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +17,7 @@ import (
 
 var (
 	// Версия утилиты — заполняется при сборке через -ldflags
-	Version = "2.7.0" // значение по умолчанию для локальной разработки
+	Version = "3.0.0-dev" // значение по умолчанию для локальной разработки
 	Commit  = "unknown"
 	Date    = "unknown"
 )
@@ -89,8 +90,15 @@ var rootCmd = &cobra.Command{
 
 // Execute — вызывается из main.go с контекстом (поддерживает signal.NotifyContext)
 func Execute(ctx context.Context) {
+	rootCmd.SilenceUsage = true  // не печатать usage при ошибке
+	rootCmd.SilenceErrors = true // сами обработаем вывод ошибки
 	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
+		if ctx.Err() != nil || errors.Is(err, context.Canceled) {
+			fmt.Fprintln(os.Stderr, "\nПрервано.")
+			os.Exit(130)
+		}
+		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}
 }

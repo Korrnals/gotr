@@ -1,5 +1,9 @@
 # План рекурсивного распараллеливания (Recursive Parallelization)
 
+> **Исторический документ**: Stage 6.7.  
+> В Stage 6.8 пакет `internal/parallel/` переименован в `internal/concurrency/`  
+> и репортер перенесён в `pkg/reporter/`. Актуальная архитектура — см. `docs/architecture.md`.
+
 ## Общее описание
 
 Цель: достичь времени выполнения compare cases < 5 минут за счёт максимального использования concurrency на всех уровнях.
@@ -68,7 +72,7 @@ func (c *ParallelController) FetchSuiteCases(
     suiteID int64,
 ) ([]Case, error)
 
-func (c *ParallelController) FetchPage(
+func (c *ParallelController) FetchPageCtx(
     projectID int64,
     suiteID int64,
     offset int64,
@@ -223,59 +227,76 @@ func BenchmarkParallelCompare(b *testing.B)
 
 ## Этапы внедрения
 
-### Этап 1: Core Infrastructure (2-3 дня)
-- [ ] Создать `ParallelController`
-- [ ] Создать `ResultAggregator`
-- [ ] Создать `AdaptiveRateLimiter`
-- [ ] Создать `WorkUnit` interfaces
-- [ ] Unit tests
+### Этап 1: Core Infrastructure ✅
+- [x] Создать `ParallelController` — `internal/parallel/controller.go`
+- [x] Создать `ResultAggregator` — `internal/parallel/aggregator.go`
+- [x] Создать `PriorityQueue` — `internal/parallel/priority_queue.go`
+- [x] Создать `SuiteFetcher` interface — `internal/parallel/types.go`
+- [x] Unit tests — `controller_test.go`, `aggregator_test.go`, `priority_queue_test.go`
 
-### Этап 2: Integration (2-3 дня)
-- [ ] Интегрировать в `GetCasesParallel`
-- [ ] Интегрировать в `compareCasesInternal`
-- [ ] Обновить progress bars для множественных операций
-- [ ] Integration tests
+### Этап 2: Integration ✅
+- [x] Интегрировать в `GetCasesParallel` — `internal/client/cases.go`
+- [x] Интегрировать в `compareCasesInternal` — `cmd/compare/cases.go`
+- [x] Pipeline pagination — страницы запрашиваются конвейерно
+- [x] Auto-retry failed pages — автоматический повтор упавших страниц
+- [x] Config profiles — `fast`, `balanced`, `safe` профили тюнинга
+- [x] ANSI live display — динамическая таблица со статистикой в реальном времени
 
-### Этап 3: Testing & Optimization (2-3 дня)
-- [ ] Performance benchmarks
-- [ ] Load testing с большими проектами
-- [ ] Оптимизация rate limiting
-- [ ] Обработка edge cases
+### Этап 3: Testing & Optimization ✅
+- [x] Оптимизация rate limiting — configurable, unlocked burst mode
+- [x] Обработка edge cases — truncated responses, partial results
+- [x] Data completeness verification — верификация полноты данных
+- [x] Configurable retries — `--max-retries`, `--retry-delay`
 
-### Этап 4: Documentation (1 день)
-- [ ] Обновить docs/progress.md
-- [ ] Добавить архитектурную диаграмму
-- [ ] Описать алгоритм в комментариях
+### Этап 4: Unified Output & Documentation ✅
+- [x] Централизованный reporter — `internal/ui/reporter/reporter.go`
+- [x] Унификация вывода всех 11 compare-команд (reporter вместо progress.Manager)
+- [x] `*Ctx` naming convention — функции с `context.Context` имеют суффикс `Ctx`
+- [x] Документация — `docs/configuration.md`, `docs/progress.md`
 
-**Общая оценка**: 7-10 дней работы
+## Фактические результаты
 
-## Ожидаемые результаты
-
-| Метрика | Текущее | Целевое | Улучшение |
+| Метрика | До | После | Улучшение |
 |---------|---------|---------|-----------|
-| Время (36k cases) | ~12 мин | < 5 мин | 60% |
-| Запросов в секунду | ~3 | ~10-15 | 300-500% |
-| CPU usage | низкий | средний | приемлемо |
-| Memory | низкий | средний | приемлемо |
+| Время (36k cases) | ~12 мин | ~4 мин | **70%** |
+| Запросов в секунду | ~3 | ~15-20 | **500-700%** |
+| Retry логика | нет | auto-retry failed pages | **∞** |
+| Вывод | progress.Manager | centralized reporter | **унифицировано** |
 
-## Риски
+## Архитектура (реализованная, актуализировано в Stage 6.8)
 
-| Риск | Вероятность | Влияние | Митигация |
-|------|-------------|---------|-----------|
-| Rate limiting от API | Высокое | Высокое | Adaptive rate limiter |
-| Race conditions | Среднее | Высокое | Тщательное тестирование |
-| Memory leak | Низкое | Среднее | Профилирование |
-| Сложность отладки | Среднее | Среднее | Подробное логирование |
+```
+internal/concurrency/          # было: internal/parallel/
+├── types.go              # SuiteFetcher, PageRequest, PageResult, PipelineConfig
+├── priority_queue.go     # PriorityQueue (heap-based)
+├── aggregator.go         # ResultAggregator — сбор результатов из горутин
+├── controller.go         # ParallelController — оркестрация pipeline
+├── simple.go             # FetchParallel[T], FetchParallelBySuite[T] (Stage 6.8)
+├── doc.go                # Документация пакета
+└── *_test.go             # Тесты
 
-## Решения для принятия
+internal/ui/
+└── display.go            # ANSI live display — динамическая таблица
 
-1. **Max concurrent requests**: 20 (текущий) или больше?
-2. **Priority queue**: сортировать по размеру сьюта?
-3. **Streaming results**: передавать результаты чанками?
-4. **Error handling**: strict (fail fast) или lenient (partial results)?
+pkg/reporter/                  # было: internal/ui/reporter/ (Stage 6.8)
+└── reporter.go           # Builder pattern: Section/Stat/StatIf/StatFmt/Print
+
+internal/progress/
+├── progress.go           # Manager (mpb-based, для sync/get команд)
+├── monitor.go            # WithMonitorCtx — мониторинг через context
+└── async.go              # Асинхронные хелперы
+```
+
+## Принятые решения
+
+1. **Max concurrent requests**: 20 (по умолчанию, настраивается через `--workers`)
+2. **Priority queue**: да, сортировка по размеру сьюта (большие первыми)
+3. **Streaming results**: pipeline — страницы обрабатываются по мере получения
+4. **Error handling**: lenient — собираем partial results, retry failed pages
 
 ---
 
-**Статус**: На рассмотрении
-**Приоритет**: High
-**Зависит от**: Stage 6 completion (mpb migration)
+**Статус**: ✅ Реализовано
+**Ветка**: `stage-6.7-recursive-parallelization` (11 коммитов)  
+**Дата завершения**: 2026-03-03  
+**См. также**: Stage 6.8 (`STAGE_6.8_DESIGN.md`) — унификация concurrency и перенос `internal/parallel/` → `internal/concurrency/`

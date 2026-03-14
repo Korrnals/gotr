@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -21,8 +22,8 @@ var addCmd = &cobra.Command{
 
 Поддерживаемые эндпоинты:
   project              Создать проект
-  suite <project_id>   Создать сьют в проекте
-  section <project_id> Создать секцию в проекте/сьюте
+  suite <project_id>   Создать сьют in project
+  section <project_id> Создать секцию in project/сьюте
   case <section_id>    Создать тест-кейс в секции
   run <project_id>     Создать тест-ран
   result <test_id>     Добавить результат теста
@@ -86,20 +87,20 @@ func init() {
 
 func runAdd(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("необходимо указать endpoint: project, suite, section, case, run, result, result-for-case, shared-step, milestone, plan, entry, attachment")
+		return fmt.Errorf("endpoint required: project, suite, section, case, run, result, result-for-case, shared-step, milestone, plan, entry, attachment")
 	}
 
 	endpoint := args[0]
-	
+
 	// Получаем клиент
 	cli := GetClientInterface(cmd)
 
 	// Определяем ID из аргументов (не для attachment - у него своя структура аргументов)
 	var id int64
 	if len(args) > 1 && endpoint != "attachment" {
-		parsedID, err := strconv.ParseInt(args[1], 10, 64)
+		parsedID, err := flags.ValidateRequiredID(args, 1, "ID")
 		if err != nil {
-			return fmt.Errorf("неверный ID: %v", err)
+			return err
 		}
 		id = parsedID
 	}
@@ -111,7 +112,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		var err error
 		jsonData, err = os.ReadFile(jsonFile)
 		if err != nil {
-			return fmt.Errorf("ошибка чтения JSON-файла: %v", err)
+			return fmt.Errorf("JSON file read error: %w", err)
 		}
 	}
 
@@ -134,44 +135,47 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return addProject(cli, cmd, jsonData)
 	case "suite":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add suite <project_id>")
+			return fmt.Errorf("project_id required: gotr add suite <project_id>")
 		}
 		return addSuite(cli, cmd, id, jsonData)
 	case "section":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add section <project_id>")
+			return fmt.Errorf("project_id required: gotr add section <project_id>")
 		}
 		return addSection(cli, cmd, id, jsonData)
 	case "case":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать section_id: gotr add case <section_id>")
+			return fmt.Errorf("section_id required: gotr add case <section_id>")
 		}
 		return addCase(cli, cmd, id, jsonData)
 	case "run":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add run <project_id>")
+			return fmt.Errorf("project_id required: gotr add run <project_id>")
 		}
 		return addRun(cli, cmd, id, jsonData)
 	case "result":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать test_id: gotr add result <test_id>")
+			return fmt.Errorf("test_id required: gotr add result <test_id>")
 		}
 		return addResult(cli, cmd, id, jsonData)
 	case "result-for-case":
 		if id == 0 || len(args) < 3 {
-			return fmt.Errorf("необходимо указать run_id и case_id: gotr add result-for-case <run_id> <case_id>")
+			return fmt.Errorf("run_id and case_id required: gotr add result-for-case <run_id> <case_id>")
 		}
-		caseID, _ := strconv.ParseInt(args[2], 10, 64)
+		caseID, err := flags.ValidateRequiredID(args, 2, "case_id")
+		if err != nil {
+			return err
+		}
 		return addResultForCase(cli, cmd, id, caseID, jsonData)
 	case "shared-step":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add shared-step <project_id>")
+			return fmt.Errorf("project_id required: gotr add shared-step <project_id>")
 		}
 		return addSharedStep(cli, cmd, id, jsonData)
 	case "attachment":
 		return runAddAttachment(cli, cmd, args)
 	default:
-		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
+		return fmt.Errorf("unsupported endpoint: %s", endpoint)
 	}
 }
 
@@ -182,42 +186,41 @@ func runAddInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint 
 		return addProjectInteractive(cli, cmd)
 	case "suite":
 		if parentID == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add suite <project_id> --interactive")
+			return fmt.Errorf("project_id required: gotr add suite <project_id> --interactive")
 		}
 		return addSuiteInteractive(cli, cmd, parentID)
 	case "case":
 		if parentID == 0 {
-			return fmt.Errorf("необходимо указать section_id: gotr add case <section_id> --interactive")
+			return fmt.Errorf("section_id required: gotr add case <section_id> --interactive")
 		}
 		return addCaseInteractive(cli, cmd, parentID)
 	case "run":
 		if parentID == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add run <project_id> --interactive")
+			return fmt.Errorf("project_id required: gotr add run <project_id> --interactive")
 		}
 		return addRunInteractive(cli, cmd, parentID)
 	default:
-		return fmt.Errorf("интерактивный режим не поддерживается для endpoint: %s", endpoint)
+		return fmt.Errorf("interactive mode not supported for endpoint: %s", endpoint)
 	}
 }
 
 func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error {
+	ctx := cmd.Context()
 	answers, err := interactive.AskProject(false)
 	if err != nil {
-		return fmt.Errorf("ошибка ввода: %v", err)
+		return fmt.Errorf("input error: %w", err)
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Project")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Announcement:    %s\n", answers.Announcement)
-	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Create Project", []ui.PreviewField{
+		{Label: "Name", Value: answers.Name},
+		{Label: "Announcement", Value: answers.Announcement},
+		{Label: "Show announce", Value: answers.ShowAnnouncement},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -227,33 +230,32 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 		ShowAnnouncement: answers.ShowAnnouncement,
 	}
 
-	project, err := cli.AddProject(req)
+	project, err := cli.AddProject(ctx, req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания проекта: %v", err)
+		return fmt.Errorf("failed to create project: %w", err)
 	}
 
-	fmt.Printf("\n✅ Проект создан (ID: %d)\n", project.ID)
-	return outputResult(cmd, project)
+	ui.Successf(os.Stdout, "Project created (ID: %d)", project.ID)
+	return output.OutputResult(cmd, project, "result")
 }
 
 func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
+	ctx := cmd.Context()
 	answers, err := interactive.AskSuite(false)
 	if err != nil {
-		return fmt.Errorf("ошибка ввода: %v", err)
+		return fmt.Errorf("input error: %w", err)
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Suite")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Описание:        %s\n", answers.Description)
-	fmt.Printf("Project ID:      %d\n", projectID)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Create Suite", []ui.PreviewField{
+		{Label: "Name", Value: answers.Name},
+		{Label: "Description", Value: answers.Description},
+		{Label: "Project ID", Value: projectID},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -262,34 +264,33 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 		Description: answers.Description,
 	}
 
-	suite, err := cli.AddSuite(projectID, req)
+	suite, err := cli.AddSuite(ctx, projectID, req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания сьюта: %v", err)
+		return fmt.Errorf("failed to create suite: %w", err)
 	}
 
-	fmt.Printf("\n✅ Сьют создан (ID: %d)\n", suite.ID)
-	return outputResult(cmd, suite)
+	ui.Successf(os.Stdout, "Suite created (ID: %d)", suite.ID)
+	return output.OutputResult(cmd, suite, "result")
 }
 
 func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionID int64) error {
+	ctx := cmd.Context()
 	answers, err := interactive.AskCase(false)
 	if err != nil {
-		return fmt.Errorf("ошибка ввода: %v", err)
+		return fmt.Errorf("input error: %w", err)
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Case")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Заголовок:       %s\n", answers.Title)
-	fmt.Printf("Section ID:      %d\n", sectionID)
-	fmt.Printf("Type ID:         %d\n", answers.TypeID)
-	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Create Case", []ui.PreviewField{
+		{Label: "Title", Value: answers.Title},
+		{Label: "Section ID", Value: sectionID},
+		{Label: "Type ID", Value: answers.TypeID},
+		{Label: "Priority ID", Value: answers.PriorityID},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -301,35 +302,34 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 		Refs:       answers.Refs,
 	}
 
-	caseResp, err := cli.AddCase(sectionID, req)
+	caseResp, err := cli.AddCase(ctx, sectionID, req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания кейса: %v", err)
+		return fmt.Errorf("failed to create case: %w", err)
 	}
 
-	fmt.Printf("\n✅ Кейс создан (ID: %d)\n", caseResp.ID)
-	return outputResult(cmd, caseResp)
+	ui.Successf(os.Stdout, "Case created (ID: %d)", caseResp.ID)
+	return output.OutputResult(cmd, caseResp, "result")
 }
 
 func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
+	ctx := cmd.Context()
 	answers, err := interactive.AskRun(false)
 	if err != nil {
-		return fmt.Errorf("ошибка ввода: %v", err)
+		return fmt.Errorf("input error: %w", err)
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Create Run")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Описание:        %s\n", answers.Description)
-	fmt.Printf("Suite ID:        %d\n", answers.SuiteID)
-	fmt.Printf("Include all:     %v\n", answers.IncludeAll)
-	fmt.Printf("Project ID:      %d\n", projectID)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Create Run", []ui.PreviewField{
+		{Label: "Name", Value: answers.Name},
+		{Label: "Description", Value: answers.Description},
+		{Label: "Suite ID", Value: answers.SuiteID},
+		{Label: "Include all", Value: answers.IncludeAll},
+		{Label: "Project ID", Value: projectID},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -340,13 +340,13 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 		IncludeAll:  answers.IncludeAll,
 	}
 
-	run, err := cli.AddRun(projectID, req)
+	run, err := cli.AddRun(ctx, projectID, req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания рана: %v", err)
+		return fmt.Errorf("failed to create run: %w", err)
 	}
 
-	fmt.Printf("\n✅ Run создан (ID: %d)\n", run.ID)
-	return outputResult(cmd, run)
+	ui.Successf(os.Stdout, "Run created (ID: %d)", run.ID)
+	return output.OutputResult(cmd, run, "result")
 }
 
 // runAddDryRun выполняет dry-run для add команды
@@ -394,7 +394,7 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 
 	case "suite":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add suite <project_id> --dry-run")
+			return fmt.Errorf("project_id required: gotr add suite <project_id> --dry-run")
 		}
 		if len(jsonData) > 0 {
 			var req data.AddSuiteRequest
@@ -412,7 +412,7 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 
 	case "section":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add section <project_id> --dry-run")
+			return fmt.Errorf("project_id required: gotr add section <project_id> --dry-run")
 		}
 		if len(jsonData) > 0 {
 			var req data.AddSectionRequest
@@ -432,7 +432,7 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 
 	case "case":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать section_id: gotr add case <section_id> --dry-run")
+			return fmt.Errorf("section_id required: gotr add case <section_id> --dry-run")
 		}
 		if len(jsonData) > 0 {
 			var req data.AddCaseRequest
@@ -453,7 +453,7 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 
 	case "run":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add run <project_id> --dry-run")
+			return fmt.Errorf("project_id required: gotr add run <project_id> --dry-run")
 		}
 		if len(jsonData) > 0 {
 			var req data.AddRunRequest
@@ -477,7 +477,7 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 
 	case "result":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать test_id: gotr add result <test_id> --dry-run")
+			return fmt.Errorf("test_id required: gotr add result <test_id> --dry-run")
 		}
 		if len(jsonData) > 0 {
 			var req data.AddResultRequest
@@ -485,10 +485,10 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 			body = req
 		} else {
 			body = data.AddResultRequest{
-				StatusID: statusID,
-				Comment:  comment,
-				Elapsed:  elapsed,
-				Defects:  defects,
+				StatusID:   statusID,
+				Comment:    comment,
+				Elapsed:    elapsed,
+				Defects:    defects,
 				AssignedTo: assignedTo,
 			}
 		}
@@ -498,7 +498,7 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 
 	case "shared-step":
 		if id == 0 {
-			return fmt.Errorf("необходимо указать project_id: gotr add shared-step <project_id> --dry-run")
+			return fmt.Errorf("project_id required: gotr add shared-step <project_id> --dry-run")
 		}
 		if len(jsonData) > 0 {
 			var req data.AddSharedStepRequest
@@ -516,75 +516,78 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 	case "attachment":
 		// Для attachment dry-run обрабатывается отдельно в runAddAttachment
 		// Этот case не должен вызываться напрямую
-		return fmt.Errorf("используйте --dry-run с конкретной подкомандой attachment")
+		return fmt.Errorf("use --dry-run with a specific attachment subcommand")
 
 	default:
-		return fmt.Errorf("неподдерживаемый endpoint для dry-run: %s", endpoint)
+		return fmt.Errorf("unsupported endpoint for dry-run: %s", endpoint)
 	}
 
 	return nil
 }
 
 func addProject(cli client.ClientInterface, cmd *cobra.Command, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddProjectRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
 		if name == "" {
-			return fmt.Errorf("необходимо указать --name")
+			return fmt.Errorf("--name is required")
 		}
 		req.Name = name
 		req.Announcement, _ = cmd.Flags().GetString("announcement")
 		req.ShowAnnouncement, _ = cmd.Flags().GetBool("show-announcement")
 	}
 
-	project, err := cli.AddProject(&req)
+	project, err := cli.AddProject(ctx, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания проекта: %v", err)
+		return fmt.Errorf("failed to create project: %w", err)
 	}
 
-	return outputResult(cmd, project)
+	return output.OutputResult(cmd, project, "result")
 }
 
 func addSuite(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddSuiteRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
 		if name == "" {
-			return fmt.Errorf("необходимо указать --name")
+			return fmt.Errorf("--name is required")
 		}
 		req.Name = name
 		req.Description, _ = cmd.Flags().GetString("description")
 	}
 
-	suite, err := cli.AddSuite(projectID, &req)
+	suite, err := cli.AddSuite(ctx, projectID, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания сьюта: %v", err)
+		return fmt.Errorf("failed to create suite: %w", err)
 	}
 
-	return outputResult(cmd, suite)
+	return output.OutputResult(cmd, suite, "result")
 }
 
 func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddSectionRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
 		if name == "" {
-			return fmt.Errorf("необходимо указать --name")
+			return fmt.Errorf("--name is required")
 		}
 		req.Name = name
 		req.Description, _ = cmd.Flags().GetString("description")
@@ -592,25 +595,26 @@ func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64,
 		req.ParentID, _ = cmd.Flags().GetInt64("section-id")
 	}
 
-	section, err := cli.AddSection(projectID, &req)
+	section, err := cli.AddSection(ctx, projectID, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания секции: %v", err)
+		return fmt.Errorf("failed to create section: %w", err)
 	}
 
-	return outputResult(cmd, section)
+	return output.OutputResult(cmd, section, "result")
 }
 
 func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddCaseRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		title, _ := cmd.Flags().GetString("title")
 		if title == "" {
-			return fmt.Errorf("необходимо указать --title")
+			return fmt.Errorf("--title is required")
 		}
 		req.Title = title
 		req.TemplateID, _ = cmd.Flags().GetInt64("template-id")
@@ -619,25 +623,26 @@ func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, js
 		req.Refs, _ = cmd.Flags().GetString("refs")
 	}
 
-	caseResp, err := cli.AddCase(sectionID, &req)
+	caseResp, err := cli.AddCase(ctx, sectionID, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания кейса: %v", err)
+		return fmt.Errorf("failed to create case: %w", err)
 	}
 
-	return outputResult(cmd, caseResp)
+	return output.OutputResult(cmd, caseResp, "result")
 }
 
 func addRun(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddRunRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
 		if name == "" {
-			return fmt.Errorf("необходимо указать --name")
+			return fmt.Errorf("--name is required")
 		}
 		req.Name = name
 		req.Description, _ = cmd.Flags().GetString("description")
@@ -645,32 +650,33 @@ func addRun(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jso
 		req.MilestoneID, _ = cmd.Flags().GetInt64("milestone-id")
 		req.AssignedTo, _ = cmd.Flags().GetInt64("assignedto-id")
 		req.IncludeAll, _ = cmd.Flags().GetBool("include-all")
-		
+
 		caseIDsStr, _ := cmd.Flags().GetString("case-ids")
 		if caseIDsStr != "" {
 			req.CaseIDs = parseCaseIDs(caseIDsStr)
 		}
 	}
 
-	run, err := cli.AddRun(projectID, &req)
+	run, err := cli.AddRun(ctx, projectID, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания рана: %v", err)
+		return fmt.Errorf("failed to create run: %w", err)
 	}
 
-	return outputResult(cmd, run)
+	return output.OutputResult(cmd, run, "result")
 }
 
 func addResult(cli client.ClientInterface, cmd *cobra.Command, testID int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddResultRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		statusID, _ := cmd.Flags().GetInt64("status-id")
 		if statusID == 0 {
-			return fmt.Errorf("необходимо указать --status-id")
+			return fmt.Errorf("--status-id is required")
 		}
 		req.StatusID = statusID
 		req.Comment, _ = cmd.Flags().GetString("comment")
@@ -680,25 +686,26 @@ func addResult(cli client.ClientInterface, cmd *cobra.Command, testID int64, jso
 		req.Version, _ = cmd.Flags().GetString("version")
 	}
 
-	result, err := cli.AddResult(testID, &req)
+	result, err := cli.AddResult(ctx, testID, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления результата: %v", err)
+		return fmt.Errorf("failed to add result: %w", err)
 	}
 
-	return outputResult(cmd, result)
+	return output.OutputResult(cmd, result, "result")
 }
 
 func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, caseID int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddResultRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		statusID, _ := cmd.Flags().GetInt64("status-id")
 		if statusID == 0 {
-			return fmt.Errorf("необходимо указать --status-id")
+			return fmt.Errorf("--status-id is required")
 		}
 		req.StatusID = statusID
 		req.Comment, _ = cmd.Flags().GetString("comment")
@@ -707,46 +714,42 @@ func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, cas
 		req.AssignedTo, _ = cmd.Flags().GetInt64("assignedto-id")
 	}
 
-	result, err := cli.AddResultForCase(runID, caseID, &req)
+	result, err := cli.AddResultForCase(ctx, runID, caseID, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления результата: %v", err)
+		return fmt.Errorf("failed to add result: %w", err)
 	}
 
-	return outputResult(cmd, result)
+	return output.OutputResult(cmd, result, "result")
 }
 
 func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.AddSharedStepRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		title, _ := cmd.Flags().GetString("title")
 		if title == "" {
-			return fmt.Errorf("необходимо указать --title")
+			return fmt.Errorf("--title is required")
 		}
 		req.Title = title
 	}
 
-	step, err := cli.AddSharedStep(projectID, &req)
+	step, err := cli.AddSharedStep(ctx, projectID, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка создания shared step: %v", err)
+		return fmt.Errorf("failed to create shared step: %w", err)
 	}
 
-	return outputResult(cmd, step)
-}
-
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "result", "json")
-	return err
+	return output.OutputResult(cmd, step, "result")
 }
 
 func parseCaseIDs(s string) []int64 {
 	var ids []int64
 	for _, part := range splitAndTrim(s, ",") {
-		id, err := strconv.ParseInt(part, 10, 64)
+		id, err := flags.ParseID(part)
 		if err == nil {
 			ids = append(ids, id)
 		}
@@ -782,9 +785,9 @@ func splitString(s, sep string) []string {
 // runAddAttachment обрабатывает добавление вложений (DEPRECATED: use 'gotr attachments add' instead)
 func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr add attachment' is deprecated. Use 'gotr attachments add' instead.")
-	
+
 	if len(args) < 2 {
-		return fmt.Errorf("необходимо указать тип вложения: case, plan, plan-entry, result, run")
+		return fmt.Errorf("attachment type required: case, plan, plan-entry, result, run")
 	}
 
 	attachmentType := args[1]
@@ -792,33 +795,33 @@ func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []str
 	switch attachmentType {
 	case "case":
 		if len(args) < 4 {
-			return fmt.Errorf("использование: gotr add attachment case <case_id> <file_path>")
+			return fmt.Errorf("usage: gotr add attachment case <case_id> <file_path>")
 		}
-		caseID, err := strconv.ParseInt(args[2], 10, 64)
+		caseID, err := flags.ValidateRequiredID(args, 2, "case_id")
 		if err != nil {
-			return fmt.Errorf("неверный case_id: %v", err)
+			return err
 		}
 		filePath := args[3]
 		return addAttachmentToCase(cli, cmd, caseID, filePath)
 
 	case "plan":
 		if len(args) < 4 {
-			return fmt.Errorf("использование: gotr add attachment plan <plan_id> <file_path>")
+			return fmt.Errorf("usage: gotr add attachment plan <plan_id> <file_path>")
 		}
-		planID, err := strconv.ParseInt(args[2], 10, 64)
+		planID, err := flags.ValidateRequiredID(args, 2, "plan_id")
 		if err != nil {
-			return fmt.Errorf("неверный plan_id: %v", err)
+			return err
 		}
 		filePath := args[3]
 		return addAttachmentToPlan(cli, cmd, planID, filePath)
 
 	case "plan-entry":
 		if len(args) < 5 {
-			return fmt.Errorf("использование: gotr add attachment plan-entry <plan_id> <entry_id> <file_path>")
+			return fmt.Errorf("usage: gotr add attachment plan-entry <plan_id> <entry_id> <file_path>")
 		}
-		planID, err := strconv.ParseInt(args[2], 10, 64)
+		planID, err := flags.ValidateRequiredID(args, 2, "plan_id")
 		if err != nil {
-			return fmt.Errorf("неверный plan_id: %v", err)
+			return err
 		}
 		entryID := args[3]
 		filePath := args[4]
@@ -826,32 +829,33 @@ func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []str
 
 	case "result":
 		if len(args) < 4 {
-			return fmt.Errorf("использование: gotr add attachment result <result_id> <file_path>")
+			return fmt.Errorf("usage: gotr add attachment result <result_id> <file_path>")
 		}
-		resultID, err := strconv.ParseInt(args[2], 10, 64)
+		resultID, err := flags.ValidateRequiredID(args, 2, "result_id")
 		if err != nil {
-			return fmt.Errorf("неверный result_id: %v", err)
+			return err
 		}
 		filePath := args[3]
 		return addAttachmentToResult(cli, cmd, resultID, filePath)
 
 	case "run":
 		if len(args) < 4 {
-			return fmt.Errorf("использование: gotr add attachment run <run_id> <file_path>")
+			return fmt.Errorf("usage: gotr add attachment run <run_id> <file_path>")
 		}
-		runID, err := strconv.ParseInt(args[2], 10, 64)
+		runID, err := flags.ValidateRequiredID(args, 2, "run_id")
 		if err != nil {
-			return fmt.Errorf("неверный run_id: %v", err)
+			return err
 		}
 		filePath := args[3]
 		return addAttachmentToRun(cli, cmd, runID, filePath)
 
 	default:
-		return fmt.Errorf("неподдерживаемый тип вложения: %s. Доступные: case, plan, plan-entry, result, run", attachmentType)
+		return fmt.Errorf("unsupported attachment type: %s. Available: case, plan, plan-entry, result, run", attachmentType)
 	}
 }
 
 func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID int64, filePath string) error {
+	ctx := cmd.Context()
 	// Проверяем dry-run режим
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
@@ -862,20 +866,21 @@ func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID 
 
 	// Проверяем существование файла
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return fmt.Errorf("файл не найден: %s", filePath)
+		return fmt.Errorf("file not found: %s", filePath)
 	}
 
-	resp, err := cli.AddAttachmentToCase(caseID, filePath)
+	resp, err := cli.AddAttachmentToCase(ctx, caseID, filePath)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления вложения к кейсу: %v", err)
+		return fmt.Errorf("failed to add attachment to case: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
-	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID int64, filePath string) error {
+	ctx := cmd.Context()
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("add attachment plan")
@@ -884,20 +889,21 @@ func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID 
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return fmt.Errorf("файл не найден: %s", filePath)
+		return fmt.Errorf("file not found: %s", filePath)
 	}
 
-	resp, err := cli.AddAttachmentToPlan(planID, filePath)
+	resp, err := cli.AddAttachmentToPlan(ctx, planID, filePath)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления вложения к плану: %v", err)
+		return fmt.Errorf("failed to add attachment to plan: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
-	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, planID int64, entryID, filePath string) error {
+	ctx := cmd.Context()
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("add attachment plan-entry")
@@ -906,20 +912,21 @@ func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, pl
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return fmt.Errorf("файл не найден: %s", filePath)
+		return fmt.Errorf("file not found: %s", filePath)
 	}
 
-	resp, err := cli.AddAttachmentToPlanEntry(planID, entryID, filePath)
+	resp, err := cli.AddAttachmentToPlanEntry(ctx, planID, entryID, filePath)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления вложения к plan entry: %v", err)
+		return fmt.Errorf("failed to add attachment to plan entry: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
-	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resultID int64, filePath string) error {
+	ctx := cmd.Context()
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("add attachment result")
@@ -928,20 +935,21 @@ func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resul
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return fmt.Errorf("файл не найден: %s", filePath)
+		return fmt.Errorf("file not found: %s", filePath)
 	}
 
-	resp, err := cli.AddAttachmentToResult(resultID, filePath)
+	resp, err := cli.AddAttachmentToResult(ctx, resultID, filePath)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления вложения к результату: %v", err)
+		return fmt.Errorf("failed to add attachment to result: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
-	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	return output.OutputResult(cmd, resp, "result")
 }
 
 func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID int64, filePath string) error {
+	ctx := cmd.Context()
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("add attachment run")
@@ -950,15 +958,15 @@ func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID in
 	}
 
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		return fmt.Errorf("файл не найден: %s", filePath)
+		return fmt.Errorf("file not found: %s", filePath)
 	}
 
-	resp, err := cli.AddAttachmentToRun(runID, filePath)
+	resp, err := cli.AddAttachmentToRun(ctx, runID, filePath)
 	if err != nil {
-		return fmt.Errorf("ошибка добавления вложения к рану: %v", err)
+		return fmt.Errorf("failed to add attachment to run: %w", err)
 	}
 
-	fmt.Printf("✅ Вложение добавлено (ID: %d)\n", resp.AttachmentID)
-	fmt.Printf("   URL: %s\n", resp.URL)
-	return outputResult(cmd, resp)
+	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	return output.OutputResult(cmd, resp, "result")
 }

@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/models/config"
-	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -28,35 +29,40 @@ var rootCmd = &cobra.Command{
 Поддерживает просмотр доступных эндпоинтов, выполнение запросов и многое другое.`,
 	// Запускается клиент перед каждой субкомандой
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		utils.DebugPrint("{rootCmd} - Запуск команды: %s", cmd.Use)
-		utils.DebugPrint("{rootCmd} - Аргументы: %v", args)
+		debug.DebugPrint("{rootCmd} - Running command: %s", cmd.Use)
+		debug.DebugPrint("{rootCmd} - Arguments: %v", args)
 		// Настройка Viper - поддержка env, флагов, конфигов
 		viper.AutomaticEnv() // автоматически подтягивать переменные из окружения
 
 		// Маппим переменные окружения в переменные, которые будут использоваться в клиенте
 		baseURL := viper.GetString("base_url")
 		username := viper.GetString("username")
-		password := viper.GetString("password")
-		apiKey := viper.GetString("api_key")
 		insecure := viper.GetBool("insecure")
-		debug := viper.GetBool("debug")
+		debugMode := viper.GetBool("debug")
+
+		// Поддержка password (Basic Auth) и api_key (API Key Auth).
+		// password имеет приоритет — для обратной совместимости с TESTRAIL_PASSWORD.
+		apiKey := viper.GetString("password")
+		if apiKey == "" {
+			apiKey = viper.GetString("api_key")
+		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - PersistentPreRunE запущен для команды: %s", cmd.Use)
-		utils.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
-		utils.DebugPrint("{rootCmd} - insecure=%v", insecure)
+		debug.DebugPrint("{rootCmd} - PersistentPreRunE running for command: %s", cmd.Use)
+		debug.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
+		debug.DebugPrint("{rootCmd} - insecure=%v", insecure)
 
 		// Проверяем, что конфиг не пустой и не содержит дефолтных placeholder'ов
 		if config.IsDefaultValue(baseURL, config.DefaultBaseURL) ||
 			config.IsDefaultValue(username, config.DefaultUsername) ||
 			config.IsDefaultValue(apiKey, config.DefaultAPIKey) {
-			return fmt.Errorf("конфигурация не задана или содержит дефолтные значения\n" +
-				"Запустите 'gotr config init' для создания конфигурации,\n" +
-				"затем отредактируйте файл ~/.gotr/config/default.yaml")
+			return fmt.Errorf("configuration not set or contains default values\n" +
+				"Run 'gotr config init' to create configuration,\n" +
+				"then edit the file ~/.gotr/config/default.yaml")
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - Подключение к %s как %s", baseURL, username)
+		debug.DebugPrint("{rootCmd} - Connecting to %s as %s", baseURL, username)
 
 		// Создаём клиент с опциями
 		opts := []client.ClientOption{}
@@ -64,13 +70,13 @@ var rootCmd = &cobra.Command{
 			opts = append(opts, client.WithSkipTlsVerify(true)) //По-умолчанию, проверка tls - включена
 		}
 
-		httpClient, err := client.NewClient(baseURL, username, password, debug, opts...)
+		httpClient, err := client.NewClient(baseURL, username, apiKey, debugMode, opts...)
 		if err != nil {
-			return fmt.Errorf("не удалось создать клиент: %w", err)
+			return fmt.Errorf("failed to create client: %w", err)
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - Клиент успешно создан и сохранён в контекст")
+		debug.DebugPrint("{rootCmd} - Client created and stored in context")
 
 		// Сохраняем клиент в контекст — будет доступен во всех субкомандах
 		ctx := context.WithValue(cmd.Context(), httpClientKey, httpClient)
@@ -81,10 +87,10 @@ var rootCmd = &cobra.Command{
 	// Run: func(cmd *cobra.Command, args []string) { } // Можно оставить пустым — будет показывать help
 }
 
-// Execute — вызывается из main.go
-func Execute() {
+// Execute — вызывается из main.go с контекстом (поддерживает signal.NotifyContext)
+func Execute(ctx context.Context) {
 	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date)
-	if err := rootCmd.Execute(); err != nil {
+	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		os.Exit(1)
 	}
 }
@@ -93,8 +99,7 @@ func Execute() {
 func GetClient(cmd *cobra.Command) *client.HTTPClient {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
-		fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
-		os.Exit(1)
+		panic("gotr: HTTP client not initialized. Check --username, --api-key and --url")
 	}
 	return val.(*client.HTTPClient)
 }
@@ -103,8 +108,7 @@ func GetClient(cmd *cobra.Command) *client.HTTPClient {
 func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
-		fmt.Fprintln(os.Stderr, "ОШИБКА: HTTP-клиент не инициализирован. Проверьте --username, --api-key и --url")
-		os.Exit(1)
+		panic("gotr: HTTP client not initialized. Check --username, --api-key and --url")
 	}
 	// Поддерживаем как *client.HTTPClient, так и *client.MockClient
 	if cli, ok := val.(client.ClientInterface); ok {
@@ -118,7 +122,7 @@ func initConfig() {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		// Не паникуем — просто продолжаем без home-пути
-		fmt.Printf("Warning: cannot get user home directory: %v\n", err)
+		ui.Warningf(os.Stderr, "cannot get user home directory: %v", err)
 	} else {
 		configDir := filepath.Join(home, ".gotr", "config")
 		viper.AddConfigPath(configDir) // ~/.gotr/config
@@ -139,7 +143,7 @@ func initConfig() {
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			// Если ошибка не "файл не найден" — можно залогировать
-			fmt.Printf("{rootCmd} - Config file error: %v\n", err)
+			ui.Warningf(os.Stderr, "Config file error: %v", err)
 		}
 		// Файл не обязателен — используем defaults
 	}

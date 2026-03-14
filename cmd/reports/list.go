@@ -2,8 +2,8 @@ package reports
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,13 +25,14 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr reports list 1 -o reports.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetReports(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetReports(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list reports: %w", err)
 			}

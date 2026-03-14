@@ -2,8 +2,8 @@ package milestones
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,18 +25,19 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr milestones get 12345 -o milestone.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			milestoneID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || milestoneID <= 0 {
-				return fmt.Errorf("invalid milestone_id: %s", args[0])
+			milestoneID, err := flags.ValidateRequiredID(args, 0, "milestone_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetMilestone(milestoneID)
+			ctx := cmd.Context()
+			resp, err := cli.GetMilestone(ctx, milestoneID)
 			if err != nil {
 				return fmt.Errorf("failed to get milestone: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "milestones")
 		},
 	}
 

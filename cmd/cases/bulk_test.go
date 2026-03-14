@@ -1,11 +1,13 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,7 +51,7 @@ func TestBulkUpdateCmd_DryRun(t *testing.T) {
 
 func TestBulkUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCasesFunc: func(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
+		UpdateCasesFunc: func(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 			assert.Equal(t, int64(100), suiteID)
 			assert.Equal(t, []int64{1, 2, 3}, req.CaseIDs)
 			assert.Equal(t, int64(1), req.PriorityID)
@@ -67,7 +69,7 @@ func TestBulkUpdateCmd_Success(t *testing.T) {
 
 func TestBulkUpdateCmd_WithEstimate(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCasesFunc: func(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
+		UpdateCasesFunc: func(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 			assert.Equal(t, int64(100), suiteID)
 			assert.Equal(t, []int64{10, 20}, req.CaseIDs)
 			assert.Equal(t, "1h 30m", req.Estimate)
@@ -118,7 +120,7 @@ func TestBulkUpdateCmd_InvalidCaseIDs(t *testing.T) {
 
 func TestBulkUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCasesFunc: func(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
+		UpdateCasesFunc: func(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 			return nil, fmt.Errorf("API error")
 		},
 	}
@@ -134,7 +136,7 @@ func TestBulkUpdateCmd_ClientError(t *testing.T) {
 
 func TestBulkUpdateCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCasesFunc: func(suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
+		UpdateCasesFunc: func(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 			return &data.GetCasesResponse{
 				{ID: 1, Title: "Test Case 1"},
 				{ID: 2, Title: "Test Case 2"},
@@ -164,7 +166,7 @@ func TestBulkDeleteCmd_DryRun(t *testing.T) {
 
 func TestBulkDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteCasesFunc: func(suiteID int64, req *data.DeleteCasesRequest) error {
+		DeleteCasesFunc: func(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
 			assert.Equal(t, int64(100), suiteID)
 			assert.Equal(t, []int64{1, 2, 3}, req.CaseIDs)
 			return nil
@@ -214,7 +216,7 @@ func TestBulkDeleteCmd_MissingSuiteID(t *testing.T) {
 
 func TestBulkDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteCasesFunc: func(suiteID int64, req *data.DeleteCasesRequest) error {
+		DeleteCasesFunc: func(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
 			return fmt.Errorf("cannot delete: cases have results")
 		},
 	}
@@ -241,7 +243,7 @@ func TestBulkCopyCmd_DryRun(t *testing.T) {
 
 func TestBulkCopyCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		CopyCasesToSectionFunc: func(sectionID int64, req *data.CopyCasesRequest) error {
+		CopyCasesToSectionFunc: func(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
 			assert.Equal(t, int64(50), sectionID)
 			assert.Equal(t, []int64{1, 2, 3}, req.CaseIDs)
 			return nil
@@ -291,7 +293,7 @@ func TestBulkCopyCmd_MissingSectionID(t *testing.T) {
 
 func TestBulkCopyCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		CopyCasesToSectionFunc: func(sectionID int64, req *data.CopyCasesRequest) error {
+		CopyCasesToSectionFunc: func(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
 			return fmt.Errorf("section not found")
 		},
 	}
@@ -319,7 +321,7 @@ func TestBulkMoveCmd_DryRun(t *testing.T) {
 
 func TestBulkMoveCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		MoveCasesToSectionFunc: func(sectionID int64, req *data.MoveCasesRequest) error {
+		MoveCasesToSectionFunc: func(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
 			assert.Equal(t, int64(50), sectionID)
 			assert.Equal(t, []int64{1, 2, 3}, req.CaseIDs)
 			return nil
@@ -369,7 +371,7 @@ func TestBulkMoveCmd_MissingSectionID(t *testing.T) {
 
 func TestBulkMoveCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		MoveCasesToSectionFunc: func(sectionID int64, req *data.MoveCasesRequest) error {
+		MoveCasesToSectionFunc: func(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
 			return fmt.Errorf("cannot move: permission denied")
 		},
 	}
@@ -423,7 +425,7 @@ func TestOutputResult_Stdout(t *testing.T) {
 	cmd.Flags().Bool("save", false, "")
 	data := map[string]string{"key": "value"}
 
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "cases")
 	assert.NoError(t, err)
 }
 
@@ -433,6 +435,6 @@ func TestOutputResult_WithSave(t *testing.T) {
 	cmd.Flags().Bool("save", true, "")
 
 	data := map[string]string{"key": "value", "test": "data"}
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "cases")
 	assert.NoError(t, err)
 }

@@ -3,9 +3,10 @@ package bdds
 import (
 	"fmt"
 	"os"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +27,9 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   cat scenario.feature | gotr bdds add 12345`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("некорректный case_id: %s", args[0])
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
+			if err != nil {
+				return err
 			}
 
 			// Читаем содержимое BDD
@@ -37,7 +38,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 			if content == "" {
-				return fmt.Errorf("BDD содержимое не может быть пустым (используйте --file или stdin)")
+				return fmt.Errorf("BDD content cannot be empty (use --file or stdin)")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -47,13 +48,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddBDD(caseID, content)
+			ctx := cmd.Context()
+			resp, err := cli.AddBDD(ctx, caseID, content)
 			if err != nil {
-				return fmt.Errorf("не удалось добавить BDD: %w", err)
+				return fmt.Errorf("failed to add BDD: %w", err)
 			}
 
-			fmt.Printf("✅ BDD добавлен к кейсу %d\n", caseID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "BDD added to case %d", caseID)
+			return output.OutputResult(cmd, resp, "bdds")
 		},
 	}
 
@@ -70,7 +72,7 @@ func readBDDContent(cmd *cobra.Command) (string, error) {
 	if filePath != "" {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			return "", fmt.Errorf("не удалось прочитать файл: %w", err)
+			return "", fmt.Errorf("failed to read file: %w", err)
 		}
 		return string(data), nil
 	}

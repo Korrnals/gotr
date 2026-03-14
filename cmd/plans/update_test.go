@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestUpdateCmd_DryRun_NoFlags(t *testing.T) {
 
 func TestUpdateCmd_Success_Name(t *testing.T) {
 	mock := &client.MockClient{
-		UpdatePlanFunc: func(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+		UpdatePlanFunc: func(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(12345), planID)
 			assert.Equal(t, "Updated Plan Name", req.Name)
 			return &data.Plan{ID: 12345, Name: req.Name}, nil
@@ -52,7 +53,7 @@ func TestUpdateCmd_Success_Name(t *testing.T) {
 
 func TestUpdateCmd_Success_Description(t *testing.T) {
 	mock := &client.MockClient{
-		UpdatePlanFunc: func(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+		UpdatePlanFunc: func(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(12345), planID)
 			assert.Equal(t, "New Description", req.Description)
 			return &data.Plan{ID: 12345, Description: req.Description}, nil
@@ -69,7 +70,7 @@ func TestUpdateCmd_Success_Description(t *testing.T) {
 
 func TestUpdateCmd_Success_Milestone(t *testing.T) {
 	mock := &client.MockClient{
-		UpdatePlanFunc: func(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+		UpdatePlanFunc: func(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(12345), planID)
 			assert.Equal(t, int64(20), req.MilestoneID)
 			return &data.Plan{ID: 12345, MilestoneID: 20}, nil
@@ -86,7 +87,7 @@ func TestUpdateCmd_Success_Milestone(t *testing.T) {
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdatePlanFunc: func(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+		UpdatePlanFunc: func(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 			return nil, fmt.Errorf("plan not found")
 		},
 	}

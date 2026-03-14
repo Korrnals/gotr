@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -37,7 +38,7 @@ func TestAddCmd_DryRun_NoTitle(t *testing.T) {
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddCaseFunc: func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(100), sectionID)
 			assert.Equal(t, "Test Case Title", req.Title)
 			assert.Equal(t, int64(1), req.TemplateID)
@@ -56,7 +57,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_Success_Minimal(t *testing.T) {
 	mock := &client.MockClient{
-		AddCaseFunc: func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(50), sectionID)
 			assert.Equal(t, "Minimal Case", req.Title)
 			return &data.Case{ID: 999, Title: req.Title}, nil
@@ -73,7 +74,7 @@ func TestAddCmd_Success_Minimal(t *testing.T) {
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddCaseFunc: func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 			return nil, fmt.Errorf("API error: section not found")
 		},
 	}
@@ -126,7 +127,7 @@ func TestAddCmd_MissingTitle(t *testing.T) {
 
 func TestAddCmd_AllFlags(t *testing.T) {
 	mock := &client.MockClient{
-		AddCaseFunc: func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(100), sectionID)
 			assert.Equal(t, "Full Test Case", req.Title)
 			assert.Equal(t, int64(1), req.TemplateID)
@@ -161,7 +162,7 @@ func TestAddCmd_WithJSONFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
-		AddCaseFunc: func(sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(100), sectionID)
 			assert.Equal(t, "JSON Test Case", req.Title)
 			assert.Equal(t, int64(2), req.TemplateID)

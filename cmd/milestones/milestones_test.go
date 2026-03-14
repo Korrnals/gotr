@@ -5,6 +5,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -43,7 +44,7 @@ func TestOutputResult_Default(t *testing.T) {
 	cmd.Flags().Bool("save", false, "")
 
 	data := &data.Milestone{ID: 1, Name: "Test Milestone"}
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "milestones")
 	assert.NoError(t, err)
 }
 
@@ -52,7 +53,7 @@ func TestOutputResult_JSON(t *testing.T) {
 	cmd.Flags().Bool("save", false, "")
 
 	data := &data.Milestone{ID: 1, Name: "Test Milestone"}
-	err := outputResult(cmd, data)
+	err := output.OutputResult(cmd, data, "milestones")
 	assert.NoError(t, err)
 }
 

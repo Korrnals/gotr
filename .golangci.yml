@@ -1,0 +1,80 @@
+# golangci-lint configuration for gotr
+# Run: golangci-lint run
+# Version: golangci-lint v1.63+
+
+linters:
+  enable:
+    - errcheck        # Check for unchecked errors
+    - govet           # Go vet checks
+    - staticcheck     # Advanced static analysis
+    - unused          # Find unused code
+    - gosimple        # Simplification suggestions
+    - ineffassign     # Detect unused assignments
+    - misspell        # Find typos in comments/strings
+    - gocyclo         # Cyclomatic complexity
+    - gocritic        # Extended checks (diagnostics, style, performance)
+    - revive          # Style linter (replacement for golint)
+    - nolintlint      # Validate nolint directives
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - style
+      - performance
+    disabled-checks:
+      - hugeParam           # Large structs passed by value (OK for DTOs)
+      - rangeValCopy        # Range copies (OK for small structs)
+      - ifElseChain         # if-else chains (common in CLI)
+
+  revive:
+    rules:
+      - name: exported
+        disabled: true      # Don't require doc comments on all exports
+      - name: package-comments
+        disabled: true      # Don't require package doc comments
+
+  misspell:
+    locale: US
+
+  errcheck:
+    exclude-functions:
+      - fmt.Fprintf
+      - fmt.Fprintln
+      - (*github.com/spf13/cobra.Command).MarkFlagRequired
+
+issues:
+  exclude-rules:
+    # Relax rules for test files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - gocritic
+        - errcheck
+        - revive
+
+    # Relax rules for template files
+    - path: docs/templates/
+      linters:
+        - unused
+        - errcheck
+
+    # Allow unkeyed struct literals in test helpers
+    - path: test_helper
+      linters:
+        - govet
+
+  # Show all issues (don't limit per-linter)
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+  exclude-dirs:
+    - embedded
+    - docs/templates
+    - .archives
+
+run:
+  timeout: 5m

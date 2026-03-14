@@ -1,6 +1,7 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 
 func TestCaseTypesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseTypesFunc: func() (data.GetCaseTypesResponse, error) {
+		GetCaseTypesFunc: func(ctx context.Context) (data.GetCaseTypesResponse, error) {
 			return data.GetCaseTypesResponse{
 				{ID: 1, Name: "Acceptance", IsDefault: false},
 				{ID: 2, Name: "Accessibility", IsDefault: false},
@@ -43,7 +44,7 @@ func TestCaseTypesCmd_Success(t *testing.T) {
 
 func TestCaseTypesCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseTypesFunc: func() (data.GetCaseTypesResponse, error) {
+		GetCaseTypesFunc: func(ctx context.Context) (data.GetCaseTypesResponse, error) {
 			return data.GetCaseTypesResponse{}, nil
 		},
 	}
@@ -58,7 +59,7 @@ func TestCaseTypesCmd_EmptyList(t *testing.T) {
 
 func TestCaseTypesCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseTypesFunc: func() (data.GetCaseTypesResponse, error) {
+		GetCaseTypesFunc: func(ctx context.Context) (data.GetCaseTypesResponse, error) {
 			return nil, fmt.Errorf("failed to get case types")
 		},
 	}
@@ -76,24 +77,24 @@ func TestCaseTypesCmd_APIError(t *testing.T) {
 
 func TestCaseFieldsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFieldsFunc: func() (data.GetCaseFieldsResponse, error) {
+		GetCaseFieldsFunc: func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
 			return data.GetCaseFieldsResponse{
 				{
-					ID:          1,
-					Name:        "custom_preconds",
-					Label:       "Preconditions",
-					Description: "The preconditions for this test case",
-					SystemName:  "custom_preconds",
-					TypeID:      3,
+					ID:           1,
+					Name:         "custom_preconds",
+					Label:        "Preconditions",
+					Description:  "The preconditions for this test case",
+					SystemName:   "custom_preconds",
+					TypeID:       3,
 					DisplayOrder: 1,
 				},
 				{
-					ID:          2,
-					Name:        "custom_steps",
-					Label:       "Steps",
-					Description: "The steps for this test case",
-					SystemName:  "custom_steps",
-					TypeID:      3,
+					ID:           2,
+					Name:         "custom_steps",
+					Label:        "Steps",
+					Description:  "The steps for this test case",
+					SystemName:   "custom_steps",
+					TypeID:       3,
 					DisplayOrder: 2,
 				},
 			}, nil
@@ -110,7 +111,7 @@ func TestCaseFieldsCmd_Success(t *testing.T) {
 
 func TestCaseFieldsCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFieldsFunc: func() (data.GetCaseFieldsResponse, error) {
+		GetCaseFieldsFunc: func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
 			return data.GetCaseFieldsResponse{}, nil
 		},
 	}
@@ -125,7 +126,7 @@ func TestCaseFieldsCmd_EmptyList(t *testing.T) {
 
 func TestCaseFieldsCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFieldsFunc: func() (data.GetCaseFieldsResponse, error) {
+		GetCaseFieldsFunc: func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
 			return nil, fmt.Errorf("failed to get case fields")
 		},
 	}
@@ -149,7 +150,7 @@ func TestCaseTypesCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestCaseFieldsCmd_NilClient(t *testing.T) {
@@ -162,5 +163,5 @@ func TestCaseFieldsCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

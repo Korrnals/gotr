@@ -1,6 +1,7 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -15,7 +16,7 @@ import (
 
 func TestListCmd_Direct_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			return data.GetResultsResponse{
 				{ID: 1, TestID: 100, StatusID: 1, Comment: "Passed"},
@@ -46,7 +47,7 @@ func TestListCmd_Direct_InvalidRunID(t *testing.T) {
 
 func TestListCmd_Direct_ZeroRunID(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("invalid run_id")
 		},
 	}
@@ -61,7 +62,7 @@ func TestListCmd_Direct_ZeroRunID(t *testing.T) {
 
 func TestListCmd_Direct_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
@@ -77,7 +78,7 @@ func TestListCmd_Direct_APIError(t *testing.T) {
 
 func TestListCmd_Direct_EmptyResults(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return data.GetResultsResponse{}, nil
 		},
 	}
@@ -122,12 +123,12 @@ func TestListCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "клиент")
+	assert.Contains(t, err.Error(), "client")
 }
 
 func TestListCmd_NegativeRunID(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("invalid run_id")
 		},
 	}

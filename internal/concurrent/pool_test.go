@@ -28,7 +28,7 @@ func TestNewWorkerPool_WithOptions(t *testing.T) {
 
 func TestWorkerPool_Submit(t *testing.T) {
 	pool := NewWorkerPool(WithMaxWorkers(2))
-	
+
 	var counter int32
 	for i := 0; i < 5; i++ {
 		pool.Submit(func() error {
@@ -44,7 +44,7 @@ func TestWorkerPool_Submit(t *testing.T) {
 
 func TestWorkerPool_SubmitWithError(t *testing.T) {
 	pool := NewWorkerPool(WithMaxWorkers(2))
-	
+
 	expectedErr := errors.New("test error")
 	pool.Submit(func() error {
 		return expectedErr
@@ -57,14 +57,14 @@ func TestWorkerPool_SubmitWithError(t *testing.T) {
 
 func TestParallelMap(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
-	
+
 	results, err := ParallelMap(items, 3, func(item, index int) (int, error) {
 		return item * 2, nil
 	})
 
 	assert.NoError(t, err)
 	assert.Len(t, results, 5)
-	
+
 	for i, result := range results {
 		assert.NoError(t, result.Error)
 		assert.Equal(t, i, result.Index)

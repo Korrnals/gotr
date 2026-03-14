@@ -2,10 +2,12 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +17,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-config <config_id>",
 		Short: "Обновить конфигурацию",
-		Long: `Обновляет название существующей конфигурации.`,
+		Long:  `Обновляет название существующей конфигурации.`,
 		Example: `  # Изменить название конфигурации
   gotr configurations update-config 10 --name="Chrome 120"
 
@@ -23,14 +25,14 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
   gotr configurations update-config 10 --name="Chrome 120" --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || configID <= 0 {
-				return fmt.Errorf("некорректный config_id: %s", args[0])
+			configID, err := flags.ValidateRequiredID(args, 0, "config_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -41,13 +43,14 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 			req := data.UpdateConfigRequest{Name: name}
 			cli := getClient(cmd)
-			resp, err := cli.UpdateConfig(configID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateConfig(ctx, configID, &req)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить конфигурацию: %w", err)
+				return fmt.Errorf("failed to update configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация %d обновлена\n", configID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Configuration %d updated", configID)
+			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}
 

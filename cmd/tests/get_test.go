@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			assert.Equal(t, int64(12345), testID)
 			return &data.Test{
 				ID:       testID,
@@ -55,7 +56,7 @@ func TestGetCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid")
 }
 
 func TestGetCmd_ZeroID(t *testing.T) {
@@ -96,8 +97,8 @@ func TestGetCmd_NoArgs(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
-			return nil, fmt.Errorf("тест не найден")
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
+			return nil, fmt.Errorf("test not found")
 		},
 	}
 
@@ -108,12 +109,12 @@ func TestGetCmd_APIError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "тест не найден")
+	assert.Contains(t, err.Error(), "test not found")
 }
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestFunc: func(testID int64) (*data.Test, error) {
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
 			return &data.Test{
 				ID:       testID,
 				CaseID:   100,

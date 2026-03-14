@@ -18,7 +18,7 @@ type Project struct {
 	CreatedOn        int64  `json:"created_on,omitempty"`
 	UpdatedBy        int64  `json:"updated_by,omitempty"`
 	UpdatedOn        int64  `json:"updated_on,omitempty"`
-	// Дополнительные поля, которые часто встречаются:
+	// Дополнительные field, которые часто встречаются:
 	Users []struct {
 		ID            int64 `json:"id"`
 		GlobalRoleID  int64 `json:"global_role_id,omitempty"`

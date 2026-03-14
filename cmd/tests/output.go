@@ -1,27 +1,14 @@
 package tests
 
 import (
-	"encoding/json"
-	"fmt"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// outputResult выводит результат в зависимости от формата.
-// Поддерживает флаг --save для сохранения в файл.
-func outputResult(cmd *cobra.Command, data interface{}, start time.Time) error {
-	_, err := output.Output(cmd, data, "tests", "json")
-	return err
-}
-
-// printJSON выводит данные в формате JSON.
+// printJSON outputs data as JSON to stdout.
+// start parameter is kept for backward compatibility but unused.
 func printJSON(cmd *cobra.Command, data interface{}, start time.Time) error {
-	jsonBytes, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return err
-	}
-	fmt.Fprintln(cmd.OutOrStdout(), string(jsonBytes))
-	return nil
+	return ui.JSON(cmd, data)
 }

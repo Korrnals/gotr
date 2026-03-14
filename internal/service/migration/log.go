@@ -1,7 +1,7 @@
 // internal/migration/log.go
 package migration
 
-// LogInfo — удобный метод для info-лога с полями
+// LogInfo — удобный метод для info-лога с fieldми
 func (m *Migration) LogInfo(action string, fields ...interface{}) {
 	m.logger.Infow(action, fields...)
 }

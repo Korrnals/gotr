@@ -1,6 +1,7 @@
 package variables
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -11,7 +12,7 @@ import (
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddVariableFunc: func(datasetID int64, name string) (*data.Variable, error) {
+		AddVariableFunc: func(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
 			assert.Equal(t, int64(123), datasetID)
 			assert.Equal(t, "username", name)
 			return &data.Variable{ID: 1, Name: name, DatasetID: datasetID}, nil
@@ -28,7 +29,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		AddVariableFunc: func(datasetID int64, name string) (*data.Variable, error) {
+		AddVariableFunc: func(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
 			return &data.Variable{ID: 5, Name: name}, nil
 		},
 	}
@@ -69,13 +70,13 @@ func TestAddCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddVariableFunc: func(datasetID int64, name string) (*data.Variable, error) {
-			return nil, fmt.Errorf("датасет не найден")
+		AddVariableFunc: func(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
+			return nil, fmt.Errorf("dataset not found")
 		},
 	}
 

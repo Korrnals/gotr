@@ -2,11 +2,13 @@ package tests
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -30,9 +32,9 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr tests update 12345 --status-id=5 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || testID <= 0 {
-				return fmt.Errorf("некорректный test_id: %s", args[0])
+			testID, err := flags.ValidateRequiredID(args, 0, "test_id")
+			if err != nil {
+				return err
 			}
 
 			req := data.UpdateTestRequest{}
@@ -51,12 +53,13 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateTest(testID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateTest(ctx, testID, &req)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить тест: %w", err)
+				return fmt.Errorf("failed to update test: %w", err)
 			}
 
-			fmt.Printf("✅ Тест %d обновлён\n", testID)
+			ui.Successf(os.Stdout, "Test %d updated", testID)
 			return printJSON(cmd, resp, time.Now())
 		},
 	}

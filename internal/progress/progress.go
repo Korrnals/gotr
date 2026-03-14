@@ -60,9 +60,9 @@ func NewManager(opts ...Option) *Manager {
 
 // Bar представляет прогресс-бар
 type Bar struct {
-	bar    *mpb.Bar
-	total  int64
-	mgr    *Manager
+	bar   *mpb.Bar
+	total int64
+	mgr   *Manager
 }
 
 // NewBar создаёт прогресс-бар с общим количеством

@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -22,18 +23,18 @@ func resetSuitesFlags() {
 }
 
 // TestSyncSuites_DryRun_NoAddSuite проверяет поведение команды при режиме dry-run.
-// Ожидается, что в режиме dry-run не будет вызван метод AddSuite клиента.
+// Ожидается, что в режиме dry-run не будет вызван метод AddSuite clientа.
 func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
-	// Подготавливаем мок-клиент: source содержит одну suite
+	// Подготавливаем мок-client: source содержит одну suite
 	addCalled := false
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			if projectID == 1 {
 				return data.GetSuitesResponse{{ID: 10, Name: "Suite 1"}}, nil
 			}
 			return data.GetSuitesResponse{}, nil
 		},
-		AddSuiteFunc: func(projectID int64, r *data.AddSuiteRequest) (*data.Suite, error) {
+		AddSuiteFunc: func(ctx context.Context, projectID int64, r *data.AddSuiteRequest) (*data.Suite, error) {
 			addCalled = true
 			return &data.Suite{ID: 100, Name: r.Name}, nil
 		},
@@ -61,16 +62,16 @@ func TestSyncSuites_DryRun_NoAddSuite(t *testing.T) {
 // TestSyncSuites_Confirm_TriggersAddSuite проверяет, что после интерактивного подтверждения
 // выполняется вызов AddSuite для создания необходимых suites в target.
 func TestSyncSuites_Confirm_TriggersAddSuite(t *testing.T) {
-	// Подготавливаем мок-клиент и отмечаем факт вызова AddSuite
+	// Подготавливаем мок-client и отмечаем факт вызова AddSuite
 	addCalled := false
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			if projectID == 1 {
 				return data.GetSuitesResponse{{ID: 10, Name: "Suite 1"}}, nil
 			}
 			return data.GetSuitesResponse{}, nil
 		},
-		AddSuiteFunc: func(projectID int64, r *data.AddSuiteRequest) (*data.Suite, error) {
+		AddSuiteFunc: func(ctx context.Context, projectID int64, r *data.AddSuiteRequest) (*data.Suite, error) {
 			addCalled = true
 			return &data.Suite{ID: 100, Name: r.Name}, nil
 		},

@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,7 +17,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
 			return []data.Role{
 				{ID: 1, Name: "Administrator"},
 				{ID: 2, Name: "Tester"},
@@ -35,7 +36,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
 			return []data.Role{}, nil
 		},
 	}
@@ -50,8 +51,8 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
-			return nil, fmt.Errorf("ошибка подключения к API")
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
+			return nil, fmt.Errorf("API connection error")
 		},
 	}
 
@@ -61,12 +62,12 @@ func TestListCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ошибка подключения")
+	assert.Contains(t, err.Error(), "connection error")
 }
 
 func TestListCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetRolesFunc: func() (data.GetRolesResponse, error) {
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
 			return []data.Role{
 				{ID: 1, Name: "Administrator"},
 			}, nil
@@ -123,7 +124,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("save", "", "")
 
-	err := outputResult(cmd, badData)
+	err := output.OutputResult(cmd, badData, "roles")
 	assert.Error(t, err)
 }
 

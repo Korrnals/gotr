@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
 )
@@ -37,14 +37,15 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			httpClient := getClient(cmd)
+			ctx := cmd.Context()
 			if httpClient == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := service.NewTestService(httpClient)
-			runID, err := svc.ParseID(args, 0)
+			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID рана: %w", err)
+				return fmt.Errorf("invalid run ID: %w", err)
 			}
 
 			// Собираем фильтры
@@ -60,9 +61,9 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				filters["assignedto_id"] = strconv.FormatInt(assignedTo, 10)
 			}
 
-			tests, err := svc.GetForRun(runID, filters)
+			tests, err := svc.GetForRun(ctx, runID, filters)
 			if err != nil {
-				return fmt.Errorf("ошибка получения списка тестов: %w", err)
+				return fmt.Errorf("failed to get test list: %w", err)
 			}
 
 			// Проверяем нужно ли сохранить в файл
@@ -70,15 +71,15 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 			if saveFlag {
 				filepath, err := output.Output(cmd, tests, "test", "json")
 				if err != nil {
-					return fmt.Errorf("ошибка сохранения: %w", err)
+					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
-					svc.PrintSuccess(cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)
+					svc.PrintSuccess(ctx, cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)
 				}
 				return nil
 			}
 
-			return svc.Output(cmd, tests)
+			return svc.Output(ctx, cmd, tests)
 		},
 	}
 

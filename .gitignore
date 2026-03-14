@@ -41,7 +41,6 @@ gotr.exe
 !jq-macos-amd64
 !jq-windows-i386.exe.history/
 .history/
-.playwright-mcp/
 
 # System development files (not for git)
 # Contains: API_ANALYSIS.md, API_AUDIT.md, CHECKLIST.md, PLAN.md, AGENTS.md
@@ -63,7 +62,7 @@ workspaceStorage/
 .vscode/
 
 # Copilot runtime directories (should never be committed)
-.github/copilot/**
+.github/**
 
 
 # Compressed binaries (for releases)

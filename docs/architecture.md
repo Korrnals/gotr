@@ -657,7 +657,7 @@ CLI команды не требуют изменений!
 | Унифицированный вывод (compare) | `pkg/reporter/*.go` |
 | Прогресс-бары (sync/get) | `internal/progress/*.go` |
 
-Подробная техническая документация: `.systems/ARCHITECTURE.md`
+Подробная техническая документация: `.github/copilot/instructions/`
 
 ### Параллельная обработка в командах
 

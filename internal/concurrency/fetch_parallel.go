@@ -3,7 +3,9 @@ package concurrency
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -16,6 +18,19 @@ type fetchOptions struct {
 	reporter       ProgressReporter
 	continueOnErr  bool
 	maxConcurrency int
+}
+
+// isCancellationError checks context cancellation across wrapped and string-only forms.
+// Some network stacks return text errors that do not preserve sentinel wrapping.
+func isCancellationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "context canceled") || strings.Contains(msg, "deadline exceeded")
 }
 
 func defaultFetchOptions() *fetchOptions {
@@ -93,6 +108,10 @@ func FetchParallel[T any](
 		g.Go(func() error {
 			items, err := fetchFn(pid)
 			if err != nil {
+				if isCancellationError(err) || ctx.Err() != nil {
+					return err
+				}
+
 				if options.reporter != nil {
 					options.reporter.OnError()
 				}

@@ -57,6 +57,10 @@ func FetchParallelBySuite[T any](
 		g.Go(func() error {
 			items, err := fetchPerSuite(sid)
 			if err != nil {
+				if isCancellationError(err) || ctx.Err() != nil {
+					return err
+				}
+
 				if options.reporter != nil {
 					options.reporter.OnError()
 				}

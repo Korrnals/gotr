@@ -48,6 +48,18 @@ func LogsDirPath() (string, error) {
 	return filepath.Join(base, LogsDir), nil
 }
 
+// EnsureLogsDirPath returns ~/.gotr/logs and creates it when missing.
+func EnsureLogsDirPath() (string, error) {
+	dir, err := LogsDirPath()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return "", fmt.Errorf("cannot create logs directory: %w", err)
+	}
+	return dir, nil
+}
+
 // SelftestDirPath возвращает путь к ~/.testrail/selftest
 func SelftestDirPath() (string, error) {
 	base, err := BaseDir()

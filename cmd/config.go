@@ -6,7 +6,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/models/config"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -141,7 +140,7 @@ var configEditCmd = &cobra.Command{
 		}
 
 		// Запускаем редактор
-		if err := utils.OpenEditor(used); err != nil {
+		if err := ui.OpenEditor(used); err != nil {
 			return fmt.Errorf("failed to open editor: %w", err)
 		}
 

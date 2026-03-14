@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/paths"
 )
 
 // MockClient — алиас для client.MockClient для обратной совместимости
@@ -54,10 +54,13 @@ func getImportTestCases[T any]() []ImportTestCase[T] {
 	}
 }
 
-// logDir — директория для логов в тестах (создается, если не существует)
-// Использует `utils.LogDir()` и создаёт подпапку `test_runs` для изоляции логов тестов.
+// logDir — директория для логов в тестах (создается, если не существует).
+// Использует `paths.EnsureLogsDirPath()` и создаёт подпапку `test_runs` для изоляции логов тестов.
 func logDir() string {
-	base := utils.LogDir()
+	base, err := paths.EnsureLogsDirPath()
+	if err != nil {
+		panic(err)
+	}
 	testPath := filepath.Join(base, "test_runs")
 	if err := os.MkdirAll(testPath, 0755); err != nil {
 		panic(err)

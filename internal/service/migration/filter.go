@@ -2,8 +2,11 @@
 package migration
 
 import (
+	"fmt"
+	"reflect"
+	"strings"
+
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/utils"
 )
 
 // FilterSharedSteps — фильтрация shared steps по использованию in suite и дубликатам в target
@@ -31,14 +34,14 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 	m.logger.Info("Проверка дубликатов в target проекте")
 	targetMap := make(map[string]int64)
 	for _, t := range target {
-		val := utils.GetFieldValue(t, m.compareField)
+		val := fieldValue(t, m.compareField)
 		if val != "" {
 			targetMap[val] = t.ID
 		}
 	}
 
 	for _, step := range candidates {
-		val := utils.GetFieldValue(step, m.compareField)
+		val := fieldValue(step, m.compareField)
 		if existingID, ok := targetMap[val]; ok {
 			m.mapping.AddPair(step.ID, existingID, "existing")
 			m.logger.Infow("Дубликат найден — добавлен в mapping", "title", step.Title, "old_id", step.ID, "existing_id", existingID)
@@ -83,14 +86,14 @@ func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered 
 
 	targetMap := make(map[string]int64)
 	for _, t := range target {
-		val := utils.GetFieldValue(t, m.compareField)
+		val := fieldValue(t, m.compareField)
 		if val != "" {
 			targetMap[val] = t.ID
 		}
 	}
 
 	for _, c := range source {
-		val := utils.GetFieldValue(c, m.compareField)
+		val := fieldValue(c, m.compareField)
 		if _, exists := targetMap[val]; !exists {
 			filtered = append(filtered, c)
 		} else {
@@ -100,6 +103,34 @@ func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered 
 
 	m.logger.Infow("Ready to import новых cases", "count", len(filtered))
 	return filtered, nil
+}
+
+func fieldValue(obj interface{}, field string) string {
+	v := reflect.ValueOf(obj)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if !v.IsValid() {
+		return ""
+	}
+
+	f := v.FieldByName(field)
+	if f.IsValid() {
+		return fmt.Sprintf("%v", f.Interface())
+	}
+
+	t := v.Type()
+	for i := 0; i < t.NumField(); i++ {
+		if strings.EqualFold(t.Field(i).Name, field) {
+			f = v.Field(i)
+			if f.IsValid() {
+				return fmt.Sprintf("%v", f.Interface())
+			}
+		}
+	}
+
+	return ""
 }
 
 // FilterSections — фильтрация sections по дубликатам в target suite (по name)

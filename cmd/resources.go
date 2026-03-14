@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/Korrnals/gotr/pkg/testrailapi"
 
 	"github.com/spf13/cobra"
@@ -345,7 +345,7 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 		if !strings.Contains(fullEndpoint, mainID) {
 			fullEndpoint += "/" + mainID
 		}
-		utils.DebugPrint("{resources} - fullEndpoint after ID: %s", fullEndpoint)
+		debug.DebugPrint("{resources} - fullEndpoint after ID: %s", fullEndpoint)
 	}
 
 	// Query params — только если значение не пустое
@@ -368,7 +368,7 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 	for _, f := range flags {
 		if val, err := cmd.Flags().GetString(f.flagName); err == nil && val != "" {
 			queryParams[f.queryKey] = val
-			utils.DebugPrint("{resources} - Added parameter: %s = %s", f.queryKey, val)
+					debug.DebugPrint("{resources} - Added parameter: %s = %s", f.queryKey, val)
 		}
 	}
 

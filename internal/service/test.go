@@ -8,7 +8,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -93,10 +93,10 @@ func (s *TestService) ParseID(ctx context.Context, args []string, index int) (in
 
 // PrintSuccess выводит сообщение об успехе
 func (s *TestService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	utils.PrintSuccess(cmd, format, args...)
+	output.PrintSuccess(cmd, format, args...)
 }
 
 // Output выводит результат в JSON
 func (s *TestService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return utils.OutputResult(cmd, data)
+	return output.OutputResultWithFlags(cmd, data)
 }

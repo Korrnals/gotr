@@ -10,6 +10,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -225,4 +226,51 @@ func GenerateFilename(resource string, format string) string {
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 
 	return fmt.Sprintf("%s_%s.%s", resource, timestamp, format)
+}
+
+// SaveJSONToFile writes JSON with indentation to a specific file path.
+func SaveJSONToFile(filename string, data interface{}) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("serialization error: %w", err)
+	}
+
+	if err := os.WriteFile(filename, jsonData, 0644); err != nil {
+		return fmt.Errorf("write file: %w", err)
+	}
+
+	return nil
+}
+
+// OutputResultWithFlags prints JSON and supports root-level --output/--quiet flags.
+func OutputResultWithFlags(cmd *cobra.Command, data interface{}) error {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	outputPath, _ := cmd.Flags().GetString("output")
+
+	if outputPath != "" {
+		if err := SaveJSONToFile(outputPath, data); err != nil {
+			return err
+		}
+		if !quiet {
+			ui.Infof(os.Stdout, "Response saved to %s", outputPath)
+		}
+	}
+
+	if !quiet {
+		pretty, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return fmt.Errorf("JSON formatting error: %w", err)
+		}
+		fmt.Println(string(pretty))
+	}
+
+	return nil
+}
+
+// PrintSuccess prints success message unless --quiet is enabled.
+func PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	if !quiet {
+		ui.Successf(os.Stdout, format, args...)
+	}
 }

@@ -11,8 +11,8 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrency"
+	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -295,6 +295,6 @@ func dedupeFailedPages(pages []concurrency.FailedPage) []concurrency.FailedPage 
 		unique = append(unique, page)
 	}
 
-	utils.DebugPrint("[RetryFailedPages] dedupe: %d -> %d", len(pages), len(unique))
+	debug.DebugPrint("[RetryFailedPages] dedupe: %d -> %d", len(pages), len(unique))
 	return unique
 }

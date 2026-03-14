@@ -11,10 +11,10 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrency"
+	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/models/data"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/Korrnals/gotr/pkg/reporter"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -161,7 +161,7 @@ func getCaseKey(item ItemInfo, field string) string {
 func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string) (*CompareResult, casesExecutionStats, error) {
 	execStats := casesExecutionStats{}
 	// Phase 1: Get suites for both projects (quick operation)
-	utils.DebugPrint("[Compare] Phase 1: Fetching suites for projects %d and %d", pid1, pid2)
+	debug.DebugPrint("[Compare] Phase 1: Fetching suites for projects %d and %d", pid1, pid2)
 	ui.Infof(os.Stderr, "Получение структуры проектов %d и %d...", pid1, pid2)
 
 	suitesMap, err := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
@@ -172,17 +172,17 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	suites1 := suitesMap[pid1]
 	suites2 := suitesMap[pid2]
 
-	utils.DebugPrint("[Compare] Found suites: P%d=%d, P%d=%d", pid1, len(suites1), pid2, len(suites2))
+		debug.DebugPrint("[Compare] Found suites: P%d=%d, P%d=%d", pid1, len(suites1), pid2, len(suites2))
 
 	// Phase 2: Parallel loading of both projects with live display
-	utils.DebugPrint("[Compare] Phase 2: Parallel loading of projects %d and %d", pid1, pid2)
+		debug.DebugPrint("[Compare] Phase 2: Parallel loading of projects %d and %d", pid1, pid2)
 
 	runtimeConfig, err := resolveCompareCasesRuntimeConfig(collectCompareCasesFlagOverrides(cmd), viper.GetString("base_url"))
 	if err != nil {
 		return nil, execStats, err
 	}
 
-	utils.DebugPrint("[Compare] RuntimeConfig: parallelSuites=%d, parallelPages=%d, rateLimit=%d, pageRetries=%d, retryAttempts=%d, retryWorkers=%d, retryDelay=%s",
+		debug.DebugPrint("[Compare] RuntimeConfig: parallelSuites=%d, parallelPages=%d, rateLimit=%d, pageRetries=%d, retryAttempts=%d, retryWorkers=%d, retryDelay=%s",
 		runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.RateLimit,
 		runtimeConfig.PageRetries, runtimeConfig.RetryAttempts, runtimeConfig.RetryWorkers, runtimeConfig.RetryDelay)
 
@@ -298,7 +298,7 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	}
 
 	// Phase 3: Analysis
-	utils.DebugPrint("[Compare] Phase 3: Analysis and comparison")
+	debug.DebugPrint("[Compare] Phase 3: Analysis and comparison")
 	ui.Phase(os.Stderr, "Выполняется анализ и сверка данных...")
 
 	start := time.Now()
@@ -306,7 +306,7 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	elapsed := time.Since(start)
 
 	ui.Successf(os.Stderr, "Анализ завершён (%s)", elapsed.Round(time.Millisecond))
-	utils.DebugPrint("[Compare] Analysis complete: P%d=%d unique, P%d=%d unique, common=%d",
+		debug.DebugPrint("[Compare] Analysis complete: P%d=%d unique, P%d=%d unique, common=%d",
 		pid1, len(result.OnlyInFirst), pid2, len(result.OnlyInSecond), len(result.Common))
 
 	return result, execStats, nil
@@ -319,7 +319,7 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 	pds := projectDataStats{Suites: len(suites)}
 
 	if len(suites) == 0 {
-		utils.DebugPrint("[Project %d] No suites, fetching all cases", projectID)
+		debug.DebugPrint("[Project %d] No suites, fetching all cases", projectID)
 		cases, err := cli.GetCases(ctx, projectID, 0, 0)
 		if err != nil {
 			return nil, nil, pds, err
@@ -359,7 +359,7 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 		Reporter:            task, // *ui.Task → concurrency.PaginatedProgressReporter
 	}
 
-	utils.DebugPrint("[Project %d] Starting GetCasesParallelCtx (streaming) with parallelSuites=%d, parallelPages=%d, timeout=%s",
+	debug.DebugPrint("[Project %d] Starting GetCasesParallelCtx (streaming) with parallelSuites=%d, parallelPages=%d, timeout=%s",
 		projectID, parallelSuites, parallelPages, timeout)
 	ctx = context.Background()
 	cases, result, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config)
@@ -371,7 +371,7 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 	// Log execution stats for diagnostics
 	if result != nil {
 		stats := result.Stats
-		utils.DebugPrint("[Project %d] Fetch stats: %d suites completed, %d pages, %d raw cases, expected=%d, partial=%v",
+		debug.DebugPrint("[Project %d] Fetch stats: %d suites completed, %d pages, %d raw cases, expected=%d, partial=%v",
 			projectID, stats.CompletedSuites, stats.TotalPages, stats.TotalCases, stats.ExpectedCases, result.Partial)
 		pds.CasesExpected = int(stats.ExpectedCases)
 		pds.SuitesWithTotal = stats.SuitesWithTotal
@@ -388,10 +388,10 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 				if r.Verified {
 					verified = "✓"
 				}
-				utils.DebugPrint("[Project %d] Suite %d: %d cases [%s]",
+				debug.DebugPrint("[Project %d] Suite %d: %d cases [%s]",
 					projectID, r.SuiteID, r.CasesFetched, verified)
 			}
-			utils.DebugPrint("[Project %d] Suite totals: Σ=%d, empty=%d, count=%d",
+			debug.DebugPrint("[Project %d] Suite totals: Σ=%d, empty=%d, count=%d",
 				projectID, sum, emptySuites, len(stats.SuiteResults))
 			pds.SuiteDetailsSum = sum
 			pds.SuiteDetailsEmpty = emptySuites
@@ -438,7 +438,7 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 	pds.Sections = len(sectionIDs)
 	pds.Elapsed = time.Since(fetchStart)
 
-	utils.DebugPrint("[Project %d] Total: %d raw → %d unique IDs → %d unique titles (empty titles: %d), %d sections",
+	debug.DebugPrint("[Project %d] Total: %d raw → %d unique IDs → %d unique titles (empty titles: %d), %d sections",
 		projectID, len(cases), len(allCases), len(titleSet), emptyTitles, len(sectionIDs))
 
 	if result != nil {

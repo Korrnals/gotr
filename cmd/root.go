@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/models/config"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -29,8 +29,8 @@ var rootCmd = &cobra.Command{
 Поддерживает просмотр доступных эндпоинтов, выполнение запросов и многое другое.`,
 	// Запускается клиент перед каждой субкомандой
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		utils.DebugPrint("{rootCmd} - Running command: %s", cmd.Use)
-		utils.DebugPrint("{rootCmd} - Arguments: %v", args)
+		debug.DebugPrint("{rootCmd} - Running command: %s", cmd.Use)
+		debug.DebugPrint("{rootCmd} - Arguments: %v", args)
 		// Настройка Viper - поддержка env, флагов, конфигов
 		viper.AutomaticEnv() // автоматически подтягивать переменные из окружения
 
@@ -38,7 +38,7 @@ var rootCmd = &cobra.Command{
 		baseURL := viper.GetString("base_url")
 		username := viper.GetString("username")
 		insecure := viper.GetBool("insecure")
-		debug := viper.GetBool("debug")
+		debugMode := viper.GetBool("debug")
 
 		// Поддержка password (Basic Auth) и api_key (API Key Auth).
 		// password имеет приоритет — для обратной совместимости с TESTRAIL_PASSWORD.
@@ -48,9 +48,9 @@ var rootCmd = &cobra.Command{
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - PersistentPreRunE running for command: %s", cmd.Use)
-		utils.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
-		utils.DebugPrint("{rootCmd} - insecure=%v", insecure)
+		debug.DebugPrint("{rootCmd} - PersistentPreRunE running for command: %s", cmd.Use)
+		debug.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
+		debug.DebugPrint("{rootCmd} - insecure=%v", insecure)
 
 		// Проверяем, что конфиг не пустой и не содержит дефолтных placeholder'ов
 		if config.IsDefaultValue(baseURL, config.DefaultBaseURL) ||
@@ -62,7 +62,7 @@ var rootCmd = &cobra.Command{
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - Connecting to %s as %s", baseURL, username)
+		debug.DebugPrint("{rootCmd} - Connecting to %s as %s", baseURL, username)
 
 		// Создаём клиент с опциями
 		opts := []client.ClientOption{}
@@ -70,13 +70,13 @@ var rootCmd = &cobra.Command{
 			opts = append(opts, client.WithSkipTlsVerify(true)) //По-умолчанию, проверка tls - включена
 		}
 
-		httpClient, err := client.NewClient(baseURL, username, apiKey, debug, opts...)
+		httpClient, err := client.NewClient(baseURL, username, apiKey, debugMode, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)
 		}
 
 		// [DEBUG] при переданном флаге `--debug` или `-d`
-		utils.DebugPrint("{rootCmd} - Client created and stored in context")
+		debug.DebugPrint("{rootCmd} - Client created and stored in context")
 
 		// Сохраняем клиент в контекст — будет доступен во всех субкомандах
 		ctx := context.WithValue(cmd.Context(), httpClientKey, httpClient)

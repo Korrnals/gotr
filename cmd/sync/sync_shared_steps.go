@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -79,7 +79,10 @@ var sharedStepsCmd = &cobra.Command{
 		}
 
 		// Директория для логов и инициализация миграции
-		logDir := utils.LogDir()
+		logDir, err := paths.EnsureLogsDirPath()
+		if err != nil {
+			return err
+		}
 		// Шаг 1) Инициализация объекта миграции (логирование, client, параметры)
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, 0, compareField, logDir)
 		if err != nil {

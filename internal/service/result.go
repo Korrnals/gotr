@@ -6,11 +6,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -185,12 +186,12 @@ func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req
 
 // Output выводит результат в JSON и сохраняет в файл
 func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return utils.OutputResult(cmd, data)
+	return output.OutputResultWithFlags(cmd, data)
 }
 
 // PrintSuccess выводит сообщение об успехе
 func (s *ResultService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	utils.PrintSuccess(cmd, format, args...)
+	output.PrintSuccess(cmd, format, args...)
 }
 
 // ParseID парсит ID из аргументов
@@ -198,7 +199,7 @@ func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (
 	if index >= len(args) {
 		return 0, fmt.Errorf("missing ID argument at position %d", index)
 	}
-	return utils.ParseID(args[index])
+	return strconv.ParseInt(args[index], 10, 64)
 }
 
 // validateID проверяет что ID положительный

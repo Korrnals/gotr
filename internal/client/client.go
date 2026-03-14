@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/debug"
 )
 
 const apiPrefix = "index.php?/api/v2/"
@@ -74,7 +74,7 @@ func WithTimeout(duration time.Duration) ClientOption {
 }
 
 // NewClient создает новый клиент HTTP с опциями, которые передаются в качестве аргументов
-func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOption) (*HTTPClient, error) {
+func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...ClientOption) (*HTTPClient, error) {
 	// Парсим, но игнорируем ошибки — будем строить заново
 	parsed, err := url.Parse(strings.TrimSpace(baseURLStr))
 	if err != nil || parsed.Host == "" {
@@ -87,9 +87,9 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 		Host:   parsed.Host, // автоматически обрабатывает порт
 	}
 
-	if debug {
-		utils.DebugPrint("{client} - Original baseURL: %s", baseURLStr)
-		utils.DebugPrint("{client} - Normalized baseURL: %s", cleanURL.String())
+	if debugMode {
+		debug.DebugPrint("{client} - Original baseURL: %s", baseURLStr)
+		debug.DebugPrint("{client} - Normalized baseURL: %s", cleanURL.String())
 	}
 	// Создаем конфигурацию с опциями по умолчанию
 	cfg := defaultOptions
@@ -133,14 +133,14 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
 	// Очищаем endpoint от ведущего слеша
 	cleanEndpoint := strings.TrimPrefix(endpoint, "/")
-	utils.DebugPrint("{DoRequest} - cleanEndpoint: %s", cleanEndpoint)
+	debug.DebugPrint("{DoRequest} - cleanEndpoint: %s", cleanEndpoint)
 
 	// Формируем путь вручную — TestRail требует ? в пути некодированным
 	path := apiPrefix + cleanEndpoint
-	utils.DebugPrint("{DoRequest} - Path: %s", path)
+	debug.DebugPrint("{DoRequest} - Path: %s", path)
 	// Base URL как строка (с trailing слешем, если нужно)
 	base := strings.TrimSuffix(c.baseURL.String(), "/")
-	utils.DebugPrint("{DoRequest} - Base URL: %s", base)
+	debug.DebugPrint("{DoRequest} - Base URL: %s", base)
 	// Полный URL как строка
 	fullURL := base + "/" + path
 
@@ -153,7 +153,7 @@ func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, bod
 		fullURL += "&" + q.Encode() // & вместо ?
 	}
 
-	utils.DebugPrint("{DoRequest} - Constructed URL: %s", fullURL)
+	debug.DebugPrint("{DoRequest} - Constructed URL: %s", fullURL)
 	// Создаем сам запрос
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {

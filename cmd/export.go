@@ -5,9 +5,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -47,8 +47,8 @@ var exportCmd = &cobra.Command{
 			return err
 		}
 
-		utils.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)
-		utils.DebugPrint("{exportCmd} - Query params: %v", queryParams)
+		debug.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)
+		debug.DebugPrint("{exportCmd} - Query params: %v", queryParams)
 
 		// Запрос
 		start := time.Now()

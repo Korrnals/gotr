@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -92,7 +92,10 @@ var casesCmd = &cobra.Command{
 		}
 
 		// Директория для логов
-		logDir := utils.LogDir()
+		logDir, err := paths.EnsureLogsDirPath()
+		if err != nil {
+			return err
+		}
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		logFile := filepath.Join(logDir, fmt.Sprintf("sync_cases_%s.json", timestamp))
 		// Если указан дополнительный файл вывода, используем его

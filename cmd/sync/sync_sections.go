@@ -5,9 +5,9 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
-	"github.com/Korrnals/gotr/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -77,7 +77,10 @@ var sectionsCmd = &cobra.Command{
 			}
 		}
 
-		logDir := utils.LogDir()
+		logDir, err := paths.EnsureLogsDirPath()
+		if err != nil {
+			return err
+		}
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
 			return err

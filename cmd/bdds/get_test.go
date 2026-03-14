@@ -7,13 +7,14 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetBDDFunc: func(caseID int64) (*data.BDD, error) {
+		GetBDDFunc: func(ctx context.Context, caseID int64) (*data.BDD, error) {
 			assert.Equal(t, int64(12345), caseID)
 			return &data.BDD{
 				ID:      1,
@@ -33,7 +34,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetBDDFunc: func(caseID int64) (*data.BDD, error) {
+		GetBDDFunc: func(ctx context.Context, caseID int64) (*data.BDD, error) {
 			return &data.BDD{ID: 1, CaseID: caseID, Content: "Feature: Test"}, nil
 		},
 	}
@@ -48,8 +49,8 @@ func TestGetCmd_WithSave(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetBDDFunc: func(caseID int64) (*data.BDD, error) {
-			return nil, fmt.Errorf("BDD не найден")
+		GetBDDFunc: func(ctx context.Context, caseID int64) (*data.BDD, error) {
+			return nil, fmt.Errorf("BDD not found")
 		},
 	}
 
@@ -107,7 +108,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("save", "", "")
 
-	err := outputResult(cmd, badData)
+	err := output.OutputResult(cmd, badData, "bdds")
 	assert.Error(t, err)
 }
 

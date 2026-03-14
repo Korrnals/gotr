@@ -5,6 +5,7 @@ package attachments
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
@@ -17,7 +18,7 @@ import (
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteAttachmentFunc: func(attachmentID int64) error {
+		DeleteAttachmentFunc: func(ctx context.Context, attachmentID int64) error {
 			assert.Equal(t, int64(12345), attachmentID)
 			return nil
 		},
@@ -44,7 +45,7 @@ func TestDeleteCmd_InvalidAttachmentID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid attachment_id")
+	assert.Contains(t, err.Error(), "attachment_id")
 }
 
 func TestDeleteCmd_ZeroAttachmentID(t *testing.T) {
@@ -56,12 +57,12 @@ func TestDeleteCmd_ZeroAttachmentID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid attachment_id")
+	assert.Contains(t, err.Error(), "attachment_id")
 }
 
 func TestDeleteCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteAttachmentFunc: func(attachmentID int64) error {
+		DeleteAttachmentFunc: func(ctx context.Context, attachmentID int64) error {
 			return fmt.Errorf("attachment not found")
 		},
 	}

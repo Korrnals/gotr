@@ -2,8 +2,9 @@ package cases
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -21,18 +22,19 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr cases get 12345 -o case.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetCase(caseID)
+			ctx := cmd.Context()
+			resp, err := cli.GetCase(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("failed to get case: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 }

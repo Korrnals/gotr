@@ -7,13 +7,14 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetVariablesFunc: func(datasetID int64) (data.GetVariablesResponse, error) {
+		GetVariablesFunc: func(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
 			assert.Equal(t, int64(123), datasetID)
 			return []data.Variable{
 				{ID: 1, Name: "username", DatasetID: 123},
@@ -32,7 +33,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetVariablesFunc: func(datasetID int64) (data.GetVariablesResponse, error) {
+		GetVariablesFunc: func(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
 			return []data.Variable{}, nil
 		},
 	}
@@ -47,8 +48,8 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetVariablesFunc: func(datasetID int64) (data.GetVariablesResponse, error) {
-			return nil, fmt.Errorf("датасет не найден")
+		GetVariablesFunc: func(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
+			return nil, fmt.Errorf("dataset not found")
 		},
 	}
 
@@ -62,7 +63,7 @@ func TestListCmd_ClientError(t *testing.T) {
 
 func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetVariablesFunc: func(datasetID int64) (data.GetVariablesResponse, error) {
+		GetVariablesFunc: func(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
 			return []data.Variable{{ID: 1, Name: "email"}}, nil
 		},
 	}
@@ -131,7 +132,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().String("save", "", "")
 
-	err := outputResult(cmd, badData)
+	err := output.OutputResult(cmd, badData, "variables")
 	assert.Error(t, err)
 }
 

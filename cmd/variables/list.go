@@ -2,8 +2,8 @@ package variables
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,28 +25,23 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr variables list 456 -o vars.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
+			datasetID, err := flags.ValidateRequiredID(args, 0, "dataset_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetVariables(datasetID)
+			ctx := cmd.Context()
+			resp, err := cli.GetVariables(ctx, datasetID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить список переменных: %w", err)
+				return fmt.Errorf("failed to get variables list: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "variables")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "variables", "json")
-	return err
 }

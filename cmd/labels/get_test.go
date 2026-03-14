@@ -4,6 +4,7 @@
 package labels
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -16,7 +17,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			assert.Equal(t, int64(1), labelID)
 			return &data.Label{
 				ID:   1,
@@ -35,7 +36,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return &data.Label{ID: 5, Name: "Critical"}, nil
 		},
 	}
@@ -50,7 +51,7 @@ func TestGetCmd_WithSave(t *testing.T) {
 
 func TestGetCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return &data.Label{ID: 10, Name: "Regression"}, nil
 		},
 	}
@@ -67,7 +68,7 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return nil, fmt.Errorf("label not found")
 		},
 	}
@@ -83,7 +84,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return nil, fmt.Errorf("connection refused")
 		},
 	}

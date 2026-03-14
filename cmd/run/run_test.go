@@ -58,7 +58,7 @@ func TestRegister(t *testing.T) {
 	for _, subCmd := range subCommands {
 		subCmdNames[subCmd.Name()] = true
 	}
-	
+
 	assert.True(t, subCmdNames["get"], "get subcommand should exist")
 	assert.True(t, subCmdNames["list"], "list subcommand should exist")
 	assert.True(t, subCmdNames["create"], "create subcommand should exist")
@@ -100,7 +100,7 @@ func TestSetGetClientForTests_WhenNotNil(t *testing.T) {
 	// Second call should use SetClientForTests path
 	mockFn2 := mockGetClient(&client.MockClient{})
 	SetGetClientForTests(mockFn2)
-	
+
 	// clientAccessor should still exist
 	assert.NotNil(t, clientAccessor)
 }
@@ -111,20 +111,20 @@ func TestGetClientSafe_WhenNil(t *testing.T) {
 
 	cmd := &cobra.Command{}
 	result := getClientSafe(cmd)
-	
+
 	assert.Nil(t, result)
 }
 
 func TestGetClientSafe_WhenNotNil(t *testing.T) {
 	// Reset and initialize clientAccessor
 	clientAccessor = nil
-	
+
 	mockFn := mockGetClient(&client.MockClient{})
 	SetGetClientForTests(mockFn)
-	
+
 	cmd := &cobra.Command{}
 	result := getClientSafe(cmd)
-	
+
 	// Since our mock returns nil, we expect nil
 	assert.Nil(t, result)
 }
@@ -132,22 +132,22 @@ func TestGetClientSafe_WhenNotNil(t *testing.T) {
 func TestGetClientSafe_WithContext(t *testing.T) {
 	// This tests that getClientSafe calls GetClientSafe on clientAccessor
 	clientAccessor = nil
-	
+
 	mock := &client.MockClient{}
-	
+
 	// Create a mock function that returns the mock client
 	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	}
-	
+
 	SetGetClientForTests(mockFn)
-	
+
 	// Create command with mock in context using the same key as testhelper
 	const httpClientKey = "httpClient"
 	testCmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	testCmd.SetContext(ctx)
-	
+
 	// getClientSafe should not panic
 	result := getClientSafe(testCmd)
 	_ = result

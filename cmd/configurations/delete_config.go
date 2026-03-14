@@ -2,9 +2,11 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -25,9 +27,9 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
   gotr configurations delete-config 10 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || configID <= 0 {
-				return fmt.Errorf("некорректный config_id: %s", args[0])
+			configID, err := flags.ValidateRequiredID(args, 0, "config_id")
+			if err != nil {
+				return err
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -37,11 +39,12 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteConfig(configID); err != nil {
-				return fmt.Errorf("не удалось удалить конфигурацию: %w", err)
+			ctx := cmd.Context()
+			if err := cli.DeleteConfig(ctx, configID); err != nil {
+				return fmt.Errorf("failed to delete configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация %d удалена\n", configID)
+			ui.Successf(os.Stdout, "Configuration %d deleted", configID)
 			return nil
 		},
 	}

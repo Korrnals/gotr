@@ -21,7 +21,7 @@ func TestNewRateLimiter_Default(t *testing.T) {
 
 func TestRateLimiter_Wait(t *testing.T) {
 	rl := NewRateLimiter(600) // 10 req/sec
-	
+
 	// Should not panic
 	rl.Wait()
 	rl.Wait()
@@ -57,7 +57,7 @@ func TestRateLimiter_Tokens_Nil(t *testing.T) {
 
 func TestRateLimiter_WaitWithTimeout(t *testing.T) {
 	rl := NewRateLimiter(60)
-	
+
 	// Should succeed within timeout
 	result := rl.WaitWithTimeout(1 * time.Second)
 	assert.True(t, result)
@@ -72,7 +72,7 @@ func TestRateLimiter_WaitWithTimeout_Nil(t *testing.T) {
 func TestReservation(t *testing.T) {
 	rl := NewRateLimiter(60)
 	rsv := rl.Reserve()
-	
+
 	assert.NotNil(t, rsv)
 	assert.True(t, rsv.OK())
 	assert.GreaterOrEqual(t, rsv.Delay(), time.Duration(0))
@@ -81,7 +81,7 @@ func TestReservation(t *testing.T) {
 func TestReservation_NilLimiter(t *testing.T) {
 	var rl *RateLimiter
 	rsv := rl.Reserve()
-	
+
 	assert.NotNil(t, rsv)
 	assert.True(t, rsv.OK())
 	assert.Equal(t, time.Duration(0), rsv.Delay())
@@ -90,7 +90,7 @@ func TestReservation_NilLimiter(t *testing.T) {
 func TestReservation_Cancel(t *testing.T) {
 	rl := NewRateLimiter(60)
 	rsv := rl.Reserve()
-	
+
 	// Should not panic
 	rsv.Cancel()
 }
@@ -110,17 +110,17 @@ func TestAdaptiveRateLimiter_Wait(t *testing.T) {
 
 func TestAdaptiveRateLimiter_RecordResponseTime(t *testing.T) {
 	arl := NewAdaptiveRateLimiter(600)
-	
+
 	// Record some fast response times
 	for i := 0; i < 5; i++ {
 		arl.RecordResponseTime(100 * time.Millisecond)
 	}
-	
+
 	// Record some slow response times
 	for i := 0; i < 5; i++ {
 		arl.RecordResponseTime(3 * time.Second)
 	}
-	
+
 	// Should have adjusted the rate
 	assert.NotZero(t, arl.currentRPS)
 }
@@ -131,7 +131,7 @@ func TestAverageDuration(t *testing.T) {
 		200 * time.Millisecond,
 		300 * time.Millisecond,
 	}
-	
+
 	avg := averageDuration(durations)
 	assert.Equal(t, 200*time.Millisecond, avg)
 }

@@ -1,37 +1,39 @@
 // internal/service/result.go
-// Сервис для работы с результатами тестов
+// Сервис для работы с resultми тестов
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/utils"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
 // resultClientInterface определяет методы клиента, необходимые для ResultService
 type resultClientInterface interface {
-	GetResults(testID int64) (data.GetResultsResponse, error)
-	GetResultsForCase(runID, caseID int64) (data.GetResultsResponse, error)
-	GetResultsForRun(runID int64) (data.GetResultsResponse, error)
-	GetRuns(projectID int64) (data.GetRunsResponse, error)
-	AddResult(testID int64, req *data.AddResultRequest) (*data.Result, error)
-	AddResultForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
-	AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
-	AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
+	GetResults(ctx context.Context, testID int64) (data.GetResultsResponse, error)
+	GetResultsForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error)
+	GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error)
+	GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error)
+	AddResult(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddResultForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
+	AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
-// ResultService предоставляет методы для работы с результатами тестов
+// ResultService предоставляет методы для работы с resultми тестов
 type ResultService struct {
 	client resultClientInterface
 }
 
-// NewResultService создаёт новый сервис для работы с результатами
+// NewResultService создаёт новый сервис для работы с resultми
 func NewResultService(client *client.HTTPClient) *ResultService {
 	return &ResultService{client: client}
 }
@@ -42,42 +44,42 @@ func NewResultServiceFromInterface(cli client.ClientInterface) *ResultService {
 }
 
 // GetForTest получает результаты для test ID
-func (s *ResultService) GetForTest(testID int64) (data.GetResultsResponse, error) {
+func (s *ResultService) GetForTest(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(testID, "test_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetResults(testID)
+	return s.client.GetResults(ctx, testID)
 }
 
 // GetForCase получает результаты для case в run
-func (s *ResultService) GetForCase(runID, caseID int64) (data.GetResultsResponse, error) {
+func (s *ResultService) GetForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
 	}
 	if err := s.validateID(caseID, "case_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetResultsForCase(runID, caseID)
+	return s.client.GetResultsForCase(ctx, runID, caseID)
 }
 
 // GetForRun получает результаты для run ID
-func (s *ResultService) GetForRun(runID int64) (data.GetResultsResponse, error) {
+func (s *ResultService) GetForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetResultsForRun(runID)
+	return s.client.GetResultsForRun(ctx, runID)
 }
 
-// GetRunsForProject получает список runs для проекта (для интерактивного выбора)
-func (s *ResultService) GetRunsForProject(projectID int64) (data.GetRunsResponse, error) {
+// GetRunsForProject получает список runs for project (для интерактивного выбора)
+func (s *ResultService) GetRunsForProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	if err := s.validateID(projectID, "project_id"); err != nil {
 		return nil, err
 	}
-	return s.client.GetRuns(projectID)
+	return s.client.GetRuns(ctx, projectID)
 }
 
 // AddForTest добавляет результат для test с валидацией
-func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*data.Result, error) {
+func (s *ResultService) AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 	log.L().Info("adding result for test",
 		zap.Int64("test_id", testID),
 		zap.Int64("status_id", req.StatusID),
@@ -89,10 +91,10 @@ func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*d
 	}
 	if err := s.validateAddResultRequest(req); err != nil {
 		log.L().Error("validation failed", zap.Error(err))
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 
-	result, err := s.client.AddResult(testID, req)
+	result, err := s.client.AddResult(ctx, testID, req)
 	if err != nil {
 		log.L().Error("failed to add result", zap.Int64("test_id", testID), zap.Error(err))
 		return nil, err
@@ -107,7 +109,7 @@ func (s *ResultService) AddForTest(testID int64, req *data.AddResultRequest) (*d
 }
 
 // AddForCase добавляет результат для case в run с валидацией
-func (s *ResultService) AddForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 	log.L().Info("adding result for case",
 		zap.Int64("run_id", runID),
 		zap.Int64("case_id", caseID),
@@ -124,10 +126,10 @@ func (s *ResultService) AddForCase(runID, caseID int64, req *data.AddResultReque
 	}
 	if err := s.validateAddResultRequest(req); err != nil {
 		log.L().Error("validation failed", zap.Error(err))
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 
-	result, err := s.client.AddResultForCase(runID, caseID, req)
+	result, err := s.client.AddResultForCase(ctx, runID, caseID, req)
 	if err != nil {
 		log.L().Error("failed to add result", zap.Int64("run_id", runID), zap.Int64("case_id", caseID), zap.Error(err))
 		return nil, err
@@ -142,8 +144,8 @@ func (s *ResultService) AddForCase(runID, caseID int64, req *data.AddResultReque
 	return result, nil
 }
 
-// AddResults добавляет несколько результатов (bulk) с валидацией
-func (s *ResultService) AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+// AddResults добавляет несколько results (bulk) с валидацией
+func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 	log.L().Info("adding bulk results",
 		zap.Int64("run_id", runID),
 		zap.Int("count", len(req.Results)),
@@ -155,10 +157,10 @@ func (s *ResultService) AddResults(runID int64, req *data.AddResultsRequest) (da
 	}
 	if err := s.validateAddResultsRequest(req); err != nil {
 		log.L().Error("validation failed", zap.Error(err))
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
 
-	results, err := s.client.AddResults(runID, req)
+	results, err := s.client.AddResults(ctx, runID, req)
 	if err != nil {
 		log.L().Error("failed to add bulk results", zap.Int64("run_id", runID), zap.Error(err))
 		return nil, err
@@ -171,44 +173,44 @@ func (s *ResultService) AddResults(runID int64, req *data.AddResultsRequest) (da
 	return results, nil
 }
 
-// AddResultsForCases добавляет результаты для кейсов (bulk) с валидацией
-func (s *ResultService) AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+// AddResultsForCases добавляет результаты для cases (bulk) с валидацией
+func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
 	}
 	if err := s.validateAddResultsForCasesRequest(req); err != nil {
-		return nil, fmt.Errorf("валидация запроса: %w", err)
+		return nil, fmt.Errorf("request validation: %w", err)
 	}
-	return s.client.AddResultsForCases(runID, req)
+	return s.client.AddResultsForCases(ctx, runID, req)
 }
 
 // Output выводит результат в JSON и сохраняет в файл
-func (s *ResultService) Output(cmd *cobra.Command, data interface{}) error {
-	return utils.OutputResult(cmd, data)
+func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
+	return output.OutputResultWithFlags(cmd, data)
 }
 
 // PrintSuccess выводит сообщение об успехе
-func (s *ResultService) PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
-	utils.PrintSuccess(cmd, format, args...)
+func (s *ResultService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
+	output.PrintSuccess(cmd, format, args...)
 }
 
 // ParseID парсит ID из аргументов
-func (s *ResultService) ParseID(args []string, index int) (int64, error) {
+func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
-		return 0, fmt.Errorf("отсутствует аргумент с ID на позиции %d", index)
+		return 0, fmt.Errorf("missing ID argument at position %d", index)
 	}
-	return utils.ParseID(args[index])
+	return strconv.ParseInt(args[index], 10, 64)
 }
 
 // validateID проверяет что ID положительный
 func (s *ResultService) validateID(id int64, fieldName string) error {
 	if id <= 0 {
-		return fmt.Errorf("%s должен быть положительным числом, получено: %d", fieldName, id)
+		return fmt.Errorf("%s must be a positive number, got: %d", fieldName, id)
 	}
 	return nil
 }
 
-// validateAddResultRequest валидирует запрос добавления результата
+// validateAddResultRequest валидирует запрос добавления result
 func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) error {
 	if req == nil {
 		return errors.New("запрос не может быть nil")
@@ -222,33 +224,33 @@ func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) err
 // validateAddResultsRequest валидирует bulk запрос
 func (s *ResultService) validateAddResultsRequest(req *data.AddResultsRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if len(req.Results) == 0 {
-		return errors.New("список результатов не может быть пустым")
+		return errors.New("results list cannot be empty")
 	}
 	for i, r := range req.Results {
 		if r.StatusID <= 0 {
-			return fmt.Errorf("result[%d]: status_id должен быть положительным", i)
+			return fmt.Errorf("result[%d]: status_id must be positive", i)
 		}
 	}
 	return nil
 }
 
-// validateAddResultsForCasesRequest валидирует bulk запрос для кейсов
+// validateAddResultsForCasesRequest validates bulk request for cases
 func (s *ResultService) validateAddResultsForCasesRequest(req *data.AddResultsForCasesRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if len(req.Results) == 0 {
-		return errors.New("список результатов не может быть пустым")
+		return errors.New("results list cannot be empty")
 	}
 	for i, r := range req.Results {
 		if r.CaseID <= 0 {
-			return fmt.Errorf("result[%d]: case_id должен быть положительным", i)
+			return fmt.Errorf("result[%d]: case_id must be positive", i)
 		}
 		if r.StatusID <= 0 {
-			return fmt.Errorf("result[%d]: status_id должен быть положительным", i)
+			return fmt.Errorf("result[%d]: status_id must be positive", i)
 		}
 	}
 	return nil

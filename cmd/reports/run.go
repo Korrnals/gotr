@@ -2,8 +2,8 @@ package reports
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
@@ -26,16 +26,17 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
   gotr reports run 42 -o report_result.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			templateID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || templateID <= 0 {
-				return fmt.Errorf("invalid template_id: %s", args[0])
+			templateID, err := flags.ValidateRequiredID(args, 0, "template_id")
+			if err != nil {
+				return err
 			}
 
 			pm := progress.NewManager()
 			progress.Describe(pm.NewSpinner(""), "Запуск генерации отчёта...")
 
 			cli := getClient(cmd)
-			resp, err := cli.RunReport(templateID)
+			ctx := cmd.Context()
+			resp, err := cli.RunReport(ctx, templateID)
 			if err != nil {
 				return fmt.Errorf("failed to run report: %w", err)
 			}

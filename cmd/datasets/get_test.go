@@ -1,6 +1,7 @@
 package datasets
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetFunc: func(datasetID int64) (*data.Dataset, error) {
+		GetDatasetFunc: func(ctx context.Context, datasetID int64) (*data.Dataset, error) {
 			assert.Equal(t, int64(123), datasetID)
 			return &data.Dataset{ID: 123, Name: "Test Data", ProjectID: 1}, nil
 		},
@@ -29,7 +30,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetFunc: func(datasetID int64) (*data.Dataset, error) {
+		GetDatasetFunc: func(ctx context.Context, datasetID int64) (*data.Dataset, error) {
 			return &data.Dataset{ID: 456, Name: "My Dataset"}, nil
 		},
 	}
@@ -44,8 +45,8 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetDatasetFunc: func(datasetID int64) (*data.Dataset, error) {
-			return nil, fmt.Errorf("датасет не найден")
+		GetDatasetFunc: func(ctx context.Context, datasetID int64) (*data.Dataset, error) {
+			return nil, fmt.Errorf("dataset not found")
 		},
 	}
 
@@ -55,7 +56,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "датасет не найден")
+	assert.Contains(t, err.Error(), "dataset not found")
 }
 
 // ==================== Тесты валидации ====================
@@ -68,7 +69,7 @@ func TestGetCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный dataset_id")
+	assert.Contains(t, err.Error(), "invalid dataset_id")
 }
 
 func TestGetCmd_ZeroID(t *testing.T) {
@@ -79,7 +80,7 @@ func TestGetCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный dataset_id")
+	assert.Contains(t, err.Error(), "invalid dataset_id")
 }
 
 func TestGetCmd_NoArgs(t *testing.T) {

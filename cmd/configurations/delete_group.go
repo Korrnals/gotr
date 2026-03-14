@@ -2,9 +2,11 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -26,9 +28,9 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
   gotr configurations delete-group 5 --dry-run`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("некорректный group_id: %s", args[0])
+			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
+			if err != nil {
+				return err
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -38,11 +40,12 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteConfigGroup(groupID); err != nil {
-				return fmt.Errorf("не удалось удалить группу: %w", err)
+			ctx := cmd.Context()
+			if err := cli.DeleteConfigGroup(ctx, groupID); err != nil {
+				return fmt.Errorf("failed to delete group: %w", err)
 			}
 
-			fmt.Printf("✅ Группа %d удалена\n", groupID)
+			ui.Successf(os.Stdout, "Group %d deleted", groupID)
 			return nil
 		},
 	}

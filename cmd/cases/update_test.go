@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -36,7 +37,7 @@ func TestUpdateCmd_DryRun_NoFlags(t *testing.T) {
 
 func TestUpdateCmd_Success_Title(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCaseFunc: func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			assert.Equal(t, "New Title", *req.Title)
 			return &data.Case{ID: 12345, Title: "New Title"}, nil
@@ -53,7 +54,7 @@ func TestUpdateCmd_Success_Title(t *testing.T) {
 
 func TestUpdateCmd_Success_Priority(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCaseFunc: func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			assert.Equal(t, int64(2), *req.PriorityID)
 			return &data.Case{ID: 12345, Title: "Test", PriorityID: 2}, nil
@@ -70,7 +71,7 @@ func TestUpdateCmd_Success_Priority(t *testing.T) {
 
 func TestUpdateCmd_Success_Type(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCaseFunc: func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			assert.Equal(t, int64(3), *req.TypeID)
 			return &data.Case{ID: 12345, Title: "Test", TypeID: 3}, nil
@@ -87,7 +88,7 @@ func TestUpdateCmd_Success_Type(t *testing.T) {
 
 func TestUpdateCmd_Success_Refs(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCaseFunc: func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			assert.Equal(t, "JIRA-123, JIRA-456", *req.Refs)
 			return &data.Case{ID: 12345, Title: "Test", Refs: "JIRA-123, JIRA-456"}, nil
@@ -104,7 +105,7 @@ func TestUpdateCmd_Success_Refs(t *testing.T) {
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateCaseFunc: func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			return nil, fmt.Errorf("case not found")
 		},
 	}
@@ -149,7 +150,7 @@ func TestUpdateCmd_WithJSONFile(t *testing.T) {
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
-		UpdateCaseFunc: func(caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			assert.Equal(t, "Updated via JSON", *req.Title)
 			assert.Equal(t, int64(2), *req.PriorityID)

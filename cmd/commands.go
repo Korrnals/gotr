@@ -35,9 +35,7 @@ func init() {
 	registerAddCmd()
 	registerDeleteCmd()
 	registerUpdateCmd()
-	registerCopyCmd()
 	registerExportCmd()
-	registerImportCmd()
 	registerCompletionCmd()
 
 	// Регистрация команд из подпакетов (передаем GetClient)
@@ -74,6 +72,9 @@ func initGlobalFlags() {
 
 	// Quiet mode (тихий режим для CI/CD)
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (только результат, без прогресса)")
+
+	// Формат вывода (глобальный)
+	rootCmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, csv, md, html")
 
 	// Биндим к Viper
 	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
@@ -150,14 +151,6 @@ func registerUpdateCmd() {
 }
 
 // ============================================
-// Copy
-// ============================================
-
-func registerCopyCmd() {
-	rootCmd.AddCommand(copyCmd)
-}
-
-// ============================================
 // Export
 // ============================================
 
@@ -169,7 +162,7 @@ func registerExportCmd() {
 	exportCmd.Flags().StringP("suite-id", "s", "", "ID тест-сюиты (для get_cases)")
 	exportCmd.Flags().String("section-id", "", "ID секции (для get_cases)")
 	exportCmd.Flags().String("milestone-id", "", "ID milestone (для get_runs)")
-	
+
 	// Флаг --save для сохранения в ~/.gotr/exports/
 	exportCmd.Flags().Bool("save", false, "Сохранить ответ в ~/.gotr/exports/export/")
 
@@ -184,14 +177,6 @@ func registerExportCmd() {
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	}
-}
-
-// ============================================
-// Import
-// ============================================
-
-func registerImportCmd() {
-	rootCmd.AddCommand(importCmd)
 }
 
 // ============================================

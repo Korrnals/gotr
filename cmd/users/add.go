@@ -6,22 +6,14 @@ package users
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
 // newAddCmd создаёт команду 'users add'
 // Эндпоинт: POST /add_user
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
-	var (
-		name     string
-		email    string
-		roleID   int64
-		isAdmin  bool
-		password string
-	)
-
 	cmd := &cobra.Command{
 		Use:   "add",
 		Short: "Создать нового пользователя",
@@ -35,6 +27,13 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr users add --name "Admin User" --email "admin@example.com" --admin --role 1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			name, _ := cmd.Flags().GetString("name")
+			email, _ := cmd.Flags().GetString("email")
+			roleID, _ := cmd.Flags().GetInt64("role")
+			isAdmin, _ := cmd.Flags().GetBool("admin")
+			password, _ := cmd.Flags().GetString("password")
 
 			req := data.AddUserRequest{
 				Name:     name,
@@ -46,7 +45,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				req.IsAdmin = 1
 			}
 
-			user, err := cli.AddUser(req)
+			user, err := cli.AddUser(ctx, req)
 			if err != nil {
 				return fmt.Errorf("failed to add user: %w", err)
 			}
@@ -56,11 +55,11 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&name, "name", "", "Имя пользователя (обязательно)")
-	cmd.Flags().StringVar(&email, "email", "", "Email пользователя (обязательно)")
-	cmd.Flags().Int64Var(&roleID, "role", 0, "ID роли пользователя")
-	cmd.Flags().BoolVar(&isAdmin, "admin", false, "Сделать пользователя администратором")
-	cmd.Flags().StringVar(&password, "password", "", "Пароль пользователя")
+	cmd.Flags().String("name", "", "Имя пользователя (обязательно)")
+	cmd.Flags().String("email", "", "Email пользователя (обязательно)")
+	cmd.Flags().Int64("role", 0, "ID роли пользователя")
+	cmd.Flags().Bool("admin", false, "Сделать пользователя администратором")
+	cmd.Flags().String("password", "", "Пароль пользователя")
 	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("name")

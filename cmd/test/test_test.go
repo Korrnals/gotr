@@ -127,18 +127,18 @@ func TestCmd_Properties(t *testing.T) {
 	assert.NotEmpty(t, Cmd.Long)
 }
 
-// TestGetClientInterface_WithMockClientInContext проверяет получение mock клиента из контекста
+// TestGetClientInterface_WithMockClientInContext проверяет получение mock clientа из контекста
 func TestGetClientInterface_WithMockClientInContext(t *testing.T) {
 	mock := &client.MockClient{}
-	
+
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), mockContextKey{}, mock)
 	cmd.SetContext(ctx)
-	
+
 	// Прямо тестируем получение значения из контекста
 	val := cmd.Context().Value(mockContextKey{})
 	assert.NotNil(t, val)
-	
+
 	// Проверяем что это MockClient
 	if c, ok := val.(*client.MockClient); ok {
 		assert.Equal(t, mock, c)

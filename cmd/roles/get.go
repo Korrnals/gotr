@@ -2,8 +2,8 @@ package roles
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -25,18 +25,19 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
   gotr roles get 3 -o role.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			roleID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || roleID <= 0 {
-				return fmt.Errorf("некорректный role_id: %s", args[0])
+			roleID, err := flags.ValidateRequiredID(args, 0, "role_id")
+			if err != nil {
+				return err
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetRole(roleID)
+			ctx := cmd.Context()
+			resp, err := cli.GetRole(ctx, roleID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить роль: %w", err)
+				return fmt.Errorf("failed to get role: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "roles")
 		},
 	}
 

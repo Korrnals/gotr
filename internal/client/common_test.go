@@ -1,5 +1,5 @@
 // internal/client/common_test.go
-// Общая инфраструктура для тестов HTTP клиента
+// Общая инфраструктура для тестов HTTP clientа
 package client
 
 import (
@@ -37,7 +37,7 @@ func newMockServerWithRecorder(responseCode int, responseBody interface{}) *mock
 		// Читаем тело запроса
 		body := make([]byte, r.ContentLength)
 		r.Body.Read(body)
-		
+
 		// Сохраняем запрос
 		ms.requests = append(ms.requests, mockRequest{
 			Method:  r.Method,
@@ -45,7 +45,7 @@ func newMockServerWithRecorder(responseCode int, responseBody interface{}) *mock
 			Headers: r.Header,
 			Body:    body,
 		})
-		
+
 		// Отправляем ответ
 		w.WriteHeader(responseCode)
 		if responseBody != nil {
@@ -55,7 +55,7 @@ func newMockServerWithRecorder(responseCode int, responseBody interface{}) *mock
 	return ms
 }
 
-// mockClient создаёт клиент с тестовым сервером
+// mockClient создаёт client с тестовым сервером
 func mockClient(t *testing.T, handler http.HandlerFunc) (*HTTPClient, *mockServer) {
 	server := newMockServer(handler)
 	client, err := NewClient(server.URL, "test@test.com", "testpass", false)

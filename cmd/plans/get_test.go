@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetPlanFunc: func(planID int64) (*data.Plan, error) {
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
 			assert.Equal(t, int64(12345), planID)
 			return &data.Plan{ID: 12345, Name: "Test Plan", ProjectID: 1}, nil
 		},
@@ -29,7 +30,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetPlanFunc: func(planID int64) (*data.Plan, error) {
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
 			return nil, fmt.Errorf("plan not found")
 		},
 	}

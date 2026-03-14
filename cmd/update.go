@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -74,13 +75,13 @@ func init() {
 
 func runUpdate(cmd *cobra.Command, args []string) error {
 	if len(args) < 2 {
-		return fmt.Errorf("необходимо указать endpoint и id: gotr update <endpoint> <id>")
+		return fmt.Errorf("endpoint and id required: gotr update <endpoint> <id>")
 	}
 
 	endpoint := args[0]
-	id, err := strconv.ParseInt(args[1], 10, 64)
+	id, err := flags.ValidateRequiredID(args, 1, "ID")
 	if err != nil {
-		return fmt.Errorf("неверный ID: %v", err)
+		return err
 	}
 
 	// Получаем клиент
@@ -92,7 +93,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if jsonFile != "" {
 		jsonData, err = os.ReadFile(jsonFile)
 		if err != nil {
-			return fmt.Errorf("ошибка чтения JSON-файла: %v", err)
+			return fmt.Errorf("JSON file read error: %w", err)
 		}
 	}
 
@@ -126,7 +127,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	case "labels":
 		return updateLabels(cli, cmd, id)
 	default:
-		return fmt.Errorf("неподдерживаемый endpoint: %s", endpoint)
+		return fmt.Errorf("unsupported endpoint: %s", endpoint)
 	}
 }
 
@@ -140,30 +141,29 @@ func runUpdateInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoi
 	case "case":
 		return updateCaseInteractive(cli, cmd, id)
 	default:
-		return fmt.Errorf("интерактивный режим не поддерживается для endpoint: %s", endpoint)
+		return fmt.Errorf("interactive mode not supported for endpoint: %s", endpoint)
 	}
 }
 
 func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	ctx := cmd.Context()
 	answers, err := interactive.AskProject(true)
 	if err != nil {
-		return fmt.Errorf("ошибка ввода: %v", err)
+		return fmt.Errorf("input error: %w", err)
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Update Project")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Project ID:      %d\n", id)
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Announcement:    %s\n", answers.Announcement)
-	fmt.Printf("Show announce:   %v\n", answers.ShowAnnouncement)
-	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Update Project", []ui.PreviewField{
+		{Label: "Project ID", Value: id},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Announcement", Value: answers.Announcement},
+		{Label: "Show announce", Value: answers.ShowAnnouncement},
+		{Label: "Is completed", Value: answers.IsCompleted},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -174,34 +174,33 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		IsCompleted:      answers.IsCompleted,
 	}
 
-	project, err := cli.UpdateProject(id, req)
+	project, err := cli.UpdateProject(ctx, id, req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления проекта: %v", err)
+		return fmt.Errorf("failed to update project: %w", err)
 	}
 
-	fmt.Printf("\n✅ Проект обновлён (ID: %d)\n", project.ID)
+	ui.Successf(os.Stdout, "Project updated (ID: %d)", project.ID)
 	return outputUpdateResult(cmd, project)
 }
 
 func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	ctx := cmd.Context()
 	answers, err := interactive.AskSuite(true)
 	if err != nil {
-		return fmt.Errorf("ошибка ввода: %v", err)
+		return fmt.Errorf("input error: %w", err)
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Update Suite")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Suite ID:        %d\n", id)
-	fmt.Printf("Название:        %s\n", answers.Name)
-	fmt.Printf("Описание:        %s\n", answers.Description)
-	fmt.Printf("Is completed:    %v\n", answers.IsCompleted)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Update Suite", []ui.PreviewField{
+		{Label: "Suite ID", Value: id},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Description", Value: answers.Description},
+		{Label: "Is completed", Value: answers.IsCompleted},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -211,34 +210,33 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 		IsCompleted: answers.IsCompleted,
 	}
 
-	suite, err := cli.UpdateSuite(id, req)
+	suite, err := cli.UpdateSuite(ctx, id, req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления сьюта: %v", err)
+		return fmt.Errorf("failed to update suite: %w", err)
 	}
 
-	fmt.Printf("\n✅ Сьют обновлён (ID: %d)\n", suite.ID)
+	ui.Successf(os.Stdout, "Suite updated (ID: %d)", suite.ID)
 	return outputUpdateResult(cmd, suite)
 }
 
 func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	ctx := cmd.Context()
 	answers, err := interactive.AskCase(true)
 	if err != nil {
-		return fmt.Errorf("ошибка ввода: %v", err)
+		return fmt.Errorf("input error: %w", err)
 	}
 
 	// Предпросмотр
-	fmt.Println("\n────────────────────────────────────────────────────────────")
-	fmt.Println("📋 ПРЕДПРОСМОТР: Update Case")
-	fmt.Println("────────────────────────────────────────────────────────────")
-	fmt.Printf("Case ID:         %d\n", id)
-	fmt.Printf("Заголовок:       %s\n", answers.Title)
-	fmt.Printf("Type ID:         %d\n", answers.TypeID)
-	fmt.Printf("Priority ID:     %d\n", answers.PriorityID)
-	fmt.Println("────────────────────────────────────────────────────────────")
+	ui.Preview(os.Stdout, "Update Case", []ui.PreviewField{
+		{Label: "Case ID", Value: id},
+		{Label: "Title", Value: answers.Title},
+		{Label: "Type ID", Value: answers.TypeID},
+		{Label: "Priority ID", Value: answers.PriorityID},
+	})
 
 	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
 	if err != nil || !confirmed {
-		fmt.Println("\n❌ Отменено")
+		ui.Cancelled(os.Stdout)
 		return nil
 	}
 
@@ -249,12 +247,12 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		Refs:       &answers.Refs,
 	}
 
-	caseResp, err := cli.UpdateCase(id, req)
+	caseResp, err := cli.UpdateCase(ctx, id, req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления кейса: %v", err)
+		return fmt.Errorf("failed to update case: %w", err)
 	}
 
-	fmt.Printf("\n✅ Кейс обновлён (ID: %d)\n", caseResp.ID)
+	ui.Successf(os.Stdout, "Case updated (ID: %d)", caseResp.ID)
 	return outputUpdateResult(cmd, caseResp)
 }
 
@@ -418,18 +416,19 @@ func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint stri
 		dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %s", id, labels))
 
 	default:
-		return fmt.Errorf("неподдерживаемый endpoint для dry-run: %s", endpoint)
+		return fmt.Errorf("unsupported endpoint for dry-run: %s", endpoint)
 	}
 
 	return nil
 }
 
 func updateProject(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.UpdateProjectRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
@@ -444,20 +443,21 @@ func updateProject(cli client.ClientInterface, cmd *cobra.Command, id int64, jso
 		req.IsCompleted, _ = cmd.Flags().GetBool("is-completed")
 	}
 
-	project, err := cli.UpdateProject(id, &req)
+	project, err := cli.UpdateProject(ctx, id, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления проекта: %v", err)
+		return fmt.Errorf("failed to update project: %w", err)
 	}
 
 	return outputUpdateResult(cmd, project)
 }
 
 func updateSuite(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.UpdateSuiteRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
@@ -471,20 +471,21 @@ func updateSuite(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonD
 		req.IsCompleted, _ = cmd.Flags().GetBool("is-completed")
 	}
 
-	suite, err := cli.UpdateSuite(id, &req)
+	suite, err := cli.UpdateSuite(ctx, id, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления сьюта: %v", err)
+		return fmt.Errorf("failed to update suite: %w", err)
 	}
 
 	return outputUpdateResult(cmd, suite)
 }
 
 func updateSection(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.UpdateSectionRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
@@ -497,20 +498,21 @@ func updateSection(cli client.ClientInterface, cmd *cobra.Command, id int64, jso
 		}
 	}
 
-	section, err := cli.UpdateSection(id, &req)
+	section, err := cli.UpdateSection(ctx, id, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления секции: %v", err)
+		return fmt.Errorf("failed to update section: %w", err)
 	}
 
 	return outputUpdateResult(cmd, section)
 }
 
 func updateCase(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.UpdateCaseRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		title, _ := cmd.Flags().GetString("title")
@@ -531,20 +533,21 @@ func updateCase(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonDa
 		}
 	}
 
-	caseResp, err := cli.UpdateCase(id, &req)
+	caseResp, err := cli.UpdateCase(ctx, id, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления кейса: %v", err)
+		return fmt.Errorf("failed to update case: %w", err)
 	}
 
 	return outputUpdateResult(cmd, caseResp)
 }
 
 func updateRun(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.UpdateRunRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		name, _ := cmd.Flags().GetString("name")
@@ -565,27 +568,28 @@ func updateRun(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonDat
 		}
 		includeAll, _ := cmd.Flags().GetBool("include-all")
 		req.IncludeAll = &includeAll
-		
+
 		caseIDsStr, _ := cmd.Flags().GetString("case-ids")
 		if caseIDsStr != "" {
 			req.CaseIDs = parseCaseIDs(caseIDsStr)
 		}
 	}
 
-	run, err := cli.UpdateRun(id, &req)
+	run, err := cli.UpdateRun(ctx, id, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления рана: %v", err)
+		return fmt.Errorf("failed to update run: %w", err)
 	}
 
 	return outputUpdateResult(cmd, run)
 }
 
 func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
+	ctx := cmd.Context()
 	var req data.UpdateSharedStepRequest
-	
+
 	if len(jsonData) > 0 {
 		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("ошибка парсинга JSON: %v", err)
+			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
 		title, _ := cmd.Flags().GetString("title")
@@ -594,9 +598,9 @@ func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, 
 		}
 	}
 
-	step, err := cli.UpdateSharedStep(id, &req)
+	step, err := cli.UpdateSharedStep(ctx, id, &req)
 	if err != nil {
-		return fmt.Errorf("ошибка обновления shared step: %v", err)
+		return fmt.Errorf("failed to update shared step: %w", err)
 	}
 
 	return outputUpdateResult(cmd, step)
@@ -607,20 +611,20 @@ func outputUpdateResult(cmd *cobra.Command, data interface{}) error {
 	return err
 }
 
-
 // updateLabels обновляет метки теста (DEPRECATED: use 'gotr labels update' instead)
 func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) error {
+	ctx := cmd.Context()
 	fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr update labels' is deprecated. Use 'gotr labels update test' instead.")
 
 	labelsFlag, _ := cmd.Flags().GetString("labels")
 	if labelsFlag == "" {
-		return fmt.Errorf("необходимо указать --labels")
+		return fmt.Errorf("--labels is required")
 	}
 
 	// Парсим метки
 	labels := parseLabels(labelsFlag)
 	if len(labels) == 0 {
-		return fmt.Errorf("не указаны метки")
+		return fmt.Errorf("labels not specified")
 	}
 
 	// Проверяем dry-run
@@ -631,11 +635,11 @@ func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) 
 		return nil
 	}
 
-	if err := cli.UpdateTestLabels(testID, labels); err != nil {
-		return fmt.Errorf("ошибка обновления меток: %v", err)
+	if err := cli.UpdateTestLabels(ctx, testID, labels); err != nil {
+		return fmt.Errorf("failed to update labels: %w", err)
 	}
 
-	fmt.Printf("✅ Метки обновлены для теста %d: %v\n", testID, labels)
+	ui.Successf(os.Stdout, "Labels updated for test %d: %v", testID, labels)
 	return nil
 }
 

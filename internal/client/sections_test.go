@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -33,12 +34,12 @@ func TestAddSection(t *testing.T) {
 			},
 			mockStatus: http.StatusOK,
 			mockResponse: data.Section{
-				ID:          500,
-				SuiteID:     100,
-				Name:        "Login Tests",
-				Description: "All login-related test cases",
+				ID:           500,
+				SuiteID:      100,
+				Name:         "Login Tests",
+				Description:  "All login-related test cases",
 				DisplayOrder: 1,
-				Depth:       0,
+				Depth:        0,
 			},
 			wantErr: false,
 		},
@@ -117,7 +118,8 @@ func TestAddSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			section, err := client.AddSection(tt.projectID, tt.request)
+			ctx := context.Background()
+			section, err := client.AddSection(ctx, tt.projectID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -172,7 +174,7 @@ func TestUpdateSection(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				expectedPath := fmt.Sprintf("/index.php?/api/v2/update_section/%d", tt.sectionID)
-					assert.Equal(t, expectedPath, r.URL.String())
+				assert.Equal(t, expectedPath, r.URL.String())
 
 				var req data.UpdateSectionRequest
 				json.NewDecoder(r.Body).Decode(&req)
@@ -186,7 +188,8 @@ func TestUpdateSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			section, err := client.UpdateSection(tt.sectionID, tt.request)
+			ctx := context.Background()
+			section, err := client.UpdateSection(ctx, tt.sectionID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -238,7 +241,8 @@ func TestDeleteSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.DeleteSection(tt.sectionID)
+			ctx := context.Background()
+			err := client.DeleteSection(ctx, tt.sectionID)
 
 			if tt.wantErr {
 				assert.Error(t, err)

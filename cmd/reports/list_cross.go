@@ -5,9 +5,10 @@ package reports
 
 import (
 	"fmt"
-	"text/tabwriter"
 
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +26,8 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
   gotr reports list-cross-project -o json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
-			reports, err := client.GetCrossProjectReports()
+			ctx := cmd.Context()
+			reports, err := client.GetCrossProjectReports(ctx)
 			if err != nil {
 				return fmt.Errorf("failed to list cross-project reports: %w", err)
 			}
@@ -41,12 +43,13 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "ID\tNAME\tDESCRIPTION")
+			t := ui.NewTable(cmd)
+			t.AppendHeader(table.Row{"ID", "NAME", "DESCRIPTION"})
 			for _, r := range reports {
-				fmt.Fprintf(w, "%d\t%s\t%s\n", r.ID, r.Name, r.Description)
+				t.AppendRow(table.Row{r.ID, r.Name, r.Description})
 			}
-			return w.Flush()
+			ui.Table(cmd, t)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)

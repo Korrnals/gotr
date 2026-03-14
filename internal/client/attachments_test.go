@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -38,7 +39,7 @@ func TestAddAttachmentToCase(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			mockClient := &MockClient{}
 			if tc.mockResponse != nil {
-				mockClient.AddAttachmentToCaseFunc = func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+				mockClient.AddAttachmentToCaseFunc = func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 					if tc.name == "FileNotFound" {
 						return nil, nil // или ошибка, в зависимости от реализации
 					}
@@ -46,7 +47,8 @@ func TestAddAttachmentToCase(t *testing.T) {
 				}
 			}
 
-			result, err := mockClient.AddAttachmentToCase(tc.caseID, tc.filePath)
+			ctx := context.Background()
+			result, err := mockClient.AddAttachmentToCase(ctx, tc.caseID, tc.filePath)
 
 			if tc.wantErr {
 				// Для теста FileNotFound просто проверяем что вызов произошел
@@ -65,7 +67,7 @@ func TestAddAttachmentToCase(t *testing.T) {
 
 func TestAddAttachmentToPlan(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.AddAttachmentToPlanFunc = func(planID int64, filePath string) (*data.AttachmentResponse, error) {
+	mockClient.AddAttachmentToPlanFunc = func(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error) {
 		return &data.AttachmentResponse{
 			AttachmentID: 2,
 			URL:          "https://example.com/attachment/2",
@@ -74,7 +76,8 @@ func TestAddAttachmentToPlan(t *testing.T) {
 		}, nil
 	}
 
-	result, err := mockClient.AddAttachmentToPlan(1, "/tmp/plan_doc.pdf")
+	ctx := context.Background()
+	result, err := mockClient.AddAttachmentToPlan(ctx, 1, "/tmp/plan_doc.pdf")
 	if err != nil {
 		t.Errorf("AddAttachmentToPlan() unexpected error: %v", err)
 		return
@@ -86,7 +89,7 @@ func TestAddAttachmentToPlan(t *testing.T) {
 
 func TestAddAttachmentToPlanEntry(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.AddAttachmentToPlanEntryFunc = func(planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+	mockClient.AddAttachmentToPlanEntryFunc = func(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
 		return &data.AttachmentResponse{
 			AttachmentID: 3,
 			URL:          "https://example.com/attachment/3",
@@ -95,7 +98,8 @@ func TestAddAttachmentToPlanEntry(t *testing.T) {
 		}, nil
 	}
 
-	result, err := mockClient.AddAttachmentToPlanEntry(1, "entry-1", "/tmp/data.json")
+	ctx := context.Background()
+	result, err := mockClient.AddAttachmentToPlanEntry(ctx, 1, "entry-1", "/tmp/data.json")
 	if err != nil {
 		t.Errorf("AddAttachmentToPlanEntry() unexpected error: %v", err)
 		return
@@ -107,7 +111,7 @@ func TestAddAttachmentToPlanEntry(t *testing.T) {
 
 func TestAddAttachmentToResult(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.AddAttachmentToResultFunc = func(resultID int64, filePath string) (*data.AttachmentResponse, error) {
+	mockClient.AddAttachmentToResultFunc = func(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
 		return &data.AttachmentResponse{
 			AttachmentID: 4,
 			URL:          "https://example.com/attachment/4",
@@ -116,7 +120,8 @@ func TestAddAttachmentToResult(t *testing.T) {
 		}, nil
 	}
 
-	result, err := mockClient.AddAttachmentToResult(1, "/tmp/screenshot.png")
+	ctx := context.Background()
+	result, err := mockClient.AddAttachmentToResult(ctx, 1, "/tmp/screenshot.png")
 	if err != nil {
 		t.Errorf("AddAttachmentToResult() unexpected error: %v", err)
 		return
@@ -128,7 +133,7 @@ func TestAddAttachmentToResult(t *testing.T) {
 
 func TestAddAttachmentToRun(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.AddAttachmentToRunFunc = func(runID int64, filePath string) (*data.AttachmentResponse, error) {
+	mockClient.AddAttachmentToRunFunc = func(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error) {
 		return &data.AttachmentResponse{
 			AttachmentID: 5,
 			URL:          "https://example.com/attachment/5",
@@ -137,7 +142,8 @@ func TestAddAttachmentToRun(t *testing.T) {
 		}, nil
 	}
 
-	result, err := mockClient.AddAttachmentToRun(1, "/tmp/run_log.txt")
+	ctx := context.Background()
+	result, err := mockClient.AddAttachmentToRun(ctx, 1, "/tmp/run_log.txt")
 	if err != nil {
 		t.Errorf("AddAttachmentToRun() unexpected error: %v", err)
 		return
@@ -149,12 +155,13 @@ func TestAddAttachmentToRun(t *testing.T) {
 
 func TestAddAttachmentToCaseError(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.AddAttachmentToCaseFunc = func(caseID int64, filePath string) (*data.AttachmentResponse, error) {
+	mockClient.AddAttachmentToCaseFunc = func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 		return nil, nil // Симулируем ошибку или nil ответ
 	}
 
 	// Проверяем что метод вызывается
-	_, err := mockClient.AddAttachmentToCase(999, "/tmp/test.txt")
+	ctx := context.Background()
+	_, err := mockClient.AddAttachmentToCase(ctx, 999, "/tmp/test.txt")
 	if err != nil {
 		t.Errorf("AddAttachmentToCase() unexpected error: %v", err)
 	}

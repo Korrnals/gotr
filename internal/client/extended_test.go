@@ -2,6 +2,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -12,13 +13,14 @@ import (
 
 func TestGetGroups(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.GetGroupsFunc = func(projectID int64) (data.GetGroupsResponse, error) {
+	mockClient.GetGroupsFunc = func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 		return []data.Group{
 			{ID: 1, Name: "QA Team", ProjectID: 1, UserIDs: []int64{1, 2}},
 		}, nil
 	}
 
-	result, err := mockClient.GetGroups(1)
+	ctx := context.Background()
+	result, err := mockClient.GetGroups(ctx, 1)
 	if err != nil {
 		t.Errorf("GetGroups() unexpected error: %v", err)
 		return
@@ -30,14 +32,15 @@ func TestGetGroups(t *testing.T) {
 
 func TestGetRoles(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.GetRolesFunc = func() (data.GetRolesResponse, error) {
+	mockClient.GetRolesFunc = func(ctx context.Context) (data.GetRolesResponse, error) {
 		return []data.Role{
 			{ID: 1, Name: "Lead"},
 			{ID: 2, Name: "Tester"},
 		}, nil
 	}
 
-	result, err := mockClient.GetRoles()
+	ctx := context.Background()
+	result, err := mockClient.GetRoles(ctx)
 	if err != nil {
 		t.Errorf("GetRoles() unexpected error: %v", err)
 		return
@@ -49,13 +52,14 @@ func TestGetRoles(t *testing.T) {
 
 func TestGetResultFields(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.GetResultFieldsFunc = func() (data.GetResultFieldsResponse, error) {
+	mockClient.GetResultFieldsFunc = func(ctx context.Context) (data.GetResultFieldsResponse, error) {
 		return []data.ResultField{
 			{ID: 1, Name: "Status", SystemName: "status_id", IsActive: true},
 		}, nil
 	}
 
-	result, err := mockClient.GetResultFields()
+	ctx := context.Background()
+	result, err := mockClient.GetResultFields(ctx)
 	if err != nil {
 		t.Errorf("GetResultFields() unexpected error: %v", err)
 		return
@@ -67,13 +71,14 @@ func TestGetResultFields(t *testing.T) {
 
 func TestGetDatasets(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.GetDatasetsFunc = func(projectID int64) (data.GetDatasetsResponse, error) {
+	mockClient.GetDatasetsFunc = func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 		return []data.Dataset{
 			{ID: 1, Name: "Browser Data", ProjectID: 1},
 		}, nil
 	}
 
-	result, err := mockClient.GetDatasets(1)
+	ctx := context.Background()
+	result, err := mockClient.GetDatasets(ctx, 1)
 	if err != nil {
 		t.Errorf("GetDatasets() unexpected error: %v", err)
 		return
@@ -85,14 +90,15 @@ func TestGetDatasets(t *testing.T) {
 
 func TestGetVariables(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.GetVariablesFunc = func(datasetID int64) (data.GetVariablesResponse, error) {
+	mockClient.GetVariablesFunc = func(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
 		return []data.Variable{
 			{ID: 1, Name: "browser", DatasetID: 1},
 			{ID: 2, Name: "version", DatasetID: 1},
 		}, nil
 	}
 
-	result, err := mockClient.GetVariables(1)
+	ctx := context.Background()
+	result, err := mockClient.GetVariables(ctx, 1)
 	if err != nil {
 		t.Errorf("GetVariables() unexpected error: %v", err)
 		return
@@ -104,7 +110,7 @@ func TestGetVariables(t *testing.T) {
 
 func TestGetBDD(t *testing.T) {
 	mockClient := &MockClient{}
-	mockClient.GetBDDFunc = func(caseID int64) (*data.BDD, error) {
+	mockClient.GetBDDFunc = func(ctx context.Context, caseID int64) (*data.BDD, error) {
 		return &data.BDD{
 			ID:      1,
 			CaseID:  caseID,
@@ -112,7 +118,8 @@ func TestGetBDD(t *testing.T) {
 		}, nil
 	}
 
-	result, err := mockClient.GetBDD(1)
+	ctx := context.Background()
+	result, err := mockClient.GetBDD(ctx, 1)
 	if err != nil {
 		t.Errorf("GetBDD() unexpected error: %v", err)
 		return
@@ -137,7 +144,8 @@ func TestHTTPGetGroups(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	groups, err := client.GetGroups(1)
+	ctx := context.Background()
+	groups, err := client.GetGroups(ctx, 1)
 	if err != nil {
 		t.Fatalf("GetGroups() error: %v", err)
 	}
@@ -157,7 +165,8 @@ func TestHTTPGetRoles(t *testing.T) {
 
 	client, _ := NewClient(server.URL, "test", "test", false)
 
-	roles, err := client.GetRoles()
+	ctx := context.Background()
+	roles, err := client.GetRoles(ctx)
 	if err != nil {
 		t.Fatalf("GetRoles() error: %v", err)
 	}

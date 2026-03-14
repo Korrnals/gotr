@@ -1,15 +1,17 @@
 package client
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/utils"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/Korrnals/gotr/internal/debug"
 )
 
 const apiPrefix = "index.php?/api/v2/"
@@ -39,6 +41,11 @@ func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	// User-Agent обязателен для некоторых инсталляций TestRail —
+	// без браузерного заголовка сервер может вернуть 403/401.
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; gotr/2.7; +https://github.com/Korrnals/gotr)")
+	}
 	return t.base.RoundTrip(req)
 }
 
@@ -67,11 +74,11 @@ func WithTimeout(duration time.Duration) ClientOption {
 }
 
 // NewClient создает новый клиент HTTP с опциями, которые передаются в качестве аргументов
-func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOption) (*HTTPClient, error) {
+func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...ClientOption) (*HTTPClient, error) {
 	// Парсим, но игнорируем ошибки — будем строить заново
 	parsed, err := url.Parse(strings.TrimSpace(baseURLStr))
 	if err != nil || parsed.Host == "" {
-		return nil, fmt.Errorf("неверный или пустой base URL: %s", baseURLStr)
+		return nil, fmt.Errorf("invalid or empty base URL: %s", baseURLStr)
 	}
 
 	// Создаём новый URL только с scheme и host
@@ -80,21 +87,30 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 		Host:   parsed.Host, // автоматически обрабатывает порт
 	}
 
-	if debug {
-		utils.DebugPrint("{client} - Оригинальный baseURL: %s", baseURLStr)
-		utils.DebugPrint("{client} - Нормализованный baseURL: %s", cleanURL.String())
+	if debugMode {
+		debug.DebugPrint("{client} - Original baseURL: %s", baseURLStr)
+		debug.DebugPrint("{client} - Normalized baseURL: %s", cleanURL.String())
 	}
 	// Создаем конфигурацию с опциями по умолчанию
 	cfg := defaultOptions
 	for _, o := range opts {
 		o(&cfg)
 	}
-	// Создаем транспорт с нужными опциями
+	// Создаем транспорт с нужными опциями.
+	// MaxConnsPerHost MUST match actual concurrency:
+	// 2 projects × 8 suites × 10 pages = 160 concurrent requests.
+	// With MaxConnsPerHost=50, 110 requests queue inside Go transport;
+	// http.Client.Timeout includes queue wait, causing cascading timeouts
+	// and exponential-backoff retries → 3× slower than expected.
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: cfg.insecure,
 		},
 		TLSHandshakeTimeout: cfg.tlsHandshakeTimeout,
+		MaxIdleConns:        200,
+		MaxIdleConnsPerHost: 200,
+		MaxConnsPerHost:     0, // unlimited — concurrency governed by parallel settings
+		IdleConnTimeout:     90 * time.Second,
 	}
 	// Создаем транспорт с Basic Auth, который будет добавляться в каждый запрос
 	auth := authTransport{
@@ -114,17 +130,17 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 
 // DoRequest — универсальный метод для любого HTTP-запроса
 // DoRequest — универсальный метод, формирует URL вручную для TestRail
-func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
+func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
 	// Очищаем endpoint от ведущего слеша
 	cleanEndpoint := strings.TrimPrefix(endpoint, "/")
-	utils.DebugPrint("{DoRequest} - cleanEndpoint: %s", cleanEndpoint)
+	debug.DebugPrint("{DoRequest} - cleanEndpoint: %s", cleanEndpoint)
 
 	// Формируем путь вручную — TestRail требует ? в пути некодированным
 	path := apiPrefix + cleanEndpoint
-	utils.DebugPrint("{DoRequest} - Path: %s", path)
-	// Базовый URL как строка (с trailing слешем, если нужно)
+	debug.DebugPrint("{DoRequest} - Path: %s", path)
+	// Base URL как строка (с trailing слешем, если нужно)
 	base := strings.TrimSuffix(c.baseURL.String(), "/")
-	utils.DebugPrint("{DoRequest} - Базовый URL: %s", base)
+	debug.DebugPrint("{DoRequest} - Base URL: %s", base)
 	// Полный URL как строка
 	fullURL := base + "/" + path
 
@@ -137,9 +153,9 @@ func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryPar
 		fullURL += "&" + q.Encode() // & вместо ?
 	}
 
-	utils.DebugPrint("{DoRequest} - Формируемый URL: %s", fullURL)
+	debug.DebugPrint("{DoRequest} - Constructed URL: %s", fullURL)
 	// Создаем сам запрос
-	req, err := http.NewRequest(method, fullURL, body)
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +175,8 @@ func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryPar
 }
 
 // Get — обёртка для GET-запросов с умной обработкой ошибок
-func (c *HTTPClient) Get(endpoint string, queryParams map[string]string) (*http.Response, error) {
-	resp, err := c.DoRequest("GET", endpoint, nil, queryParams)
+func (c *HTTPClient) Get(ctx context.Context, endpoint string, queryParams map[string]string) (*http.Response, error) {
+	resp, err := c.DoRequest(ctx, "GET", endpoint, nil, queryParams)
 	if err != nil {
 		return nil, err
 	}
@@ -174,8 +190,8 @@ func (c *HTTPClient) Get(endpoint string, queryParams map[string]string) (*http.
 }
 
 // Post — обёртка для POST-запросов с умной обработкой ошибок
-func (c *HTTPClient) Post(endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
-	resp, err := c.DoRequest("POST", endpoint, body, queryParams)
+func (c *HTTPClient) Post(ctx context.Context, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
+	resp, err := c.DoRequest(ctx, "POST", endpoint, body, queryParams)
 	if err != nil {
 		return nil, err
 	}
@@ -194,7 +210,7 @@ func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("API вернул %s, но не удалось прочитать тело ошибки: %w", resp.Status, err)
+		return fmt.Errorf("API returned %s, failed to read error body: %w", resp.Status, err)
 	}
 
 	// Пытаемся распарсить как JSON с полем "error"
@@ -203,9 +219,9 @@ func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 	}
 	if json.Unmarshal(bodyBytes, &errStruct) == nil && errStruct.Error != "" {
 		// Go автоматически декодирует \uXXXX в нормальный UTF-8 текст
-		return fmt.Errorf("API вернул %s: %s", resp.Status, errStruct.Error)
+		return fmt.Errorf("API returned %s: %s", resp.Status, errStruct.Error)
 	}
 
 	// Если не получилось распарсить как JSON с error — выводим тело как есть
-	return fmt.Errorf("API вернул %s: %s", resp.Status, string(bodyBytes))
+	return fmt.Errorf("API returned %s: %s", resp.Status, string(bodyBytes))
 }

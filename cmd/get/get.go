@@ -3,11 +3,13 @@ package get
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/client"
 	embed "github.com/Korrnals/gotr/embedded"
+	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -29,7 +31,7 @@ var Cmd = &cobra.Command{
 	case-history       - получить историю изменений кейса по ID кейса
 
 	project            - получить один проект по ID проекта
-	projects           - получить все проекты
+	projects           - получить все projects
 
 	sharedstep         - получить один shared step по ID шага
 	sharedsteps        - получить shared steps проекта (требует ID проекта)
@@ -93,10 +95,10 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 		}
 		filepath, err := output.Output(command, toSave, "get", "json")
 		if err != nil {
-			return fmt.Errorf("ошибка сохранения: %w", err)
+			return fmt.Errorf("save error: %w", err)
 		}
 		if !quiet && filepath != "" {
-			fmt.Printf("Ответ сохранён в %s\n", filepath)
+			ui.Infof(os.Stdout, "Response saved to %s", filepath)
 		}
 		return nil
 	}
@@ -104,7 +106,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 	if jqEnabled || jqFilter != "" {
 		toSave, err := json.Marshal(data)
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга для jq: %w", err)
+			return fmt.Errorf("jq marshal error: %w", err)
 		}
 		if err := embed.RunEmbeddedJQ(toSave, jqFilter); err != nil {
 			return err
@@ -115,8 +117,7 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 	if !quiet {
 		switch outputFormat {
 		case "json":
-			pretty, _ := json.MarshalIndent(data, "", "  ")
-			fmt.Println(string(pretty))
+			return ui.JSON(command, data)
 		case "json-full":
 			full := struct {
 				Status     string        `json:"status"`
@@ -131,10 +132,9 @@ func handleOutput(command *cobra.Command, data any, start time.Time) error {
 				Timestamp:  time.Now(),
 				Data:       data,
 			}
-			pretty, _ := json.MarshalIndent(full, "", "  ")
-			fmt.Println(string(pretty))
+			return ui.JSON(command, full)
 		default:
-			fmt.Println("Table output not implemented yet")
+			ui.Warning(os.Stdout, "Table output not implemented yet")
 		}
 	}
 

@@ -2,10 +2,11 @@ package get
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +31,9 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Получаем ID проекта
@@ -48,14 +50,14 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = selectProjectInteractively(cli)
+				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
 				if err != nil {
 					return err
 				}
 			} else {
-				projectID, err = strconv.ParseInt(projectIDStr, 10, 64)
+				projectID, err = flags.ParseID(projectIDStr)
 				if err != nil {
-					return fmt.Errorf("некорректный ID проекта: %w", err)
+					return fmt.Errorf("invalid project_id: %w", err)
 				}
 			}
 
@@ -64,7 +66,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 			spinner := pm.NewSpinner("")
 			spinner.Describe("Загрузка shared steps...")
 
-			steps, err := cli.GetSharedSteps(projectID)
+			steps, err := cli.GetSharedSteps(ctx, projectID)
 			if err != nil {
 				return err
 			}
@@ -89,17 +91,18 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			idStr := args[0]
-			id, err := strconv.ParseInt(idStr, 10, 64)
+			id, err := flags.ParseID(idStr)
 			if err != nil {
-				return fmt.Errorf("некорректный ID шага: %w", err)
+				return fmt.Errorf("invalid step ID: %w", err)
 			}
 
-			step, err := cli.GetSharedStep(id)
+			step, err := cli.GetSharedStep(ctx, id)
 			if err != nil {
 				return err
 			}

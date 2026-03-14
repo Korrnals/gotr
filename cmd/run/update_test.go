@@ -1,6 +1,7 @@
 package run
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateRunFunc: func(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Equal(t, "Updated Run Name", *req.Name)
 			assert.Equal(t, "Updated description", *req.Description)
@@ -53,7 +54,7 @@ func TestUpdateCmd_InvalidRunID(t *testing.T) {
 
 func TestUpdateCmd_WithMilestoneAndAssignedTo(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateRunFunc: func(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Equal(t, int64(100), *req.MilestoneID)
 			assert.Equal(t, int64(5), *req.AssignedTo)
@@ -71,7 +72,7 @@ func TestUpdateCmd_WithMilestoneAndAssignedTo(t *testing.T) {
 
 func TestUpdateCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateRunFunc: func(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			return nil, fmt.Errorf("run is completed and cannot be modified")
 		},
 	}
@@ -94,12 +95,12 @@ func TestUpdateCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestUpdateCmd_WithCaseIDs(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateRunFunc: func(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Equal(t, []int64{100, 200, 300}, req.CaseIDs)
 			return &data.Run{ID: runID}, nil
@@ -116,7 +117,7 @@ func TestUpdateCmd_WithCaseIDs(t *testing.T) {
 
 func TestUpdateCmd_WithIncludeAll(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateRunFunc: func(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.NotNil(t, req.IncludeAll)
 			assert.True(t, *req.IncludeAll)
@@ -134,7 +135,7 @@ func TestUpdateCmd_WithIncludeAll(t *testing.T) {
 
 func TestUpdateCmd_WithIncludeAllFalse(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateRunFunc: func(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.NotNil(t, req.IncludeAll)
 			assert.False(t, *req.IncludeAll)

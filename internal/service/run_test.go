@@ -2,13 +2,14 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// mockRunClient — мок клиента для тестирования RunService
+// mockRunClient — мок clientа для тестирования RunService
 type mockRunClient struct {
 	getRun    func(int64) (*data.Run, error)
 	getRuns   func(int64) (data.GetRunsResponse, error)
@@ -168,7 +169,7 @@ func TestRunService_ParseID(t *testing.T) {
 			args:     []string{"123"},
 			index:    5,
 			wantErr:  true,
-			errMatch: "отсутствует аргумент",
+			errMatch: "missing ID argument",
 		},
 		{
 			name:     "invalid string",
@@ -181,7 +182,8 @@ func TestRunService_ParseID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			id, err := svc.ParseID(tt.args, tt.index)
+			ctx := context.Background()
+			id, err := svc.ParseID(ctx, tt.args, tt.index)
 			if tt.wantErr {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.errMatch)

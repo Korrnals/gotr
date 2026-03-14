@@ -35,4 +35,3 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
 
 	root.AddCommand(casesCmd)
 }
-

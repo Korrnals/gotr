@@ -3,6 +3,7 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,9 +14,9 @@ import (
 
 // GetConfigs получает список конфигураций проекта
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#getconfigs
-func (c *HTTPClient) GetConfigs(projectID int64) (data.GetConfigsResponse, error) {
+func (c *HTTPClient) GetConfigs(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 	endpoint := fmt.Sprintf("get_configs/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting configs for project %d: %w", projectID, err)
 	}
@@ -35,7 +36,7 @@ func (c *HTTPClient) GetConfigs(projectID int64) (data.GetConfigsResponse, error
 
 // AddConfigGroup создает новую группу конфигураций
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#addconfiggroup
-func (c *HTTPClient) AddConfigGroup(projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+func (c *HTTPClient) AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("add_config_group/%d", projectID)
 
 	jsonBody, err := json.Marshal(req)
@@ -43,7 +44,7 @@ func (c *HTTPClient) AddConfigGroup(projectID int64, req *data.AddConfigGroupReq
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating config group: %w", err)
 	}
@@ -63,7 +64,7 @@ func (c *HTTPClient) AddConfigGroup(projectID int64, req *data.AddConfigGroupReq
 
 // AddConfig создает новую конфигурацию в группе
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#addconfig
-func (c *HTTPClient) AddConfig(groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
+func (c *HTTPClient) AddConfig(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("add_config/%d", groupID)
 
 	jsonBody, err := json.Marshal(req)
@@ -71,7 +72,7 @@ func (c *HTTPClient) AddConfig(groupID int64, req *data.AddConfigRequest) (*data
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating config: %w", err)
 	}
@@ -91,7 +92,7 @@ func (c *HTTPClient) AddConfig(groupID int64, req *data.AddConfigRequest) (*data
 
 // UpdateConfigGroup обновляет группу конфигураций
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#updateconfiggroup
-func (c *HTTPClient) UpdateConfigGroup(groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
+func (c *HTTPClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("update_config_group/%d", groupID)
 
 	jsonBody, err := json.Marshal(req)
@@ -99,7 +100,7 @@ func (c *HTTPClient) UpdateConfigGroup(groupID int64, req *data.UpdateConfigGrou
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating config group %d: %w", groupID, err)
 	}
@@ -119,7 +120,7 @@ func (c *HTTPClient) UpdateConfigGroup(groupID int64, req *data.UpdateConfigGrou
 
 // UpdateConfig обновляет конфигурацию
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#updateconfig
-func (c *HTTPClient) UpdateConfig(configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
+func (c *HTTPClient) UpdateConfig(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("update_config/%d", configID)
 
 	jsonBody, err := json.Marshal(req)
@@ -127,7 +128,7 @@ func (c *HTTPClient) UpdateConfig(configID int64, req *data.UpdateConfigRequest)
 		return nil, fmt.Errorf("error marshaling request: %w", err)
 	}
 
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating config %d: %w", configID, err)
 	}
@@ -147,10 +148,10 @@ func (c *HTTPClient) UpdateConfig(configID int64, req *data.UpdateConfigRequest)
 
 // DeleteConfigGroup удаляет группу конфигураций
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#deleteconfiggroup
-func (c *HTTPClient) DeleteConfigGroup(groupID int64) error {
+func (c *HTTPClient) DeleteConfigGroup(ctx context.Context, groupID int64) error {
 	endpoint := fmt.Sprintf("delete_config_group/%d", groupID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting config group %d: %w", groupID, err)
 	}
@@ -165,10 +166,10 @@ func (c *HTTPClient) DeleteConfigGroup(groupID int64) error {
 
 // DeleteConfig удаляет конфигурацию
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#deleteconfig
-func (c *HTTPClient) DeleteConfig(configID int64) error {
+func (c *HTTPClient) DeleteConfig(ctx context.Context, configID int64) error {
 	endpoint := fmt.Sprintf("delete_config/%d", configID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting config %d: %w", configID, err)
 	}

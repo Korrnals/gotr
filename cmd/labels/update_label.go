@@ -5,27 +5,22 @@ package labels
 
 import (
 	"fmt"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
 // newUpdateLabelCmd создаёт команду 'labels update-label'
 // Эндпоинт: POST /update_label/{label_id}
 func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
-	var (
-		projectID int64
-		title     string
-	)
-
 	cmd := &cobra.Command{
 		Use:   "update-label <label_id>",
 		Short: "Обновить метку",
 		Long: `Обновляет существующую метку.
 
-Требуются права на редактирование меток в проекте.
+Требуются права на редактирование меток in project.
 Максимальная длина названия метки — 20 символов.`,
 		Example: `  # Обновить название метки
   gotr labels update-label 123 --project 1 --title "New Label Name"
@@ -34,18 +29,23 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
   gotr labels update-label 123 --project 1 --title "Bug" -o json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			labelID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || labelID <= 0 {
-				return fmt.Errorf("invalid label_id: %s", args[0])
+			labelID, err := flags.ValidateRequiredID(args, 0, "label_id")
+			if err != nil {
+				return err
 			}
 
 			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			projectID, _ := cmd.Flags().GetInt64("project")
+			title, _ := cmd.Flags().GetString("title")
+
 			req := data.UpdateLabelRequest{
 				ProjectID: projectID,
 				Title:     title,
 			}
 
-			resp, err := client.UpdateLabel(labelID, req)
+			resp, err := client.UpdateLabel(ctx, labelID, req)
 			if err != nil {
 				return fmt.Errorf("failed to update label: %w", err)
 			}
@@ -55,8 +55,8 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64VarP(&projectID, "project", "p", 0, "ID проекта (обязательно)")
-	cmd.Flags().StringVarP(&title, "title", "t", "", "Новое название метки (обязательно, max 20 символов)")
+	cmd.Flags().Int64P("project", "p", 0, "ID проекта (обязательно)")
+	cmd.Flags().StringP("title", "t", "", "Новое название метки (обязательно, max 20 символов)")
 	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("project")

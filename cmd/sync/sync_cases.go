@@ -3,13 +3,15 @@ package sync
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/Korrnals/gotr/internal/utils"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
 )
@@ -44,6 +46,7 @@ var casesCmd = &cobra.Command{
 
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -58,7 +61,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект (откуда копировать):")
+			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project (copy from):")
 			if err != nil {
 				return err
 			}
@@ -66,7 +69,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
+			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
 				return err
 			}
@@ -74,7 +77,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект (куда копировать):")
+			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project (copy to):")
 			if err != nil {
 				return err
 			}
@@ -82,14 +85,17 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(cli, dstProject, "Выберите DESTINATION сьют:")
+			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
 				return err
 			}
 		}
 
 		// Директория для логов
-		logDir := utils.LogDir()
+		logDir, err := paths.EnsureLogsDirPath()
+		if err != nil {
+			return err
+		}
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		logFile := filepath.Join(logDir, fmt.Sprintf("sync_cases_%s.json", timestamp))
 		// Если указан дополнительный файл вывода, используем его
@@ -111,15 +117,15 @@ var casesCmd = &cobra.Command{
 		if mappingFile != "" {
 			progress.Describe(pm.NewSpinner(""), "Загрузка маппинга...")
 			if err := m.LoadMappingFromFile(mappingFile); err != nil {
-				return fmt.Errorf("ошибка загрузки mapping: %w", err)
+				return fmt.Errorf("failed to load mapping: %w", err)
 			}
-			fmt.Printf("Загружен mapping: %d записей\n", len(m.Mapping()))
+			ui.Infof(os.Stdout, "Mapping loaded: %d entries", len(m.Mapping()))
 		} else {
-			fmt.Println("Warning: mapping не загружен — shared_step_id НЕ будут заменены")
+			ui.Warning(os.Stdout, "mapping not loaded — shared_step_id will NOT be replaced")
 		}
 
 		progress.Describe(pm.NewSpinner(""), "Загрузка кейсов...")
-		sourceCases, targetCases, err := m.FetchCasesData()
+		sourceCases, targetCases, err := m.FetchCasesData(ctx)
 		if err != nil {
 			return err
 		}
@@ -141,37 +147,37 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("\nРезультат анализа:\n")
-		fmt.Printf("  Совпадения: %d\n", len(matches))
-		fmt.Printf("  Новые: %d\n", len(filtered))
+		fmt.Printf("\nAnalysis result:\n")
+		fmt.Printf("  Matches: %d\n", len(matches))
+		fmt.Printf("  New: %d\n", len(filtered))
 
 		if dryRun {
-			fmt.Println("\nDry-run: импорт НЕ выполнен (безопасно).")
+			ui.Info(os.Stdout, "Dry-run: import NOT performed (safe).")
 			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
 
-		fmt.Printf("\nПодтверждение импорта %d новых кейсов...\n", len(filtered))
-		fmt.Print("Продолжить? [y/N]: ")
+		ui.Infof(os.Stdout, "Confirm import of %d new cases...", len(filtered))
+		fmt.Print("Continue? [y/N]: ")
 		var confirm string
 		fmt.Scanln(&confirm)
 		confirm = strings.ToLower(strings.TrimSpace(confirm))
 		if confirm != "y" && confirm != "yes" {
-			fmt.Println("Отменено.")
+			ui.Cancelled(os.Stdout)
 			saveLog(logFile, matches, filtered, nil, m.Mapping())
 			return nil
 		}
 
 		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d кейсов...", len(filtered)))
-		createdIDs, importErrors, err := m.ImportCasesReport(filtered, false)
+		createdIDs, importErrors, err := m.ImportCasesReport(ctx, filtered, false)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("\nИмпорт завершён: %d новых кейсов\n", len(createdIDs))
+		ui.Successf(os.Stdout, "Import complete: %d new cases", len(createdIDs))
 
 		if len(importErrors) > 0 {
-			fmt.Println("\nОшибки:")
+			ui.Error(os.Stdout, "Errors:")
 			for _, e := range importErrors {
 				fmt.Printf("  - %s\n", e)
 			}
@@ -194,5 +200,5 @@ func saveLog(file string, matches, filtered data.GetCasesResponse, errors []stri
 	}
 	jsonData, _ := json.MarshalIndent(result, "", "  ")
 	os.WriteFile(file, jsonData, 0644)
-	fmt.Printf("Лог сохранён: %s\n", file)
+	ui.Infof(os.Stdout, "Log saved: %s", file)
 }

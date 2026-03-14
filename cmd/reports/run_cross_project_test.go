@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -14,7 +15,7 @@ import (
 
 func TestRunCrossProjectCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		RunCrossProjectReportFunc: func(templateID int64) (*data.RunReportResponse, error) {
+		RunCrossProjectReportFunc: func(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 			assert.Equal(t, int64(42), templateID)
 			return &data.RunReportResponse{
 				ReportID: 2000,
@@ -34,7 +35,7 @@ func TestRunCrossProjectCmd_Success(t *testing.T) {
 
 func TestRunCrossProjectCmd_Completed(t *testing.T) {
 	mock := &client.MockClient{
-		RunCrossProjectReportFunc: func(templateID int64) (*data.RunReportResponse, error) {
+		RunCrossProjectReportFunc: func(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 			return &data.RunReportResponse{
 				ReportID: 2001,
 				URL:      "https://testrail.example.com/cross-report/2001",
@@ -53,7 +54,7 @@ func TestRunCrossProjectCmd_Completed(t *testing.T) {
 
 func TestRunCrossProjectCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		RunCrossProjectReportFunc: func(templateID int64) (*data.RunReportResponse, error) {
+		RunCrossProjectReportFunc: func(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 			return nil, fmt.Errorf("template not found")
 		},
 	}

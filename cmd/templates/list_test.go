@@ -1,12 +1,14 @@
 package templates
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +17,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
@@ -34,7 +36,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{}, nil
 		},
 	}
@@ -49,7 +51,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -88,7 +90,7 @@ func TestListCmd_NoArgs(t *testing.T) {
 
 func TestOutputResult_Stdout(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
 			}, nil
@@ -105,7 +107,7 @@ func TestOutputResult_Stdout(t *testing.T) {
 
 func TestOutputResult_ToFile(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
 				{ID: 2, Name: "Test Case (Steps)", IsDefault: false},
@@ -128,13 +130,13 @@ func TestOutputResult_MarshalError(t *testing.T) {
 	// Channel cannot be marshaled to JSON
 	invalidData := make(chan int)
 
-	err := outputResult(cmd, invalidData)
+	err := output.OutputResult(cmd, invalidData, "templates")
 	assert.Error(t, err)
 }
 
 func TestOutputResult_SaveToFile(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
 			}, nil

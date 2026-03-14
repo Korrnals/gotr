@@ -3,6 +3,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -96,7 +97,8 @@ func TestAddSuite(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			suite, err := client.AddSuite(tt.projectID, tt.request)
+			ctx := context.Background()
+			suite, err := client.AddSuite(ctx, tt.projectID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -162,7 +164,8 @@ func TestUpdateSuite(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			suite, err := client.UpdateSuite(tt.suiteID, tt.request)
+			ctx := context.Background()
+			suite, err := client.UpdateSuite(ctx, tt.suiteID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -214,7 +217,8 @@ func TestDeleteSuite(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.DeleteSuite(tt.suiteID)
+			ctx := context.Background()
+			err := client.DeleteSuite(ctx, tt.suiteID)
 
 			if tt.wantErr {
 				assert.Error(t, err)

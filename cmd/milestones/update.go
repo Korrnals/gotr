@@ -2,10 +2,12 @@ package milestones
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -32,9 +34,9 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
   gotr milestones update 12345 --name="Новое название" --description="Новое описание"`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			milestoneID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || milestoneID <= 0 {
-				return fmt.Errorf("invalid milestone_id: %s", args[0])
+			milestoneID, err := flags.ValidateRequiredID(args, 0, "milestone_id")
+			if err != nil {
+				return err
 			}
 
 			req := data.UpdateMilestoneRequest{}
@@ -60,13 +62,14 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateMilestone(milestoneID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateMilestone(ctx, milestoneID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update milestone: %w", err)
 			}
 
-			fmt.Printf("✅ Milestone %d updated\n", milestoneID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Milestone %d updated", milestoneID)
+			return output.OutputResult(cmd, resp, "milestones")
 		},
 	}
 

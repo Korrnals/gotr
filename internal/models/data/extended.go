@@ -5,10 +5,10 @@ package data
 
 // Group — группа пользователей
 type Group struct {
-	ID        int64  `json:"id"`         // Уникальный ID группы
-	Name      string `json:"name"`       // Название группы
-	UserIDs   []int64 `json:"user_ids"`  // ID пользователей в группе
-	ProjectID int64  `json:"project_id"` // ID проекта
+	ID        int64   `json:"id"`         // Уникальный ID группы
+	Name      string  `json:"name"`       // Название группы
+	UserIDs   []int64 `json:"user_ids"`   // ID пользователей в группе
+	ProjectID int64   `json:"project_id"` // ID проекта
 }
 
 // GetGroupsResponse — ответ на get_groups
@@ -23,13 +23,13 @@ type Role struct {
 // GetRolesResponse — ответ на get_roles
 type GetRolesResponse []Role
 
-// ResultField — поле результата
+// ResultField — поле result
 type ResultField struct {
-	ID       int64  `json:"id"`        // Уникальный ID поля
-	Name     string `json:"name"`      // Название поля
+	ID         int64  `json:"id"`          // Уникальный ID field
+	Name       string `json:"name"`        // Название field
 	SystemName string `json:"system_name"` // Системное название
-	TypeID   int    `json:"type_id"`   // Тип поля
-	IsActive bool   `json:"is_active"` // Активно ли поле
+	TypeID     int    `json:"type_id"`     // Тип field
+	IsActive   bool   `json:"is_active"`   // Активно ли поле
 }
 
 // GetResultFieldsResponse — ответ на get_result_fields
@@ -55,14 +55,14 @@ type Variable struct {
 // GetVariablesResponse — ответ на get_variables
 type GetVariablesResponse []Variable
 
-// BDD — BDD сценарий для кейса
+// BDD — BDD сценарий для case
 type BDD struct {
-	ID      int64  `json:"id"`       // Уникальный ID
-	CaseID  int64  `json:"case_id"`  // ID кейса
-	Content string `json:"content"`  // Содержимое BDD сценария
+	ID      int64  `json:"id"`      // Уникальный ID
+	CaseID  int64  `json:"case_id"` // ID case
+	Content string `json:"content"` // Содержимое BDD сценария
 }
 
-// UpdateLabelsRequest — запрос на обновление labels теста
+// UpdateLabelsRequest — запрос на обновление labels test
 type UpdateLabelsRequest struct {
 	Labels []string `json:"labels"` // Список labels
 }

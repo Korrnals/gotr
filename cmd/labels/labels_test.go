@@ -11,12 +11,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// httpClientKey — ключ для хранения HTTP клиента в контексте тестов.
+// httpClientKey — ключ для хранения HTTP clientа в контексте тестов.
 // Должен совпадать с ключом, используемым в основном коде.
 const httpClientKey = "httpClient"
 
-// setupTestCmd создаёт тестовую команду с mock клиентом в контексте.
-// Используется в тестах для инжекции mock клиента.
+// setupTestCmd создаёт тестовую команду с mock clientом в контексте.
+// Используется в тестах для инжекции mock clientа.
 func setupTestCmd(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
@@ -24,8 +24,8 @@ func setupTestCmd(t *testing.T, mock *client.MockClient) *cobra.Command {
 	return cmd
 }
 
-// getClientForTests возвращает клиент из контекста для использования в тестах.
-// Возвращает nil если клиент не найден или контекст пуст.
+// getClientForTests возвращает client из контекста для использования в тестах.
+// Возвращает nil если client не найден или контекст пуст.
 func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 	if cmd == nil || cmd.Context() == nil {
 		return nil

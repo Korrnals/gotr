@@ -147,7 +147,7 @@ func TestNewCircuitBreaker(t *testing.T) {
 
 func TestCircuitBreaker_Execute_Success(t *testing.T) {
 	cb := NewCircuitBreaker(3, 30*time.Second)
-	
+
 	callCount := 0
 	fn := func() error {
 		callCount++
@@ -162,11 +162,11 @@ func TestCircuitBreaker_Execute_Success(t *testing.T) {
 
 func TestCircuitBreaker_Execute_Failure(t *testing.T) {
 	cb := NewCircuitBreaker(3, 30*time.Second)
-	
+
 	err := cb.Execute(func() error {
 		return errors.New("error")
 	})
-	
+
 	assert.Error(t, err)
 	assert.Equal(t, 1, cb.failures)
 	assert.Equal(t, CircuitClosed, cb.State()) // Still closed, not enough failures
@@ -174,16 +174,16 @@ func TestCircuitBreaker_Execute_Failure(t *testing.T) {
 
 func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 	cb := NewCircuitBreaker(3, 30*time.Second)
-	
+
 	// Cause 3 failures
 	for i := 0; i < 3; i++ {
 		cb.Execute(func() error {
 			return errors.New("error")
 		})
 	}
-	
+
 	assert.Equal(t, CircuitOpen, cb.State())
-	
+
 	// Next execution should be blocked
 	err := cb.Execute(func() error {
 		return nil
@@ -194,17 +194,17 @@ func TestCircuitBreaker_OpensAfterFailures(t *testing.T) {
 
 func TestCircuitBreaker_HalfOpen(t *testing.T) {
 	cb := NewCircuitBreaker(1, 50*time.Millisecond)
-	
+
 	// Cause failure to open circuit
 	cb.Execute(func() error {
 		return errors.New("error")
 	})
-	
+
 	assert.Equal(t, CircuitOpen, cb.State())
-	
+
 	// Wait for timeout
 	time.Sleep(100 * time.Millisecond)
-	
+
 	// Execute should transition to half-open and allow execution
 	err := cb.Execute(func() error {
 		return nil
@@ -220,13 +220,13 @@ func TestCircuitBreaker_State_Nil(t *testing.T) {
 
 func TestCircuitBreaker_Reset(t *testing.T) {
 	cb := NewCircuitBreaker(1, 30*time.Second)
-	
+
 	// Open circuit
 	cb.Execute(func() error {
 		return errors.New("error")
 	})
 	assert.Equal(t, CircuitOpen, cb.State())
-	
+
 	// Reset
 	cb.Reset()
 	assert.Equal(t, CircuitClosed, cb.State())
@@ -241,13 +241,13 @@ func TestCircuitBreaker_Reset_Nil(t *testing.T) {
 
 func TestCircuitBreaker_Execute_Nil(t *testing.T) {
 	var cb *CircuitBreaker
-	
+
 	executed := false
 	err := cb.Execute(func() error {
 		executed = true
 		return nil
 	})
-	
+
 	assert.NoError(t, err)
 	assert.True(t, executed)
 }

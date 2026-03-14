@@ -2,6 +2,7 @@ package sync
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strconv"
@@ -11,14 +12,14 @@ import (
 )
 
 // selectProjectInteractively показывает список проектов и просит выбрать
-func selectProjectInteractively(cli client.ClientInterface, prompt string) (int64, error) {
-	projects, err := cli.GetProjects()
+func selectProjectInteractively(ctx context.Context, cli client.ClientInterface, prompt string) (int64, error) {
+	projects, err := cli.GetProjects(ctx)
 	if err != nil {
-		return 0, fmt.Errorf("не удалось получить список проектов: %w", err)
+		return 0, fmt.Errorf("failed to get projects list: %w", err)
 	}
 
 	if len(projects) == 0 {
-		return 0, fmt.Errorf("не найдено проектов")
+		return 0, fmt.Errorf("no projects found")
 	}
 
 	fmt.Printf("\n%s\n", prompt)
@@ -29,40 +30,40 @@ func selectProjectInteractively(cli client.ClientInterface, prompt string) (int6
 	}
 
 	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Выберите номер проекта (1-%d): ", len(projects))
+	fmt.Printf("Select project number (1-%d): ", len(projects))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
+		return 0, fmt.Errorf("input read error: %w", err)
 	}
 
 	input = strings.TrimSpace(input)
 	choice, err := strconv.Atoi(input)
 	if err != nil || choice < 1 || choice > len(projects) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(projects))
+		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(projects))
 	}
 
 	selected := projects[choice-1]
-	fmt.Printf("✓ Выбран проект: %s (ID: %d)\n\n", selected.Name, selected.ID)
+	fmt.Printf("✓ Selected project: %s (ID: %d)\n\n", selected.Name, selected.ID)
 
 	return selected.ID, nil
 }
 
 // selectSuiteInteractively показывает список сьютов проекта и просит выбрать
-func selectSuiteInteractively(cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
-	suites, err := cli.GetSuites(projectID)
+func selectSuiteInteractively(ctx context.Context, cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
+	suites, err := cli.GetSuites(ctx, projectID)
 	if err != nil {
-		return 0, fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
+		return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
 	}
 
 	if len(suites) == 0 {
-		return 0, fmt.Errorf("в проекте %d не найдено сьютов", projectID)
+		return 0, fmt.Errorf("no suites found in project %d", projectID)
 	}
 
 	// Если только один сьют — выбираем автоматически
 	if len(suites) == 1 {
-		fmt.Printf("В проекте найден один сьют: %s (ID: %d)\n✓ Используем автоматически.\n\n",
+		fmt.Printf("Project has one suite: %s (ID: %d)\n✓ Using automatically.\n\n",
 			suites[0].Name, suites[0].ID)
 		return suites[0].ID, nil
 	}
@@ -82,22 +83,22 @@ func selectSuiteInteractively(cli client.ClientInterface, projectID int64, promp
 	}
 
 	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Выберите номер сьюта (1-%d): ", len(suites))
+	fmt.Printf("Select suite number (1-%d): ", len(suites))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return 0, fmt.Errorf("ошибка чтения ввода: %w", err)
+		return 0, fmt.Errorf("input read error: %w", err)
 	}
 
 	input = strings.TrimSpace(input)
 	choice, err := strconv.Atoi(input)
 	if err != nil || choice < 1 || choice > len(suites) {
-		return 0, fmt.Errorf("неверный выбор: %s (ожидается число от 1 до %d)", input, len(suites))
+		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(suites))
 	}
 
 	selected := suites[choice-1]
-	fmt.Printf("✓ Выбран сьют: %s (ID: %d)\n\n", selected.Name, selected.ID)
+	fmt.Printf("✓ Selected suite: %s (ID: %d)\n\n", selected.Name, selected.ID)
 
 	return selected.ID, nil
 }

@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"os"
 	"testing"
 
@@ -29,22 +30,22 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 	addCalled := false
 
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			if projectID == 1 {
 				return data.GetSuitesResponse{{ID: 10, Name: "Suite 1"}}, nil
 			}
 			return data.GetSuitesResponse{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return data.GetCasesResponse{}, nil
 		},
-		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
 			return &data.SharedStep{ID: 100, Title: r.Title}, nil
 		},
@@ -72,16 +73,16 @@ func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 	addCalled := false
 
 	mock := &client.MockClient{
-		GetSharedStepsFunc: func(projectID int64) (data.GetSharedStepsResponse, error) {
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 			if projectID == 1 {
 				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
 			}
 			return data.GetSharedStepsResponse{}, nil
 		},
-		GetCasesFunc: func(projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			return data.GetCasesResponse{}, nil
 		},
-		AddSharedStepFunc: func(projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
 			return &data.SharedStep{ID: 100, Title: r.Title}, nil
 		},

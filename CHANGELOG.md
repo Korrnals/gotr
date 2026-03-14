@@ -7,6 +7,132 @@
 
 ---
 
+## [3.0.0] - 2026-03-12
+
+### Added
+
+#### Stage 6.8: Concurrency Unification & Compare Subcommands
+
+- **`internal/concurrency/`** — новый unified concurrency-пакет (переименован из `internal/parallel/`)
+  - Три уровня стратегий:
+    - `FetchParallel[T]` — лёгкая: один API-вызов на проект, параллельная загрузка P1+P2
+    - `FetchParallelBySuite[T]` — средняя: per-suite запросы (для `sections`)
+    - `FetchParallelPaginated` — тяжёлая: `ParallelController` с пагинацией (для `cases`)
+  - Generic API через Go generics `[T any]`
+
+- **`pkg/reporter/`** — универсальный reporter вынесен в публичный пакет (из `internal/ui/reporter/`)
+  - Builder pattern: `Section` / `Stat` / `StatIf` / `StatFmt` / `Print`
+  - go-pretty/v6 для выровненного boxed-вывода
+
+- **Generic `newSimpleCompareCmd`** — одна generic-фабрика вместо 9 идентичных файлов (`cmd/compare/simple.go`)
+  - Устранено ~1200 строк копипасты
+  - Все простые подкоманды используют `FetchParallel[T]` для параллельной загрузки проектов
+
+- **`compare sections`** — параллельная загрузка секций по сьютам через `FetchParallelBySuite[T]`
+
+- **`compare all`** — единообразный вывод через `pkg/reporter`, partial results при недоступных API
+
+### Changed
+
+- `internal/parallel/` → `internal/concurrency/` (переименование пакета и всех импортов)
+- `internal/ui/reporter/` → `pkg/reporter/` (вынесен в публичный пакет)
+- Все 13 compare-подкоманд используют `pkg/reporter` для вывода статистики
+- `OnSuiteComplete` → `OnItemComplete` в интерфейсе `ProgressReporter`
+- Дефолтные значения: `parallel-suites=10`, `parallel-pages=6` (стабильные для TestRail Server)
+
+### Fixed
+
+- `compare all` более не использует `fmt.Println` с emoji и box-drawing символами
+- Устранено некорректное выравнивание статистики в терминалах без поддержки emoji
+
+### Performance
+
+- Простые compare-подкоманды (runs, plans, milestones и др.): загрузка P1 и P2 **параллельно**
+- `compare sections`: параллельная загрузка по сьютам вместо последовательной
+
+---
+
+#### Stage 6.9: Generic Paginator & Pagination Audit
+
+### Added
+
+- **`internal/client/paginator.go`** — универсальный generic-пагинатор `fetchAllPages[T]`
+  - Обрабатывает оба формата TestRail API без ветвлений в бизнес-логике:
+    - **Paginated wrapper** (TestRail 6.7+): `{"offset":0,"limit":250,"size":N,"<key>":[...]}`
+    - **Flat array** (старые TestRail Server): `[item1, item2, ...]`
+  - Автоматическое определение формата по первому байту ответа
+  - Стандартный размер страницы: 250 элементов (TestRail default)
+  - Выход по условию: `len(page) < limit` (последняя страница)
+
+- **Миграция 9 критичных list-методов** на `fetchAllPages[T]`:
+  - `GetRuns(projectID)` — runs теперь не обрезаются на 250
+  - `GetPlans(projectID)` — планы теперь не обрезаются на 250
+  - `GetSections(projectID, suiteID)` — секции (критично для `compare sections`)
+  - `GetSharedSteps(projectID)` — shared steps
+  - `GetMilestones(projectID)` — milestones
+  - `GetResults(runID)` — результаты рана
+  - `GetResultsForRun(runID)` — расширенный вариант
+  - `GetTests(runID)` — тесты рана
+  - `GetSuites(projectID)` — сьюты проекта
+
+### Changed
+
+- Все 9 мигрированных методов: тело метода упрощено с ~30 строк ручного цикла до 1 вызова `fetchAllPages`
+- Удалено ~145 строк дублированного pagination boilerplate из `internal/client/`
+
+### Tests
+
+- `internal/client/paginator_test.go` — 11 новых unit-тестов:
+  - Оба формата ответа (paginated wrapper и flat array)
+  - Многостраничная загрузка (multi-page accumulation)
+  - Граничные случаи: пустой ответ, последняя неполная страница
+  - Тест на ошибку сервера (HTTP 500)
+  - Table-driven tests для `decodeListResponse`
+
+### Verified
+
+- `compare all --pid1 30 --pid2 34`: 20 509 кейсов (87 стр.) + 116 009 кейсов (475 стр.) — пагинация подтверждена на реальных данных
+- `compare runs`, `compare plans`, `compare milestones`, `compare sections`, `compare sharedsteps`: все работают корректно
+- `go test ./...` — все тесты зелёные
+
+---
+
+#### Stage 7.0: Context Propagation
+
+### Added
+
+- **`context.Context`** во все ~100 методов `ClientInterface`
+  - `signal.NotifyContext` → корректное завершение по Ctrl+C
+  - Контекст пробрасывается CLI → Service → Client → HTTP
+
+### Changed
+
+- Все API-методы принимают `ctx context.Context` первым аргументом
+- `cmd.ExecuteContext()` вместо `cmd.Execute()`
+- `MockClient` обновлён под новые сигнатуры
+
+---
+
+#### Stage 8.0: UI/Output Refactoring
+
+### Added
+
+- **`internal/ui/`** — универсальные хелперы:
+  - `ui.Table(headers, rows)` — обёртка над go-pretty вместо tabwriter
+  - `ui.JSON(v)` — форматированный JSON-вывод
+  - `ui.Success()`, `ui.Warn()`, `ui.Error()`, `ui.Info()` — цветные сообщения
+  - `ui.Print()`, `ui.Printf()`, `ui.Println()` — обёртки стандартного вывода
+- **`--format` PersistentFlag** — глобальный флаг формата вывода на root-уровне
+- Массовая миграция: `tabwriter` → `ui.Table`, `json.MarshalIndent` → `ui.JSON`, `fmt.Print*` → `ui.*` (49 файлов)
+
+### Changed
+
+- `internal/flags/`: `*Var` → `GetFlag`, `ValidateRequiredID`
+- `os.Exit` → `panic` в `GetClient*` (тестируемость)
+- Все error messages переведены на английский
+
+---
+
 ## [2.7.0] - 2026-02-20
 
 ### Added

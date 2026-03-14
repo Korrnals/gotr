@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -47,14 +47,15 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newResultServiceFromInterface(cli)
-			testID, err := svc.ParseID(args, 0)
+			testID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID test: %w", err)
+				return fmt.Errorf("invalid test ID: %w", err)
 			}
 
 			req, err := buildAddResultRequest(cmd)
@@ -75,13 +76,13 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 				return nil
 			}
 
-			result, err := svc.AddForTest(testID, req)
+			result, err := svc.AddForTest(ctx, testID, req)
 			if err != nil {
-				return fmt.Errorf("ошибка добавления результата: %w", err)
+				return fmt.Errorf("failed to add result: %w", err)
 			}
 
-			svc.PrintSuccess(cmd, "Результат добавлен успешно:")
-			return svc.Output(cmd, result)
+			svc.PrintSuccess(ctx, cmd, "Результат добавлен успешно:")
+			return svc.Output(ctx, cmd, result)
 		},
 	}
 
@@ -122,14 +123,15 @@ TestRail сам находит соответствующий test в run.
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newResultServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
+			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID run: %w", err)
+				return fmt.Errorf("invalid run ID: %w", err)
 			}
 
 			caseID, _ := cmd.Flags().GetInt64("case-id")
@@ -151,13 +153,13 @@ TestRail сам находит соответствующий test в run.
 				return nil
 			}
 
-			result, err := svc.AddForCase(runID, caseID, req)
+			result, err := svc.AddForCase(ctx, runID, caseID, req)
 			if err != nil {
-				return fmt.Errorf("ошибка добавления результата: %w", err)
+				return fmt.Errorf("failed to add result: %w", err)
 			}
 
-			svc.PrintSuccess(cmd, "Результат добавлен успешно:")
-			return svc.Output(cmd, result)
+			svc.PrintSuccess(ctx, cmd, "Результат добавлен успешно:")
+			return svc.Output(ctx, cmd, result)
 		},
 	}
 
@@ -206,20 +208,21 @@ JSON файл должен содержать массив результато�
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newResultServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
+			runID, err := svc.ParseID(ctx, args, 0)
 			if err != nil {
-				return fmt.Errorf("некорректный ID run: %w", err)
+				return fmt.Errorf("invalid run ID: %w", err)
 			}
 
 			resultsFile, _ := cmd.Flags().GetString("results-file")
 			fileData, err := os.ReadFile(resultsFile)
 			if err != nil {
-				return fmt.Errorf("ошибка чтения файла: %w", err)
+				return fmt.Errorf("file read error: %w", err)
 			}
 
 			// Проверяем dry-run режим
@@ -236,13 +239,13 @@ JSON файл должен содержать массив результато�
 			}
 
 			// Пытаемся распарсить и отправить
-			results, err := svc.AddBulkResults(runID, fileData)
+			results, err := svc.AddBulkResults(ctx, runID, fileData)
 			if err != nil {
 				return err
 			}
 
-			svc.PrintSuccess(cmd, "Результаты добавлены успешно:")
-			return svc.Output(cmd, results)
+			svc.PrintSuccess(ctx, cmd, "Результаты добавлены успешно:")
+			return svc.Output(ctx, cmd, results)
 		},
 	}
 
@@ -257,7 +260,7 @@ JSON файл должен содержать массив результато�
 func buildAddResultRequest(cmd *cobra.Command) (*data.AddResultRequest, error) {
 	// Проверяем что status-id указан (обязательный параметр)
 	if !cmd.Flags().Changed("status-id") {
-		return nil, fmt.Errorf("--status-id обязателен (используйте: 1=Passed, 2=Blocked, 3=Untested, 4=Retest, 5=Failed)")
+		return nil, fmt.Errorf("--status-id is required (use: 1=Passed, 2=Blocked, 3=Untested, 4=Retest, 5=Failed)")
 	}
 
 	statusID, _ := cmd.Flags().GetInt64("status-id")

@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -13,7 +14,7 @@ import (
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFunc: func(caseID int64) (*data.Case, error) {
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			return &data.Case{ID: 12345, Title: "Test Case", SectionID: 100}, nil
 		},
@@ -32,7 +33,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFunc: func(caseID int64) (*data.Case, error) {
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
 			return nil, fmt.Errorf("case not found")
 		},
 	}

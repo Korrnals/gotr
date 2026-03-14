@@ -2,10 +2,12 @@ package milestones
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -31,9 +33,9 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   gotr milestones add 1 --name="Итерация 1.1" --parent-id=123`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
+			if err != nil {
+				return err
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -60,13 +62,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddMilestone(projectID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddMilestone(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create milestone: %w", err)
 			}
 
-			fmt.Printf("✅ Milestone created (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Milestone created (ID: %d)", resp.ID)
+			return output.OutputResult(cmd, resp, "milestones")
 		},
 	}
 

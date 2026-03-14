@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -35,7 +36,7 @@ func TestAddCmd_DryRun_WithDescription(t *testing.T) {
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Sprint 1 Plan", req.Name)
 			assert.Equal(t, "Full regression", req.Description)
@@ -53,7 +54,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_Success_Minimal(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(5), projectID)
 			assert.Equal(t, "Minimal Plan", req.Name)
 			return &data.Plan{ID: 200, Name: req.Name}, nil
@@ -70,7 +71,7 @@ func TestAddCmd_Success_Minimal(t *testing.T) {
 
 func TestAddCmd_WithMilestone(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Plan with Milestone", req.Name)
 			assert.Equal(t, int64(10), req.MilestoneID)
@@ -88,7 +89,7 @@ func TestAddCmd_WithMilestone(t *testing.T) {
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}

@@ -130,7 +130,7 @@ func TestHandleOutput_JQEnabled(t *testing.T) {
 	// JQ path - функция embed.RunEmbeddedJQ выполнится
 	// Результат зависит от наличия jq в системе
 	err := handleOutput(cmd, testData, time.Now())
-	
+
 	// Тест просто проверяет что путь jq выполняется без паники
 	// Результат может быть успешным или с ошибкой в зависимости от окружения
 	_ = err
@@ -148,7 +148,7 @@ func TestHandleOutput_JQFilterOnly(t *testing.T) {
 	testData := map[string]string{"test": "data"}
 	// JQ path - функция embed.RunEmbeddedJQ выполнится
 	err := handleOutput(cmd, testData, time.Now())
-	
+
 	// Тест просто проверяет что путь jq выполняется без паники
 	_ = err
 }
@@ -157,20 +157,20 @@ func TestHandleOutput_JQFilterOnly(t *testing.T) {
 
 func TestRegister(t *testing.T) {
 	rootCmd := &cobra.Command{Use: "test"}
-	
-	// Создаем mock функцию для получения клиента
+
+	// Создаем mock функцию для получения clientа
 	mockClientFn := func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	}
-	
+
 	Register(rootCmd, mockClientFn)
-	
+
 	// Проверяем что команда get добавлена
 	getCmd, _, err := rootCmd.Find([]string{"get"})
 	assert.NoError(t, err)
 	assert.NotNil(t, getCmd)
 	assert.Equal(t, "get", getCmd.Name())
-	
+
 	// Проверяем что все подкоманды добавлены
 	subCommands := []string{
 		"cases", "case",
@@ -181,7 +181,7 @@ func TestRegister(t *testing.T) {
 		"sharedstep-history",
 		"suites", "suite",
 	}
-	
+
 	for _, subCmdName := range subCommands {
 		subCmd, _, err := rootCmd.Find([]string{"get", subCmdName})
 		assert.NoError(t, err, "subcommand %s should exist", subCmdName)
@@ -196,9 +196,9 @@ func TestSetGetClientForTests(t *testing.T) {
 	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
 		return nil
 	}
-	
+
 	SetGetClientForTests(mockFn)
-	
+
 	// getClient должен быть установлен
 	assert.NotNil(t, getClient)
 }

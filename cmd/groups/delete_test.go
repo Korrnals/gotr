@@ -1,6 +1,7 @@
 package groups
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteGroupFunc: func(groupID int64) error {
+		DeleteGroupFunc: func(ctx context.Context, groupID int64) error {
 			assert.Equal(t, int64(123), groupID)
 			return nil
 		},
@@ -39,7 +40,7 @@ func TestDeleteCmd_DryRun(t *testing.T) {
 
 func TestDeleteCmd_DifferentGroupID(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteGroupFunc: func(groupID int64) error {
+		DeleteGroupFunc: func(ctx context.Context, groupID int64) error {
 			assert.Equal(t, int64(456), groupID)
 			return nil
 		},
@@ -55,7 +56,7 @@ func TestDeleteCmd_DifferentGroupID(t *testing.T) {
 
 func TestDeleteCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteGroupFunc: func(groupID int64) error {
+		DeleteGroupFunc: func(ctx context.Context, groupID int64) error {
 			return fmt.Errorf("group not found")
 		},
 	}
@@ -80,7 +81,7 @@ func TestDeleteCmd_InvalidGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestDeleteCmd_ZeroGroupID(t *testing.T) {
@@ -92,7 +93,7 @@ func TestDeleteCmd_ZeroGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestDeleteCmd_NoArgs(t *testing.T) {

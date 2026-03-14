@@ -2,11 +2,11 @@ package run
 
 import (
 	"fmt"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -37,8 +37,9 @@ ID, название, описание, статистика тестов (passe
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := newRunServiceFromInterface(cli)
@@ -48,18 +49,18 @@ ID, название, описание, статистика тестов (passe
 
 			if len(args) > 0 {
 				// Явно указан project-id
-				projectID, err = strconv.ParseInt(args[0], 10, 64)
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return fmt.Errorf("некорректный ID проекта: %w", err)
+					return err
 				}
 			} else {
 				// Интерактивный выбор проекта
 				// Нужен *client.HTTPClient для интерактивного режима
 				httpClient, ok := cli.(*client.HTTPClient)
 				if !ok {
-					return fmt.Errorf("интерактивный режим недоступен в тестовом режиме, укажите project-id")
+					return fmt.Errorf("interactive mode not available in test mode, specify project-id")
 				}
-				projectID, err = interactive.SelectProjectInteractively(httpClient)
+				projectID, err = interactive.SelectProjectInteractively(ctx, httpClient)
 				if err != nil {
 					return err
 				}
@@ -78,12 +79,12 @@ ID, название, описание, статистика тестов (passe
 				return nil
 			}
 
-			runs, err := svc.GetByProject(projectID)
+			runs, err := svc.GetByProject(ctx, projectID)
 			if err != nil {
-				return fmt.Errorf("ошибка получения списка test runs: %w", err)
+				return fmt.Errorf("failed to get test runs list: %w", err)
 			}
 
-			return svc.Output(cmd, runs)
+			return svc.Output(ctx, cmd, runs)
 		},
 	}
 

@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateUserFunc: func(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 			assert.Equal(t, int64(123), userID)
 			assert.Equal(t, "Updated Name", req.Name)
 			return &data.User{
@@ -34,7 +35,7 @@ func TestUpdateCmd_Success(t *testing.T) {
 
 func TestUpdateCmd_SetAdmin(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateUserFunc: func(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 			assert.Equal(t, int64(123), userID)
 			assert.Equal(t, 1, req.IsAdmin)
 			return &data.User{
@@ -55,7 +56,7 @@ func TestUpdateCmd_SetAdmin(t *testing.T) {
 
 func TestUpdateCmd_Deactivate(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateUserFunc: func(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 			assert.Equal(t, int64(123), userID)
 			assert.Equal(t, 0, req.IsActive)
 			return &data.User{
@@ -106,7 +107,7 @@ func TestUpdateCmd_NoArgs(t *testing.T) {
 
 func TestUpdateCmd_Error(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateUserFunc: func(userID int64, req data.UpdateUserRequest) (*data.User, error) {
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 			return nil, fmt.Errorf("user not found")
 		},
 	}

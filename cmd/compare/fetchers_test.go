@@ -182,7 +182,7 @@ func TestCompareSectionsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2)
+	result, err := compareSectionsInternal(context.Background(), mock, 1, 2, false)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -196,7 +196,7 @@ func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(mock, 1, 2)
+	result, err := compareSectionsInternal(context.Background(), mock, 1, 2, false)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -219,7 +219,7 @@ func TestComparePlansInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "plans", fetchPlanItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "plans", fetchPlanItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -233,7 +233,7 @@ func TestComparePlansInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "plans", fetchPlanItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "plans", fetchPlanItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -256,7 +256,7 @@ func TestCompareRunsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "runs", fetchRunItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "runs", fetchRunItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -270,7 +270,7 @@ func TestCompareRunsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "runs", fetchRunItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "runs", fetchRunItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -293,7 +293,7 @@ func TestCompareMilestonesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "milestones", fetchMilestoneItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "milestones", fetchMilestoneItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -307,7 +307,7 @@ func TestCompareMilestonesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "milestones", fetchMilestoneItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "milestones", fetchMilestoneItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -330,7 +330,7 @@ func TestCompareDatasetsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "datasets", fetchDatasetItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "datasets", fetchDatasetItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -344,7 +344,7 @@ func TestCompareDatasetsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "datasets", fetchDatasetItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "datasets", fetchDatasetItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -367,7 +367,7 @@ func TestCompareGroupsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "groups", fetchGroupItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "groups", fetchGroupItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -381,7 +381,7 @@ func TestCompareGroupsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "groups", fetchGroupItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "groups", fetchGroupItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -404,7 +404,7 @@ func TestCompareLabelsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "labels", fetchLabelItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "labels", fetchLabelItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -418,7 +418,7 @@ func TestCompareLabelsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "labels", fetchLabelItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "labels", fetchLabelItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -441,7 +441,7 @@ func TestCompareTemplatesInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "templates", fetchTemplateItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "templates", fetchTemplateItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -455,7 +455,7 @@ func TestCompareTemplatesInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "templates", fetchTemplateItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "templates", fetchTemplateItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -478,7 +478,7 @@ func TestCompareConfigurationsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "configurations", fetchConfigurationItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "configurations", fetchConfigurationItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -492,7 +492,7 @@ func TestCompareConfigurationsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "configurations", fetchConfigurationItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "configurations", fetchConfigurationItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -515,7 +515,7 @@ func TestCompareSharedStepsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "sharedsteps", fetchSharedStepItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "sharedsteps", fetchSharedStepItems)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -529,7 +529,7 @@ func TestCompareSharedStepsInternal_Error(t *testing.T) {
 		},
 	}
 
-	result, err := compareSimpleInternal(mock, 1, 2, "sharedsteps", fetchSharedStepItems)
+	result, err := compareSimpleInternal(context.Background(), mock, 1, 2, "sharedsteps", fetchSharedStepItems)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)

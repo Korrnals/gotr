@@ -105,70 +105,70 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Sections
-			if sectionsResult, err := compareSimpleInternal(cli, pid1, pid2, "sections", fetchSectionItems); err == nil {
+			if sectionsResult, err := compareSectionsInternal(ctx, cli, pid1, pid2, true); err == nil {
 				result.Sections = sectionsResult
 			} else {
 				errors["sections"] = err
 			}
 
 			// Shared Steps
-			if sharedStepsResult, err := compareSimpleInternal(cli, pid1, pid2, "sharedsteps", fetchSharedStepItems); err == nil {
+			if sharedStepsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				errors["shared_steps"] = err
 			}
 
 			// Runs
-			if runsResult, err := compareSimpleInternal(cli, pid1, pid2, "runs", fetchRunItems); err == nil {
+			if runsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "runs", fetchRunItems); err == nil {
 				result.Runs = runsResult
 			} else {
 				errors["runs"] = err
 			}
 
 			// Plans
-			if plansResult, err := compareSimpleInternal(cli, pid1, pid2, "plans", fetchPlanItems); err == nil {
+			if plansResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "plans", fetchPlanItems); err == nil {
 				result.Plans = plansResult
 			} else {
 				errors["plans"] = err
 			}
 
 			// Milestones
-			if milestonesResult, err := compareSimpleInternal(cli, pid1, pid2, "milestones", fetchMilestoneItems); err == nil {
+			if milestonesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems); err == nil {
 				result.Milestones = milestonesResult
 			} else {
 				errors["milestones"] = err
 			}
 
 			// Datasets
-			if datasetsResult, err := compareSimpleInternal(cli, pid1, pid2, "datasets", fetchDatasetItems); err == nil {
+			if datasetsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems); err == nil {
 				result.Datasets = datasetsResult
 			} else {
 				errors["datasets"] = err
 			}
 
 			// Groups
-			if groupsResult, err := compareSimpleInternal(cli, pid1, pid2, "groups", fetchGroupItems); err == nil {
+			if groupsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "groups", fetchGroupItems); err == nil {
 				result.Groups = groupsResult
 			} else {
 				errors["groups"] = err
 			}
 
 			// Labels
-			if labelsResult, err := compareSimpleInternal(cli, pid1, pid2, "labels", fetchLabelItems); err == nil {
+			if labelsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "labels", fetchLabelItems); err == nil {
 				result.Labels = labelsResult
 			} else {
 				errors["labels"] = err
 			}
 
 			// Templates
-			if templatesResult, err := compareSimpleInternal(cli, pid1, pid2, "templates", fetchTemplateItems); err == nil {
+			if templatesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "templates", fetchTemplateItems); err == nil {
 				result.Templates = templatesResult
 			} else {
 				errors["templates"] = err
 			}
 
 			// Configurations
-			if configsResult, err := compareSimpleInternal(cli, pid1, pid2, "configurations", fetchConfigurationItems); err == nil {
+			if configsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems); err == nil {
 				result.Configurations = configsResult
 			} else {
 				errors["configurations"] = err

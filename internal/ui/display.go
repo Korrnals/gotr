@@ -219,7 +219,7 @@ func (d *Display) render() {
 
 	// Legend line
 	if len(d.tasks) > 0 {
-		buf.WriteString("   ⓘ  проект: cases (стр.) | сьюты | скорость | время\n")
+		buf.WriteString("   ⓘ  project: cases (pages) | suites | speed | time\n")
 		lineCount++
 	}
 
@@ -250,16 +250,16 @@ func (d *Display) render() {
 
 		// Pages
 		if pages > 0 {
-			sb.WriteString(fmt.Sprintf(" (%d стр.)", pages))
+			sb.WriteString(fmt.Sprintf(" (%d pages)", pages))
 		}
 
 		// Suites progress
-		sb.WriteString(fmt.Sprintf(" | %d/%d сьютов", suitesCompleted, suitesTotal))
+		sb.WriteString(fmt.Sprintf(" | %d/%d suites", suitesCompleted, suitesTotal))
 
 		// Speed (cases/sec) — show after 1s to avoid jitter
 		if secs := elapsed.Seconds(); secs > 1.0 && cases > 0 {
 			speed := float64(cases) / secs
-			sb.WriteString(fmt.Sprintf(" | %s/с", fmtCount(int64(speed))))
+			sb.WriteString(fmt.Sprintf(" | %s/s", fmtCount(int64(speed))))
 		}
 
 		// Elapsed
@@ -267,7 +267,7 @@ func (d *Display) render() {
 
 		// Errors (at end — conditional, so main fields always align)
 		if errs > 0 {
-			sb.WriteString(fmt.Sprintf(" | ⚠ %d ош.", errs))
+			sb.WriteString(fmt.Sprintf(" | ⚠ %d err", errs))
 		}
 
 		fmt.Fprintln(&buf, sb.String())
@@ -280,14 +280,14 @@ func (d *Display) render() {
 
 func fmtDuration(d time.Duration) string {
 	if d < time.Second {
-		return fmt.Sprintf("%dмс", d.Milliseconds())
+		return fmt.Sprintf("%dms", d.Milliseconds())
 	}
 	m := int(d.Minutes())
 	s := int(d.Seconds()) % 60
 	if m > 0 {
-		return fmt.Sprintf("%dм%02dс", m, s)
+		return fmt.Sprintf("%dm%02ds", m, s)
 	}
-	return fmt.Sprintf("%dс", s)
+	return fmt.Sprintf("%ds", s)
 }
 
 func fmtCount(n int64) string {

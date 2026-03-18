@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-// casesCmd — экспортированная команда
+// casesCmd is the exported command.
 var casesCmd = newCasesCmd()
 
 // projectDataStats contains structural statistics about a single project.
@@ -53,33 +53,34 @@ type casesExecutionStats struct {
 	FailedPagesReport  string
 	RetryAttempted     bool
 	RetryFailedWithErr bool
+	Interrupted        bool // context was canceled before completion (Ctrl+C or deadline)
 }
 
 // newCasesCmd creates the 'compare cases' subcommand.
 func newCasesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cases",
-		Short: "Сравнить тест-кейсы между проектами",
-		Long: `Выполняет сравнение тест-кейсов между двумя проектами.
+		Short: "Compare test cases between projects",
+		Long: `Compares test cases between two projects.
 
-По умолчанию сравнение выполняется по полю 'title'.
-Можно указать другое поле для сравнения с помощью флага --field.
+By default, comparison uses the 'title' field.
+You can specify another field using the --field flag.
 
-Поддерживаемые поля:
+Supported fields:
   title, priority_id, type_id, milestone_id, refs, 
-  custom_preconds, custom_steps, custom_expected и др.
+	custom_preconds, custom_steps, custom_expected, and more.
 
-Примеры:
-  # Сравнить кейсы по названию
+Examples:
+	# Compare cases by title
   gotr compare cases --pid1 30 --pid2 31
 
-  # Сравнить по приоритету
+	# Compare by priority
   gotr compare cases --pid1 30 --pid2 31 --field priority_id
 
-  # Сохранить результат в файл по умолчанию
+	# Save result to the default file
   gotr compare cases --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+	# Save result to a specific file
   gotr compare cases --pid1 30 --pid2 31 --save-to cases_diff.json
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -143,7 +144,7 @@ func newCasesCmd() *cobra.Command {
 
 	// Add flags
 	addCommonFlags(cmd)
-	cmd.Flags().String("field", "title", "Поле для сравнения (title, priority_id, etc.)")
+	cmd.Flags().String("field", "title", "Field to compare by (title, priority_id, etc.)")
 
 	return cmd
 }
@@ -160,9 +161,17 @@ func getCaseKey(item ItemInfo, field string) string {
 // Uses ui.Display for live progress — no mpb, no progress.Monitor.
 func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string) (*CompareResult, casesExecutionStats, error) {
 	execStats := casesExecutionStats{}
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	operation := ui.NewOperation(ui.StatusConfig{
+		Title:  "Loading data",
+		Writer: os.Stderr,
+		Quiet:  quiet,
+	})
+	defer operation.Finish()
+
 	// Phase 1: Get suites for both projects (quick operation)
 	debug.DebugPrint("[Compare] Phase 1: Fetching suites for projects %d and %d", pid1, pid2)
-	ui.Infof(os.Stderr, "Получение структуры проектов %d и %d...", pid1, pid2)
+	operation.Info("Loading project structure for %d and %d...", pid1, pid2)
 
 	suitesMap, err := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
 	if err != nil && len(suitesMap) == 0 {
@@ -172,25 +181,23 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	suites1 := suitesMap[pid1]
 	suites2 := suitesMap[pid2]
 
-		debug.DebugPrint("[Compare] Found suites: P%d=%d, P%d=%d", pid1, len(suites1), pid2, len(suites2))
+	debug.DebugPrint("[Compare] Found suites: P%d=%d, P%d=%d", pid1, len(suites1), pid2, len(suites2))
 
 	// Phase 2: Parallel loading of both projects with live display
-		debug.DebugPrint("[Compare] Phase 2: Parallel loading of projects %d and %d", pid1, pid2)
+	debug.DebugPrint("[Compare] Phase 2: Parallel loading of projects %d and %d", pid1, pid2)
 
 	runtimeConfig, err := resolveCompareCasesRuntimeConfig(collectCompareCasesFlagOverrides(cmd), viper.GetString("base_url"))
 	if err != nil {
 		return nil, execStats, err
 	}
 
-		debug.DebugPrint("[Compare] RuntimeConfig: parallelSuites=%d, parallelPages=%d, rateLimit=%d, pageRetries=%d, retryAttempts=%d, retryWorkers=%d, retryDelay=%s",
+	debug.DebugPrint("[Compare] RuntimeConfig: parallelSuites=%d, parallelPages=%d, rateLimit=%d, pageRetries=%d, retryAttempts=%d, retryWorkers=%d, retryDelay=%s",
 		runtimeConfig.ParallelSuites, runtimeConfig.ParallelPages, runtimeConfig.RateLimit,
 		runtimeConfig.PageRetries, runtimeConfig.RetryAttempts, runtimeConfig.RetryWorkers, runtimeConfig.RetryDelay)
 
-	// Create live display
-	display := ui.New()
-	display.SetHeader("Загрузка данных")
-	task1 := display.AddTask(fmt.Sprintf("П%d (%d сьютов)", pid1, len(suites1)), len(suites1))
-	task2 := display.AddTask(fmt.Sprintf("П%d (%d сьютов)", pid2, len(suites2)), len(suites2))
+	// Create live operation tasks
+	task1 := operation.AddTask(fmt.Sprintf("P%d (%d suites)", pid1, len(suites1)), len(suites1))
+	task2 := operation.AddTask(fmt.Sprintf("P%d (%d suites)", pid2, len(suites2)), len(suites2))
 
 	var cases1, cases2 []ItemInfo
 	var failedPages1, failedPages2 []concurrency.FailedPage
@@ -221,18 +228,20 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	execStats.Project1 = stats1
 	execStats.Project2 = stats2
 
-	// Stop live display
-	display.Finish()
+	// Detect Ctrl+C or deadline — even when partial data was returned without error.
+	execStats.Interrupted = ctx.Err() != nil
 
 	// Print summary
-	ui.Section(os.Stderr, "Результаты загрузки")
-	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid1),
-		fmt.Sprintf("%d кейсов за %s", len(cases1), task1.Elapsed().Round(time.Second)))
-	ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid2),
-		fmt.Sprintf("%d кейсов за %s", len(cases2), task2.Elapsed().Round(time.Second)))
+	if !quiet {
+		ui.Section(os.Stderr, "Loading summary")
+		ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid1),
+			fmt.Sprintf("%d cases in %s", len(cases1), task1.Elapsed().Round(time.Second)))
+		ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid2),
+			fmt.Sprintf("%d cases in %s", len(cases2), task2.Elapsed().Round(time.Second)))
+	}
 
 	if task1.Errors() > 0 || task2.Errors() > 0 {
-		ui.Warningf(os.Stderr, "Errors: П%d=%d, П%d=%d", pid1, task1.Errors(), pid2, task2.Errors())
+		ui.Warningf(os.Stderr, "Errors: P%d=%d, P%d=%d", pid1, task1.Errors(), pid2, task2.Errors())
 	}
 	execStats.LoadErrorsP1 = int(task1.Errors())
 	execStats.LoadErrorsP2 = int(task2.Errors())
@@ -240,29 +249,29 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	allFailedPages := append(append([]concurrency.FailedPage{}, failedPages1...), failedPages2...)
 	execStats.FailedPagesBefore = len(allFailedPages)
 	if len(allFailedPages) > 0 {
-		ui.Warningf(os.Stderr, "Неполученные страницы после retry/recovery: %d", len(allFailedPages))
+		ui.Warningf(os.Stderr, "Unfetched pages after retry/recovery: %d", len(allFailedPages))
 		showLimit := 10
 		if len(allFailedPages) < showLimit {
 			showLimit = len(allFailedPages)
 		}
 		for i := 0; i < showLimit; i++ {
 			fp := allFailedPages[i]
-			ui.Infof(os.Stderr, "  - проект=%d suite=%d page=%d offset=%d limit=%d", fp.ProjectID, fp.SuiteID, fp.PageNum, fp.Offset, fp.Limit)
+			ui.Infof(os.Stderr, "  - project=%d suite=%d page=%d offset=%d limit=%d", fp.ProjectID, fp.SuiteID, fp.PageNum, fp.Offset, fp.Limit)
 		}
 		if len(allFailedPages) > showLimit {
-			ui.Infof(os.Stderr, "  ... и ещё %d страниц (см. JSON-отчёт)", len(allFailedPages)-showLimit)
+			ui.Infof(os.Stderr, "  ... and %d more pages (see JSON report)", len(allFailedPages)-showLimit)
 		}
 
 		reportPath, saveErr := saveFailedPagesReport(allFailedPages, "")
 		if saveErr != nil {
-			ui.Warningf(os.Stderr, "Не удалось сохранить отчёт по ошибочным страницам: %v", saveErr)
+			ui.Warningf(os.Stderr, "Failed to save failed-pages report: %v", saveErr)
 		} else {
-			ui.Infof(os.Stderr, "Отчёт по ошибочным страницам сохранён: %s", reportPath)
+			ui.Infof(os.Stderr, "Failed-pages report saved: %s", reportPath)
 			execStats.FailedPagesReport = reportPath
 		}
 
 		if runtimeConfig.AutoRetryFailedPages {
-			ui.Phase(os.Stderr, "Запуск авто-ретрая failed pages...")
+			operation.Phase("Running auto-retry for failed pages...")
 			execStats.RetryAttempted = true
 			remaining, retryStats, retryErr := executeRetryFailedPages(
 				ctx,
@@ -273,20 +282,20 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 					Workers:  runtimeConfig.RetryWorkers,
 					Delay:    runtimeConfig.RetryDelay,
 				},
-				"auto-retry после compare cases",
+				"auto-retry after compare cases",
 				"",
 			)
 			execStats.RetryStats = retryStats
 			execStats.FailedPagesAfter = len(remaining)
 			if retryErr != nil {
 				execStats.RetryFailedWithErr = true
-				ui.Warningf(os.Stderr, "Авто-ретрай завершился с ошибкой: %v", retryErr)
+				ui.Warningf(os.Stderr, "Auto-retry finished with error: %v", retryErr)
 			} else if len(remaining) == 0 {
-				ui.Successf(os.Stderr, "Авто-ретрай: все failed pages успешно обработаны")
+				ui.Successf(os.Stderr, "Auto-retry: all failed pages were processed successfully")
 			}
 		} else {
 			execStats.FailedPagesAfter = len(allFailedPages)
-			ui.Warningf(os.Stderr, "Авто-ретрай отключён через compare.cases.auto_retry_failed_pages")
+			ui.Warningf(os.Stderr, "Auto-retry is disabled via compare.cases.auto_retry_failed_pages")
 		}
 	}
 
@@ -299,22 +308,32 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 
 	// Phase 3: Analysis
 	debug.DebugPrint("[Compare] Phase 3: Analysis and comparison")
-	ui.Phase(os.Stderr, "Выполняется анализ и сверка данных...")
+	operation.Phase("Analyzing and comparing data...")
 
 	start := time.Now()
 	result := analyzeCases(cases1, cases2, pid1, pid2, field)
 	elapsed := time.Since(start)
 
-	ui.Successf(os.Stderr, "Анализ завершён (%s)", elapsed.Round(time.Millisecond))
-		debug.DebugPrint("[Compare] Analysis complete: P%d=%d unique, P%d=%d unique, common=%d",
+	ui.Successf(os.Stderr, "Analysis completed (%s)", elapsed.Round(time.Millisecond))
+	debug.DebugPrint("[Compare] Analysis complete: P%d=%d unique, P%d=%d unique, common=%d",
 		pid1, len(result.OnlyInFirst), pid2, len(result.OnlyInSecond), len(result.Common))
+
+	// Tag result for JSON output and stats banner.
+	switch {
+	case execStats.Interrupted:
+		result.Status = CompareStatusInterrupted
+	case execStats.FailedPagesAfter > 0:
+		result.Status = CompareStatusPartial
+	default:
+		result.Status = CompareStatusComplete
+	}
 
 	return result, execStats, nil
 }
 
 // fetchCasesForProject loads all cases for a single project.
 // task is a *ui.Task implementing concurrency.PaginatedProgressReporter — gets live updates.
-func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
+func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task ui.TaskHandle, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
 	fetchStart := time.Now()
 	pds := projectDataStats{Suites: len(suites)}
 
@@ -361,7 +380,6 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 
 	debug.DebugPrint("[Project %d] Starting GetCasesParallelCtx (streaming) with parallelSuites=%d, parallelPages=%d, timeout=%s",
 		projectID, parallelSuites, parallelPages, timeout)
-	ctx = context.Background()
 	cases, result, err := cli.GetCasesParallelCtx(ctx, projectID, suiteIDs, config)
 
 	if err != nil && len(cases) == 0 {
@@ -584,6 +602,7 @@ func analyzeCases(cases1, cases2 []ItemInfo, pid1, pid2 int64, field string) *Co
 		Resource:     "cases",
 		Project1ID:   pid1,
 		Project2ID:   pid2,
+		Status:       CompareStatusComplete,
 		OnlyInFirst:  onlyInFirst,
 		OnlyInSecond: onlyInSecond,
 		Common:       common,
@@ -645,7 +664,7 @@ func printCasesStats(result *CompareResult, elapsed time.Duration) {
 	r := reporter.New("cases").
 		Section("General statistics").
 		Stat("⏱️", "Execution time", elapsed.Round(time.Millisecond)).
-		Stat("📦", "Всего кейсов обработано", totalCases).
+		Stat("📦", "Total cases processed", totalCases).
 		Section("Comparison results").
 		Stat("🔹", fmt.Sprintf("Only in project %d", result.Project1ID), len(result.OnlyInFirst)).
 		Stat("🔹", fmt.Sprintf("Only in project %d", result.Project2ID), len(result.OnlyInSecond)).

@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ==================== Тесты для compareSuitesInternal ====================
@@ -160,6 +162,39 @@ func TestCompareCasesInternal_Error(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
+}
+
+func TestCompareCasesInternal_CanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	mock := &client.MockClient{
+		GetSuitesParallelFunc: func(ctx context.Context, projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+			return map[int64]data.GetSuitesResponse{
+				1: {{ID: 101, Name: "Suite A"}},
+				2: {{ID: 201, Name: "Suite B"}},
+			}, nil
+		},
+		GetCasesParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
+			if !errors.Is(ctx.Err(), context.Canceled) {
+				return nil, nil, errors.New("context is not canceled")
+			}
+			return nil, &concurrency.ExecutionResult{}, context.Canceled
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", true, "")
+	cmd.Flags().Int("parallel-suites", 5, "")
+	cmd.Flags().Int("parallel-pages", 3, "")
+	cmd.Flags().Duration("timeout", 5*time.Minute, "")
+
+	result, execStats, err := compareCasesInternal(ctx, cmd, mock, 1, 2, "title")
+
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, CompareStatusInterrupted, result.Status)
+	assert.True(t, execStats.Interrupted)
 }
 
 // ==================== Тесты для compareSectionsInternal ====================

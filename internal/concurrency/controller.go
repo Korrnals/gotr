@@ -521,8 +521,13 @@ func (pc *ParallelController) fetchPageWithRetry(
 		FetchedAt: start,
 	}
 
-	// Apply rate limiting (wait time is NOT counted in response time)
-	pc.limiter.Wait()
+	// Apply rate limiting (wait time is NOT counted in response time).
+	// Respect context cancellation (for example, Ctrl+C from command context).
+	if err := pc.limiter.WaitCtx(ctx); err != nil {
+		result.Duration = time.Since(start)
+		result.Error = fmt.Errorf("page %d (offset %d): %w", req.PageNum, req.Offset, err)
+		return result
+	}
 
 	// Measure only the actual server response time
 	fetchStart := time.Now()

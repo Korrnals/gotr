@@ -25,6 +25,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
 			ctx := cmd.Context()
+			quiet, _ := cmd.Flags().GetBool("quiet")
 			if cli == nil {
 				return fmt.Errorf("HTTP client not initialized")
 			}
@@ -41,7 +42,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 
 			startTime := time.Now()
 
-			result, err := compareSimpleInternal(ctx, cli, pid1, pid2, resource, fetchFn)
+			result, err := compareSimpleInternal(ctx, cli, pid1, pid2, resource, fetchFn, quiet)
 			if err != nil {
 				return fmt.Errorf("comparison error %s: %w", resource, err)
 			}
@@ -52,10 +53,9 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 				return err
 			}
 
-			quiet, _ := cmd.Flags().GetBool("quiet")
 			if !quiet {
 				PrintCompareStats(resource, pid1, pid2,
-					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed, result.Status)
 			}
 
 			return nil
@@ -74,20 +74,27 @@ func compareSimpleInternal(
 	pid1, pid2 int64,
 	resource string,
 	fetchFn FetchFunc,
+	quiet ...bool,
 ) (*CompareResult, error) {
-	ui.Infof(os.Stderr, "Загрузка %s из проектов %d и %d...", resource, pid1, pid2)
+	isQuiet := len(quiet) > 0 && quiet[0]
 
-	results, err := concurrency.FetchParallel(ctx, []int64{pid1, pid2},
-		func(pid int64) ([]ItemInfo, error) {
-			return fetchFn(ctx, cli, pid)
-		},
-	)
-	if err != nil {
-		return nil, err
-	}
+	return ui.RunWithStatus(ctx, ui.StatusConfig{
+		Title:  fmt.Sprintf("Loading %s from projects %d and %d...", resource, pid1, pid2),
+		Writer: os.Stderr,
+		Quiet:  isQuiet,
+	}, func(ctx context.Context) (*CompareResult, error) {
+		results, err := concurrency.FetchParallel(ctx, []int64{pid1, pid2},
+			func(pid int64) ([]ItemInfo, error) {
+				return fetchFn(ctx, cli, pid)
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
 
-	items1 := results[pid1]
-	items2 := results[pid2]
+		items1 := results[pid1]
+		items2 := results[pid2]
 
-	return compareItemInfos(resource, pid1, pid2, items1, items2), nil
+		return compareItemInfos(resource, pid1, pid2, items1, items2), nil
+	})
 }

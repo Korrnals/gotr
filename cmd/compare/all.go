@@ -353,13 +353,13 @@ func appendResourceRow(tw table.Writer, name string, result *CompareResult) {
 	status := "COMPLETE"
 	switch result.Status {
 	case CompareStatusInterrupted:
-		status = "INTERRUPTED"
+		status = reporter.Red("INTERRUPTED")
 	case CompareStatusPartial:
-		status = "PARTIAL"
+		status = reporter.Yellow("PARTIAL")
 	case CompareStatusComplete:
-		status = "COMPLETE"
+		status = reporter.Green("COMPLETE")
 	default:
-		status = "UNKNOWN"
+		status = reporter.Yellow("UNKNOWN")
 	}
 
 	tw.AppendRow(table.Row{name, onlyP1, onlyP2, common, status})

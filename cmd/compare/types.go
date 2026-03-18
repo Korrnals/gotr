@@ -18,6 +18,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// CompareStatus describes whether the comparison completed fully.
+// Stored in the output JSON so CI/CD pipelines can check it reliably.
+type CompareStatus string
+
+const (
+	// CompareStatusComplete means all data was fetched without interruption or page errors.
+	CompareStatusComplete CompareStatus = "complete"
+	// CompareStatusInterrupted means the command was interrupted (e.g. Ctrl+C).
+	// Data in the output file is PARTIAL and must not be treated as authoritative.
+	CompareStatusInterrupted CompareStatus = "interrupted"
+	// CompareStatusPartial means the command finished but some pages had permanent fetch errors.
+	// Data may be missing entries from the failed pages.
+	CompareStatusPartial CompareStatus = "partial"
+)
+
 // ItemInfo represents a generic item with ID and name
 type ItemInfo struct {
 	ID   int64  `json:"id" yaml:"id"`
@@ -37,6 +52,7 @@ type CompareResult struct {
 	Resource     string           `json:"resource" yaml:"resource"`
 	Project1ID   int64            `json:"project1_id" yaml:"project1_id"`
 	Project2ID   int64            `json:"project2_id" yaml:"project2_id"`
+	Status       CompareStatus    `json:"status" yaml:"status"`
 	OnlyInFirst  []ItemInfo       `json:"only_in_first" yaml:"only_in_first"`
 	OnlyInSecond []ItemInfo       `json:"only_in_second" yaml:"only_in_second"`
 	Common       []CommonItemInfo `json:"common" yaml:"common"`
@@ -226,7 +242,7 @@ func printTable(result CompareResult, project1Name, project2Name string) error {
 
 // printOnlyInProjectTable prints a table for items only in one project
 func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName string) {
-	// Column widths - increased for long Russian names
+	// Column widths are widened for long names.
 	idWidth := 8
 	nameWidth := 70
 
@@ -235,14 +251,14 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 	totalInnerWidth := idWidth + nameWidth + 3*len(widths) - 1
 
 	// Title
-	title := fmt.Sprintf("Только in project %d - \"%s\"", projectID, projectName)
+	title := fmt.Sprintf("Only in project %d - \"%s\"", projectID, projectName)
 	printHorizontalBorder("┌", "┬", "┐", widths)
 	printHeader(title, totalInnerWidth)
 
 	// If no items, show empty message
 	if len(items) == 0 {
 		printSeparator(widths)
-		printHeader("(нет)", totalInnerWidth)
+		printHeader("(none)", totalInnerWidth)
 		printHorizontalBorder("└", "┴", "┘", widths)
 		fmt.Println()
 		return
@@ -264,7 +280,7 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 
 // printCommonTable prints a table for common items
 func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
-	// Column widths - increased for long Russian names
+	// Column widths are widened for long names.
 	nameWidth := 50
 	id1Width := 12
 	id2Width := 12
@@ -276,12 +292,12 @@ func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 
 	// Title
 	printHorizontalBorder("┌", "┬", "┐", widths)
-	printHeader("Общие в обоих проектах", totalInnerWidth)
+	printHeader("Common in both projects", totalInnerWidth)
 
 	// If no items, show empty message
 	if len(items) == 0 {
 		printSeparator(widths)
-		printHeader("(нет)", totalInnerWidth)
+		printHeader("(none)", totalInnerWidth)
 		printHorizontalBorder("└", "┴", "┘", widths)
 		fmt.Println()
 		return
@@ -293,15 +309,15 @@ func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 		"Name",
 		fmt.Sprintf("ID proj %d", project1ID),
 		fmt.Sprintf("ID proj %d", project2ID),
-		"Статус ID",
+		"ID status",
 	}, widths)
 	printSeparator(widths)
 
 	// Data rows
 	for _, item := range items {
-		status := "✓ Совпадают"
+		status := "✓ Match"
 		if !item.IDsMatch {
-			status = "⚠ Различаются"
+			status = "⚠ Differ"
 		}
 		printRow([]string{
 			item.Name,
@@ -335,12 +351,12 @@ func printIDMappingTable(items []CommonItemInfo) {
 
 	// Title
 	printHorizontalBorder("┌", "┬", "┐", widths)
-	printHeader("Маппинг ID (для обновления)", totalInnerWidth)
+	printHeader("ID mapping (for updates)", totalInnerWidth)
 
 	// If no mappings, don't show the table at all (or show empty message)
 	if len(mappings) == 0 {
 		printSeparator(widths)
-		printHeader("(все ID совпадают)", totalInnerWidth)
+		printHeader("(all IDs match)", totalInnerWidth)
 		printHorizontalBorder("└", "┴", "┘", widths)
 		fmt.Println()
 		return

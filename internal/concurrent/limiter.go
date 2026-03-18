@@ -39,9 +39,15 @@ func NewRateLimiter(requestsPerMinute int) *RateLimiter {
 
 // Wait blocks until a token is available.
 func (rl *RateLimiter) Wait() {
-	if rl != nil && rl.limiter != nil {
-		rl.limiter.Wait(context.Background())
+	_ = rl.WaitCtx(context.Background())
+}
+
+// WaitCtx blocks until a token is available or the context is canceled.
+func (rl *RateLimiter) WaitCtx(ctx context.Context) error {
+	if rl == nil || rl.limiter == nil {
+		return nil
 	}
+	return rl.limiter.Wait(ctx)
 }
 
 // WaitWithTimeout blocks until a token is available or timeout is reached.
@@ -153,9 +159,15 @@ func NewAdaptiveRateLimiter(initialRequestsPerMinute int) *AdaptiveRateLimiter {
 
 // Wait blocks until a token is available.
 func (arl *AdaptiveRateLimiter) Wait() {
-	if arl != nil && arl.baseLimiter != nil {
-		arl.baseLimiter.Wait()
+	_ = arl.WaitCtx(context.Background())
+}
+
+// WaitCtx blocks until a token is available or the context is canceled.
+func (arl *AdaptiveRateLimiter) WaitCtx(ctx context.Context) error {
+	if arl == nil || arl.baseLimiter == nil {
+		return nil
 	}
+	return arl.baseLimiter.WaitCtx(ctx)
 }
 
 // RecordResponseTime records a response time for adaptive adjustment.

@@ -9,8 +9,34 @@ import (
 
 // PrintCompareStats prints universal statistics for compare commands.
 // Delegates to reporter.CompareStats for go-pretty rendering.
-func PrintCompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int, elapsed time.Duration) {
-	reporter.CompareStats(resource, pid1, pid2, onlyFirst, onlySecond, common, elapsed).Print()
+func PrintCompareStats(resource string, pid1, pid2 int64, onlyFirst, onlySecond, common int, elapsed time.Duration, status ...CompareStatus) {
+	resolvedStatus := CompareStatusComplete
+	if len(status) > 0 && status[0] != "" {
+		resolvedStatus = status[0]
+	}
+
+	total := onlyFirst + onlySecond + common
+	r := reporter.New(resource).
+		Section("Execution status")
+
+	switch resolvedStatus {
+	case CompareStatusInterrupted:
+		r.BannerError("INTERRUPTED - data is INCOMPLETE")
+	case CompareStatusPartial:
+		r.BannerWarn("PARTIAL - data may be incomplete")
+	default:
+		r.BannerOK("COMPLETE - all data fully loaded")
+	}
+
+	r.Section("General statistics").
+		Stat("⏱️", "Execution time", elapsed.Round(time.Millisecond)).
+		Stat("📦", "Total processed", total).
+		Section("Comparison results").
+		Stat("🔹", fmt.Sprintf("Only in project %d", pid1), onlyFirst).
+		Stat("🔹", fmt.Sprintf("Only in project %d", pid2), onlySecond).
+		Stat("🔗", "Common", common)
+
+	r.Print()
 }
 
 // PrintCasesStatsWithErrors prints compare-cases statistics with error/retry diagnostics.
@@ -24,7 +50,19 @@ func PrintCasesStatsWithErrors(
 	total := onlyFirst + onlySecond + common
 
 	r := reporter.New("cases").
-		Section("General statistics").
+		Section("Execution status")
+
+	// Status banner — must be the very first thing users see.
+	switch {
+	case stats.Interrupted:
+		r.BannerError("INTERRUPTED — data is INCOMPLETE  (Ctrl+C detected; results are partial)")
+	case stats.FailedPagesAfter > 0:
+		r.BannerWarn(fmt.Sprintf("PARTIAL — %d page(s) failed to load  (data may be missing entries)", stats.FailedPagesAfter))
+	default:
+		r.BannerOK("COMPLETE — all data fully loaded")
+	}
+
+	r.Section("General statistics").
 		Stat("⏱️", "Execution time", elapsed.Round(time.Millisecond)).
 		Stat("📦", "Total unique cases", total).
 		Section(fmt.Sprintf("Project %d", pid1)).
@@ -44,7 +82,7 @@ func PrintCasesStatsWithErrors(
 				stats.Project1.CasesRaw, stats.Project1.SuiteDetailsCount,
 				stats.Project1.SuiteDetailsSum, stats.Project1.SuiteDetailsEmpty)).
 		StatIf(stats.Project1.TotalPages > 0,
-			"📃", "Pages loaded", fmt.Sprintf("%d (ошибок: %d)",
+			"📃", "Pages loaded", fmt.Sprintf("%d (errors: %d)",
 				stats.Project1.TotalPages, stats.Project1.FailedPages)).
 		StatIf(stats.Project1.EmptyTitles > 0,
 			"⚠️", "Cases without title", stats.Project1.EmptyTitles).
@@ -66,13 +104,13 @@ func PrintCasesStatsWithErrors(
 				stats.Project2.CasesRaw, stats.Project2.SuiteDetailsCount,
 				stats.Project2.SuiteDetailsSum, stats.Project2.SuiteDetailsEmpty)).
 		StatIf(stats.Project2.TotalPages > 0,
-			"📃", "Pages loaded", fmt.Sprintf("%d (ошибок: %d)",
+			"📃", "Pages loaded", fmt.Sprintf("%d (errors: %d)",
 				stats.Project2.TotalPages, stats.Project2.FailedPages)).
 		StatIf(stats.Project2.EmptyTitles > 0,
 			"⚠️", "Cases without title", stats.Project2.EmptyTitles).
 		Stat("⏱️", "Loading", stats.Project2.Elapsed.Round(time.Millisecond)).
 		Section("Errors and retries").
-		StatFmt("⚠️", "Load errors", "П%d=%d, П%d=%d", pid1, stats.LoadErrorsP1, pid2, stats.LoadErrorsP2).
+		StatFmt("⚠️", "Load errors", "P%d=%d, P%d=%d", pid1, stats.LoadErrorsP1, pid2, stats.LoadErrorsP2).
 		Stat("⚠️", "Failed pages before auto-retry", stats.FailedPagesBefore).
 		StatIf(stats.RetryAttempted, "🔄", "Recovered pages",
 			fmt.Sprintf("%d/%d", stats.RetryStats.RecoveredPages, stats.RetryStats.UniquePages)).
@@ -93,11 +131,11 @@ func formatCompleteness(actual, expected, totalSuites, suitesVerified, failedPag
 	// Suite verification status
 	suiteStatus := ""
 	if totalSuites > 0 {
-		if suitesVerified == totalSuites {
-			suiteStatus = fmt.Sprintf("%d/%d suites completed ✅", suitesVerified, totalSuites)
+		if suitesVerified == totalSuites && failedPages == 0 {
+			suiteStatus = reporter.Green(fmt.Sprintf("%d/%d suites completed (OK)", suitesVerified, totalSuites))
 		} else {
 			incomplete := totalSuites - suitesVerified
-			suiteStatus = fmt.Sprintf("%d/%d suites ✅, %d incomplete ⚠️", suitesVerified, totalSuites, incomplete)
+			suiteStatus = reporter.Red(fmt.Sprintf("%d/%d suites completed, %d incomplete", suitesVerified, totalSuites, incomplete))
 		}
 	}
 
@@ -106,18 +144,18 @@ func formatCompleteness(actual, expected, totalSuites, suitesVerified, failedPag
 			return fmt.Sprintf("%d (%s)", actual, suiteStatus)
 		}
 		if failedPages == 0 {
-			return fmt.Sprintf("%d (загружено полностью ✅)", actual)
+			return fmt.Sprintf("%d (%s)", actual, reporter.Green("fully loaded (OK)"))
 		}
-		return fmt.Sprintf("%d (ошибок: %d стр. ⚠️)", actual, failedPages)
+		return fmt.Sprintf("%d (%s)", actual, reporter.Red(fmt.Sprintf("errors: %d pages", failedPages)))
 	}
 	pct := float64(actual) / float64(expected) * 100
-	if actual == expected {
-		return fmt.Sprintf("%d/%d (100%%  ✅)", actual, expected)
+	if actual == expected && failedPages == 0 {
+		return fmt.Sprintf("%s", reporter.Green(fmt.Sprintf("%d/%d (100%%)", actual, expected)))
 	}
 	if actual > expected {
-		return fmt.Sprintf("%d/%d (%.1f%% — дубли?)", actual, expected, pct)
+		return reporter.Red(fmt.Sprintf("%d/%d (%.1f%%, possible duplicates)", actual, expected, pct))
 	}
-	return fmt.Sprintf("%d/%d (%.1f%% ⚠️)", actual, expected, pct)
+	return reporter.Red(fmt.Sprintf("%d/%d (%.1f%%)", actual, expected, pct))
 }
 
 // formatIntegrityCheck shows total cases across all suites in the project.
@@ -135,6 +173,6 @@ func formatIntegrityCheck(casesRaw, suiteCount, suiteSum, emptySuites int) strin
 			suiteSum, suiteCount, emptyNote)
 	}
 	diff := casesRaw - suiteSum
-	return fmt.Sprintf("%d (%d suites%s) ⚠️ загружено %d, расхождение %+d",
+	return fmt.Sprintf("%d (%d suites%s) ⚠️ loaded %d, delta %+d",
 		suiteSum, suiteCount, emptyNote, casesRaw, diff)
 }

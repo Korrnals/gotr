@@ -38,36 +38,37 @@ type allResult struct {
 func newAllCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "all",
-		Short: "Сравнить все ресурсы между двумя проектами",
-		Long: `Выполняет сравнение всех поддерживаемых ресурсов между двумя проектами.
+		Short: "Compare all resources between two projects",
+		Long: `Compares all supported resources between two projects.
 
-Сравниваются следующие ресурсы:
-- cases (кейсы)
-- suites (сюиты)
-- sections (секции)
+Compared resources:
+- cases
+- suites
+- sections
 - sharedsteps (shared steps)
 - runs (test runs)
 - plans (test plans)
 - milestones (milestones)
 - datasets (datasets)
-- groups (группы)
-- labels (метки)
-- templates (шаблоны)
-- configurations (конфигурации)
+- groups
+- labels
+- templates
+- configurations
 
-Примеры:
-  # Сравнить все ресурсы
+Examples:
+	# Compare all resources
   gotr compare all --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+	# Save result to the default file
   gotr compare all --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+	# Save result to a specific file
   gotr compare all --pid1 30 --pid2 31 --save-to result.json
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
 			ctx := cmd.Context()
+			quiet, _ := cmd.Flags().GetBool("quiet")
 			if cli == nil {
 				return fmt.Errorf("HTTP client not initialized")
 			}
@@ -98,7 +99,7 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Suites
-			if suitesResult, err := compareSuitesInternal(ctx, cli, pid1, pid2); err == nil {
+			if suitesResult, err := compareSuitesInternal(ctx, cli, pid1, pid2, true); err == nil {
 				result.Suites = suitesResult
 			} else {
 				errors["suites"] = err
@@ -112,63 +113,63 @@ func newAllCmd() *cobra.Command {
 			}
 
 			// Shared Steps
-			if sharedStepsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems); err == nil {
+			if sharedStepsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems, true); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				errors["shared_steps"] = err
 			}
 
 			// Runs
-			if runsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "runs", fetchRunItems); err == nil {
+			if runsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "runs", fetchRunItems, true); err == nil {
 				result.Runs = runsResult
 			} else {
 				errors["runs"] = err
 			}
 
 			// Plans
-			if plansResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "plans", fetchPlanItems); err == nil {
+			if plansResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "plans", fetchPlanItems, true); err == nil {
 				result.Plans = plansResult
 			} else {
 				errors["plans"] = err
 			}
 
 			// Milestones
-			if milestonesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems); err == nil {
+			if milestonesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems, true); err == nil {
 				result.Milestones = milestonesResult
 			} else {
 				errors["milestones"] = err
 			}
 
 			// Datasets
-			if datasetsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems); err == nil {
+			if datasetsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems, true); err == nil {
 				result.Datasets = datasetsResult
 			} else {
 				errors["datasets"] = err
 			}
 
 			// Groups
-			if groupsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "groups", fetchGroupItems); err == nil {
+			if groupsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "groups", fetchGroupItems, true); err == nil {
 				result.Groups = groupsResult
 			} else {
 				errors["groups"] = err
 			}
 
 			// Labels
-			if labelsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "labels", fetchLabelItems); err == nil {
+			if labelsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "labels", fetchLabelItems, true); err == nil {
 				result.Labels = labelsResult
 			} else {
 				errors["labels"] = err
 			}
 
 			// Templates
-			if templatesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "templates", fetchTemplateItems); err == nil {
+			if templatesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "templates", fetchTemplateItems, true); err == nil {
 				result.Templates = templatesResult
 			} else {
 				errors["templates"] = err
 			}
 
 			// Configurations
-			if configsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems); err == nil {
+			if configsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems, true); err == nil {
 				result.Configurations = configsResult
 			} else {
 				errors["configurations"] = err
@@ -176,7 +177,9 @@ func newAllCmd() *cobra.Command {
 
 			// Print summary table
 			elapsed := time.Since(startTime)
-			printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
+			if !quiet {
+				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
+			}
 
 			// Save result if requested
 			if savePath != "" {
@@ -231,7 +234,7 @@ func newAllCmd() *cobra.Command {
 	return cmd
 }
 
-// allCmd — экспортированная команда
+// allCmd is the exported command.
 var allCmd = newAllCmd()
 
 // parseCommonFlags parses common flags for all subcommands.
@@ -282,20 +285,20 @@ func addCommonFlags(cmd *cobra.Command) {
 // using go-pretty tables and reporter for consistent aligned output.
 func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error, elapsed time.Duration) {
 	// Header via reporter
-	rpt := reporter.New("Comparison проектов").
-		Section("Проекты").
-		StatFmt("📋", "Проект 1", "%s (ID: %d)", project1Name, pid1).
-		StatFmt("📋", "Проект 2", "%s (ID: %d)", project2Name, pid2)
+	rpt := reporter.New("Project comparison").
+		Section("Projects").
+		StatFmt("📋", "Project 1", "%s (ID: %d)", project1Name, pid1).
+		StatFmt("📋", "Project 2", "%s (ID: %d)", project2Name, pid2)
 	rpt.Print()
 
 	// Resource comparison table via go-pretty
 	tw := table.NewWriter()
 	tw.SetOutputMirror(os.Stdout)
 	tw.SetStyle(table.StyleRounded)
-	tw.SetTitle("СВОДКА РЕСУРСОВ")
+	tw.SetTitle("RESOURCE SUMMARY")
 	tw.Style().Title.Align = text.AlignCenter
 
-	tw.AppendHeader(table.Row{"Resource", "Only in P1", "Only in P2", "Common", "Status"})
+	tw.AppendHeader(table.Row{"Resource", "Only in P1", "Only in P2", "Common", "Data status"})
 	tw.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignLeft, WidthMin: 16},
 		{Number: 2, Align: text.AlignRight},
@@ -322,12 +325,12 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 	fmt.Println()
 
 	// Footer stats via reporter
-	footer := reporter.New("Итого").
-		Section("Время").
+	footer := reporter.New("Totals").
+		Section("Timing").
 		Stat("⏱️", "Execution time", elapsed.Round(time.Second))
 
 	if len(errors) > 0 {
-		footer.Section("Ошибки")
+		footer.Section("Errors")
 		for resource, err := range errors {
 			footer.Stat("❌", resource, err)
 		}
@@ -339,7 +342,7 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 // appendResourceRow adds a resource row to the go-pretty table.
 func appendResourceRow(tw table.Writer, name string, result *CompareResult) {
 	if result == nil {
-		tw.AppendRow(table.Row{name, "-", "-", "-", "(X)"})
+		tw.AppendRow(table.Row{name, "-", "-", "-", "INTERRUPTED"})
 		return
 	}
 
@@ -347,9 +350,16 @@ func appendResourceRow(tw table.Writer, name string, result *CompareResult) {
 	onlyP2 := len(result.OnlyInSecond)
 	common := len(result.Common)
 
-	status := "(OK)"
-	if onlyP1 > 0 || onlyP2 > 0 {
-		status = "(!)"
+	status := "COMPLETE"
+	switch result.Status {
+	case CompareStatusInterrupted:
+		status = "INTERRUPTED"
+	case CompareStatusPartial:
+		status = "PARTIAL"
+	case CompareStatusComplete:
+		status = "COMPLETE"
+	default:
+		status = "UNKNOWN"
 	}
 
 	tw.AppendRow(table.Row{name, onlyP1, onlyP2, common, status})

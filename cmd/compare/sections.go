@@ -22,17 +22,17 @@ import (
 func newSectionsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sections",
-		Short: "Сравнить секции между проектами",
-		Long: `Выполняет сравнение секций (разделов) между двумя проектами.
+		Short: "Compare sections between projects",
+		Long: `Compares sections between two projects.
 
-Примеры:
-  # Сравнить секции
+Examples:
+	# Compare sections
   gotr compare sections --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+	# Save result to the default file
   gotr compare sections --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+	# Save result to a specific file
   gotr compare sections --pid1 30 --pid2 31 --save-to sections_diff.json
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -74,7 +74,7 @@ func newSectionsCmd() *cobra.Command {
 			// Print statistics
 			if !quiet {
 				PrintCompareStats("sections", pid1, pid2,
-					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed, result.Status)
 			}
 
 			return nil
@@ -87,12 +87,19 @@ func newSectionsCmd() *cobra.Command {
 	return cmd
 }
 
-// sectionsCmd — экспортированная команда
+// sectionsCmd is the exported command.
 var sectionsCmd = newSectionsCmd()
 
 // compareSectionsInternal compares sections between two projects using FetchParallel.
 func compareSectionsInternal(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, quiet bool) (*CompareResult, error) {
-	ui.Infof(os.Stderr, "Получение структуры проектов %d и %d...", pid1, pid2)
+	operation := ui.NewOperation(ui.StatusConfig{
+		Title:  "Loading sections",
+		Writer: os.Stderr,
+		Quiet:  quiet,
+	})
+	defer operation.Finish()
+
+	operation.Info("Loading project structure for %d and %d...", pid1, pid2)
 
 	suitesMap, err := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
 	if err != nil && len(suitesMap) == 0 {
@@ -102,10 +109,8 @@ func compareSectionsInternal(ctx context.Context, cli client.ClientInterface, pi
 	suites1 := suitesMap[pid1]
 	suites2 := suitesMap[pid2]
 
-	display := ui.New(ui.WithQuiet(quiet))
-	display.SetHeader("Загрузка sections")
-	task1 := display.AddTask(fmt.Sprintf("П%d (%d сьютов)", pid1, len(suites1)), taskTotal(len(suites1)))
-	task2 := display.AddTask(fmt.Sprintf("П%d (%d сьютов)", pid2, len(suites2)), taskTotal(len(suites2)))
+	task1 := operation.AddTask(fmt.Sprintf("P%d (%d suites)", pid1, len(suites1)), taskTotal(len(suites1)))
+	task2 := operation.AddTask(fmt.Sprintf("P%d (%d suites)", pid2, len(suites2)), taskTotal(len(suites2)))
 
 	var items1, items2 []ItemInfo
 	var err1, err2 error
@@ -127,7 +132,6 @@ func compareSectionsInternal(ctx context.Context, cli client.ClientInterface, pi
 
 	<-done1
 	<-done2
-	display.Finish()
 
 	if ctx.Err() != nil {
 		return nil, ctx.Err()
@@ -147,11 +151,11 @@ func compareSectionsInternal(ctx context.Context, cli client.ClientInterface, pi
 	}
 
 	if !quiet {
-		ui.Section(os.Stderr, "Результаты загрузки")
+		ui.Section(os.Stderr, "Loading summary")
 		ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid1),
-			fmt.Sprintf("%d sections за %s", len(items1), task1.Elapsed().Round(time.Second)))
+			fmt.Sprintf("%d sections in %s", len(items1), task1.Elapsed().Round(time.Second)))
 		ui.Stat(os.Stderr, "📦", fmt.Sprintf("Project %d", pid2),
-			fmt.Sprintf("%d sections за %s", len(items2), task2.Elapsed().Round(time.Second)))
+			fmt.Sprintf("%d sections in %s", len(items2), task2.Elapsed().Round(time.Second)))
 	}
 
 	return compareItemInfos("sections", pid1, pid2, items1, items2), nil
@@ -224,7 +228,7 @@ func fetchSectionItems(ctx context.Context, cli client.ClientInterface, projectI
 	return result, nil
 }
 
-func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task *ui.Task) ([]ItemInfo, error) {
+func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task ui.TaskHandle) ([]ItemInfo, error) {
 	if len(suites) == 0 {
 		sections, err := cli.GetSections(ctx, projectID, 0)
 		if err != nil {
@@ -236,8 +240,8 @@ func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, pr
 			items = append(items, ItemInfo{ID: section.ID, Name: section.Name})
 		}
 
-		task.OnItemComplete()
-		task.OnBatchReceived(len(items))
+		task.Increment()
+		task.Add(len(items))
 		return items, nil
 	}
 
@@ -319,7 +323,7 @@ func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, pr
 	return result, nil
 }
 
-func fetchSectionsForSuitePaged(ctx context.Context, cli *client.HTTPClient, projectID, suiteID int64, suiteName string, task *ui.Task) ([]ItemInfo, error) {
+func fetchSectionsForSuitePaged(ctx context.Context, cli *client.HTTPClient, projectID, suiteID int64, suiteName string, task ui.TaskHandle) ([]ItemInfo, error) {
 	const pageLimit = 250
 
 	offset := 0
@@ -363,9 +367,9 @@ func fetchSectionsForSuitePaged(ctx context.Context, cli *client.HTTPClient, pro
 
 		if len(items) > 0 {
 			allItems = append(allItems, items...)
-			task.OnBatchReceived(len(items))
+			task.Add(len(items))
 		}
-		task.OnPageFetched()
+		task.Page()
 
 		if pageLen < pageLimit {
 			break

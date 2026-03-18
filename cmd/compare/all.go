@@ -1,7 +1,9 @@
 package compare
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,6 +19,68 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
+
+func isContextCancellationError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "context canceled") || strings.Contains(msg, "deadline exceeded")
+}
+
+func interruptedResult(resource string, pid1, pid2 int64) *CompareResult {
+	return &CompareResult{
+		Resource:     resource,
+		Project1ID:   pid1,
+		Project2ID:   pid2,
+		Status:       CompareStatusInterrupted,
+		OnlyInFirst:  []ItemInfo{},
+		OnlyInSecond: []ItemInfo{},
+		Common:       []CommonItemInfo{},
+	}
+}
+
+func fillInterruptedResults(result *allResult, pid1, pid2 int64) {
+	if result.Cases == nil {
+		result.Cases = interruptedResult("cases", pid1, pid2)
+	}
+	if result.Suites == nil {
+		result.Suites = interruptedResult("suites", pid1, pid2)
+	}
+	if result.Sections == nil {
+		result.Sections = interruptedResult("sections", pid1, pid2)
+	}
+	if result.SharedSteps == nil {
+		result.SharedSteps = interruptedResult("sharedsteps", pid1, pid2)
+	}
+	if result.Runs == nil {
+		result.Runs = interruptedResult("runs", pid1, pid2)
+	}
+	if result.Plans == nil {
+		result.Plans = interruptedResult("plans", pid1, pid2)
+	}
+	if result.Milestones == nil {
+		result.Milestones = interruptedResult("milestones", pid1, pid2)
+	}
+	if result.Datasets == nil {
+		result.Datasets = interruptedResult("datasets", pid1, pid2)
+	}
+	if result.Groups == nil {
+		result.Groups = interruptedResult("groups", pid1, pid2)
+	}
+	if result.Labels == nil {
+		result.Labels = interruptedResult("labels", pid1, pid2)
+	}
+	if result.Templates == nil {
+		result.Templates = interruptedResult("templates", pid1, pid2)
+	}
+	if result.Configurations == nil {
+		result.Configurations = interruptedResult("configurations", pid1, pid2)
+	}
+}
 
 // allResult represents the combined results of comparing all resources.
 type allResult struct {
@@ -90,89 +154,140 @@ Examples:
 			// Compare all resources
 			result := &allResult{}
 			errors := make(map[string]error)
+			interrupted := false
+
+			recordErr := func(resource string, err error) {
+				if err == nil {
+					return
+				}
+				if isContextCancellationError(err) || ctx.Err() != nil {
+					interrupted = true
+					return
+				}
+				errors[resource] = err
+			}
 
 			// Cases
 			if casesResult, _, err := compareCasesInternal(ctx, cmd, cli, pid1, pid2, "title"); err == nil {
 				result.Cases = casesResult
 			} else {
-				errors["cases"] = err
+				recordErr("cases", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Suites
 			if suitesResult, err := compareSuitesInternal(ctx, cli, pid1, pid2, true); err == nil {
 				result.Suites = suitesResult
 			} else {
-				errors["suites"] = err
+				recordErr("suites", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Sections
 			if sectionsResult, err := compareSectionsInternal(ctx, cli, pid1, pid2, true); err == nil {
 				result.Sections = sectionsResult
 			} else {
-				errors["sections"] = err
+				recordErr("sections", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Shared Steps
 			if sharedStepsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems, true); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
-				errors["shared_steps"] = err
+				recordErr("shared_steps", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Runs
 			if runsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "runs", fetchRunItems, true); err == nil {
 				result.Runs = runsResult
 			} else {
-				errors["runs"] = err
+				recordErr("runs", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Plans
 			if plansResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "plans", fetchPlanItems, true); err == nil {
 				result.Plans = plansResult
 			} else {
-				errors["plans"] = err
+				recordErr("plans", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Milestones
 			if milestonesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems, true); err == nil {
 				result.Milestones = milestonesResult
 			} else {
-				errors["milestones"] = err
+				recordErr("milestones", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Datasets
 			if datasetsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems, true); err == nil {
 				result.Datasets = datasetsResult
 			} else {
-				errors["datasets"] = err
+				recordErr("datasets", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Groups
 			if groupsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "groups", fetchGroupItems, true); err == nil {
 				result.Groups = groupsResult
 			} else {
-				errors["groups"] = err
+				recordErr("groups", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Labels
 			if labelsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "labels", fetchLabelItems, true); err == nil {
 				result.Labels = labelsResult
 			} else {
-				errors["labels"] = err
+				recordErr("labels", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Templates
 			if templatesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "templates", fetchTemplateItems, true); err == nil {
 				result.Templates = templatesResult
 			} else {
-				errors["templates"] = err
+				recordErr("templates", err)
+			}
+			if interrupted {
+				goto done
 			}
 
 			// Configurations
 			if configsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems, true); err == nil {
 				result.Configurations = configsResult
 			} else {
-				errors["configurations"] = err
+				recordErr("configurations", err)
+			}
+
+		done:
+			if interrupted {
+				fillInterruptedResults(result, pid1, pid2)
+				errors["execution"] = fmt.Errorf("interrupted by user; remaining resources were not processed")
 			}
 
 			// Print summary table

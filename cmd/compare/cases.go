@@ -159,7 +159,7 @@ func getCaseKey(item ItemInfo, field string) string {
 
 // compareCasesInternal compares cases between two projects and returns the result.
 // Uses ui.Display for live progress — no mpb, no progress.Monitor.
-func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string) (*CompareResult, casesExecutionStats, error) {
+func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, field string, preloadedSuites ...map[int64]data.GetSuitesResponse) (*CompareResult, casesExecutionStats, error) {
 	execStats := casesExecutionStats{}
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	operation := ui.NewOperation(ui.StatusConfig{
@@ -173,9 +173,15 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	debug.DebugPrint("[Compare] Phase 1: Fetching suites for projects %d and %d", pid1, pid2)
 	operation.Info("Loading project structure for %d and %d...", pid1, pid2)
 
-	suitesMap, err := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
-	if err != nil && len(suitesMap) == 0 {
-		return nil, execStats, fmt.Errorf("failed to get suites: %w", err)
+	var suitesMap map[int64]data.GetSuitesResponse
+	var err error
+	if len(preloadedSuites) > 0 && preloadedSuites[0] != nil {
+		suitesMap = preloadedSuites[0]
+	} else {
+		suitesMap, err = cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
+		if err != nil && len(suitesMap) == 0 {
+			return nil, execStats, fmt.Errorf("failed to get suites: %w", err)
+		}
 	}
 
 	suites1 := suitesMap[pid1]

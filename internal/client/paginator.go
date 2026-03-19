@@ -96,6 +96,13 @@ func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, b
 
 		all = append(all, page...)
 
+		// Backward-compat mode: flat array responses are not paginated by TestRail.
+		// If the payload starts with '[', stop after the first successful request,
+		// even when len(page) >= paginationLimit.
+		if isJSONArrayBody(body) {
+			break
+		}
+
 		// Если получили меньше limit — больше страниц нет
 		if pageLen < paginationLimit {
 			break
@@ -105,4 +112,18 @@ func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, b
 	}
 
 	return all, nil
+}
+
+func isJSONArrayBody(body []byte) bool {
+	for _, b := range body {
+		switch b {
+		case ' ', '\t', '\n', '\r':
+			continue
+		case '[':
+			return true
+		default:
+			return false
+		}
+	}
+	return false
 }

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -74,7 +75,33 @@ func RunWithStatus[T any](ctx context.Context, cfg StatusConfig, fn func(context
 		writer = os.Stderr
 	}
 	if !cfg.Quiet && cfg.Title != "" {
-		Infof(writer, "%s", cfg.Title)
+		stop := make(chan struct{})
+		start := time.Now()
+		go func() {
+			ticker := time.NewTicker(200 * time.Millisecond)
+			defer ticker.Stop()
+			frames := []string{"|", "/", "-", `\\`}
+			frame := 0
+			for {
+				select {
+				case <-stop:
+					return
+				case <-ticker.C:
+					fmt.Fprintf(writer, "\r\033[2K📥 %s %s ⏱ %s", cfg.Title, frames[frame%len(frames)], fmtDuration(time.Since(start)))
+					frame++
+				}
+			}
+		}()
+
+		value, err := fn(ctx)
+		close(stop)
+		fmt.Fprintf(writer, "\r\033[2K")
+		if err != nil {
+			fmt.Fprintf(writer, "⚠️  %s failed after %s\n", cfg.Title, fmtDuration(time.Since(start)))
+		} else {
+			fmt.Fprintf(writer, "✅ %s completed in %s\n", cfg.Title, fmtDuration(time.Since(start)))
+		}
+		return value, err
 	}
 	return fn(ctx)
 }

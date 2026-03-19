@@ -7,6 +7,23 @@
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- `compare all`: stage-by-stage progress tracker in terminal (`done/active/pending`) for all resources.
+- `compare all`: shared suites prefetch for `cases/suites/sections` to avoid repeated `get_suites` calls.
+- `compare all`: resource failures are now marked as `PARTIAL` (instead of misleading `INTERRUPTED`).
+- `compare all`: unsupported TestRail endpoints (`404 Unknown method`) are shown as `UNSUPPORTED` with a dedicated `Unsupported endpoints` summary block.
+- `compare all` JSON/YAML meta now distinguishes real errors from unsupported endpoints:
+  - `error_summary_count` / `error_resources` for real failures
+  - `unsupported_summary_count` / `unsupported_resources` for server-unsupported methods
+
+### Fixed
+
+- `internal/client` paginator: fixed potential infinite loop for flat-array API responses with page size at or above 250.
+- `compare sections`: stabilized loading path via client pagination behavior and added regression coverage in paginator tests.
+
 ## [3.0.0] - 2026-03-12
 
 ### Added

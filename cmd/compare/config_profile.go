@@ -9,15 +9,19 @@ import (
 )
 
 type compareCasesRuntimeConfig struct {
+	compareHeavyRuntimeConfig
+	RetryAttempts        int
+	RetryWorkers         int
+	RetryDelay           time.Duration
+	AutoRetryFailedPages bool
+}
+
+type compareHeavyRuntimeConfig struct {
 	RateLimit            int
 	ParallelSuites       int
 	ParallelPages        int
 	PageRetries          int
 	Timeout              time.Duration
-	RetryAttempts        int
-	RetryWorkers         int
-	RetryDelay           time.Duration
-	AutoRetryFailedPages bool
 }
 
 func ensureCompareConfigDefaults() {
@@ -42,6 +46,60 @@ func resolveCompareCasesRuntimeConfig(
 	cmdFlags map[string]any,
 	baseURL string,
 ) (compareCasesRuntimeConfig, error) {
+	heavyCfg, err := resolveCompareHeavyRuntimeConfig(cmdFlags, baseURL)
+	if err != nil {
+		return compareCasesRuntimeConfig{}, err
+	}
+
+	ensureCompareConfigDefaults()
+
+	retryAttempts := viper.GetInt("compare.cases.retry.attempts")
+	if retryAttempts <= 0 {
+		retryAttempts = 5
+	}
+	if isFlagProvided(cmdFlags, "retry_attempts") {
+		retryAttempts = cmdFlags["retry_attempts"].(int)
+	}
+
+	retryWorkers := viper.GetInt("compare.cases.retry.workers")
+	if retryWorkers <= 0 {
+		retryWorkers = 12
+	}
+	if isFlagProvided(cmdFlags, "retry_workers") {
+		retryWorkers = cmdFlags["retry_workers"].(int)
+	}
+
+	retryDelay := 500 * time.Millisecond
+	retryDelayText := strings.TrimSpace(viper.GetString("compare.cases.retry.delay"))
+	if retryDelayText != "" {
+		parsed, err := time.ParseDuration(retryDelayText)
+		if err != nil {
+			return compareCasesRuntimeConfig{}, fmt.Errorf("invalid compare.cases.retry.delay in config: %w", err)
+		}
+		retryDelay = parsed
+	}
+	if isFlagProvided(cmdFlags, "retry_delay") {
+		retryDelay = cmdFlags["retry_delay"].(time.Duration)
+	}
+
+	autoRetry := viper.GetBool("compare.cases.auto_retry_failed_pages")
+	if !viper.IsSet("compare.cases.auto_retry_failed_pages") {
+		autoRetry = true
+	}
+
+	return compareCasesRuntimeConfig{
+		compareHeavyRuntimeConfig: heavyCfg,
+		RetryAttempts:             retryAttempts,
+		RetryWorkers:              retryWorkers,
+		RetryDelay:                retryDelay,
+		AutoRetryFailedPages:      autoRetry,
+	}, nil
+}
+
+func resolveCompareHeavyRuntimeConfig(
+	cmdFlags map[string]any,
+	baseURL string,
+) (compareHeavyRuntimeConfig, error) {
 	ensureCompareConfigDefaults()
 
 	deployment := strings.ToLower(strings.TrimSpace(viper.GetString("compare.deployment")))
@@ -96,7 +154,7 @@ func resolveCompareCasesRuntimeConfig(
 	if timeoutText != "" {
 		parsed, err := time.ParseDuration(timeoutText)
 		if err != nil {
-			return compareCasesRuntimeConfig{}, fmt.Errorf("invalid compare.cases.timeout in config: %w", err)
+			return compareHeavyRuntimeConfig{}, fmt.Errorf("invalid compare.cases.timeout in config: %w", err)
 		}
 		timeout = parsed
 	}
@@ -104,50 +162,12 @@ func resolveCompareCasesRuntimeConfig(
 		timeout = cmdFlags["timeout"].(time.Duration)
 	}
 
-	retryAttempts := viper.GetInt("compare.cases.retry.attempts")
-	if retryAttempts <= 0 {
-		retryAttempts = 5
-	}
-	if isFlagProvided(cmdFlags, "retry_attempts") {
-		retryAttempts = cmdFlags["retry_attempts"].(int)
-	}
-
-	retryWorkers := viper.GetInt("compare.cases.retry.workers")
-	if retryWorkers <= 0 {
-		retryWorkers = 12
-	}
-	if isFlagProvided(cmdFlags, "retry_workers") {
-		retryWorkers = cmdFlags["retry_workers"].(int)
-	}
-
-	retryDelay := 500 * time.Millisecond
-	retryDelayText := strings.TrimSpace(viper.GetString("compare.cases.retry.delay"))
-	if retryDelayText != "" {
-		parsed, err := time.ParseDuration(retryDelayText)
-		if err != nil {
-			return compareCasesRuntimeConfig{}, fmt.Errorf("invalid compare.cases.retry.delay in config: %w", err)
-		}
-		retryDelay = parsed
-	}
-	if isFlagProvided(cmdFlags, "retry_delay") {
-		retryDelay = cmdFlags["retry_delay"].(time.Duration)
-	}
-
-	autoRetry := viper.GetBool("compare.cases.auto_retry_failed_pages")
-	if !viper.IsSet("compare.cases.auto_retry_failed_pages") {
-		autoRetry = true
-	}
-
-	return compareCasesRuntimeConfig{
-		RateLimit:            rateLimit,
-		ParallelSuites:       parallelSuites,
-		ParallelPages:        parallelPages,
-		PageRetries:          pageRetries,
-		Timeout:              timeout,
-		RetryAttempts:        retryAttempts,
-		RetryWorkers:         retryWorkers,
-		RetryDelay:           retryDelay,
-		AutoRetryFailedPages: autoRetry,
+	return compareHeavyRuntimeConfig{
+		RateLimit:      rateLimit,
+		ParallelSuites: parallelSuites,
+		ParallelPages:  parallelPages,
+		PageRetries:    pageRetries,
+		Timeout:        timeout,
 	}, nil
 }
 

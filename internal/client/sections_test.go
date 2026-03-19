@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -251,4 +253,89 @@ func TestDeleteSection(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetSectionsParallelCtx_BySuites(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Contains(t, r.URL.String(), "get_sections/30")
+
+		suiteID := r.URL.Query().Get("suite_id")
+		var payload map[string]any
+		switch suiteID {
+		case "100":
+			payload = map[string]any{"offset": 0, "limit": 250, "size": 1, "sections": []map[string]any{{"id": 1, "suite_id": 100, "name": "S-100"}}}
+		case "200":
+			payload = map[string]any{"offset": 0, "limit": 250, "size": 1, "sections": []map[string]any{{"id": 2, "suite_id": 200, "name": "S-200"}}}
+		default:
+			payload = map[string]any{"offset": 0, "limit": 250, "size": 0, "sections": []map[string]any{}}
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(payload)
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	got, err := client.GetSectionsParallelCtx(
+		context.Background(),
+		30,
+		[]int64{100, 200},
+		&concurrency.ControllerConfig{MaxConcurrentSuites: 2, Timeout: 2 * time.Second},
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, got, 2)
+}
+
+func TestGetSectionsParallelCtx_EmptySuitesFallback(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Contains(t, r.URL.String(), "get_sections/30")
+		assert.Equal(t, "", r.URL.Query().Get("suite_id"))
+
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"offset":   0,
+			"limit":    250,
+			"size":     1,
+			"sections": []map[string]any{{"id": 10, "name": "Common"}},
+		})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	got, err := client.GetSectionsParallelCtx(context.Background(), 30, nil, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, got, 1)
+	assert.Equal(t, int64(10), got[0].ID)
+}
+
+func TestGetSectionsParallelCtx_Timeout(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(80 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"offset":   0,
+			"limit":    250,
+			"size":     1,
+			"sections": []map[string]any{{"id": 1, "suite_id": 100, "name": "Late"}},
+		})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	_, err := client.GetSectionsParallelCtx(
+		context.Background(),
+		30,
+		[]int64{100},
+		&concurrency.ControllerConfig{MaxConcurrentSuites: 1, Timeout: 10 * time.Millisecond},
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "deadline")
 }

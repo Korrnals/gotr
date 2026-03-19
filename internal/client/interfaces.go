@@ -68,6 +68,8 @@ type SuitesAPI interface {
 // SectionsAPI — операции с секциями
 type SectionsAPI interface {
 	GetSections(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error)
+	// GetSectionsParallelCtx gets sections for multiple suites using shared concurrency runtime controls.
+	GetSectionsParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error)
 	GetSection(ctx context.Context, sectionID int64) (*data.Section, error)
 	AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
 	UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error)

@@ -51,6 +51,17 @@ type Display struct {
 	quiet     bool
 }
 
+var messageQuiet atomic.Bool
+
+// SetMessageQuiet enables/disables static service messages (Info/Success/Warning, etc.).
+func SetMessageQuiet(quiet bool) {
+	messageQuiet.Store(quiet)
+}
+
+func isMessageQuiet() bool {
+	return messageQuiet.Load()
+}
+
 // DisplayOption configures a Display.
 type DisplayOption func(*Display)
 
@@ -112,8 +123,10 @@ func (d *Display) AddTask(name string, total int) *Task {
 func (d *Display) Finish() {
 	if atomic.CompareAndSwapInt32(&d.stopped, 0, 1) {
 		close(d.done)
-		d.render() // final frame
-		fmt.Fprintln(d.w)
+		if !d.quiet {
+			d.render() // final frame
+			fmt.Fprintln(d.w)
+		}
 	}
 }
 
@@ -312,26 +325,50 @@ func fmtCount(n int64) string {
 // ---------------------------------------------------------------------------
 
 // Info prints an informational message.
-func Info(w io.Writer, msg string) { fmt.Fprintf(w, "ℹ️  %s\n", msg) }
+func Info(w io.Writer, msg string) {
+	if isMessageQuiet() {
+		return
+	}
+	fmt.Fprintf(w, "ℹ️  %s\n", msg)
+}
 
 // Infof prints a formatted informational message.
 func Infof(w io.Writer, format string, args ...any) {
+	if isMessageQuiet() {
+		return
+	}
 	fmt.Fprintf(w, "ℹ️  %s\n", fmt.Sprintf(format, args...))
 }
 
 // Success prints a success message.
-func Success(w io.Writer, msg string) { fmt.Fprintf(w, "✅ %s\n", msg) }
+func Success(w io.Writer, msg string) {
+	if isMessageQuiet() {
+		return
+	}
+	fmt.Fprintf(w, "✅ %s\n", msg)
+}
 
 // Successf prints a formatted success message.
 func Successf(w io.Writer, format string, args ...any) {
+	if isMessageQuiet() {
+		return
+	}
 	fmt.Fprintf(w, "✅ %s\n", fmt.Sprintf(format, args...))
 }
 
 // Warning prints a warning message.
-func Warning(w io.Writer, msg string) { fmt.Fprintf(w, "⚠️  %s\n", msg) }
+func Warning(w io.Writer, msg string) {
+	if isMessageQuiet() {
+		return
+	}
+	fmt.Fprintf(w, "⚠️  %s\n", msg)
+}
 
 // Warningf prints a formatted warning message.
 func Warningf(w io.Writer, format string, args ...any) {
+	if isMessageQuiet() {
+		return
+	}
 	fmt.Fprintf(w, "⚠️  %s\n", fmt.Sprintf(format, args...))
 }
 
@@ -339,18 +376,36 @@ func Warningf(w io.Writer, format string, args ...any) {
 func Error(w io.Writer, msg string) { fmt.Fprintf(w, "❌ %s\n", msg) }
 
 // Phase prints a phase transition message.
-func Phase(w io.Writer, msg string) { fmt.Fprintf(w, "🔄 %s\n", msg) }
+func Phase(w io.Writer, msg string) {
+	if isMessageQuiet() {
+		return
+	}
+	fmt.Fprintf(w, "🔄 %s\n", msg)
+}
 
 // Stat prints a statistics line with label and value.
 func Stat(w io.Writer, icon, label string, value interface{}) {
+	if isMessageQuiet() {
+		return
+	}
 	fmt.Fprintf(w, "   %s %s: %v\n", icon, label, value)
 }
 
 // Section prints a section header.
-func Section(w io.Writer, msg string) { fmt.Fprintf(w, "\n📊 %s\n", msg) }
+func Section(w io.Writer, msg string) {
+	if isMessageQuiet() {
+		return
+	}
+	fmt.Fprintf(w, "\n📊 %s\n", msg)
+}
 
 // Cancelled prints a cancellation message.
-func Cancelled(w io.Writer) { fmt.Fprintln(w, "\n❌ Cancelled") }
+func Cancelled(w io.Writer) {
+	if isMessageQuiet() {
+		return
+	}
+	fmt.Fprintln(w, "\n❌ Cancelled")
+}
 
 // PreviewField is a label–value pair for Preview output.
 type PreviewField struct {

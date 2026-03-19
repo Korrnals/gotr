@@ -129,7 +129,10 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 			if err := saveToFileWithPath(result, format, savePath); err != nil {
 				return err
 			}
-			// Message is printed by saveToFile
+			if q, _ := cmd.Flags().GetBool("quiet"); !q {
+				fmt.Println()
+				ui.Infof(os.Stdout, "Result saved to %s", savePath)
+			}
 		case "table":
 			// Save table as text
 			return saveTableToFile(cmd, result, project1Name, project2Name, savePath)
@@ -495,19 +498,15 @@ func saveCSV(result CompareResult, savePath string) error {
 		}
 	}
 
-	// Print on new line after progress bar
-	fmt.Println()
-	ui.Infof(os.Stdout, "Result saved to %s", savePath)
 	return nil
 }
 
-// saveToFile saves data to a file
+// saveToFile saves data to a file.
+// Callers are responsible for printing confirmation (respecting quiet flag).
 func saveToFile(data []byte, savePath string) error {
 	if err := os.WriteFile(savePath, data, 0644); err != nil {
 		return fmt.Errorf("file write error: %w", err)
 	}
-	fmt.Println()
-	ui.Infof(os.Stdout, "Result saved to %s", savePath)
 	return nil
 }
 
@@ -570,8 +569,10 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		return fmt.Errorf("file write error: %w", err)
 	}
 
-	fmt.Println()
-	ui.Infof(os.Stdout, "Result saved to %s", filePath)
+	if q, _ := cmd.Flags().GetBool("quiet"); !q {
+		fmt.Println()
+		ui.Infof(os.Stdout, "Result saved to %s", filePath)
+	}
 	return nil
 }
 

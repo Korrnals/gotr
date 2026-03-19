@@ -32,6 +32,9 @@ var rootCmd = &cobra.Command{
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		debug.DebugPrint("{rootCmd} - Running command: %s", cmd.Use)
 		debug.DebugPrint("{rootCmd} - Arguments: %v", args)
+		quiet, _ := cmd.Flags().GetBool("quiet")
+		ui.SetMessageQuiet(quiet)
+
 		// Настройка Viper - поддержка env, флагов, конфигов
 		viper.AutomaticEnv() // автоматически подтягивать переменные из окружения
 

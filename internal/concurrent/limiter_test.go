@@ -1,6 +1,7 @@
 package concurrent
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -32,6 +33,21 @@ func TestRateLimiter_Wait_Nil(t *testing.T) {
 	var rl *RateLimiter
 	// Should not panic
 	rl.Wait()
+}
+
+func TestRateLimiter_WaitCtx_Canceled(t *testing.T) {
+	rl := NewRateLimiter(60) // 1 req/sec, burst 10
+
+	// Consume initial burst so next wait needs to block.
+	for i := 0; i < rl.burst; i++ {
+		rl.Wait()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := rl.WaitCtx(ctx)
+	assert.ErrorIs(t, err, context.Canceled)
 }
 
 func TestRateLimiter_Allow(t *testing.T) {
@@ -106,6 +122,21 @@ func TestAdaptiveRateLimiter_Wait(t *testing.T) {
 	arl := NewAdaptiveRateLimiter(600)
 	// Should not panic
 	arl.Wait()
+}
+
+func TestAdaptiveRateLimiter_WaitCtx_Canceled(t *testing.T) {
+	arl := NewAdaptiveRateLimiter(60) // 1 req/sec, burst 10
+
+	// Consume initial burst so next wait needs to block.
+	for i := 0; i < arl.baseLimiter.burst; i++ {
+		arl.Wait()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	err := arl.WaitCtx(ctx)
+	assert.ErrorIs(t, err, context.Canceled)
 }
 
 func TestAdaptiveRateLimiter_RecordResponseTime(t *testing.T) {

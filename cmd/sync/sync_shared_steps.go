@@ -1,12 +1,13 @@
 package sync
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -90,17 +91,37 @@ var sharedStepsCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		// Create progress manager
-		pm := progress.NewManager()
+		op := newSyncOperation("Sync shared steps")
+		defer op.Finish()
 
-		progress.Describe(pm.NewSpinner(""), "Загрузка shared steps...")
-		sourceSteps, targetSteps, err := m.FetchSharedStepsData(ctx)
+		op.Phase("Loading shared steps")
+		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", func(ctx context.Context) (struct {
+			Source data.GetSharedStepsResponse
+			Target data.GetSharedStepsResponse
+		}, error) {
+			sourceSteps, targetSteps, err := m.FetchSharedStepsData(ctx)
+			if err != nil {
+				return struct {
+					Source data.GetSharedStepsResponse
+					Target data.GetSharedStepsResponse
+				}{}, err
+			}
+			return struct {
+				Source data.GetSharedStepsResponse
+				Target data.GetSharedStepsResponse
+			}{Source: sourceSteps, Target: targetSteps}, nil
+		})
 		if err != nil {
 			return err
 		}
+		sourceSteps := loadedSteps.Source
+		targetSteps := loadedSteps.Target
 
 		// Шаг 2) Получение кейсов source для определения использования shared steps
-		sourceCases, err := m.Client.GetCases(ctx, srcProject, srcSuite, 0)
+		op.Phase("Loading source cases")
+		sourceCases, err := runSyncStatus(ctx, "Loading source cases...", func(ctx context.Context) (data.GetCasesResponse, error) {
+			return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
+		})
 		if err != nil {
 			return err
 		}
@@ -128,6 +149,7 @@ var sharedStepsCmd = &cobra.Command{
 		}
 
 		// Шаг 4) Confirm import of
+		op.Phase("Awaiting confirmation")
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d shared steps...", len(filtered))
 			fmt.Print("Continue? [y/N]: ")
@@ -140,8 +162,10 @@ var sharedStepsCmd = &cobra.Command{
 		}
 
 		// Шаг 5) Импорт
-		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d shared steps...", len(filtered)))
-		err = m.ImportSharedSteps(ctx, filtered, false)
+		op.Phase("Importing shared steps")
+		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, m.ImportSharedSteps(ctx, filtered, false)
+		})
 		if err != nil {
 			return err
 		}

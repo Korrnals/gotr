@@ -1,11 +1,13 @@
 package reports
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -31,12 +33,14 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Запуск генерации отчёта...")
-
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.RunReport(ctx, templateID)
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Running report...",
+				Writer: os.Stderr,
+			}, func(ctx context.Context) (any, error) {
+				return cli.RunReport(ctx, templateID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to run report: %w", err)
 			}

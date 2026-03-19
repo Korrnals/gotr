@@ -1,12 +1,12 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -37,7 +37,6 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
-			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP client not initialized")
 			}
@@ -47,17 +46,13 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 				return err
 			}
 
-			// Create progress manager and spinner
-			pm := progress.NewManager()
-			spinner := pm.NewSpinner("")
-			spinner.Describe("Загрузка секции...")
-
-			section, err := cli.GetSection(ctx, sectionID)
+			section, err := runGetStatus(command, "Loading section...", func(ctx context.Context) (any, error) {
+				return cli.GetSection(ctx, sectionID)
+			})
 			if err != nil {
 				return err
 			}
 
-			spinner.Finish()
 			return handleOutput(command, section, start)
 		},
 	}
@@ -75,7 +70,6 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
-			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP client not initialized")
 			}
@@ -87,17 +81,13 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 
 			suiteID, _ := command.Flags().GetInt64("suite-id")
 
-			// Create progress manager and spinner
-			pm := progress.NewManager()
-			spinner := pm.NewSpinner("")
-			spinner.Describe("Загрузка секций...")
-
-			sections, err := cli.GetSections(ctx, projectID, suiteID)
+			sections, err := runGetStatus(command, "Loading sections...", func(ctx context.Context) (any, error) {
+				return cli.GetSections(ctx, projectID, suiteID)
+			})
 			if err != nil {
 				return err
 			}
 
-			spinner.Finish()
 			return handleOutput(command, sections, start)
 		},
 	}

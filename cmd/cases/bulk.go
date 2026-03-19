@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -8,10 +9,16 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+func runBulkStatus[T any](cmd *cobra.Command, total int, fn func(context.Context) (T, error)) (T, error) {
+	return ui.RunWithStatus(cmd.Context(), ui.StatusConfig{
+		Title:  fmt.Sprintf("Processing %d cases...", total),
+		Writer: os.Stderr,
+	}, fn)
+}
 
 // newBulkCmd создаёт родительскую команду 'cases bulk'
 // Родительская команда для массовых операций над кейсами
@@ -77,12 +84,10 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			resp, err := cli.UpdateCases(ctx, suiteID, &req)
+			resp, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (*data.GetCasesResponse, error) {
+				return cli.UpdateCases(ctx, suiteID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update cases: %w", err)
 			}
@@ -136,12 +141,11 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			if err := cli.DeleteCases(ctx, suiteID, &req); err != nil {
+			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeleteCases(ctx, suiteID, &req)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete cases: %w", err)
 			}
 
@@ -191,12 +195,11 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			if err := cli.CopyCasesToSection(ctx, sectionID, &req); err != nil {
+			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.CopyCasesToSection(ctx, sectionID, &req)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to copy cases: %w", err)
 			}
 
@@ -246,12 +249,11 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			if err := cli.MoveCasesToSection(ctx, sectionID, &req); err != nil {
+			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.MoveCasesToSection(ctx, sectionID, &req)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to move cases: %w", err)
 			}
 

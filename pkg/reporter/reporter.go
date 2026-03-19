@@ -97,6 +97,22 @@ func safeIcon(emoji string) string {
 }
 
 // ---------------------------------------------------------------------------
+// Exported color/style helpers for callers to pre-format values.
+// ---------------------------------------------------------------------------
+
+// Green wraps s in green ANSI color.
+func Green(s string) string { return ansiGreen + s + ansiReset }
+
+// Red wraps s in red ANSI color.
+func Red(s string) string { return ansiRed + s + ansiReset }
+
+// Yellow wraps s in yellow ANSI color.
+func Yellow(s string) string { return ansiYellow + s + ansiReset }
+
+// Bold wraps s in bold ANSI style.
+func Bold(s string) string { return ansiBold + s + ansiReset }
+
+// ---------------------------------------------------------------------------
 // Element types
 // ---------------------------------------------------------------------------
 
@@ -107,6 +123,7 @@ const (
 	elemStat                         // stat line (icon  label: value)
 	elemSeparator                    // ├───...───┤
 	elemBlank                        // empty row
+	elemBanner                       // full-width colored status banner
 )
 
 type element struct {
@@ -114,6 +131,7 @@ type element struct {
 	icon  string
 	label string
 	value string
+	color string // ANSI color code (used by elemBanner)
 }
 
 // ---------------------------------------------------------------------------
@@ -198,6 +216,24 @@ func (r *Report) Separator() *Report {
 	return r
 }
 
+// BannerOK adds a prominent green status banner (data complete).
+func (r *Report) BannerOK(text string) *Report {
+	r.elements = append(r.elements, element{typ: elemBanner, value: text, color: ansiGreen})
+	return r
+}
+
+// BannerWarn adds a prominent yellow status banner (data may be incomplete).
+func (r *Report) BannerWarn(text string) *Report {
+	r.elements = append(r.elements, element{typ: elemBanner, value: text, color: ansiYellow})
+	return r
+}
+
+// BannerError adds a prominent red status banner (data is incomplete / interrupted).
+func (r *Report) BannerError(text string) *Report {
+	r.elements = append(r.elements, element{typ: elemBanner, value: text, color: ansiRed})
+	return r
+}
+
 // Print renders the report to the configured writer.
 func (r *Report) Print() {
 	fmt.Fprint(r.w, r.String())
@@ -242,6 +278,12 @@ func (r *Report) String() string {
 			tw.AppendSeparator()
 		case elemBlank:
 			tw.AppendRow(table.Row{""})
+		case elemBanner:
+			tw.AppendSeparator()
+			tw.AppendRow(table.Row{
+				fmt.Sprintf("  %s%s>> %s%s", e.color, ansiBold, e.value, ansiReset),
+			})
+			tw.AppendSeparator()
 		}
 	}
 

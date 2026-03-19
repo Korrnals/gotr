@@ -1,10 +1,9 @@
-# Progress Monitoring System
+# Progress Runtime System
 
 ## Overview
 
-The `progress` package provides a universal, decoupled progress monitoring system for long-running operations in `gotr`. It uses channel-based communication to separate business logic from UI updates, allowing any method to report progress without knowing about progress bars or other UI components.
-
-The package now uses **`github.com/vbauerster/mpb/v8`** (multi-progress-bar) which supports rendering multiple progress bars on separate lines simultaneously.
+Current progress/status flow in `gotr` is built on `internal/ui` runtime (`RunWithStatus`, `Operation`, `TaskHandle`).
+Legacy `internal/progress` and mpb-based bars were removed.
 
 ## Key Features
 
@@ -139,17 +138,20 @@ package main
 
 import (
     "github.com/Korrnals/gotr/internal/client"
-    "github.com/Korrnals/gotr/internal/progress"
+    "github.com/Korrnals/gotr/internal/ui"
 )
 
 func main() {
     cli := client.NewHTTPClient(...)
     
-    // Create manager with mpb container
-    pm := progress.NewManager()
-    
-    // Create progress bar (method on manager)
-    bar := pm.NewBar(int64(len(suiteIDs)), "Loading cases...")
+    // Status runtime for the operation
+    _, err := ui.RunWithStatus(context.Background(), ui.StatusConfig{
+        Title: "Loading cases...",
+    }, func(ctx context.Context) (struct{}, error) {
+        // Execute with progress tracking
+        _, err := cli.GetCasesParallel(30, suiteIDs, 5, monitor)
+        return struct{}{}, err
+    })
     
     // Create monitor with channel
     progressChan := make(chan int, 100)
@@ -330,7 +332,7 @@ func (m *Monitor) IncrementBy(n int) { ... }
    pm.Wait()  // Wait for mpb to finish rendering
    ```
 
-## Migration from progressbar/v3 to mpb
+## Migration to ui Runtime
 
 ### Package Import Change
 
@@ -341,7 +343,7 @@ import "github.com/schollz/progressbar/v3"
 
 **New:**
 ```go
-import "github.com/vbauerster/mpb/v8"
+import "github.com/Korrnals/gotr/internal/ui"
 ```
 
 ### API Changes
@@ -353,25 +355,23 @@ progress.Add(bar, 1)        // Package function
 progress.Finish(bar)        // Package function
 ```
 
-**New (mpb):**
+**New (ui runtime):**
 ```go
-pm := progress.NewManager()
-bar := pm.NewBar(total, "Description")  // Method on manager
-bar.Add(1)                              // Method on bar
-bar.Increment()                         // Method on bar
-bar.Finish()                            // Method on bar
-pm.Wait()                               // Wait for container
+_, err := ui.RunWithStatus(ctx, ui.StatusConfig{Title: "Description"}, func(ctx context.Context) (struct{}, error) {
+    // do work
+    return struct{}{}, nil
+})
 ```
 
 ### Key Differences
 
-| Feature | progressbar/v3 | mpb |
+| Feature | progressbar/v3 | ui runtime |
 |---------|---------------|-----|
-| Library | `github.com/schollz/progressbar/v3` | `github.com/vbauerster/mpb/v8` |
-| Multiple bars | Overwrite each other | Render on separate lines |
-| Update API | Package functions (`progress.Add()`) | Methods on bar (`bar.Add()`) |
-| Container | None | `mpb.Progress` managed by Manager |
-| Wait | Not needed | `pm.Wait()` required |
+| Library | `github.com/schollz/progressbar/v3` | `internal/ui` |
+| Multiple tasks | Limited | `Operation` + `TaskHandle` |
+| Update API | Package functions | Runtime/task methods |
+| Container | None | `ui.Display` + runtime facade |
+| Wait | Not needed | `Operation.Finish()` |
 
 ## Comparison with Alternatives
 
@@ -524,8 +524,8 @@ TestRail API ограничен 180 req/min. Все запросы проход�
 
 ## Архитектура вывода прогресса
 
-### sync/get команды → `internal/progress/` (mpb-based)
-Manager создаёт mpb.Progress контейнер, добавляет бары, отображает прогресс.
+### sync/get команды → `internal/ui/runtime.go`
+`RunWithStatus` и `Operation` обеспечивают единый статус/прогресс runtime.
 
 ### compare cases → `internal/ui/display.go` (ANSI live display)
 Динамическая таблица со статусами задач, обновляется в реальном времени.
@@ -537,7 +537,7 @@ Manager создаёт mpb.Progress контейнер, добавляет ба�
 ## Related Packages
 
 - `internal/concurrent` - Worker pool with progress support
-- `internal/progress` - Progress bar manager with mpb (sync/get)
+- `internal/ui/runtime.go` - Unified progress runtime for commands
 - `internal/concurrency` - Unified concurrency strategies (FetchParallel[T], FetchParallelBySuite[T], ParallelController)
 - `internal/ui` - ANSI live display (compare cases)
 - `pkg/reporter` - Builder pattern for statistics output (ANSI + go-pretty)

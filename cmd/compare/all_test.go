@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -203,4 +204,123 @@ func TestAllCmd_SaveYAML(t *testing.T) {
 	err := cmd.Execute()
 	// Command should succeed - save flag triggers save to default location
 	assert.NoError(t, err)
+}
+
+func TestBuildAllMeta_Interrupted(t *testing.T) {
+	res := &allResult{}
+	fillInterruptedResults(res, 1, 2)
+	errs := map[string]error{"execution": errors.New("interrupted by user")}
+
+	meta := buildAllMeta(res, true, errs, 1500*time.Millisecond)
+
+	assert.Equal(t, CompareStatusInterrupted, meta.ExecutionStatus)
+	assert.True(t, meta.Interrupted)
+	assert.Equal(t, 1, meta.ErrorCount)
+	assert.Contains(t, meta.ErrorResources, "execution")
+	assert.NotEmpty(t, meta.GeneratedAt)
+}
+
+func TestBuildAllMeta_Complete(t *testing.T) {
+	res := &allResult{
+		Cases:          &CompareResult{Status: CompareStatusComplete},
+		Suites:         &CompareResult{Status: CompareStatusComplete},
+		Sections:       &CompareResult{Status: CompareStatusComplete},
+		SharedSteps:    &CompareResult{Status: CompareStatusComplete},
+		Runs:           &CompareResult{Status: CompareStatusComplete},
+		Plans:          &CompareResult{Status: CompareStatusComplete},
+		Milestones:     &CompareResult{Status: CompareStatusComplete},
+		Datasets:       &CompareResult{Status: CompareStatusComplete},
+		Groups:         &CompareResult{Status: CompareStatusComplete},
+		Labels:         &CompareResult{Status: CompareStatusComplete},
+		Templates:      &CompareResult{Status: CompareStatusComplete},
+		Configurations: &CompareResult{Status: CompareStatusComplete},
+	}
+
+	meta := buildAllMeta(res, false, map[string]error{}, 2*time.Second)
+
+	assert.Equal(t, CompareStatusComplete, meta.ExecutionStatus)
+	assert.False(t, meta.Interrupted)
+	assert.Equal(t, 0, meta.ErrorCount)
+	assert.Empty(t, meta.ErrorResources)
+}
+
+func TestFillResourcePartialResult_MarksFailedResourceAsPartial(t *testing.T) {
+	res := &allResult{}
+
+	fillResourcePartialResult(res, "datasets", 30, 34)
+
+	if assert.NotNil(t, res.Datasets) {
+		assert.Equal(t, CompareStatusPartial, res.Datasets.Status)
+		assert.Equal(t, int64(30), res.Datasets.Project1ID)
+		assert.Equal(t, int64(34), res.Datasets.Project2ID)
+	}
+}
+
+func TestBuildAllMeta_WithResourceErrors_IsPartial(t *testing.T) {
+	res := &allResult{
+		Cases:          &CompareResult{Status: CompareStatusComplete},
+		Suites:         &CompareResult{Status: CompareStatusComplete},
+		Sections:       &CompareResult{Status: CompareStatusComplete},
+		SharedSteps:    &CompareResult{Status: CompareStatusComplete},
+		Runs:           &CompareResult{Status: CompareStatusComplete},
+		Plans:          &CompareResult{Status: CompareStatusComplete},
+		Milestones:     &CompareResult{Status: CompareStatusComplete},
+		Datasets:       &CompareResult{Status: CompareStatusPartial},
+		Groups:         &CompareResult{Status: CompareStatusPartial},
+		Labels:         &CompareResult{Status: CompareStatusPartial},
+		Templates:      &CompareResult{Status: CompareStatusComplete},
+		Configurations: &CompareResult{Status: CompareStatusComplete},
+	}
+
+	errs := map[string]error{
+		"datasets": errors.New("unsupported endpoint"),
+		"groups":   errors.New("unsupported endpoint"),
+		"labels":   errors.New("unsupported endpoint"),
+	}
+
+	meta := buildAllMeta(res, false, errs, 2*time.Second)
+
+	assert.Equal(t, CompareStatusPartial, meta.ExecutionStatus)
+	assert.Equal(t, 3, meta.ErrorCount)
+	assert.Contains(t, meta.ErrorResources, "datasets")
+	assert.Contains(t, meta.ErrorResources, "groups")
+	assert.Contains(t, meta.ErrorResources, "labels")
+}
+
+func TestBuildAllMeta_UnsupportedEndpoints_NotCountedAsErrors(t *testing.T) {
+	res := &allResult{
+		Cases:          &CompareResult{Status: CompareStatusComplete},
+		Suites:         &CompareResult{Status: CompareStatusComplete},
+		Sections:       &CompareResult{Status: CompareStatusComplete},
+		SharedSteps:    &CompareResult{Status: CompareStatusComplete},
+		Runs:           &CompareResult{Status: CompareStatusComplete},
+		Plans:          &CompareResult{Status: CompareStatusComplete},
+		Milestones:     &CompareResult{Status: CompareStatusComplete},
+		Datasets:       &CompareResult{Status: CompareStatusPartial},
+		Groups:         &CompareResult{Status: CompareStatusPartial},
+		Labels:         &CompareResult{Status: CompareStatusPartial},
+		Templates:      &CompareResult{Status: CompareStatusComplete},
+		Configurations: &CompareResult{Status: CompareStatusComplete},
+	}
+
+	errs := map[string]error{
+		"datasets": errors.New("API returned 404 File Not Found: Unknown method 'get_datasets'"),
+		"groups":   errors.New("API returned 404 File Not Found: Unknown method 'get_groups'"),
+		"labels":   errors.New("API returned 404 File Not Found: Unknown method 'get_labels'"),
+	}
+
+	meta := buildAllMeta(res, false, errs, 2*time.Second)
+
+	assert.Equal(t, CompareStatusPartial, meta.ExecutionStatus)
+	assert.Equal(t, 0, meta.ErrorCount)
+	assert.Empty(t, meta.ErrorResources)
+	assert.Equal(t, 3, meta.UnsupportedCount)
+	assert.Contains(t, meta.UnsupportedResources, "datasets")
+	assert.Contains(t, meta.UnsupportedResources, "groups")
+	assert.Contains(t, meta.UnsupportedResources, "labels")
+}
+
+func TestIsUnsupportedEndpointError(t *testing.T) {
+	assert.True(t, isUnsupportedEndpointError(errors.New("API returned 404 File Not Found: Unknown method 'get_groups'")))
+	assert.False(t, isUnsupportedEndpointError(errors.New("request timeout")))
 }

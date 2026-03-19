@@ -1,12 +1,13 @@
 package sync
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -58,14 +59,31 @@ var suitesCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		// Create progress manager
-		pm := progress.NewManager()
+		op := newSyncOperation("Sync suites")
+		defer op.Finish()
 
-		progress.Describe(pm.NewSpinner(""), "Загрузка suites...")
-		sourceSuites, targetSuites, err := m.FetchSuitesData(ctx)
+		op.Phase("Loading suites")
+		loaded, err := runSyncStatus(ctx, "Loading suites...", func(ctx context.Context) (struct {
+			Source data.GetSuitesResponse
+			Target data.GetSuitesResponse
+		}, error) {
+			sourceSuites, targetSuites, err := m.FetchSuitesData(ctx)
+			if err != nil {
+				return struct {
+					Source data.GetSuitesResponse
+					Target data.GetSuitesResponse
+				}{}, err
+			}
+			return struct {
+				Source data.GetSuitesResponse
+				Target data.GetSuitesResponse
+			}{Source: sourceSuites, Target: targetSuites}, nil
+		})
 		if err != nil {
 			return err
 		}
+		sourceSuites := loaded.Source
+		targetSuites := loaded.Target
 
 		filtered, err := m.FilterSuites(sourceSuites, targetSuites)
 		if err != nil {
@@ -84,6 +102,7 @@ var suitesCmd = &cobra.Command{
 			return nil
 		}
 
+		op.Phase("Awaiting confirmation")
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d suites...", len(filtered))
 			fmt.Print("Continue? [y/N]: ")
@@ -96,8 +115,11 @@ var suitesCmd = &cobra.Command{
 		}
 
 		// Шаг 3) Подтверждение и импорт
-		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d suites...", len(filtered)))
-		if err := m.ImportSuites(ctx, filtered, false); err != nil {
+		op.Phase("Importing suites")
+		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d suites...", len(filtered)), func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, m.ImportSuites(ctx, filtered, false)
+		})
+		if err != nil {
 			return err
 		}
 

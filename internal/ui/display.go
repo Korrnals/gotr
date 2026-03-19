@@ -85,6 +85,9 @@ func (d *Display) SetHeader(h string) {
 	d.mu.Lock()
 	d.header = h
 	d.mu.Unlock()
+	if !d.quiet {
+		d.render()
+	}
 }
 
 // AddTask creates a new tracked task and returns it.
@@ -99,6 +102,9 @@ func (d *Display) AddTask(name string, total int) *Task {
 	d.mu.Lock()
 	d.tasks = append(d.tasks, t)
 	d.mu.Unlock()
+	if !d.quiet {
+		d.render()
+	}
 	return t
 }
 

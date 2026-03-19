@@ -90,15 +90,24 @@ var suitesCmd = newSuitesCmd()
 // The optional quiet flag suppresses progress and warning output when true.
 func compareSuitesInternal(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, quiet ...bool) (*CompareResult, error) {
 	isQuiet := len(quiet) > 0 && quiet[0]
+	return compareSuitesInternalWithSuites(ctx, cli, pid1, pid2, isQuiet, nil)
+}
 
-	suitesByProject, err := ui.RunWithStatus(ctx, ui.StatusConfig{
-		Title:  fmt.Sprintf("Loading suites from projects %d and %d...", pid1, pid2),
-		Writer: os.Stderr,
-		Quiet:  isQuiet,
-	}, func(ctx context.Context) (map[int64]data.GetSuitesResponse, error) {
-		// Fetch suites from both projects in parallel.
-		return cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
-	})
+func compareSuitesInternalWithSuites(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloaded map[int64]data.GetSuitesResponse) (*CompareResult, error) {
+	isQuiet := quiet
+
+	suitesByProject := preloaded
+	var err error
+	if suitesByProject == nil {
+		suitesByProject, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+			Title:  fmt.Sprintf("Loading suites from projects %d and %d...", pid1, pid2),
+			Writer: os.Stderr,
+			Quiet:  isQuiet,
+		}, func(ctx context.Context) (map[int64]data.GetSuitesResponse, error) {
+			// Fetch suites from both projects in parallel.
+			return cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
+		})
+	}
 
 	if err != nil && len(suitesByProject) == 0 {
 		return nil, fmt.Errorf("failed to get suites: %w", err)

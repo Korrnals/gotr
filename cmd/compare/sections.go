@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // newSectionsCmd creates the 'compare sections' subcommand.
@@ -55,7 +56,7 @@ Examples:
 
 			// Compare sections
 			quiet, _ := cmd.Flags().GetBool("quiet")
-			result, err := compareSectionsInternal(ctx, cli, pid1, pid2, quiet)
+			result, err := compareSectionsInternal(ctx, cmd, cli, pid1, pid2, quiet)
 			if err != nil {
 				return err
 			}
@@ -86,12 +87,12 @@ Examples:
 // sectionsCmd is the exported command.
 var sectionsCmd = newSectionsCmd()
 
-// compareSectionsInternal compares sections between two projects using FetchParallel.
-func compareSectionsInternal(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, quiet bool) (*CompareResult, error) {
-	return compareSectionsInternalWithSuites(ctx, cli, pid1, pid2, quiet, nil)
+// compareSectionsInternal compares sections between two projects using client adapter path.
+func compareSectionsInternal(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool) (*CompareResult, error) {
+	return compareSectionsInternalWithSuites(ctx, cmd, cli, pid1, pid2, quiet, nil)
 }
 
-func compareSectionsInternalWithSuites(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloaded map[int64]data.GetSuitesResponse) (*CompareResult, error) {
+func compareSectionsInternalWithSuites(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloaded map[int64]data.GetSuitesResponse) (*CompareResult, error) {
 	operation := ui.NewOperation(ui.StatusConfig{
 		Title:  "Loading sections",
 		Writer: os.Stderr,
@@ -113,6 +114,16 @@ func compareSectionsInternalWithSuites(ctx context.Context, cli client.ClientInt
 	suites1 := suitesMap[pid1]
 	suites2 := suitesMap[pid2]
 
+	var runtimeConfig compareHeavyRuntimeConfig
+	if cmd != nil {
+		runtimeConfig, err = resolveCompareHeavyRuntimeConfig(collectCompareHeavyFlagOverrides(cmd), viper.GetString("base_url"))
+	} else {
+		runtimeConfig, err = resolveCompareHeavyRuntimeConfig(nil, viper.GetString("base_url"))
+	}
+	if err != nil {
+		return nil, err
+	}
+
 	task1 := operation.AddTask(fmt.Sprintf("P%d (%d suites)", pid1, len(suites1)), taskTotal(len(suites1)))
 	task2 := operation.AddTask(fmt.Sprintf("P%d (%d suites)", pid2, len(suites2)), taskTotal(len(suites2)))
 
@@ -123,13 +134,13 @@ func compareSectionsInternalWithSuites(ctx context.Context, cli client.ClientInt
 	done2 := make(chan struct{})
 
 	go func() {
-		items1, err1 = fetchSectionsForProject(ctx, cli, pid1, suites1, task1)
+		items1, err1 = fetchSectionsForProject(ctx, cli, pid1, suites1, task1, runtimeConfig)
 		task1.Finish()
 		close(done1)
 	}()
 
 	go func() {
-		items2, err2 = fetchSectionsForProject(ctx, cli, pid2, suites2, task2)
+		items2, err2 = fetchSectionsForProject(ctx, cli, pid2, suites2, task2, runtimeConfig)
 		task2.Finish()
 		close(done2)
 	}()
@@ -165,119 +176,24 @@ func compareSectionsInternalWithSuites(ctx context.Context, cli client.ClientInt
 	return compareItemInfos("sections", pid1, pid2, items1, items2), nil
 }
 
-// fetchSectionItems fetches all sections for a project, parallelizing across suites
-// using FetchParallelBySuite.
-func fetchSectionItems(ctx context.Context, cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	// Get all suites for the project
-	suites, err := cli.GetSuites(ctx, projectID)
-	if err != nil {
-		return nil, err
-	}
-
-	// If no suites, try without suite filter
-	if len(suites) == 0 {
-		sections, err := cli.GetSections(ctx, projectID, 0)
-		if err != nil {
-			return nil, err
-		}
-		items := make([]ItemInfo, 0, len(sections))
-		for _, s := range sections {
-			items = append(items, ItemInfo{ID: s.ID, Name: s.Name})
-		}
-		return items, nil
-	}
-
-	// Build suite ID list and name map
-	suiteIDs := make([]int64, len(suites))
-	suiteNames := make(map[int64]string)
-	for i, s := range suites {
-		suiteIDs[i] = s.ID
-		suiteNames[s.ID] = s.Name
-	}
-
-	// Fetch sections from all suites in parallel
-	allSections, err := concurrency.FetchParallelBySuite(ctx, suiteIDs,
-		func(suiteID int64) ([]ItemInfo, error) {
-			sections, sErr := cli.GetSections(ctx, projectID, suiteID)
-			if sErr != nil {
-				return nil, sErr
-			}
-			items := make([]ItemInfo, 0, len(sections))
-			suiteName := suiteNames[suiteID]
-			for _, s := range sections {
-				name := s.Name
-				if suiteName != "" {
-					name = fmt.Sprintf("%s / %s", suiteName, s.Name)
-				}
-				items = append(items, ItemInfo{ID: s.ID, Name: name})
-			}
-			return items, nil
-		},
-		concurrency.WithContinueOnError(),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Deduplicate by ID
-	seen := make(map[int64]bool)
-	result := make([]ItemInfo, 0, len(allSections))
-	for _, item := range allSections {
-		if !seen[item.ID] {
-			seen[item.ID] = true
-			result = append(result, item)
-		}
-	}
-
-	return result, nil
-}
-
-func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task ui.TaskHandle) ([]ItemInfo, error) {
-	if len(suites) == 0 {
-		sections, err := cli.GetSections(ctx, projectID, 0)
-		if err != nil {
-			return nil, err
-		}
-
-		items := make([]ItemInfo, 0, len(sections))
-		for _, section := range sections {
-			items = append(items, ItemInfo{ID: section.ID, Name: section.Name})
-		}
-
-		task.Increment()
-		task.Add(len(items))
-		return items, nil
-	}
-
-	suiteIDs := make([]int64, len(suites))
+func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task ui.TaskHandle, runtimeConfig compareHeavyRuntimeConfig) ([]ItemInfo, error) {
+	suiteIDs := make([]int64, 0, len(suites))
 	suiteNames := make(map[int64]string, len(suites))
-	for i, suite := range suites {
-		suiteIDs[i] = suite.ID
+	for _, suite := range suites {
+		suiteIDs = append(suiteIDs, suite.ID)
 		suiteNames[suite.ID] = suite.Name
 	}
 
-	allSections, err := concurrency.FetchParallelBySuite(ctx, suiteIDs,
-		func(suiteID int64) ([]ItemInfo, error) {
-			sections, fetchErr := cli.GetSections(ctx, projectID, suiteID)
-			if fetchErr != nil {
-				return nil, fetchErr
-			}
+	controllerConfig := &concurrency.ControllerConfig{
+		MaxConcurrentSuites: runtimeConfig.ParallelSuites,
+		MaxConcurrentPages:  runtimeConfig.ParallelPages,
+		RequestsPerMinute:   runtimeConfig.RateLimit,
+		MaxRetries:          runtimeConfig.PageRetries,
+		Timeout:             runtimeConfig.Timeout,
+		Reporter:            task,
+	}
 
-			items := make([]ItemInfo, 0, len(sections))
-			suiteName := suiteNames[suiteID]
-			for _, section := range sections {
-				name := section.Name
-				if suiteName != "" {
-					name = fmt.Sprintf("%s / %s", suiteName, section.Name)
-				}
-				items = append(items, ItemInfo{ID: section.ID, Name: name})
-			}
-			return items, nil
-		},
-		concurrency.WithContinueOnError(),
-		concurrency.WithReporter(task),
-		concurrency.WithMaxConcurrency(10),
-	)
+	sections, err := cli.GetSectionsParallelCtx(ctx, projectID, suiteIDs, controllerConfig)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
 			return nil, ctx.Err()
@@ -285,14 +201,25 @@ func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, pr
 		return nil, err
 	}
 
-	seen := make(map[int64]bool, len(allSections))
-	result := make([]ItemInfo, 0, len(allSections))
-	for _, item := range allSections {
-		if seen[item.ID] {
+	if len(suites) == 0 {
+		task.Increment()
+		task.Add(len(sections))
+	}
+
+	seen := make(map[int64]bool, len(sections))
+	result := make([]ItemInfo, 0, len(sections))
+	for _, section := range sections {
+		if seen[section.ID] {
 			continue
 		}
-		seen[item.ID] = true
-		result = append(result, item)
+		seen[section.ID] = true
+
+		name := section.Name
+		if suiteName := suiteNames[section.SuiteID]; suiteName != "" {
+			name = fmt.Sprintf("%s / %s", suiteName, section.Name)
+		}
+
+		result = append(result, ItemInfo{ID: section.ID, Name: name})
 	}
 
 	return result, nil

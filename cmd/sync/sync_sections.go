@@ -41,6 +41,7 @@ var sectionsCmd = &cobra.Command{
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		quiet := isQuiet(cmd)
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 
 		var err error
@@ -88,12 +89,12 @@ var sectionsCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		op := newSyncOperation("Sync sections")
+		op := newSyncOperation("Sync sections", quiet)
 		defer op.Finish()
 
 		// Шаг 1) Получение sections из source и target
 		op.Phase("Loading sections")
-		loaded, err := runSyncStatus(ctx, "Loading sections...", func(ctx context.Context) (struct {
+		loaded, err := runSyncStatus(ctx, "Loading sections...", quiet, func(ctx context.Context) (struct {
 			Source data.GetSectionsResponse
 			Target data.GetSectionsResponse
 		}, error) {
@@ -148,7 +149,7 @@ var sectionsCmd = &cobra.Command{
 		}
 
 		op.Phase("Importing sections")
-		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), func(ctx context.Context) (struct{}, error) {
+		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSections(ctx, filtered, false)
 		})
 		if err != nil {

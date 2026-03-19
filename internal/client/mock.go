@@ -51,11 +51,12 @@ type MockClient struct {
 	// ConcurrentAPI - Parallel methods (Stage 6.2)
 
 	// SectionsAPI
-	GetSectionsFunc   func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error)
-	GetSectionFunc    func(ctx context.Context, sectionID int64) (*data.Section, error)
-	AddSectionFunc    func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
-	UpdateSectionFunc func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error)
-	DeleteSectionFunc func(ctx context.Context, sectionID int64) error
+	GetSectionsFunc            func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error)
+	GetSectionsParallelCtxFunc func(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error)
+	GetSectionFunc             func(ctx context.Context, sectionID int64) (*data.Section, error)
+	AddSectionFunc             func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
+	UpdateSectionFunc          func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error)
+	DeleteSectionFunc          func(ctx context.Context, sectionID int64) error
 
 	// SharedStepsAPI
 	GetSharedStepsFunc       func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error)
@@ -432,6 +433,27 @@ func (m *MockClient) GetSections(ctx context.Context, projectID, suiteID int64) 
 		return m.GetSectionsFunc(ctx, projectID, suiteID)
 	}
 	return nil, nil
+}
+
+func (m *MockClient) GetSectionsParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error) {
+	if m.GetSectionsParallelCtxFunc != nil {
+		return m.GetSectionsParallelCtxFunc(ctx, projectID, suiteIDs, config)
+	}
+
+	if len(suiteIDs) == 0 {
+		return m.GetSections(ctx, projectID, 0)
+	}
+
+	all := make(data.GetSectionsResponse, 0)
+	for _, suiteID := range suiteIDs {
+		sections, err := m.GetSections(ctx, projectID, suiteID)
+		if err != nil {
+			return all, err
+		}
+		all = append(all, sections...)
+	}
+
+	return all, nil
 }
 
 func (m *MockClient) GetSection(ctx context.Context, sectionID int64) (*data.Section, error) {

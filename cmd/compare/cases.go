@@ -320,7 +320,9 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	result := analyzeCases(cases1, cases2, pid1, pid2, field)
 	elapsed := time.Since(start)
 
-	ui.Successf(os.Stderr, "Analysis completed (%s)", elapsed.Round(time.Millisecond))
+	if !quiet {
+		ui.Successf(os.Stderr, "Analysis completed (%s)", elapsed.Round(time.Millisecond))
+	}
 	debug.DebugPrint("[Compare] Analysis complete: P%d=%d unique, P%d=%d unique, common=%d",
 		pid1, len(result.OnlyInFirst), pid2, len(result.OnlyInSecond), len(result.Common))
 
@@ -472,7 +474,7 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 	return allCases, nil, pds, nil
 }
 
-func collectCompareCasesFlagOverrides(cmd *cobra.Command) map[string]any {
+func collectCompareHeavyFlagOverrides(cmd *cobra.Command) map[string]any {
 	overrides := map[string]any{}
 
 	if flag := cmd.Flags().Lookup("rate-limit"); flag != nil && flag.Changed {
@@ -509,6 +511,10 @@ func collectCompareCasesFlagOverrides(cmd *cobra.Command) map[string]any {
 	}
 
 	return overrides
+}
+
+func collectCompareCasesFlagOverrides(cmd *cobra.Command) map[string]any {
+	return collectCompareHeavyFlagOverrides(cmd)
 }
 
 func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath string) (string, error) {

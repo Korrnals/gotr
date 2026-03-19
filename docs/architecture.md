@@ -489,10 +489,6 @@ gotr/
 │   │   ├── dryrun.go          #     DryRunPrinter
 │   │   ├── filename.go        #     GenerateTimestamp, BuildFilename
 │   │   └── paths.go           #     GetExportsDir, EnsureDir
-│   ├── progress/               #   Прогресс-бары (mpb)
-│   │   ├── progress.go        #     ProgressManager
-│   │   ├── monitor.go         #     WithMonitorCtx
-│   │   └── async.go           #     Async helpers
 │   ├── interactive/            #   Интерактивный выбор
 │   │   ├── interactive.go     #     SelectProject, SelectSuite, SelectRun
 │   │   └── wizard.go          #     InteractiveWizard

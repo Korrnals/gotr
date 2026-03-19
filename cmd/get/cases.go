@@ -10,7 +10,6 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -168,26 +167,27 @@ func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, client client.
 
 // fetchCasesFromAllSuites получает кейсы из всех сьютов проекта
 func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
-	// Create progress manager
-	pm := progress.NewManager()
-
-	// Create progress bar for suites
-	var bar *progress.Bar
-	if len(suites) > 1 {
-		bar = pm.NewBar(int64(len(suites)), fmt.Sprintf("Загрузка кейсов из %d сьютов...", len(suites)))
-	}
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	op := ui.NewOperation(ui.StatusConfig{
+		Title:  fmt.Sprintf("Loading cases from %d suites...", len(suites)),
+		Writer: os.Stderr,
+		Quiet:  quiet,
+	})
+	defer op.Finish()
+	task := op.AddTask("suites", len(suites))
 
 	allCases := make(data.GetCasesResponse, 0)
 	for _, suite := range suites {
 		cases, err := client.GetCases(ctx, projectID, suite.ID, sectionID)
 		if err != nil {
-			bar.Add(1)
+			task.Error(err)
+			task.Increment()
 			continue // Skip suites that fail
 		}
 		allCases = append(allCases, cases...)
-		bar.Add(1)
+		task.Increment()
 	}
-	bar.Finish()
+	task.Finish()
 
 	return handleOutput(cmd, allCases, start)
 }

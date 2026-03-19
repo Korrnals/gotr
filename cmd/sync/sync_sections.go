@@ -1,12 +1,13 @@
 package sync
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -87,15 +88,32 @@ var sectionsCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		// Create progress manager
-		pm := progress.NewManager()
+		op := newSyncOperation("Sync sections")
+		defer op.Finish()
 
 		// Шаг 1) Получение sections из source и target
-		progress.Describe(pm.NewSpinner(""), "Загрузка sections...")
-		sourceSections, targetSections, err := m.FetchSectionsData(ctx)
+		op.Phase("Loading sections")
+		loaded, err := runSyncStatus(ctx, "Loading sections...", func(ctx context.Context) (struct {
+			Source data.GetSectionsResponse
+			Target data.GetSectionsResponse
+		}, error) {
+			sourceSections, targetSections, err := m.FetchSectionsData(ctx)
+			if err != nil {
+				return struct {
+					Source data.GetSectionsResponse
+					Target data.GetSectionsResponse
+				}{}, err
+			}
+			return struct {
+				Source data.GetSectionsResponse
+				Target data.GetSectionsResponse
+			}{Source: sourceSections, Target: targetSections}, nil
+		})
 		if err != nil {
 			return err
 		}
+		sourceSections := loaded.Source
+		targetSections := loaded.Target
 
 		// Шаг 2) Фильтрация дубликатов
 		filtered, err := m.FilterSections(sourceSections, targetSections)
@@ -117,6 +135,7 @@ var sectionsCmd = &cobra.Command{
 		}
 
 		// Шаг 4) Подтверждение и импорт
+		op.Phase("Awaiting confirmation")
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d sections...", len(filtered))
 			fmt.Print("Continue? [y/N]: ")
@@ -128,8 +147,11 @@ var sectionsCmd = &cobra.Command{
 			}
 		}
 
-		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d sections...", len(filtered)))
-		if err := m.ImportSections(ctx, filtered, false); err != nil {
+		op.Phase("Importing sections")
+		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, m.ImportSections(ctx, filtered, false)
+		})
+		if err != nil {
 			return err
 		}
 

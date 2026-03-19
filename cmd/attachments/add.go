@@ -1,15 +1,25 @@
 package attachments
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+type attachmentUploadFunc func(context.Context) (*data.AttachmentResponse, error)
+
+func runAttachmentUpload(cmd *cobra.Command, upload attachmentUploadFunc) (*data.AttachmentResponse, error) {
+	return ui.RunWithStatus(cmd.Context(), ui.StatusConfig{
+		Title:  "Uploading attachment...",
+		Writer: os.Stderr,
+	}, upload)
+}
 
 // newAddCaseCmd создаёт команду 'attachments add case'
 // Эндпоинт: POST /add_attachment_to_case/{case_id}
@@ -43,12 +53,10 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			resp, err := cli.AddAttachmentToCase(ctx, caseID, filePath)
+			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
+				return cli.AddAttachmentToCase(ctx, caseID, filePath)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -91,12 +99,10 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			resp, err := cli.AddAttachmentToPlan(ctx, planID, filePath)
+			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
+				return cli.AddAttachmentToPlan(ctx, planID, filePath)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -140,12 +146,10 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			resp, err := cli.AddAttachmentToPlanEntry(ctx, planID, entryID, filePath)
+			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
+				return cli.AddAttachmentToPlanEntry(ctx, planID, entryID, filePath)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -188,12 +192,10 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			resp, err := cli.AddAttachmentToResult(ctx, resultID, filePath)
+			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
+				return cli.AddAttachmentToResult(ctx, resultID, filePath)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}
@@ -236,12 +238,10 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Загрузка файла...")
-
 			cli := getClient(cmd)
-			ctx := cmd.Context()
-			resp, err := cli.AddAttachmentToRun(ctx, runID, filePath)
+			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
+				return cli.AddAttachmentToRun(ctx, runID, filePath)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add attachment: %w", err)
 			}

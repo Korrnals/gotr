@@ -10,8 +10,10 @@ import (
 	"reflect"
 	"time"
 
+	embed "github.com/Korrnals/gotr/embedded"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,6 +27,86 @@ func AddFlag(cmd *cobra.Command) {
 func OutputResult(cmd *cobra.Command, data interface{}, resource string) error {
 	_, err := Output(cmd, data, resource, "json")
 	return err
+}
+
+// OutputGetResult handles get-command output, including save/json-full/jq modes.
+func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	outputFormat, _ := cmd.Flags().GetString("type")
+	saveFlag, _ := cmd.Flags().GetBool("save")
+	jqEnabled, _ := cmd.Flags().GetBool("jq")
+	jqFilter, _ := cmd.Flags().GetString("jq-filter")
+	bodyOnly, _ := cmd.Flags().GetBool("body-only")
+
+	if !jqEnabled {
+		jqEnabled = viper.GetBool("jq_format")
+	}
+
+	if saveFlag {
+		toSave := data
+		if !bodyOnly {
+			toSave = struct {
+				Status     string        `json:"status"`
+				StatusCode int           `json:"status_code"`
+				Duration   time.Duration `json:"duration"`
+				Timestamp  time.Time     `json:"timestamp"`
+				Data       any           `json:"data"`
+			}{
+				Status:     "200 OK",
+				StatusCode: 200,
+				Duration:   time.Since(start),
+				Timestamp:  time.Now(),
+				Data:       data,
+			}
+		}
+
+		filepath, err := Output(cmd, toSave, "get", "json")
+		if err != nil {
+			return fmt.Errorf("save error: %w", err)
+		}
+		if !quiet && filepath != "" {
+			ui.Infof(os.Stdout, "Response saved to %s", filepath)
+		}
+		return nil
+	}
+
+	if jqEnabled || jqFilter != "" {
+		payload, err := json.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("jq marshal error: %w", err)
+		}
+		if err := embed.RunEmbeddedJQ(payload, jqFilter); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if quiet {
+		return nil
+	}
+
+	switch outputFormat {
+	case "json":
+		return ui.JSON(cmd, data)
+	case "json-full":
+		full := struct {
+			Status     string        `json:"status"`
+			StatusCode int           `json:"status_code"`
+			Duration   time.Duration `json:"duration"`
+			Timestamp  time.Time     `json:"timestamp"`
+			Data       any           `json:"data"`
+		}{
+			Status:     "200 OK",
+			StatusCode: 200,
+			Duration:   time.Since(start),
+			Timestamp:  time.Now(),
+			Data:       data,
+		}
+		return ui.JSON(cmd, full)
+	default:
+		ui.Warning(os.Stdout, "Table output not implemented yet")
+		return nil
+	}
 }
 
 // Output checks if --save flag is set and saves data to file if so.

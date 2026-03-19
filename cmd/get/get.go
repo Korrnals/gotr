@@ -1,17 +1,14 @@
 package get
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
 	"os"
 	"time"
 
-	embed "github.com/Korrnals/gotr/embedded"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // GetClientFunc — тип функции для получения клиента
@@ -62,83 +59,18 @@ func SetGetClientForTests(fn GetClientFunc) {
 	getClient = fn
 }
 
-// handleOutput — общая логика вывода, сохранения и jq
+// handleOutput delegates get-command rendering/output orchestration to internal/output.
 func handleOutput(command *cobra.Command, data any, start time.Time) error {
+	return output.OutputGetResult(command, data, start)
+}
+
+func runGetStatus[T any](command *cobra.Command, title string, fn func(context.Context) (T, error)) (T, error) {
 	quiet, _ := command.Flags().GetBool("quiet")
-	outputFormat, _ := command.Flags().GetString("type")
-	saveFlag, _ := command.Flags().GetBool("save")
-	jqEnabled, _ := command.Flags().GetBool("jq")
-	jqFilter, _ := command.Flags().GetString("jq-filter")
-	bodyOnly, _ := command.Flags().GetBool("body-only")
-
-	// Если jq не указан явно — берём из конфига
-	if !jqEnabled {
-		jqEnabled = viper.GetBool("jq_format")
-	}
-
-	if saveFlag {
-		var toSave interface{} = data
-		if !bodyOnly {
-			toSave = struct {
-				Status     string        `json:"status"`
-				StatusCode int           `json:"status_code"`
-				Duration   time.Duration `json:"duration"`
-				Timestamp  time.Time     `json:"timestamp"`
-				Data       any           `json:"data"`
-			}{
-				Status:     "200 OK",
-				StatusCode: 200,
-				Duration:   time.Since(start),
-				Timestamp:  time.Now(),
-				Data:       data,
-			}
-		}
-		filepath, err := output.Output(command, toSave, "get", "json")
-		if err != nil {
-			return fmt.Errorf("save error: %w", err)
-		}
-		if !quiet && filepath != "" {
-			ui.Infof(os.Stdout, "Response saved to %s", filepath)
-		}
-		return nil
-	}
-
-	if jqEnabled || jqFilter != "" {
-		toSave, err := json.Marshal(data)
-		if err != nil {
-			return fmt.Errorf("jq marshal error: %w", err)
-		}
-		if err := embed.RunEmbeddedJQ(toSave, jqFilter); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if !quiet {
-		switch outputFormat {
-		case "json":
-			return ui.JSON(command, data)
-		case "json-full":
-			full := struct {
-				Status     string        `json:"status"`
-				StatusCode int           `json:"status_code"`
-				Duration   time.Duration `json:"duration"`
-				Timestamp  time.Time     `json:"timestamp"`
-				Data       any           `json:"data"`
-			}{
-				Status:     "200 OK",
-				StatusCode: 200,
-				Duration:   time.Since(start),
-				Timestamp:  time.Now(),
-				Data:       data,
-			}
-			return ui.JSON(command, full)
-		default:
-			ui.Warning(os.Stdout, "Table output not implemented yet")
-		}
-	}
-
-	return nil
+	return ui.RunWithStatus(command.Context(), ui.StatusConfig{
+		Title:  title,
+		Writer: os.Stderr,
+		Quiet:  quiet,
+	}, fn)
 }
 
 // Register регистрирует команду get и все её подкоманды

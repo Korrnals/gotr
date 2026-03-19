@@ -281,10 +281,9 @@ internal/ui/
 pkg/reporter/                  # было: internal/ui/reporter/ (Stage 6.8)
 └── reporter.go           # Builder pattern: Section/Stat/StatIf/StatFmt/Print
 
-internal/progress/
-├── progress.go           # Manager (mpb-based, для sync/get команд)
-├── monitor.go            # WithMonitorCtx — мониторинг через context
-└── async.go              # Асинхронные хелперы
+internal/ui/
+├── runtime.go            # Unified progress runtime (RunWithStatus, Operation, TaskHandle)
+└── display.go            # ANSI live display — динамическая таблица
 ```
 
 ## Принятые решения

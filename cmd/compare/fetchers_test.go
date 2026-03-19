@@ -11,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -217,7 +218,7 @@ func TestCompareSectionsInternal_Success(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(context.Background(), mock, 1, 2, false)
+	result, err := compareSectionsInternal(context.Background(), nil, mock, 1, 2, false)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
@@ -231,10 +232,57 @@ func TestCompareSectionsInternal_SuitesError(t *testing.T) {
 		},
 	}
 
-	result, err := compareSectionsInternal(context.Background(), mock, 1, 2, false)
+	result, err := compareSectionsInternal(context.Background(), nil, mock, 1, 2, false)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
+}
+
+func TestCompareSectionsInternal_UsesHeavyRuntimeConfig(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("compare.rate_limit", 120)
+	viper.Set("compare.cases.parallel_suites", 4)
+	viper.Set("compare.cases.parallel_pages", 5)
+	viper.Set("compare.cases.page_retries", 6)
+	viper.Set("compare.cases.timeout", "3m")
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Int("parallel-suites", 10, "")
+	cmd.Flags().Int("parallel-pages", 6, "")
+	cmd.Flags().Int("page-retries", 5, "")
+	cmd.Flags().Int("rate-limit", -1, "")
+	cmd.Flags().Duration("timeout", 30*time.Minute, "")
+	_ = cmd.Flags().Set("parallel-suites", "8")
+	_ = cmd.Flags().Set("timeout", "7m")
+
+	preloaded := map[int64]data.GetSuitesResponse{
+		1: {{ID: 101, Name: "Suite A"}},
+		2: {{ID: 201, Name: "Suite B"}},
+	}
+
+	captured := make([]*concurrency.ControllerConfig, 0, 2)
+	mock := &client.MockClient{
+		GetSectionsParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error) {
+			captured = append(captured, config)
+			if projectID == 1 {
+				return data.GetSectionsResponse{{ID: 1, SuiteID: 101, Name: "Alpha"}}, nil
+			}
+			return data.GetSectionsResponse{{ID: 2, SuiteID: 201, Name: "Beta"}}, nil
+		},
+	}
+
+	result, err := compareSectionsInternalWithSuites(context.Background(), cmd, mock, 1, 2, true, preloaded)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	require.Len(t, captured, 2)
+
+	assert.Equal(t, 8, captured[0].MaxConcurrentSuites)
+	assert.Equal(t, 5, captured[0].MaxConcurrentPages)
+	assert.Equal(t, 6, captured[0].MaxRetries)
+	assert.Equal(t, 120, captured[0].RequestsPerMinute)
+	assert.Equal(t, 7*time.Minute, captured[0].Timeout)
 }
 
 // ==================== Тесты для compareSimpleInternal (plans) ====================

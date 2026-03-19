@@ -414,7 +414,7 @@ Examples:
 
 			// Sections
 			announce("sections")
-			if sectionsResult, err := compareSectionsInternalWithSuites(ctx, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
+			if sectionsResult, err := compareSectionsInternalWithSuites(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
 				result.Sections = sectionsResult
 			} else {
 				recordErr("sections", err)
@@ -564,9 +564,10 @@ Examples:
 					if err := saveAllResult(result, format, savePath); err != nil {
 						return err
 					}
-					// Print on new line after progress bar
-					fmt.Println()
-					ui.Infof(os.Stdout, "Result saved to %s", savePath)
+					if !quiet {
+						fmt.Println()
+						ui.Infof(os.Stdout, "Result saved to %s", savePath)
+					}
 				case "table":
 					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath, time.Since(startTime))
 				default:
@@ -790,9 +791,11 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 		return fmt.Errorf("file write error: %w", err)
 	}
 
-	// Print on new line after progress bar
-	fmt.Println()
-	ui.Infof(os.Stdout, "Result saved to %s", filePath)
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	if !quiet {
+		fmt.Println()
+		ui.Infof(os.Stdout, "Result saved to %s", filePath)
+	}
 	return nil
 }
 

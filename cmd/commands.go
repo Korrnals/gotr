@@ -71,7 +71,7 @@ func initGlobalFlags() {
 	rootCmd.PersistentFlags().MarkHidden("debug")
 
 	// Quiet mode (тихий режим для CI/CD)
-	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (только результат, без прогресса)")
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)")
 
 	// Формат вывода (глобальный)
 	rootCmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, csv, md, html")

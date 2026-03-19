@@ -54,6 +54,7 @@ var casesCmd = &cobra.Command{
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		quiet := isQuiet(cmd)
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
 
@@ -110,13 +111,13 @@ var casesCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		op := newSyncOperation("Sync cases")
+		op := newSyncOperation("Sync cases", quiet)
 		defer op.Finish()
 
 		// Если указан mapping-файл — загрузим в m.mapping
 		if mappingFile != "" {
 			op.Phase("Loading mapping")
-			_, err := runSyncStatus(ctx, "Loading mapping...", func(context.Context) (struct{}, error) {
+			_, err := runSyncStatus(ctx, "Loading mapping...", quiet, func(context.Context) (struct{}, error) {
 				return struct{}{}, m.LoadMappingFromFile(mappingFile)
 			})
 			if err != nil {
@@ -128,7 +129,7 @@ var casesCmd = &cobra.Command{
 		}
 
 		op.Phase("Loading cases")
-		loaded, err := runSyncStatus(ctx, "Loading cases...", func(ctx context.Context) (struct {
+		loaded, err := runSyncStatus(ctx, "Loading cases...", quiet, func(ctx context.Context) (struct {
 			Source data.GetCasesResponse
 			Target data.GetCasesResponse
 		}, error) {
@@ -167,13 +168,15 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		fmt.Printf("\nAnalysis result:\n")
-		fmt.Printf("  Matches: %d\n", len(matches))
-		fmt.Printf("  New: %d\n", len(filtered))
+		if !quiet {
+			fmt.Printf("\nAnalysis result:\n")
+			fmt.Printf("  Matches: %d\n", len(matches))
+			fmt.Printf("  New: %d\n", len(filtered))
+		}
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import NOT performed (safe).")
-			saveLog(logFile, matches, filtered, nil, m.Mapping())
+			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
 			return nil
 		}
 
@@ -185,12 +188,12 @@ var casesCmd = &cobra.Command{
 		confirm = strings.ToLower(strings.TrimSpace(confirm))
 		if confirm != "y" && confirm != "yes" {
 			ui.Cancelled(os.Stdout)
-			saveLog(logFile, matches, filtered, nil, m.Mapping())
+			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
 			return nil
 		}
 
 		op.Phase("Importing cases")
-		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), func(ctx context.Context) (struct {
+		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), quiet, func(ctx context.Context) (struct {
 			IDs    []int64
 			Errors []string
 		}, error) {
@@ -222,13 +225,13 @@ var casesCmd = &cobra.Command{
 		}
 
 		// Сохраняем лог и mapping
-		saveLog(logFile, matches, filtered, importErrors, m.Mapping())
+		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)
 
 		return nil
 	},
 }
 
-func saveLog(file string, matches, filtered data.GetCasesResponse, errors []string, mapping map[int64]int64) {
+func saveLog(file string, matches, filtered data.GetCasesResponse, errors []string, mapping map[int64]int64, quiet bool) {
 	result := map[string]interface{}{
 		"timestamp": time.Now().Format(time.RFC3339),
 		"matches":   len(matches),
@@ -238,5 +241,7 @@ func saveLog(file string, matches, filtered data.GetCasesResponse, errors []stri
 	}
 	jsonData, _ := json.MarshalIndent(result, "", "  ")
 	os.WriteFile(file, jsonData, 0644)
-	ui.Infof(os.Stdout, "Log saved: %s", file)
+	if !quiet {
+		ui.Infof(os.Stdout, "Log saved: %s", file)
+	}
 }

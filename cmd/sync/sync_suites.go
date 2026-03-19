@@ -42,6 +42,7 @@ var suitesCmd = &cobra.Command{
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		quiet := isQuiet(cmd)
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
@@ -59,11 +60,11 @@ var suitesCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		op := newSyncOperation("Sync suites")
+		op := newSyncOperation("Sync suites", quiet)
 		defer op.Finish()
 
 		op.Phase("Loading suites")
-		loaded, err := runSyncStatus(ctx, "Loading suites...", func(ctx context.Context) (struct {
+		loaded, err := runSyncStatus(ctx, "Loading suites...", quiet, func(ctx context.Context) (struct {
 			Source data.GetSuitesResponse
 			Target data.GetSuitesResponse
 		}, error) {
@@ -116,7 +117,7 @@ var suitesCmd = &cobra.Command{
 
 		// Шаг 3) Подтверждение и импорт
 		op.Phase("Importing suites")
-		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d suites...", len(filtered)), func(ctx context.Context) (struct{}, error) {
+		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d suites...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSuites(ctx, filtered, false)
 		})
 		if err != nil {

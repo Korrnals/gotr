@@ -38,6 +38,7 @@ var fullCmd = &cobra.Command{
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
+		quiet := isQuiet(cmd)
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
@@ -85,12 +86,12 @@ var fullCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		op := newSyncOperation("Full migration")
+		op := newSyncOperation("Full migration", quiet)
 		defer op.Finish()
 
 		// Шаг 1) Миграция shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
-		_, err = runSyncStatus(ctx, "Migrating shared steps...", func(ctx context.Context) (struct{}, error) {
+		_, err = runSyncStatus(ctx, "Migrating shared steps...", quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun || !autoApprove)
 		})
 		if err != nil { // если dry-run — без импорта
@@ -104,7 +105,7 @@ var fullCmd = &cobra.Command{
 
 		// Шаг 2) Миграция cases (Fetch → Filter → Import)
 		op.Phase("Step 2/2: cases")
-		_, err = runSyncStatus(ctx, "Migrating cases...", func(ctx context.Context) (struct{}, error) {
+		_, err = runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.MigrateCases(ctx, dryRun)
 		})
 		if err != nil {

@@ -44,6 +44,7 @@ var sharedStepsCmd = &cobra.Command{
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
+		quiet := isQuiet(cmd)
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 
@@ -91,11 +92,11 @@ var sharedStepsCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		op := newSyncOperation("Sync shared steps")
+		op := newSyncOperation("Sync shared steps", quiet)
 		defer op.Finish()
 
 		op.Phase("Loading shared steps")
-		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", func(ctx context.Context) (struct {
+		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", quiet, func(ctx context.Context) (struct {
 			Source data.GetSharedStepsResponse
 			Target data.GetSharedStepsResponse
 		}, error) {
@@ -119,7 +120,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Шаг 2) Получение кейсов source для определения использования shared steps
 		op.Phase("Loading source cases")
-		sourceCases, err := runSyncStatus(ctx, "Loading source cases...", func(ctx context.Context) (data.GetCasesResponse, error) {
+		sourceCases, err := runSyncStatus(ctx, "Loading source cases...", quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
 			return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
 		})
 		if err != nil {
@@ -163,7 +164,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Шаг 5) Импорт
 		op.Phase("Importing shared steps")
-		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), func(ctx context.Context) (struct{}, error) {
+		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSharedSteps(ctx, filtered, false)
 		})
 		if err != nil {

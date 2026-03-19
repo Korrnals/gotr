@@ -179,7 +179,9 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		return fmt.Errorf("failed to update project: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Project updated (ID: %d)", project.ID)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Project updated (ID: %d)", project.ID)
+	}
 	return outputUpdateResult(cmd, project)
 }
 
@@ -215,7 +217,9 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 		return fmt.Errorf("failed to update suite: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Suite updated (ID: %d)", suite.ID)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Suite updated (ID: %d)", suite.ID)
+	}
 	return outputUpdateResult(cmd, suite)
 }
 
@@ -252,7 +256,9 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		return fmt.Errorf("failed to update case: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Case updated (ID: %d)", caseResp.ID)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Case updated (ID: %d)", caseResp.ID)
+	}
 	return outputUpdateResult(cmd, caseResp)
 }
 
@@ -614,7 +620,9 @@ func outputUpdateResult(cmd *cobra.Command, data interface{}) error {
 // updateLabels обновляет метки теста (DEPRECATED: use 'gotr labels update' instead)
 func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) error {
 	ctx := cmd.Context()
-	fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr update labels' is deprecated. Use 'gotr labels update test' instead.")
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr update labels' is deprecated. Use 'gotr labels update test' instead.")
+	}
 
 	labelsFlag, _ := cmd.Flags().GetString("labels")
 	if labelsFlag == "" {
@@ -639,7 +647,9 @@ func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) 
 		return fmt.Errorf("failed to update labels: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Labels updated for test %d: %v", testID, labels)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Labels updated for test %d: %v", testID, labels)
+	}
 	return nil
 }
 

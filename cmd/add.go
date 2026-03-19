@@ -235,7 +235,9 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 		return fmt.Errorf("failed to create project: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Project created (ID: %d)", project.ID)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Project created (ID: %d)", project.ID)
+	}
 	return output.OutputResult(cmd, project, "result")
 }
 
@@ -269,7 +271,9 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 		return fmt.Errorf("failed to create suite: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Suite created (ID: %d)", suite.ID)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Suite created (ID: %d)", suite.ID)
+	}
 	return output.OutputResult(cmd, suite, "result")
 }
 
@@ -307,7 +311,9 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 		return fmt.Errorf("failed to create case: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Case created (ID: %d)", caseResp.ID)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Case created (ID: %d)", caseResp.ID)
+	}
 	return output.OutputResult(cmd, caseResp, "result")
 }
 
@@ -345,7 +351,9 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 		return fmt.Errorf("failed to create run: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Run created (ID: %d)", run.ID)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Run created (ID: %d)", run.ID)
+	}
 	return output.OutputResult(cmd, run, "result")
 }
 
@@ -874,8 +882,10 @@ func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID 
 		return fmt.Errorf("failed to add attachment to case: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
-	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+		ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	}
 	return output.OutputResult(cmd, resp, "result")
 }
 
@@ -897,8 +907,10 @@ func addAttachmentToPlan(cli client.ClientInterface, cmd *cobra.Command, planID 
 		return fmt.Errorf("failed to add attachment to plan: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
-	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+		ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	}
 	return output.OutputResult(cmd, resp, "result")
 }
 
@@ -920,8 +932,10 @@ func addAttachmentToPlanEntry(cli client.ClientInterface, cmd *cobra.Command, pl
 		return fmt.Errorf("failed to add attachment to plan entry: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
-	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+		ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	}
 	return output.OutputResult(cmd, resp, "result")
 }
 
@@ -943,8 +957,10 @@ func addAttachmentToResult(cli client.ClientInterface, cmd *cobra.Command, resul
 		return fmt.Errorf("failed to add attachment to result: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
-	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+		ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	}
 	return output.OutputResult(cmd, resp, "result")
 }
 
@@ -966,7 +982,9 @@ func addAttachmentToRun(cli client.ClientInterface, cmd *cobra.Command, runID in
 		return fmt.Errorf("failed to add attachment to run: %w", err)
 	}
 
-	ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
-	ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Attachment added (ID: %d)", resp.AttachmentID)
+		ui.Infof(os.Stdout, "URL: %s", resp.URL)
+	}
 	return output.OutputResult(cmd, resp, "result")
 }

@@ -118,6 +118,36 @@ func TestFetchAllPages_FlatArray_BackwardCompat(t *testing.T) {
 	}
 }
 
+func TestFetchAllPages_FlatArray_AtOrAboveLimit_StopsAfterFirstRequest(t *testing.T) {
+	requestCount := 0
+
+	items := make([]testItem, paginationLimit)
+	for i := range items {
+		items[i] = testItem{ID: i + 1, Name: fmt.Sprintf("item-%d", i+1)}
+	}
+	bodyBytes, _ := json.Marshal(items)
+
+	c, srv := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		requestCount++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write(bodyBytes)
+	})
+	defer srv.Close()
+
+	ctx := context.Background()
+	got, err := fetchAllPages[testItem](ctx, c, "get_sections/1", map[string]string{"suite_id": "42"}, "sections")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != paginationLimit {
+		t.Errorf("len(got) = %d, want %d", len(got), paginationLimit)
+	}
+	if requestCount != 1 {
+		t.Errorf("requestCount = %d, want 1", requestCount)
+	}
+}
+
 func TestFetchAllPages_SinglePage_PaginatedWrapper(t *testing.T) {
 	// 3 элемента < 250 → только одна страница
 	items := []testItem{{ID: 1}, {ID: 2}, {ID: 3}}

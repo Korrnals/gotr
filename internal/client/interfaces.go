@@ -10,7 +10,6 @@ import (
 )
 
 // ProgressMonitor определяет интерфейс для мониторинга прогресса.
-// Реализуется типом progress.Monitor из пакета internal/progress.
 type ProgressMonitor interface {
 	Increment()
 	IncrementBy(n int)

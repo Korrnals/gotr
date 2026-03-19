@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -110,13 +110,16 @@ var casesCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		// Create progress manager
-		pm := progress.NewManager()
+		op := newSyncOperation("Sync cases")
+		defer op.Finish()
 
 		// Если указан mapping-файл — загрузим в m.mapping
 		if mappingFile != "" {
-			progress.Describe(pm.NewSpinner(""), "Загрузка маппинга...")
-			if err := m.LoadMappingFromFile(mappingFile); err != nil {
+			op.Phase("Loading mapping")
+			_, err := runSyncStatus(ctx, "Loading mapping...", func(context.Context) (struct{}, error) {
+				return struct{}{}, m.LoadMappingFromFile(mappingFile)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to load mapping: %w", err)
 			}
 			ui.Infof(os.Stdout, "Mapping loaded: %d entries", len(m.Mapping()))
@@ -124,11 +127,28 @@ var casesCmd = &cobra.Command{
 			ui.Warning(os.Stdout, "mapping not loaded — shared_step_id will NOT be replaced")
 		}
 
-		progress.Describe(pm.NewSpinner(""), "Загрузка кейсов...")
-		sourceCases, targetCases, err := m.FetchCasesData(ctx)
+		op.Phase("Loading cases")
+		loaded, err := runSyncStatus(ctx, "Loading cases...", func(ctx context.Context) (struct {
+			Source data.GetCasesResponse
+			Target data.GetCasesResponse
+		}, error) {
+			sourceCases, targetCases, err := m.FetchCasesData(ctx)
+			if err != nil {
+				return struct {
+					Source data.GetCasesResponse
+					Target data.GetCasesResponse
+				}{}, err
+			}
+			return struct {
+				Source data.GetCasesResponse
+				Target data.GetCasesResponse
+			}{Source: sourceCases, Target: targetCases}, nil
+		})
 		if err != nil {
 			return err
 		}
+		sourceCases := loaded.Source
+		targetCases := loaded.Target
 
 		filtered, err := m.FilterCases(sourceCases, targetCases)
 		if err != nil {
@@ -157,6 +177,7 @@ var casesCmd = &cobra.Command{
 			return nil
 		}
 
+		op.Phase("Awaiting confirmation")
 		ui.Infof(os.Stdout, "Confirm import of %d new cases...", len(filtered))
 		fmt.Print("Continue? [y/N]: ")
 		var confirm string
@@ -168,11 +189,28 @@ var casesCmd = &cobra.Command{
 			return nil
 		}
 
-		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d кейсов...", len(filtered)))
-		createdIDs, importErrors, err := m.ImportCasesReport(ctx, filtered, false)
+		op.Phase("Importing cases")
+		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), func(ctx context.Context) (struct {
+			IDs    []int64
+			Errors []string
+		}, error) {
+			createdIDs, importErrors, err := m.ImportCasesReport(ctx, filtered, false)
+			if err != nil {
+				return struct {
+					IDs    []int64
+					Errors []string
+				}{}, err
+			}
+			return struct {
+				IDs    []int64
+				Errors []string
+			}{IDs: createdIDs, Errors: importErrors}, nil
+		})
 		if err != nil {
 			return err
 		}
+		createdIDs := imported.IDs
+		importErrors := imported.Errors
 
 		ui.Successf(os.Stdout, "Import complete: %d new cases", len(createdIDs))
 

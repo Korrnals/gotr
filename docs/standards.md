@@ -261,17 +261,15 @@ log.Debug("msg")      // Отладочное сообщение
 
 **Правило:** Все пути через `paths.*` — не конструировать вручную.
 
-### 3.9. `internal/progress/` — Прогресс-бары
+### 3.9. `internal/ui/runtime.go` — Progress Runtime
 
-Прогресс-бары на `github.com/vbauerster/mpb/v8`:
+Единый runtime прогресса/статусов:
 
-- `NewManager()` — создание менеджера прогресс-баров
-- `NewBar(total, label)` — отдельный прогресс-бар
-- `WithOutput(w)`, `WithQuiet()` — опции
-- `WithMonitorCtx(ctx)` — мониторинг через context (автоотмена)
-- Автоматически отключается в `--quiet` режиме
+- `ui.RunWithStatus(ctx, cfg, fn)` — статусная обёртка
+- `ui.NewOperation(cfg)` + `AddTask(...)` — многофазный прогресс
+- Автоматически учитывает `--quiet`
 
-**Использование:** sync-команды, get-команды. В compare-командах заменён на `internal/ui/display`.
+**Использование:** compare/sync/get и остальные long-running команды.
 
 ### 3.10. `internal/interactive/` — Интерактивный выбор
 
@@ -913,7 +911,6 @@ golangci-lint run --timeout 5m
 | `github.com/spf13/viper` | v1.21.0 | Конфигурация (yaml, env, pflags) |
 | `go.uber.org/zap` | v1.27.1 | Структурированное логирование |
 | `github.com/jedib0t/go-pretty/v6` | v6.7.8 | Таблицы, рендеринг (table/json/csv/md/html) |
-| `github.com/vbauerster/mpb/v8` | v8.12.0 | Прогресс-бары (sync, get команды) |
 | `github.com/AlecAivazis/survey/v2` | v2.3.7 | Интерактивные промпты (wizard) |
 | `golang.org/x/time` | v0.14.0 | Token bucket rate limiter |
 | `golang.org/x/sync` | v0.19.0 | errgroup (WorkerPool) |

@@ -1,10 +1,10 @@
 package sync
 
 import (
+	"context"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/paths"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -85,12 +85,15 @@ var fullCmd = &cobra.Command{
 		}
 		defer m.Close()
 
-		// Create progress manager for multi-phase migration
-		pm := progress.NewManager()
+		op := newSyncOperation("Full migration")
+		defer op.Finish()
 
 		// Шаг 1) Миграция shared steps (Fetch → Filter → Import)
-		progress.Describe(pm.NewSpinner(""), "Шаг 1/2: Миграция shared steps...")
-		if err := m.MigrateSharedSteps(ctx, dryRun || !autoApprove); err != nil { // если dry-run — без импорта
+		op.Phase("Step 1/2: shared steps")
+		_, err = runSyncStatus(ctx, "Migrating shared steps...", func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun || !autoApprove)
+		})
+		if err != nil { // если dry-run — без импорта
 			return err
 		}
 
@@ -100,8 +103,11 @@ var fullCmd = &cobra.Command{
 		}
 
 		// Шаг 2) Миграция cases (Fetch → Filter → Import)
-		progress.Describe(pm.NewSpinner(""), "Шаг 2/2: Миграция cases...")
-		if err := m.MigrateCases(ctx, dryRun); err != nil {
+		op.Phase("Step 2/2: cases")
+		_, err = runSyncStatus(ctx, "Migrating cases...", func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, m.MigrateCases(ctx, dryRun)
+		})
+		if err != nil {
 			return err
 		}
 

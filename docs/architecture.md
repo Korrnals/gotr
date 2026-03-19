@@ -321,20 +321,18 @@ output.NewDryRunPrinter(cmd)              // Вывод для dry-run
 - `gotr compare all` — go-pretty table + reporter для сводной таблицы
 - `ui.Infof(os.Stderr, ...)` — стилизованные сообщения
 
-### 7. Progress Layer (`internal/progress/`)
+### 7. Progress Runtime (`internal/ui/runtime.go`)
 
-**Ответственность:** Прогресс-бары для sync/get команд (mpb-based).
+**Ответственность:** Единый runtime прогресса и статусов для CLI-команд.
 
 **Использование:**
-- `gotr sync full` — прогресс миграции
-- `gotr get cases` — прогресс загрузки кейсов
-
-> **Примечание:** В compare-командах progress.Manager заменён на `internal/ui/reporter` для унифицированного вывода.
+- `ui.RunWithStatus(...)` — простые статусные операции
+- `ui.NewOperation(...)` + `AddTask(...)` — многофазные и потоковые операции
 
 **Особенности:**
-- Автоматически отключается в `--quiet` режиме
-- Поддерживает неопределенные операции (спиннеры)
-- `WithMonitorCtx` — мониторинг через context
+- Учитывает `--quiet`
+- Поддерживает фазы и task-level прогресс
+- Используется в compare/sync/get и других командах
 
 ### 8. Interactive Layer (`internal/interactive/`)
 
@@ -655,7 +653,7 @@ CLI команды не требуют изменений!
 | Стратегии конкурентности | `internal/concurrency/*.go` |
 | Generic compare factory | `cmd/compare/simple.go` |
 | Унифицированный вывод (compare) | `pkg/reporter/*.go` |
-| Прогресс-бары (sync/get) | `internal/progress/*.go` |
+| Progress runtime | `internal/ui/runtime.go` |
 
 Подробная техническая документация: `.github/copilot/instructions/`
 

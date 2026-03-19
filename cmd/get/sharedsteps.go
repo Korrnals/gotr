@@ -1,13 +1,13 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/spf13/cobra"
 )
 
@@ -61,17 +61,13 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 				}
 			}
 
-			// Create progress manager and spinner
-			pm := progress.NewManager()
-			spinner := pm.NewSpinner("")
-			spinner.Describe("Загрузка shared steps...")
-
-			steps, err := cli.GetSharedSteps(ctx, projectID)
+			steps, err := runGetStatus(command, "Loading shared steps...", func(ctx context.Context) (any, error) {
+				return cli.GetSharedSteps(ctx, projectID)
+			})
 			if err != nil {
 				return err
 			}
 
-			spinner.Finish()
 			return handleOutput(command, steps, start)
 		},
 	}

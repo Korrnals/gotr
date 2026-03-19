@@ -18,6 +18,7 @@
 - `compare all` JSON/YAML meta now distinguishes real errors from unsupported endpoints:
   - `error_summary_count` / `error_resources` for real failures
   - `unsupported_summary_count` / `unsupported_resources` for server-unsupported methods
+- Legacy `internal/progress` package removed; progress/status flow is unified via `internal/ui` runtime.
 
 ### Fixed
 

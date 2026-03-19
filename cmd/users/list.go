@@ -6,12 +6,12 @@ package users
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -62,10 +62,12 @@ type usersClient interface {
 }
 
 func listAllUsers(ctx context.Context, cmd *cobra.Command, cli usersClient) error {
-	pm := progress.NewManager()
-	progress.Describe(pm.NewSpinner(""), "Загрузка пользователей...")
-
-	users, err := cli.GetUsers(ctx)
+	users, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+		Title:  "Loading users...",
+		Writer: os.Stderr,
+	}, func(ctx context.Context) (data.GetUsersResponse, error) {
+		return cli.GetUsers(ctx)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to list users: %w", err)
 	}
@@ -91,10 +93,12 @@ func listAllUsers(ctx context.Context, cmd *cobra.Command, cli usersClient) erro
 }
 
 func listProjectUsers(ctx context.Context, cmd *cobra.Command, cli usersClient, projectID int64) error {
-	pm := progress.NewManager()
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Загрузка пользователей проекта %d...", projectID))
-
-	users, err := cli.GetUsersByProject(ctx, projectID)
+	users, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+		Title:  fmt.Sprintf("Loading users for project %d...", projectID),
+		Writer: os.Stderr,
+	}, func(ctx context.Context) (data.GetUsersResponse, error) {
+		return cli.GetUsersByProject(ctx, projectID)
+	})
 	if err != nil {
 		return fmt.Errorf("failed to list project users: %w", err)
 	}

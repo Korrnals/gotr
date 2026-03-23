@@ -50,7 +50,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}

@@ -147,7 +147,8 @@ func runUpdateInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoi
 
 func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
 	ctx := cmd.Context()
-	answers, err := interactive.AskProject(true)
+	p := interactive.PrompterFromContext(ctx)
+	answers, err := interactive.AskProjectWithPrompter(p, true)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -161,7 +162,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		{Label: "Is completed", Value: answers.IsCompleted},
 	})
 
-	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -187,7 +188,8 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
 	ctx := cmd.Context()
-	answers, err := interactive.AskSuite(true)
+	p := interactive.PrompterFromContext(ctx)
+	answers, err := interactive.AskSuiteWithPrompter(p, true)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -200,7 +202,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 		{Label: "Is completed", Value: answers.IsCompleted},
 	})
 
-	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -225,7 +227,8 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 
 func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
 	ctx := cmd.Context()
-	answers, err := interactive.AskCase(true)
+	p := interactive.PrompterFromContext(ctx)
+	answers, err := interactive.AskCaseWithPrompter(p, true)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -238,7 +241,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		{Label: "Priority ID", Value: answers.PriorityID},
 	})
 
-	confirmed, err := interactive.AskConfirm("Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil

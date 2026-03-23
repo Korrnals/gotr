@@ -125,7 +125,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 
 	// Проверяем интерактивный режим
 	isInteractive, _ := cmd.Flags().GetBool("interactive")
-	if isInteractive {
+	if isInteractive || shouldAutoRunAddInteractive(cmd, endpoint, id, jsonFile != "") {
 		return runAddInteractive(cli, cmd, endpoint, id)
 	}
 
@@ -176,6 +176,39 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return runAddAttachment(cli, cmd, args)
 	default:
 		return fmt.Errorf("unsupported endpoint: %s", endpoint)
+	}
+}
+
+func hasChangedFlag(cmd *cobra.Command, name string) bool {
+	flag := cmd.Flags().Lookup(name)
+	return flag != nil && cmd.Flags().Changed(name)
+}
+
+func hasAnyChangedFlag(cmd *cobra.Command, names ...string) bool {
+	for _, name := range names {
+		if hasChangedFlag(cmd, name) {
+			return true
+		}
+	}
+	return false
+}
+
+func shouldAutoRunAddInteractive(cmd *cobra.Command, endpoint string, parentID int64, hasJSONFile bool) bool {
+	if hasJSONFile || !interactive.HasPrompterInContext(cmd.Context()) {
+		return false
+	}
+
+	switch endpoint {
+	case "project":
+		return !hasAnyChangedFlag(cmd, "name", "announcement", "show-announcement")
+	case "suite":
+		return parentID != 0 && !hasAnyChangedFlag(cmd, "name", "description")
+	case "case":
+		return parentID != 0 && !hasAnyChangedFlag(cmd, "title", "type-id", "priority-id", "refs")
+	case "run":
+		return parentID != 0 && !hasAnyChangedFlag(cmd, "name", "description", "suite-id", "case-ids", "include-all", "milestone-id", "assignedto-id")
+	default:
+		return false
 	}
 }
 

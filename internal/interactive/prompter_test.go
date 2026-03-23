@@ -32,6 +32,14 @@ func TestWithPrompter_NilContext(t *testing.T) {
 	assert.NotNil(t, ctx)
 }
 
+func TestHasPrompterInContext(t *testing.T) {
+	assert.False(t, HasPrompterInContext(nil))
+	assert.False(t, HasPrompterInContext(context.Background()))
+
+	ctx := WithPrompter(context.Background(), NewMockPrompter())
+	assert.True(t, HasPrompterInContext(ctx))
+}
+
 func TestNonInteractivePrompter_AllMethods(t *testing.T) {
 	p := NewNonInteractivePrompter()
 

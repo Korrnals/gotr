@@ -125,6 +125,16 @@ func WithPrompter(ctx context.Context, p Prompter) context.Context {
 	return context.WithValue(ctx, prompterContextKey{}, p)
 }
 
+// HasPrompterInContext reports whether context contains an explicitly injected prompter.
+func HasPrompterInContext(ctx context.Context) bool {
+	if ctx == nil {
+		return false
+	}
+
+	p, ok := ctx.Value(prompterContextKey{}).(Prompter)
+	return ok && p != nil
+}
+
 // PrompterFromContext returns context-attached prompter or terminal default.
 func PrompterFromContext(ctx context.Context) Prompter {
 	if ctx == nil {

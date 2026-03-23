@@ -106,7 +106,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	// Проверяем интерактивный режим
 	isInteractive, _ := cmd.Flags().GetBool("interactive")
-	if isInteractive {
+	if isInteractive || shouldAutoRunUpdateInteractive(cmd, endpoint, jsonFile != "") {
 		return runUpdateInteractive(cli, cmd, endpoint, id)
 	}
 
@@ -128,6 +128,23 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return updateLabels(cli, cmd, id)
 	default:
 		return fmt.Errorf("unsupported endpoint: %s", endpoint)
+	}
+}
+
+func shouldAutoRunUpdateInteractive(cmd *cobra.Command, endpoint string, hasJSONFile bool) bool {
+	if hasJSONFile || !interactive.HasPrompterInContext(cmd.Context()) {
+		return false
+	}
+
+	switch endpoint {
+	case "project":
+		return !hasAnyChangedFlag(cmd, "name", "announcement", "show-announcement", "is-completed")
+	case "suite":
+		return !hasAnyChangedFlag(cmd, "name", "description", "is-completed")
+	case "case":
+		return !hasAnyChangedFlag(cmd, "title", "type-id", "priority-id", "refs")
+	default:
+		return false
 	}
 }
 

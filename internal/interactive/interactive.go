@@ -90,6 +90,15 @@ func SelectRun(ctx context.Context, p Prompter, runs data.GetRunsResponse, promp
 	return runs[idx].ID, nil
 }
 
+// SelectSuiteForProject fetches suites for a project and selects one using the prompter.
+func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
+	suites, err := cli.GetSuites(ctx, projectID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+	}
+	return SelectSuite(ctx, p, suites, prompt)
+}
+
 // SelectProjectInteractively is a compatibility wrapper.
 func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
 	return SelectProject(ctx, PrompterFromContext(ctx), httpClient, "")

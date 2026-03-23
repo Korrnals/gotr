@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -48,11 +48,12 @@ var sharedStepsCmd = &cobra.Command{
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 
+		p := interactive.PrompterFromContext(ctx)
 		var err error
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project (copy shared steps from):")
+			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy shared steps from):")
 			if err != nil {
 				return err
 			}
@@ -61,11 +62,12 @@ var sharedStepsCmd = &cobra.Command{
 		// Интерактивный выбор source сьюта (опционально, можно 0)
 		if srcSuite == 0 {
 			// Спрашиваем нужен ли suite
-			fmt.Print("\nSpecify source suite? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-				srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
+			specifySuite, err := p.Confirm("Specify source suite?", false)
+			if err != nil {
+				return err
+			}
+			if specifySuite {
+				srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 				if err != nil {
 					return err
 				}
@@ -74,7 +76,7 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project (copy shared steps to):")
+			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy shared steps to):")
 			if err != nil {
 				return err
 			}
@@ -153,10 +155,8 @@ var sharedStepsCmd = &cobra.Command{
 		op.Phase("Awaiting confirmation")
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d shared steps...", len(filtered))
-			fmt.Print("Continue? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
+			ok, err := p.Confirm("Continue?", false)
+			if err != nil || !ok {
 				ui.Cancelled(os.Stdout)
 				return nil
 			}
@@ -175,10 +175,8 @@ var sharedStepsCmd = &cobra.Command{
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nSave mapping? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
+			ok, err := p.Confirm("Save mapping?", false)
+			if err == nil && ok {
 				m.ExportMapping(logDir)
 			}
 		}
@@ -186,10 +184,8 @@ var sharedStepsCmd = &cobra.Command{
 		if autoSaveFiltered {
 			// Сохранение filtered
 		} else if len(filtered) > 0 {
-			fmt.Print("\nSave filtered shared steps? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
+			ok, err := p.Confirm("Save filtered shared steps?", false)
+			if err == nil && ok {
 				// Сохранение
 			}
 		}

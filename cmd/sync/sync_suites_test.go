@@ -2,12 +2,12 @@ package sync
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -89,13 +89,8 @@ func TestSyncSuites_Confirm_TriggersAddSuite(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "false")
 
-	// Симулируем ввод пользователя: подтверждение 'y'
-	r, w, _ := os.Pipe()
-	_, _ = w.Write([]byte("y\n"))
-	_ = w.Close()
-	oldStdin := os.Stdin
-	defer func() { os.Stdin = oldStdin }()
-	os.Stdin = r
+	p := interactive.NewMockPrompter().WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
 
 	// Выполняем команду и проверяем, что AddSuite был вызван
 	err := cmd.RunE(cmd, []string{})

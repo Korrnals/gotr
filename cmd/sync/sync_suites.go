@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"strings"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -49,6 +49,8 @@ var suitesCmd = &cobra.Command{
 		if srcProject == 0 || dstProject == 0 {
 			return fmt.Errorf("required IDs: --src-project and --dst-project")
 		}
+
+		p := interactive.PrompterFromContext(ctx)
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
@@ -106,10 +108,8 @@ var suitesCmd = &cobra.Command{
 		op.Phase("Awaiting confirmation")
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d suites...", len(filtered))
-			fmt.Print("Continue? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
+			ok, err := p.Confirm("Continue?", false)
+			if err != nil || !ok {
 				ui.Cancelled(os.Stdout)
 				return nil
 			}
@@ -128,10 +128,8 @@ var suitesCmd = &cobra.Command{
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nSave mapping? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
+			ok, err := p.Confirm("Save mapping?", false)
+			if err == nil && ok {
 				m.ExportMapping(logDir)
 			}
 		}

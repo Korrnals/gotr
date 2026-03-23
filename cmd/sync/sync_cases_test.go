@@ -2,12 +2,12 @@ package sync
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -92,13 +92,8 @@ func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("dry-run", "false")
 
-	// simulate stdin "y"
-	r, w, _ := os.Pipe()
-	_, _ = w.Write([]byte("y\n"))
-	_ = w.Close()
-	oldStdin := os.Stdin
-	defer func() { os.Stdin = oldStdin }()
-	os.Stdin = r
+	p := interactive.NewMockPrompter().WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)

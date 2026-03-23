@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -58,11 +58,12 @@ var casesCmd = &cobra.Command{
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
 
+		p := interactive.PrompterFromContext(ctx)
 		var err error
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project (copy from):")
+			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy from):")
 			if err != nil {
 				return err
 			}
@@ -70,7 +71,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
+			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
 				return err
 			}
@@ -78,7 +79,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project (copy to):")
+			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy to):")
 			if err != nil {
 				return err
 			}
@@ -86,7 +87,7 @@ var casesCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Select DESTINATION suite:")
+			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
 				return err
 			}
@@ -182,11 +183,8 @@ var casesCmd = &cobra.Command{
 
 		op.Phase("Awaiting confirmation")
 		ui.Infof(os.Stdout, "Confirm import of %d new cases...", len(filtered))
-		fmt.Print("Continue? [y/N]: ")
-		var confirm string
-		fmt.Scanln(&confirm)
-		confirm = strings.ToLower(strings.TrimSpace(confirm))
-		if confirm != "y" && confirm != "yes" {
+		ok, err := p.Confirm("Continue?", false)
+		if err != nil || !ok {
 			ui.Cancelled(os.Stdout)
 			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
 			return nil

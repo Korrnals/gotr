@@ -2,12 +2,12 @@ package sync
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -100,13 +100,8 @@ func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "false")
 
-	// simulate stdin "y" для подтверждения импорта
-	r, w, _ := os.Pipe()
-	_, _ = w.Write([]byte("y\n"))
-	_ = w.Close()
-	oldStdin := os.Stdin
-	defer func() { os.Stdin = oldStdin }()
-	os.Stdin = r
+	p := interactive.NewMockPrompter().WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)

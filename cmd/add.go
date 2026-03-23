@@ -206,7 +206,8 @@ func runAddInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint 
 
 func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error {
 	ctx := cmd.Context()
-	answers, err := interactive.AskProject(false)
+	p := interactive.PrompterFromContext(ctx)
+	answers, err := interactive.AskProjectWithPrompter(p, false)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -218,7 +219,7 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 		{Label: "Show announce", Value: answers.ShowAnnouncement},
 	})
 
-	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -243,7 +244,8 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 
 func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
 	ctx := cmd.Context()
-	answers, err := interactive.AskSuite(false)
+	p := interactive.PrompterFromContext(ctx)
+	answers, err := interactive.AskSuiteWithPrompter(p, false)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -255,7 +257,7 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 		{Label: "Project ID", Value: projectID},
 	})
 
-	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -279,7 +281,8 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 
 func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionID int64) error {
 	ctx := cmd.Context()
-	answers, err := interactive.AskCase(false)
+	p := interactive.PrompterFromContext(ctx)
+	answers, err := interactive.AskCaseWithPrompter(p, false)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -292,7 +295,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 		{Label: "Priority ID", Value: answers.PriorityID},
 	})
 
-	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -319,7 +322,8 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 
 func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
 	ctx := cmd.Context()
-	answers, err := interactive.AskRun(false)
+	p := interactive.PrompterFromContext(ctx)
+	answers, err := interactive.AskRunWithPrompter(p, false)
 	if err != nil {
 		return fmt.Errorf("input error: %w", err)
 	}
@@ -333,7 +337,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 		{Label: "Project ID", Value: projectID},
 	})
 
-	confirmed, err := interactive.AskConfirm("Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil

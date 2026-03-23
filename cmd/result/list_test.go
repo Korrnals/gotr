@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -94,19 +95,17 @@ func TestListCmd_Direct_EmptyResults(t *testing.T) {
 // ==================== Тесты для result list (interactive mode) ====================
 
 func TestListCmd_Interactive_NoProjects(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{}, nil
+		},
+	}
 
-	// Устанавливаем мок селектор с ошибкой (проекты не найдены)
-	selectors = &mockProjectSelector{projectID: 0, err: fmt.Errorf("no projects found")}
-
-	mock := &client.MockClient{}
+	p := interactive.NewMockPrompter()
 
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	// Не передаем аргументы - должен включиться интерактивный режим
 	cmd.SetArgs([]string{})
 

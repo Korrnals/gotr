@@ -10,6 +10,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -308,42 +309,15 @@ func TestRegister(t *testing.T) {
 	}
 }
 
-// ==================== Mock selectors для тестирования интерактивного режима ====================
-
-type mockProjectSelector struct {
-	projectID int64
-	err       error
-}
-
-func (m *mockProjectSelector) SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
-	return m.projectID, m.err
-}
-
-type mockRunSelector struct {
-	runID int64
-	err   error
-}
-
-func (m *mockRunSelector) SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
-	return m.runID, m.err
-}
-
 // ==================== Тесты для list command (интерактивный режим) ====================
 
 func TestListCmd_Interactive_Success(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	oldRunSelectors := runSelectors
-	defer func() {
-		selectors = oldSelectors
-		runSelectors = oldRunSelectors
-	}()
-
-	// Устанавливаем мок селекторы
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-	runSelectors = &mockRunSelector{runID: 12345, err: nil}
-
 	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
 		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetRunsResponse{
@@ -356,8 +330,13 @@ func TestListCmd_Interactive_Success(t *testing.T) {
 		},
 	}
 
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}). // выбор проекта
+		WithSelectResponses(interactive.SelectResponse{Index: 0})  // выбор run
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	// Без аргументов - должен включиться интерактивный режим
 	cmd.SetArgs([]string{})
 
@@ -366,44 +345,44 @@ func TestListCmd_Interactive_Success(t *testing.T) {
 }
 
 func TestListCmd_Interactive_SelectProjectError(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
+	}
 
-	// Устанавливаем мок селектор с ошибкой
-	selectors = &mockProjectSelector{projectID: 0, err: fmt.Errorf("user cancelled")}
-
-	mock := &client.MockClient{}
+	// Пустой MockPrompter — очередь исчерпана, SelectProject вернёт ошибку
+	p := interactive.NewMockPrompter()
 
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "user cancelled")
 }
 
 func TestListCmd_Interactive_GetRunsError(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
-
-	// Устанавливаем мок селектор
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-
 	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
 		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return nil, fmt.Errorf("failed to get runs")
 		},
 	}
 
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}) // выбор проекта
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -412,23 +391,23 @@ func TestListCmd_Interactive_GetRunsError(t *testing.T) {
 }
 
 func TestListCmd_Interactive_EmptyRuns(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
-
-	// Устанавливаем мок селектор
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-
 	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
 		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{}, nil
 		},
 	}
 
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}) // выбор проекта
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -437,19 +416,12 @@ func TestListCmd_Interactive_EmptyRuns(t *testing.T) {
 }
 
 func TestListCmd_Interactive_SelectRunError(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	oldRunSelectors := runSelectors
-	defer func() {
-		selectors = oldSelectors
-		runSelectors = oldRunSelectors
-	}()
-
-	// Устанавливаем мок селекторы
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-	runSelectors = &mockRunSelector{runID: 0, err: fmt.Errorf("user cancelled selection")}
-
 	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
 		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{
 				{ID: 12345, Name: "Test Run", ProjectID: 1},
@@ -457,13 +429,17 @@ func TestListCmd_Interactive_SelectRunError(t *testing.T) {
 		},
 	}
 
+	// MockPrompter: 1 SelectResponse для проекта, ничего для run — очередь исчерпана
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cancelled")
 }
 
 // ==================== Тесты для outputResult (через команду с флагом output) ====================
@@ -513,21 +489,6 @@ func TestPrintJSON_Error(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "serialization")
-}
-
-// ==================== Тесты для defaultSelectors ====================
-
-func TestDefaultSelectors_SelectProjectInteractively(t *testing.T) {
-	// Тестируем что defaultSelectors.SelectProjectInteractivities вызывает interactive.SelectProjectInteractively
-	// Это тест для покрытия метода - фактически он не сможет выполниться без пользовательского ввода
-	d := &defaultSelectors{}
-	assert.NotNil(t, d)
-}
-
-func TestDefaultSelectors_SelectRunInteractively(t *testing.T) {
-	// Тестируем что defaultSelectors.SelectRunInteractively вызывает interactive.SelectRunInteractively
-	d := &defaultSelectors{}
-	assert.NotNil(t, d)
 }
 
 // ==================== Дополнительные тесты для service_wrapper ====================

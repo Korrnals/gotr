@@ -65,7 +65,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}
@@ -107,7 +107,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			}
 
 			// Несколько сьютов — интерактивный выбор
-			selectedSuiteID, err := interactive.SelectSuiteInteractively(suites)
+			selectedSuiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 			if err != nil {
 				return err
 			}

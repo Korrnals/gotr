@@ -73,6 +73,9 @@ func initGlobalFlags() {
 	// Quiet mode (тихий режим для CI/CD)
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)")
 
+	// Non-interactive mode (CI/CD, scripting)
+	rootCmd.PersistentFlags().Bool("non-interactive", false, "Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод")
+
 	// Формат вывода (глобальный)
 	rootCmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, csv, md, html")
 

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /add_dataset/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <project_id>",
+		Use:   "add [project_id]",
 		Short: "Создать новый датасет",
 		Long: `Создаёт новый датасет (набор тестовых данных) в указанном проекте.
 
@@ -26,11 +27,26 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед созданием
   gotr datasets add 1 --name="Test Data" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			ctx := cmd.Context()
+			cli := getClient(cmd)
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id required: gotr datasets add [project_id] --name <name>")
+				}
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -45,8 +61,6 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.AddDataset(ctx, projectID, name)
 			if err != nil {
 				return fmt.Errorf("failed to create dataset: %w", err)

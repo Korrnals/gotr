@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -112,12 +113,47 @@ func TestUpdateCmd_InvalidID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestUpdateCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
+func TestUpdateCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 1"}}, nil
+		},
+	}
 	cmd := newUpdateCmd(getClientForTests)
-	cmd.SetContext(setupTestCmd(t, mock).Context())
+	ctx := interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter())
+	cmd.SetContext(ctx)
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestUpdateCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 1"}}, nil
+		},
+		UpdatePlanFunc: func(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			return &data.Plan{ID: 100, Name: "Updated Plan"}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name", "Updated Plan"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
 }

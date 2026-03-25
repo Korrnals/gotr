@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: POST /add_plan/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <project_id>",
+		Use:   "add [project_id]",
 		Short: "Создать новый тест-план",
 		Long:  `Создаёт новый тест-план в указанном проекте.`,
 		Example: `  # Создать план для спринта
@@ -23,11 +24,24 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
   # Создать план регрессии с описанием
   gotr plans add 1 --name="Регрессия" --description="Полный набор регрессионных тестов"`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			var projectID int64
+			if len(args) > 0 {
+				var err error
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr plans add [project_id]")
+				}
+				var err error
+				projectID, err = resolveProjectIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")

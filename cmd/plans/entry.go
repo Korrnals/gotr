@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -37,7 +38,7 @@ func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 // Эндпоинт: POST /add_plan_entry/{plan_id}
 func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <plan_id>",
+		Use:   "add [plan_id]",
 		Short: "Добавить запись в план",
 		Long:  `Добавляет новую запись (тестовый прогон) в существующий план.`,
 		Example: `  # Добавить прогон с названием
@@ -45,11 +46,24 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 
   # Добавить с конфигурациями
   gotr plans entry add 100 --suite-id=50 --config-ids="1,2,3"`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
-			if err != nil {
-				return err
+			var planID int64
+			if len(args) > 0 {
+				var err error
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans entry add [plan_id]")
+				}
+				var err error
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")

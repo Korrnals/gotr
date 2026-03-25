@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /delete_plan/{plan_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <plan_id>",
+		Use:   "delete [plan_id]",
 		Short: "Удалить тест-план",
 		Long:  `Удаляет тест-план по его ID.`,
 		Example: `  # Удалить план
@@ -22,11 +23,24 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед удалением
   gotr plans delete 12345 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
-			if err != nil {
-				return err
+			var planID int64
+			if len(args) > 0 {
+				var err error
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans delete [plan_id]")
+				}
+				var err error
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check dry-run

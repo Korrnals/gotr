@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -16,7 +17,7 @@ import (
 // Эндпоинт: POST /add_case/{section_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <section_id>",
+		Use:   "add [section_id]",
 		Short: "Создать новый тест-кейс",
 		Long:  `Создаёт новый тест-кейс в указанной секции.`,
 		Example: `  # Создать тест-кейс с параметрами
@@ -24,11 +25,27 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
   # Создать из JSON-файла
   gotr cases add 100 --json-file=case.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sectionID, err := flags.ValidateRequiredID(args, 0, "section_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var sectionID int64
+			var err error
+			if len(args) > 0 {
+				sectionID, err = flags.ValidateRequiredID(args, 0, "section_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("section_id required: gotr cases add [section_id]")
+				}
+
+				sectionID, err = resolveSectionIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check JSON file
@@ -62,8 +79,6 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.AddCase(ctx, sectionID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create case: %w", err)

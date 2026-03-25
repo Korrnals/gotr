@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -16,7 +17,7 @@ import (
 // Эндпоинт: POST /update_case/{case_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <case_id>",
+		Use:   "update [case_id]",
 		Short: "Обновить тест-кейс",
 		Long:  `Обновляет существующий тест-кейс.`,
 		Example: `  # Обновить название и приоритет
@@ -24,11 +25,27 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
   # Обновить из JSON-файла
   gotr cases update 12345 --json-file=update.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id required: gotr cases update [case_id]")
+				}
+
+				caseID, err = resolveCaseIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			jsonFile, _ := cmd.Flags().GetString("json-file")
@@ -65,8 +82,6 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.UpdateCase(ctx, caseID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update case: %w", err)

@@ -1,9 +1,11 @@
 package groups
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -12,17 +14,29 @@ import (
 // newDeleteCmd создаёт команду для удаления группы
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <group_id>",
+		Use:   "delete [group_id]",
 		Short: "Удалить группу",
 		Long:  `Удалить группу пользователей.`,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
-			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
-			if err != nil {
-				return err
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id required: gotr groups delete [group_id]")
+				}
+				groupID, err = resolveGroupIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
 			dryRun, _ := cmd.Flags().GetBool("dry-run")

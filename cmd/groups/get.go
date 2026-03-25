@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 // Эндпоинт: GET /get_group/{group_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <group_id>",
+		Use:   "get [group_id]",
 		Short: "Получить группу по ID",
 		Long: `Получает детальную информацию о группе пользователей по её ID.
 
@@ -23,15 +24,28 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
   # Сохранить в файл
   gotr groups get 5 -o group.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
-			if err != nil {
-				return err
-			}
-
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id required: gotr groups get [group_id]")
+				}
+				groupID, err = resolveGroupIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
+			}
+
 			resp, err := cli.GetGroup(ctx, groupID)
 			if err != nil {
 				return fmt.Errorf("failed to get group: %w", err)

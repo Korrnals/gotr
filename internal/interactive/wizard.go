@@ -76,16 +76,6 @@ func AskProjectWithPrompter(p Prompter, isUpdate bool) (*ProjectAnswers, error) 
 	return answers, nil
 }
 
-// AskProject запускает wizard for project (compatibility wrapper).
-func AskProject(isUpdate bool) (*ProjectAnswers, error) {
-	answers, err := AskProjectWithPrompter(NewTerminalPrompter(), isUpdate)
-	if err != nil {
-		return nil, err
-	}
-
-	return answers, nil
-}
-
 // AskSuiteWithPrompter runs suite wizard using unified prompter.
 func AskSuiteWithPrompter(p Prompter, isUpdate bool) (*SuiteAnswers, error) {
 	answers := &SuiteAnswers{}
@@ -112,16 +102,6 @@ func AskSuiteWithPrompter(p Prompter, isUpdate bool) (*SuiteAnswers, error) {
 			return nil, fmt.Errorf("suite completion confirm failed: %w", err)
 		}
 		answers.IsCompleted = isCompleted
-	}
-
-	return answers, nil
-}
-
-// AskSuite запускает wizard для сьюта (compatibility wrapper).
-func AskSuite(isUpdate bool) (*SuiteAnswers, error) {
-	answers, err := AskSuiteWithPrompter(NewTerminalPrompter(), isUpdate)
-	if err != nil {
-		return nil, err
 	}
 
 	return answers, nil
@@ -186,16 +166,6 @@ func AskCaseWithPrompter(p Prompter, isUpdate bool) (*CaseAnswers, error) {
 	return answers, nil
 }
 
-// AskCase запускает wizard для тест-case (compatibility wrapper).
-func AskCase(isUpdate bool) (*CaseAnswers, error) {
-	answers, err := AskCaseWithPrompter(NewTerminalPrompter(), isUpdate)
-	if err != nil {
-		return nil, err
-	}
-
-	return answers, nil
-}
-
 // AskRunWithPrompter runs run wizard using unified prompter.
 func AskRunWithPrompter(p Prompter, isUpdate bool) (*RunAnswers, error) {
 	answers := &RunAnswers{}
@@ -204,7 +174,7 @@ func AskRunWithPrompter(p Prompter, isUpdate bool) (*RunAnswers, error) {
 	if err != nil {
 		return nil, fmt.Errorf("run name input failed: %w", err)
 	}
-	if name == "" {
+	if name == "" && !isUpdate {
 		return nil, fmt.Errorf("run name is required")
 	}
 	answers.Name = name
@@ -238,16 +208,6 @@ func AskRunWithPrompter(p Prompter, isUpdate bool) (*RunAnswers, error) {
 	return answers, nil
 }
 
-// AskRun запускает wizard для test run (compatibility wrapper).
-func AskRun(isUpdate bool) (*RunAnswers, error) {
-	answers, err := AskRunWithPrompter(NewTerminalPrompter(), isUpdate)
-	if err != nil {
-		return nil, err
-	}
-
-	return answers, nil
-}
-
 // AskConfirmWithPrompter asks confirmation via unified prompter.
 func AskConfirmWithPrompter(p Prompter, message string) (bool, error) {
 	confirm, err := p.Confirm(message, true)
@@ -255,9 +215,4 @@ func AskConfirmWithPrompter(p Prompter, message string) (bool, error) {
 		return false, fmt.Errorf("confirmation failed: %w", err)
 	}
 	return confirm, nil
-}
-
-// AskConfirm запрашивает подтверждение перед выполнением действия (compatibility wrapper).
-func AskConfirm(message string) (bool, error) {
-	return AskConfirmWithPrompter(NewTerminalPrompter(), message)
 }

@@ -27,7 +27,8 @@ func TestParseCommonFlags_InteractivePid1(t *testing.T) {
 
 	// Mock prompter: select index 0 for pid1
 	mp := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0}) // pid1
+		WithSelectResponses(interactive.SelectResponse{Index: 0}). // pid1
+		WithConfirmResponses(false)                                // do not save
 
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
@@ -56,7 +57,8 @@ func TestParseCommonFlags_InteractivePid2(t *testing.T) {
 
 	// Mock prompter: select index 1 for pid2
 	mp := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 1}) // pid2
+		WithSelectResponses(interactive.SelectResponse{Index: 1}). // pid2
+		WithConfirmResponses(false)                                // do not save
 
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
@@ -88,7 +90,8 @@ func TestParseCommonFlags_InteractiveBothPids(t *testing.T) {
 		WithSelectResponses(
 			interactive.SelectResponse{Index: 0}, // pid1
 			interactive.SelectResponse{Index: 2}, // pid2
-		)
+		).
+		WithConfirmResponses(false) // do not save
 
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
@@ -194,7 +197,8 @@ func TestSuitesCmd_InteractivePids(t *testing.T) {
 		WithSelectResponses(
 			interactive.SelectResponse{Index: 0}, // pid1
 			interactive.SelectResponse{Index: 1}, // pid2
-		)
+		).
+		WithConfirmResponses(false) // do not save
 
 	cmd := newSuitesCmd()
 	addPersistentFlagsForTests(cmd)

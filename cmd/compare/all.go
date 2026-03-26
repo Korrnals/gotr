@@ -600,6 +600,7 @@ var allCmd = newAllCmd()
 func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid2 int64, format, savePath string, err error) {
 	ctx := cmd.Context()
 	p := interactive.PrompterFromContext(ctx)
+	usedInteractivePID := false
 
 	pid1Str, _ := cmd.Flags().GetString("pid1")
 	pid1, _ = flags.ParseID(pid1Str)
@@ -608,6 +609,7 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 		if err != nil {
 			return 0, 0, "", "", fmt.Errorf("pid1 not specified and interactive selection failed: %w", err)
 		}
+		usedInteractivePID = true
 	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
@@ -617,6 +619,7 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 		if err != nil {
 			return 0, 0, "", "", fmt.Errorf("pid2 not specified and interactive selection failed: %w", err)
 		}
+		usedInteractivePID = true
 	}
 
 	format, _ = cmd.Flags().GetString("format")
@@ -624,13 +627,17 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 		format = "table"
 	}
 
-	// Check save flags
-	if cmd.Flags().Changed("save-to") {
-		// --save-to has priority and specifies custom path
-		savePath, _ = cmd.Flags().GetString("save-to")
-	} else if cmd.Flags().Changed("save") {
-		// --save means use default path
-		savePath = "__DEFAULT__"
+	// Check save flags first, then interactive fallback if pid selection was interactive.
+	savePath, explicitSaveChoice, err := outpututils.ResolveSavePathFromFlags(cmd)
+	if err != nil {
+		return 0, 0, "", "", err
+	}
+
+	if !explicitSaveChoice && usedInteractivePID {
+		savePath, err = outpututils.PromptSavePath(p, "compare result")
+		if err != nil {
+			return 0, 0, "", "", err
+		}
 	}
 
 	return pid1, pid2, format, savePath, nil

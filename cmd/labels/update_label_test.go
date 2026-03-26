@@ -229,3 +229,21 @@ func TestUpdateLabelCmd_EmptyTitle(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "title cannot be empty")
 }
+
+func TestUpdateLabelCmd_DryRun_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+			called = true
+			return &data.Label{ID: labelID, Name: req.Title}, nil
+		},
+	}
+
+	cmd := newUpdateLabelCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1", "--project", "10", "--title", "Updated Label", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.False(t, called)
+}

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -170,15 +171,40 @@ func TestListCmd_NegativeProjectID(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
-func TestListCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
-
+func TestListCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return []data.Label{{ID: 10, Name: "Bug"}}, nil
+		},
+	}
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0}, // project
+	)
 	cmd := newListCmd(getClientForTests)
-	cmd.SetContext(setupTestCmd(t, mock).Context())
+	var buf bytes.Buffer
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "Bug")
+}
+
+func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListCmd(getClientForTests)
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), niPrompter))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestListCmd_TooManyArgs(t *testing.T) {

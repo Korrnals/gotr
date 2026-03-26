@@ -9,6 +9,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/debug"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/config"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -84,6 +85,17 @@ var rootCmd = &cobra.Command{
 
 		// Сохраняем клиент в контекст — будет доступен во всех субкомандах
 		ctx := context.WithValue(cmd.Context(), httpClientKey, httpClient)
+
+		// Инжектируем Prompter в контекст (TerminalPrompter или NonInteractivePrompter)
+		nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
+		var p interactive.Prompter
+		if nonInteractive {
+			p = interactive.NewNonInteractivePrompter()
+		} else {
+			p = interactive.NewTerminalPrompter()
+		}
+		ctx = interactive.WithPrompter(ctx, p)
+
 		cmd.SetContext(ctx)
 
 		return nil

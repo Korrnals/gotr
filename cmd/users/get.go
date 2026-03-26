@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 // Эндпоинт: GET /get_user/{user_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <user_id>",
+		Use:   "get [user_id]",
 		Short: "Получить информацию о пользователе по ID",
 		Long: `Получает детальную информацию о пользователе по его идентификатору.
 
@@ -23,11 +24,23 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
   # Сохранить результат в файл
   gotr users get 12345 -o user.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			userID, err := flags.ValidateRequiredID(args, 0, "user_id")
-			if err != nil {
-				return err
+			var userID int64
+			var err error
+			if len(args) > 0 {
+				userID, err = flags.ValidateRequiredID(args, 0, "user_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if err := requireInteractiveUserArg(cmd.Context(), "gotr users get [user_id]"); err != nil {
+					return err
+				}
+				userID, err = resolveUserIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)
@@ -42,6 +55,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
+	_ = interactive.HasPrompterInContext
 	output.AddFlag(cmd)
 
 	return cmd

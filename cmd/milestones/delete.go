@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /delete_milestone/{milestone_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <milestone_id>",
+		Use:   "delete [milestone_id]",
 		Short: "Удалить майлстон",
 		Long: `Удаляет майлстон по его идентификатору.
 
@@ -26,11 +27,26 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить что будет удалено (без реального удаления)
   gotr milestones delete 12345 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			milestoneID, err := flags.ValidateRequiredID(args, 0, "milestone_id")
-			if err != nil {
-				return err
+			var milestoneID int64
+			if len(args) > 0 {
+				var err error
+				milestoneID, err = flags.ValidateRequiredID(args, 0, "milestone_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				ctx := cmd.Context()
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("milestone_id is required in non-interactive mode: gotr milestones delete [milestone_id]")
+				}
+				cli := getClient(cmd)
+				var err error
+				milestoneID, err = resolveMilestoneIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check dry-run

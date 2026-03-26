@@ -50,7 +50,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}
@@ -80,9 +80,9 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 // newSuiteCmd создаёт команду для получения одной сьюты
 func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
-		Use:   "suite <suite-id>",
+		Use:   "suite [suite-id]",
 		Short: "Получить одну тест-сюиту по ID сюиты",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		Long: `Получить информацию о конкретной тест-сюите по её ID.
 
 Пример:
@@ -96,10 +96,35 @@ func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			idStr := args[0]
-			id, err := flags.ParseID(idStr)
-			if err != nil {
-				return fmt.Errorf("invalid suite ID: %w", err)
+			var id int64
+			var err error
+			if len(args) > 0 {
+				id, err = flags.ParseID(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid suite ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("suite_id required: gotr get suite [suite-id]")
+				}
+
+				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+
+				suites, err := cli.GetSuites(ctx, projectID)
+				if err != nil {
+					return fmt.Errorf("failed to get suites: %w", err)
+				}
+				if len(suites) == 0 {
+					return fmt.Errorf("no suites found in project %d", projectID)
+				}
+
+				id, err = interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
+				if err != nil {
+					return err
+				}
 			}
 
 			suite, err := cli.GetSuite(ctx, id)

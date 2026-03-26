@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -74,12 +75,34 @@ func TestListCmd_InvalidProjectID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestListCmd_NoArgs(t *testing.T) {
+func TestListCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetReportsFunc: func(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetReportsResponse{{ID: 100, Name: "Summary Report"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), niPrompter))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }

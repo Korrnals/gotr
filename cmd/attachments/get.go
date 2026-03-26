@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: GET /get_attachment/{attachment_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <attachment_id>",
+		Use:   "get [attachment_id]",
 		Short: "Получить информацию о вложении",
 		Long: `Получает детальную информацию о вложении по его ID.
 
@@ -25,15 +26,29 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
   # Вывод в JSON
   gotr attachments get 12345 -o json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			attachmentID, err := flags.ValidateRequiredID(args, 0, "attachment_id")
-			if err != nil {
-				return err
-			}
-
 			client := getClient(cmd)
 			ctx := cmd.Context()
+
+			var attachmentID int64
+			var err error
+			if len(args) > 0 {
+				attachmentID, err = flags.ValidateRequiredID(args, 0, "attachment_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("attachment_id required: gotr attachments get [attachment_id]")
+				}
+
+				attachmentID, err = resolveAttachmentIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
+			}
+
 			resp, err := client.GetAttachment(ctx, attachmentID)
 			if err != nil {
 				return fmt.Errorf("failed to get attachment: %w", err)

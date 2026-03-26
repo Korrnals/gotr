@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /add_bdd/{test_case_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <case_id>",
+		Use:   "add [case_id]",
 		Short: "Добавить BDD сценарий к тест-кейсу",
 		Long: `Добавляет BDD сценарий в формате Gherkin к указанному тест-кейсу.
 
@@ -25,11 +26,29 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
   # Добавить BDD из stdin
   cat scenario.feature | gotr bdds add 12345`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
+				}
+				caseID, err = resolveCaseIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Читаем содержимое BDD
@@ -47,8 +66,6 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.AddBDD(ctx, caseID, content)
 			if err != nil {
 				return fmt.Errorf("failed to add BDD: %w", err)

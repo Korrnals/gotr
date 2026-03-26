@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -133,6 +134,49 @@ func TestSharedStepCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestSharedStepCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSharedStepsResponse{{ID: 12345, Title: "Test Shared Step", ProjectID: 30}}, nil
+		},
+		GetSharedStepFunc: func(ctx context.Context, stepID int64) (*data.SharedStep, error) {
+			assert.Equal(t, int64(12345), stepID)
+			return &data.SharedStep{ID: 12345, Title: "Test Shared Step", ProjectID: 30}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newSharedStepCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestSharedStepCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+
+	cmd := newSharedStepCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestSharedStepCmd_APIError(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -13,17 +14,29 @@ import (
 // newAddCmd создаёт команду для добавления группы
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <project_id>",
+		Use:   "add [project_id]",
 		Short: "Создать новую группу",
 		Long:  `Создать новую группу пользователей в указанном проекте.`,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id required: gotr groups add [project_id] --name <name>")
+				}
+				projectID, err = resolveProjectIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")

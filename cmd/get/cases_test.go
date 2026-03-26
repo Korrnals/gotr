@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -240,6 +241,55 @@ func TestCaseCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestCaseCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite", ProjectID: 30}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			assert.Equal(t, int64(20069), suiteID)
+			return data.GetCasesResponse{{ID: 12345, Title: "Case 12345"}}, nil
+		},
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
+			assert.Equal(t, int64(12345), caseID)
+			return &data.Case{ID: 12345, Title: "Case 12345"}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestCaseCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestCaseCmd_APIError(t *testing.T) {

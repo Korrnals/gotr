@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: GET /get_label/{label_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <label_id>",
+		Use:   "get [label_id]",
 		Short: "Получить информацию о метке",
 		Long:  `Получает информацию о метке по её ID.`,
 		Example: `  # Получить метку
@@ -23,11 +24,25 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
   # Вывод в JSON
   gotr labels get 123 -o json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			labelID, err := flags.ValidateRequiredID(args, 0, "label_id")
-			if err != nil {
-				return err
+			var labelID int64
+			var err error
+			if len(args) > 0 {
+				labelID, err = flags.ValidateRequiredID(args, 0, "label_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("label_id is required in non-interactive mode: gotr labels get [label_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(cmd.Context()).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("label_id is required in non-interactive mode: gotr labels get [label_id]")
+				}
+				if labelID, err = resolveLabelIDInteractive(cmd.Context(), getClient(cmd)); err != nil {
+					return err
+				}
 			}
 
 			client := getClient(cmd)

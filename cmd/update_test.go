@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -162,6 +163,67 @@ func TestUpdate_NoArgs(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "endpoint and id")
+}
+
+func TestUpdate_Section_NonInteractive_AutoWizard_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+			called = true
+			return &data.Section{ID: sectionID, Name: "updated"}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"section", "200"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, called)
+}
+
+func TestUpdate_Run_NonInteractive_AutoWizard_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			called = true
+			name := ""
+			if req.Name != nil {
+				name = *req.Name
+			}
+			return &data.Run{ID: runID, Name: name}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"run", "1000"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, called)
+}
+
+func TestUpdate_SharedStep_NonInteractive_AutoWizard_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateSharedStepFunc: func(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
+			called = true
+			return &data.SharedStep{ID: stepID, Title: req.Title}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"shared-step", "50"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, called)
 }
 
 // TestUpdate_InvalidID проверяет ошибку при неверном ID

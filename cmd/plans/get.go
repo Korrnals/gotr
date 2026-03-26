@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 // Эндпоинт: GET /get_plan/{plan_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <plan_id>",
+		Use:   "get [plan_id]",
 		Short: "Получить тест-план по ID",
 		Long:  `Получает детальную информацию о тест-плане, включая записи (entries).`,
 		Example: `  # Получить информацию о плане
@@ -20,11 +21,24 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
   # Сохранить в файл
   gotr plans get 12345 --save`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
-			if err != nil {
-				return err
+			var planID int64
+			if len(args) > 0 {
+				var err error
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans get [plan_id]")
+				}
+				var err error
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)

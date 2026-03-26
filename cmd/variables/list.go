@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 // Эндпоинт: GET /get_variables/{dataset_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <dataset_id>",
+		Use:   "list [dataset_id]",
 		Short: "Список переменных датасета",
 		Long: `Выводит список переменных, определённых в указанном датасете.
 
@@ -23,11 +24,24 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
   # Сохранить в файл
   gotr variables list 456 -o vars.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := flags.ValidateRequiredID(args, 0, "dataset_id")
-			if err != nil {
-				return err
+			var datasetID int64
+			if len(args) > 0 {
+				var err error
+				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("dataset_id is required in non-interactive mode: gotr variables list [dataset_id]")
+				}
+				var err error
+				datasetID, err = resolveDatasetIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)

@@ -7,6 +7,8 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
 
@@ -30,20 +32,47 @@ func newSectionsCmd() *cobra.Command {
 // newSectionGetCmd создаёт команду для получения одной секции
 func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
-		Use:   "section <section_id>",
+		Use:   "section [section_id]",
 		Short: "Получить информацию о секции",
 		Long:  `Получить детальную информацию о секции по её ID.`,
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			sectionID, err := flags.ValidateRequiredID(args, 0, "section_id")
-			if err != nil {
-				return err
+			var sectionID int64
+			var err error
+			if len(args) > 0 {
+				sectionID, err = flags.ValidateRequiredID(args, 0, "section_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("section_id required: gotr get section [section_id]")
+				}
+
+				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+
+				sections, err := cli.GetSections(ctx, projectID, 0)
+				if err != nil {
+					return fmt.Errorf("failed to get sections list: %w", err)
+				}
+				if len(sections) == 0 {
+					return fmt.Errorf("no sections found in project %d", projectID)
+				}
+
+				sectionID, err = selectSectionID(ctx, sections)
+				if err != nil {
+					return err
+				}
 			}
 
 			section, err := runGetStatus(command, "Loading section...", func(ctx context.Context) (any, error) {
@@ -58,15 +87,30 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 	}
 }
 
+func selectSectionID(ctx context.Context, sections data.GetSectionsResponse) (int64, error) {
+	p := interactive.PrompterFromContext(ctx)
+	options := make([]string, 0, len(sections))
+	for i, section := range sections {
+		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, section.ID, section.Name))
+	}
+
+	idx, _, err := p.Select("Select section:", options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select section: %w", err)
+	}
+
+	return sections[idx].ID, nil
+}
+
 // newSectionsListCmd создаёт команду для получения списка секций
 func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
+		Use:   "list [project_id]",
 		Short: "Получить список секций проекта",
 		Long: `Получить список всех секций для указанного проекта.
 
 Для фильтрации по конкретной сюите используйте флаг --suite-id.`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
@@ -74,9 +118,30 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			ctx := command.Context()
+			projectIDStr := ""
+			if len(args) > 0 {
+				projectIDStr = args[0]
+			}
+			if pid, _ := command.Flags().GetString("project-id"); pid != "" {
+				projectIDStr = pid
+			}
+
+			var projectID int64
+			var err error
+			if projectIDStr == "" {
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+			} else {
+				projectID, err = flags.ParseID(projectIDStr)
+				if err != nil {
+					return fmt.Errorf("invalid project_id: %w", err)
+				}
+				if projectID <= 0 {
+					return fmt.Errorf("invalid project_id: %s", projectIDStr)
+				}
 			}
 
 			suiteID, _ := command.Flags().GetInt64("suite-id")
@@ -94,6 +159,7 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 
 	// Флаг для фильтрации по suite_id
 	cmd.Flags().Int64P("suite-id", "s", 0, "ID сюиты для фильтрации")
+	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
 
 	return cmd
 }

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -67,7 +68,15 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
 			if suiteID <= 0 {
-				return fmt.Errorf("--suite-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--suite-id is required")
+				}
+
+				selectedSuiteID, err := resolveSuiteIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				suiteID = selectedSuiteID
 			}
 
 			req := data.UpdateCasesRequest{CaseIDs: caseIDs}
@@ -130,7 +139,15 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
 			if suiteID <= 0 {
-				return fmt.Errorf("--suite-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--suite-id is required")
+				}
+
+				selectedSuiteID, err := resolveSuiteIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				suiteID = selectedSuiteID
 			}
 
 			req := data.DeleteCasesRequest{CaseIDs: caseIDs}
@@ -184,7 +201,15 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 
 			sectionID, _ := cmd.Flags().GetInt64("section-id")
 			if sectionID <= 0 {
-				return fmt.Errorf("--section-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--section-id is required")
+				}
+
+				selectedSectionID, err := resolveSectionIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				sectionID = selectedSectionID
 			}
 
 			req := data.CopyCasesRequest{CaseIDs: caseIDs}
@@ -238,7 +263,15 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 
 			sectionID, _ := cmd.Flags().GetInt64("section-id")
 			if sectionID <= 0 {
-				return fmt.Errorf("--section-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--section-id is required")
+				}
+
+				selectedSectionID, err := resolveSectionIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				sectionID = selectedSectionID
 			}
 
 			req := data.MoveCasesRequest{CaseIDs: caseIDs}

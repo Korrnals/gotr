@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: POST /add_config_group/{project_id}
 func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add-group <project_id>",
+		Use:   "add-group [project_id]",
 		Short: "Создать группу конфигураций",
 		Long: `Создаёт новую группу конфигураций в указанном проекте.
 
@@ -27,11 +28,30 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед созданием
   gotr configurations add-group 1 --name="OS" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr configurations add-group [project_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr configurations add-group [project_id]")
+				}
+
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -46,8 +66,6 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			req := data.AddConfigGroupRequest{Name: name}
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.AddConfigGroup(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create group: %w", err)

@@ -16,7 +16,7 @@ import (
 // Эндпоинт: POST /update_user/{user_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <user_id>",
+		Use:   "update [user_id]",
 		Short: "Обновить пользователя",
 		Long: `Обновляет существующего пользователя в системе TestRail.
 
@@ -29,15 +29,24 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
   # Заблокировать пользователя
   gotr users update 123 --inactive`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			userID, err := flags.ValidateRequiredID(args, 0, "user_id")
-			if err != nil {
-				return err
+			var userID int64
+			var err error
+			if len(args) > 0 {
+				userID, err = flags.ValidateRequiredID(args, 0, "user_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if err := requireInteractiveUserArg(cmd.Context(), "gotr users update [user_id]"); err != nil {
+					return err
+				}
+				userID, err = resolveUserIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
-
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 
 			req := data.UpdateUserRequest{}
 			if cmd.Flags().Changed("name") {
@@ -69,6 +78,20 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := output.NewDryRunPrinter("users update")
+				dr.PrintOperation(
+					fmt.Sprintf("Update User %d", userID),
+					"POST",
+					fmt.Sprintf("/index.php?/api/v2/update_user/%d", userID),
+					req,
+				)
+				return nil
+			}
+
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
 			user, err := cli.UpdateUser(ctx, userID, req)
 			if err != nil {
 				return fmt.Errorf("failed to update user: %w", err)
@@ -84,6 +107,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("role", 0, "ID роли пользователя")
 	cmd.Flags().Bool("admin", false, "Сделать пользователя администратором")
 	cmd.Flags().Bool("inactive", false, "Заблокировать пользователя")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без обновления пользователя")
 	output.AddFlag(cmd)
 
 	return cmd

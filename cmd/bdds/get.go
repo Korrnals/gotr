@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 // Эндпоинт: GET /get_bdd/{test_case_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <case_id>",
+		Use:   "get [case_id]",
 		Short: "Получить BDD сценарий для тест-кейса",
 		Long: `Получает BDD сценарий, привязанный к указанному тест-кейсу.
 
@@ -23,15 +24,31 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
   # Сохранить в файл
   gotr bdds get 12345 -o bdd.feature`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := flags.ValidateRequiredID(args, 0, "case_id")
-			if err != nil {
-				return err
-			}
-
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds get [case_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds get [case_id]")
+				}
+				caseID, err = resolveCaseIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
+			}
+
 			resp, err := cli.GetBDD(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("failed to get BDD: %w", err)

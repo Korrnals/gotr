@@ -12,10 +12,15 @@ import (
 	"github.com/Korrnals/gotr/cmd/labels"
 	"github.com/Korrnals/gotr/cmd/milestones"
 	"github.com/Korrnals/gotr/cmd/plans"
+	"github.com/Korrnals/gotr/cmd/reports"
 	"github.com/Korrnals/gotr/cmd/result"
+	"github.com/Korrnals/gotr/cmd/roles"
 	"github.com/Korrnals/gotr/cmd/run"
 	"github.com/Korrnals/gotr/cmd/sync"
 	"github.com/Korrnals/gotr/cmd/test"
+	"github.com/Korrnals/gotr/cmd/templates"
+	"github.com/Korrnals/gotr/cmd/tests"
+	"github.com/Korrnals/gotr/cmd/users"
 	"github.com/Korrnals/gotr/cmd/variables"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -50,10 +55,15 @@ func init() {
 	labels.Register(rootCmd, GetClientInterface)
 	milestones.Register(rootCmd, GetClientInterface)
 	plans.Register(rootCmd, GetClientInterface)
+	reports.Register(rootCmd, GetClientInterface)
 	run.Register(rootCmd, GetClient)
 	result.Register(rootCmd, GetClient)
+	roles.Register(rootCmd, GetClientInterface)
 	sync.Register(rootCmd, GetClient)
 	test.Register(rootCmd, GetClient)
+	templates.Register(rootCmd, GetClientInterface)
+	tests.Register(rootCmd, GetClientInterface)
+	users.Register(rootCmd, GetClientInterface)
 	variables.Register(rootCmd, GetClientInterface)
 }
 
@@ -72,6 +82,9 @@ func initGlobalFlags() {
 
 	// Quiet mode (тихий режим для CI/CD)
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)")
+
+	// Non-interactive mode (CI/CD, scripting)
+	rootCmd.PersistentFlags().Bool("non-interactive", false, "Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод")
 
 	// Формат вывода (глобальный)
 	rootCmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, csv, md, html")

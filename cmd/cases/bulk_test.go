@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -105,6 +106,48 @@ func TestBulkUpdateCmd_MissingSuiteID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "suite-id")
+}
+
+func TestBulkUpdateCmd_MissingSuiteID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 100, Name: "Suite 100", ProjectID: 1}}, nil
+		},
+		UpdateCasesFunc: func(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
+			assert.Equal(t, int64(100), suiteID)
+			return &data.GetCasesResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newBulkUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"1,2,3", "--priority-id=1"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestBulkUpdateCmd_MissingSuiteID_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newBulkUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"1,2,3", "--priority-id=1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestBulkUpdateCmd_InvalidCaseIDs(t *testing.T) {
@@ -214,6 +257,48 @@ func TestBulkDeleteCmd_MissingSuiteID(t *testing.T) {
 	assert.Contains(t, err.Error(), "suite-id")
 }
 
+func TestBulkDeleteCmd_MissingSuiteID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 100, Name: "Suite 100", ProjectID: 1}}, nil
+		},
+		DeleteCasesFunc: func(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
+			assert.Equal(t, int64(100), suiteID)
+			return nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newBulkDeleteCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"1,2,3"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestBulkDeleteCmd_MissingSuiteID_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newBulkDeleteCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"1,2,3"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 func TestBulkDeleteCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		DeleteCasesFunc: func(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
@@ -289,6 +374,52 @@ func TestBulkCopyCmd_MissingSectionID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "section-id")
+}
+
+func TestBulkCopyCmd_MissingSectionID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 10, Name: "Suite 10", ProjectID: 1}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{{ID: 50, Name: "Section 50", SuiteID: 10}}, nil
+		},
+		CopyCasesToSectionFunc: func(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
+			assert.Equal(t, int64(50), sectionID)
+			return nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newBulkCopyCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"1,2,3"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestBulkCopyCmd_MissingSectionID_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newBulkCopyCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"1,2,3"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestBulkCopyCmd_ClientError(t *testing.T) {
@@ -367,6 +498,52 @@ func TestBulkMoveCmd_MissingSectionID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "section-id")
+}
+
+func TestBulkMoveCmd_MissingSectionID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 10, Name: "Suite 10", ProjectID: 1}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{{ID: 50, Name: "Section 50", SuiteID: 10}}, nil
+		},
+		MoveCasesToSectionFunc: func(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
+			assert.Equal(t, int64(50), sectionID)
+			return nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newBulkMoveCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"1,2,3"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestBulkMoveCmd_MissingSectionID_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newBulkMoveCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"1,2,3"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestBulkMoveCmd_ClientError(t *testing.T) {

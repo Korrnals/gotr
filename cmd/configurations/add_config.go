@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: POST /add_config/{group_id}
 func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add-config <group_id>",
+		Use:   "add-config [group_id]",
 		Short: "Добавить конфигурацию в группу",
 		Long: `Добавляет новую конфигурацию в существующую группу.
 
@@ -27,11 +28,30 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед добавлением
   gotr configurations add-config 5 --name="Firefox" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations add-config [group_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations add-config [group_id]")
+				}
+
+				groupID, err = resolveGroupIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -46,8 +66,6 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			req := data.AddConfigRequest{Name: name}
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.AddConfig(ctx, groupID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to add configuration: %w", err)

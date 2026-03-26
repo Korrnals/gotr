@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: POST /update_config/{config_id}
 func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-config <config_id>",
+		Use:   "update-config [config_id]",
 		Short: "Обновить конфигурацию",
 		Long:  `Обновляет название существующей конфигурации.`,
 		Example: `  # Изменить название конфигурации
@@ -23,11 +24,30 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед обновлением
   gotr configurations update-config 10 --name="Chrome 120" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configID, err := flags.ValidateRequiredID(args, 0, "config_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var configID int64
+			var err error
+			if len(args) > 0 {
+				configID, err = flags.ValidateRequiredID(args, 0, "config_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations update-config [config_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations update-config [config_id]")
+				}
+
+				configID, err = resolveConfigIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -42,8 +62,6 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			req := data.UpdateConfigRequest{Name: name}
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.UpdateConfig(ctx, configID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update configuration: %w", err)

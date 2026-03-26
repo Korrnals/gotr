@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /delete_config_group/{group_id}
 func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete-group <group_id>",
+		Use:   "delete-group [group_id]",
 		Short: "Удалить группу конфигураций",
 		Long: `Удаляет группу конфигураций и все её конфигурации.
 
@@ -26,11 +27,30 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед удалением
   gotr configurations delete-group 5 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations delete-group [group_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations delete-group [group_id]")
+				}
+
+				groupID, err = resolveGroupIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -39,8 +59,6 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			if err := cli.DeleteConfigGroup(ctx, groupID); err != nil {
 				return fmt.Errorf("failed to delete group: %w", err)
 			}

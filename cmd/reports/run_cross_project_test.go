@@ -108,3 +108,21 @@ func TestRunCrossProjectCmd_NegativeTemplateID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 }
+
+func TestRunCrossProjectCmd_DryRun_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		RunCrossProjectReportFunc: func(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
+			called = true
+			return &data.RunReportResponse{ReportID: 2, Status: "pending"}, nil
+		},
+	}
+
+	cmd := newRunCrossProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"42", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.False(t, called)
+}

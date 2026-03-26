@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -91,6 +92,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	endpoint := args[0]
+	ctx := cmd.Context()
 
 	// Получаем клиент
 	cli := GetClientInterface(cmd)
@@ -104,6 +106,12 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		}
 		id = parsedID
 	}
+
+	resolvedID, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), cli, endpoint, id)
+	if err != nil {
+		return err
+	}
+	id = resolvedID
 
 	// Читаем JSON из файла если указан
 	jsonFile, _ := cmd.Flags().GetString("json-file")
@@ -203,12 +211,71 @@ func shouldAutoRunAddInteractive(cmd *cobra.Command, endpoint string, parentID i
 		return !hasAnyChangedFlag(cmd, "name", "announcement", "show-announcement")
 	case "suite":
 		return parentID != 0 && !hasAnyChangedFlag(cmd, "name", "description")
+	case "section":
+		return parentID != 0 && !hasAnyChangedFlag(cmd, "name", "description", "suite-id", "section-id")
 	case "case":
 		return parentID != 0 && !hasAnyChangedFlag(cmd, "title", "type-id", "priority-id", "refs")
 	case "run":
 		return parentID != 0 && !hasAnyChangedFlag(cmd, "name", "description", "suite-id", "case-ids", "include-all", "milestone-id", "assignedto-id")
+	case "shared-step":
+		return parentID != 0 && !hasAnyChangedFlag(cmd, "title")
 	default:
 		return false
+	}
+}
+
+func resolveAddParentID(ctx context.Context, p interactive.Prompter, cli client.ClientInterface, endpoint string, currentID int64) (int64, error) {
+	if currentID != 0 || !interactive.HasPrompterInContext(ctx) {
+		return currentID, nil
+	}
+
+	switch endpoint {
+	case "suite", "section", "run", "shared-step":
+		projectID, err := interactive.SelectProject(ctx, p, cli, "")
+		if err != nil {
+			return 0, err
+		}
+		return projectID, nil
+	case "case":
+		projectID, err := interactive.SelectProject(ctx, p, cli, "")
+		if err != nil {
+			return 0, err
+		}
+
+		suites, err := cli.GetSuites(ctx, projectID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+		}
+
+		var suiteID int64
+		switch len(suites) {
+		case 0:
+			suiteID = 0
+		case 1:
+			suiteID = suites[0].ID
+		default:
+			suiteID, err = interactive.SelectSuite(ctx, p, suites, "")
+			if err != nil {
+				return 0, err
+			}
+		}
+
+		sections, err := cli.GetSections(ctx, projectID, suiteID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get sections for project %d: %w", projectID, err)
+		}
+
+		if len(sections) == 1 {
+			return sections[0].ID, nil
+		}
+
+		sectionID, err := interactive.SelectSection(ctx, p, sections, "")
+		if err != nil {
+			return 0, err
+		}
+		return sectionID, nil
+	default:
+		return currentID, nil
 	}
 }
 
@@ -222,6 +289,11 @@ func runAddInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint 
 			return fmt.Errorf("project_id required: gotr add suite <project_id> --interactive")
 		}
 		return addSuiteInteractive(cli, cmd, parentID)
+	case "section":
+		if parentID == 0 {
+			return fmt.Errorf("project_id required: gotr add section <project_id> --interactive")
+		}
+		return addSectionInteractive(cli, cmd, parentID)
 	case "case":
 		if parentID == 0 {
 			return fmt.Errorf("section_id required: gotr add case <section_id> --interactive")
@@ -232,9 +304,21 @@ func runAddInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint 
 			return fmt.Errorf("project_id required: gotr add run <project_id> --interactive")
 		}
 		return addRunInteractive(cli, cmd, parentID)
+	case "shared-step":
+		if parentID == 0 {
+			return fmt.Errorf("project_id required: gotr add shared-step <project_id> --interactive")
+		}
+		return addSharedStepInteractive(cli, cmd, parentID)
 	default:
 		return fmt.Errorf("interactive mode not supported for endpoint: %s", endpoint)
 	}
+}
+
+func parseOptionalID(input string) (int64, error) {
+	if input == "" {
+		return 0, nil
+	}
+	return flags.ParseID(input)
 }
 
 func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error {
@@ -392,6 +476,108 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 		ui.Successf(os.Stdout, "Run created (ID: %d)", run.ID)
 	}
 	return output.OutputResult(cmd, run, "result")
+}
+
+func addSectionInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
+	ctx := cmd.Context()
+	p := interactive.PrompterFromContext(ctx)
+
+	name, err := p.Input("Section name:", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+	if name == "" {
+		return fmt.Errorf("section name is required")
+	}
+
+	description, err := p.MultilineInput("Description (optional):", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+
+	suiteIDInput, err := p.Input("Suite ID (optional):", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+	suiteID, err := parseOptionalID(suiteIDInput)
+	if err != nil {
+		return fmt.Errorf("invalid suite id: %w", err)
+	}
+
+	parentSectionInput, err := p.Input("Parent section ID (optional):", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+	parentSectionID, err := parseOptionalID(parentSectionInput)
+	if err != nil {
+		return fmt.Errorf("invalid parent section id: %w", err)
+	}
+
+	ui.Preview(os.Stdout, "Create Section", []ui.PreviewField{
+		{Label: "Name", Value: name},
+		{Label: "Description", Value: description},
+		{Label: "Project ID", Value: projectID},
+		{Label: "Suite ID", Value: suiteID},
+		{Label: "Parent Section ID", Value: parentSectionID},
+	})
+
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	if err != nil || !confirmed {
+		ui.Cancelled(os.Stdout)
+		return nil
+	}
+
+	req := &data.AddSectionRequest{
+		Name:        name,
+		Description: description,
+		SuiteID:     suiteID,
+		ParentID:    parentSectionID,
+	}
+
+	section, err := cli.AddSection(ctx, projectID, req)
+	if err != nil {
+		return fmt.Errorf("failed to create section: %w", err)
+	}
+
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Section created (ID: %d)", section.ID)
+	}
+	return output.OutputResult(cmd, section, "result")
+}
+
+func addSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID int64) error {
+	ctx := cmd.Context()
+	p := interactive.PrompterFromContext(ctx)
+
+	title, err := p.Input("Shared step title:", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+	if title == "" {
+		return fmt.Errorf("shared step title is required")
+	}
+
+	ui.Preview(os.Stdout, "Create Shared Step", []ui.PreviewField{
+		{Label: "Title", Value: title},
+		{Label: "Project ID", Value: projectID},
+	})
+
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	if err != nil || !confirmed {
+		ui.Cancelled(os.Stdout)
+		return nil
+	}
+
+	req := &data.AddSharedStepRequest{Title: title}
+	step, err := cli.AddSharedStep(ctx, projectID, req)
+	if err != nil {
+		return fmt.Errorf("failed to create shared step: %w", err)
+	}
+
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Shared step created (ID: %d)", step.ID)
+	}
+	return output.OutputResult(cmd, step, "result")
 }
 
 // runAddDryRun выполняет dry-run для add команды

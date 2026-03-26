@@ -1,9 +1,13 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"strconv"
 
-	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -41,14 +45,33 @@ func init() {
 
 func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	if len(args) < 2 {
+	if len(args) == 0 && !interactive.HasPrompterInContext(ctx) {
 		return fmt.Errorf("endpoint and id required: gotr delete <endpoint> <id>")
 	}
 
-	endpoint := args[0]
-	id, err := flags.ValidateRequiredID(args, 1, "ID")
+	cli := GetClientInterface(cmd)
+	p := interactive.PrompterFromContext(ctx)
+
+	endpoint := ""
+	if len(args) > 0 {
+		endpoint = args[0]
+	} else {
+		selectedEndpoint, err := selectDeleteEndpoint(p)
+		if err != nil {
+			return err
+		}
+		endpoint = selectedEndpoint
+	}
+
+	id, err := parseDeleteIDArg(args)
 	if err != nil {
 		return err
+	}
+	if id == 0 {
+		id, err = resolveDeleteID(ctx, p, cli, endpoint)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Проверяем dry-run режим
@@ -57,9 +80,6 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		dr := output.NewDryRunPrinter("delete " + endpoint)
 		return runDeleteDryRun(dr, endpoint, id)
 	}
-
-	// Получаем клиент
-	cli := GetClientInterface(cmd)
 
 	// Маршрутизация по endpoint
 	switch endpoint {
@@ -79,6 +99,133 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("unsupported endpoint: %s", endpoint)
 	}
+}
+
+func parseDeleteIDArg(args []string) (int64, error) {
+	if len(args) < 2 {
+		return 0, nil
+	}
+
+	id, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil || id <= 0 {
+		return 0, fmt.Errorf("invalid ID: %s", args[1])
+	}
+
+	return id, nil
+}
+
+func selectDeleteEndpoint(p interactive.Prompter) (string, error) {
+	options := []string{"project", "suite", "section", "case", "run", "shared-step"}
+	idx, _, err := p.Select("Select endpoint to delete:", options)
+	if err != nil {
+		return "", fmt.Errorf("failed to select endpoint: %w", err)
+	}
+
+	return options[idx], nil
+}
+
+func resolveDeleteID(ctx context.Context, p interactive.Prompter, cli client.ClientInterface, endpoint string) (int64, error) {
+	switch endpoint {
+	case "project":
+		return interactive.SelectProject(ctx, p, cli, "")
+	case "suite":
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for suite deletion:")
+		if err != nil {
+			return 0, err
+		}
+		suites, err := cli.GetSuites(ctx, projectID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+		}
+		return interactive.SelectSuite(ctx, p, suites, "")
+	case "section":
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for section deletion:")
+		if err != nil {
+			return 0, err
+		}
+		suiteID, err := interactive.SelectSuiteForProject(ctx, p, cli, projectID, "Select suite for section deletion:")
+		if err != nil {
+			return 0, err
+		}
+		sections, err := cli.GetSections(ctx, projectID, suiteID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get sections for project %d suite %d: %w", projectID, suiteID, err)
+		}
+		return interactive.SelectSection(ctx, p, sections, "")
+	case "case":
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for case deletion:")
+		if err != nil {
+			return 0, err
+		}
+		suiteID, err := interactive.SelectSuiteForProject(ctx, p, cli, projectID, "Select suite for case deletion:")
+		if err != nil {
+			return 0, err
+		}
+		cases, err := cli.GetCases(ctx, projectID, suiteID, 0)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get cases for project %d suite %d: %w", projectID, suiteID, err)
+		}
+		return selectCaseID(ctx, p, cases)
+	case "run":
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for run deletion:")
+		if err != nil {
+			return 0, err
+		}
+		runs, err := cli.GetRuns(ctx, projectID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get runs for project %d: %w", projectID, err)
+		}
+		return interactive.SelectRun(ctx, p, runs, "")
+	case "shared-step":
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for shared-step deletion:")
+		if err != nil {
+			return 0, err
+		}
+		steps, err := cli.GetSharedSteps(ctx, projectID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get shared steps for project %d: %w", projectID, err)
+		}
+		return selectSharedStepID(p, steps)
+	default:
+		return 0, fmt.Errorf("unsupported endpoint: %s", endpoint)
+	}
+}
+
+func selectCaseID(ctx context.Context, p interactive.Prompter, cases data.GetCasesResponse) (int64, error) {
+	_ = ctx
+	if len(cases) == 0 {
+		return 0, fmt.Errorf("no cases found")
+	}
+
+	options := make([]string, 0, len(cases))
+	for i, kase := range cases {
+		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, kase.ID, kase.Title))
+	}
+
+	idx, _, err := p.Select("Select case:", options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select case: %w", err)
+	}
+
+	return cases[idx].ID, nil
+}
+
+func selectSharedStepID(p interactive.Prompter, steps data.GetSharedStepsResponse) (int64, error) {
+	if len(steps) == 0 {
+		return 0, fmt.Errorf("no shared steps found")
+	}
+
+	options := make([]string, 0, len(steps))
+	for i, step := range steps {
+		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, step.ID, step.Title))
+	}
+
+	idx, _, err := p.Select("Select shared step:", options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select shared step: %w", err)
+	}
+
+	return steps[idx].ID, nil
 }
 
 // runDeleteDryRun выполняет dry-run для delete команды

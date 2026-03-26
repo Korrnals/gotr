@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -160,6 +161,129 @@ func TestAdd_NoEndpoint(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "endpoint")
+}
+
+func TestAdd_Section_NonInteractive_AutoWizard_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			called = true
+			return &data.Section{ID: 1, Name: "section"}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"section", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, called)
+}
+
+func TestAdd_SharedStep_NonInteractive_AutoWizard_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			called = true
+			return &data.SharedStep{ID: 1, Title: "step"}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"shared-step", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, called)
+}
+
+func TestAdd_Suite_AutoSelectProject_WhenIDMissing(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 77, Name: "Project 77"}}, nil
+		},
+		AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			assert.Equal(t, int64(77), projectID)
+			assert.Equal(t, "Auto Suite", req.Name)
+			return &data.Suite{ID: 100, Name: req.Name}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := setupAddTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+	cmd.SetArgs([]string{"suite", "--name", "Auto Suite"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAdd_Case_AutoSelectSectionChain_WhenIDMissing(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 10, Name: "Project A"},
+				{ID: 20, Name: "Project B"},
+			}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(20), projectID)
+			return data.GetSuitesResponse{
+				{ID: 501, Name: "Suite 1"},
+				{ID: 502, Name: "Suite 2"},
+			}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			assert.Equal(t, int64(20), projectID)
+			assert.Equal(t, int64(502), suiteID)
+			return data.GetSectionsResponse{
+				{ID: 9001, Name: "Section A"},
+				{ID: 9002, Name: "Section B"},
+			}, nil
+		},
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			assert.Equal(t, int64(9002), sectionID)
+			assert.Equal(t, "Auto Case", req.Title)
+			return &data.Case{ID: 111, Title: req.Title}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 1}).
+		WithSelectResponses(interactive.SelectResponse{Index: 1}).
+		WithSelectResponses(interactive.SelectResponse{Index: 1})
+	cmd := setupAddTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+	cmd.SetArgs([]string{"case", "--title", "Auto Case"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAdd_Suite_NonInteractive_MissingID_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			called = true
+			return &data.Suite{ID: 1, Name: req.Name}, nil
+		},
+	}
+
+	cmd := setupAddTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"suite", "--name", "No ID"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, called)
 }
 
 // TestAdd_UnsupportedEndpoint проверяет ошибку при неподдерживаемом endpoint

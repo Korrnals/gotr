@@ -87,6 +87,32 @@ gotr completion fish > ~/.config/fish/completions/gotr.fish
 - `copy` — копирование между проектами
 - `import` — импорт из файлов
 
+## Единый режим работы CLI
+
+Стадия Stage 12 переводит CLI в единую модель:
+
+1. По умолчанию команды работают в **auto-interactive** режиме, когда для выполнения не хватает входных данных.
+2. Если пользователь передал нужные аргументы и флаги, команда работает полностью в **ручном** режиме без prompts.
+3. Для CI/CD и скриптов используется глобальный флаг **`--non-interactive`**:
+
+   - prompts запрещены,
+   - команда завершается ошибкой, если для продолжения нужен ввод.
+
+Пример:
+
+```bash
+# Ручной режим (без prompts)
+gotr add project --name "Project A" --announcement "Desc"
+
+# Auto-interactive (wizard), если не переданы поля
+gotr add project
+
+# Строгий автоматизированный режим для CI
+gotr add project --non-interactive
+```
+
+Для матрицы поведения по подкомандам см. [docs/interactive-mode.md](interactive-mode.md).
+
 ## Stage 5: Расширенные CLI команды
 
 Запланировано добавление CLI команд для новых API (Stage 4):

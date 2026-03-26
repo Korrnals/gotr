@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: POST /add_milestone/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <project_id>",
+		Use:   "add [project_id]",
 		Short: "Создать новый майлстон",
 		Long: `Создаёт новый майлстон (веху) в указанном проекте.
 
@@ -31,11 +32,26 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
   # Вложенный майлстон (подэтап)
   gotr milestones add 1 --name="Итерация 1.1" --parent-id=123`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			var projectID int64
+			if len(args) > 0 {
+				var err error
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				ctx := cmd.Context()
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr milestones add [project_id]")
+				}
+				cli := getClient(cmd)
+				var err error
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")

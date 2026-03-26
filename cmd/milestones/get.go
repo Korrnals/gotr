@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 // Эндпоинт: GET /get_milestone/{milestone_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <milestone_id>",
+		Use:   "get [milestone_id]",
 		Short: "Получить информацию о майлстоне по ID",
 		Long: `Получает детальную информацию о майлстоне по его идентификатору.
 
@@ -23,11 +24,26 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
   # Сохранить результат в файл
   gotr milestones get 12345 -o milestone.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			milestoneID, err := flags.ValidateRequiredID(args, 0, "milestone_id")
-			if err != nil {
-				return err
+			var milestoneID int64
+			if len(args) > 0 {
+				var err error
+				milestoneID, err = flags.ValidateRequiredID(args, 0, "milestone_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				ctx := cmd.Context()
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("milestone_id is required in non-interactive mode: gotr milestones get [milestone_id]")
+				}
+				cli := getClient(cmd)
+				var err error
+				milestoneID, err = resolveMilestoneIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)

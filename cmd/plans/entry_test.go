@@ -107,6 +107,7 @@ func TestEntryUpdateCmd_MissingEntryID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "entry_id is required")
 }
 
 // ==================== Entry Delete Tests ====================
@@ -251,6 +252,104 @@ func TestEntryDeleteCmd_InvalidPlanID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestEntryUpdateCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 1"}}, nil
+		},
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			return &data.Plan{ID: 100, Entries: []data.PlanEntry{{ID: "abc123", Name: "Entry 1"}}}, nil
+		},
+		UpdatePlanEntryFunc: func(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			assert.Equal(t, "abc123", entryID)
+			assert.Equal(t, "Updated Entry", req.Name)
+			return &data.Plan{ID: 100}, nil
+		},
+	}
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0},
+		interactive.SelectResponse{Index: 0},
+		interactive.SelectResponse{Index: 0},
+	)
+	cmd := newEntryUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name=Updated Entry"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestEntryUpdateCmd_NoArgs_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+	cmd := newEntryUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"--name=Updated Entry"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestEntryDeleteCmd_NoArgs_Interactive(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 1"}}, nil
+		},
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			return &data.Plan{ID: 100, Entries: []data.PlanEntry{{ID: "abc123", Name: "Entry 1"}}}, nil
+		},
+		DeletePlanEntryFunc: func(ctx context.Context, planID int64, entryID string) error {
+			assert.Equal(t, int64(100), planID)
+			assert.Equal(t, "abc123", entryID)
+			called = true
+			return nil
+		},
+	}
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0},
+		interactive.SelectResponse{Index: 0},
+		interactive.SelectResponse{Index: 0},
+	)
+	cmd := newEntryDeleteCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestEntryDeleteCmd_NoArgs_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+	cmd := newEntryDeleteCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestParseIntList_NegativeNumbers(t *testing.T) {

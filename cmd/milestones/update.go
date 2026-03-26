@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: POST /update_milestone/{milestone_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <milestone_id>",
+		Use:   "update [milestone_id]",
 		Short: "Обновить существующий майлстон",
 		Long: `Обновляет данные существующего майлстона.
 
@@ -32,11 +33,26 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
   # Изменить несколько полей
   gotr milestones update 12345 --name="Новое название" --description="Новое описание"`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			milestoneID, err := flags.ValidateRequiredID(args, 0, "milestone_id")
-			if err != nil {
-				return err
+			var milestoneID int64
+			if len(args) > 0 {
+				var err error
+				milestoneID, err = flags.ValidateRequiredID(args, 0, "milestone_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				ctx := cmd.Context()
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("milestone_id is required in non-interactive mode: gotr milestones update [milestone_id]")
+				}
+				cli := getClient(cmd)
+				var err error
+				milestoneID, err = resolveMilestoneIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			req := data.UpdateMilestoneRequest{}

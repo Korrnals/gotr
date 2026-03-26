@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -112,4 +113,50 @@ func TestUpdateCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestUpdateCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
+			assert.Equal(t, int64(1), projectID)
+			return []data.Milestone{{ID: 100, Name: "Release 1.0"}}, nil
+		},
+		UpdateMilestoneFunc: func(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
+			assert.Equal(t, int64(100), milestoneID)
+			assert.Equal(t, "New Name", req.Name)
+			return &data.Milestone{ID: 100, Name: "New Name"}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 0},
+			interactive.SelectResponse{Index: 0},
+		)
+
+	cmd := newUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name", "New Name"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestUpdateCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"--name", "New Name"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }

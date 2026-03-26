@@ -11,7 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/pkg/reporter"
@@ -349,7 +351,7 @@ Examples:
 			}
 
 			// Parse flags
-			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
+			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
 				return err
 			}
@@ -590,21 +592,31 @@ Examples:
 var allCmd = newAllCmd()
 
 // parseCommonFlags parses common flags for all subcommands.
+// When pid1 or pid2 is not provided, falls back to interactive project selection.
 // Returns savePath which can be:
 //   - "__DEFAULT__" if --save flag was used (save to default location)
 //   - custom path if --save-to flag was used
 //   - "" if neither flag was used
-func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath string, err error) {
+func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid2 int64, format, savePath string, err error) {
+	ctx := cmd.Context()
+	p := interactive.PrompterFromContext(ctx)
+
 	pid1Str, _ := cmd.Flags().GetString("pid1")
-	pid1, err = flags.ParseID(pid1Str)
-	if err != nil || pid1 <= 0 {
-		return 0, 0, "", "", fmt.Errorf("specify valid pid1 (--pid1)")
+	pid1, _ = flags.ParseID(pid1Str)
+	if pid1 <= 0 {
+		pid1, err = interactive.SelectProject(ctx, p, cli, "Select first project (pid1):")
+		if err != nil {
+			return 0, 0, "", "", fmt.Errorf("pid1 not specified and interactive selection failed: %w", err)
+		}
 	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
-	pid2, err = flags.ParseID(pid2Str)
-	if err != nil || pid2 <= 0 {
-		return 0, 0, "", "", fmt.Errorf("specify valid pid2 (--pid2)")
+	pid2, _ = flags.ParseID(pid2Str)
+	if pid2 <= 0 {
+		pid2, err = interactive.SelectProject(ctx, p, cli, "Select second project (pid2):")
+		if err != nil {
+			return 0, 0, "", "", fmt.Errorf("pid2 not specified and interactive selection failed: %w", err)
+		}
 	}
 
 	format, _ = cmd.Flags().GetString("format")
@@ -624,13 +636,12 @@ func parseCommonFlags(cmd *cobra.Command) (pid1, pid2 int64, format, savePath st
 	return pid1, pid2, format, savePath, nil
 }
 
-// addCommonFlags marks required flags that are already registered as persistent.
+// addCommonFlags configures common flag defaults for compare subcommands.
 // Note: pid1, pid2, format, save, save-to are registered as persistent flags
 // in register.go to ensure they appear in completion.
+// pid1 and pid2 are not marked required — interactive fallback handles missing values.
 func addCommonFlags(cmd *cobra.Command) {
-	// Mark required flags
-	cmd.MarkFlagRequired("pid1")
-	cmd.MarkFlagRequired("pid2")
+	// No MarkFlagRequired — interactive selection handles missing pid1/pid2.
 }
 
 // printAllSummaryTable prints a formatted table summary for compare all

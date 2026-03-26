@@ -114,19 +114,42 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 // Эндпоинт: POST /update_plan_entry/{plan_id}/{entry_id}
 func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <plan_id> <entry_id>",
+		Use:   "update [plan_id] [entry_id]",
 		Short: "Обновить запись плана",
 		Long:  `Обновляет существующую запись в тест-плане.`,
 		Example: `  # Изменить название записи
   gotr plans entry update 100 abc123 --name="Обновлённая запись"`,
-		Args: cobra.ExactArgs(2),
+		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
-			if err != nil {
-				return err
+			var planID int64
+			var err error
+			if len(args) > 0 {
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans entry update [plan_id] [entry_id]")
+				}
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
-			entryID := args[1]
+			var entryID string
+			if len(args) > 1 {
+				entryID = args[1]
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("entry_id is required in non-interactive mode: gotr plans entry update [plan_id] [entry_id]")
+				}
+				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
+				if err != nil {
+					return err
+				}
+			}
 			if entryID == "" {
 				return fmt.Errorf("entry_id is required")
 			}
@@ -167,7 +190,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 // Эндпоинт: POST /delete_plan_entry/{plan_id}/{entry_id}
 func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <plan_id> <entry_id>",
+		Use:   "delete [plan_id] [entry_id]",
 		Short: "Удалить запись плана",
 		Long:  `Удаляет запись из тест-плана.`,
 		Example: `  # Удалить запись из плана
@@ -175,14 +198,37 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед удалением
   gotr plans entry delete 100 abc123 --dry-run`,
-		Args: cobra.ExactArgs(2),
+		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := flags.ValidateRequiredID(args, 0, "plan_id")
-			if err != nil {
-				return err
+			var planID int64
+			var err error
+			if len(args) > 0 {
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans entry delete [plan_id] [entry_id]")
+				}
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
-			entryID := args[1]
+			var entryID string
+			if len(args) > 1 {
+				entryID = args[1]
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("entry_id is required in non-interactive mode: gotr plans entry delete [plan_id] [entry_id]")
+				}
+				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
+				if err != nil {
+					return err
+				}
+			}
 			if entryID == "" {
 				return fmt.Errorf("entry_id is required")
 			}

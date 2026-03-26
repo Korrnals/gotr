@@ -45,3 +45,26 @@ func selectPlanID(ctx context.Context, plans []data.Plan) (int64, error) {
 
 	return plans[idx].ID, nil
 }
+
+func resolvePlanEntryIDInteractive(ctx context.Context, cli client.ClientInterface, planID int64) (string, error) {
+	plan, err := cli.GetPlan(ctx, planID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get plan %d: %w", planID, err)
+	}
+	if len(plan.Entries) == 0 {
+		return "", fmt.Errorf("no entries found in plan %d", planID)
+	}
+
+	p := interactive.PrompterFromContext(ctx)
+	options := make([]string, 0, len(plan.Entries))
+	for i, entry := range plan.Entries {
+		options = append(options, fmt.Sprintf("[%d] ID: %s | %s", i+1, entry.ID, entry.Name))
+	}
+
+	idx, _, err := p.Select("Select plan entry:", options)
+	if err != nil {
+		return "", fmt.Errorf("failed to select plan entry: %w", err)
+	}
+
+	return plan.Entries[idx].ID, nil
+}

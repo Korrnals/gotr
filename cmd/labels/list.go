@@ -9,6 +9,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -19,7 +20,7 @@ import (
 // Эндпоинт: GET /get_labels/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
+		Use:   "list [project_id]",
 		Short: "Получить список меток проекта",
 		Long:  `Получает список всех меток для указанного проекта.`,
 		Example: `  # Список меток проекта
@@ -27,11 +28,25 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
   # Вывод в JSON
   gotr labels list 123 -o json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr labels list [project_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(cmd.Context()).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr labels list [project_id]")
+				}
+				if projectID, err = resolveProjectIDInteractive(cmd.Context(), getClient(cmd)); err != nil {
+					return err
+				}
 			}
 
 			client := getClient(cmd)

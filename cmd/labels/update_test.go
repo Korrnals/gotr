@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -93,7 +95,7 @@ func TestParseIntList_WithEmptyParts(t *testing.T) {
 // TestNewUpdateTestCmd_Creation tests command creation
 func TestNewUpdateTestCmd_Creation(t *testing.T) {
 	cmd := newUpdateTestCmd(nil)
-	assert.Equal(t, "test <test_id>", cmd.Use)
+	assert.Equal(t, "test [test_id]", cmd.Use)
 	assert.NotNil(t, cmd.RunE)
 
 	// Check required flag
@@ -237,16 +239,47 @@ func TestNewUpdateTestCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "connection refused")
 }
 
-// TestNewUpdateTestCmd_NoArgs tests no arguments provided
-func TestNewUpdateTestCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
-
+func TestNewUpdateTestCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 100, Name: "Run 1"}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(100), runID)
+			return []data.Test{{ID: 200, Title: "Test 1"}}, nil
+		},
+		UpdateTestLabelsFunc: func(ctx context.Context, testID int64, labels []string) error {
+			assert.Equal(t, int64(200), testID)
+			return nil
+		},
+	}
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0}, // project
+		interactive.SelectResponse{Index: 0}, // run
+		interactive.SelectResponse{Index: 0}, // test
+	)
 	cmd := newUpdateTestCmd(getClientForTests)
-	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{})
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--labels", "smoke"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestNewUpdateTestCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateTestCmd(getClientForTests)
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), niPrompter))
+	cmd.SetArgs([]string{"--labels", "smoke"})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 // TestNewUpdateTestCmd_TooManyArgs tests too many arguments

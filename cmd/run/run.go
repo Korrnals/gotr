@@ -82,6 +82,5 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	}
 
 	// Mark required flags for create (already defined in constructor)
-	createCmd.MarkFlagRequired("suite-id")
 	createCmd.MarkFlagRequired("name")
 }

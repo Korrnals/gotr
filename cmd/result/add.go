@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -44,7 +45,7 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 
 	# Dry-run режим
 	gotr result add 12345 --status-id 1 --comment "Test" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
 			ctx := cmd.Context()
@@ -53,9 +54,28 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 			}
 
 			svc := newResultServiceFromInterface(cli)
-			testID, err := svc.ParseID(ctx, args, 0)
-			if err != nil {
-				return fmt.Errorf("invalid test ID: %w", err)
+			var testID int64
+			var err error
+			if len(args) > 0 {
+				testID, err = svc.ParseID(ctx, args, 0)
+				if err != nil {
+					return fmt.Errorf("invalid test ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("test_id required in non-interactive mode: gotr result add [test-id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("test_id required in non-interactive mode: gotr result add [test-id]")
+				}
+				runID, err := resolveResultRunID(ctx, cli)
+				if err != nil {
+					return err
+				}
+				testID, err = selectTestIDForRun(ctx, cli, runID)
+				if err != nil {
+					return err
+				}
 			}
 
 			req, err := buildAddResultRequest(cmd)
@@ -120,7 +140,7 @@ TestRail сам находит соответствующий test в run.
 
 	# Dry-run режим
 	gotr result add-case 12345 --case-id 98765 --status-id 1 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
 			ctx := cmd.Context()
@@ -129,9 +149,24 @@ TestRail сам находит соответствующий test в run.
 			}
 
 			svc := newResultServiceFromInterface(cli)
-			runID, err := svc.ParseID(ctx, args, 0)
-			if err != nil {
-				return fmt.Errorf("invalid run ID: %w", err)
+			var runID int64
+			var err error
+			if len(args) > 0 {
+				runID, err = svc.ParseID(ctx, args, 0)
+				if err != nil {
+					return fmt.Errorf("invalid run ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("run_id required in non-interactive mode: gotr result add-case [run-id] --case-id <case_id>")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("run_id required in non-interactive mode: gotr result add-case [run-id] --case-id <case_id>")
+				}
+				runID, err = resolveResultRunID(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			caseID, _ := cmd.Flags().GetInt64("case-id")
@@ -220,6 +255,7 @@ JSON файл должен содержать массив результато�
 			}
 
 			resultsFile, _ := cmd.Flags().GetString("results-file")
+			// add-bulk intentionally stays manual-only: input file is required for deterministic batch execution.
 			fileData, err := os.ReadFile(resultsFile)
 			if err != nil {
 				return fmt.Errorf("file read error: %w", err)

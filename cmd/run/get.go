@@ -29,7 +29,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 	# Dry-run режим
 	gotr run get 12345 --dry-run
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
 			ctx := cmd.Context()
@@ -37,11 +37,12 @@ Test run — это экземпляр тест-сюиты, запущенный
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			svc := newRunServiceFromInterface(cli)
-			runID, err := svc.ParseID(ctx, args, 0)
+			runID, err := resolveRunID(ctx, cli, args)
 			if err != nil {
 				return fmt.Errorf("invalid test run ID: %w", err)
 			}
+
+			svc := newRunServiceFromInterface(cli)
 
 			// Проверяем dry-run режим
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")

@@ -34,9 +34,6 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			client := getClient(cmd)
-			ctx := cmd.Context()
-
 			projectID, _ := cmd.Flags().GetInt64("project")
 			title, _ := cmd.Flags().GetString("title")
 
@@ -44,6 +41,20 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 				ProjectID: projectID,
 				Title:     title,
 			}
+
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := output.NewDryRunPrinter("labels update-label")
+				dr.PrintOperation(
+					fmt.Sprintf("Update label %d", labelID),
+					"POST",
+					fmt.Sprintf("/index.php?/api/v2/update_label/%d", labelID),
+					req,
+				)
+				return nil
+			}
+
+			client := getClient(cmd)
+			ctx := cmd.Context()
 
 			resp, err := client.UpdateLabel(ctx, labelID, req)
 			if err != nil {
@@ -57,6 +68,7 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 
 	cmd.Flags().Int64P("project", "p", 0, "ID проекта (обязательно)")
 	cmd.Flags().StringP("title", "t", "", "Новое название метки (обязательно, max 20 символов)")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без обновления")
 	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("project")

@@ -1,40 +1,13 @@
 package result
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
-
-// projectSelector интерфейс для выбора проекта (для тестирования)
-type projectSelector interface {
-	SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error)
-}
-
-// runSelector интерфейс для выбора run (для тестирования)
-type runSelector interface {
-	SelectRunInteractively(runs data.GetRunsResponse) (int64, error)
-}
-
-// defaultSelectors используется по умолчанию
-type defaultSelectors struct{}
-
-func (d *defaultSelectors) SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
-	return interactive.SelectProjectInteractively(ctx, httpClient)
-}
-
-func (d *defaultSelectors) SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
-	return interactive.SelectRunInteractively(runs)
-}
-
-// selectors для интерактивного выбора (можно заменить в тестах)
-var selectors projectSelector = &defaultSelectors{}
-var runSelectors runSelector = &defaultSelectors{}
 
 // newListCmd создаёт команду 'result list'
 // Эндпоинт: GET /get_results_for_run/{run_id}
@@ -78,7 +51,8 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				}
 			} else {
 				// Интерактивный выбор: проект → run
-				projectID, err := selectors.SelectProjectInteractively(ctx, cli)
+				p := interactive.PrompterFromContext(ctx)
+				projectID, err := interactive.SelectProject(ctx, p, cli, "")
 				if err != nil {
 					return err
 				}
@@ -94,7 +68,7 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				}
 
 				// Выбираем run интерактивно
-				runID, err = runSelectors.SelectRunInteractively(runs)
+				runID, err = interactive.SelectRun(ctx, p, runs, "")
 				if err != nil {
 					return err
 				}

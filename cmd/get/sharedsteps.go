@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +51,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}
@@ -80,10 +81,10 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 // newSharedStepCmd создаёт команду для получения одного shared step
 func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
-		Use:   "sharedstep <step-id>",
+		Use:   "sharedstep [step-id]",
 		Short: "Получить один shared step по ID шага",
 		Long:  "Получает детальную информацию о конкретном shared step по его ID.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
@@ -92,10 +93,35 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			idStr := args[0]
-			id, err := flags.ParseID(idStr)
-			if err != nil {
-				return fmt.Errorf("invalid step ID: %w", err)
+			var id int64
+			var err error
+			if len(args) > 0 {
+				id, err = flags.ParseID(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid step ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("step_id required: gotr get sharedstep [step-id]")
+				}
+
+				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+
+				steps, err := cli.GetSharedSteps(ctx, projectID)
+				if err != nil {
+					return fmt.Errorf("failed to get shared steps: %w", err)
+				}
+				if len(steps) == 0 {
+					return fmt.Errorf("no shared steps found in project %d", projectID)
+				}
+
+				id, err = selectSharedStepID(ctx, steps)
+				if err != nil {
+					return err
+				}
 			}
 
 			step, err := cli.GetSharedStep(ctx, id)
@@ -106,6 +132,21 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 			return handleOutput(command, step, start)
 		},
 	}
+}
+
+func selectSharedStepID(ctx context.Context, steps data.GetSharedStepsResponse) (int64, error) {
+	p := interactive.PrompterFromContext(ctx)
+	options := make([]string, 0, len(steps))
+	for i, step := range steps {
+		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, step.ID, step.Title))
+	}
+
+	idx, _, err := p.Select("Select shared step:", options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select shared step: %w", err)
+	}
+
+	return steps[idx].ID, nil
 }
 
 // sharedStepsCmd — экспортированная команда для регистрации

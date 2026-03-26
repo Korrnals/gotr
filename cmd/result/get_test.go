@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -181,4 +182,86 @@ func TestGetCaseCmd_ZeroIDs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestGetCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return data.GetRunsResponse{{ID: 100, Name: "Run 100"}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{{ID: 12345, CaseID: 200, RunID: runID, Title: "Test 12345"}}, nil
+		},
+		GetResultsFunc: func(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
+			assert.Equal(t, int64(12345), testID)
+			return data.GetResultsResponse{{ID: 1, TestID: testID, StatusID: 1}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestGetCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestGetCaseCmd_MissingCaseID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(100), runID)
+			return []data.Test{{ID: 12345, CaseID: 200, RunID: runID, Title: "Case 200"}}, nil
+		},
+		GetResultsForCaseFunc: func(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
+			assert.Equal(t, int64(100), runID)
+			assert.Equal(t, int64(200), caseID)
+			return data.GetResultsResponse{{ID: 1, TestID: 12345, StatusID: 1}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newGetCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"100"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestGetCaseCmd_MissingCaseID_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{{ID: 12345, CaseID: 200, RunID: runID, Title: "Case 200"}}, nil
+		},
+	}
+	cmd := newGetCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"100"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }

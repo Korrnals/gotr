@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /delete_variable/{variable_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <variable_id>",
+		Use:   "delete [variable_id]",
 		Short: "Удалить переменную",
 		Long: `Удаляет переменную из датасета.
 
@@ -28,11 +29,24 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед удалением
   gotr variables delete 789 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			variableID, err := flags.ValidateRequiredID(args, 0, "variable_id")
-			if err != nil {
-				return err
+			var variableID int64
+			if len(args) > 0 {
+				var err error
+				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("variable_id is required in non-interactive mode: gotr variables delete [variable_id]")
+				}
+				var err error
+				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {

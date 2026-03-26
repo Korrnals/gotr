@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 
 	"github.com/stretchr/testify/assert"
@@ -117,4 +118,38 @@ func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, addShared, "AddSharedStep должен вызываться при авто-подтверждении")
 	assert.True(t, addCase, "AddCase должен вызываться при авто-подтверждении")
+}
+
+func TestSyncFull_NoFlags_NonInteractive_Error(t *testing.T) {
+	addShared := false
+	addCase := false
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			addShared = true
+			return &data.SharedStep{ID: 100}, nil
+		},
+		AddCaseFunc: func(ctx context.Context, suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+			addCase = true
+			return &data.Case{ID: 100}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetFullFlags()
+	cmd := fullCmd
+	SetTestClient(cmd, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, addShared, "AddSharedStep не должен вызываться в non-interactive")
+	assert.False(t, addCase, "AddCase не должен вызываться в non-interactive")
 }

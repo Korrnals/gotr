@@ -6,6 +6,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/spf13/cobra"
 )
 
@@ -35,9 +36,9 @@ func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobr
 // newProjectCmd создаёт команду для получения одного проекта
 func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
-		Use:   "project <project-id>",
+		Use:   "project [project-id]",
 		Short: "Получить один проект по ID проекта",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
@@ -46,10 +47,21 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			idStr := args[0]
-			id, err := flags.ParseID(idStr)
-			if err != nil {
-				return fmt.Errorf("invalid project_id: %w", err)
+			var id int64
+			var err error
+			if len(args) == 0 {
+				id, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+			} else {
+				id, err = flags.ParseID(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid project_id: %w", err)
+				}
+				if id <= 0 {
+					return fmt.Errorf("invalid project_id: %s", args[0])
+				}
 			}
 
 			project, err := cli.GetProject(ctx, id)

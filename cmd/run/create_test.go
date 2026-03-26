@@ -7,9 +7,11 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateCmd_Success(t *testing.T) {
@@ -180,4 +182,85 @@ func TestCreateCmd_WithIncludeAllFalse(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
+}
+
+func TestCreateCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSuitesResponse{{ID: 20069, Name: "Suite 1"}}, nil
+		},
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+			assert.Equal(t, int64(30), projectID)
+			assert.Equal(t, int64(20069), req.SuiteID)
+			assert.Equal(t, "Smoke Tests", req.Name)
+			return &data.Run{ID: 130, Name: req.Name}, nil
+		},
+	}
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0},
+		interactive.SelectResponse{Index: 0},
+	)
+	cmd := newCreateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name", "Smoke Tests"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestCreateCmd_NoArgs_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newCreateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"--name", "Smoke Tests"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestCreateCmd_MissingSuiteID_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newCreateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"30", "--name", "Smoke Tests"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "suite-id is required in non-interactive mode")
+}
+
+func TestRegister_CreateCmd_AllowsInteractiveSuiteSelection(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSuitesResponse{{ID: 20069, Name: "Suite 1"}}, nil
+		},
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+			assert.Equal(t, int64(30), projectID)
+			assert.Equal(t, int64(20069), req.SuiteID)
+			assert.Equal(t, "Smoke Tests", req.Name)
+			return &data.Run{ID: 131, Name: req.Name}, nil
+		},
+	}
+
+	cmd := newCreateCmd(func(cmd *cobra.Command) client.ClientInterface {
+		return testhelper.GetClientForTests(cmd)
+	})
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0},
+		interactive.SelectResponse{Index: 0},
+	)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name", "Smoke Tests"})
+
+	err := cmd.Execute()
+	require.NoError(t, err)
 }

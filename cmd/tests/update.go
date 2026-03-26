@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -16,7 +17,7 @@ import (
 // Эндпоинт: POST /update_test/{test_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <test_id>",
+		Use:   "update [test_id]",
 		Short: "Обновить тест",
 		Long: `Обновляет тест (результат выполнения тест-кейса).
 
@@ -30,11 +31,29 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед обновлением
   gotr tests update 12345 --status-id=5 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := flags.ValidateRequiredID(args, 0, "test_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var testID int64
+			var err error
+			if len(args) > 0 {
+				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("test_id is required in non-interactive mode: gotr tests update [test_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("test_id is required in non-interactive mode: gotr tests update [test_id]")
+				}
+				testID, err = resolveTestIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			req := data.UpdateTestRequest{}
@@ -52,8 +71,6 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.UpdateTest(ctx, testID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update test: %w", err)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -11,19 +12,34 @@ import (
 // newListCmd создаёт команду для списка тестов
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <run_id>",
+		Use:   "list [run_id]",
 		Short: "Получить список тестов прогона",
 		Long: `Получить список всех тестов для указанного тестового прогона.
 
 Для фильтрации по статусу используйте флаг --status-id.`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
-			runID, err := flags.ValidateRequiredID(args, 0, "run_id")
-			if err != nil {
-				return err
+			var runID int64
+			var err error
+			if len(args) > 0 {
+				runID, err = flags.ValidateRequiredID(args, 0, "run_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("run_id is required in non-interactive mode: gotr tests list [run_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("run_id is required in non-interactive mode: gotr tests list [run_id]")
+				}
+				runID, err = resolveRunIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
 			statusID, _ := cmd.Flags().GetInt64("status-id")

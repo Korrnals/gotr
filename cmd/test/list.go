@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
@@ -34,7 +35,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 	# Сохранить в файл
 	gotr test list 100 -o tests.json
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			httpClient := getClient(cmd)
 			ctx := cmd.Context()
@@ -43,9 +44,26 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 			}
 
 			svc := service.NewTestService(httpClient)
-			runID, err := svc.ParseID(ctx, args, 0)
-			if err != nil {
-				return fmt.Errorf("invalid run ID: %w", err)
+
+			var runID int64
+			var err error
+
+			if len(args) > 0 {
+				runID, err = svc.ParseID(ctx, args, 0)
+				if err != nil {
+					return fmt.Errorf("invalid run ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
+				}
+				runID, err = resolveRunIDInteractive(ctx, httpClient)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Собираем фильтры

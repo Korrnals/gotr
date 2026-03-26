@@ -13,6 +13,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -155,6 +156,59 @@ func TestListCaseCmd_NoArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestListCaseCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetSuitesResponse{{ID: 10, Name: "Suite 10", ProjectID: 1}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			assert.Equal(t, int64(10), suiteID)
+			return data.GetCasesResponse{{ID: 123, Title: "Case 123"}}, nil
+		},
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(123), caseID)
+			return data.GetAttachmentsResponse{{ID: 1, Name: "attachment.txt", Size: 100, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "attachment.txt")
+}
+
+func TestListCaseCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 // ==================== Тесты для attachments list plan ====================
 
 func TestListPlanCmd_Success(t *testing.T) {
@@ -205,6 +259,53 @@ func TestListPlanCmd_APIError(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestListPlanCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 456, Name: "Plan 456"}}, nil
+		},
+		GetAttachmentsForPlanFunc: func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(456), planID)
+			return data.GetAttachmentsResponse{{ID: 10, Name: "plan-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListPlanCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "plan-attachment.txt")
+}
+
+func TestListPlanCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListPlanCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 // ==================== Тесты для attachments list plan-entry ====================
@@ -282,6 +383,87 @@ func TestListPlanEntryCmd_OnlyOneArg(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestListPlanEntryCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 100"}}, nil
+		},
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			return &data.Plan{ID: 100, Name: "Plan 100", Entries: []data.PlanEntry{{ID: "entry-1", Name: "Entry 1"}}}, nil
+		},
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(100), planID)
+			assert.Equal(t, "entry-1", entryID)
+			return data.GetAttachmentsResponse{{ID: 11, Name: "entry-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "entry-attachment.txt")
+}
+
+func TestListPlanEntryCmd_OnlyPlanID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			return &data.Plan{ID: 100, Name: "Plan 100", Entries: []data.PlanEntry{{ID: "entry-2", Name: "Entry 2"}}}, nil
+		},
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(100), planID)
+			assert.Equal(t, "entry-2", entryID)
+			return data.GetAttachmentsResponse{{ID: 12, Name: "entry-two.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"100"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "entry-two.txt")
+}
+
+func TestListPlanEntryCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 // ==================== Тесты для attachments list run ====================
 
 func TestListRunCmd_Success(t *testing.T) {
@@ -332,6 +514,53 @@ func TestListRunCmd_APIError(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestListRunCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 789, Name: "Run 789"}}, nil
+		},
+		GetAttachmentsForRunFunc: func(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(789), runID)
+			return data.GetAttachmentsResponse{{ID: 13, Name: "run-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListRunCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "run-attachment.txt")
+}
+
+func TestListRunCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListRunCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 // ==================== Тесты для attachments list test ====================
@@ -396,6 +625,58 @@ func TestListTestCmd_APIError(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestListTestCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 200, Name: "Run 200"}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(200), runID)
+			return []data.Test{{ID: 321, CaseID: 55, Title: "Test 321"}}, nil
+		},
+		GetAttachmentsForTestFunc: func(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(321), testID)
+			return data.GetAttachmentsResponse{{ID: 14, Name: "test-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListTestCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "test-attachment.txt")
+}
+
+func TestListTestCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListTestCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 // ==================== Тесты для outputAttachmentsList ====================

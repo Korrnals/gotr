@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /add_variable/{dataset_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <dataset_id>",
+		Use:   "add [dataset_id]",
 		Short: "Создать переменную в датасете",
 		Long: `Создаёт новую переменную (колонку) в указанном датасете.
 
@@ -28,11 +29,24 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед созданием
   gotr variables add 123 --name="password" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := flags.ValidateRequiredID(args, 0, "dataset_id")
-			if err != nil {
-				return err
+			var datasetID int64
+			if len(args) > 0 {
+				var err error
+				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("dataset_id is required in non-interactive mode: gotr variables add [dataset_id]")
+				}
+				var err error
+				datasetID, err = resolveDatasetIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")

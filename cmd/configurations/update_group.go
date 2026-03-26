@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -15,7 +16,7 @@ import (
 // Эндпоинт: POST /update_config_group/{group_id}
 func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-group <group_id>",
+		Use:   "update-group [group_id]",
 		Short: "Обновить группу конфигураций",
 		Long:  `Обновляет название существующей группы конфигураций.`,
 		Example: `  # Изменить название группы
@@ -23,11 +24,30 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед обновлением
   gotr configurations update-group 5 --name="Новое название" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := flags.ValidateRequiredID(args, 0, "group_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations update-group [group_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations update-group [group_id]")
+				}
+
+				groupID, err = resolveGroupIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -42,8 +62,6 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			req := data.UpdateConfigGroupRequest{Name: name}
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			resp, err := cli.UpdateConfigGroup(ctx, groupID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update group: %w", err)

@@ -65,7 +65,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			if projectIDStr == "" {
 				// Интерактивный выбор проекта
-				projectID, err = interactive.SelectProjectInteractively(ctx, cli)
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}
@@ -107,7 +107,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			}
 
 			// Несколько сьютов — интерактивный выбор
-			selectedSuiteID, err := interactive.SelectSuiteInteractively(suites)
+			selectedSuiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 			if err != nil {
 				return err
 			}
@@ -127,10 +127,10 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 // newCaseCmd создаёт команду для получения одного кейса
 func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
-		Use:   "case <case-id>",
+		Use:   "case [case-id]",
 		Short: "Получить один кейс по ID кейса",
 		Long:  "Получает детальную информацию о конкретном тест-кейсе по его ID.",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
@@ -139,10 +139,48 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			idStr := args[0]
-			id, err := flags.ParseID(idStr)
-			if err != nil {
-				return fmt.Errorf("invalid case ID: %w", err)
+			var id int64
+			var err error
+			if len(args) > 0 {
+				id, err = flags.ParseID(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid case ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id required: gotr get case [case-id]")
+				}
+
+				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+
+				suites, err := cli.GetSuites(ctx, projectID)
+				if err != nil {
+					return fmt.Errorf("failed to get suites: %w", err)
+				}
+				if len(suites) == 0 {
+					return fmt.Errorf("no suites found in project %d", projectID)
+				}
+
+				suiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
+				if err != nil {
+					return err
+				}
+
+				cases, err := cli.GetCases(ctx, projectID, suiteID, 0)
+				if err != nil {
+					return fmt.Errorf("failed to get cases: %w", err)
+				}
+				if len(cases) == 0 {
+					return fmt.Errorf("no cases found in suite %d", suiteID)
+				}
+
+				id, err = selectCaseID(ctx, cases)
+				if err != nil {
+					return err
+				}
 			}
 
 			kase, err := cli.GetCase(ctx, id)

@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
@@ -62,7 +63,7 @@ func TestValidateFileExists_NotExists(t *testing.T) {
 
 func TestNewAddCaseCmd_Creation(t *testing.T) {
 	cmd := newAddCaseCmd(nil)
-	assert.Equal(t, "case <case_id> <file_path>", cmd.Use)
+	assert.Equal(t, "case [case_id] <file_path>", cmd.Use)
 	assert.NotNil(t, cmd.RunE)
 }
 
@@ -172,6 +173,63 @@ func TestNewAddCaseCmd_DryRun(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNewAddCaseCmd_NoID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetSuitesResponse{{ID: 10, Name: "Suite 10", ProjectID: 1}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			assert.Equal(t, int64(10), suiteID)
+			return data.GetCasesResponse{{ID: 123, Title: "Case 123"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddCaseCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	parentCmd.SetArgs([]string{"case", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestNewAddCaseCmd_NoID_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddCaseCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	parentCmd.SetArgs([]string{"case", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 func TestNewAddCaseCmd_APIError(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
 	assert.NoError(t, err)
@@ -234,7 +292,7 @@ func TestNewAddCaseCmd_WithSaveFlag(t *testing.T) {
 
 func TestNewAddPlanCmd_Creation(t *testing.T) {
 	cmd := newAddPlanCmd(nil)
-	assert.Equal(t, "plan <plan_id> <file_path>", cmd.Use)
+	assert.Equal(t, "plan [plan_id] <file_path>", cmd.Use)
 	assert.NotNil(t, cmd.RunE)
 }
 
@@ -308,6 +366,57 @@ func TestNewAddPlanCmd_DryRun(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestNewAddPlanCmd_NoID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 100"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddPlanCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	parentCmd.SetArgs([]string{"plan", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestNewAddPlanCmd_NoID_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddPlanCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	parentCmd.SetArgs([]string{"plan", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 func TestNewAddPlanCmd_APIError(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
 	assert.NoError(t, err)
@@ -357,7 +466,7 @@ func TestNewAddPlanCmd_FileNotFound(t *testing.T) {
 
 func TestNewAddPlanEntryCmd_Creation(t *testing.T) {
 	cmd := newAddPlanEntryCmd(nil)
-	assert.Equal(t, "plan-entry <plan_id> <entry_id> <file_path>", cmd.Use)
+	assert.Equal(t, "plan-entry [plan_id] [entry_id] <file_path>", cmd.Use)
 	assert.NotNil(t, cmd.RunE)
 }
 
@@ -494,11 +603,92 @@ func TestNewAddPlanEntryCmd_NoArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestNewAddPlanEntryCmd_NoIDs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 200, Name: "Plan 200"}}, nil
+		},
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(200), planID)
+			return &data.Plan{ID: 200, Name: "Plan 200", Entries: []data.PlanEntry{{ID: "entry-xyz", Name: "Entry XYZ"}}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	parentCmd.SetArgs([]string{"plan-entry", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestNewAddPlanEntryCmd_OnlyPlanID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(200), planID)
+			return &data.Plan{ID: 200, Name: "Plan 200", Entries: []data.PlanEntry{{ID: "entry-abc123", Name: "Entry ABC"}}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	parentCmd.SetArgs([]string{"plan-entry", "200", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestNewAddPlanEntryCmd_NoIDs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	parentCmd.SetArgs([]string{"plan-entry", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 // ==================== Тесты для newAddResultCmd ====================
 
 func TestNewAddResultCmd_Creation(t *testing.T) {
 	cmd := newAddResultCmd(nil)
-	assert.Equal(t, "result <result_id> <file_path>", cmd.Use)
+	assert.Equal(t, "result [result_id] <file_path>", cmd.Use)
 	assert.NotNil(t, cmd.RunE)
 }
 
@@ -617,11 +807,72 @@ func TestNewAddResultCmd_FileNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "file not found")
 }
 
+func TestNewAddResultCmd_NoID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 555, Name: "Run 555"}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(555), runID)
+			return []data.Test{{ID: 444, CaseID: 12, Title: "Test 444"}}, nil
+		},
+		GetResultsFunc: func(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
+			assert.Equal(t, int64(444), testID)
+			return data.GetResultsResponse{{ID: 98765, TestID: 444, StatusID: 1}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddResultCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	parentCmd.SetArgs([]string{"result", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestNewAddResultCmd_NoID_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddResultCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	parentCmd.SetArgs([]string{"result", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 // ==================== Тесты для newAddRunCmd ====================
 
 func TestNewAddRunCmd_Creation(t *testing.T) {
 	cmd := newAddRunCmd(nil)
-	assert.Equal(t, "run <run_id> <file_path>", cmd.Use)
+	assert.Equal(t, "run [run_id] <file_path>", cmd.Use)
 	assert.NotNil(t, cmd.RunE)
 }
 
@@ -693,6 +944,57 @@ func TestNewAddRunCmd_DryRun(t *testing.T) {
 
 	err := parentCmd.Execute()
 	assert.NoError(t, err)
+}
+
+func TestNewAddRunCmd_NoID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 555, Name: "Run 555"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddRunCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	parentCmd.SetArgs([]string{"run", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestNewAddRunCmd_NoID_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	parentCmd := &cobra.Command{Use: "add"}
+	parentCmd.PersistentFlags().Bool("dry-run", false, "")
+	output.AddFlag(parentCmd)
+
+	cmd := newAddRunCmd(testhelper.GetClientForTests)
+	parentCmd.AddCommand(cmd)
+
+	parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	parentCmd.SetArgs([]string{"run", "./dummy.txt", "--dry-run"})
+
+	err := parentCmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestNewAddRunCmd_APIError(t *testing.T) {

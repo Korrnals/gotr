@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/ui"
 
@@ -42,11 +43,12 @@ var fullCmd = &cobra.Command{
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
+		p := interactive.PrompterFromContext(ctx)
 		var err error
 
 		// Интерактивный выбор source проекта
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(ctx, cli, "Select SOURCE project:")
+			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
 				return err
 			}
@@ -54,7 +56,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор source сьюта
 		if srcSuite == 0 {
-			srcSuite, err = selectSuiteInteractively(ctx, cli, srcProject, "Select SOURCE suite:")
+			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
 				return err
 			}
@@ -62,7 +64,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор destination проекта
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(ctx, cli, "Select DESTINATION project:")
+			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
 				return err
 			}
@@ -70,7 +72,7 @@ var fullCmd = &cobra.Command{
 
 		// Интерактивный выбор destination сьюта
 		if dstSuite == 0 {
-			dstSuite, err = selectSuiteInteractively(ctx, cli, dstProject, "Select DESTINATION suite:")
+			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
 				return err
 			}

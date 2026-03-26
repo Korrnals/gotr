@@ -2,12 +2,12 @@ package sync
 
 import (
 	"context"
-	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -89,16 +89,45 @@ func TestSyncSuites_Confirm_TriggersAddSuite(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "false")
 
-	// Симулируем ввод пользователя: подтверждение 'y'
-	r, w, _ := os.Pipe()
-	_, _ = w.Write([]byte("y\n"))
-	_ = w.Close()
-	oldStdin := os.Stdin
-	defer func() { os.Stdin = oldStdin }()
-	os.Stdin = r
+	p := interactive.NewMockPrompter().WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
 
 	// Выполняем команду и проверяем, что AddSuite был вызван
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
 	assert.True(t, addCalled, "AddSuite должен вызываться после подтверждения")
+}
+
+func TestSyncSuites_Confirm_NonInteractive_Error(t *testing.T) {
+	addCalled := false
+	mock := &client.MockClient{
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			if projectID == 1 {
+				return data.GetSuitesResponse{{ID: 10, Name: "Suite 1"}}, nil
+			}
+			return data.GetSuitesResponse{}, nil
+		},
+		AddSuiteFunc: func(ctx context.Context, projectID int64, r *data.AddSuiteRequest) (*data.Suite, error) {
+			addCalled = true
+			return &data.Suite{ID: 100, Name: r.Name}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetSuitesFlags()
+	cmd := suitesCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("approve", "false")
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, addCalled, "AddSuite не должен вызываться в non-interactive")
 }

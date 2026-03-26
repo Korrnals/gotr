@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /update_variable/{variable_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <variable_id>",
+		Use:   "update [variable_id]",
 		Short: "Обновить переменную",
 		Long: `Обновляет название существующей переменной.
 
@@ -25,11 +26,24 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед обновлением
   gotr variables update 789 --name="new_name" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			variableID, err := flags.ValidateRequiredID(args, 0, "variable_id")
-			if err != nil {
-				return err
+			var variableID int64
+			if len(args) > 0 {
+				var err error
+				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("variable_id is required in non-interactive mode: gotr variables update [variable_id]")
+				}
+				var err error
+				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")

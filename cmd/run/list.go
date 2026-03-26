@@ -55,12 +55,7 @@ ID, название, описание, статистика тестов (passe
 				}
 			} else {
 				// Интерактивный выбор проекта
-				// Нужен *client.HTTPClient для интерактивного режима
-				httpClient, ok := cli.(*client.HTTPClient)
-				if !ok {
-					return fmt.Errorf("interactive mode not available in test mode, specify project-id")
-				}
-				projectID, err = interactive.SelectProjectInteractively(ctx, httpClient)
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}

@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -89,16 +90,46 @@ func TestListCmd_ZeroRunID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestListCmd_NoArgs(t *testing.T) {
+func TestListCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 100, Name: "Run 1", ProjectID: projectID}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(100), runID)
+			return []data.Test{{ID: 1, CaseID: 101, RunID: runID, Title: "Test 1", StatusID: 1}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	mock := &client.MockClient{}
 
 	cmd := newListCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
-	cmd.SetContext(testCmd.Context())
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), niPrompter))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestListCmd_APIError(t *testing.T) {

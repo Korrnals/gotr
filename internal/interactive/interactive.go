@@ -1,21 +1,15 @@
-// internal/interactive/interactive.go
-// Пакет для интерактивного взаимодействия с пользователем
 package interactive
 
 import (
-	"bufio"
 	"context"
 	"fmt"
-	"os"
-	"strconv"
-	"strings"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// SelectProjectInteractively показывает список проектов и просит выбрать
-func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
+// SelectProject selects a project using unified prompter.
+func SelectProject(ctx context.Context, p Prompter, httpClient client.ClientInterface, prompt string) (int64, error) {
 	projects, err := httpClient.GetProjects(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get projects list: %w", err)
@@ -25,115 +19,107 @@ func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInt
 		return 0, fmt.Errorf("no projects found")
 	}
 
-	fmt.Println("\nAvailable projects:")
-	fmt.Println(strings.Repeat("-", 70))
+	if prompt == "" {
+		prompt = "Select project:"
+	}
 
+	options := make([]string, 0, len(projects))
 	for i, p := range projects {
-		fmt.Printf("  [%d] ID: %d | %s\n", i+1, p.ID, p.Name)
+		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, p.ID, p.Name))
 	}
 
-	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Select project number (1-%d): ", len(projects))
-
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
+	idx, _, err := p.Select(prompt, options)
 	if err != nil {
-		return 0, fmt.Errorf("input read error: %w", err)
+		return 0, fmt.Errorf("failed to select project: %w", err)
 	}
 
-	input = strings.TrimSpace(input)
-	choice, err := strconv.Atoi(input)
-	if err != nil || choice < 1 || choice > len(projects) {
-		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(projects))
-	}
-
-	selected := projects[choice-1]
-	fmt.Printf("\nSelected project: %s (ID: %d)\n\n", selected.Name, selected.ID)
-
-	return selected.ID, nil
+	return projects[idx].ID, nil
 }
 
-// SelectSuiteInteractively показывает список сьютов и просит выбрать
-func SelectSuiteInteractively(suites data.GetSuitesResponse) (int64, error) {
-	fmt.Println("\nProject has multiple suites:")
-	fmt.Println(strings.Repeat("-", 60))
+// SelectSuite selects a suite using unified prompter.
+func SelectSuite(ctx context.Context, p Prompter, suites data.GetSuitesResponse, prompt string) (int64, error) {
+	_ = ctx
+	if len(suites) == 0 {
+		return 0, fmt.Errorf("no suites found")
+	}
 
+	if prompt == "" {
+		prompt = "Select suite:"
+	}
+
+	options := make([]string, 0, len(suites))
 	for i, suite := range suites {
-		fmt.Printf("  [%d] ID: %d | %s\n", i+1, suite.ID, suite.Name)
-		if suite.Description != "" {
-			desc := suite.Description
-			if len(desc) > 50 {
-				desc = desc[:47] + "..."
-			}
-			fmt.Printf("       %s\n", desc)
-		}
+		line := fmt.Sprintf("[%d] ID: %d | %s", i+1, suite.ID, suite.Name)
+		options = append(options, line)
 	}
 
-	fmt.Println(strings.Repeat("-", 60))
-	fmt.Printf("Select suite number (1-%d): ", len(suites))
-
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
+	idx, _, err := p.Select(prompt, options)
 	if err != nil {
-		return 0, fmt.Errorf("input read error: %w", err)
+		return 0, fmt.Errorf("failed to select suite: %w", err)
 	}
 
-	input = strings.TrimSpace(input)
-	choice, err := strconv.Atoi(input)
-	if err != nil || choice < 1 || choice > len(suites) {
-		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(suites))
-	}
-
-	selectedSuite := suites[choice-1]
-	fmt.Printf("\nSelected suite: %s (ID: %d)\n\n", selectedSuite.Name, selectedSuite.ID)
-
-	return selectedSuite.ID, nil
+	return suites[idx].ID, nil
 }
 
-// SelectRunInteractively показывает список runs и просит выбрать
-func SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
-	fmt.Println("\nAvailable test runs:")
-	fmt.Println(strings.Repeat("-", 70))
+// SelectRun selects a run using unified prompter.
+func SelectRun(ctx context.Context, p Prompter, runs data.GetRunsResponse, prompt string) (int64, error) {
+	_ = ctx
+	if len(runs) == 0 {
+		return 0, fmt.Errorf("no runs found")
+	}
 
+	if prompt == "" {
+		prompt = "Select run:"
+	}
+
+	options := make([]string, 0, len(runs))
 	for i, run := range runs {
-		status := "🟢"
+		status := "active"
 		if run.IsCompleted {
-			status = "🔴"
+			status = "completed"
 		}
-		fmt.Printf("  [%d] %s ID: %d | %s\n", i+1, status, run.ID, run.Name)
+		line := fmt.Sprintf("[%d] (%s) ID: %d | %s", i+1, status, run.ID, run.Name)
+		options = append(options, line)
 	}
 
-	fmt.Println(strings.Repeat("-", 70))
-	fmt.Printf("Select run number (1-%d): ", len(runs))
-
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
+	idx, _, err := p.Select(prompt, options)
 	if err != nil {
-		return 0, fmt.Errorf("input read error: %w", err)
+		return 0, fmt.Errorf("failed to select run: %w", err)
 	}
 
-	input = strings.TrimSpace(input)
-	choice, err := strconv.Atoi(input)
-	if err != nil || choice < 1 || choice > len(runs) {
-		return 0, fmt.Errorf("invalid choice: %s (expected number from 1 to %d)", input, len(runs))
-	}
-
-	selected := runs[choice-1]
-	fmt.Printf("\nSelected run: %s (ID: %d)\n\n", selected.Name, selected.ID)
-
-	return selected.ID, nil
+	return runs[idx].ID, nil
 }
 
-// ConfirmAction запрашивает подтверждение действия у пользователя
-func ConfirmAction(message string) bool {
-	fmt.Printf("%s [y/N]: ", message)
-
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
-	if err != nil {
-		return false
+// SelectSection selects a section using unified prompter.
+func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsResponse, prompt string) (int64, error) {
+	_ = ctx
+	if len(sections) == 0 {
+		return 0, fmt.Errorf("no sections found")
 	}
 
-	input = strings.ToLower(strings.TrimSpace(input))
-	return input == "y" || input == "yes"
+	if prompt == "" {
+		prompt = "Select section:"
+	}
+
+	options := make([]string, 0, len(sections))
+	for i, section := range sections {
+		line := fmt.Sprintf("[%d] ID: %d | %s", i+1, section.ID, section.Name)
+		options = append(options, line)
+	}
+
+	idx, _, err := p.Select(prompt, options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select section: %w", err)
+	}
+
+	return sections[idx].ID, nil
+}
+
+// SelectSuiteForProject fetches suites for a project and selects one using the prompter.
+func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
+	suites, err := cli.GetSuites(ctx, projectID)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+	}
+	return SelectSuite(ctx, p, suites, prompt)
 }

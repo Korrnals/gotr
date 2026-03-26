@@ -36,3 +36,10 @@ func TestGetClientInterface_NotNilContext(t *testing.T) {
 	// Проверяем только что функция существует
 	assert.NotNil(t, GetClientInterface)
 }
+
+// TestRootCmd_NonInteractiveFlagRegistered проверяет наличие флага --non-interactive
+func TestRootCmd_NonInteractiveFlagRegistered(t *testing.T) {
+	flag := rootCmd.PersistentFlags().Lookup("non-interactive")
+	assert.NotNil(t, flag, "--non-interactive flag must be registered")
+	assert.Equal(t, "false", flag.DefValue)
+}

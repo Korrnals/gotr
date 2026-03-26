@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
@@ -12,7 +13,7 @@ import (
 // Эндпоинт: GET /get_milestones/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
+		Use:   "list [project_id]",
 		Short: "Список майлстонов проекта",
 		Long: `Выводит список всех майлстонов указанного проекта.
 
@@ -23,11 +24,26 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
   # Сохранить список в файл
   gotr milestones list 1 -o milestones.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
-			if err != nil {
-				return err
+			var projectID int64
+			if len(args) > 0 {
+				var err error
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				ctx := cmd.Context()
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr milestones list [project_id]")
+				}
+				cli := getClient(cmd)
+				var err error
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)

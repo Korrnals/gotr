@@ -113,5 +113,12 @@ cfg := &concurrency.ControllerConfig{
 ## Связанные документы
 
 - `docs/architecture.md`
+- `docs/interactive-mode.md` (дорожная карта Stage 12, включая Stage 12.3 по тестовому покрытию)
 - `.github/instructions/STAGE_11.0_DESIGN.md`
 - `.github/instructions/PLAN.md`
+
+## Текущий фокус (Stage 12)
+
+1. Stage 12.0-12.2 выполнены.
+2. Активная стадия: **12.3 — полный тест-аудит и добивка покрытия**.
+3. Следом: Stage 12.4 (cleanup wrappers) и Stage 12.5 (docs + release readiness).

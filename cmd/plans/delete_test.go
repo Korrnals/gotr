@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -80,12 +82,47 @@ func TestDeleteCmd_ZeroID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestDeleteCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
+func TestDeleteCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 1"}}, nil
+		},
+	}
 	cmd := newDeleteCmd(getClientForTests)
-	cmd.SetContext(setupTestCmd(t, mock).Context())
+	ctx := interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter())
+	cmd.SetContext(ctx)
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestDeleteCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 1"}}, nil
+		},
+		DeletePlanFunc: func(ctx context.Context, planID int64) error {
+			assert.Equal(t, int64(100), planID)
+			return nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newDeleteCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
 }

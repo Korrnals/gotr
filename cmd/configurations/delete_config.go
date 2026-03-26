@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -14,7 +15,7 @@ import (
 // Эндпоинт: POST /delete_config/{config_id}
 func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete-config <config_id>",
+		Use:   "delete-config [config_id]",
 		Short: "Удалить конфигурацию",
 		Long: `Удаляет конфигурацию из группы.
 
@@ -25,11 +26,30 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 
   # Проверить перед удалением
   gotr configurations delete-config 10 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configID, err := flags.ValidateRequiredID(args, 0, "config_id")
-			if err != nil {
-				return err
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var configID int64
+			var err error
+			if len(args) > 0 {
+				configID, err = flags.ValidateRequiredID(args, 0, "config_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations delete-config [config_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations delete-config [config_id]")
+				}
+
+				configID, err = resolveConfigIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
@@ -38,8 +58,6 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
 			if err := cli.DeleteConfig(ctx, configID); err != nil {
 				return fmt.Errorf("failed to delete configuration: %w", err)
 			}

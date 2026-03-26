@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -87,12 +88,33 @@ func TestGetCmd_ZeroID(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid role_id")
 }
 
-func TestGetCmd_NoArgs(t *testing.T) {
+func TestGetCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
+			return data.GetRolesResponse{{ID: 2, Name: "Tester"}}, nil
+		},
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
+			assert.Equal(t, int64(2), roleID)
+			return &data.Role{ID: 2, Name: "Tester"}, nil
+		},
+	}
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestGetCmd_NoArgs_NonInteractive(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newGetCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewNonInteractivePrompter()))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }

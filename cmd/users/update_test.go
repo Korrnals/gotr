@@ -120,3 +120,21 @@ func TestUpdateCmd_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "user not found")
 }
+
+func TestUpdateCmd_DryRun_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
+			called = true
+			return &data.User{ID: userID, Name: req.Name}, nil
+		},
+	}
+
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"123", "--name", "Updated Name", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.False(t, called)
+}

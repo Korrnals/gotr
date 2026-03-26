@@ -107,3 +107,31 @@ func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, addCalled, "AddSharedStep должен вызываться после подтверждения")
 }
+
+func TestSyncSharedSteps_NoFlags_NonInteractive_Error(t *testing.T) {
+	addCalled := false
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			addCalled = true
+			return &data.SharedStep{ID: 100, Title: r.Title}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetSharedStepsFlags()
+	cmd := sharedStepsCmd
+	SetTestClient(cmd, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, addCalled, "AddSharedStep не должен вызываться в non-interactive")
+}

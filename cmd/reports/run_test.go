@@ -108,3 +108,21 @@ func TestRunCmd_NegativeTemplateID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 }
+
+func TestRunCmd_DryRun_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		RunReportFunc: func(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
+			called = true
+			return &data.RunReportResponse{ReportID: 1, Status: "pending"}, nil
+		},
+	}
+
+	cmd := newRunCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"42", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.False(t, called)
+}

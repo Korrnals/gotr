@@ -33,6 +33,17 @@ func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := output.NewDryRunPrinter("reports run-cross-project")
+				dr.PrintOperation(
+					fmt.Sprintf("Run cross-project report template %d", templateID),
+					"GET",
+					fmt.Sprintf("/index.php?/api/v2/run_cross_project_report/%d", templateID),
+					nil,
+				)
+				return nil
+			}
+
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
@@ -50,6 +61,7 @@ func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без запуска генерации")
 	output.AddFlag(cmd)
 
 	return cmd

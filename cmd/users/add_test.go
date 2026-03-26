@@ -91,3 +91,21 @@ func TestAddCmd_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "email already exists")
 }
+
+func TestAddCmd_DryRun_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		AddUserFunc: func(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
+			called = true
+			return &data.User{ID: 1, Name: req.Name, Email: req.Email}, nil
+		},
+	}
+
+	cmd := newAddCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--name", "John Doe", "--email", "john@example.com", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.False(t, called)
+}

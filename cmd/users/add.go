@@ -26,9 +26,6 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
   # Создать администратора
   gotr users add --name "Admin User" --email "admin@example.com" --admin --role 1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cli := getClient(cmd)
-			ctx := cmd.Context()
-
 			name, _ := cmd.Flags().GetString("name")
 			email, _ := cmd.Flags().GetString("email")
 			roleID, _ := cmd.Flags().GetInt64("role")
@@ -45,6 +42,20 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				req.IsAdmin = 1
 			}
 
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := output.NewDryRunPrinter("users add")
+				dr.PrintOperation(
+					"Create User",
+					"POST",
+					"/index.php?/api/v2/add_user",
+					req,
+				)
+				return nil
+			}
+
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
 			user, err := cli.AddUser(ctx, req)
 			if err != nil {
 				return fmt.Errorf("failed to add user: %w", err)
@@ -60,6 +71,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("role", 0, "ID роли пользователя")
 	cmd.Flags().Bool("admin", false, "Сделать пользователя администратором")
 	cmd.Flags().String("password", "", "Пароль пользователя")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания пользователя")
 	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("name")

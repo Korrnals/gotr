@@ -36,9 +36,6 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			cli := getClient(cmd)
-			ctx := cmd.Context()
-
 			req := data.UpdateUserRequest{}
 			if cmd.Flags().Changed("name") {
 				name, _ := cmd.Flags().GetString("name")
@@ -69,6 +66,20 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := output.NewDryRunPrinter("users update")
+				dr.PrintOperation(
+					fmt.Sprintf("Update User %d", userID),
+					"POST",
+					fmt.Sprintf("/index.php?/api/v2/update_user/%d", userID),
+					req,
+				)
+				return nil
+			}
+
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
 			user, err := cli.UpdateUser(ctx, userID, req)
 			if err != nil {
 				return fmt.Errorf("failed to update user: %w", err)
@@ -84,6 +95,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("role", 0, "ID роли пользователя")
 	cmd.Flags().Bool("admin", false, "Сделать пользователя администратором")
 	cmd.Flags().Bool("inactive", false, "Заблокировать пользователя")
+	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без обновления пользователя")
 	output.AddFlag(cmd)
 
 	return cmd

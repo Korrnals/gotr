@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/debug"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -25,21 +27,16 @@ var exportCmd = &cobra.Command{
     gotr export projects get_projects
     gotr export cases get_cases 1 --suite-id 5 -o cases_suite5.json`,
 
-	Args: cobra.MinimumNArgs(2), // resource и endpoint обязательны
+	Args: cobra.MaximumNArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := GetClient(cmd)
 		ctx := cmd.Context()
 
-		resource := args[0]
-		endpoint := args[1]
-
-		// Определяем основной ID
-		var mainID string
-		if pid, _ := cmd.Flags().GetString("project-id"); pid != "" {
-			mainID = pid
-		} else if len(args) > 2 {
-			mainID = args[2]
+		resource, endpoint, mainID, err := resolveExportInputs(cmd, args)
+		if err != nil {
+			return err
 		}
+
+		client := GetClient(cmd)
 
 		// Формируем путь и query-параметры — одна функция делает всё
 		fullEndpoint, queryParams, err := buildRequestParams(endpoint, mainID, cmd)
@@ -96,4 +93,73 @@ var exportCmd = &cobra.Command{
 
 		return nil
 	},
+}
+
+func resolveExportInputs(cmd *cobra.Command, args []string) (string, string, string, error) {
+	ctx := cmd.Context()
+	p := interactive.PrompterFromContext(ctx)
+
+	resource := ""
+	if len(args) > 0 {
+		resource = strings.ToLower(args[0])
+	} else {
+		if !interactive.HasPrompterInContext(ctx) {
+			return "", "", "", fmt.Errorf("resource required: gotr export <resource> <endpoint> [id]")
+		}
+		idx, _, err := p.Select("Select export resource:", ValidResources)
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to select resource: %w", err)
+		}
+		resource = strings.ToLower(ValidResources[idx])
+	}
+
+	endpoint := ""
+	if len(args) > 1 {
+		endpoint = args[1]
+	} else {
+		if !interactive.HasPrompterInContext(ctx) {
+			return "", "", "", fmt.Errorf("endpoint required: gotr export <resource> <endpoint> [id]")
+		}
+		endpointOptions, _ := getResourceEndpoints(resource, "list")
+		endpointOptions = filterEmpty(endpointOptions)
+		if len(endpointOptions) == 0 {
+			return "", "", "", fmt.Errorf("no export endpoints found for resource: %s", resource)
+		}
+		idx, _, err := p.Select("Select export endpoint:", endpointOptions)
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to select endpoint: %w", err)
+		}
+		endpoint = endpointOptions[idx]
+	}
+
+	mainID := ""
+	if pid, _ := cmd.Flags().GetString("project-id"); pid != "" {
+		mainID = pid
+	} else if len(args) > 2 {
+		mainID = args[2]
+	}
+
+	if mainID == "" && strings.Contains(endpoint, "{") {
+		if !interactive.HasPrompterInContext(ctx) {
+			return "", "", "", fmt.Errorf("id required for endpoint: %s", endpoint)
+		}
+		input, err := p.Input("Enter main ID:", "")
+		if err != nil {
+			return "", "", "", fmt.Errorf("failed to read id: %w", err)
+		}
+		mainID = strings.TrimSpace(input)
+	}
+
+	return resource, endpoint, mainID, nil
+}
+
+func filterEmpty(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if strings.TrimSpace(value) == "" {
+			continue
+		}
+		out = append(out, value)
+	}
+	return out
 }

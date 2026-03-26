@@ -141,8 +141,14 @@ func shouldAutoRunUpdateInteractive(cmd *cobra.Command, endpoint string, hasJSON
 		return !hasAnyChangedFlag(cmd, "name", "announcement", "show-announcement", "is-completed")
 	case "suite":
 		return !hasAnyChangedFlag(cmd, "name", "description", "is-completed")
+	case "section":
+		return !hasAnyChangedFlag(cmd, "name", "description")
 	case "case":
 		return !hasAnyChangedFlag(cmd, "title", "type-id", "priority-id", "refs")
+	case "run":
+		return !hasAnyChangedFlag(cmd, "name", "description", "milestone-id", "assignedto-id", "include-all", "case-ids")
+	case "shared-step":
+		return !hasAnyChangedFlag(cmd, "title")
 	default:
 		return false
 	}
@@ -155,11 +161,64 @@ func runUpdateInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoi
 		return updateProjectInteractive(cli, cmd, id)
 	case "suite":
 		return updateSuiteInteractive(cli, cmd, id)
+	case "section":
+		return updateSectionInteractive(cli, cmd, id)
 	case "case":
 		return updateCaseInteractive(cli, cmd, id)
+	case "run":
+		return updateRunInteractive(cli, cmd, id)
+	case "shared-step":
+		return updateSharedStepInteractive(cli, cmd, id)
 	default:
 		return fmt.Errorf("interactive mode not supported for endpoint: %s", endpoint)
 	}
+}
+
+func updateSectionInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	ctx := cmd.Context()
+	p := interactive.PrompterFromContext(ctx)
+
+	name, err := p.Input("Section name (optional):", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+	description, err := p.MultilineInput("Description (optional):", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+	if name == "" && description == "" {
+		return fmt.Errorf("at least one field is required for update")
+	}
+
+	ui.Preview(os.Stdout, "Update Section", []ui.PreviewField{
+		{Label: "Section ID", Value: id},
+		{Label: "Name", Value: name},
+		{Label: "Description", Value: description},
+	})
+
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	if err != nil || !confirmed {
+		ui.Cancelled(os.Stdout)
+		return nil
+	}
+
+	req := &data.UpdateSectionRequest{}
+	if name != "" {
+		req.Name = name
+	}
+	if description != "" {
+		req.Description = description
+	}
+
+	section, err := cli.UpdateSection(ctx, id, req)
+	if err != nil {
+		return fmt.Errorf("failed to update section: %w", err)
+	}
+
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Section updated (ID: %d)", section.ID)
+	}
+	return outputUpdateResult(cmd, section)
 }
 
 func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
@@ -280,6 +339,82 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		ui.Successf(os.Stdout, "Case updated (ID: %d)", caseResp.ID)
 	}
 	return outputUpdateResult(cmd, caseResp)
+}
+
+func updateRunInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	ctx := cmd.Context()
+	p := interactive.PrompterFromContext(ctx)
+
+	answers, err := interactive.AskRunWithPrompter(p, true)
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+
+	ui.Preview(os.Stdout, "Update Run", []ui.PreviewField{
+		{Label: "Run ID", Value: id},
+		{Label: "Name", Value: answers.Name},
+		{Label: "Description", Value: answers.Description},
+		{Label: "Include all", Value: answers.IncludeAll},
+	})
+
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	if err != nil || !confirmed {
+		ui.Cancelled(os.Stdout)
+		return nil
+	}
+
+	req := &data.UpdateRunRequest{IncludeAll: &answers.IncludeAll}
+	if answers.Name != "" {
+		req.Name = &answers.Name
+	}
+	if answers.Description != "" {
+		req.Description = &answers.Description
+	}
+
+	run, err := cli.UpdateRun(ctx, id, req)
+	if err != nil {
+		return fmt.Errorf("failed to update run: %w", err)
+	}
+
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Run updated (ID: %d)", run.ID)
+	}
+	return outputUpdateResult(cmd, run)
+}
+
+func updateSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command, id int64) error {
+	ctx := cmd.Context()
+	p := interactive.PrompterFromContext(ctx)
+
+	title, err := p.Input("Shared step title:", "")
+	if err != nil {
+		return fmt.Errorf("input error: %w", err)
+	}
+	if title == "" {
+		return fmt.Errorf("shared step title is required")
+	}
+
+	ui.Preview(os.Stdout, "Update Shared Step", []ui.PreviewField{
+		{Label: "Shared Step ID", Value: id},
+		{Label: "Title", Value: title},
+	})
+
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	if err != nil || !confirmed {
+		ui.Cancelled(os.Stdout)
+		return nil
+	}
+
+	req := &data.UpdateSharedStepRequest{Title: title}
+	step, err := cli.UpdateSharedStep(ctx, id, req)
+	if err != nil {
+		return fmt.Errorf("failed to update shared step: %w", err)
+	}
+
+	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
+		ui.Successf(os.Stdout, "Shared step updated (ID: %d)", step.ID)
+	}
+	return outputUpdateResult(cmd, step)
 }
 
 // runUpdateDryRun выполняет dry-run для update команды

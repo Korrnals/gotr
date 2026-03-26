@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -70,14 +71,35 @@ func TestGetByEmailCmd_InvalidEmail(t *testing.T) {
 
 // ==================== Тесты валидации ====================
 
-func TestGetByEmailCmd_NoArgs(t *testing.T) {
+func TestGetByEmailCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetUsersFunc: func(ctx context.Context) (data.GetUsersResponse, error) {
+			return data.GetUsersResponse{{ID: 7, Name: "John Doe", Email: "john@example.com"}}, nil
+		},
+		GetUserByEmailFunc: func(ctx context.Context, email string) (*data.User, error) {
+			assert.Equal(t, "john@example.com", email)
+			return &data.User{ID: 7, Name: "John Doe", Email: email}, nil
+		},
+	}
+	cmd := newGetByEmailCmd(testhelper.GetClientForTests)
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestGetByEmailCmd_NoArgs_NonInteractive(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newGetByEmailCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewNonInteractivePrompter()))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestGetByEmailCmd_TooManyArgs(t *testing.T) {

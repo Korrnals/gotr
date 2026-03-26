@@ -16,7 +16,7 @@ import (
 // Эндпоинт: POST /update_user/{user_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <user_id>",
+		Use:   "update [user_id]",
 		Short: "Обновить пользователя",
 		Long: `Обновляет существующего пользователя в системе TestRail.
 
@@ -29,11 +29,23 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
   # Заблокировать пользователя
   gotr users update 123 --inactive`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			userID, err := flags.ValidateRequiredID(args, 0, "user_id")
-			if err != nil {
-				return err
+			var userID int64
+			var err error
+			if len(args) > 0 {
+				userID, err = flags.ValidateRequiredID(args, 0, "user_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if err := requireInteractiveUserArg(cmd.Context(), "gotr users update [user_id]"); err != nil {
+					return err
+				}
+				userID, err = resolveUserIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			req := data.UpdateUserRequest{}

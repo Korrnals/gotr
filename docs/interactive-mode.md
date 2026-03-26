@@ -231,18 +231,24 @@ auto-interactive).
 | `add case` | Да (wizard + auto select section) | Да | Ошибка при попытке wizard |
 | `add run` | Да (wizard + auto select project) | Да | Ошибка при попытке wizard |
 | `add shared-step` | Да (wizard + auto select project) | Да | Ошибка при попытке wizard |
-| `add result`, `add result-for-case`, `add attachment` | Нет | Да | N/A |
+| `add result` | Да (project/run/test select при отсутствии `test-id`) | Да | Ошибка если нужен выбор |
+| `add result-for-case` | Частично (project/run select при отсутствии `run-id`; `case-id` остаётся manual) | Да | Ошибка если нужен выбор |
+| `add attachment` | Частично (container IDs optional у части subcommands, `file_path` manual) | Да | Ошибка если нужен выбор |
 | `update project` | Да (wizard) | Да | Ошибка при попытке wizard |
 | `update suite` | Да (wizard) | Да | Ошибка при попытке wizard |
 | `update section` | Да (wizard) | Да | Ошибка при попытке wizard |
 | `update case` | Да (wizard) | Да | Ошибка при попытке wizard |
 | `update run` | Да (wizard) | Да | Ошибка при попытке wizard |
 | `update shared-step` | Да (wizard) | Да | Ошибка при попытке wizard |
-| `update labels` | Нет | Да | N/A |
+| `update labels` | Частично (`labels update test` с выбором test; bulk/manual ветки частично manual-only) | Да | Ошибка если нужен выбор |
 | `get cases` | Да (project/suite select) | Да | Ошибка если нужен выбор |
 | `get suites`, `get sharedsteps` | Да (project select) | Да | Ошибка если нужен выбор |
-| `run list`, `run get`, `run delete`, `run close`, `run update` | Да (project/run select при отсутствии run-id) | Да | Ошибка если нужен выбор |
-| `result list`, `result get`, `result get-case` | Да (project/run/test-case select при отсутствии ID) | Да | Ошибка если нужен выбор |
+| `run list`, `run get`, `run delete`, `run close`, `run update`, `run create` | Да (project/run select при отсутствии ID; `run create` также выбирает suite) | Да | Ошибка если нужен выбор |
+| `plans list`, `plans get`, `plans add`, `plans update`, `plans delete`, `plans close`, `plans entry add/update/delete` | Да (project/plan/entry select при отсутствии ID) | Да | Ошибка если нужен выбор |
+| `result list`, `result get`, `result get-case`, `result add` | Да (project/run/test-case select при отсутствии ID) | Да | Ошибка если нужен выбор |
+| `users get`, `users update`, `users get-by-email` | Да (select из users list при отсутствии ID/email) | Да | Ошибка если нужен выбор |
+| `roles get` | Да (select из roles list при отсутствии ID) | Да | Ошибка если нужен выбор |
+| `reports list`, `reports run`, `reports run-cross-project`, `templates list`, `bdds add/get` | Да | Да | Ошибка если нужен выбор |
 | `sync *` | Да (project/suite/select + confirm) | Да | Ошибка если нужен выбор/confirm |
 | `delete` | Да (endpoint/id select) | Да | Ошибка если нужен выбор |
 | `list` | Да (resource select) | Да | Ошибка если нужен выбор |
@@ -263,26 +269,26 @@ auto-interactive).
 | Пакет `cmd/**` | Registered | Interactive | Coverage | Комментарий |
 | --- | --- | --- | --- | --- |
 | `attachments` | Да | Да | Высокое | Auto есть в `attachments list case/plan/plan-entry/run/test`, `attachments get`, `attachments delete`, `attachments add case/plan/plan-entry/result/run` |
-| `bdds` | Да | Нет | Нет | Manual-only |
+| `bdds` | Да | Да | Высокое | Auto есть в `add`, `get` через выбор case |
 | `cases` | Да | Да | Частично | Auto есть в `cases list`, `cases get`, `cases delete`, `cases update`, `cases add`, `cases bulk`; часть веток остаётся manual-only |
 | `compare` | Да | Нет | Нет | Manual-only |
-| `configurations` | Да | Нет | Нет | Manual-only |
+| `configurations` | Да | Да | Высокое | Auto есть в `list`, `add-group`, `add-config`, `update-group`, `update-config`, `delete-group`, `delete-config` |
 | `datasets` | Да | Да | Высокое | Auto есть в `list`, `add`, `get`, `update`, `delete` через выбор project/dataset |
 | `get` | Да | Да | Частично | Auto есть в `cases`, `case`, `suites`, `suite`, `sharedsteps`, `sharedstep`, `case-history`, `sharedstep-history`, `project`, `sections list`, `section`; остальные ветки manual-only |
 | `groups` | Да | Да | Высокое | Auto есть в `list`, `get`, `add`, `update`, `delete` через выбор project/group |
-| `labels` | Да | Нет | Нет | Manual-only |
+| `labels` | Да | Да | Частично | Auto есть в `get`, `list`, `update test`, `update-label`; часть bulk/manual веток требует ручные списки/флаги |
 | `milestones` | Да | Да | Высокое | Auto есть в `list`, `get`, `add`, `update`, `delete` через выбор project/milestone |
-| `plans` | Да | Да | Высокое | Auto есть в `list`, `get`, `add`, `update`, `delete`, `close`, `entry add` через выбор project/plan |
-| `result` | Да | Да | Частично | Auto есть в `result list`, `result get`, `result get-case`; mutating/fields ветки остаются manual-only |
-| `run` | Да | Да | Частично | Auto есть в `run list`, `run get`, `run delete`, `run close`, `run update`; прочие ветки manual-only |
+| `plans` | Да | Да | Высокое | Auto есть в `list`, `get`, `add`, `update`, `delete`, `close`, `entry add`, `entry update`, `entry delete` через выбор project/plan/entry |
+| `result` | Да | Да | Частично | Auto есть в `list`, `get`, `get-case`, `add`, `add-case`; `add-bulk`/`fields` остаются manual-oriented |
+| `run` | Да | Да | Высокое | Auto есть в `list`, `get`, `delete`, `close`, `update`, `create` через выбор project/run/suite |
 | `sync` | Да | Да | Высокое | Интерактивные цепочки выбора/confirm в основных сценариях синхронизации |
 | `test` | Да | Нет | Нет | Manual-only |
 | `variables` | Да | Нет | Нет | Manual-only |
-| `reports` | Да | Нет | Нет | Manual-only |
-| `roles` | Да | Нет | Нет | Manual-only |
-| `templates` | Да | Нет | Нет | Manual-only |
-| `tests` | Да | Нет | Нет | Manual-only |
-| `users` | Да | Нет | Нет | Manual-only |
+| `reports` | Да | Да | Высокое | Auto есть в `list`, `run`, `run-cross-project` |
+| `roles` | Да | Да | Частичное | Auto есть в `get`; `list` read-only/manual |
+| `templates` | Да | Да | Частичное | Auto есть в `list` через выбор project |
+| `tests` | Да | Да | Высокое | Auto есть в `list`, `get`, `update` через выбор run/test |
+| `users` | Да | Да | Частичное | Auto есть в `get`, `update`, `get-by-email`; `list`/`add` manual/read-only |
 | `list` | Нет | Нет | Нет | Служебная директория; standalone Register отсутствует |
 | `internal` | Нет | Нет | Нет | Вспомогательные тестовые утилиты, не CLI-команды |
 
@@ -312,39 +318,39 @@ auto-interactive).
 
 | Пакет | Current (Auto/Manual/NI) | Target (Auto/Manual/NI) | Priority | Scope |
 | --- | --- | --- | --- | --- |
-| `cmd-root/add` | Частично/Да/Частично | Да/Да/Да | P0 | Добивка NI в новых prompt-точках и единые ошибки |
-| `cmd-root/update` | Частично/Да/Частично | Да/Да/Да | P0 | Добивка NI и выравнивание wizard contract |
+| `cmd-root/add` | Да/Да/Да | Да/Да/Да | P0 | Dry-run и NI gate есть; attachment/result paths различаются по глубине auto-select |
+| `cmd-root/update` | Да/Да/Да | Да/Да/Да | P0 | Wizard/NI выровнены для root update и package-команд |
 | `cmd-root/delete` | Да/Да/Да | Да/Да/Да | P0 | Auto-select endpoint/id + NI guard реализованы |
 | `cmd-root/list` | Да/Да/Да | Да/Да/Да | P1 | Auto-select resource + NI guard реализованы |
 | `cmd-root/export` | Да/Да/Да | Да/Да/Да | P0 | Auto-select resource/endpoint/id + NI guard реализованы |
-| `get` | Частично/Да/Да | Да/Да/Да | P0 | Расширены `project`, `sections list`, `section`, `suite`, `sharedstep`, `case`, `case-history`, `sharedstep-history`; оставшиеся manual-only ветки ещё добиваются |
-| `run` | Частично/Да/Да | Да/Да/Да | P0 | Закрыты `list/get/delete/close/update`; remaining manual-only ветки отдельно |
-| `result` | Частично/Да/Да | Да/Да/Да | P0 | Закрыты `list/get/get-case`; remaining manual-only ветки отдельно |
+| `get` | Да/Да/Да | Да/Да/Да | P0 | Основные read-only ветки покрыты auto-select; остатки без prompts являются осознанно manual/read-only |
+| `run` | Да/Да/Да | Да/Да/Да | P0 | Закрыты `list/get/delete/close/update/create`; NI guard есть в интерактивных ветках |
+| `result` | Частично/Да/Да | Да/Да/Да | P0 | Закрыты `list/get/get-case/add/add-case`; manual-only остаётся `add-bulk` (required file input) |
 | `sync` | Да/Да/Да | Да/Да/Да | P0 | NI закрыт на select/confirm точках (`cases`, `suites`, `sections`, `shared-steps`, `full`) |
 | `attachments` | Да/Да/Да | Да/Да/Да | P1 | Закрыты `list case/plan/plan-entry/run/test`, `get`, `delete`, `add case/plan/plan-entry/result/run` |
-| `bdds` | Нет/Да/N/A | Частично/Да/Да | P2 | Минимальный выбор case_id в read/mutate ветках |
+| `bdds` | Да/Да/Да | Частично/Да/Да | P2 | `add/get` поддерживают auto-select case_id + NI guard |
 | `cases` | Частично/Да/Да | Частично/Да/Да | P1 | Закрыты `list/get/delete/update/add/bulk`; next: оставшиеся manual-only ветки |
 | `compare` | Нет/Да/N/A | Частично/Да/Да | P2 | Interactive presets для source/destination |
-| `configurations` | Нет/Да/N/A | Частично/Да/Да | P2 | Select project/group/config |
+| `configurations` | Да/Да/Да | Частично/Да/Да | P2 | Закрыты `list/add-group/add-config/update-group/update-config/delete-group/delete-config` |
 | `datasets` | Да/Да/Да | Да/Да/Да | P1 | Закрыты `list/add/get/update/delete` с project/dataset select + NI guard |
 | `groups` | Да/Да/Да | Да/Да/Да | P1 | Закрыты `list/get/add/update/delete` с project/group select + NI guard |
-| `labels` | Нет/Да/N/A | Частично/Да/Да | P2 | Select project/test/label |
+| `labels` | Частично/Да/Да | Частично/Да/Да | P2 | Auto есть в `get/list/update test/update-label`; `update tests` остаётся manual-only по входу |
 | `milestones` | Да/Да/Да | Да/Да/Да | P1 | Закрыты `list/get/add/update/delete` с project/milestone select + NI guard |
-| `plans` | Да/Да/Да | Да/Да/Да | P1 | Закрыты `list/get/add/update/delete/close/entry add` с project/plan select + NI guard |
-| `reports` | Нет/Да/N/A | Частично/Да/Да | P2 | Select project/template |
-| `roles` | Нет/Да/N/A | Нет/Да/N/A | P2 | Справочник, manual-only допустим |
-| `templates` | Нет/Да/N/A | Частично/Да/Да | P2 | Select project |
+| `plans` | Да/Да/Да | Да/Да/Да | P1 | Закрыты `list/get/add/update/delete/close/entry add/update/delete` с project/plan/entry select + NI guard |
+| `reports` | Да/Да/Да | Частично/Да/Да | P2 | `list/run/run-cross-project` поддерживают auto-select + NI guard |
+| `roles` | Частично/Да/Да | Нет/Да/N/A | P2 | `get` интерактивный; `list` read-only/manual |
+| `templates` | Частично/Да/Да | Частично/Да/Да | P2 | `list` с auto-select project + NI guard |
 | `test` | Нет/Да/N/A | Частично/Да/Да | P1 | Select run/test в read ветках |
-| `tests` | Нет/Да/N/A | Частично/Да/Да | P1 | Select run/test в list/get/update |
-| `users` | Нет/Да/N/A | Частично/Да/Да | P2 | Select user/project для list/get/update |
-| `variables` | Нет/Да/N/A | Частично/Да/Да | P1 | Select dataset/variable |
+| `tests` | Да/Да/Да | Частично/Да/Да | P1 | `list/get/update` с auto-select run/test + NI guard |
+| `users` | Частично/Да/Да | Частично/Да/Да | P2 | `get/update/get-by-email` интерактивны; `list/add` остаются manual/read-only |
+| `variables` | Да/Да/Да | Частично/Да/Да | P1 | `list/add/update/delete/get` с dataset/variable select + NI guard |
 
 Отдельно по `roles`:
 
-- пакет может оставаться manual-only по `Auto` (это reference directory),
-если не требуется UX-унификация с выбором сущностей.
+- пакет частично интерактивный (`roles get`), но может оставаться преимущественно
+reference/manual-only без полной UX-унификации всех веток.
 
-- `NI` для `roles` не обязателен, пока в пакете нет prompts.
+- `NI` для `roles get` уже обязателен и реализован (есть prompt-точка).
 
 ## Матрица dry-run (имитация без мутаций)
 

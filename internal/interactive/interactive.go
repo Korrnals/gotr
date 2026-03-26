@@ -90,6 +90,31 @@ func SelectRun(ctx context.Context, p Prompter, runs data.GetRunsResponse, promp
 	return runs[idx].ID, nil
 }
 
+// SelectSection selects a section using unified prompter.
+func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsResponse, prompt string) (int64, error) {
+	_ = ctx
+	if len(sections) == 0 {
+		return 0, fmt.Errorf("no sections found")
+	}
+
+	if prompt == "" {
+		prompt = "Select section:"
+	}
+
+	options := make([]string, 0, len(sections))
+	for i, section := range sections {
+		line := fmt.Sprintf("[%d] ID: %d | %s", i+1, section.ID, section.Name)
+		options = append(options, line)
+	}
+
+	idx, _, err := p.Select(prompt, options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select section: %w", err)
+	}
+
+	return sections[idx].ID, nil
+}
+
 // SelectSuiteForProject fetches suites for a project and selects one using the prompter.
 func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
 	suites, err := cli.GetSuites(ctx, projectID)
@@ -97,28 +122,4 @@ func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInt
 		return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
 	}
 	return SelectSuite(ctx, p, suites, prompt)
-}
-
-// SelectProjectInteractively is a compatibility wrapper.
-func SelectProjectInteractively(ctx context.Context, httpClient client.ClientInterface) (int64, error) {
-	return SelectProject(ctx, PrompterFromContext(ctx), httpClient, "")
-}
-
-// SelectSuiteInteractively is a compatibility wrapper.
-func SelectSuiteInteractively(suites data.GetSuitesResponse) (int64, error) {
-	return SelectSuite(context.Background(), NewTerminalPrompter(), suites, "")
-}
-
-// SelectRunInteractively is a compatibility wrapper.
-func SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
-	return SelectRun(context.Background(), NewTerminalPrompter(), runs, "")
-}
-
-// ConfirmAction asks for action confirmation (compatibility wrapper).
-func ConfirmAction(message string) bool {
-	ok, err := NewTerminalPrompter().Confirm(message, false)
-	if err != nil {
-		return false
-	}
-	return ok
 }

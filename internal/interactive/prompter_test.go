@@ -122,3 +122,16 @@ func TestSelectRun_WithMockPrompter(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(301), runID)
 }
+
+func TestSelectSection_WithMockPrompter(t *testing.T) {
+	ctx := context.Background()
+	mockPrompt := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+	sections := data.GetSectionsResponse{
+		{ID: 401, Name: "Section A"},
+		{ID: 402, Name: "Section B"},
+	}
+
+	sectionID, err := SelectSection(ctx, mockPrompt, sections, "Select section")
+	require.NoError(t, err)
+	assert.Equal(t, int64(402), sectionID)
+}

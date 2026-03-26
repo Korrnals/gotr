@@ -156,7 +156,10 @@ var sharedStepsCmd = &cobra.Command{
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d shared steps...", len(filtered))
 			ok, err := p.Confirm("Continue?", false)
-			if err != nil || !ok {
+			if err != nil {
+				return err
+			}
+			if !ok {
 				ui.Cancelled(os.Stdout)
 				return nil
 			}

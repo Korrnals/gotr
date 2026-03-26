@@ -103,3 +103,30 @@ func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, addCalled, "AddSection должен вызываться после подтверждения")
 }
+
+func TestSyncSections_NoFlags_NonInteractive_Error(t *testing.T) {
+	addCalled := false
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		AddSectionFunc: func(ctx context.Context, projectID int64, r *data.AddSectionRequest) (*data.Section, error) {
+			addCalled = true
+			return &data.Section{ID: 200, Name: r.Name}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetSectionsFlags()
+	cmd := sectionsCmd
+	SetTestClient(cmd, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+	assert.False(t, addCalled, "AddSection не должен вызываться в non-interactive")
+}

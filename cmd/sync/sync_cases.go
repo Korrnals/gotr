@@ -184,7 +184,10 @@ var casesCmd = &cobra.Command{
 		op.Phase("Awaiting confirmation")
 		ui.Infof(os.Stdout, "Confirm import of %d new cases...", len(filtered))
 		ok, err := p.Confirm("Continue?", false)
-		if err != nil || !ok {
+		if err != nil {
+			return err
+		}
+		if !ok {
 			ui.Cancelled(os.Stdout)
 			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
 			return nil

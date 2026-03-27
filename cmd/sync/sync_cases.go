@@ -170,9 +170,11 @@ var casesCmd = &cobra.Command{
 		}
 
 		if !quiet {
-			fmt.Printf("\nAnalysis result:\n")
-			fmt.Printf("  Matches: %d\n", len(matches))
-			fmt.Printf("  New: %d\n", len(filtered))
+			if !quiet {
+				fmt.Printf("\nAnalysis result:\n")
+				fmt.Printf("  Matches: %d\n", len(matches))
+				fmt.Printf("  New: %d\n", len(filtered))
+			}
 		}
 
 		if dryRun {

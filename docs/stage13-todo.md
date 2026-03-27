@@ -19,15 +19,15 @@
 - [x] Создать стартовые артефакты:
 - [x] docs/stage13-quality-metrics.md
 - [x] docs/stage13-audit-report.md
-- [ ] Закоммитить шаг Phase 1.
+- [x] Закоммитить шаг Phase 1.
 
 ## Phase 2 - Core Audits
 
-- [ ] Architecture Conformance (architect + backend-engineer):
-- [ ] Построить dependency map по пакетам cmd/internal/pkg.
-- [ ] Зафиксировать layering violations и coupling hotspots.
-- [ ] Сформировать file risk map (high/medium/low).
-- [ ] Обновить audit-report (architecture findings + remediation).
+- [x] Architecture Conformance (architect + backend-engineer):
+- [x] Построить dependency map по пакетам cmd/internal/pkg.
+- [x] Зафиксировать layering violations и coupling hotspots.
+- [x] Сформировать file risk map (high/medium/low).
+- [x] Обновить audit-report (architecture findings + remediation).
 - [ ] Commit шага Architecture Conformance.
 
 - [ ] CLI Contract Consistency (qa-engineer + backend-engineer):
@@ -64,6 +64,12 @@
 - [ ] Проверить reproducibility для release-артефактов.
 - [ ] Обновить docs/release-workflow.md при необходимости.
 - [ ] Commit шага CI/CD Hardening.
+
+## Добавленные дельты плана (2026-03-27)
+
+- [x] Добавить подпоток "Interactive helper consolidation" как отдельную remediation-зону Stage 13.
+- [x] Добавить подпоток "Compare runtime seam hardening" для снижения прямой связки cmd/compare и internal/concurrency.
+- [ ] Зафиксировать реализацию этих двух подпотоков в Phase 3 с отдельными коммитами.
 
 ## Phase 3 - Refactoring Implementation
 

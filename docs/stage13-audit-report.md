@@ -57,8 +57,31 @@
 - Использован fallback read-only analysis path (search diagnostics + локальные baseline проверки).
 - На выполнение Stage 13 это не блокер: реализация и проверки продолжаются штатно.
 
+## Step 2 Results - Architecture Conformance
+
+Артефакт шага:
+
+- docs/stage13-architecture-conformance.md
+
+Ключевые результаты:
+
+- Forbidden dependency `internal/pkg -> cmd`: не обнаружено.
+- Public boundary `pkg -> internal`: не обнаружено.
+- Выявлен coupling hotspot: прямая связка `cmd/compare` с `internal/concurrency` (4 runtime файла + тестовые точки).
+- Выявлен duplication hotspot: 17 файлов `cmd/*/interactive_helpers.go`.
+
+Влияние на план Stage 13:
+
+- Добавлен remediation-подпоток "Compare runtime seam hardening".
+- Добавлен remediation-подпоток "Interactive helper consolidation".
+
+Статус шага:
+
+- Architecture audit completed.
+- Далее: CLI contract matrix (quiet/flags/non-interactive).
+
 ## Next workstream
 
-1. Architecture conformance audit: dependency map + layering checks + file risk map.
-2. CLI contract audit: strict quiet + flags normalization matrix.
+1. CLI contract audit: strict quiet + flags normalization matrix.
+2. API compliance audit: endpoint-by-endpoint matrix and deviations.
 3. Reliability pass: race checks и concurrency risk verification.

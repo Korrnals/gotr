@@ -82,3 +82,12 @@ Interpretation:
 - risky exec usage: limited to editor/selftest contexts
 - Security findings: F13(LOW), F14(LOW)
 - Remediation added: R10(LOW), R11(MEDIUM)
+
+## Step 7 snapshot - CI/CD Hardening Audit
+
+- `.github/workflows`: absent (no CI workflow files)
+- Makefile verify target: absent (no unified quality gate command)
+- build/release separation: partial (build currently triggers `sync-tag` side-effect)
+- reproducibility checks: absent (no checksum verification flow)
+- CI/CD findings: F15(HIGH), F16(MEDIUM), F17(MEDIUM)
+- Remediation added: R12(HIGH), R13(MEDIUM), R14(MEDIUM)

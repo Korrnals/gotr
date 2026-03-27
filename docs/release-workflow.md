@@ -153,3 +153,21 @@ release-3.0.0 → PR → main → tag v3.0.0
 - [ ] CHANGELOG.md обновлён
 - [ ] PR: release → main
 - [ ] Tag `vX.Y.Z`
+
+---
+
+## Минимальные Quality Gates (Stage 13)
+
+Перед merge любого PR в release-ветку обязательны проверки:
+
+- `go test ./...`
+- `go vet ./...`
+- `go build ./...`
+- `go test -race ./...` (в CI окружении с `CGO_ENABLED=1` и установленным gcc/clang)
+- `govulncheck ./...` (или эквивалентный vulnerability scan)
+
+### Принцип CI parity
+
+- Локальная `verify`-цель Makefile и CI pipeline должны проверять одинаковый набор gates.
+- Tagging/release операции не должны быть частью обычной `build`-цели.
+- Для release-артефактов должны публиковаться checksums (например SHA256).

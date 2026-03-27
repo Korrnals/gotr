@@ -168,3 +168,25 @@
 
 - R10 (LOW): подготовить dependency bump план для безопасных patch/minor обновлений.
 - R11 (MEDIUM): добавить `govulncheck ./...` в CI gate (или эквивалентный vulnerability scan шаг).
+
+## Step 7 Results - CI/CD Hardening Audit
+
+Ключевые результаты:
+
+- В `.github/workflows` отсутствуют workflow-файлы (CI pipeline не формализован).
+- В `Makefile` отсутствует единая verify-цель с обязательными gates (`build`, `test`, `vet`, `race`, `lint`).
+- `build` зависит от `sync-tag`, который может мутировать git-состояние (создание локального tag) во время локальной сборки.
+- Release path (`release`, `release-compressed`) не публикует checksums и не фиксирует воспроизводимые build inputs.
+- `release-workflow.md` описывает branch flow, но не содержит machine-checkable quality gate contract.
+
+Найденные риски:
+
+- HIGH (F15): отсутствует CI workflow с обязательными quality gates.
+- MEDIUM (F16): `build -> sync-tag` смешивает compile и release/tagging responsibilities.
+- MEDIUM (F17): отсутствуют checksum/verify шаги для release артефактов.
+
+Влияние на план Stage 13:
+
+- R12 (HIGH): добавить CI workflow с gates: `go test`, `go vet`, `go build`, `go test -race`, `govulncheck`.
+- R13 (MEDIUM): разделить `build` и `sync-tag` в Makefile (tagging только явной release целью).
+- R14 (MEDIUM): добавить release checksum + verification шаг (например `sha256sum` для каждого артефакта).

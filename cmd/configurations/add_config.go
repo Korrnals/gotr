@@ -44,7 +44,7 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations add-config [group_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations add-config [group_id]")
 				}
 

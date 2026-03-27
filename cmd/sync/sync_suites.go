@@ -42,7 +42,7 @@ var suitesCmd = &cobra.Command{
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		quiet := isQuiet(cmd)
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 

@@ -40,7 +40,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations update-group [group_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations update-group [group_id]")
 				}
 

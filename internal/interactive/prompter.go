@@ -148,3 +148,9 @@ func PrompterFromContext(ctx context.Context) Prompter {
 
 	return NewTerminalPrompter()
 }
+
+// IsNonInteractive reports whether current context uses non-interactive prompter.
+func IsNonInteractive(ctx context.Context) bool {
+	_, ok := PrompterFromContext(ctx).(*NonInteractivePrompter)
+	return ok
+}

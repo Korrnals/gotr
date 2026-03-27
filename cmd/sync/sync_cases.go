@@ -54,7 +54,7 @@ var casesCmd = &cobra.Command{
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		quiet := isQuiet(cmd)
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
 

@@ -40,7 +40,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("project_id is required in non-interactive mode: gotr templates list [project_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("project_id is required in non-interactive mode: gotr templates list [project_id]")
 				}
 

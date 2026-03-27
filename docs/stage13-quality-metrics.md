@@ -100,12 +100,13 @@ Interpretation:
 - Matrix artifact: docs/stage13-test-coverage-matrix.md
 - Dedicated workstream added: COV-1..COV-6
 
-## Coverage delta snapshot (Phase 3.1 COV-2 partial)
+## Coverage delta snapshot (Phase 3.1 COV-2 complete)
 
 - Added tests:
 - `internal/paths/paths_test.go`
 - `internal/models/config/config_test.go`
 - `internal/selftest/types_test.go`
-- Recomputed full coverage total: **68.4%** (statements)
-- Delta vs COV-1 baseline: **+1.0%**
-- Remaining for COV-2: close `internal/log` zero-coverage gap.
+- `internal/log/logger_test.go`
+- Recomputed full coverage total: **68.7%** (statements)
+- Delta vs COV-1 baseline: **+1.3%**
+- COV-2 status: **DONE**.

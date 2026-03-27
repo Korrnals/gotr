@@ -48,3 +48,15 @@ Interpretation:
 - isQuiet() wrapper duplicates: 1 function in cmd/sync/sync_helpers.go (LOW)
 - CLI contract findings: F1(HIGH), F2(MEDIUM), F3(LOW), F4(MEDIUM)
 - Remediation added to Phase 3: R1(HIGH), R2(MEDIUM), R3(LOW), R4(MEDIUM)
+
+## Step 4 snapshot - API Compliance Audit
+
+- Transport checks: 7/7 PASS
+- URL construction checks: 5/5 PASS
+- Response handling: 5/6 PASS, 1 FAIL (body leak F5)
+- Interface coverage: 4/4 PASS + 1 NOTE (F6)
+- Pagination: 3/3 PASS
+- Security: 3/3 PASS
+- MEDIUM findings: 1 (F5 body leak)
+- LOW findings: 1 (F6 interface gaps)
+- Remediation added: R5(MEDIUM), R6(LOW)

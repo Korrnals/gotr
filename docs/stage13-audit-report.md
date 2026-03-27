@@ -107,3 +107,23 @@
 
 - CLI Contract Audit completed.
 - Далее: API Compliance Matrix.
+
+## Step 4 Results - API Compliance Audit
+
+Артефакт шага:
+
+- docs/stage13-api-compliance-matrix.md
+
+Ключевые находки:
+
+- PASS: Transport/Auth — Basic Auth, Content-Type, User-Agent, ctx propagation, TLS настройка.
+- PASS: URL construction — единственная const apiPrefix, нет прямых строк вне client, корректный TestRail & encoding.
+- PASS: Pagination — dual-mode decodeListResponse, paginator body.Close в каждой итерации.
+- PASS: Interface coverage — compile-time check присутствует, MockClient реализован.
+- MEDIUM BUG (F5): internal/client/request.go:54 — ReadJSONResponse non-200 ветка: body leak (нет defer resp.Body.Close()).
+- LOW (F6): Group/Role/Dataset/../Label операции без отдельных API-интерфейсных типов.
+
+Влияние на план Stage 13:
+
+- R5 (MEDIUM): Fix ReadJSONResponse body leak — добавить в Phase 3.
+- R6 (LOW): Add grouped interfaces — Phase 3, low priority.

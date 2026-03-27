@@ -127,3 +127,24 @@
 
 - R5 (MEDIUM): Fix ReadJSONResponse body leak — добавить в Phase 3.
 - R6 (LOW): Add grouped interfaces — Phase 3, low priority.
+
+## Step 5 Results - Reliability & Concurrency Audit
+
+Артефакт шага:
+
+- docs/stage13-reliability-audit.md
+
+Ключевые находки:
+
+- `go test -race` теперь исполняется (gcc установлен, `CGO_ENABLED=1`).
+- Critical package race-run: `internal/concurrency`, `internal/concurrent`, `internal/client` (targeted), `internal/service`, `internal/interactive` — PASS.
+- `cmd/compare` race-run выявил `WARNING: DATA RACE` в тесте `TestCompareSectionsInternal_UsesHeavyRuntimeConfig`.
+- Причина race: конкурентный append в shared slice `captured` внутри mock closure (`cmd/compare/fetchers_test.go:268`).
+- Статус: race исправлен (mutex around append), commit `9358ac8`; повторный `go test -race ./cmd/compare/...` — PASS.
+- Оставшийся reliability risk: мутабельная global struct `PriorityThresholds` (LOW/WARN).
+
+Влияние на план Stage 13:
+
+- R7 (INFO): формализовать полный `go test -race ./...` как CI gate.
+- R8 (LOW): `PriorityThresholds` сделать read-only/unexport.
+- R9 (DONE): test-race fix для compare уже внедрен.

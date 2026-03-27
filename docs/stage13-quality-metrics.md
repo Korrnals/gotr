@@ -60,3 +60,15 @@ Interpretation:
 - MEDIUM findings: 1 (F5 body leak)
 - LOW findings: 1 (F6 interface gaps)
 - Remediation added: R5(MEDIUM), R6(LOW)
+
+## Step 5 snapshot - Reliability & Concurrency Audit
+
+- go test -race: PARTIAL PASS (targeted packages with CGO_ENABLED=1)
+- Race-tested packages: internal/concurrency PASS, internal/concurrent PASS, internal/client targeted PASS, internal/service PASS, internal/interactive PASS, cmd/compare PASS after fix
+- DATA RACE detected and fixed: cmd/compare/fetchers_test.go (captured append protected by mutex), commit 9358ac8
+- Static mutex analysis: 10/10 concurrent data structures protected
+- Loop variable capture: PASS (all goroutine launches)
+- errgroup usage: PASS (g.SetLimit + ctx propagation)
+- Buffered channels: PASS
+- Global mutable state findings: 1 WARN (F11 PriorityThresholds)
+- Remediation added: R7(INFO), R8(LOW), R9(DONE)

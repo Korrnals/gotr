@@ -113,6 +113,7 @@
 - [x] internal/client: добавлены HTTP/unit-тесты для projects/accessor.
 - [x] internal/client: добавлены unit-тесты для request helpers (ReadResponse/Print/Save).
 - [x] internal/client: добавлены HTTP-тесты для reports endpoints (run/cross/get-cross).
+- [x] internal/client: добавлены HTTP-тесты для plans endpoints (update/close/entry operations).
 - [x] internal/service: добавлены unit-тесты для test service (Get/GetForRun/Update/ParseID).
 - [x] internal/service/migration: добавлены unit-тесты для export/log/mapping loader.
 - [x] internal/service: расширены unit-тесты ResultService (constructors/get/add/parse paths).

@@ -304,8 +304,9 @@ func TestRegister(t *testing.T) {
 		saveFlag := cmd.Flags().Lookup("save")
 		assert.NotNil(t, saveFlag, "save flag should exist on %s", sub)
 
-		quietFlag := cmd.Flags().Lookup("quiet")
-		assert.NotNil(t, quietFlag, "quiet flag should exist on %s", sub)
+		// Локальный quiet override не должен объявляться на подкомандах.
+		// Глобальный quiet может приходить от root persistent flags в runtime.
+		assert.Nil(t, cmd.Flags().Lookup("quiet"), "quiet should not be declared locally on %s", sub)
 	}
 }
 

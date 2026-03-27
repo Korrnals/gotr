@@ -102,7 +102,6 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 	}
 
 	output.AddFlag(cmd)
-	cmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 	cmd.Flags().Int64("status-id", 0, "Фильтр по ID статуса")
 	cmd.Flags().Int64("assigned-to", 0, "Фильтр по ID назначенного пользователя")
 

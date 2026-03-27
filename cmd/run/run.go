@@ -78,7 +78,6 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	// Общие флаги для всех подкоманд
 	for _, subCmd := range Cmd.Commands() {
 		output.AddFlag(subCmd)
-		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 	}
 
 	// Mark required flags for create (already defined in constructor)

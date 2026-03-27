@@ -107,6 +107,12 @@
 - [x] internal/selftest/types: добавлены unit-тесты (types_test.go).
 - [x] internal/log: добавлены unit-тесты (logger_test.go).
 - [ ] COV-3: Довести internal/client + internal/service до 95%+.
+
+Текущий статус COV-3:
+
+- [x] internal/client: добавлены HTTP/unit-тесты для projects/accessor.
+- [x] internal/service: добавлены unit-тесты для test service (Get/GetForRun/Update/ParseID).
+- [ ] Довести internal/client + internal/service до 95%+.
 - [ ] COV-4: Довести internal/concurrency + internal/concurrent до 95%+.
 - [ ] COV-5: Закрыть cmd/* thin wrappers массовыми table-driven тестами.
 - [ ] COV-6: Финальный проход до total coverage = 100.0%.

@@ -167,3 +167,12 @@ Interpretation:
 - Delta vs COV-3 partial 5: **+0.4%**
 - Delta vs COV-1 baseline: **+3.8%**
 - COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 7)
+
+- Added tests:
+- `internal/client/extended_test.go` (expanded with HTTP tests across extended API methods)
+- Recomputed full coverage total: **72.7%** (statements)
+- Delta vs COV-3 partial 6: **+1.5%**
+- Delta vs COV-1 baseline: **+5.3%**
+- COV-3 status: **IN PROGRESS**.

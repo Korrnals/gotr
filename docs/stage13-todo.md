@@ -95,6 +95,15 @@
 - [ ] Для каждого change-cluster выполнить docs shadow-sync.
 - [ ] После каждого change-cluster делать отдельный commit.
 
+## Phase 3.1 - Coverage 100% Workstream (отдельный шаг)
+
+- [x] COV-1: Собрать baseline покрытия и оформить матрицу (docs/stage13-test-coverage-matrix.md).
+- [ ] COV-2: Закрыть 0%-файлы в internal/paths, internal/models/config, internal/log, internal/selftest.
+- [ ] COV-3: Довести internal/client + internal/service до 95%+.
+- [ ] COV-4: Довести internal/concurrency + internal/concurrent до 95%+.
+- [ ] COV-5: Закрыть cmd/* thin wrappers массовыми table-driven тестами.
+- [ ] COV-6: Финальный проход до total coverage = 100.0%.
+
 ## Phase 4 - Validation
 
 - [ ] Полный прогон: go test ./... .
@@ -121,3 +130,4 @@
 - [ ] Vet gate: go vet ./... .
 - [ ] Contract gate: CLI + API matrices completed.
 - [ ] Docs gate: все внешние изменения отражены в документации.
+- [ ] Coverage gate: `go tool cover -func=/tmp/stage13_full.cover` показывает total = 100.0%.

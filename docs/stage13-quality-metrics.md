@@ -91,3 +91,11 @@ Interpretation:
 - reproducibility checks: absent (no checksum verification flow)
 - CI/CD findings: F15(HIGH), F16(MEDIUM), F17(MEDIUM)
 - Remediation added: R12(HIGH), R13(MEDIUM), R14(MEDIUM)
+
+## Coverage baseline snapshot (Phase 3.1 COV-1)
+
+- Full coverage command: `go test -vet=off -coverpkg=./... -coverprofile=/tmp/stage13_full.cover ./...`
+- Full coverage total: **67.4%** (statements)
+- Gap to 100% target: **32.6%**
+- Matrix artifact: docs/stage13-test-coverage-matrix.md
+- Dedicated workstream added: COV-1..COV-6

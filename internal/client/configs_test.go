@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -285,4 +286,109 @@ func TestHTTPGetConfigs(t *testing.T) {
 	if configs[0].Name != "OS" {
 		t.Errorf("Expected name 'OS', got '%s'", configs[0].Name)
 	}
+}
+
+func TestHTTPConfigMutations(t *testing.T) {
+	t.Run("add config group", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				t.Fatalf("expected POST method, got %s", r.Method)
+			}
+			if !strings.Contains(r.URL.String(), "add_config_group/1") {
+				t.Fatalf("unexpected endpoint: %s", r.URL.String())
+			}
+
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(data.ConfigGroup{ID: 10, Name: "Browser", ProjectID: 1})
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+		group, err := client.AddConfigGroup(context.Background(), 1, &data.AddConfigGroupRequest{Name: "Browser"})
+		if err != nil {
+			t.Fatalf("AddConfigGroup() error: %v", err)
+		}
+		if group.ID != 10 {
+			t.Fatalf("unexpected group payload: %+v", group)
+		}
+	})
+
+	t.Run("add config", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "add_config/10") {
+				t.Fatalf("unexpected endpoint: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(data.Config{ID: 20, Name: "Chrome", GroupID: 10})
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+		cfg, err := client.AddConfig(context.Background(), 10, &data.AddConfigRequest{Name: "Chrome"})
+		if err != nil {
+			t.Fatalf("AddConfig() error: %v", err)
+		}
+		if cfg.ID != 20 {
+			t.Fatalf("unexpected config payload: %+v", cfg)
+		}
+	})
+
+	t.Run("update config group", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "update_config_group/10") {
+				t.Fatalf("unexpected endpoint: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(data.ConfigGroup{ID: 10, Name: "Browsers", ProjectID: 1})
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+		group, err := client.UpdateConfigGroup(context.Background(), 10, &data.UpdateConfigGroupRequest{Name: "Browsers"})
+		if err != nil {
+			t.Fatalf("UpdateConfigGroup() error: %v", err)
+		}
+		if group.Name != "Browsers" {
+			t.Fatalf("unexpected group payload: %+v", group)
+		}
+	})
+
+	t.Run("update config", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "update_config/20") {
+				t.Fatalf("unexpected endpoint: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(data.Config{ID: 20, Name: "Firefox", GroupID: 10})
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+		cfg, err := client.UpdateConfig(context.Background(), 20, &data.UpdateConfigRequest{Name: "Firefox"})
+		if err != nil {
+			t.Fatalf("UpdateConfig() error: %v", err)
+		}
+		if cfg.Name != "Firefox" {
+			t.Fatalf("unexpected config payload: %+v", cfg)
+		}
+	})
+
+	t.Run("delete config group and config", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "delete_config_group/10") && !strings.Contains(r.URL.String(), "delete_config/20") {
+				t.Fatalf("unexpected endpoint: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+		if err := client.DeleteConfigGroup(context.Background(), 10); err != nil {
+			t.Fatalf("DeleteConfigGroup() error: %v", err)
+		}
+		if err := client.DeleteConfig(context.Background(), 20); err != nil {
+			t.Fatalf("DeleteConfig() error: %v", err)
+		}
+	})
 }

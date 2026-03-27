@@ -99,6 +99,13 @@
 
 - [x] COV-1: Собрать baseline покрытия и оформить матрицу (docs/stage13-test-coverage-matrix.md).
 - [ ] COV-2: Закрыть 0%-файлы в internal/paths, internal/models/config, internal/log, internal/selftest.
+
+Текущий статус COV-2:
+
+- [x] internal/paths: добавлены unit-тесты (paths_test.go).
+- [x] internal/models/config: добавлены unit-тесты (config_test.go).
+- [x] internal/selftest/types: добавлены unit-тесты (types_test.go).
+- [ ] internal/log: осталось закрыть нулевое покрытие.
 - [ ] COV-3: Довести internal/client + internal/service до 95%+.
 - [ ] COV-4: Довести internal/concurrency + internal/concurrent до 95%+.
 - [ ] COV-5: Закрыть cmd/* thin wrappers массовыми table-driven тестами.

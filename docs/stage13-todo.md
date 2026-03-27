@@ -28,27 +28,27 @@
 - [x] Зафиксировать layering violations и coupling hotspots.
 - [x] Сформировать file risk map (high/medium/low).
 - [x] Обновить audit-report (architecture findings + remediation).
-- [ ] Commit шага Architecture Conformance.
+- [x] Commit шага Architecture Conformance.
 
 - [x] CLI Contract Consistency (qa-engineer + backend-engineer):
 - [x] Собрать quiet behavior matrix по всем command trees.
 - [x] Проверить non-interactive/interactive edge-cases.
 - [x] Составить таблицу normalisation по flags (persistent/local/duplicates).
 - [x] Обновить audit-report и добавить docs/stage13-cli-contract-matrix.md.
-- [ ] Commit шага CLI Contract Audit.
+- [x] Commit шага CLI Contract Audit.
 
-- [ ] API Compliance (architect + qa-engineer + backend-engineer):
-- [ ] Сформировать endpoint-by-endpoint compliance matrix.
-- [ ] Проверить пагинацию, retries, timeout, error mapping.
-- [ ] Зафиксировать Partial/Unsupported с обоснованием.
-- [ ] Добавить docs/stage13-api-compliance-matrix.md.
-- [ ] Commit шага API Compliance Audit.
+- [x] API Compliance (architect + qa-engineer + backend-engineer):
+- [x] Сформировать endpoint-by-endpoint compliance matrix.
+- [x] Проверить пагинацию, retries, timeout, error mapping.
+- [x] Зафиксировать Partial/Unsupported с обоснованием.
+- [x] Добавить docs/stage13-api-compliance-matrix.md.
+- [x] Commit шага API Compliance Audit.
 
-- [ ] Reliability/Concurrency (backend-engineer + qa-engineer):
-- [ ] Прогнать go test -race ./... и зафиксировать результат.
-- [ ] Проверить cancel/timeout propagation и bounded retry behavior.
-- [ ] Выделить performance hot paths для compare/sync.
-- [ ] Обновить quality-metrics и audit-report.
+- [x] Reliability/Concurrency (backend-engineer + qa-engineer):
+- [x] Прогнать go test -race ./... и зафиксировать результат.
+- [x] Проверить cancel/timeout propagation и bounded retry behavior.
+- [x] Выделить performance hot paths для compare/sync.
+- [x] Обновить quality-metrics и audit-report.
 - [ ] Commit шага Reliability Audit.
 
 - [ ] Security & Supply Chain (devops-engineer + backend-engineer):
@@ -79,6 +79,9 @@
 - [ ] R4 (MEDIUM): Аудит прямых fmt.Fprintf/os.Stdout без quiet-guard в 15 command groups.
 - [ ] R5 (MEDIUM): Fix ReadJSONResponse body leak — добавить `defer resp.Body.Close()` перед non-200 ветку (internal/client/request.go:54).
 - [ ] R6 (LOW): Add GroupsAPI, RolesAPI, DatasetsAPI, VariablesAPI, BDDsAPI, LabelsAPI интерфейсы в interfaces.go.
+- [ ] R7 (INFO): Добавить `go test -race ./...` в Makefile и CI pipeline.
+- [ ] R8 (LOW): PriorityThresholds — рассмотреть unexport или сделать read-only.
+- [x] R9 (DONE): Устранен DATA RACE в cmd/compare/fetchers_test.go (mutex around captured append).
 
 ## Phase 3 - Refactoring Implementation
 

@@ -84,7 +84,7 @@
 - [x] R9 (DONE): Устранен DATA RACE в cmd/compare/fetchers_test.go (mutex around captured append).
 - [x] R10 (LOW): Сформировать и применить план patch/minor dependency updates.
 - [x] R11 (MEDIUM): Добавить `govulncheck ./...` в CI gate (или эквивалентный vuln scan).
-- [ ] R12 (HIGH): Добавить CI workflow с обязательными gates (`go test`, `go vet`, `go build`, `go test -race`, `govulncheck`).
+- [x] R12 (HIGH): Добавить CI workflow с обязательными gates (`go test`, `go vet`, `go build`, `go test -race`, `govulncheck`).
 - [x] R13 (MEDIUM): Разделить Makefile build и sync-tag (убрать неявный tag side-effect из build).
 - [x] R14 (MEDIUM): Добавить release checksum и verify шаг для артефактов.
 

@@ -26,3 +26,15 @@
 - Стартовые quality gates на момент входа в Stage 13 зеленые для build/test/vet.
 - Полный Stage 13 quality-gate пакет будет считаться только после race/lint/contract matrices.
 - Метрики этого файла обновляются после каждого закрытого workstream шага Stage 13.
+
+## Step 2 snapshot - Architecture Conformance
+
+- `internal/pkg -> cmd` violations: 0
+- `pkg -> internal` violations: 0
+- `cmd/compare -> internal/concurrency` direct coupling files: 4
+- `cmd/*/interactive_helpers.go` duplication points: 17
+
+Interpretation:
+
+- Базовые архитектурные границы соблюдены.
+- Основные риски шага 2 лежат в зоне поддерживаемости и связности, а не в запретных импортах.

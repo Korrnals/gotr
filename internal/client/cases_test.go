@@ -363,3 +363,345 @@ func TestMoveCasesToSection(t *testing.T) {
 		})
 	}
 }
+
+type progressSpy struct {
+	count int
+}
+
+func (p *progressSpy) Increment() {
+	p.count++
+}
+
+func (p *progressSpy) IncrementBy(n int) {
+	p.count += n
+}
+
+func TestDecodeCasesResponseWithSize(t *testing.T) {
+	tests := []struct {
+		name      string
+		payload   string
+		wantLen   int
+		wantSize  int64
+		wantErr   bool
+		errSubstr string
+	}{
+		{
+			name:     "empty payload",
+			payload:  "",
+			wantLen:  0,
+			wantSize: -1,
+			wantErr:  false,
+		},
+		{
+			name:     "paginated payload with size",
+			payload:  `{"offset":0,"limit":250,"size":2,"cases":[{"id":1,"title":"A"},{"id":2,"title":"B"}]}`,
+			wantLen:  2,
+			wantSize: 2,
+			wantErr:  false,
+		},
+		{
+			name:     "paginated payload without size",
+			payload:  `{"offset":0,"limit":250,"size":0,"cases":[{"id":1,"title":"A"}]}`,
+			wantLen:  1,
+			wantSize: -1,
+			wantErr:  false,
+		},
+		{
+			name:     "flat payload",
+			payload:  `[{"id":1,"title":"A"}]`,
+			wantLen:  1,
+			wantSize: -1,
+			wantErr:  false,
+		},
+		{
+			name:      "unexpected format",
+			payload:   "x",
+			wantErr:   true,
+			errSubstr: "unexpected response format",
+		},
+		{
+			name:      "bad paginated json",
+			payload:   `{"cases":`,
+			wantErr:   true,
+			errSubstr: "decode paginated response",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cases, size, err := decodeCasesResponseWithSize([]byte(tt.payload))
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.errSubstr != "" {
+					assert.Contains(t, err.Error(), tt.errSubstr)
+				}
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Len(t, cases, tt.wantLen)
+			assert.Equal(t, tt.wantSize, size)
+		})
+	}
+}
+
+func TestDecodeCasesResponse(t *testing.T) {
+	cases, err := decodeCasesResponse([]byte(`[{"id":10,"title":"T"}]`))
+	assert.NoError(t, err)
+	assert.Len(t, cases, 1)
+	assert.Equal(t, int64(10), cases[0].ID)
+}
+
+func TestGetCasesWithProgressAndWrapper(t *testing.T) {
+	callCount := 0
+	firstPage := make(data.GetCasesResponse, 250)
+	for i := range firstPage {
+		firstPage[i] = data.Case{ID: int64(i + 1), Title: "case"}
+	}
+
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/index.php", r.URL.Path)
+
+		query := r.URL.Query()
+		if callCount == 1 {
+			assert.Equal(t, "0", query.Get("offset"))
+			assert.Equal(t, "250", query.Get("limit"))
+			assert.Equal(t, "7", query.Get("suite_id"))
+			assert.Equal(t, "8", query.Get("section_id"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(firstPage)
+			return
+		}
+
+		assert.Equal(t, "250", query.Get("offset"))
+		assert.Equal(t, "250", query.Get("limit"))
+		assert.Equal(t, "7", query.Get("suite_id"))
+		assert.Equal(t, "8", query.Get("section_id"))
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data.GetCasesResponse{{ID: 251, Title: "tail"}})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	monitor := &progressSpy{}
+	all, err := client.GetCasesWithProgress(context.Background(), 77, 7, 8, monitor)
+	assert.NoError(t, err)
+	assert.Len(t, all, 251)
+	assert.Equal(t, 2, monitor.count)
+	assert.Equal(t, 2, callCount)
+
+	wrapperCall := 0
+	wrapperClient, wrapperServer := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		wrapperCall++
+		assert.Equal(t, "0", r.URL.Query().Get("offset"))
+		assert.Equal(t, "250", r.URL.Query().Get("limit"))
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data.GetCasesResponse{{ID: 1, Title: "one"}})
+	})
+	defer wrapperServer.Close()
+
+	wrapped, err := wrapperClient.GetCases(context.Background(), 77, 0, 0)
+	assert.NoError(t, err)
+	assert.Len(t, wrapped, 1)
+	assert.Equal(t, 1, wrapperCall)
+}
+
+func TestGetCasesPage(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Equal(t, "4", r.URL.Query().Get("suite_id"))
+			assert.Equal(t, "10", r.URL.Query().Get("offset"))
+			assert.Equal(t, "2", r.URL.Query().Get("limit"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetCasesResponse{{ID: 100}, {ID: 101}})
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		page, err := client.GetCasesPage(context.Background(), 42, 4, 10, 2)
+		assert.NoError(t, err)
+		assert.Len(t, page, 2)
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCasesPage(context.Background(), 42, 4, 0, 2)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error cases page")
+	})
+}
+
+func TestGetCaseAndHistoryForCase(t *testing.T) {
+	t.Run("get case success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_case/11", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.Case{ID: 11, Title: "single"})
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		kase, err := client.GetCase(context.Background(), 11)
+		assert.NoError(t, err)
+		assert.NotNil(t, kase)
+		assert.Equal(t, int64(11), kase.ID)
+	})
+
+	t.Run("get case api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCase(context.Background(), 11)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+
+	t.Run("get case decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCase(context.Background(), 11)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error case")
+	})
+
+	t.Run("get history success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_history_for_case/22", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"offset":0,"limit":250,"size":1,"history":[{"id":1,"type_id":2,"created_on":100,"user_id":10,"changes":[]}]} `))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		h, err := client.GetHistoryForCase(context.Background(), 22)
+		assert.NoError(t, err)
+		assert.NotNil(t, h)
+		assert.Len(t, h.History, 1)
+	})
+}
+
+func TestBulkCaseAndMetaEndpoints(t *testing.T) {
+	t.Run("update cases success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/update_cases/90", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetCasesResponse{{ID: 1}, {ID: 2}})
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		resp, err := client.UpdateCases(context.Background(), 90, &data.UpdateCasesRequest{CaseIDs: []int64{1, 2}, PriorityID: 3})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Len(t, *resp, 2)
+	})
+
+	t.Run("delete cases api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("invalid"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		err := client.DeleteCases(context.Background(), 90, &data.DeleteCasesRequest{CaseIDs: []int64{1}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error DeleteCases")
+	})
+
+	t.Run("get case types success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_case_types", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[{"id":1,"name":"Functional","is_default":true}]`))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		types, err := client.GetCaseTypes(context.Background())
+		assert.NoError(t, err)
+		assert.Len(t, types, 1)
+		assert.Equal(t, "Functional", types[0].Name)
+	})
+
+	t.Run("get case fields success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_case_fields", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[{"configs":[],"description":"d","display_order":1,"id":10,"label":"L","name":"custom_x","system_name":"sys","type_id":1}]`))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		fields, err := client.GetCaseFields(context.Background())
+		assert.NoError(t, err)
+		assert.Len(t, fields, 1)
+		assert.Equal(t, "custom_x", fields[0].Name)
+	})
+
+	t.Run("add case field success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_case_field", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"id":5,"name":"custom_a","system_name":"system","entity_id":1,"label":"A","description":"desc","type_id":1,"location_id":1,"display_order":1,"configs":"[]","is_multi":0,"is_active":1,"status_id":1,"is_system":0,"include_all":1,"template_ids":[]}`))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		resp, err := client.AddCaseField(context.Background(), &data.AddCaseFieldRequest{Type: "string", Name: "custom_a", Label: "A"})
+		assert.NoError(t, err)
+		assert.NotNil(t, resp)
+		assert.Equal(t, int64(5), resp.ID)
+	})
+}
+
+func TestCasesEqualByField(t *testing.T) {
+	c1 := data.Case{ID: 1, Title: "A", PriorityID: 2, CustomPreconds: "p", SuiteID: 10, CreatedBy: 5, SectionID: 20}
+	c2 := data.Case{ID: 1, Title: "A", PriorityID: 2, CustomPreconds: "p", SuiteID: 10, CreatedBy: 5, SectionID: 20}
+
+	assert.True(t, casesEqualByField(c1, c2, "title"))
+	assert.True(t, casesEqualByField(c1, c2, "priority_id"))
+	assert.True(t, casesEqualByField(c1, c2, "custom_preconds"))
+	assert.True(t, casesEqualByField(c1, c2, "id"))
+	assert.True(t, casesEqualByField(c1, c2, "suite_id"))
+	assert.True(t, casesEqualByField(c1, c2, "created_by"))
+	assert.True(t, casesEqualByField(c1, c2, "section_id"))
+
+	c2.Title = "B"
+	assert.False(t, casesEqualByField(c1, c2, "title"))
+	assert.False(t, casesEqualByField(c1, c2, "unknown"))
+}

@@ -634,14 +634,14 @@ func printCasesFieldDiff(ctx context.Context, cli client.ClientInterface, pid1, 
 		return
 	}
 
-	fmt.Printf("\n=== Differences for field '%s' ===\n", field)
+	ui.Section(os.Stdout, fmt.Sprintf("Differences for field '%s'", field))
 	for _, d := range diff.DiffByField {
 		firstValue := getFieldValue(d.First, field)
 		secondValue := getFieldValue(d.Second, field)
 
-		fmt.Printf("\nCase: %s (ID: %d)\n", d.First.Title, d.CaseID)
-		fmt.Printf("  Project %d: %s\n", pid1, firstValue)
-		fmt.Printf("  Project %d: %s\n", pid2, secondValue)
+		ui.Infof(os.Stdout, "Case: %s (ID: %d)", d.First.Title, d.CaseID)
+		ui.Infof(os.Stdout, "Project %d: %s", pid1, firstValue)
+		ui.Infof(os.Stdout, "Project %d: %s", pid2, secondValue)
 	}
 }
 

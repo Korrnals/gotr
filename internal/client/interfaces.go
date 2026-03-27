@@ -184,45 +184,67 @@ type ReportsAPI interface {
 	RunCrossProjectReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error)
 }
 
-// ExtendedAPI — расширенные API (Groups, Roles, ResultFields, Datasets, Variables, BDDs, Labels)
-type ExtendedAPI interface {
-	// Groups
+// GroupsAPI — операции с группами.
+type GroupsAPI interface {
 	GetGroups(ctx context.Context, projectID int64) (data.GetGroupsResponse, error)
 	GetGroup(ctx context.Context, groupID int64) (*data.Group, error)
 	AddGroup(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error)
 	UpdateGroup(ctx context.Context, groupID int64, name string, userIDs []int64) (*data.Group, error)
 	DeleteGroup(ctx context.Context, groupID int64) error
+}
 
-	// Roles
+// RolesAPI — операции с ролями.
+type RolesAPI interface {
 	GetRoles(ctx context.Context) (data.GetRolesResponse, error)
 	GetRole(ctx context.Context, roleID int64) (*data.Role, error)
+}
 
-	// ResultFields
+// ResultFieldsAPI — операции с полями результатов.
+type ResultFieldsAPI interface {
 	GetResultFields(ctx context.Context) (data.GetResultFieldsResponse, error)
+}
 
-	// Datasets
+// DatasetsAPI — операции с датасетами.
+type DatasetsAPI interface {
 	GetDatasets(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error)
 	GetDataset(ctx context.Context, datasetID int64) (*data.Dataset, error)
 	AddDataset(ctx context.Context, projectID int64, name string) (*data.Dataset, error)
 	UpdateDataset(ctx context.Context, datasetID int64, name string) (*data.Dataset, error)
 	DeleteDataset(ctx context.Context, datasetID int64) error
+}
 
-	// Variables
+// VariablesAPI — операции с переменными.
+type VariablesAPI interface {
 	GetVariables(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error)
 	AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error)
 	UpdateVariable(ctx context.Context, variableID int64, name string) (*data.Variable, error)
 	DeleteVariable(ctx context.Context, variableID int64) error
+}
 
-	// BDDs
+// BDDsAPI — операции с BDD сценариями.
+type BDDsAPI interface {
 	GetBDD(ctx context.Context, caseID int64) (*data.BDD, error)
 	AddBDD(ctx context.Context, caseID int64, content string) (*data.BDD, error)
+}
 
-	// Labels
+// LabelsAPI — операции с labels.
+type LabelsAPI interface {
 	GetLabels(ctx context.Context, projectID int64) (data.GetLabelsResponse, error)
 	GetLabel(ctx context.Context, labelID int64) (*data.Label, error)
 	UpdateLabel(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error)
 	UpdateTestLabels(ctx context.Context, testID int64, labels []string) error
 	UpdateTestsLabels(ctx context.Context, runID int64, testIDs []int64, labels []string) error
+}
+
+// ExtendedAPI — расширенные API (Groups, Roles, ResultFields, Datasets, Variables, BDDs, Labels)
+type ExtendedAPI interface {
+	GroupsAPI
+	RolesAPI
+	ResultFieldsAPI
+	DatasetsAPI
+	VariablesAPI
+	BDDsAPI
+	LabelsAPI
 }
 
 // ClientInterface — полный интерфейс клиента TestRail API

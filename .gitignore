@@ -64,6 +64,12 @@ workspaceStorage/
 # Copilot runtime directories (should never be committed)
 .github/**
 
+# Allow ONLY CI workflows to be tracked.
+# Everything else under .github/** (instructions, memories, protocols) stays ignored.
+!.github/
+!.github/workflows/
+!.github/workflows/**
+
 
 # Compressed binaries (for releases)
 *.gz

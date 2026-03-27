@@ -82,6 +82,28 @@
 
 ## Next workstream
 
-1. CLI contract audit: strict quiet + flags normalization matrix.
-2. API compliance audit: endpoint-by-endpoint matrix and deviations.
-3. Reliability pass: race checks и concurrency risk verification.
+1. API compliance audit: endpoint-by-endpoint matrix and deviations.
+2. Reliability pass: race checks и concurrency risk verification.
+3. Security & Supply Chain audit.
+
+## Step 3 Results - CLI Contract Audit
+
+Артефакт шага:
+
+- docs/stage13-cli-contract-matrix.md
+
+Ключевые находки:
+
+- HIGH: local `--quiet, -q` override в cmd/run/run.go, cmd/test/list.go, cmd/test/get.go, cmd/result/result.go — shadowing global PersistentFlag.
+- MEDIUM: fragile type assertion pattern для non-interactive check (~15 файлов) — нужен `interactive.IsNonInteractive(ctx)` helper.
+- LOW: дублирующая `isQuiet()` wrapper функция в cmd/sync/sync_helpers.go.
+- MEDIUM: прямые fmt.Fprintf/os.Stdout без quiet-guard в 15 command groups требуют точечного аудита.
+
+Влияние на план Stage 13:
+
+- Добавлены remediation задачи R1-R4 в статус must-fix для Phase 3.
+
+Статус шага:
+
+- CLI Contract Audit completed.
+- Далее: API Compliance Matrix.

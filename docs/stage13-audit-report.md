@@ -148,3 +148,23 @@
 - R7 (INFO): формализовать полный `go test -race ./...` как CI gate.
 - R8 (LOW): `PriorityThresholds` сделать read-only/unexport.
 - R9 (DONE): test-race fix для compare уже внедрен.
+
+## Step 6 Results - Security & Supply Chain Audit
+
+Ключевые результаты:
+
+- `go mod verify` -> PASS (`all modules verified`).
+- `go list -m -u all` выполнен: обнаружены доступные minor/patch updates у части зависимостей (например `github.com/creack/pty`, `github.com/fatih/color`, `github.com/go-viper/mapstructure/v2`, `github.com/google/go-cmp`).
+- `govulncheck` отсутствует в environment (инструмент не установлен), vulnerability scan не выполнен автоматически.
+- Базовый secret-pattern scan по репозиторию не выявил признаков реальных секретов; найденные совпадения относятся к флагам/полям (`api-key`, `password`) и placeholder-конфигу (`your_api_key_here`).
+- Exec usage ограничен и контролируем: `internal/ui/editor.go` (launch editor через `exec.Command`) и `internal/selftest/checks.go` (локальные selftest команды).
+
+Найденные риски:
+
+- LOW (F13): dependency freshness debt — есть устаревшие модули; требует планового dependency refresh.
+- LOW (F14): `govulncheck` отсутствует локально — нет автоматического vuln gate в текущем окружении.
+
+Влияние на план Stage 13:
+
+- R10 (LOW): подготовить dependency bump план для безопасных patch/minor обновлений.
+- R11 (MEDIUM): добавить `govulncheck ./...` в CI gate (или эквивалентный vulnerability scan шаг).

@@ -228,3 +228,70 @@ func TestDeleteSuite(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSuites(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/index.php", r.URL.Path)
+		assert.Equal(t, "0", r.URL.Query().Get("offset"))
+		assert.Equal(t, "250", r.URL.Query().Get("limit"))
+		assert.Contains(t, r.URL.String(), "get_suites/30")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data.GetSuitesResponse{{ID: 1, Name: "Smoke"}})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	resp, err := client.GetSuites(context.Background(), 30)
+	assert.NoError(t, err)
+	assert.Len(t, resp, 1)
+	assert.Equal(t, int64(1), resp[0].ID)
+}
+
+func TestGetSuite(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_suite/100", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.Suite{ID: 100, Name: "Regression"})
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		suite, err := client.GetSuite(context.Background(), 100)
+		assert.NoError(t, err)
+		assert.NotNil(t, suite)
+		assert.Equal(t, int64(100), suite.ID)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetSuite(context.Background(), 100)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetSuite(context.Background(), 100)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error suite")
+	})
+}

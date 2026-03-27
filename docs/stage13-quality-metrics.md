@@ -214,3 +214,13 @@ Interpretation:
 - Delta vs COV-3 partial 10: **+0.5%**
 - Delta vs COV-1 baseline: **+7.8%**
 - COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 12)
+
+- Added tests:
+- `internal/client/suites_test.go` (added GET coverage for `GetSuites` and `GetSuite`)
+- `internal/client/sharedsteps_test.go` (added GET coverage for `GetSharedSteps`, `GetSharedStep`, `GetSharedStepHistory`)
+- Recomputed full coverage total: **75.5%** (statements)
+- Delta vs COV-3 partial 11: **+0.3%**
+- Delta vs COV-1 baseline: **+8.1%**
+- COV-3 status: **IN PROGRESS**.

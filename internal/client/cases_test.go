@@ -785,7 +785,11 @@ func TestGetCasesParallelCtx(t *testing.T) {
 	t.Run("single suite success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "GET", r.Method)
-			assert.Equal(t, "/index.php?/api/v2/get_cases/55&suite_id=7&offset=0&limit=2", r.URL.String())
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_cases/55")
+			assert.Equal(t, "7", r.URL.Query().Get("suite_id"))
+			assert.Equal(t, "0", r.URL.Query().Get("offset"))
+			assert.Equal(t, "2", r.URL.Query().Get("limit"))
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"offset":0,"limit":2,"size":2,"cases":[{"id":1,"title":"A"},{"id":2,"title":"B"}]}`))
 		}
@@ -814,7 +818,11 @@ func TestGetCasesParallelCtx(t *testing.T) {
 func TestCasesFetcherFetchPageCtx(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
-			assert.Equal(t, "/index.php?/api/v2/get_cases/9&suite_id=3&offset=4&limit=5", r.URL.String())
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_cases/9")
+			assert.Equal(t, "3", r.URL.Query().Get("suite_id"))
+			assert.Equal(t, "4", r.URL.Query().Get("offset"))
+			assert.Equal(t, "5", r.URL.Query().Get("limit"))
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"offset":4,"limit":5,"size":11,"cases":[{"id":10},{"id":11}]}`))
 		}

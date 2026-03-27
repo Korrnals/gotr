@@ -256,3 +256,89 @@ func TestDeleteSharedStep(t *testing.T) {
 		})
 	}
 }
+
+func TestGetSharedSteps(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/index.php", r.URL.Path)
+		assert.Equal(t, "0", r.URL.Query().Get("offset"))
+		assert.Equal(t, "250", r.URL.Query().Get("limit"))
+		assert.Contains(t, r.URL.String(), "get_shared_steps/30")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data.GetSharedStepsResponse{{ID: 11, Title: "Login"}})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	steps, err := client.GetSharedSteps(context.Background(), 30)
+	assert.NoError(t, err)
+	assert.Len(t, steps, 1)
+	assert.Equal(t, int64(11), steps[0].ID)
+}
+
+func TestGetSharedStep(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_shared_step/200", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.SharedStep{ID: 200, Title: "Step"})
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		step, err := client.GetSharedStep(context.Background(), 200)
+		assert.NoError(t, err)
+		assert.NotNil(t, step)
+		assert.Equal(t, int64(200), step.ID)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetSharedStep(context.Background(), 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+}
+
+func TestGetSharedStepHistory(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_shared_step_history/200", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"offset":0,"limit":250,"size":1,"step_history":[{"id":1,"timestamp":10,"user_id":5,"title":"v1"}]}`))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		history, err := client.GetSharedStepHistory(context.Background(), 200)
+		assert.NoError(t, err)
+		assert.NotNil(t, history)
+		assert.Len(t, history.History, 1)
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetSharedStepHistory(context.Background(), 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error shared step history")
+	})
+}

@@ -38,7 +38,7 @@ Examples:
 			}
 
 			// Parse flags
-			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
+			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
 				return err
 			}

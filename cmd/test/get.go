@@ -78,7 +78,6 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 	}
 
 	output.AddFlag(cmd)
-	cmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 
 	return cmd
 }

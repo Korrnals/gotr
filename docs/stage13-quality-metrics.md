@@ -38,3 +38,13 @@ Interpretation:
 
 - Базовые архитектурные границы соблюдены.
 - Основные риски шага 2 лежат в зоне поддерживаемости и связности, а не в запретных импортах.
+
+## Step 3 snapshot - CLI Contract Audit
+
+- command groups analyzed: 22
+- local quiet-flag overrides (non-test): 7 declarations / 4 locations (HIGH)
+- groups with quiet=n/a (no quiet check, rely on global seam): 15 (MEDIUM — need R4 audit)
+- non-interactive type assertion occurrences: ~15 files (fragile pattern, MEDIUM)
+- isQuiet() wrapper duplicates: 1 function in cmd/sync/sync_helpers.go (LOW)
+- CLI contract findings: F1(HIGH), F2(MEDIUM), F3(LOW), F4(MEDIUM)
+- Remediation added to Phase 3: R1(HIGH), R2(MEDIUM), R3(LOW), R4(MEDIUM)

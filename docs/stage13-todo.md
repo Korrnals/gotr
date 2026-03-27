@@ -30,11 +30,11 @@
 - [x] Обновить audit-report (architecture findings + remediation).
 - [ ] Commit шага Architecture Conformance.
 
-- [ ] CLI Contract Consistency (qa-engineer + backend-engineer):
-- [ ] Собрать quiet behavior matrix по всем command trees.
-- [ ] Проверить non-interactive/interactive edge-cases.
-- [ ] Составить таблицу normalisation по flags (persistent/local/duplicates).
-- [ ] Обновить audit-report и добавить docs/stage13-cli-contract-matrix.md.
+- [x] CLI Contract Consistency (qa-engineer + backend-engineer):
+- [x] Собрать quiet behavior matrix по всем command trees.
+- [x] Проверить non-interactive/interactive edge-cases.
+- [x] Составить таблицу normalisation по flags (persistent/local/duplicates).
+- [x] Обновить audit-report и добавить docs/stage13-cli-contract-matrix.md.
 - [ ] Commit шага CLI Contract Audit.
 
 - [ ] API Compliance (architect + qa-engineer + backend-engineer):
@@ -70,6 +70,13 @@
 - [x] Добавить подпоток "Interactive helper consolidation" как отдельную remediation-зону Stage 13.
 - [x] Добавить подпоток "Compare runtime seam hardening" для снижения прямой связки cmd/compare и internal/concurrency.
 - [ ] Зафиксировать реализацию этих двух подпотоков в Phase 3 с отдельными коммитами.
+
+## Новые remediation задачи из CLI Contract Audit
+
+- [ ] R1 (HIGH): Убрать локальные quiet-flag декларации из cmd/run/run.go, cmd/test/list.go, cmd/test/get.go, cmd/result/result.go.
+- [ ] R2 (MEDIUM): Добавить `interactive.IsNonInteractive(ctx)` helper и мигрировать type assertion pattern.
+- [ ] R3 (LOW): Убрать `isQuiet()` wrapper из cmd/sync/sync_helpers.go.
+- [ ] R4 (MEDIUM): Аудит прямых fmt.Fprintf/os.Stdout без quiet-guard в 15 command groups.
 
 ## Phase 3 - Refactoring Implementation
 

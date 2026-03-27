@@ -74,8 +74,8 @@
 ## Новые remediation задачи из CLI Contract Audit
 
 - [x] R1 (HIGH): Убрать локальные quiet-flag декларации из cmd/run/run.go, cmd/test/list.go, cmd/test/get.go, cmd/result/result.go.
-- [ ] R2 (MEDIUM): Добавить `interactive.IsNonInteractive(ctx)` helper и мигрировать type assertion pattern.
-- [ ] R3 (LOW): Убрать `isQuiet()` wrapper из cmd/sync/sync_helpers.go.
+- [x] R2 (MEDIUM): Добавить `interactive.IsNonInteractive(ctx)` helper и мигрировать type assertion pattern.
+- [x] R3 (LOW): Убрать `isQuiet()` wrapper из cmd/sync/sync_helpers.go.
 - [ ] R4 (MEDIUM): Аудит прямых fmt.Fprintf/os.Stdout без quiet-guard в 15 command groups.
 - [x] R5 (MEDIUM): Fix ReadJSONResponse body leak — добавить `defer resp.Body.Close()` перед non-200 ветку (internal/client/request.go:54).
 - [ ] R6 (LOW): Add GroupsAPI, RolesAPI, DatasetsAPI, VariablesAPI, BDDsAPI, LabelsAPI интерфейсы в interfaces.go.

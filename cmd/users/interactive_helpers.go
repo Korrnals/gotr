@@ -53,7 +53,7 @@ func requireInteractiveUserArg(ctx context.Context, usage string) error {
 	if !interactive.HasPrompterInContext(ctx) {
 		return fmt.Errorf("required argument is missing in non-interactive mode: %s", usage)
 	}
-	if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+	if interactive.IsNonInteractive(ctx) {
 		return fmt.Errorf("required argument is missing in non-interactive mode: %s", usage)
 	}
 	return nil

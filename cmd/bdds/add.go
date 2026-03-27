@@ -42,7 +42,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
 				}
 				caseID, err = resolveCaseIDInteractive(ctx, cli)

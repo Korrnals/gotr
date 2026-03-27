@@ -57,7 +57,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
 				}
 				runID, err = resolveRunIDInteractive(ctx, httpClient)

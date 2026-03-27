@@ -65,7 +65,7 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("test_id required in non-interactive mode: gotr result add [test-id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("test_id required in non-interactive mode: gotr result add [test-id]")
 				}
 				runID, err := resolveResultRunID(ctx, cli)
@@ -160,7 +160,7 @@ TestRail сам находит соответствующий test в run.
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("run_id required in non-interactive mode: gotr result add-case [run-id] --case-id <case_id>")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("run_id required in non-interactive mode: gotr result add-case [run-id] --case-id <case_id>")
 				}
 				runID, err = resolveResultRunID(ctx, cli)

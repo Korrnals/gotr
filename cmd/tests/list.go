@@ -33,7 +33,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr tests list [run_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr tests list [run_id]")
 				}
 				runID, err = resolveRunIDInteractive(ctx, client)

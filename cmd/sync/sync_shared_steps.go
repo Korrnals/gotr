@@ -44,7 +44,7 @@ var sharedStepsCmd = &cobra.Command{
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
-		quiet := isQuiet(cmd)
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 

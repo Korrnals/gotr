@@ -40,6 +40,17 @@ func TestHasPrompterInContext(t *testing.T) {
 	assert.True(t, HasPrompterInContext(ctx))
 }
 
+func TestIsNonInteractive(t *testing.T) {
+	assert.False(t, IsNonInteractive(nil))
+	assert.False(t, IsNonInteractive(context.Background()))
+
+	ctxInteractive := WithPrompter(context.Background(), NewMockPrompter())
+	assert.False(t, IsNonInteractive(ctxInteractive))
+
+	ctxNonInteractive := WithPrompter(context.Background(), NewNonInteractivePrompter())
+	assert.True(t, IsNonInteractive(ctxNonInteractive))
+}
+
 func TestNonInteractivePrompter_AllMethods(t *testing.T) {
 	p := NewNonInteractivePrompter()
 

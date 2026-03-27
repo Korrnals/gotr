@@ -46,7 +46,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr test get [test_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr test get [test_id]")
 				}
 				testID, err = resolveTestIDInteractive(ctx, httpClient)

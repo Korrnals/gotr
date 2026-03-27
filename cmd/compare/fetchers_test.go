@@ -4,6 +4,7 @@ package compare
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -263,9 +264,12 @@ func TestCompareSectionsInternal_UsesHeavyRuntimeConfig(t *testing.T) {
 	}
 
 	captured := make([]*concurrency.ControllerConfig, 0, 2)
+	var capturedMu sync.Mutex
 	mock := &client.MockClient{
 		GetSectionsParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error) {
+			capturedMu.Lock()
 			captured = append(captured, config)
+			capturedMu.Unlock()
 			if projectID == 1 {
 				return data.GetSectionsResponse{{ID: 1, SuiteID: 101, Name: "Alpha"}}, nil
 			}

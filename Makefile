@@ -49,9 +49,12 @@ else
 endif
 
 # Сборка
-build: sync-tag
+build:
 	@echo "Сборка $(BINARY_NAME) версии $(VERSION) (commit: $(COMMIT))"
 	go build $(LDFLAGS) -o $(BINARY_NAME)
+
+# Релизная сборка с валидацией/синхронизацией tag
+build-release: sync-tag build
 
 # Сжатие бинарника UPX (опционально, если установлен upx)
 compress:
@@ -75,6 +78,28 @@ test-build: test build
 test:
 	@echo "Запуск тестов..."
 	go test ./... -v
+
+# Проверка race conditions (требует gcc/clang и CGO)
+race:
+	@echo "Запуск race-тестов..."
+	CGO_ENABLED=1 go test -race ./...
+
+# Статический анализ go vet
+vet:
+	@echo "Запуск go vet..."
+	go vet ./...
+
+# Проверка уязвимостей зависимостей и кода
+vuln:
+	@echo "Запуск govulncheck..."
+	@if ! command -v govulncheck >/dev/null 2>&1; then \
+		echo "govulncheck не найден. Установите: go install golang.org/x/vuln/cmd/govulncheck@latest"; \
+		exit 1; \
+	fi
+	govulncheck ./...
+
+# Единый quality gate для локальной и CI проверки
+verify: test vet build race vuln
 
 # Установка в /usr/local/bin (требует sudo)
 install: build
@@ -100,6 +125,12 @@ build-windows:
 # Полная сборка для всех платформ
 release: build-linux build-darwin build-windows
 
+# Генерация SHA256 checksums для релизных бинарников
+checksums:
+	@echo "Генерация SHA256 checksums..."
+	@sha256sum $(BINARY_NAME)-* > SHA256SUMS
+	@echo "Checksums saved to SHA256SUMS"
+
 # Сборка релизных бинарников со сжатием UPX
 release-compressed: clean
 	@echo "Сборка релизных бинарников v$(VERSION)..."
@@ -114,6 +145,7 @@ release-compressed: clean
 	@if command -v upx >/dev/null 2>&1; then upx --best $(BINARY_NAME)-windows-amd64.exe; fi
 	@echo "Готово!"
 	@ls -lh $(BINARY_NAME)-*
+	@$(MAKE) checksums
 
 # Сборка + сжатие
 build-compressed: build compress
@@ -136,8 +168,13 @@ help:
 	@echo "  compress    — сжать бинарник UPX (если установлен)"
 	@echo "  install     — установить в /usr/local/bin (требует sudo)"
 	@echo "  test        — запустить тесты"
+	@echo "  vet         — запустить go vet"
+	@echo "  race        — запустить go test -race"
+	@echo "  vuln        — запустить govulncheck"
+	@echo "  verify      — полный quality gate (test+vet+build+race+vuln)"
 	@echo "  clean       — удалить бинарник"
 	@echo "  release     — собрать для Linux, macOS и Windows"
+	@echo "  checksums   — сгенерировать SHA256SUMS для релизных бинарников"
 	@echo "  tag         — создать и отправить git tag"
 	@echo ""
 	@echo "Примеры:"
@@ -145,4 +182,4 @@ help:
 	@echo "  make build VERSION=v2.6.0     # Сборка с явной версией"
 	@echo "  make tag VERSION=v2.6.0       # Создание релизного тега"
 
-.PHONY: all build test-build test install clean build-linux build-darwin build-windows release help sync-tag
+.PHONY: all build build-release test-build test race vet vuln verify install clean build-linux build-darwin build-windows release checksums help sync-tag

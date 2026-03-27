@@ -79,14 +79,14 @@
 - [ ] R4 (MEDIUM): Аудит прямых fmt.Fprintf/os.Stdout без quiet-guard в 15 command groups.
 - [x] R5 (MEDIUM): Fix ReadJSONResponse body leak — добавить `defer resp.Body.Close()` перед non-200 ветку (internal/client/request.go:54).
 - [x] R6 (LOW): Add GroupsAPI, RolesAPI, DatasetsAPI, VariablesAPI, BDDsAPI, LabelsAPI интерфейсы в interfaces.go.
-- [ ] R7 (INFO): Добавить `go test -race ./...` в Makefile и CI pipeline.
+- [x] R7 (INFO): Добавить `go test -race ./...` в Makefile и CI pipeline.
 - [ ] R8 (LOW): PriorityThresholds — рассмотреть unexport или сделать read-only.
 - [x] R9 (DONE): Устранен DATA RACE в cmd/compare/fetchers_test.go (mutex around captured append).
 - [ ] R10 (LOW): Сформировать и применить план patch/minor dependency updates.
-- [ ] R11 (MEDIUM): Добавить `govulncheck ./...` в CI gate (или эквивалентный vuln scan).
+- [x] R11 (MEDIUM): Добавить `govulncheck ./...` в CI gate (или эквивалентный vuln scan).
 - [ ] R12 (HIGH): Добавить CI workflow с обязательными gates (`go test`, `go vet`, `go build`, `go test -race`, `govulncheck`).
-- [ ] R13 (MEDIUM): Разделить Makefile build и sync-tag (убрать неявный tag side-effect из build).
-- [ ] R14 (MEDIUM): Добавить release checksum и verify шаг для артефактов.
+- [x] R13 (MEDIUM): Разделить Makefile build и sync-tag (убрать неявный tag side-effect из build).
+- [x] R14 (MEDIUM): Добавить release checksum и verify шаг для артефактов.
 
 ## Phase 3 - Refactoring Implementation
 

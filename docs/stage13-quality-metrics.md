@@ -110,3 +110,14 @@ Interpretation:
 - Recomputed full coverage total: **68.7%** (statements)
 - Delta vs COV-1 baseline: **+1.3%**
 - COV-2 status: **DONE**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial)
+
+- Added tests:
+- `internal/client/projects_test.go`
+- `internal/client/accessor_test.go`
+- `internal/service/test_test.go`
+- Recomputed full coverage total: **69.2%** (statements)
+- Delta vs COV-2 complete: **+0.5%**
+- Delta vs COV-1 baseline: **+1.8%**
+- COV-3 status: **IN PROGRESS**.

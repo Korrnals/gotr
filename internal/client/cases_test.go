@@ -7,8 +7,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -704,4 +706,151 @@ func TestCasesEqualByField(t *testing.T) {
 	c2.Title = "B"
 	assert.False(t, casesEqualByField(c1, c2, "title"))
 	assert.False(t, casesEqualByField(c1, c2, "unknown"))
+}
+
+func TestDiffCasesData(t *testing.T) {
+	t.Run("success diff by title", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			q := r.URL.Query()
+			assert.Equal(t, "0", q.Get("offset"))
+			assert.Equal(t, "250", q.Get("limit"))
+
+			switch {
+			case strings.Contains(r.URL.String(), "get_cases/1"):
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(data.GetCasesResponse{
+					{ID: 1, Title: "A"},
+					{ID: 2, Title: "OnlyFirst"},
+				})
+			case strings.Contains(r.URL.String(), "get_cases/2"):
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(data.GetCasesResponse{
+					{ID: 1, Title: "B"},
+					{ID: 3, Title: "OnlySecond"},
+				})
+			default:
+				t.Fatalf("unexpected URL: %s", r.URL.String())
+			}
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		diff, err := client.DiffCasesData(context.Background(), 1, 2, "title")
+		assert.NoError(t, err)
+		if err != nil {
+			return
+		}
+		assert.NotNil(t, diff)
+		assert.Len(t, diff.OnlyInFirst, 1)
+		assert.Len(t, diff.OnlyInSecond, 1)
+		assert.Len(t, diff.DiffByField, 1)
+		assert.Equal(t, int64(1), diff.DiffByField[0].CaseID)
+	})
+
+	t.Run("upstream error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.String(), "get_cases/2") {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte("boom"))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetCasesResponse{{ID: 1, Title: "A"}})
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.DiffCasesData(context.Background(), 1, 2, "title")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get cases from project")
+	})
+}
+
+func TestGetCasesParallelCtx(t *testing.T) {
+	t.Run("empty suite ids", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			t.Fatalf("unexpected request: %s", r.URL.String())
+		})
+		defer server.Close()
+
+		resp, result, err := client.GetCasesParallelCtx(context.Background(), 55, nil, nil)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Empty(t, resp)
+		assert.Empty(t, result.Cases)
+	})
+
+	t.Run("single suite success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_cases/55&suite_id=7&offset=0&limit=2", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"offset":0,"limit":2,"size":2,"cases":[{"id":1,"title":"A"},{"id":2,"title":"B"}]}`))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		cfg := &concurrency.ControllerConfig{
+			MaxConcurrentSuites:      1,
+			MaxConcurrentPages:       1,
+			RequestsPerMinute:        0,
+			Timeout:                  0,
+			PageSize:                 2,
+			MaxRetries:               0,
+			MaxConsecutiveErrorWaves: 1,
+		}
+
+		resp, result, err := client.GetCasesParallelCtx(context.Background(), 55, []int64{7}, cfg)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Len(t, resp, 2)
+		assert.Equal(t, 1, result.Stats.CompletedSuites)
+	})
+}
+
+func TestCasesFetcherFetchPageCtx(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_cases/9&suite_id=3&offset=4&limit=5", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"offset":4,"limit":5,"size":11,"cases":[{"id":10},{"id":11}]}`))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		f := &casesFetcher{client: client}
+		cases, total, err := f.FetchPageCtx(context.Background(), concurrency.PageRequest{
+			SuiteTask: concurrency.SuiteTask{ProjectID: 9, SuiteID: 3},
+			Offset:    4,
+			Limit:     5,
+		})
+
+		assert.NoError(t, err)
+		assert.Len(t, cases, 2)
+		assert.Equal(t, int64(11), total)
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("x"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		f := &casesFetcher{client: client}
+		_, _, err := f.FetchPageCtx(context.Background(), concurrency.PageRequest{
+			SuiteTask: concurrency.SuiteTask{ProjectID: 9, SuiteID: 3},
+			Offset:    0,
+			Limit:     1,
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unexpected response format")
+	})
 }

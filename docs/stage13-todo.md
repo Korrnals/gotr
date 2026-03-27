@@ -117,7 +117,7 @@
 - [x] internal/client: добавлены HTTP-тесты для configs endpoints (add/update/delete group/config).
 - [x] internal/client: добавлен крупный HTTP-срез для extended APIs (groups/roles/result-fields/datasets/variables/bdd/labels).
 - [x] internal/client: добавлены HTTP/upload тесты для attachments endpoints.
-- [x] internal/client: расширены tests для cases endpoints (decode/get/page/history/bulk/meta + field diff comparator).
+- [x] internal/client: расширены tests для cases endpoints (decode/get/page/history/bulk/meta + diff/parallel/fetcher paths).
 - [x] internal/ui + internal/debug: добавлены unit-тесты для runtime/display/table/editor/debug-print helpers.
 - [x] internal/service: добавлены unit-тесты для test service (Get/GetForRun/Update/ParseID).
 - [x] internal/service/migration: добавлены unit-тесты для export/log/mapping loader.

@@ -80,7 +80,7 @@
 - [x] R5 (MEDIUM): Fix ReadJSONResponse body leak — добавить `defer resp.Body.Close()` перед non-200 ветку (internal/client/request.go:54).
 - [x] R6 (LOW): Add GroupsAPI, RolesAPI, DatasetsAPI, VariablesAPI, BDDsAPI, LabelsAPI интерфейсы в interfaces.go.
 - [x] R7 (INFO): Добавить `go test -race ./...` в Makefile и CI pipeline.
-- [ ] R8 (LOW): PriorityThresholds — рассмотреть unexport или сделать read-only.
+- [x] R8 (LOW): PriorityThresholds — рассмотреть unexport или сделать read-only.
 - [x] R9 (DONE): Устранен DATA RACE в cmd/compare/fetchers_test.go (mutex around captured append).
 - [ ] R10 (LOW): Сформировать и применить план patch/minor dependency updates.
 - [x] R11 (MEDIUM): Добавить `govulncheck ./...` в CI gate (или эквивалентный vuln scan).

@@ -213,6 +213,28 @@ func TestSaveToFile_UnsupportedFormat(t *testing.T) {
 	assert.Contains(t, err.Error(), "unsupported format")
 }
 
+func TestSaveToFileWithPath_JSON(t *testing.T) {
+	tempDir := t.TempDir()
+	customPath := tempDir + "/custom/result.json"
+
+	data := map[string]string{"key": "value"}
+	path, err := SaveToFileWithPath(data, "json", customPath)
+
+	require.NoError(t, err)
+	assert.Equal(t, customPath, path)
+	assert.FileExists(t, customPath)
+}
+
+func TestSaveToFileWithPath_EmptyPath(t *testing.T) {
+	data := map[string]string{"key": "value"}
+
+	path, err := SaveToFileWithPath(data, "json", "")
+
+	assert.Error(t, err)
+	assert.Empty(t, path)
+	assert.Contains(t, err.Error(), "empty")
+}
+
 func TestSaveToFile_JSONMarshalError(t *testing.T) {
 	tempHome := t.TempDir()
 	origHome := os.Getenv("HOME")

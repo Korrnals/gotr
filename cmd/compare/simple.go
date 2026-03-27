@@ -30,7 +30,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
+			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
 				return err
 			}

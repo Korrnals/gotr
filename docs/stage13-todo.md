@@ -58,11 +58,11 @@
 - [x] Обновить audit-report (security findings).
 - [ ] Commit шага Security Audit.
 
-- [ ] CI/CD Hardening (devops-engineer + release-manager):
-- [ ] Формализовать обязательные quality gates.
-- [ ] Синхронизировать Makefile verify path и CI path.
-- [ ] Проверить reproducibility для release-артефактов.
-- [ ] Обновить docs/release-workflow.md при необходимости.
+- [x] CI/CD Hardening (devops-engineer + release-manager):
+- [x] Формализовать обязательные quality gates.
+- [x] Синхронизировать Makefile verify path и CI path.
+- [x] Проверить reproducibility для release-артефактов.
+- [x] Обновить docs/release-workflow.md при необходимости.
 - [ ] Commit шага CI/CD Hardening.
 
 ## Добавленные дельты плана (2026-03-27)
@@ -84,6 +84,9 @@
 - [x] R9 (DONE): Устранен DATA RACE в cmd/compare/fetchers_test.go (mutex around captured append).
 - [ ] R10 (LOW): Сформировать и применить план patch/minor dependency updates.
 - [ ] R11 (MEDIUM): Добавить `govulncheck ./...` в CI gate (или эквивалентный vuln scan).
+- [ ] R12 (HIGH): Добавить CI workflow с обязательными gates (`go test`, `go vet`, `go build`, `go test -race`, `govulncheck`).
+- [ ] R13 (MEDIUM): Разделить Makefile build и sync-tag (убрать неявный tag side-effect из build).
+- [ ] R14 (MEDIUM): Добавить release checksum и verify шаг для артефактов.
 
 ## Phase 3 - Refactoring Implementation
 

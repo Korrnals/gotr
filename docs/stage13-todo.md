@@ -51,11 +51,11 @@
 - [x] Обновить quality-metrics и audit-report.
 - [ ] Commit шага Reliability Audit.
 
-- [ ] Security & Supply Chain (devops-engineer + backend-engineer):
-- [ ] Провести dependency audit.
-- [ ] Проверить утечки чувствительных данных в logs/errors.
-- [ ] Проверить input/filepath validation критичных путей.
-- [ ] Обновить audit-report (security findings).
+- [x] Security & Supply Chain (devops-engineer + backend-engineer):
+- [x] Провести dependency audit.
+- [x] Проверить утечки чувствительных данных в logs/errors.
+- [x] Проверить input/filepath validation критичных путей.
+- [x] Обновить audit-report (security findings).
 - [ ] Commit шага Security Audit.
 
 - [ ] CI/CD Hardening (devops-engineer + release-manager):
@@ -82,6 +82,8 @@
 - [ ] R7 (INFO): Добавить `go test -race ./...` в Makefile и CI pipeline.
 - [ ] R8 (LOW): PriorityThresholds — рассмотреть unexport или сделать read-only.
 - [x] R9 (DONE): Устранен DATA RACE в cmd/compare/fetchers_test.go (mutex around captured append).
+- [ ] R10 (LOW): Сформировать и применить план patch/minor dependency updates.
+- [ ] R11 (MEDIUM): Добавить `govulncheck ./...` в CI gate (или эквивалентный vuln scan).
 
 ## Phase 3 - Refactoring Implementation
 

@@ -72,3 +72,13 @@ Interpretation:
 - Buffered channels: PASS
 - Global mutable state findings: 1 WARN (F11 PriorityThresholds)
 - Remediation added: R7(INFO), R8(LOW), R9(DONE)
+
+## Step 6 snapshot - Security & Supply Chain Audit
+
+- go mod verify: PASS (`all modules verified`)
+- dependency update candidates: present (57 module lines in `go list -m -u all` output)
+- govulncheck: NOT AVAILABLE in environment (tool not installed)
+- secret-pattern scan: no exposed credentials detected
+- risky exec usage: limited to editor/selftest contexts
+- Security findings: F13(LOW), F14(LOW)
+- Remediation added: R10(LOW), R11(MEDIUM)

@@ -93,3 +93,40 @@ func TestPromptSavePath_NonInteractiveError(t *testing.T) {
 	assert.Equal(t, "", savePath)
 	assert.Contains(t, err.Error(), "non-interactive")
 }
+
+func TestPromptSavePathWithOptions_NoCustomPathFallsBackToDefault(t *testing.T) {
+	mp := interactive.NewMockPrompter().WithConfirmResponses(true, false)
+
+	savePath, err := PromptSavePathWithOptions(mp, "result", false)
+	require.NoError(t, err)
+	assert.Equal(t, "__DEFAULT__", savePath)
+}
+
+func TestShouldPromptForInteractiveSave_True(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	cmd.SetContext(interactive.WithPrompter(context.Background(), interactive.NewMockPrompter()))
+
+	assert.True(t, ShouldPromptForInteractiveSave(cmd))
+}
+
+func TestShouldPromptForInteractiveSave_FalseWhenNonInteractive(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("non-interactive", "true"))
+	cmd.SetContext(interactive.WithPrompter(context.Background(), interactive.NewMockPrompter()))
+
+	assert.False(t, ShouldPromptForInteractiveSave(cmd))
+}
+
+func TestShouldPromptForInteractiveSave_FalseWhenQuiet(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("quiet", "true"))
+	cmd.SetContext(interactive.WithPrompter(context.Background(), interactive.NewMockPrompter()))
+
+	assert.False(t, ShouldPromptForInteractiveSave(cmd))
+}

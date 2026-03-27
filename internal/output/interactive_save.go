@@ -30,9 +30,39 @@ func ResolveSavePathFromFlags(cmd *cobra.Command) (savePath string, explicit boo
 	return "", false, nil
 }
 
+// ShouldPromptForInteractiveSave reports whether interactive save prompt should be shown.
+// Prompting is disabled for non-interactive and quiet command execution.
+func ShouldPromptForInteractiveSave(cmd *cobra.Command) bool {
+	if cmd == nil {
+		return false
+	}
+
+	if !interactive.HasPrompterInContext(cmd.Context()) {
+		return false
+	}
+
+	nonInteractive, err := cmd.Flags().GetBool("non-interactive")
+	if err == nil && nonInteractive {
+		return false
+	}
+
+	quiet, err := cmd.Flags().GetBool("quiet")
+	if err == nil && quiet {
+		return false
+	}
+
+	return true
+}
+
 // PromptSavePath asks whether to save command result and where to save it.
 // Returns "" (do not save), "__DEFAULT__" (default exports path), or custom path.
 func PromptSavePath(p interactive.Prompter, subject string) (string, error) {
+	return PromptSavePathWithOptions(p, subject, true)
+}
+
+// PromptSavePathWithOptions asks whether to save command result and where to save it.
+// Returns "" (do not save), "__DEFAULT__" (default exports path), or custom path.
+func PromptSavePathWithOptions(p interactive.Prompter, subject string, allowCustomPath bool) (string, error) {
 	if subject == "" {
 		subject = "result"
 	}
@@ -55,6 +85,10 @@ func PromptSavePath(p interactive.Prompter, subject string) (string, error) {
 		return defaultSavePathMarker, nil
 	}
 
+	if !allowCustomPath {
+		return defaultSavePathMarker, nil
+	}
+
 	customPath, err := p.Input(fmt.Sprintf("Enter output file path for %s (e.g. compare_result.json):", subject), "")
 	if err != nil {
 		return "", fmt.Errorf("interactive output path input failed: %w", err)
@@ -66,4 +100,14 @@ func PromptSavePath(p interactive.Prompter, subject string) (string, error) {
 	}
 
 	return customPath, nil
+}
+
+func isSkippableInteractiveSavePromptError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "mock confirm queue exhausted") ||
+		strings.Contains(msg, "mock input queue exhausted")
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	embed "github.com/Korrnals/gotr/embedded"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -42,7 +43,22 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 		jqEnabled = viper.GetBool("jq_format")
 	}
 
+	savePath := ""
 	if saveFlag {
+		savePath = defaultSavePathMarker
+	} else if ShouldPromptForInteractiveSave(cmd) {
+		p := interactive.PrompterFromContext(cmd.Context())
+		promptedPath, err := PromptSavePathWithOptions(p, "response", false)
+		if err != nil {
+			if !isSkippableInteractiveSavePromptError(err) {
+				return err
+			}
+			promptedPath = ""
+		}
+		savePath = promptedPath
+	}
+
+	if savePath != "" {
 		toSave := data
 		if !bodyOnly {
 			toSave = struct {
@@ -60,7 +76,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 			}
 		}
 
-		filepath, err := Output(cmd, toSave, "get", "json")
+		filepath, err := outputBySavePath(toSave, "get", "json", savePath)
 		if err != nil {
 			return fmt.Errorf("save error: %w", err)
 		}
@@ -118,17 +134,40 @@ func Output(cmd *cobra.Command, data interface{}, resource string, format string
 		return "", fmt.Errorf("error reading --save flag: %w", err)
 	}
 
-	if !saveFlag {
-		// Output to stdout as JSON
-		content, err := json.MarshalIndent(data, "", "  ")
+	savePath := ""
+	if saveFlag {
+		savePath = defaultSavePathMarker
+	} else if ShouldPromptForInteractiveSave(cmd) {
+		p := interactive.PrompterFromContext(cmd.Context())
+		promptedPath, err := PromptSavePathWithOptions(p, resource+" result", false)
 		if err != nil {
-			return "", fmt.Errorf("error marshaling to JSON: %w", err)
+			if !isSkippableInteractiveSavePromptError(err) {
+				return "", err
+			}
+			promptedPath = ""
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(content))
-		return "", nil
+		savePath = promptedPath
 	}
 
-	return SaveToFile(data, resource, format)
+	if savePath != "" {
+		return outputBySavePath(data, resource, format, savePath)
+	}
+
+	// Output to stdout as JSON
+	content, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("error marshaling to JSON: %w", err)
+	}
+ 	fmt.Fprintln(cmd.OutOrStdout(), string(content))
+	return "", nil
+}
+
+func outputBySavePath(data interface{}, resource string, format string, savePath string) (string, error) {
+	if savePath == defaultSavePathMarker {
+		return SaveToFile(data, resource, format)
+	}
+
+	return SaveToFileWithPath(data, format, savePath)
 }
 
 // SaveToFile saves data to a file in the exports directory.
@@ -171,6 +210,43 @@ func SaveToFile(data interface{}, resource string, format string) (string, error
 	}
 
 	// Write file
+	if err := os.WriteFile(filePath, content, 0644); err != nil {
+		return "", fmt.Errorf("error writing file: %w", err)
+	}
+
+	return filePath, nil
+}
+
+// SaveToFileWithPath saves data to an explicit file path.
+// Returns the full path of the saved file.
+func SaveToFileWithPath(data interface{}, format, filePath string) (string, error) {
+	if filePath == "" {
+		return "", fmt.Errorf("file path is empty")
+	}
+
+	if err := EnsureDir(filepath.Dir(filePath)); err != nil {
+		return "", fmt.Errorf("error creating output directory: %w", err)
+	}
+
+	var content []byte
+	var err error
+	switch format {
+	case "json":
+		content, err = json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("error marshaling to JSON: %w", err)
+		}
+	case "yaml":
+		content, err = yaml.Marshal(data)
+		if err != nil {
+			return "", fmt.Errorf("error marshaling to YAML: %w", err)
+		}
+	case "csv":
+		return saveToCSV(data, filePath)
+	default:
+		return "", fmt.Errorf("unsupported format: %s", format)
+	}
+
 	if err := os.WriteFile(filePath, content, 0644); err != nil {
 		return "", fmt.Errorf("error writing file: %w", err)
 	}

@@ -4,11 +4,13 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetUsers(t *testing.T) {
@@ -337,4 +339,123 @@ func TestHTTPGetPriorities(t *testing.T) {
 	if len(priorities) != 1 {
 		t.Errorf("Expected 1 priority, got %d", len(priorities))
 	}
+}
+
+func TestHTTPUsersProjectAndLookupEndpoints(t *testing.T) {
+	t.Run("GetUsersByProject success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_users/77", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetUsersResponse{{ID: 1, Name: "Ann"}})
+		})
+		defer server.Close()
+
+		users, err := client.GetUsersByProject(context.Background(), 77)
+		assert.NoError(t, err)
+		assert.Len(t, users, 1)
+	})
+
+	t.Run("GetUser success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_user/11", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.User{ID: 11, Name: "John"})
+		})
+		defer server.Close()
+
+		user, err := client.GetUser(context.Background(), 11)
+		assert.NoError(t, err)
+		assert.NotNil(t, user)
+		assert.Equal(t, int64(11), user.ID)
+	})
+
+	t.Run("GetUserByEmail success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_user_by_email")
+			assert.Equal(t, "john@example.com", r.URL.Query().Get("email"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.User{ID: 12, Email: "john@example.com"})
+		})
+		defer server.Close()
+
+		user, err := client.GetUserByEmail(context.Background(), "john@example.com")
+		assert.NoError(t, err)
+		assert.NotNil(t, user)
+		assert.Equal(t, int64(12), user.ID)
+	})
+}
+
+func TestHTTPUsersWriteAndMetaEndpoints(t *testing.T) {
+	t.Run("AddUser success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_user", r.URL.String())
+
+			var req data.AddUserRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			assert.Equal(t, "Jane", req.Name)
+
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.User{ID: 21, Name: req.Name, Email: req.Email})
+		})
+		defer server.Close()
+
+		user, err := client.AddUser(context.Background(), data.AddUserRequest{Name: "Jane", Email: "jane@example.com"})
+		assert.NoError(t, err)
+		assert.NotNil(t, user)
+		assert.Equal(t, int64(21), user.ID)
+	})
+
+	t.Run("UpdateUser success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/update_user/21", r.URL.String())
+
+			var req data.UpdateUserRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			assert.Equal(t, "Jane Updated", req.Name)
+
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.User{ID: 21, Name: req.Name})
+		})
+		defer server.Close()
+
+		user, err := client.UpdateUser(context.Background(), 21, data.UpdateUserRequest{Name: "Jane Updated"})
+		assert.NoError(t, err)
+		assert.NotNil(t, user)
+		assert.Equal(t, "Jane Updated", user.Name)
+	})
+
+	t.Run("GetStatuses success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_statuses", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetStatusesResponse{{ID: 1, Name: "passed"}})
+		})
+		defer server.Close()
+
+		statuses, err := client.GetStatuses(context.Background())
+		assert.NoError(t, err)
+		assert.Len(t, statuses, 1)
+	})
+
+	t.Run("GetTemplates success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			expected := fmt.Sprintf("/index.php?/api/v2/get_templates/%d", int64(30))
+			assert.Equal(t, expected, r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetTemplatesResponse{{ID: 1, Name: "Template"}})
+		})
+		defer server.Close()
+
+		templates, err := client.GetTemplates(context.Background(), 30)
+		assert.NoError(t, err)
+		assert.Len(t, templates, 1)
+	})
 }

@@ -95,3 +95,34 @@ func TestRunSelfTest_JSONOutput(t *testing.T) {
 
 	assert.Contains(t, out, "stub-check")
 }
+
+func TestRunSelfTest_HumanFailuresOnly(t *testing.T) {
+	original := buildSelfTestReport
+	defer func() { buildSelfTestReport = original }()
+
+	buildSelfTestReport = func() *selftest.Report {
+		return &selftest.Report{
+			Version:     "stub-version",
+			TotalFailed: 1,
+			Checks: []selftest.CheckResult{
+				{Name: "pass-check", Category: "cat", Result: selftest.ResultPass},
+				{Name: "warn-check", Category: "cat", Result: selftest.ResultWarn},
+				{Name: "fail-check", Category: "cat", Result: selftest.ResultFail},
+			},
+		}
+	}
+
+	cmd := &cobra.Command{Use: "self-test"}
+	cmd.Flags().Bool("json", false, "")
+	cmd.Flags().Bool("failures-only", false, "")
+	require.NoError(t, cmd.Flags().Set("failures-only", "true"))
+
+	out := captureStdout(t, func() {
+		err := runSelfTest(cmd, nil)
+		require.Error(t, err)
+	})
+
+	assert.Contains(t, out, "fail-check")
+	assert.Contains(t, out, "warn-check")
+	assert.NotContains(t, out, "pass-check")
+}

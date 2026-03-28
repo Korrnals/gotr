@@ -164,6 +164,107 @@ func TestAddResultForCase_StatusRequired(t *testing.T) {
 	assert.Contains(t, err.Error(), "--status-id is required")
 }
 
+func TestAddSectionInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			assert.Equal(t, int64(10), projectID)
+			assert.Equal(t, "Section A", req.Name)
+			assert.Equal(t, int64(2), req.SuiteID)
+			assert.Equal(t, int64(3), req.ParentID)
+			return &data.Section{ID: 123, Name: req.Name}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Section A", "Description A", "2", "3").
+		WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addSectionInteractive(mock, cmd, 10)
+	assert.NoError(t, err)
+}
+
+func TestAddSharedStepInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			assert.Equal(t, int64(15), projectID)
+			assert.Equal(t, "Shared A", req.Title)
+			return &data.SharedStep{ID: 77, Title: req.Title}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Shared A").
+		WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addSharedStepInteractive(mock, cmd, 15)
+	assert.NoError(t, err)
+}
+
+func TestRunAddInteractive_Unsupported(t *testing.T) {
+	err := runAddInteractive(&client.MockClient{}, &cobra.Command{}, "unknown", 1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "interactive mode not supported")
+}
+
+func TestRunAddDryRun_SwitchEndpoints(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	_ = cmd.Flags().Set("name", "N")
+	_ = cmd.Flags().Set("title", "T")
+	_ = cmd.Flags().Set("description", "D")
+	_ = cmd.Flags().Set("announcement", "A")
+	_ = cmd.Flags().Set("show-announcement", "true")
+	_ = cmd.Flags().Set("suite-id", "11")
+	_ = cmd.Flags().Set("section-id", "22")
+	_ = cmd.Flags().Set("milestone-id", "33")
+	_ = cmd.Flags().Set("template-id", "44")
+	_ = cmd.Flags().Set("type-id", "55")
+	_ = cmd.Flags().Set("priority-id", "66")
+	_ = cmd.Flags().Set("refs", "REF")
+	_ = cmd.Flags().Set("comment", "C")
+	_ = cmd.Flags().Set("status-id", "1")
+	_ = cmd.Flags().Set("elapsed", "1m")
+	_ = cmd.Flags().Set("defects", "BUG-1")
+	_ = cmd.Flags().Set("assignedto-id", "99")
+	_ = cmd.Flags().Set("case-ids", "1,2")
+	_ = cmd.Flags().Set("include-all", "true")
+
+	dr := output.NewDryRunPrinter("add")
+
+	assert.NoError(t, runAddDryRun(cmd, dr, "project", 0, nil))
+	assert.NoError(t, runAddDryRun(cmd, dr, "suite", 1, nil))
+	assert.NoError(t, runAddDryRun(cmd, dr, "section", 1, nil))
+	assert.NoError(t, runAddDryRun(cmd, dr, "case", 2, nil))
+	assert.NoError(t, runAddDryRun(cmd, dr, "run", 1, nil))
+	assert.NoError(t, runAddDryRun(cmd, dr, "result", 3, nil))
+	assert.NoError(t, runAddDryRun(cmd, dr, "shared-step", 1, nil))
+
+	err := runAddDryRun(cmd, dr, "attachment", 1, nil)
+	assert.Error(t, err)
+	err = runAddDryRun(cmd, dr, "bad-endpoint", 1, nil)
+	assert.Error(t, err)
+}
+
+func TestRunAddInteractive_ParentIDRequired(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+
+	err := runAddInteractive(&client.MockClient{}, cmd, "suite", 0)
+	assert.Error(t, err)
+
+	err = runAddInteractive(&client.MockClient{}, cmd, "section", 0)
+	assert.Error(t, err)
+
+	err = runAddInteractive(&client.MockClient{}, cmd, "case", 0)
+	assert.Error(t, err)
+
+	err = runAddInteractive(&client.MockClient{}, cmd, "run", 0)
+	assert.Error(t, err)
+
+	err = runAddInteractive(&client.MockClient{}, cmd, "shared-step", 0)
+	assert.Error(t, err)
+}
+
 // TestAdd_Project_Success проверяет создание проекта
 func TestAdd_Project_Success(t *testing.T) {
 	mock := &client.MockClient{

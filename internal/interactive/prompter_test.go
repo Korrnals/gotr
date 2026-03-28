@@ -98,6 +98,24 @@ func TestTerminalPrompter_Select_AskError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to select option")
 }
 
+func TestTerminalPrompter_Select_Success(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "b"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	idx, value, err := tp.Select("pick", []string{"a", "b", "c"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, idx)
+	assert.Equal(t, "b", value)
+}
+
 func TestTerminalPrompter_Select_SelectedNotInList(t *testing.T) {
 	original := surveyAskOne
 	defer func() { surveyAskOne = original }()
@@ -198,6 +216,11 @@ func TestNonInteractivePrompter_AllMethods(t *testing.T) {
 
 	_, _, err = p.Select("select", []string{"a", "b"})
 	assert.ErrorIs(t, err, ErrNonInteractive)
+}
+
+func TestPrompterConstructors(t *testing.T) {
+	assert.IsType(t, &TerminalPrompter{}, NewTerminalPrompter())
+	assert.IsType(t, &NonInteractivePrompter{}, NewNonInteractivePrompter())
 }
 
 func TestMockPrompter_Queues(t *testing.T) {

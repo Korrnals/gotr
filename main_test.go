@@ -75,3 +75,13 @@ func TestRunMain_InitLoggerError(t *testing.T) {
 	assert.False(t, execCalled)
 	assert.False(t, notifyCalled)
 }
+
+func TestMain_NoPanic(t *testing.T) {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"gotr"}
+
+	assert.NotPanics(t, func() {
+		main()
+	})
+}

@@ -1,6 +1,7 @@
 // internal/client/mock_extras_test.go
 // Targeted tests for the remaining 0%-coverage mock methods:
-//   GetCasesPage, AddCaseField, DeleteSection, DeleteSharedStep, GetCasesParallelCtx
+//
+//	GetCasesPage, AddCaseField, DeleteSection, DeleteSharedStep, GetCasesParallelCtx
 package client
 
 import (

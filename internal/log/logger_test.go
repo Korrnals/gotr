@@ -8,6 +8,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/paths"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 func resetLoggerState(t *testing.T) {
@@ -148,4 +149,23 @@ func TestInitDefaultAndSync(t *testing.T) {
 
 	// Sync may return OS-dependent errors for stdout-backed writers.
 	_ = Sync()
+}
+
+func TestFatal(t *testing.T) {
+	resetLoggerState(t)
+
+	core := zapcore.NewCore(
+		zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig()),
+		zapcore.AddSync(os.Stdout),
+		zapcore.InfoLevel,
+	)
+	globalLogger = zap.New(core, zap.WithFatalHook(zapcore.WriteThenPanic))
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Fatalf("expected panic from Fatal with WriteThenPanic hook")
+		}
+	}()
+
+	Fatal("fatal test message")
 }

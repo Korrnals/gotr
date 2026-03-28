@@ -2,6 +2,7 @@ package selftest
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -143,4 +144,45 @@ func TestCoverageCheckerHelpers(t *testing.T) {
 	c := CoverageChecker{}
 	assert.Equal(t, "Code Coverage", c.Name())
 	assert.Equal(t, "Coverage", c.Category())
+}
+
+func TestAllTestsChecker_Check(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", "printf '%s\n' '--- PASS: TestA' '--- FAIL: TestB' 'ok   github.com/acme/p1 0.01s' 'FAIL github.com/acme/p2 0.02s'; exit 1")
+	}
+
+	res := AllTestsChecker{}.Check()
+	assert.Equal(t, ResultFail, res.Result)
+	assert.Contains(t, res.Message, "1 passed, 1 failed, 0 skipped")
+	assert.Error(t, res.Error)
+}
+
+func TestCoverageChecker_Check(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", "printf '%s\n' 'ok github.com/acme/x coverage: 55.5% of statements'")
+	}
+
+	res := CoverageChecker{}.Check()
+	assert.Equal(t, ResultPass, res.Result)
+	assert.Equal(t, "55.5%", res.Message)
+}
+
+func TestCoverageChecker_CheckCommandError(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", "echo boom >&2; exit 1")
+	}
+
+	res := CoverageChecker{}.Check()
+	assert.Equal(t, ResultWarn, res.Result)
+	assert.Contains(t, res.Message, "Cannot calculate coverage")
+	assert.Error(t, res.Error)
 }

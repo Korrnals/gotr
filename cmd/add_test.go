@@ -53,6 +53,117 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	return cmd
 }
 
+func TestParseCaseIDs(t *testing.T) {
+	assert.Equal(t, []int64{1, 2, 3}, parseCaseIDs("1,2,3"))
+	assert.Equal(t, []int64{10}, parseCaseIDs("10"))
+	assert.Empty(t, parseCaseIDs(""))
+	assert.Empty(t, parseCaseIDs("abc,xyz"))
+	result := parseCaseIDs("1,bad,3")
+	assert.Equal(t, []int64{1, 3}, result)
+}
+
+func TestSplitAndTrim(t *testing.T) {
+	assert.Equal(t, []string{"a", "b", "c"}, splitAndTrim("a,b,c", ","))
+	assert.Equal(t, []string{"a", "b"}, splitAndTrim("a,,b", ","))
+	assert.Empty(t, splitAndTrim("", ","))
+	assert.Equal(t, []string{"hello"}, splitAndTrim("hello", ","))
+}
+
+func TestSplitString(t *testing.T) {
+	assert.Equal(t, []string{"a", "b", "c"}, splitString("a,b,c", ","))
+	assert.Equal(t, []string{"a", "", "b"}, splitString("a,,b", ","))
+	assert.Equal(t, []string{""}, splitString("", ","))
+}
+
+func TestParseOptionalID(t *testing.T) {
+	id, err := parseOptionalID("")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), id)
+
+	id, err = parseOptionalID("123")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(123), id)
+
+	_, err = parseOptionalID("bad-id")
+	assert.Error(t, err)
+}
+
+func TestAddProjectInteractive_Cancelled(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Project X", "Announcement").
+		WithConfirmResponses(true, false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addProjectInteractive(mock, cmd)
+	assert.NoError(t, err)
+}
+
+func TestAddSuiteInteractive_Cancelled(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Suite X", "Description").
+		WithConfirmResponses(false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addSuiteInteractive(mock, cmd, 10)
+	assert.NoError(t, err)
+}
+
+func TestAddCaseInteractive_Cancelled(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Case title", "REF-1").
+		WithSelectResponses(interactive.SelectResponse{Index: 0}, interactive.SelectResponse{Index: 0}).
+		WithConfirmResponses(false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addCaseInteractive(mock, cmd, 20)
+	assert.NoError(t, err)
+}
+
+func TestAddRunInteractive_Cancelled(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Run name", "Run description", "77").
+		WithConfirmResponses(true, false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addRunInteractive(mock, cmd, 30)
+	assert.NoError(t, err)
+}
+
+func TestRunAddDryRun_Project(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	_ = cmd.Flags().Set("name", "Dry Project")
+	dr := output.NewDryRunPrinter("add project")
+
+	err := runAddDryRun(cmd, dr, "project", 0, nil)
+	assert.NoError(t, err)
+}
+
+func TestAddSection_NameRequired(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupAddTest(t, mock)
+
+	err := addSection(mock, cmd, 10, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--name is required")
+}
+
+func TestAddResultForCase_StatusRequired(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupAddTest(t, mock)
+
+	err := addResultForCase(mock, cmd, 10, 20, nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--status-id is required")
+}
+
 // TestAdd_Project_Success проверяет создание проекта
 func TestAdd_Project_Success(t *testing.T) {
 	mock := &client.MockClient{

@@ -43,6 +43,34 @@ func TestResultAggregator_Basic(t *testing.T) {
 	assert.ElementsMatch(t, []int64{1, 2, 3}, ids)
 }
 
+func TestResultAggregator_Wait(t *testing.T) {
+	ctx := context.Background()
+	ra := NewResultAggregator(100)
+	ra.StartCtx(ctx)
+	ra.Stop()
+
+	done := make(chan struct{})
+	go func() {
+		ra.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// ok
+	case <-time.After(2 * time.Second):
+		t.Fatal("Wait() did not return after Stop()")
+	}
+}
+
+func TestPageResult_IsSuccess(t *testing.T) {
+	pr := PageResult{}
+	assert.True(t, pr.IsSuccess())
+
+	pr.Error = errors.New("fetch error")
+	assert.False(t, pr.IsSuccess())
+}
+
 func TestResultAggregator_Deduplication(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)

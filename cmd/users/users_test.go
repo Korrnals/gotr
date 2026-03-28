@@ -61,6 +61,14 @@ func TestUpdateCmd_EmailFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUserDisplayName(t *testing.T) {
+	user := data.User{Name: "Alice", Email: "alice@example.com"}
+	assert.Equal(t, "Alice", userDisplayName(user))
+
+	user = data.User{Name: "", Email: "bob@example.com"}
+	assert.Equal(t, "bob@example.com", userDisplayName(user))
+}
+
 func TestUpdateCmd_RoleFlag(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {

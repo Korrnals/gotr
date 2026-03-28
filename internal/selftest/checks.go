@@ -14,6 +14,8 @@ import (
 	"github.com/Korrnals/gotr/internal/paths"
 )
 
+var execCommand = exec.Command
+
 // ConfigChecker проверяет конфигурацию в ~/.gotr/config/
 type ConfigChecker struct{}
 
@@ -148,7 +150,7 @@ func (c AllTestsChecker) Category() string { return "Tests" }
 
 func (c AllTestsChecker) Check() CheckResult {
 	// Запускаем все тесты во всех пакетах
-	cmd := exec.Command("go", "test", "./...", "-v")
+	cmd := execCommand("go", "test", "./...", "-v")
 	cmd.Dir = getProjectRoot()
 	output, err := cmd.CombinedOutput()
 
@@ -209,7 +211,7 @@ func (c CoverageChecker) Category() string { return "Coverage" }
 
 func (c CoverageChecker) Check() CheckResult {
 	// Запускаем тесты с coverage для всех пакетов
-	cmd := exec.Command("go", "test", "./...", "-coverprofile=/tmp/gotr-coverage.out")
+	cmd := execCommand("go", "test", "./...", "-coverprofile=/tmp/gotr-coverage.out")
 	cmd.Dir = getProjectRoot()
 	output, err := cmd.CombinedOutput()
 

@@ -24,10 +24,20 @@ func TestExtractAllEndpointName(t *testing.T) {
 	assert.Equal(t, "", extractAllEndpointName("index.php?/api/v2/"))
 }
 
+func TestExtractGetEndpointName(t *testing.T) {
+	assert.Equal(t, "get_projects", extractGetEndpointName("index.php?/api/v2/get_projects"))
+	assert.Equal(t, "get_cases", extractGetEndpointName("index.php?/api/v2/get_cases/{project_id}&suite_id=1"))
+	assert.Equal(t, "", extractGetEndpointName("index.php?/api/v2/add_case/{section_id}"))
+}
+
 func TestGetAllShortEndpoints(t *testing.T) {
 	endpoints := getAllShortEndpoints("projects")
 	require.NotEmpty(t, endpoints)
 	assert.True(t, sort.StringsAreSorted(endpoints))
+}
+
+func TestGetAllShortEndpoints_UnknownResource(t *testing.T) {
+	assert.Nil(t, getAllShortEndpoints("unknown-resource"))
 }
 
 func TestGetEndpoints(t *testing.T) {
@@ -42,6 +52,8 @@ func TestGetEndpoints(t *testing.T) {
 
 	all := GetEndpoints("all")
 	require.NotEmpty(t, all)
+
+	assert.Nil(t, GetEndpoints("unknown-resource"))
 }
 
 func TestReplaceAllPlaceholders(t *testing.T) {
@@ -64,6 +76,36 @@ func TestBuildRequestParams(t *testing.T) {
 	assert.Equal(t, "11", queryParams["suite_id"])
 	assert.Equal(t, "22", queryParams["milestone_id"])
 	assert.Empty(t, queryParams["section_id"])
+}
+
+func TestBuildRequestParams_AppendIDAndExtraFlags(t *testing.T) {
+	cmd := &cobra.Command{Use: "resources"}
+	cmd.Flags().String("suite-id", "", "")
+	cmd.Flags().String("section-id", "", "")
+	cmd.Flags().String("milestone-id", "", "")
+	cmd.Flags().String("assignedto-id", "", "")
+	cmd.Flags().String("status-id", "", "")
+	cmd.Flags().String("priority-id", "", "")
+	cmd.Flags().String("type-id", "", "")
+	cmd.Flags().String("created-by", "", "")
+	cmd.Flags().String("updated-by", "", "")
+
+	require.NoError(t, cmd.Flags().Set("assignedto-id", "101"))
+	require.NoError(t, cmd.Flags().Set("status-id", "1"))
+	require.NoError(t, cmd.Flags().Set("priority-id", "3"))
+	require.NoError(t, cmd.Flags().Set("type-id", "7"))
+	require.NoError(t, cmd.Flags().Set("created-by", "11"))
+	require.NoError(t, cmd.Flags().Set("updated-by", "22"))
+
+	fullEndpoint, queryParams, err := buildRequestParams("get_cases", "42", cmd)
+	require.NoError(t, err)
+	assert.Equal(t, "get_cases/42", fullEndpoint)
+	assert.Equal(t, "101", queryParams["assignedto_id"])
+	assert.Equal(t, "1", queryParams["status_id"])
+	assert.Equal(t, "3", queryParams["priority_id"])
+	assert.Equal(t, "7", queryParams["type_id"])
+	assert.Equal(t, "11", queryParams["created_by"])
+	assert.Equal(t, "22", queryParams["updated_by"])
 }
 
 func TestGetResourcePaths(t *testing.T) {
@@ -120,4 +162,19 @@ func TestGetResourceEndpoints_JSONAndShortModes(t *testing.T) {
 	_, copyErr := io.Copy(&buf, r)
 	require.NoError(t, copyErr)
 	assert.NotEmpty(t, buf.String())
+}
+
+func TestGetResourceEndpoints_DefaultMode(t *testing.T) {
+	oldStdout := os.Stdout
+	nullFile, err := os.OpenFile(os.DevNull, os.O_WRONLY, 0)
+	require.NoError(t, err)
+	os.Stdout = nullFile
+	defer func() {
+		os.Stdout = oldStdout
+		_ = nullFile.Close()
+	}()
+
+	endpoints, callErr := getResourceEndpoints("projects", "table")
+	assert.NoError(t, callErr)
+	assert.Nil(t, endpoints)
 }

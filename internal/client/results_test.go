@@ -311,3 +311,53 @@ func TestAddResultsForCases(t *testing.T) {
 		})
 	}
 }
+
+func TestGetResultsEndpoints(t *testing.T) {
+	t.Run("GetResults success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_results/123")
+			assert.Equal(t, "0", r.URL.Query().Get("offset"))
+			assert.Equal(t, "250", r.URL.Query().Get("limit"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetResultsResponse{{ID: 1, TestID: 123}})
+		})
+		defer server.Close()
+
+		results, err := client.GetResults(context.Background(), 123)
+		assert.NoError(t, err)
+		assert.Len(t, results, 1)
+	})
+
+	t.Run("GetResultsForRun success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_results_for_run/55")
+			assert.Equal(t, "0", r.URL.Query().Get("offset"))
+			assert.Equal(t, "250", r.URL.Query().Get("limit"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetResultsResponse{{ID: 2, TestID: 777}})
+		})
+		defer server.Close()
+
+		results, err := client.GetResultsForRun(context.Background(), 55)
+		assert.NoError(t, err)
+		assert.Len(t, results, 1)
+	})
+
+	t.Run("GetResultsForCase success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_results_for_case/55/66", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetResultsResponse{{ID: 3, TestID: 888}})
+		})
+		defer server.Close()
+
+		results, err := client.GetResultsForCase(context.Background(), 55, 66)
+		assert.NoError(t, err)
+		assert.Len(t, results, 1)
+	})
+}

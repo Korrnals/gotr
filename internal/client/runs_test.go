@@ -324,3 +324,32 @@ func TestDeleteRun(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRun(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_run/12345", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.Run{ID: 12345, Name: "Smoke"})
+		})
+		defer server.Close()
+
+		run, err := client.GetRun(context.Background(), 12345)
+		assert.NoError(t, err)
+		assert.NotNil(t, run)
+		assert.Equal(t, int64(12345), run.ID)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		})
+		defer server.Close()
+
+		_, err := client.GetRun(context.Background(), 12345)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+}

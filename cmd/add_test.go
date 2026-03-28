@@ -703,6 +703,33 @@ func TestAddSection_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAddSection_JSONAndClientErrorBranches(t *testing.T) {
+	t.Run("json success", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+				assert.Equal(t, int64(5), projectID)
+				assert.Equal(t, "Json Section", req.Name)
+				return &data.Section{ID: 45, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		err := addSection(mock, cmd, 5, []byte(`{"name":"Json Section"}`))
+		assert.NoError(t, err)
+	})
+
+	t.Run("client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+				return nil, errors.New("section boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("name", "Section X"))
+		err := addSection(mock, cmd, 5, nil)
+		assert.ErrorContains(t, err, "failed to create section")
+	})
+}
+
 func TestAddResultForCase_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
@@ -717,6 +744,40 @@ func TestAddResultForCase_Success(t *testing.T) {
 
 	err := addResultForCase(mock, cmd, 10, 20, nil)
 	assert.NoError(t, err)
+}
+
+func TestAddResultForCase_JSONAndClientErrorBranches(t *testing.T) {
+	t.Run("json success", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+				assert.Equal(t, int64(10), runID)
+				assert.Equal(t, int64(20), caseID)
+				assert.Equal(t, int64(2), req.StatusID)
+				return &data.Result{ID: 1000, StatusID: req.StatusID}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		err := addResultForCase(mock, cmd, 10, 20, []byte(`{"status_id":2}`))
+		assert.NoError(t, err)
+	})
+
+	t.Run("json parse error", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := addResultForCase(&client.MockClient{}, cmd, 10, 20, []byte("{"))
+		assert.ErrorContains(t, err, "JSON parse error")
+	})
+
+	t.Run("client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+				return nil, errors.New("result for case boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("status-id", "1"))
+		err := addResultForCase(mock, cmd, 10, 20, nil)
+		assert.ErrorContains(t, err, "failed to add result")
+	})
 }
 
 // TestAdd_Project_Success проверяет создание проекта
@@ -931,6 +992,78 @@ func TestRunAdd_OrchestrationErrors(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "JSON file read error")
 		require.NoError(t, cmd.Flags().Set("json-file", ""))
+	})
+}
+
+func TestRunAdd_OrchestrationBranches(t *testing.T) {
+	t.Run("dry-run branch", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.Flags().Bool("dry-run", false, "")
+		require.NoError(t, cmd.Flags().Set("dry-run", "true"))
+		require.NoError(t, cmd.Flags().Set("name", "Dry Project"))
+
+		err := runAdd(cmd, []string{"project"})
+		assert.NoError(t, err)
+	})
+
+	t.Run("interactive flag branch", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+				return &data.GetProjectResponse{ID: 900, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		cmd.Flags().BoolP("interactive", "i", false, "")
+		require.NoError(t, cmd.Flags().Set("interactive", "true"))
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Project I", "Announcement").
+			WithConfirmResponses(true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runAdd(cmd, []string{"project"})
+		assert.NoError(t, err)
+	})
+
+	t.Run("json-file success branch", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "add-json-*.json")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		_, _ = tmpFile.WriteString(`{"name":"FromFile"}`)
+		_ = tmpFile.Close()
+
+		mock := &client.MockClient{
+			AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+				return &data.GetProjectResponse{ID: 901, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("json-file", tmpFile.Name()))
+
+		err = runAdd(cmd, []string{"project"})
+		assert.NoError(t, err)
+	})
+
+	t.Run("result-for-case success", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+				assert.Equal(t, int64(10), runID)
+				assert.Equal(t, int64(20), caseID)
+				assert.Equal(t, int64(1), req.StatusID)
+				return &data.Result{ID: 902, StatusID: req.StatusID}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("status-id", "1"))
+
+		err := runAdd(cmd, []string{"result-for-case", "10", "20"})
+		assert.NoError(t, err)
+	})
+
+	t.Run("result-for-case invalid case id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"result-for-case", "10", "bad-case"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "case_id")
 	})
 }
 

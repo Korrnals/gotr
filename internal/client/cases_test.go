@@ -607,6 +607,34 @@ func TestGetCaseAndHistoryForCase(t *testing.T) {
 		assert.NotNil(t, h)
 		assert.Len(t, h.History, 1)
 	})
+
+	t.Run("get history api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("boom"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetHistoryForCase(context.Background(), 22)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+
+	t.Run("get history decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetHistoryForCase(context.Background(), 22)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error history case")
+	})
 }
 
 func TestBulkCaseAndMetaEndpoints(t *testing.T) {
@@ -641,6 +669,20 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 		assert.Contains(t, err.Error(), "request error DeleteCases")
 	})
 
+	t.Run("delete cases success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/delete_cases/90", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		err := client.DeleteCases(context.Background(), 90, &data.DeleteCasesRequest{CaseIDs: []int64{1, 2}})
+		assert.NoError(t, err)
+	})
+
 	t.Run("get case types success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/index.php?/api/v2/get_case_types", r.URL.String())
@@ -655,6 +697,34 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, types, 1)
 		assert.Equal(t, "Functional", types[0].Name)
+	})
+
+	t.Run("get case types decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCaseTypes(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error case types")
+	})
+
+	t.Run("get case types api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("bad"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCaseTypes(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
 	})
 
 	t.Run("get case fields success", func(t *testing.T) {
@@ -673,6 +743,34 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 		assert.Equal(t, "custom_x", fields[0].Name)
 	})
 
+	t.Run("get case fields decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCaseFields(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error case fields")
+	})
+
+	t.Run("get case fields api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCaseFields(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+
 	t.Run("add case field success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "POST", r.Method)
@@ -688,6 +786,34 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Equal(t, int64(5), resp.ID)
+	})
+
+	t.Run("add case field decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.AddCaseField(context.Background(), &data.AddCaseFieldRequest{Type: "string", Name: "custom_a", Label: "A"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error created field case")
+	})
+
+	t.Run("add case field api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("invalid"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.AddCaseField(context.Background(), &data.AddCaseFieldRequest{Type: "string", Name: "custom_a", Label: "A"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
 	})
 }
 

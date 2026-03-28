@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

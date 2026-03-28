@@ -204,6 +204,122 @@ func TestAddSharedStepInteractive_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAddSuiteInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			assert.Equal(t, int64(10), projectID)
+			assert.Equal(t, "Suite Ok", req.Name)
+			assert.Equal(t, "Suite Desc", req.Description)
+			return &data.Suite{ID: 900, Name: req.Name}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Suite Ok", "Suite Desc").
+		WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addSuiteInteractive(mock, cmd, 10)
+	assert.NoError(t, err)
+}
+
+func TestAddCaseInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			assert.Equal(t, int64(20), sectionID)
+			assert.Equal(t, "Case Ok", req.Title)
+			assert.Equal(t, int64(2), req.TypeID)
+			assert.Equal(t, int64(3), req.PriorityID)
+			assert.Equal(t, "REF-2", req.Refs)
+			return &data.Case{ID: 901, Title: req.Title}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Case Ok", "REF-2").
+		WithSelectResponses(interactive.SelectResponse{Index: 1}, interactive.SelectResponse{Index: 2}).
+		WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addCaseInteractive(mock, cmd, 20)
+	assert.NoError(t, err)
+}
+
+func TestAddRunInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+			assert.Equal(t, int64(30), projectID)
+			assert.Equal(t, "Run Ok", req.Name)
+			assert.Equal(t, "Run Desc", req.Description)
+			assert.Equal(t, int64(44), req.SuiteID)
+			assert.False(t, req.IncludeAll)
+			return &data.Run{ID: 902, Name: req.Name}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Run Ok", "Run Desc", "44").
+		WithConfirmResponses(false, true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := addRunInteractive(mock, cmd, 30)
+	assert.NoError(t, err)
+}
+
+func TestAddInteractive_ClientErrorBranches(t *testing.T) {
+	t.Run("add suite interactive client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+				return nil, errors.New("suite boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Suite", "Desc").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSuiteInteractive(mock, cmd, 10)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create suite")
+	})
+
+	t.Run("add case interactive client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+				return nil, errors.New("case boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Case", "REF").
+			WithSelectResponses(interactive.SelectResponse{Index: 0}, interactive.SelectResponse{Index: 0}).
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addCaseInteractive(mock, cmd, 20)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create case")
+	})
+
+	t.Run("add run interactive client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+				return nil, errors.New("run boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Run", "Desc", "11").
+			WithConfirmResponses(true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addRunInteractive(mock, cmd, 30)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create run")
+	})
+}
+
 func TestRunAddInteractive_Unsupported(t *testing.T) {
 	err := runAddInteractive(&client.MockClient{}, &cobra.Command{}, "unknown", 1)
 	assert.Error(t, err)

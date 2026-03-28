@@ -363,6 +363,101 @@ func TestUpdateCaseInteractive_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUpdateInteractive_InputErrorBranches(t *testing.T) {
+	nonInteractive := interactive.NewNonInteractivePrompter()
+
+	t.Run("project input error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), nonInteractive))
+		err := updateProjectInteractive(&client.MockClient{}, cmd, 1)
+		assert.ErrorContains(t, err, "input error")
+	})
+
+	t.Run("suite input error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), nonInteractive))
+		err := updateSuiteInteractive(&client.MockClient{}, cmd, 2)
+		assert.ErrorContains(t, err, "input error")
+	})
+
+	t.Run("case input error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), nonInteractive))
+		err := updateCaseInteractive(&client.MockClient{}, cmd, 3)
+		assert.ErrorContains(t, err, "input error")
+	})
+}
+
+func TestUpdateInteractive_ClientErrorBranches(t *testing.T) {
+	t.Run("project client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+				return nil, errors.New("project boom")
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Project", "Announcement").
+			WithConfirmResponses(true, true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := updateProjectInteractive(mock, cmd, 11)
+		assert.ErrorContains(t, err, "failed to update project")
+	})
+
+	t.Run("suite client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			UpdateSuiteFunc: func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+				return nil, errors.New("suite boom")
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Suite", "Description").
+			WithConfirmResponses(true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := updateSuiteInteractive(mock, cmd, 22)
+		assert.ErrorContains(t, err, "failed to update suite")
+	})
+
+	t.Run("case client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+				return nil, errors.New("case boom")
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Case", "REF").
+			WithSelectResponses(interactive.SelectResponse{Index: 0}, interactive.SelectResponse{Index: 0}).
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := updateCaseInteractive(mock, cmd, 33)
+		assert.ErrorContains(t, err, "failed to update case")
+	})
+}
+
+func TestUpdateRunInteractive_Cancelled(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			called = true
+			return &data.Run{ID: runID}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Run", "Desc").
+		WithConfirmResponses(true, false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateRunInteractive(mock, cmd, 8)
+	assert.NoError(t, err)
+	assert.False(t, called)
+}
+
 func TestRunUpdateDryRun_Project(t *testing.T) {
 	cmd := setupUpdateTest(t, &client.MockClient{})
 	_ = cmd.Flags().Set("name", "Updated Project")

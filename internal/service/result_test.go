@@ -69,6 +69,11 @@ func TestResultService_Getters(t *testing.T) {
 		assert.Len(t, res, 1)
 	})
 
+	t.Run("GetForRun invalid id", func(t *testing.T) {
+		_, err := svc.GetForRun(ctx, 0)
+		assert.Error(t, err)
+	})
+
 	t.Run("GetRunsForProject success", func(t *testing.T) {
 		mock.GetRunsFunc = func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{{ID: 99, Name: "run"}}, nil
@@ -78,6 +83,11 @@ func TestResultService_Getters(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, runs, 1)
 		assert.Equal(t, int64(99), runs[0].ID)
+	})
+
+	t.Run("GetRunsForProject invalid id", func(t *testing.T) {
+		_, err := svc.GetRunsForProject(ctx, 0)
+		assert.Error(t, err)
 	})
 }
 
@@ -120,6 +130,19 @@ func TestResultService_AddMethods(t *testing.T) {
 		assert.Equal(t, int64(11), res.ID)
 	})
 
+	t.Run("AddForCase validation error", func(t *testing.T) {
+		_, err := svc.AddForCase(ctx, 0, 3, &data.AddResultRequest{StatusID: 1})
+		assert.Error(t, err)
+	})
+
+	t.Run("AddForCase client error", func(t *testing.T) {
+		mock.AddResultForCaseFunc = func(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+			return nil, errors.New("case add failed")
+		}
+		_, err := svc.AddForCase(ctx, 2, 3, &data.AddResultRequest{StatusID: 1})
+		assert.Error(t, err)
+	})
+
 	t.Run("AddResults success", func(t *testing.T) {
 		mock.AddResultsFunc = func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 			return data.GetResultsResponse{{ID: 12, StatusID: req.Results[0].StatusID}}, nil
@@ -130,6 +153,19 @@ func TestResultService_AddMethods(t *testing.T) {
 		assert.Len(t, res, 1)
 	})
 
+	t.Run("AddResults validation error", func(t *testing.T) {
+		_, err := svc.AddResults(ctx, 4, &data.AddResultsRequest{Results: []data.ResultEntry{}})
+		assert.Error(t, err)
+	})
+
+	t.Run("AddResults client error", func(t *testing.T) {
+		mock.AddResultsFunc = func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+			return nil, errors.New("bulk add failed")
+		}
+		_, err := svc.AddResults(ctx, 4, &data.AddResultsRequest{Results: []data.ResultEntry{{TestID: 1, StatusID: 2}}})
+		assert.Error(t, err)
+	})
+
 	t.Run("AddResultsForCases success", func(t *testing.T) {
 		mock.AddResultsForCasesFunc = func(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 			return data.GetResultsResponse{{ID: 13, StatusID: req.Results[0].StatusID}}, nil
@@ -138,6 +174,11 @@ func TestResultService_AddMethods(t *testing.T) {
 		res, err := svc.AddResultsForCases(ctx, 5, &data.AddResultsForCasesRequest{Results: []data.ResultForCaseEntry{{CaseID: 6, StatusID: 1}}})
 		assert.NoError(t, err)
 		assert.Len(t, res, 1)
+	})
+
+	t.Run("AddResultsForCases validation error", func(t *testing.T) {
+		_, err := svc.AddResultsForCases(ctx, 5, &data.AddResultsForCasesRequest{Results: []data.ResultForCaseEntry{{CaseID: 0, StatusID: 1}}})
+		assert.Error(t, err)
 	})
 }
 

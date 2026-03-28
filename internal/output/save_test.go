@@ -809,3 +809,23 @@ func TestSaveToFile_FilePermissions(t *testing.T) {
 	mode := info.Mode()
 	assert.True(t, mode&0400 != 0, "file should be readable by owner")
 }
+func TestSaveJSONToFile(t *testing.T) {
+        dir := t.TempDir()
+        path := dir + "/out.json"
+
+        data := map[string]interface{}{"key": "value", "num": 42}
+        err := SaveJSONToFile(path, data)
+        require.NoError(t, err)
+
+        content, err := os.ReadFile(path)
+        require.NoError(t, err)
+        assert.Contains(t, string(content), "key")
+        assert.Contains(t, string(content), "value")
+}
+
+func TestSaveJSONToFile_WriteError(t *testing.T) {
+        // Pass a directory as filename to force write error
+        dir := t.TempDir()
+        err := SaveJSONToFile(dir, map[string]string{"x": "y"})
+        assert.Error(t, err)
+}

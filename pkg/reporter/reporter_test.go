@@ -356,3 +356,41 @@ func TestInlineEmojiStripped(t *testing.T) {
 		t.Errorf("✅ should be replaced with (OK), got:\n%s", out)
 	}
 }
+// ---------------------------------------------------------------------------
+// Color helpers and BannerWarn/BannerError (previously 0% coverage)
+// ---------------------------------------------------------------------------
+
+func TestRed(t *testing.T) {
+        s := Red("error text")
+        if !strings.Contains(s, "error text") {
+                t.Errorf("Red() should contain the input string, got %q", s)
+        }
+        // Should contain ANSI escape sequences
+        if !strings.Contains(s, "\x1b[") {
+                t.Errorf("Red() should contain ANSI codes, got %q", s)
+        }
+}
+
+func TestBannerWarn(t *testing.T) {
+        var buf bytes.Buffer
+        New("warn test").
+                Writer(&buf).
+                BannerWarn("partial results").
+                Print()
+        out := buf.String()
+        if !strings.Contains(out, "partial results") {
+                t.Errorf("BannerWarn text not found in output:\n%s", out)
+        }
+}
+
+func TestBannerError(t *testing.T) {
+        var buf bytes.Buffer
+        New("error test").
+                Writer(&buf).
+                BannerError("critical failure").
+                Print()
+        out := buf.String()
+        if !strings.Contains(out, "critical failure") {
+                t.Errorf("BannerError text not found in output:\n%s", out)
+        }
+}

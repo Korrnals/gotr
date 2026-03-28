@@ -179,3 +179,38 @@ func TestBatchProcessor_EmptySlice(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, called)
 }
+
+// ---------------------------------------------------------------------------
+// WithProgressMonitor and Context (previously 0% coverage)
+// ---------------------------------------------------------------------------
+
+type mockMonitor struct{ count int }
+
+func (m *mockMonitor) Increment() { m.count++ }
+
+func TestWithProgressMonitor(t *testing.T) {
+	mon := &mockMonitor{}
+	pool := NewWorkerPool(
+		WithMaxWorkers(2),
+		WithProgressMonitor(mon),
+	)
+	// Submit two tasks; monitor.Increment() is called after each
+	for i := 0; i < 3; i++ {
+		pool.Submit(func() error { return nil })
+	}
+	err := pool.Wait()
+	assert.NoError(t, err)
+	assert.Equal(t, 3, mon.count)
+}
+
+func TestWorkerPool_Context(t *testing.T) {
+	pool := NewWorkerPool(WithMaxWorkers(1))
+	ctx := pool.Context()
+	// Should be a non-nil, non-cancelled context at this point
+	assert.NotNil(t, ctx)
+	select {
+	case <-ctx.Done():
+		t.Error("context should not be done yet")
+	default:
+	}
+}

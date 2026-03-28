@@ -58,6 +58,63 @@ func TestBinaryInfoAndGoEnvCheckers(t *testing.T) {
 	assert.Contains(t, gres.Message, runtime.Version())
 }
 
+// ---------------------------------------------------------------------------
+// Name / Category getters for all checker types
+// ---------------------------------------------------------------------------
+
+func TestCheckerNameCategory(t *testing.T) {
+	checkers := []struct {
+		name     string
+		checker  Checker
+		wantName string
+		wantCat  string
+	}{
+		{
+			name:     "ConfigChecker",
+			checker:  ConfigChecker{},
+			wantName: "Configuration File",
+			wantCat:  "Configuration",
+		},
+		{
+			name:     "BaseDirChecker",
+			checker:  BaseDirChecker{},
+			wantName: "Base Directory Structure",
+			wantCat:  "Configuration",
+		},
+		{
+			name:     "BinaryInfoChecker",
+			checker:  BinaryInfoChecker{Version: "v", Commit: "c", BuildTime: "t"},
+			wantName: "Binary Information",
+			wantCat:  "System",
+		},
+		{
+			name:     "GoEnvChecker",
+			checker:  GoEnvChecker{},
+			wantName: "Go Environment",
+			wantCat:  "System",
+		},
+		{
+			name:     "AllTestsChecker",
+			checker:  AllTestsChecker{},
+			wantName: "All Unit Tests",
+			wantCat:  "Tests",
+		},
+		{
+			name:     "CoverageChecker",
+			checker:  CoverageChecker{},
+			wantName: "Code Coverage",
+			wantCat:  "Coverage",
+		},
+	}
+
+	for _, tt := range checkers {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.wantName, tt.checker.Name())
+			assert.Equal(t, tt.wantCat, tt.checker.Category())
+		})
+	}
+}
+
 func TestConfigAndBaseDirCheckers(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)

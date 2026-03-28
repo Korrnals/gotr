@@ -12,6 +12,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
@@ -348,4 +349,73 @@ func TestSaveAllSummaryToFile(t *testing.T) {
 	data, readErr := os.ReadFile(tmpFile)
 	assert.NoError(t, readErr)
 	assert.Contains(t, string(data), "RESOURCE SUMMARY")
+}
+
+func TestAppendResourceRow_Statuses(t *testing.T) {
+	tw := table.NewWriter()
+	tw.AppendHeader(table.Row{"Resource", "Only in P1", "Only in P2", "Common", "Data status"})
+
+	appendResourceRow(tw, "Cases", nil, errors.New("API returned 404 File Not Found: Unknown method 'get_cases'"))
+	appendResourceRow(tw, "Runs", &CompareResult{Status: CompareStatusInterrupted}, nil)
+	appendResourceRow(tw, "Plans", &CompareResult{Status: CompareStatusPartial}, errors.New("network"))
+	appendResourceRow(tw, "Suites", &CompareResult{Status: CompareStatusComplete}, nil)
+	appendResourceRow(tw, "Other", &CompareResult{Status: "mystery"}, nil)
+
+	out := tw.Render()
+	assert.Contains(t, out, "Cases")
+	assert.Contains(t, out, "Runs")
+	assert.Contains(t, out, "Plans")
+	assert.Contains(t, out, "Suites")
+	assert.Contains(t, out, "Other")
+}
+
+func TestFillResourcePartialResult_NoOpBranches(t *testing.T) {
+	fillResourcePartialResult(nil, "cases", 1, 2)
+
+	res := &allResult{}
+	fillResourcePartialResult(res, "unknown", 1, 2)
+
+	assert.Nil(t, res.Cases)
+	assert.Nil(t, res.Suites)
+}
+
+func TestFillResourcePartialResult_AllResources(t *testing.T) {
+	res := &allResult{}
+	resources := []string{"cases", "suites", "sections", "shared_steps", "runs", "plans", "milestones", "datasets", "groups", "labels", "templates", "configurations"}
+
+	for _, r := range resources {
+		fillResourcePartialResult(res, r, 30, 34)
+	}
+
+	assert.NotNil(t, res.Cases)
+	assert.NotNil(t, res.Suites)
+	assert.NotNil(t, res.Sections)
+	assert.NotNil(t, res.SharedSteps)
+	assert.NotNil(t, res.Runs)
+	assert.NotNil(t, res.Plans)
+	assert.NotNil(t, res.Milestones)
+	assert.NotNil(t, res.Datasets)
+	assert.NotNil(t, res.Groups)
+	assert.NotNil(t, res.Labels)
+	assert.NotNil(t, res.Templates)
+	assert.NotNil(t, res.Configurations)
+}
+
+func TestSaveAllSummaryToFile_DefaultPath(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	cmd := &cobra.Command{Use: "compare-all"}
+	cmd.Flags().Bool("quiet", false, "")
+
+	err := saveAllSummaryToFile(
+		cmd,
+		&allResult{},
+		"Project A", 1,
+		"Project B", 2,
+		map[string]error{},
+		"__DEFAULT__",
+		500*time.Millisecond,
+	)
+	assert.NoError(t, err)
 }

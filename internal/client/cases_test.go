@@ -542,6 +542,36 @@ func TestGetCasesWithProgressAndWrapper(t *testing.T) {
 	assert.Equal(t, 1, wrapperCall)
 }
 
+func TestGetCasesWithProgress_ErrorBranches(t *testing.T) {
+	t.Run("api status error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte("bad request"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCasesWithProgress(context.Background(), 77, 0, 0, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetCasesWithProgress(context.Background(), 77, 0, 0, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error cases page")
+	})
+}
+
 func TestGetCasesPage(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
@@ -578,6 +608,15 @@ func TestGetCasesPage(t *testing.T) {
 }
 
 func TestGetCaseAndHistoryForCase(t *testing.T) {
+	t.Run("get case request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.GetCase(context.Background(), 11)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetCase")
+	})
+
 	t.Run("get case success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/index.php?/api/v2/get_case/11", r.URL.String())
@@ -636,6 +675,15 @@ func TestGetCaseAndHistoryForCase(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, h)
 		assert.Len(t, h.History, 1)
+	})
+
+	t.Run("get history request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.GetHistoryForCase(context.Background(), 22)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetHistoryForCase")
 	})
 
 	t.Run("get history api error", func(t *testing.T) {
@@ -743,6 +791,15 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 		assert.Equal(t, "Functional", types[0].Name)
 	})
 
+	t.Run("get case types request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.GetCaseTypes(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetCaseTypes")
+	})
+
 	t.Run("get case types decode error", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -785,6 +842,15 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Len(t, fields, 1)
 		assert.Equal(t, "custom_x", fields[0].Name)
+	})
+
+	t.Run("get case fields request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.GetCaseFields(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetCaseFields")
 	})
 
 	t.Run("get case fields decode error", func(t *testing.T) {

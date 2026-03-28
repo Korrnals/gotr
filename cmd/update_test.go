@@ -296,6 +296,73 @@ func TestUpdateCaseInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUpdateProjectInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+			assert.Equal(t, int64(11), projectID)
+			assert.Equal(t, "Project Updated", req.Name)
+			assert.Equal(t, "Announcement Updated", req.Announcement)
+			assert.True(t, req.ShowAnnouncement)
+			assert.True(t, req.IsCompleted)
+			return &data.GetProjectResponse{ID: projectID, Name: req.Name}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Project Updated", "Announcement Updated").
+		WithConfirmResponses(true, true, true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateProjectInteractive(mock, cmd, 11)
+	assert.NoError(t, err)
+}
+
+func TestUpdateSuiteInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateSuiteFunc: func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+			assert.Equal(t, int64(22), suiteID)
+			assert.Equal(t, "Suite Updated", req.Name)
+			assert.Equal(t, "Suite Description", req.Description)
+			assert.True(t, req.IsCompleted)
+			return &data.Suite{ID: suiteID, Name: req.Name}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Suite Updated", "Suite Description").
+		WithConfirmResponses(true, true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateSuiteInteractive(mock, cmd, 22)
+	assert.NoError(t, err)
+}
+
+func TestUpdateCaseInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+			assert.Equal(t, int64(33), caseID)
+			require.NotNil(t, req.Title)
+			require.NotNil(t, req.TypeID)
+			require.NotNil(t, req.PriorityID)
+			require.NotNil(t, req.Refs)
+			assert.Equal(t, "Case Updated", *req.Title)
+			assert.Equal(t, int64(2), *req.TypeID)
+			assert.Equal(t, int64(3), *req.PriorityID)
+			assert.Equal(t, "REF-2", *req.Refs)
+			return &data.Case{ID: caseID, Title: *req.Title}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Case Updated", "REF-2").
+		WithSelectResponses(interactive.SelectResponse{Index: 1}, interactive.SelectResponse{Index: 2}).
+		WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateCaseInteractive(mock, cmd, 33)
+	assert.NoError(t, err)
+}
+
 func TestRunUpdateDryRun_Project(t *testing.T) {
 	cmd := setupUpdateTest(t, &client.MockClient{})
 	_ = cmd.Flags().Set("name", "Updated Project")

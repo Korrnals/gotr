@@ -265,6 +265,37 @@ func TestRunAddInteractive_ParentIDRequired(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestAddSection_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			assert.Equal(t, int64(5), projectID)
+			assert.Equal(t, "Section X", req.Name)
+			return &data.Section{ID: 44, Name: req.Name}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	_ = cmd.Flags().Set("name", "Section X")
+
+	err := addSection(mock, cmd, 5, nil)
+	assert.NoError(t, err)
+}
+
+func TestAddResultForCase_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddResultForCaseFunc: func(ctx context.Context, runID int64, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+			assert.Equal(t, int64(10), runID)
+			assert.Equal(t, int64(20), caseID)
+			assert.Equal(t, int64(1), req.StatusID)
+			return &data.Result{ID: 999, StatusID: req.StatusID}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	_ = cmd.Flags().Set("status-id", "1")
+
+	err := addResultForCase(mock, cmd, 10, 20, nil)
+	assert.NoError(t, err)
+}
+
 // TestAdd_Project_Success проверяет создание проекта
 func TestAdd_Project_Success(t *testing.T) {
 	mock := &client.MockClient{

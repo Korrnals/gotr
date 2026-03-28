@@ -186,3 +186,44 @@ func TestCoverageChecker_CheckCommandError(t *testing.T) {
 	assert.Contains(t, res.Message, "Cannot calculate coverage")
 	assert.Error(t, res.Error)
 }
+
+func TestAllTestsChecker_CheckSuccess(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", "printf '%s\n' '--- PASS: TestA' '--- SKIP: TestB' 'ok   github.com/acme/p1 0.01s'")
+	}
+
+	res := AllTestsChecker{}.Check()
+	assert.Equal(t, ResultPass, res.Result)
+	assert.Contains(t, res.Message, "1 passed, 0 failed, 1 skipped")
+	assert.NoError(t, res.Error)
+}
+
+func TestCoverageChecker_CheckWarnOnLowCoverage(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", "printf '%s\n' 'ok github.com/acme/x coverage: 40.0% of statements'")
+	}
+
+	res := CoverageChecker{}.Check()
+	assert.Equal(t, ResultWarn, res.Result)
+	assert.Contains(t, res.Details, "Current: 40.0%")
+}
+
+func TestGetProjectRoot_NoGoModFallback(t *testing.T) {
+	oldWD, err := os.Getwd()
+	assert.NoError(t, err)
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	root := t.TempDir()
+	nested := filepath.Join(root, "x", "y")
+	assert.NoError(t, os.MkdirAll(nested, 0o755))
+	assert.NoError(t, os.Chdir(nested))
+
+	got := getProjectRoot()
+	assert.Equal(t, ".", got)
+}

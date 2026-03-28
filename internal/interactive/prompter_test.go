@@ -115,6 +115,34 @@ func TestTerminalPrompter_Select_SelectedNotInList(t *testing.T) {
 	assert.Contains(t, err.Error(), "selected option is not in list")
 }
 
+func TestTerminalPrompter_ConfirmError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, err := tp.Confirm("confirm?", true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get confirmation")
+}
+
+func TestTerminalPrompter_MultilineInputError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, err := tp.MultilineInput("body", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get multiline input")
+}
+
 func TestPrompterFromContext_Default(t *testing.T) {
 	p := PrompterFromContext(context.Background())
 	assert.NotNil(t, p)

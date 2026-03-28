@@ -2,13 +2,80 @@ package interactive
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTerminalPrompter_Input(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "typed"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	got, err := tp.Input("msg", "default")
+	require.NoError(t, err)
+	assert.Equal(t, "typed", got)
+}
+
+func TestTerminalPrompter_Confirm(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*bool)
+		require.True(t, ok)
+		*out = true
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	got, err := tp.Confirm("confirm?", false)
+	require.NoError(t, err)
+	assert.True(t, got)
+}
+
+func TestTerminalPrompter_MultilineInput(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "line1\nline2"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	got, err := tp.MultilineInput("body", "")
+	require.NoError(t, err)
+	assert.Equal(t, "line1\nline2", got)
+}
+
+func TestTerminalPrompter_InputError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, err := tp.Input("msg", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get input")
+}
 
 func TestPrompterFromContext_Default(t *testing.T) {
 	p := PrompterFromContext(context.Background())

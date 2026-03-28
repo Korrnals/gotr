@@ -1,12 +1,17 @@
 package compare
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrency"
+	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -80,4 +85,41 @@ func TestResolveRetryFailedPagesOptionsFromConfig_FlagsOverrideConfig(t *testing
 	assert.Equal(t, 2, opts.Attempts)
 	assert.Equal(t, 3, opts.Workers)
 	assert.Equal(t, 250*time.Millisecond, opts.Delay)
+}
+
+func TestRunRetryFailedPages_FromRequired(t *testing.T) {
+	originalGetClient := getClient
+	defer func() { getClient = originalGetClient }()
+
+	getClient = func(cmd *cobra.Command) client.ClientInterface {
+		return &client.MockClient{}
+	}
+
+	cmd := newRetryFailedPagesCmd()
+	err := runRetryFailedPages(cmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "--from flag is required")
+}
+
+func TestExecuteRetryFailedPages(t *testing.T) {
+	mock := &client.MockClient{
+		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+			if offset == 0 {
+				return data.GetCasesResponse{{ID: 1, Title: "Recovered"}}, nil
+			}
+			return nil, fmt.Errorf("temporary error")
+		},
+	}
+
+	failed := []concurrency.FailedPage{
+		{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"},
+		{ProjectID: 1, SuiteID: 2, Offset: 250, Limit: 250, PageNum: 2, Error: "timeout"},
+	}
+
+	remaining, stats, err := executeRetryFailedPages(context.Background(), mock, failed, retryFailedPagesOptions{Attempts: 2, Workers: 1, Delay: 0}, "", "")
+	require.NoError(t, err)
+	assert.Len(t, remaining, 1)
+	assert.Equal(t, 2, stats.InputPages)
+	assert.Equal(t, 1, stats.RecoveredPages)
+	assert.Equal(t, 1, stats.RecoveredCases)
 }

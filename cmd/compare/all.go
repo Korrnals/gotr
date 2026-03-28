@@ -648,6 +648,7 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 // in register.go to ensure they appear in completion.
 // pid1 and pid2 are not marked required — interactive fallback handles missing values.
 func addCommonFlags(cmd *cobra.Command) {
+	_ = cmd
 	// No MarkFlagRequired — interactive selection handles missing pid1/pid2.
 }
 

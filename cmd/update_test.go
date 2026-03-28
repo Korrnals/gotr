@@ -47,6 +47,13 @@ func setupUpdateTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 	return cmd
 }
 
+func TestParseLabels(t *testing.T) {
+	assert.Equal(t, []string{"bug", "regression"}, parseLabels("bug,regression"))
+	assert.Equal(t, []string{"single"}, parseLabels("single"))
+	assert.Empty(t, parseLabels(""))
+	assert.Equal(t, []string{"a", "b"}, parseLabels("a,,b"))
+}
+
 // TestUpdate_Project_Success проверяет обновление проекта
 func TestUpdate_Project_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -248,4 +255,62 @@ func TestUpdate_UnsupportedEndpoint(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported")
+}
+
+func TestUpdateProjectInteractive_Cancelled(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Project", "Announcement").
+		WithConfirmResponses(true, false, false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateProjectInteractive(mock, cmd, 1)
+	assert.NoError(t, err)
+}
+
+func TestUpdateSuiteInteractive_Cancelled(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Suite", "Desc").
+		WithConfirmResponses(true, false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateSuiteInteractive(mock, cmd, 2)
+	assert.NoError(t, err)
+}
+
+func TestUpdateCaseInteractive_Cancelled(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Case title", "REF-1").
+		WithSelectResponses(interactive.SelectResponse{Index: 0}, interactive.SelectResponse{Index: 0}).
+		WithConfirmResponses(false)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateCaseInteractive(mock, cmd, 3)
+	assert.NoError(t, err)
+}
+
+func TestRunUpdateDryRun_Project(t *testing.T) {
+	cmd := setupUpdateTest(t, &client.MockClient{})
+	_ = cmd.Flags().Set("name", "Updated Project")
+	dr := output.NewDryRunPrinter("update project")
+
+	err := runUpdateDryRun(cmd, dr, "project", 1, nil)
+	assert.NoError(t, err)
+}
+
+func TestUpdateLabels_DryRun(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupUpdateTest(t, mock)
+	cmd.Flags().String("labels", "", "")
+	cmd.Flags().Bool("dry-run", false, "")
+	_ = cmd.Flags().Set("labels", "bug,regression")
+	_ = cmd.Flags().Set("dry-run", "true")
+
+	err := updateLabels(mock, cmd, 99)
+	assert.NoError(t, err)
 }

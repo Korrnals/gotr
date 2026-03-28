@@ -71,6 +71,29 @@ func TestDelete_Project_AutoSelectID_Success(t *testing.T) {
 	assert.True(t, called)
 }
 
+func TestSelectCaseID(t *testing.T) {
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 1})
+	cases := data.GetCasesResponse{
+		{ID: 100, Title: "Case A"},
+		{ID: 200, Title: "Case B"},
+	}
+
+	id, err := selectCaseID(context.Background(), p, cases)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(200), id)
+}
+
+func TestSelectSharedStepID(t *testing.T) {
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	steps := data.GetSharedStepsResponse{
+		{ID: 555, Title: "Step A"},
+	}
+
+	id, err := selectSharedStepID(p, steps)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(555), id)
+}
+
 func TestDelete_AutoSelectEndpointAndSuite_Success(t *testing.T) {
 	called := false
 	mock := &client.MockClient{

@@ -521,3 +521,12 @@ func TestParallelController_MultipleSuitesWithTruncation(t *testing.T) {
 	assert.GreaterOrEqual(t, len(result.Cases), expectedMinimum,
 		"Truncation in one suite must not stop fetching for that suite")
 }
+
+func TestParallelController_GetStats(t *testing.T) {
+	// GetStats on a freshly created controller returns empty AggregationStats
+	controller := NewController(DefaultControllerConfig())
+	stats := controller.GetStats()
+	assert.Equal(t, 0, stats.TotalCases)
+	assert.Equal(t, 0, stats.TotalPages)
+	assert.False(t, stats.IsRunning)
+}

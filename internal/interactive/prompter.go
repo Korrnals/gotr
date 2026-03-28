@@ -8,6 +8,8 @@ import (
 	"github.com/AlecAivazis/survey/v2"
 )
 
+var surveyAskOne = survey.AskOne
+
 // ErrNonInteractive is returned when a prompt is requested in non-interactive mode.
 var ErrNonInteractive = errors.New("non-interactive mode: input required but unavailable")
 
@@ -35,7 +37,7 @@ func (p *TerminalPrompter) Input(message, defaultVal string) (string, error) {
 		prompt.Default = defaultVal
 	}
 
-	err := survey.AskOne(prompt, &answer)
+	err := surveyAskOne(prompt, &answer)
 	if err != nil {
 		return "", fmt.Errorf("failed to get input: %w", err)
 	}
@@ -46,7 +48,7 @@ func (p *TerminalPrompter) Input(message, defaultVal string) (string, error) {
 // Confirm asks for yes/no confirmation.
 func (p *TerminalPrompter) Confirm(message string, def bool) (bool, error) {
 	var answer bool
-	err := survey.AskOne(&survey.Confirm{Message: message, Default: def}, &answer)
+	err := surveyAskOne(&survey.Confirm{Message: message, Default: def}, &answer)
 	if err != nil {
 		return false, fmt.Errorf("failed to get confirmation: %w", err)
 	}
@@ -61,7 +63,7 @@ func (p *TerminalPrompter) Select(message string, options []string) (int, string
 	}
 
 	var selected string
-	err := survey.AskOne(&survey.Select{Message: message, Options: options}, &selected)
+	err := surveyAskOne(&survey.Select{Message: message, Options: options}, &selected)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to select option: %w", err)
 	}
@@ -79,7 +81,7 @@ func (p *TerminalPrompter) Select(message string, options []string) (int, string
 func (p *TerminalPrompter) MultilineInput(message, defaultVal string) (string, error) {
 	var answer string
 	prompt := &survey.Multiline{Message: message, Default: defaultVal}
-	err := survey.AskOne(prompt, &answer)
+	err := surveyAskOne(prompt, &answer)
 	if err != nil {
 		return "", fmt.Errorf("failed to get multiline input: %w", err)
 	}

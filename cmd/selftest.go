@@ -50,8 +50,7 @@ func init() {
 	selfTestCmd.Flags().Bool("include-skipped", false, "Include skipped checks in output")
 }
 
-func runSelfTest(cmd *cobra.Command, args []string) error {
-	// Создаём runner
+var buildSelfTestReport = func() *selftest.Report {
 	runner := selftest.NewRunner()
 
 	// Регистрируем проверки (порядок важен для отчета)
@@ -74,6 +73,12 @@ func runSelfTest(cmd *cobra.Command, args []string) error {
 	report.Commit = Commit
 	report.GoVersion = runtime.Version()
 	report.Platform = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
+
+	return report
+}
+
+func runSelfTest(cmd *cobra.Command, args []string) error {
+	report := buildSelfTestReport()
 
 	// Выводим результаты
 	jsonOutput, _ := cmd.Flags().GetBool("json")

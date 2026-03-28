@@ -324,3 +324,28 @@ func TestIsUnsupportedEndpointError(t *testing.T) {
 	assert.True(t, isUnsupportedEndpointError(errors.New("API returned 404 File Not Found: Unknown method 'get_groups'")))
 	assert.False(t, isUnsupportedEndpointError(errors.New("request timeout")))
 }
+
+func TestAddCommonFlags(t *testing.T) {
+	cmd := &cobra.Command{Use: "compare-all"}
+	addCommonFlags(cmd)
+	assert.NotNil(t, cmd)
+}
+
+func TestSaveAllSummaryToFile(t *testing.T) {
+	tmpFile := filepath.Join(t.TempDir(), "summary.txt")
+
+	err := saveAllSummaryToFile(
+		&cobra.Command{},
+		&allResult{},
+		"Project A", 1,
+		"Project B", 2,
+		map[string]error{},
+		tmpFile,
+		1500*time.Millisecond,
+	)
+	assert.NoError(t, err)
+
+	data, readErr := os.ReadFile(tmpFile)
+	assert.NoError(t, readErr)
+	assert.Contains(t, string(data), "RESOURCE SUMMARY")
+}

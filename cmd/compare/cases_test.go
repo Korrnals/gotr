@@ -4,9 +4,11 @@ package compare
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -68,4 +70,17 @@ func TestPrintCasesStats_ZeroCases(t *testing.T) {
 
 	assert.Contains(t, output, "0") // total cases
 	assert.Contains(t, output, "500ms")
+}
+
+func TestSaveFailedPagesReport(t *testing.T) {
+	pages := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
+	path := filepath.Join(t.TempDir(), "failed_pages.json")
+
+	savedPath, err := saveFailedPagesReport(pages, path)
+	assert.NoError(t, err)
+	assert.Equal(t, path, savedPath)
+
+	data, readErr := os.ReadFile(path)
+	assert.NoError(t, readErr)
+	assert.Contains(t, string(data), "failed_pages")
 }

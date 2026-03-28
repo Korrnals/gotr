@@ -54,16 +54,9 @@ var buildSelfTestReport = func() *selftest.Report {
 	runner := selftest.NewRunner()
 
 	// Регистрируем проверки (порядок важен для отчета)
-	runner.Register(selftest.BinaryInfoChecker{
-		Version:   Version,
-		Commit:    Commit,
-		BuildTime: Date,
-	})
-	runner.Register(selftest.GoEnvChecker{})
-	runner.Register(selftest.BaseDirChecker{})
-	runner.Register(selftest.ConfigChecker{})
-	runner.Register(selftest.AllTestsChecker{})
-	runner.Register(selftest.CoverageChecker{})
+	for _, checker := range selfTestCheckers() {
+		runner.Register(checker)
+	}
 
 	// Запускаем проверки
 	report := runner.Run()
@@ -75,6 +68,21 @@ var buildSelfTestReport = func() *selftest.Report {
 	report.Platform = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 
 	return report
+}
+
+var selfTestCheckers = func() []selftest.Checker {
+	return []selftest.Checker{
+		selftest.BinaryInfoChecker{
+			Version:   Version,
+			Commit:    Commit,
+			BuildTime: Date,
+		},
+		selftest.GoEnvChecker{},
+		selftest.BaseDirChecker{},
+		selftest.ConfigChecker{},
+		selftest.AllTestsChecker{},
+		selftest.CoverageChecker{},
+	}
 }
 
 func runSelfTest(cmd *cobra.Command, args []string) error {

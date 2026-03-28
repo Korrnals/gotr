@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -146,4 +147,44 @@ func TestFetchCasesForProject_WithSuitesParallel(t *testing.T) {
 	assert.Equal(t, 2, stats.Sections)
 	assert.Equal(t, 3, stats.TotalPages)
 	assert.Equal(t, 1, stats.FailedPages)
+}
+
+func TestCollectCompareHeavyFlagOverrides(t *testing.T) {
+	cmd := &cobra.Command{Use: "compare-cases"}
+	cmd.Flags().Int("rate-limit", 0, "")
+	cmd.Flags().Int("parallel-suites", 0, "")
+	cmd.Flags().Int("parallel-pages", 0, "")
+	cmd.Flags().Int("page-retries", 0, "")
+	cmd.Flags().Duration("timeout", 0, "")
+	cmd.Flags().Int("retry-attempts", 0, "")
+	cmd.Flags().Int("retry-workers", 0, "")
+	cmd.Flags().Duration("retry-delay", 0, "")
+
+	_ = cmd.Flags().Set("rate-limit", "120")
+	_ = cmd.Flags().Set("parallel-suites", "4")
+	_ = cmd.Flags().Set("parallel-pages", "8")
+	_ = cmd.Flags().Set("page-retries", "2")
+	_ = cmd.Flags().Set("timeout", "3s")
+	_ = cmd.Flags().Set("retry-attempts", "5")
+	_ = cmd.Flags().Set("retry-workers", "6")
+	_ = cmd.Flags().Set("retry-delay", "200ms")
+
+	overrides := collectCompareHeavyFlagOverrides(cmd)
+	assert.Equal(t, 120, overrides["rate_limit"])
+	assert.Equal(t, 4, overrides["parallel_suites"])
+	assert.Equal(t, 8, overrides["parallel_pages"])
+	assert.Equal(t, 2, overrides["page_retries"])
+	assert.Equal(t, 3*time.Second, overrides["timeout"])
+	assert.Equal(t, 5, overrides["retry_attempts"])
+	assert.Equal(t, 6, overrides["retry_workers"])
+	assert.Equal(t, 200*time.Millisecond, overrides["retry_delay"])
+}
+
+func TestCollectCompareCasesFlagOverrides(t *testing.T) {
+	cmd := &cobra.Command{Use: "compare-cases"}
+	cmd.Flags().Int("rate-limit", 0, "")
+	_ = cmd.Flags().Set("rate-limit", "100")
+
+	overrides := collectCompareCasesFlagOverrides(cmd)
+	assert.Equal(t, 100, overrides["rate_limit"])
 }

@@ -437,3 +437,12 @@ func TestSaveAllSummaryToFile_WriteError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "file write error")
 }
+
+func TestFillResourcePartialResult_DoesNotOverwriteExisting(t *testing.T) {
+	res := &allResult{
+		Cases: &CompareResult{Status: CompareStatusComplete},
+	}
+
+	fillResourcePartialResult(res, "cases", 1, 2)
+	assert.Equal(t, CompareStatusComplete, res.Cases.Status)
+}

@@ -12,6 +12,19 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type stubChecker struct {
+	name string
+	cat  string
+}
+
+func (s stubChecker) Name() string { return s.name }
+
+func (s stubChecker) Category() string { return s.cat }
+
+func (s stubChecker) Check() selftest.CheckResult {
+	return selftest.CheckResult{Result: selftest.ResultPass, Message: "ok"}
+}
+
 func captureStdout(t *testing.T, fn func()) string {
 	t.Helper()
 
@@ -150,4 +163,27 @@ func TestRunSelfTest_HumanSuccess(t *testing.T) {
 	})
 
 	assert.Contains(t, out, "pass-check")
+}
+
+func TestBuildSelfTestReport_UsesInjectedCheckers(t *testing.T) {
+	original := selfTestCheckers
+	defer func() { selfTestCheckers = original }()
+
+	selfTestCheckers = func() []selftest.Checker {
+		return []selftest.Checker{
+			stubChecker{name: "c1", cat: "cat1"},
+			stubChecker{name: "c2", cat: "cat2"},
+		}
+	}
+
+	report := buildSelfTestReport()
+	require.NotNil(t, report)
+	require.Len(t, report.Checks, 2)
+	assert.Equal(t, "c1", report.Checks[0].Name)
+	assert.Equal(t, "cat1", report.Checks[0].Category)
+	assert.Equal(t, "c2", report.Checks[1].Name)
+	assert.Equal(t, "cat2", report.Checks[1].Category)
+	assert.NotEmpty(t, report.Version)
+	assert.NotEmpty(t, report.GoVersion)
+	assert.NotEmpty(t, report.Platform)
 }

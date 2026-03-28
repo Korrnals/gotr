@@ -507,3 +507,40 @@ func TestUpdateLabels_ErrorBranches(t *testing.T) {
 	err = updateLabels(mock, cmd, 99)
 	assert.ErrorContains(t, err, "labels not specified")
 }
+
+func TestUpdateLabels_ClientError(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateTestLabelsFunc: func(ctx context.Context, testID int64, labels []string) error {
+			return errors.New("labels boom")
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	cmd.Flags().String("labels", "", "")
+	cmd.Flags().Bool("dry-run", false, "")
+	require.NoError(t, cmd.Flags().Set("labels", "bug,regression"))
+
+	err := updateLabels(mock, cmd, 99)
+	assert.ErrorContains(t, err, "failed to update labels")
+}
+
+func TestUpdateLabels_Success(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateTestLabelsFunc: func(ctx context.Context, testID int64, labels []string) error {
+			called = true
+			assert.Equal(t, int64(99), testID)
+			assert.Equal(t, []string{"bug", "regression"}, labels)
+			return nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	cmd.Flags().String("labels", "", "")
+	cmd.Flags().Bool("dry-run", false, "")
+	require.NoError(t, cmd.Flags().Set("labels", "bug,regression"))
+
+	err := updateLabels(mock, cmd, 99)
+	assert.NoError(t, err)
+	assert.True(t, called)
+}

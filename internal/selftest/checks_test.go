@@ -25,6 +25,21 @@ func TestParsePackageResults(t *testing.T) {
 	assert.Contains(t, parsed, "✓ p3")
 }
 
+func TestParsePackageResults_TruncateAndSkipMalformed(t *testing.T) {
+	out := "ok\n" +
+		"ok   github.com/acme/p1 0.01s\n" +
+		"ok   github.com/acme/p2 0.01s\n" +
+		"ok   github.com/acme/p3 0.01s\n" +
+		"ok   github.com/acme/p4 0.01s\n" +
+		"ok   github.com/acme/p5 0.01s\n" +
+		"FAIL github.com/acme/p6 0.01s\n"
+
+	parsed := parsePackageResults(out)
+	assert.Contains(t, parsed, "+1 more")
+	assert.Contains(t, parsed, "✓ p1")
+	assert.NotContains(t, parsed, "p6")
+}
+
 func TestExtractOverallCoverage(t *testing.T) {
 	out := "ok github.com/acme/x coverage: 67.8% of statements\n"
 	assert.Equal(t, "67.8%", extractOverallCoverage(out))
@@ -201,6 +216,20 @@ func TestAllTestsChecker_CheckSuccess(t *testing.T) {
 	assert.NoError(t, res.Error)
 }
 
+func TestAllTestsChecker_CheckCommandErrorWithoutFailedCount(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", "echo command failed >&2; exit 1")
+	}
+
+	res := AllTestsChecker{}.Check()
+	assert.Equal(t, ResultFail, res.Result)
+	assert.Error(t, res.Error)
+	assert.NotContains(t, res.Error.Error(), "test(s) failed")
+}
+
 func TestCoverageChecker_CheckWarnOnLowCoverage(t *testing.T) {
 	original := execCommand
 	defer func() { execCommand = original }()
@@ -212,6 +241,20 @@ func TestCoverageChecker_CheckWarnOnLowCoverage(t *testing.T) {
 	res := CoverageChecker{}.Check()
 	assert.Equal(t, ResultWarn, res.Result)
 	assert.Contains(t, res.Details, "Current: 40.0%")
+}
+
+func TestCoverageChecker_CheckUnknownCoverage(t *testing.T) {
+	original := execCommand
+	defer func() { execCommand = original }()
+
+	execCommand = func(name string, arg ...string) *exec.Cmd {
+		return exec.Command("sh", "-c", "printf '%s\n' 'ok github.com/acme/x no coverage output'")
+	}
+
+	res := CoverageChecker{}.Check()
+	assert.Equal(t, ResultPass, res.Result)
+	assert.Equal(t, "unknown", res.Message)
+	assert.Equal(t, "Target: 80%", res.Details)
 }
 
 func TestGetProjectRoot_NoGoModFallback(t *testing.T) {

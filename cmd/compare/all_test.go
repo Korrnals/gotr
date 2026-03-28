@@ -86,6 +86,12 @@ func TestSaveAllResult_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSaveAllResult_InvalidPathYAML(t *testing.T) {
+	result := &allResult{}
+	err := saveAllResult(result, "yaml", "/nonexistent/path/result.yaml")
+	assert.Error(t, err)
+}
+
 // ==================== Тесты для allCmd с различными сценариями ====================
 
 func TestAllCmd_WithErrors(t *testing.T) {
@@ -438,6 +444,26 @@ func TestSaveAllSummaryToFile_WriteError(t *testing.T) {
 	assert.Contains(t, err.Error(), "file write error")
 }
 
+func TestSaveAllSummaryToFile_QuietMode(t *testing.T) {
+	tmpFile := filepath.Join(t.TempDir(), "summary-quiet.txt")
+
+	cmd := &cobra.Command{Use: "compare-all"}
+	cmd.Flags().Bool("quiet", false, "")
+	requireSetErr := cmd.Flags().Set("quiet", "true")
+	assert.NoError(t, requireSetErr)
+
+	err := saveAllSummaryToFile(
+		cmd,
+		&allResult{},
+		"Project A", 1,
+		"Project B", 2,
+		map[string]error{},
+		tmpFile,
+		500*time.Millisecond,
+	)
+	assert.NoError(t, err)
+}
+
 func TestFillResourcePartialResult_DoesNotOverwriteExisting(t *testing.T) {
 	res := &allResult{
 		Cases: &CompareResult{Status: CompareStatusComplete},
@@ -466,4 +492,14 @@ func TestPrintAllSummaryTable_WithMixedErrors(t *testing.T) {
 	_ = w.Close()
 	os.Stdout = oldStdout
 	_ = r.Close()
+}
+
+func TestAppendResourceRow_NilResultWithRegularError(t *testing.T) {
+	tw := table.NewWriter()
+	tw.AppendHeader(table.Row{"Resource", "Only in P1", "Only in P2", "Common", "Data status"})
+
+	appendResourceRow(tw, "Cases", nil, errors.New("network"))
+
+	out := tw.Render()
+	assert.Contains(t, out, "INTERRUPTED")
 }

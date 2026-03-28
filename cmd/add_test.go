@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setupAddTest настраивает тестовое окружение для add команды
@@ -376,6 +378,73 @@ func TestAdd_Result_Success(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
+}
+
+func TestAddHandlers_JSONParseErrors(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupAddTest(t, mock)
+	badJSON := []byte("{")
+
+	assert.ErrorContains(t, addProject(mock, cmd, badJSON), "JSON parse error")
+	assert.ErrorContains(t, addSuite(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, addCase(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, addRun(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, addResult(mock, cmd, 1, badJSON), "JSON parse error")
+}
+
+func TestAddHandlers_ClientErrors(t *testing.T) {
+	mock := &client.MockClient{
+		AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+			return nil, errors.New("project boom")
+		},
+		AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			return nil, errors.New("suite boom")
+		},
+		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			return nil, errors.New("case boom")
+		},
+		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+			return nil, errors.New("run boom")
+		},
+		AddResultFunc: func(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
+			return nil, errors.New("result boom")
+		},
+	}
+
+	t.Run("add project client error", func(t *testing.T) {
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("name", "Project X"))
+		err := addProject(mock, cmd, nil)
+		assert.ErrorContains(t, err, "failed to create project")
+	})
+
+	t.Run("add suite client error", func(t *testing.T) {
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("name", "Suite X"))
+		err := addSuite(mock, cmd, 10, nil)
+		assert.ErrorContains(t, err, "failed to create suite")
+	})
+
+	t.Run("add case client error", func(t *testing.T) {
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("title", "Case X"))
+		err := addCase(mock, cmd, 10, nil)
+		assert.ErrorContains(t, err, "failed to create case")
+	})
+
+	t.Run("add run client error", func(t *testing.T) {
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("name", "Run X"))
+		err := addRun(mock, cmd, 10, nil)
+		assert.ErrorContains(t, err, "failed to create run")
+	})
+
+	t.Run("add result client error", func(t *testing.T) {
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("status-id", "1"))
+		err := addResult(mock, cmd, 10, nil)
+		assert.ErrorContains(t, err, "failed to add result")
+	})
 }
 
 // TestAdd_SharedStep_Success проверяет создание shared step

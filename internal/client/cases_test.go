@@ -106,6 +106,21 @@ func TestAddCase(t *testing.T) {
 	}
 }
 
+func TestAddCase_DecodeError(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{"))
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	_, err := client.AddCase(context.Background(), 100, &data.AddCaseRequest{Title: "broken"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "decode error created case")
+}
+
 func TestUpdateCase(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -184,6 +199,21 @@ func TestUpdateCase(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestUpdateCase_DecodeError(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "POST", r.Method)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("{"))
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	_, err := client.UpdateCase(context.Background(), 999, &data.UpdateCaseRequest{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "decode error updated case")
 }
 
 func TestDeleteCase(t *testing.T) {
@@ -653,6 +683,20 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, resp)
 		assert.Len(t, *resp, 2)
+	})
+
+	t.Run("update cases decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.UpdateCases(context.Background(), 90, &data.UpdateCasesRequest{CaseIDs: []int64{1}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error response bulk update")
 	})
 
 	t.Run("delete cases api error", func(t *testing.T) {

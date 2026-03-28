@@ -101,6 +101,45 @@ func TestRunRetryFailedPages_FromRequired(t *testing.T) {
 	assert.Contains(t, err.Error(), "--from flag is required")
 }
 
+func TestRunRetryFailedPages_NoClient(t *testing.T) {
+	originalGetClient := getClient
+	defer func() { getClient = originalGetClient }()
+
+	getClient = nil
+	cmd := newRetryFailedPagesCmd()
+	err := runRetryFailedPages(cmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestRunRetryFailedPages_LoadFileError(t *testing.T) {
+	originalGetClient := getClient
+	defer func() { getClient = originalGetClient }()
+
+	getClient = func(cmd *cobra.Command) client.ClientInterface {
+		return &client.MockClient{}
+	}
+
+	cmd := newRetryFailedPagesCmd()
+	require.NoError(t, cmd.Flags().Set("from", filepath.Join(t.TempDir(), "missing.json")))
+	err := runRetryFailedPages(cmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to read file")
+}
+
+func TestResolveRetryFailedPagesOptionsFromConfig_InvalidDelay(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	viper.Set("compare.cases.retry.delay", "not-a-duration")
+
+	cmd := newRetryFailedPagesCmd()
+	require.NoError(t, cmd.ParseFlags([]string{}))
+
+	_, err := resolveRetryFailedPagesOptionsFromConfig(cmd)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid compare.cases.retry.delay")
+}
+
 func TestExecuteRetryFailedPages(t *testing.T) {
 	mock := &client.MockClient{
 		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
@@ -122,4 +161,36 @@ func TestExecuteRetryFailedPages(t *testing.T) {
 	assert.Equal(t, 2, stats.InputPages)
 	assert.Equal(t, 1, stats.RecoveredPages)
 	assert.Equal(t, 1, stats.RecoveredCases)
+}
+
+func TestExecuteRetryFailedPages_EmptyInput(t *testing.T) {
+	remaining, stats, err := executeRetryFailedPages(context.Background(), &client.MockClient{}, nil, retryFailedPagesOptions{}, "empty-source", "")
+	require.NoError(t, err)
+	assert.Nil(t, remaining)
+	assert.Equal(t, 0, stats.InputPages)
+	assert.Equal(t, 0, stats.UniquePages)
+}
+
+func TestExecuteRetryFailedPages_SaveRemainingError(t *testing.T) {
+	mock := &client.MockClient{
+		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+			return nil, fmt.Errorf("always failing")
+		},
+	}
+
+	failed := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
+	badSavePath := t.TempDir()
+
+	remaining, stats, err := executeRetryFailedPages(
+		context.Background(),
+		mock,
+		failed,
+		retryFailedPagesOptions{Attempts: 0, Workers: 0, Delay: -time.Second},
+		"source.json",
+		badSavePath,
+	)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "save remaining failed pages error")
+	assert.Len(t, remaining, 1)
+	assert.Equal(t, 1, stats.RemainingPages)
 }

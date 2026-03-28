@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"context"
+	"errors"
+	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -74,4 +77,50 @@ func TestExecute_SuccessPath(t *testing.T) {
 	assert.NotPanics(t, func() {
 		Execute(context.Background())
 	})
+}
+
+func TestExecute_ErrorExitCode1(t *testing.T) {
+	if os.Getenv("GOTR_EXECUTE_CHILD_MODE") == "error" {
+		rootCmd = &cobra.Command{
+			Use: "gotr-test",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return errors.New("boom")
+			},
+		}
+		Execute(context.Background())
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_ErrorExitCode1", "-test.v")
+	cmd.Env = append(os.Environ(), "GOTR_EXECUTE_CHILD_MODE=error")
+	err := cmd.Run()
+
+	var exitErr *exec.ExitError
+	if assert.Error(t, err) && errors.As(err, &exitErr) {
+		assert.Equal(t, 1, exitErr.ExitCode())
+	}
+}
+
+func TestExecute_CanceledExitCode130(t *testing.T) {
+	if os.Getenv("GOTR_EXECUTE_CHILD_MODE") == "canceled" {
+		rootCmd = &cobra.Command{
+			Use: "gotr-test",
+			RunE: func(cmd *cobra.Command, args []string) error {
+				return context.Canceled
+			},
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		Execute(ctx)
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestExecute_CanceledExitCode130", "-test.v")
+	cmd.Env = append(os.Environ(), "GOTR_EXECUTE_CHILD_MODE=canceled")
+	err := cmd.Run()
+
+	var exitErr *exec.ExitError
+	if assert.Error(t, err) && errors.As(err, &exitErr) {
+		assert.Equal(t, 130, exitErr.ExitCode())
+	}
 }

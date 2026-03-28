@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"bytes"
+	"io"
+	"os"
 	"sort"
 	"testing"
 
@@ -66,4 +69,55 @@ func TestBuildRequestParams(t *testing.T) {
 func TestGetResourcePaths(t *testing.T) {
 	assert.NotNil(t, getResourcePaths("projects"))
 	assert.Nil(t, getResourcePaths("unknown-resource"))
+}
+
+func TestGetResourceEndpoints_AllKnownResourcesListMode(t *testing.T) {
+	resources := []string{
+		"all", "cases", "casefields", "casetypes", "configurations", "projects", "priorities",
+		"runs", "tests", "suites", "sections", "statuses", "milestones", "plans", "results",
+		"resultfields", "reports", "attachments", "users", "roles", "templates", "groups",
+		"sharedsteps", "variables", "labels", "datasets", "bdds",
+	}
+
+	for _, resource := range resources {
+		t.Run(resource, func(t *testing.T) {
+			endpoints, err := getResourceEndpoints(resource, "list")
+			assert.Error(t, err)
+			assert.Contains(t, err.Error(), "failed to format resource list")
+			assert.NotNil(t, endpoints)
+		})
+	}
+}
+
+func TestGetResourceEndpoints_UnknownResource(t *testing.T) {
+	endpoints, err := getResourceEndpoints("unknown-resource", "list")
+	assert.NoError(t, err)
+	assert.Nil(t, endpoints)
+}
+
+func TestGetResourceEndpoints_JSONAndShortModes(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	defer func() {
+		os.Stdout = oldStdout
+		_ = r.Close()
+	}()
+
+	jsonEndpoints, jsonErr := getResourceEndpoints("projects", "json")
+	assert.NoError(t, jsonErr)
+	assert.Nil(t, jsonEndpoints)
+
+	shortEndpoints, shortErr := getResourceEndpoints("projects", "short")
+	assert.Error(t, shortErr)
+	assert.Contains(t, shortErr.Error(), "failed to format short resource list")
+	assert.Nil(t, shortEndpoints)
+
+	require.NoError(t, w.Close())
+
+	var buf bytes.Buffer
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
+	assert.NotEmpty(t, buf.String())
 }

@@ -438,6 +438,161 @@ func TestRunAddInteractive_Unsupported(t *testing.T) {
 	assert.Contains(t, err.Error(), "interactive mode not supported")
 }
 
+func TestShouldAutoRunAddInteractive_Branches(t *testing.T) {
+	t.Run("no prompter in context", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "project", 0, false))
+	})
+
+	t.Run("json file disables auto interactive", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "project", 0, true))
+	})
+
+	t.Run("project no changed flags", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.True(t, shouldAutoRunAddInteractive(cmd, "project", 0, false))
+	})
+
+	t.Run("project with changed flag", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		require.NoError(t, cmd.Flags().Set("name", "Changed"))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "project", 0, false))
+	})
+
+	t.Run("parent dependent endpoint without parent", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "suite", 0, false))
+	})
+
+	t.Run("parent dependent endpoint with parent", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.True(t, shouldAutoRunAddInteractive(cmd, "suite", 10, false))
+	})
+}
+
+func TestRunAddInteractive_SupportedEndpoints(t *testing.T) {
+	t.Run("project", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+				called = true
+				return &data.GetProjectResponse{ID: 1, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Project", "Announcement").
+			WithConfirmResponses(true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runAddInteractive(mock, cmd, "project", 0)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("suite", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+				called = true
+				return &data.Suite{ID: 2, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Suite", "Desc").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runAddInteractive(mock, cmd, "suite", 10)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("section", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+				called = true
+				return &data.Section{ID: 3, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Section", "Desc", "1", "2").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runAddInteractive(mock, cmd, "section", 11)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("case", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+				called = true
+				return &data.Case{ID: 4, Title: req.Title}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Case", "REF").
+			WithSelectResponses(interactive.SelectResponse{Index: 0}, interactive.SelectResponse{Index: 0}).
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runAddInteractive(mock, cmd, "case", 12)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("run", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+				called = true
+				return &data.Run{ID: 5, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Run", "Desc", "44").
+			WithConfirmResponses(false, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runAddInteractive(mock, cmd, "run", 13)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("shared-step", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+				called = true
+				return &data.SharedStep{ID: 6, Title: req.Title}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Shared").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runAddInteractive(mock, cmd, "shared-step", 14)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+}
+
 func TestRunAddDryRun_SwitchEndpoints(t *testing.T) {
 	cmd := setupAddTest(t, &client.MockClient{})
 	_ = cmd.Flags().Set("name", "N")
@@ -618,6 +773,7 @@ func TestAddHandlers_JSONParseErrors(t *testing.T) {
 	assert.ErrorContains(t, addCase(mock, cmd, 1, badJSON), "JSON parse error")
 	assert.ErrorContains(t, addRun(mock, cmd, 1, badJSON), "JSON parse error")
 	assert.ErrorContains(t, addResult(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, addSharedStep(mock, cmd, 1, badJSON), "JSON parse error")
 }
 
 func TestAddHandlers_ClientErrors(t *testing.T) {
@@ -636,6 +792,9 @@ func TestAddHandlers_ClientErrors(t *testing.T) {
 		},
 		AddResultFunc: func(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 			return nil, errors.New("result boom")
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			return nil, errors.New("shared step boom")
 		},
 	}
 
@@ -673,6 +832,45 @@ func TestAddHandlers_ClientErrors(t *testing.T) {
 		err := addResult(mock, cmd, 10, nil)
 		assert.ErrorContains(t, err, "failed to add result")
 	})
+
+	t.Run("add shared step client error", func(t *testing.T) {
+		cmd := setupAddTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("title", "Step X"))
+		err := addSharedStep(mock, cmd, 10, nil)
+		assert.ErrorContains(t, err, "failed to create shared step")
+	})
+}
+
+func TestAddSharedStep_RequiresTitle(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	err := addSharedStep(&client.MockClient{}, cmd, 1, nil)
+	assert.ErrorContains(t, err, "--title is required")
+}
+
+func TestRunAddDryRun_MissingParentIDBranches(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	dr := output.NewDryRunPrinter("add")
+
+	assert.ErrorContains(t, runAddDryRun(cmd, dr, "suite", 0, nil), "project_id required")
+	assert.ErrorContains(t, runAddDryRun(cmd, dr, "section", 0, nil), "project_id required")
+	assert.ErrorContains(t, runAddDryRun(cmd, dr, "case", 0, nil), "section_id required")
+	assert.ErrorContains(t, runAddDryRun(cmd, dr, "run", 0, nil), "project_id required")
+	assert.ErrorContains(t, runAddDryRun(cmd, dr, "result", 0, nil), "test_id required")
+	assert.ErrorContains(t, runAddDryRun(cmd, dr, "shared-step", 0, nil), "project_id required")
+	assert.ErrorContains(t, runAddDryRun(cmd, dr, "attachment", 1, nil), "specific attachment subcommand")
+}
+
+func TestRunAddDryRun_JSONBranches(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	dr := output.NewDryRunPrinter("add-json")
+
+	assert.NoError(t, runAddDryRun(cmd, dr, "project", 0, []byte(`{"name":"P"}`)))
+	assert.NoError(t, runAddDryRun(cmd, dr, "suite", 1, []byte(`{"name":"S"}`)))
+	assert.NoError(t, runAddDryRun(cmd, dr, "section", 1, []byte(`{"name":"Sec"}`)))
+	assert.NoError(t, runAddDryRun(cmd, dr, "case", 2, []byte(`{"title":"Case"}`)))
+	assert.NoError(t, runAddDryRun(cmd, dr, "run", 1, []byte(`{"name":"Run"}`)))
+	assert.NoError(t, runAddDryRun(cmd, dr, "result", 3, []byte(`{"status_id":1}`)))
+	assert.NoError(t, runAddDryRun(cmd, dr, "shared-step", 1, []byte(`{"title":"Step"}`)))
 }
 
 func TestRunAdd_OrchestrationErrors(t *testing.T) {
@@ -1108,6 +1306,60 @@ func TestAdd_Attachment_MissingPlanEntryArgs(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "usage")
+}
+
+func TestAdd_Attachment_MissingPlanFilePath(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.SetArgs([]string{"attachment", "plan", "100"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "usage")
+}
+
+func TestAdd_Attachment_MissingResultFilePath(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.SetArgs([]string{"attachment", "result", "123"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "usage")
+}
+
+func TestAdd_Attachment_MissingRunFilePath(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.SetArgs([]string{"attachment", "run", "555"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "usage")
+}
+
+func TestAdd_Attachment_InvalidPlanID(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.SetArgs([]string{"attachment", "plan", "invalid", "/tmp/test.txt"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "plan_id")
+}
+
+func TestAdd_Attachment_InvalidResultID(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.SetArgs([]string{"attachment", "result", "invalid", "/tmp/test.txt"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "result_id")
+}
+
+func TestAdd_Attachment_InvalidRunID(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.SetArgs([]string{"attachment", "run", "invalid", "/tmp/test.txt"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "run_id")
 }
 
 func TestAddAttachmentHelpers_DryRun(t *testing.T) {

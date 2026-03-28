@@ -63,6 +63,23 @@ func TestOutputJSON(t *testing.T) {
 	assert.Contains(t, out, "\"check-1\"")
 }
 
+func TestOutputJSON_WriteError(t *testing.T) {
+	report := &selftest.Report{Version: "v1"}
+
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	require.NoError(t, w.Close())
+	os.Stdout = w
+	defer func() {
+		os.Stdout = oldStdout
+		_ = r.Close()
+	}()
+
+	err = outputJSON(report)
+	assert.Error(t, err)
+}
+
 func TestOutputHuman(t *testing.T) {
 	report := &selftest.Report{
 		Version: "v1",
@@ -80,6 +97,22 @@ func TestOutputHuman(t *testing.T) {
 	})
 
 	assert.Len(t, report.Checks, 2)
+}
+
+func TestOutputHuman_NoFailures(t *testing.T) {
+	report := &selftest.Report{
+		Version: "v1",
+		Checks: []selftest.CheckResult{
+			{Name: "pass", Category: "cat", Result: selftest.ResultPass},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		err := outputHuman(report, false)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, out, "pass")
 }
 
 func TestRunSelfTest_JSONOutput(t *testing.T) {
@@ -186,4 +219,28 @@ func TestBuildSelfTestReport_UsesInjectedCheckers(t *testing.T) {
 	assert.NotEmpty(t, report.Version)
 	assert.NotEmpty(t, report.GoVersion)
 	assert.NotEmpty(t, report.Platform)
+}
+
+func TestSelfTestCheckers_DefaultSet(t *testing.T) {
+	checkers := selfTestCheckers()
+	require.Len(t, checkers, 6)
+
+	names := make([]string, 0, len(checkers))
+	categories := make([]string, 0, len(checkers))
+	for _, c := range checkers {
+		names = append(names, c.Name())
+		categories = append(categories, c.Category())
+	}
+
+	assert.Contains(t, names, "Binary Information")
+	assert.Contains(t, names, "Go Environment")
+	assert.Contains(t, names, "Base Directory Structure")
+	assert.Contains(t, names, "Configuration File")
+	assert.Contains(t, names, "All Unit Tests")
+	assert.Contains(t, names, "Code Coverage")
+
+	assert.Contains(t, categories, "System")
+	assert.Contains(t, categories, "Configuration")
+	assert.Contains(t, categories, "Tests")
+	assert.Contains(t, categories, "Coverage")
 }

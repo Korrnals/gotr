@@ -88,6 +88,17 @@ func TestMain_NoPanic(t *testing.T) {
 	})
 }
 
+func TestMain_PanicsOnExecuteError(t *testing.T) {
+	original := executeMain
+	defer func() { executeMain = original }()
+
+	executeMain = func() error { return errors.New("boom") }
+
+	assert.Panics(t, func() {
+		main()
+	})
+}
+
 func TestMain_PanicPath(t *testing.T) {
 	if os.Getenv("GOTR_MAIN_PANIC_CHILD") == "1" {
 		original := executeMain

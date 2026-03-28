@@ -245,3 +245,13 @@ Interpretation:
 - Delta vs COV-3 partial 13: **+0.3%**
 - Delta vs COV-1 baseline: **+8.9%**
 - COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 15)
+
+- Added tests:
+- `internal/service/run_test.go` (expanded coverage for `Get`, `GetByProject`, `Create`, `Update`, `Close`, `Delete` branches)
+- `internal/service/result_test.go` (expanded validation/error branches for `GetForRun`, `GetRunsForProject`, `AddForCase`, `AddResults`, `AddResultsForCases`)
+- Recomputed full coverage total: **76.4%** (statements)
+- Delta vs COV-3 partial 14: **+0.1%**
+- Delta vs COV-1 baseline: **+9.0%**
+- COV-3 status: **IN PROGRESS**.

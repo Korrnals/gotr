@@ -1109,3 +1109,106 @@ func TestAdd_Attachment_MissingPlanEntryArgs(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "usage")
 }
+
+func TestAddAttachmentHelpers_DryRun(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.Flags().Bool("dry-run", false, "")
+	require.NoError(t, cmd.Flags().Set("dry-run", "true"))
+
+	err := addAttachmentToCase(&client.MockClient{}, cmd, 1, "/tmp/does-not-exist")
+	assert.NoError(t, err)
+
+	err = addAttachmentToPlan(&client.MockClient{}, cmd, 2, "/tmp/does-not-exist")
+	assert.NoError(t, err)
+
+	err = addAttachmentToPlanEntry(&client.MockClient{}, cmd, 3, "entry-1", "/tmp/does-not-exist")
+	assert.NoError(t, err)
+
+	err = addAttachmentToResult(&client.MockClient{}, cmd, 4, "/tmp/does-not-exist")
+	assert.NoError(t, err)
+
+	err = addAttachmentToRun(&client.MockClient{}, cmd, 5, "/tmp/does-not-exist")
+	assert.NoError(t, err)
+}
+
+func TestAddAttachmentHelpers_FileNotFound(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+
+	err := addAttachmentToCase(&client.MockClient{}, cmd, 1, "/tmp/does-not-exist")
+	assert.ErrorContains(t, err, "file not found")
+
+	err = addAttachmentToPlan(&client.MockClient{}, cmd, 2, "/tmp/does-not-exist")
+	assert.ErrorContains(t, err, "file not found")
+
+	err = addAttachmentToPlanEntry(&client.MockClient{}, cmd, 3, "entry-1", "/tmp/does-not-exist")
+	assert.ErrorContains(t, err, "file not found")
+
+	err = addAttachmentToResult(&client.MockClient{}, cmd, 4, "/tmp/does-not-exist")
+	assert.ErrorContains(t, err, "file not found")
+
+	err = addAttachmentToRun(&client.MockClient{}, cmd, 5, "/tmp/does-not-exist")
+	assert.ErrorContains(t, err, "file not found")
+}
+
+func TestAddAttachmentHelpers_ClientErrors(t *testing.T) {
+	tmpFile, err := os.CreateTemp("", "attachment-helper-*.txt")
+	require.NoError(t, err)
+	defer os.Remove(tmpFile.Name())
+	_, _ = tmpFile.WriteString("content")
+	_ = tmpFile.Close()
+
+	t.Run("case", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddAttachmentToCaseFunc: func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
+				return nil, errors.New("case attachment boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		err := addAttachmentToCase(mock, cmd, 1, tmpFile.Name())
+		assert.ErrorContains(t, err, "failed to add attachment to case")
+	})
+
+	t.Run("plan", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddAttachmentToPlanFunc: func(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error) {
+				return nil, errors.New("plan attachment boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		err := addAttachmentToPlan(mock, cmd, 2, tmpFile.Name())
+		assert.ErrorContains(t, err, "failed to add attachment to plan")
+	})
+
+	t.Run("plan-entry", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddAttachmentToPlanEntryFunc: func(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+				return nil, errors.New("plan entry attachment boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		err := addAttachmentToPlanEntry(mock, cmd, 3, "entry-1", tmpFile.Name())
+		assert.ErrorContains(t, err, "failed to add attachment to plan entry")
+	})
+
+	t.Run("result", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddAttachmentToResultFunc: func(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
+				return nil, errors.New("result attachment boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		err := addAttachmentToResult(mock, cmd, 4, tmpFile.Name())
+		assert.ErrorContains(t, err, "failed to add attachment to result")
+	})
+
+	t.Run("run", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddAttachmentToRunFunc: func(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error) {
+				return nil, errors.New("run attachment boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		err := addAttachmentToRun(mock, cmd, 5, tmpFile.Name())
+		assert.ErrorContains(t, err, "failed to add attachment to run")
+	})
+}

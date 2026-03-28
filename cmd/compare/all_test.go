@@ -419,3 +419,21 @@ func TestSaveAllSummaryToFile_DefaultPath(t *testing.T) {
 	)
 	assert.NoError(t, err)
 }
+
+func TestSaveAllSummaryToFile_WriteError(t *testing.T) {
+	cmd := &cobra.Command{Use: "compare-all"}
+	cmd.Flags().Bool("quiet", false, "")
+
+	badPath := t.TempDir()
+	err := saveAllSummaryToFile(
+		cmd,
+		&allResult{},
+		"Project A", 1,
+		"Project B", 2,
+		map[string]error{},
+		badPath,
+		500*time.Millisecond,
+	)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "file write error")
+}

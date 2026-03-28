@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -10,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setupUpdateTest настраивает тестовое окружение для update команды
@@ -418,4 +420,90 @@ func TestUpdateSharedStepInteractive_RequiresTitle(t *testing.T) {
 	err := updateSharedStepInteractive(mock, cmd, 12)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "shared step title is required")
+}
+
+func TestUpdateHandlers_JSONParseErrors(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupUpdateTest(t, mock)
+	badJSON := []byte("{")
+
+	assert.ErrorContains(t, updateProject(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, updateSuite(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, updateSection(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, updateCase(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, updateRun(mock, cmd, 1, badJSON), "JSON parse error")
+	assert.ErrorContains(t, updateSharedStep(mock, cmd, 1, badJSON), "JSON parse error")
+}
+
+func TestUpdateHandlers_ClientErrors(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+			return nil, errors.New("project boom")
+		},
+		UpdateSuiteFunc: func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+			return nil, errors.New("suite boom")
+		},
+		UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+			return nil, errors.New("section boom")
+		},
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+			return nil, errors.New("case boom")
+		},
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			return nil, errors.New("run boom")
+		},
+		UpdateSharedStepFunc: func(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
+			return nil, errors.New("step boom")
+		},
+	}
+
+	t.Run("update project client error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, mock)
+		err := updateProject(mock, cmd, 1, nil)
+		assert.ErrorContains(t, err, "failed to update project")
+	})
+
+	t.Run("update suite client error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, mock)
+		err := updateSuite(mock, cmd, 1, nil)
+		assert.ErrorContains(t, err, "failed to update suite")
+	})
+
+	t.Run("update section client error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, mock)
+		err := updateSection(mock, cmd, 1, nil)
+		assert.ErrorContains(t, err, "failed to update section")
+	})
+
+	t.Run("update case client error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, mock)
+		err := updateCase(mock, cmd, 1, nil)
+		assert.ErrorContains(t, err, "failed to update case")
+	})
+
+	t.Run("update run client error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, mock)
+		err := updateRun(mock, cmd, 1, nil)
+		assert.ErrorContains(t, err, "failed to update run")
+	})
+
+	t.Run("update shared step client error", func(t *testing.T) {
+		cmd := setupUpdateTest(t, mock)
+		err := updateSharedStep(mock, cmd, 1, nil)
+		assert.ErrorContains(t, err, "failed to update shared step")
+	})
+}
+
+func TestUpdateLabels_ErrorBranches(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupUpdateTest(t, mock)
+	cmd.Flags().String("labels", "", "")
+	cmd.Flags().Bool("dry-run", false, "")
+
+	err := updateLabels(mock, cmd, 99)
+	assert.ErrorContains(t, err, "--labels is required")
+
+	require.NoError(t, cmd.Flags().Set("labels", ",,"))
+	err = updateLabels(mock, cmd, 99)
+	assert.ErrorContains(t, err, "labels not specified")
 }

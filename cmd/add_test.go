@@ -204,6 +204,118 @@ func TestAddSharedStepInteractive_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAddSectionInteractive_ErrorBranches(t *testing.T) {
+	t.Run("name required", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		p := interactive.NewMockPrompter().WithInputResponses("")
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSectionInteractive(&client.MockClient{}, cmd, 10)
+		assert.ErrorContains(t, err, "section name is required")
+	})
+
+	t.Run("invalid suite id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Section A", "Desc", "not-a-number")
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSectionInteractive(&client.MockClient{}, cmd, 10)
+		assert.ErrorContains(t, err, "invalid suite id")
+	})
+
+	t.Run("invalid parent section id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Section A", "Desc", "2", "bad-parent")
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSectionInteractive(&client.MockClient{}, cmd, 10)
+		assert.ErrorContains(t, err, "invalid parent section id")
+	})
+
+	t.Run("cancelled", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+				called = true
+				return &data.Section{ID: 1, Name: req.Name}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Section A", "Desc", "2", "3").
+			WithConfirmResponses(false)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSectionInteractive(mock, cmd, 10)
+		assert.NoError(t, err)
+		assert.False(t, called)
+	})
+
+	t.Run("client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+				return nil, errors.New("section boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Section A", "Desc", "2", "3").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSectionInteractive(mock, cmd, 10)
+		assert.ErrorContains(t, err, "failed to create section")
+	})
+}
+
+func TestAddSharedStepInteractive_ErrorBranches(t *testing.T) {
+	t.Run("title required", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		p := interactive.NewMockPrompter().WithInputResponses("")
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSharedStepInteractive(&client.MockClient{}, cmd, 15)
+		assert.ErrorContains(t, err, "shared step title is required")
+	})
+
+	t.Run("cancelled", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+				called = true
+				return &data.SharedStep{ID: 1, Title: req.Title}, nil
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Shared A").
+			WithConfirmResponses(false)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSharedStepInteractive(mock, cmd, 15)
+		assert.NoError(t, err)
+		assert.False(t, called)
+	})
+
+	t.Run("client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+				return nil, errors.New("shared step boom")
+			},
+		}
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Shared A").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addSharedStepInteractive(mock, cmd, 15)
+		assert.ErrorContains(t, err, "failed to create shared step")
+	})
+}
+
 func TestAddSuiteInteractive_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {

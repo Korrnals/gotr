@@ -339,3 +339,32 @@ func TestGetSectionsParallelCtx_Timeout(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "deadline")
 }
+
+func TestGetSection(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_section/500", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.Section{ID: 500, Name: "Auth"})
+		})
+		defer server.Close()
+
+		section, err := client.GetSection(context.Background(), 500)
+		assert.NoError(t, err)
+		assert.NotNil(t, section)
+		assert.Equal(t, int64(500), section.ID)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		})
+		defer server.Close()
+
+		_, err := client.GetSection(context.Background(), 500)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+}

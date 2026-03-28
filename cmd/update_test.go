@@ -428,6 +428,163 @@ func TestRunUpdateInteractive_Unsupported(t *testing.T) {
 	assert.Contains(t, err.Error(), "interactive mode not supported")
 }
 
+func TestShouldAutoRunUpdateInteractive_Branches(t *testing.T) {
+	t.Run("no prompter in context", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		assert.False(t, shouldAutoRunUpdateInteractive(cmd, "project", false))
+	})
+
+	t.Run("json file disables interactive", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.False(t, shouldAutoRunUpdateInteractive(cmd, "project", true))
+	})
+
+	t.Run("project no changed flags", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.True(t, shouldAutoRunUpdateInteractive(cmd, "project", false))
+	})
+
+	t.Run("project with changed flag", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		require.NoError(t, cmd.Flags().Set("name", "Updated"))
+		assert.False(t, shouldAutoRunUpdateInteractive(cmd, "project", false))
+	})
+
+	t.Run("unsupported endpoint", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.False(t, shouldAutoRunUpdateInteractive(cmd, "unsupported", false))
+	})
+}
+
+func TestRunUpdateInteractive_SupportedEndpoints(t *testing.T) {
+	t.Run("project", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+				called = true
+				return &data.GetProjectResponse{ID: projectID, Name: req.Name}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("P", "A").
+			WithConfirmResponses(true, true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runUpdateInteractive(mock, cmd, "project", 1)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("suite", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			UpdateSuiteFunc: func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+				called = true
+				return &data.Suite{ID: suiteID, Name: req.Name}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("S", "D").
+			WithConfirmResponses(true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runUpdateInteractive(mock, cmd, "suite", 2)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("section", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+				called = true
+				return &data.Section{ID: sectionID, Name: req.Name}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Sec", "Desc").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runUpdateInteractive(mock, cmd, "section", 3)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("case", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+				called = true
+				title := ""
+				if req.Title != nil {
+					title = *req.Title
+				}
+				return &data.Case{ID: caseID, Title: title}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Case", "REF").
+			WithSelectResponses(interactive.SelectResponse{Index: 0}, interactive.SelectResponse{Index: 0}).
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runUpdateInteractive(mock, cmd, "case", 4)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("run", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+				called = true
+				name := ""
+				if req.Name != nil {
+					name = *req.Name
+				}
+				return &data.Run{ID: runID, Name: name}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Run", "Desc").
+			WithConfirmResponses(true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runUpdateInteractive(mock, cmd, "run", 5)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+
+	t.Run("shared-step", func(t *testing.T) {
+		called := false
+		mock := &client.MockClient{
+			UpdateSharedStepFunc: func(ctx context.Context, sharedStepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
+				called = true
+				return &data.SharedStep{ID: sharedStepID, Title: req.Title}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Step").
+			WithConfirmResponses(true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := runUpdateInteractive(mock, cmd, "shared-step", 6)
+		assert.NoError(t, err)
+		assert.True(t, called)
+	})
+}
+
 func TestRunUpdateDryRun_SwitchEndpoints(t *testing.T) {
 	cmd := setupUpdateTest(t, &client.MockClient{})
 	cmd.Flags().String("labels", "", "")

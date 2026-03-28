@@ -503,3 +503,54 @@ func TestAppendResourceRow_NilResultWithRegularError(t *testing.T) {
 	out := tw.Render()
 	assert.Contains(t, out, "INTERRUPTED")
 }
+
+func TestAppendResourceRow_PartialWithUnsupportedError(t *testing.T) {
+	tw := table.NewWriter()
+	tw.AppendHeader(table.Row{"Resource", "Only in P1", "Only in P2", "Common", "Data status"})
+
+	appendResourceRow(
+		tw,
+		"Datasets",
+		&CompareResult{Status: CompareStatusPartial},
+		errors.New("API returned 404 File Not Found: Unknown method 'get_datasets'"),
+	)
+
+	out := tw.Render()
+	assert.Contains(t, out, "UNSUPPORTED")
+}
+
+func TestCompareResultStatus(t *testing.T) {
+	assert.Equal(t, CompareStatusInterrupted, compareResultStatus(nil))
+	assert.Equal(t, CompareStatusInterrupted, compareResultStatus(&CompareResult{}))
+	assert.Equal(t, CompareStatusComplete, compareResultStatus(&CompareResult{Status: CompareStatusComplete}))
+}
+
+func TestDeriveAllExecutionStatus(t *testing.T) {
+	base := &allResult{
+		Cases:          &CompareResult{Status: CompareStatusComplete},
+		Suites:         &CompareResult{Status: CompareStatusComplete},
+		Sections:       &CompareResult{Status: CompareStatusComplete},
+		SharedSteps:    &CompareResult{Status: CompareStatusComplete},
+		Runs:           &CompareResult{Status: CompareStatusComplete},
+		Plans:          &CompareResult{Status: CompareStatusComplete},
+		Milestones:     &CompareResult{Status: CompareStatusComplete},
+		Datasets:       &CompareResult{Status: CompareStatusComplete},
+		Groups:         &CompareResult{Status: CompareStatusComplete},
+		Labels:         &CompareResult{Status: CompareStatusComplete},
+		Templates:      &CompareResult{Status: CompareStatusComplete},
+		Configurations: &CompareResult{Status: CompareStatusComplete},
+	}
+
+	assert.Equal(t, CompareStatusInterrupted, deriveAllExecutionStatus(base, true, nil))
+	assert.Equal(t, CompareStatusPartial, deriveAllExecutionStatus(base, false, map[string]error{"cases": errors.New("boom")}))
+
+	partial := *base
+	partial.Runs = &CompareResult{Status: CompareStatusPartial}
+	assert.Equal(t, CompareStatusPartial, deriveAllExecutionStatus(&partial, false, nil))
+
+	interrupted := *base
+	interrupted.Groups = &CompareResult{Status: CompareStatusInterrupted}
+	assert.Equal(t, CompareStatusInterrupted, deriveAllExecutionStatus(&interrupted, false, nil))
+
+	assert.Equal(t, CompareStatusComplete, deriveAllExecutionStatus(base, false, nil))
+}

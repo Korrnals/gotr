@@ -447,6 +447,99 @@ func TestAddHandlers_ClientErrors(t *testing.T) {
 	})
 }
 
+func TestRunAdd_OrchestrationErrors(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+
+	t.Run("endpoint required", func(t *testing.T) {
+		err := runAdd(cmd, []string{})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "endpoint required")
+	})
+
+	t.Run("invalid id", func(t *testing.T) {
+		err := runAdd(cmd, []string{"suite", "bad-id"})
+		assert.Error(t, err)
+	})
+
+	t.Run("json file read error", func(t *testing.T) {
+		require.NoError(t, cmd.Flags().Set("json-file", "/tmp/not-existing-gotr-add-test.json"))
+		err := runAdd(cmd, []string{"project"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "JSON file read error")
+		require.NoError(t, cmd.Flags().Set("json-file", ""))
+	})
+}
+
+func TestRunAdd_AutoInteractive_Project(t *testing.T) {
+	mock := &client.MockClient{
+		AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: 500, Name: req.Name}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Auto Project", "Announcement").
+		WithConfirmResponses(true, true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := runAdd(cmd, []string{"project"})
+	assert.NoError(t, err)
+}
+
+func TestResolveAddParentID_CaseMultiSelection(t *testing.T) {
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter().
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 0}, // project
+			interactive.SelectResponse{Index: 1}, // suite
+			interactive.SelectResponse{Index: 1}, // section
+		),
+	)
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 10, Name: "P1"},
+				{ID: 20, Name: "P2"},
+			}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{
+				{ID: 100, Name: "S1"},
+				{ID: 200, Name: "S2"},
+			}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{
+				{ID: 1000, Name: "Sec1"},
+				{ID: 2000, Name: "Sec2"},
+			}, nil
+		},
+	}
+
+	got, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, "case", 0)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2000), got)
+}
+
+func TestResolveAddParentID_CaseSuiteFetchError(t *testing.T) {
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}),
+	)
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 10, Name: "P1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return nil, errors.New("suite boom")
+		},
+	}
+
+	_, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, "case", 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get suites for project")
+}
+
 // TestAdd_SharedStep_Success проверяет создание shared step
 func TestAdd_SharedStep_Success(t *testing.T) {
 	mock := &client.MockClient{

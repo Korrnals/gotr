@@ -1,0 +1,89 @@
+package selftest
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
+
+	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestCountMatches(t *testing.T) {
+	assert.Equal(t, 0, countMatches("", "a"))
+	assert.Equal(t, 2, countMatches("abc--- PASS: x\n--- PASS: y", "--- PASS:"))
+	assert.Equal(t, 1, countMatches("FAIL", "FAIL"))
+}
+
+func TestParsePackageResults(t *testing.T) {
+	out := "ok   github.com/acme/p1 0.01s\nFAIL github.com/acme/p2 0.02s\nok   github.com/acme/p3 0.03s\n"
+	parsed := parsePackageResults(out)
+	assert.Contains(t, parsed, "✓ p1")
+	assert.Contains(t, parsed, "✗ p2")
+	assert.Contains(t, parsed, "✓ p3")
+}
+
+func TestExtractOverallCoverage(t *testing.T) {
+	out := "ok github.com/acme/x coverage: 67.8% of statements\n"
+	assert.Equal(t, "67.8%", extractOverallCoverage(out))
+	assert.Equal(t, "unknown", extractOverallCoverage("no coverage here"))
+}
+
+func TestGetProjectRoot(t *testing.T) {
+	oldWD, err := os.Getwd()
+	assert.NoError(t, err)
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	root := t.TempDir()
+	nested := filepath.Join(root, "a", "b")
+	assert.NoError(t, os.MkdirAll(nested, 0o755))
+	assert.NoError(t, os.WriteFile(filepath.Join(root, "go.mod"), []byte("module x\n"), 0o644))
+	assert.NoError(t, os.Chdir(nested))
+
+	got := getProjectRoot()
+	assert.Equal(t, root, got)
+}
+
+func TestBinaryInfoAndGoEnvCheckers(t *testing.T) {
+	b := BinaryInfoChecker{Version: "1.2.3", Commit: "abcdef123456", BuildTime: "now"}
+	res := b.Check()
+	assert.Equal(t, ResultPass, res.Result)
+	assert.Contains(t, res.Message, "1.2.3")
+	assert.Contains(t, res.Details, "abcdef12")
+
+	g := GoEnvChecker{}
+	gres := g.Check()
+	assert.Equal(t, ResultPass, gres.Result)
+	assert.Contains(t, gres.Message, runtime.Version())
+}
+
+func TestConfigAndBaseDirCheckers(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cfgChecker := ConfigChecker{}
+	resMissing := cfgChecker.Check()
+	assert.Equal(t, ResultFail, resMissing.Result)
+	assert.True(t, resMissing.CanFix)
+
+	cfgPath, err := paths.ConfigFile()
+	assert.NoError(t, err)
+	assert.NoError(t, os.MkdirAll(filepath.Dir(cfgPath), 0o755))
+	assert.NoError(t, os.WriteFile(cfgPath, []byte("base_url: test\n"), 0o644))
+
+	resFound := cfgChecker.Check()
+	assert.Equal(t, ResultPass, resFound.Result)
+	assert.Contains(t, resFound.Message, "found")
+
+	baseChecker := BaseDirChecker{}
+	baseRes := baseChecker.Check()
+	assert.Equal(t, ResultPass, baseRes.Result)
+	assert.NotEmpty(t, baseRes.Message)
+}
+
+func TestCoverageCheckerHelpers(t *testing.T) {
+	c := CoverageChecker{}
+	assert.Equal(t, "Code Coverage", c.Name())
+	assert.Equal(t, "Coverage", c.Category())
+}

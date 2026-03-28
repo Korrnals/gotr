@@ -274,3 +274,15 @@ Interpretation:
 - Delta vs COV-3 partial 16: **+0.1%**
 - Delta vs COV-1 baseline: **+9.5%**
 - COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 18)
+
+- Added tests:
+- `cmd/config_test.go` (coverage for config init/path/view/edit no-config flows)
+- `cmd/completion_test.go`, `cmd/list_test.go` (expanded command branches)
+- `main_test.go` with testable `runMain` path in `main.go`
+- `internal/selftest/checks_test.go` (helpers + safe checker branches)
+- Recomputed full coverage total: **77.4%** (statements)
+- Delta vs COV-3 partial 17: **+0.5%**
+- Delta vs COV-1 baseline: **+10.0%**
+- COV-3 status: **IN PROGRESS**.

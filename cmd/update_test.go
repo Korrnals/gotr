@@ -314,3 +314,108 @@ func TestUpdateLabels_DryRun(t *testing.T) {
 	err := updateLabels(mock, cmd, 99)
 	assert.NoError(t, err)
 }
+
+func TestUpdateSectionInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+			assert.Equal(t, int64(5), sectionID)
+			assert.Equal(t, "Section X", req.Name)
+			assert.Equal(t, "Description X", req.Description)
+			return &data.Section{ID: sectionID, Name: req.Name}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Section X", "Description X").
+		WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateSectionInteractive(mock, cmd, 5)
+	assert.NoError(t, err)
+}
+
+func TestUpdateRunInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			assert.Equal(t, int64(8), runID)
+			assert.NotNil(t, req.Name)
+			assert.Equal(t, "Run X", *req.Name)
+			return &data.Run{ID: runID, Name: *req.Name}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("Run X", "Run Desc").
+		WithConfirmResponses(true, true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateRunInteractive(mock, cmd, 8)
+	assert.NoError(t, err)
+}
+
+func TestRunUpdateInteractive_Unsupported(t *testing.T) {
+	err := runUpdateInteractive(&client.MockClient{}, &cobra.Command{}, "unknown", 1)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "interactive mode not supported")
+}
+
+func TestRunUpdateDryRun_SwitchEndpoints(t *testing.T) {
+	cmd := setupUpdateTest(t, &client.MockClient{})
+	cmd.Flags().String("labels", "", "")
+	_ = cmd.Flags().Set("name", "N")
+	_ = cmd.Flags().Set("title", "T")
+	_ = cmd.Flags().Set("description", "D")
+	_ = cmd.Flags().Set("announcement", "A")
+	_ = cmd.Flags().Set("show-announcement", "true")
+	_ = cmd.Flags().Set("is-completed", "true")
+	_ = cmd.Flags().Set("milestone-id", "11")
+	_ = cmd.Flags().Set("assignedto-id", "22")
+	_ = cmd.Flags().Set("include-all", "true")
+	_ = cmd.Flags().Set("type-id", "2")
+	_ = cmd.Flags().Set("priority-id", "3")
+	_ = cmd.Flags().Set("refs", "REF")
+	_ = cmd.Flags().Set("case-ids", "1,2")
+	_ = cmd.Flags().Set("labels", "bug,regression")
+
+	dr := output.NewDryRunPrinter("update")
+
+	assert.NoError(t, runUpdateDryRun(cmd, dr, "project", 1, nil))
+	assert.NoError(t, runUpdateDryRun(cmd, dr, "suite", 1, nil))
+	assert.NoError(t, runUpdateDryRun(cmd, dr, "section", 1, nil))
+	assert.NoError(t, runUpdateDryRun(cmd, dr, "case", 1, nil))
+	assert.NoError(t, runUpdateDryRun(cmd, dr, "run", 1, nil))
+	assert.NoError(t, runUpdateDryRun(cmd, dr, "shared-step", 1, nil))
+	assert.NoError(t, runUpdateDryRun(cmd, dr, "labels", 1, nil))
+
+	err := runUpdateDryRun(cmd, dr, "bad-endpoint", 1, nil)
+	assert.Error(t, err)
+}
+
+func TestUpdateSharedStepInteractive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateSharedStepFunc: func(ctx context.Context, sharedStepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
+			assert.Equal(t, int64(12), sharedStepID)
+			assert.Equal(t, "New shared step", req.Title)
+			return &data.SharedStep{ID: sharedStepID, Title: req.Title}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().
+		WithInputResponses("New shared step").
+		WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateSharedStepInteractive(mock, cmd, 12)
+	assert.NoError(t, err)
+}
+
+func TestUpdateSharedStepInteractive_RequiresTitle(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().WithInputResponses("")
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateSharedStepInteractive(mock, cmd, 12)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "shared step title is required")
+}

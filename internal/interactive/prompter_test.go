@@ -77,6 +77,44 @@ func TestTerminalPrompter_InputError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get input")
 }
 
+func TestTerminalPrompter_Select_EmptyOptions(t *testing.T) {
+	tp := &TerminalPrompter{}
+	_, _, err := tp.Select("pick", []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "select options list is empty")
+}
+
+func TestTerminalPrompter_Select_AskError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, _, err := tp.Select("pick", []string{"a", "b"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select option")
+}
+
+func TestTerminalPrompter_Select_SelectedNotInList(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "c"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	_, _, err := tp.Select("pick", []string{"a", "b"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "selected option is not in list")
+}
+
 func TestPrompterFromContext_Default(t *testing.T) {
 	p := PrompterFromContext(context.Background())
 	assert.NotNil(t, p)

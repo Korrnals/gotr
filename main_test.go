@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestRunMain_Success(t *testing.T) {
@@ -84,4 +86,21 @@ func TestMain_NoPanic(t *testing.T) {
 	assert.NotPanics(t, func() {
 		main()
 	})
+}
+
+func TestMain_PanicPath(t *testing.T) {
+	if os.Getenv("GOTR_MAIN_PANIC_CHILD") == "1" {
+		tmpDir := t.TempDir()
+		homeAsFile := tmpDir + "/not-a-dir"
+		require.NoError(t, os.WriteFile(homeAsFile, []byte("x"), 0o644))
+		require.NoError(t, os.Setenv("HOME", homeAsFile))
+		os.Args = []string{"gotr"}
+		main()
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestMain_PanicPath", "-test.v")
+	cmd.Env = append(os.Environ(), "GOTR_MAIN_PANIC_CHILD=1")
+	err := cmd.Run()
+	assert.Error(t, err)
 }

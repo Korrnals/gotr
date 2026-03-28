@@ -206,3 +206,251 @@ func TestMock_GetCasesParallelCtx_with_config_workers(t *testing.T) {
 	assert.NotNil(t, result)
 	assert.Len(t, cases, 2)
 }
+
+func TestMock_DefaultBranches_ProjectsAndExtended(t *testing.T) {
+	m := &MockClient{}
+	ctx := context.Background()
+
+	projects, err := m.GetProjects(ctx)
+	assert.NoError(t, err)
+	assert.Nil(t, projects)
+
+	project, err := m.GetProject(ctx, 1)
+	assert.NoError(t, err)
+	assert.Nil(t, project)
+
+	addedProject, err := m.AddProject(ctx, &data.AddProjectRequest{Name: "p"})
+	assert.NoError(t, err)
+	assert.Nil(t, addedProject)
+
+	updatedProject, err := m.UpdateProject(ctx, 1, &data.UpdateProjectRequest{Name: "p2"})
+	assert.NoError(t, err)
+	assert.Nil(t, updatedProject)
+
+	assert.NoError(t, m.DeleteProject(ctx, 1))
+
+	gotCase, err := m.GetCase(ctx, 11)
+	assert.NoError(t, err)
+	assert.Nil(t, gotCase)
+
+	addedCase, err := m.AddCase(ctx, 10, &data.AddCaseRequest{Title: "x"})
+	assert.NoError(t, err)
+	assert.NotNil(t, addedCase)
+	assert.Equal(t, int64(999), addedCase.ID)
+
+	updatedCase, err := m.UpdateCase(ctx, 11, &data.UpdateCaseRequest{})
+	assert.NoError(t, err)
+	assert.Nil(t, updatedCase)
+	assert.NoError(t, m.DeleteCase(ctx, 11))
+
+	updatedCases, err := m.UpdateCases(ctx, 7, &data.UpdateCasesRequest{})
+	assert.NoError(t, err)
+	assert.Nil(t, updatedCases)
+	assert.NoError(t, m.DeleteCases(ctx, 7, &data.DeleteCasesRequest{}))
+	assert.NoError(t, m.CopyCasesToSection(ctx, 7, &data.CopyCasesRequest{}))
+	assert.NoError(t, m.MoveCasesToSection(ctx, 7, &data.MoveCasesRequest{}))
+
+	history, err := m.GetHistoryForCase(ctx, 11)
+	assert.NoError(t, err)
+	assert.Nil(t, history)
+
+	fields, err := m.GetCaseFields(ctx)
+	assert.NoError(t, err)
+	assert.Nil(t, fields)
+
+	types, err := m.GetCaseTypes(ctx)
+	assert.NoError(t, err)
+	assert.Nil(t, types)
+
+	diff, err := m.DiffCasesData(ctx, 1, 2, "title")
+	assert.NoError(t, err)
+	assert.Nil(t, diff)
+
+	groupList, err := m.GetGroups(ctx, 1)
+	assert.NoError(t, err)
+	assert.Nil(t, groupList)
+
+	group, err := m.GetGroup(ctx, 2)
+	assert.NoError(t, err)
+	assert.Nil(t, group)
+
+	newGroup, err := m.AddGroup(ctx, 1, "g", []int64{1, 2})
+	assert.NoError(t, err)
+	assert.Nil(t, newGroup)
+
+	updatedGroup, err := m.UpdateGroup(ctx, 2, "g2", []int64{3})
+	assert.NoError(t, err)
+	assert.Nil(t, updatedGroup)
+	assert.NoError(t, m.DeleteGroup(ctx, 2))
+
+	roles, err := m.GetRoles(ctx)
+	assert.NoError(t, err)
+	assert.Nil(t, roles)
+
+	role, err := m.GetRole(ctx, 3)
+	assert.NoError(t, err)
+	assert.Nil(t, role)
+
+	datasets, err := m.GetDatasets(ctx, 1)
+	assert.NoError(t, err)
+	assert.Nil(t, datasets)
+
+	dataset, err := m.GetDataset(ctx, 5)
+	assert.NoError(t, err)
+	assert.Nil(t, dataset)
+
+	addedDataset, err := m.AddDataset(ctx, 1, "d")
+	assert.NoError(t, err)
+	assert.Nil(t, addedDataset)
+
+	updatedDataset, err := m.UpdateDataset(ctx, 5, "d2")
+	assert.NoError(t, err)
+	assert.Nil(t, updatedDataset)
+	assert.NoError(t, m.DeleteDataset(ctx, 5))
+
+	variables, err := m.GetVariables(ctx, 6)
+	assert.NoError(t, err)
+	assert.Nil(t, variables)
+
+	addedVariable, err := m.AddVariable(ctx, 6, "v")
+	assert.NoError(t, err)
+	assert.Nil(t, addedVariable)
+
+	updatedVariable, err := m.UpdateVariable(ctx, 7, "v2")
+	assert.NoError(t, err)
+	assert.Nil(t, updatedVariable)
+	assert.NoError(t, m.DeleteVariable(ctx, 7))
+
+	bdd, err := m.GetBDD(ctx, 11)
+	assert.NoError(t, err)
+	assert.Nil(t, bdd)
+
+	addedBDD, err := m.AddBDD(ctx, 11, "feature")
+	assert.NoError(t, err)
+	assert.Nil(t, addedBDD)
+
+	labels, err := m.GetLabels(ctx, 1)
+	assert.NoError(t, err)
+	assert.Nil(t, labels)
+
+	label, err := m.GetLabel(ctx, 8)
+	assert.NoError(t, err)
+	assert.Nil(t, label)
+
+	updatedLabel, err := m.UpdateLabel(ctx, 8, data.UpdateLabelRequest{ProjectID: 1, Title: "x"})
+	assert.NoError(t, err)
+	assert.Nil(t, updatedLabel)
+
+	assert.NoError(t, m.UpdateTestLabels(ctx, 9, []string{"a"}))
+	assert.NoError(t, m.UpdateTestsLabels(ctx, 10, []int64{1, 2}, []string{"b"}))
+}
+
+func TestMock_FunctionBranches_ProjectsAndExtended(t *testing.T) {
+	ctx := context.Background()
+	m := &MockClient{
+		GetProjectsFunc: func(context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "P"}}, nil
+		},
+		GetProjectFunc: func(context.Context, int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: 1, Name: "P"}, nil
+		},
+		AddProjectFunc: func(context.Context, *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: 2, Name: "P2"}, nil
+		},
+		UpdateProjectFunc: func(context.Context, int64, *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: 2, Name: "P2"}, nil
+		},
+		DeleteProjectFunc: func(context.Context, int64) error { return nil },
+
+		GetGroupFunc: func(context.Context, int64) (*data.Group, error) { return &data.Group{ID: 1, Name: "G"}, nil },
+		AddGroupFunc: func(context.Context, int64, string, []int64) (*data.Group, error) { return &data.Group{ID: 2, Name: "G2"}, nil },
+		UpdateGroupFunc: func(context.Context, int64, string, []int64) (*data.Group, error) { return &data.Group{ID: 2, Name: "G2"}, nil },
+		DeleteGroupFunc: func(context.Context, int64) error { return nil },
+
+		GetRoleFunc: func(context.Context, int64) (*data.Role, error) { return &data.Role{ID: 1, Name: "R"}, nil },
+
+		GetDatasetFunc:    func(context.Context, int64) (*data.Dataset, error) { return &data.Dataset{ID: 1, Name: "D"}, nil },
+		AddDatasetFunc:    func(context.Context, int64, string) (*data.Dataset, error) { return &data.Dataset{ID: 2, Name: "D2"}, nil },
+		UpdateDatasetFunc: func(context.Context, int64, string) (*data.Dataset, error) { return &data.Dataset{ID: 2, Name: "D2"}, nil },
+		DeleteDatasetFunc: func(context.Context, int64) error { return nil },
+
+		AddVariableFunc:    func(context.Context, int64, string) (*data.Variable, error) { return &data.Variable{ID: 1, Name: "V"}, nil },
+		UpdateVariableFunc: func(context.Context, int64, string) (*data.Variable, error) { return &data.Variable{ID: 2, Name: "V2"}, nil },
+		DeleteVariableFunc: func(context.Context, int64) error { return nil },
+
+		AddBDDFunc: func(context.Context, int64, string) (*data.BDD, error) { return &data.BDD{ID: 1, Content: "bdd"}, nil },
+
+		GetLabelsFunc:         func(context.Context, int64) (data.GetLabelsResponse, error) { return data.GetLabelsResponse{{ID: 1, Name: "L"}}, nil },
+		GetLabelFunc:          func(context.Context, int64) (*data.Label, error) { return &data.Label{ID: 2, Name: "L2"}, nil },
+		UpdateLabelFunc:       func(context.Context, int64, data.UpdateLabelRequest) (*data.Label, error) { return &data.Label{ID: 2, Name: "L2"}, nil },
+		UpdateTestLabelsFunc:  func(context.Context, int64, []string) error { return nil },
+		UpdateTestsLabelsFunc: func(context.Context, int64, []int64, []string) error { return nil },
+	}
+
+	projects, err := m.GetProjects(ctx)
+	require.NoError(t, err)
+	assert.Len(t, projects, 1)
+
+	project, err := m.GetProject(ctx, 1)
+	require.NoError(t, err)
+	assert.NotNil(t, project)
+
+	addedProject, err := m.AddProject(ctx, &data.AddProjectRequest{Name: "P2"})
+	require.NoError(t, err)
+	assert.NotNil(t, addedProject)
+
+	updatedProject, err := m.UpdateProject(ctx, 1, &data.UpdateProjectRequest{Name: "P3"})
+	require.NoError(t, err)
+	assert.NotNil(t, updatedProject)
+	require.NoError(t, m.DeleteProject(ctx, 1))
+
+	group, err := m.GetGroup(ctx, 1)
+	require.NoError(t, err)
+	assert.NotNil(t, group)
+	addedGroup, err := m.AddGroup(ctx, 1, "G2", []int64{1})
+	require.NoError(t, err)
+	assert.NotNil(t, addedGroup)
+	updatedGroup, err := m.UpdateGroup(ctx, 2, "G3", []int64{2})
+	require.NoError(t, err)
+	assert.NotNil(t, updatedGroup)
+	require.NoError(t, m.DeleteGroup(ctx, 2))
+
+	role, err := m.GetRole(ctx, 1)
+	require.NoError(t, err)
+	assert.NotNil(t, role)
+
+	dataset, err := m.GetDataset(ctx, 1)
+	require.NoError(t, err)
+	assert.NotNil(t, dataset)
+	addedDataset, err := m.AddDataset(ctx, 1, "D2")
+	require.NoError(t, err)
+	assert.NotNil(t, addedDataset)
+	updatedDataset, err := m.UpdateDataset(ctx, 1, "D3")
+	require.NoError(t, err)
+	assert.NotNil(t, updatedDataset)
+	require.NoError(t, m.DeleteDataset(ctx, 1))
+
+	addedVar, err := m.AddVariable(ctx, 1, "V")
+	require.NoError(t, err)
+	assert.NotNil(t, addedVar)
+	updatedVar, err := m.UpdateVariable(ctx, 1, "V2")
+	require.NoError(t, err)
+	assert.NotNil(t, updatedVar)
+	require.NoError(t, m.DeleteVariable(ctx, 1))
+
+	bdd, err := m.AddBDD(ctx, 1, "bdd")
+	require.NoError(t, err)
+	assert.NotNil(t, bdd)
+
+	labels, err := m.GetLabels(ctx, 1)
+	require.NoError(t, err)
+	assert.Len(t, labels, 1)
+	label, err := m.GetLabel(ctx, 2)
+	require.NoError(t, err)
+	assert.NotNil(t, label)
+	updatedLabel, err := m.UpdateLabel(ctx, 2, data.UpdateLabelRequest{ProjectID: 1, Title: "L3"})
+	require.NoError(t, err)
+	assert.NotNil(t, updatedLabel)
+	require.NoError(t, m.UpdateTestLabels(ctx, 1, []string{"a"}))
+	require.NoError(t, m.UpdateTestsLabels(ctx, 1, []int64{1}, []string{"a"}))
+}

@@ -198,6 +198,51 @@ func TestRunSelfTest_HumanSuccess(t *testing.T) {
 	assert.Contains(t, out, "pass-check")
 }
 
+func TestRunSelfTest_MalformedFlagTypes(t *testing.T) {
+	original := buildSelfTestReport
+	defer func() { buildSelfTestReport = original }()
+
+	buildSelfTestReport = func() *selftest.Report {
+		return &selftest.Report{
+			Version: "stub-version",
+			Checks: []selftest.CheckResult{
+				{Name: "pass-check", Category: "cat", Result: selftest.ResultPass},
+			},
+		}
+	}
+
+	// Deliberately use wrong flag types so GetBool returns an error.
+	cmd := &cobra.Command{Use: "self-test"}
+	cmd.Flags().String("json", "broken", "")
+	cmd.Flags().String("failures-only", "broken", "")
+
+	out := captureStdout(t, func() {
+		err := runSelfTest(cmd, nil)
+		require.NoError(t, err)
+	})
+
+	assert.Contains(t, out, "pass-check")
+}
+
+func TestOutputHuman_FailuresOnlyWithoutFailedChecks(t *testing.T) {
+	report := &selftest.Report{
+		Version: "v1",
+		Checks: []selftest.CheckResult{
+			{Name: "pass-1", Category: "cat", Result: selftest.ResultPass},
+			{Name: "pass-2", Category: "cat", Result: selftest.ResultPass},
+		},
+	}
+
+	out := captureStdout(t, func() {
+		err := outputHuman(report, true)
+		require.NoError(t, err)
+	})
+
+	assert.Empty(t, report.Checks)
+	assert.NotContains(t, out, "pass-1")
+	assert.NotContains(t, out, "pass-2")
+}
+
 func TestBuildSelfTestReport_UsesInjectedCheckers(t *testing.T) {
 	original := selfTestCheckers
 	defer func() { selfTestCheckers = original }()

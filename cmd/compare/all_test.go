@@ -446,3 +446,24 @@ func TestFillResourcePartialResult_DoesNotOverwriteExisting(t *testing.T) {
 	fillResourcePartialResult(res, "cases", 1, 2)
 	assert.Equal(t, CompareStatusComplete, res.Cases.Status)
 }
+
+func TestPrintAllSummaryTable_WithMixedErrors(t *testing.T) {
+	result := &allResult{
+		Cases: &CompareResult{Status: CompareStatusComplete, OnlyInFirst: []ItemInfo{{ID: 1, Name: "A"}}},
+		Suites: &CompareResult{Status: CompareStatusPartial},
+	}
+	errs := map[string]error{
+		"datasets": errors.New("API returned 404 File Not Found: Unknown method 'get_datasets'"),
+		"runs":     errors.New("network timeout"),
+	}
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	printAllSummaryTable("P1", 1, "P2", 2, result, errs, time.Second)
+
+	_ = w.Close()
+	os.Stdout = oldStdout
+	_ = r.Close()
+}

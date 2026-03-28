@@ -12,8 +12,12 @@ import (
 	"github.com/Korrnals/gotr/internal/log"
 )
 
+var executeMain = func() error {
+	return runMain(log.InitDefault, log.Sync, cmd.Execute, signal.NotifyContext)
+}
+
 func main() {
-	if err := runMain(log.InitDefault, log.Sync, cmd.Execute, signal.NotifyContext); err != nil {
+	if err := executeMain(); err != nil {
 		panic(err)
 	}
 }

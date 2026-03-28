@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRunMain_Success(t *testing.T) {
@@ -79,9 +78,10 @@ func TestRunMain_InitLoggerError(t *testing.T) {
 }
 
 func TestMain_NoPanic(t *testing.T) {
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-	os.Args = []string{"gotr"}
+	original := executeMain
+	defer func() { executeMain = original }()
+
+	executeMain = func() error { return nil }
 
 	assert.NotPanics(t, func() {
 		main()
@@ -90,11 +90,9 @@ func TestMain_NoPanic(t *testing.T) {
 
 func TestMain_PanicPath(t *testing.T) {
 	if os.Getenv("GOTR_MAIN_PANIC_CHILD") == "1" {
-		tmpDir := t.TempDir()
-		homeAsFile := tmpDir + "/not-a-dir"
-		require.NoError(t, os.WriteFile(homeAsFile, []byte("x"), 0o644))
-		require.NoError(t, os.Setenv("HOME", homeAsFile))
-		os.Args = []string{"gotr"}
+		original := executeMain
+		defer func() { executeMain = original }()
+		executeMain = func() error { return errors.New("boom") }
 		main()
 		return
 	}

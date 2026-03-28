@@ -474,6 +474,44 @@ func TestShouldAutoRunAddInteractive_Branches(t *testing.T) {
 		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
 		assert.True(t, shouldAutoRunAddInteractive(cmd, "suite", 10, false))
 	})
+
+	t.Run("section with and without changed flags", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.True(t, shouldAutoRunAddInteractive(cmd, "section", 10, false))
+		require.NoError(t, cmd.Flags().Set("suite-id", "1"))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "section", 10, false))
+	})
+
+	t.Run("case with and without changed flags", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.True(t, shouldAutoRunAddInteractive(cmd, "case", 10, false))
+		require.NoError(t, cmd.Flags().Set("title", "Case"))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "case", 10, false))
+	})
+
+	t.Run("run with and without changed flags", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.True(t, shouldAutoRunAddInteractive(cmd, "run", 10, false))
+		require.NoError(t, cmd.Flags().Set("case-ids", "1,2"))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "run", 10, false))
+	})
+
+	t.Run("shared-step with and without changed flags", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.True(t, shouldAutoRunAddInteractive(cmd, "shared-step", 10, false))
+		require.NoError(t, cmd.Flags().Set("title", "Step"))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "shared-step", 10, false))
+	})
+
+	t.Run("unknown endpoint", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewMockPrompter()))
+		assert.False(t, shouldAutoRunAddInteractive(cmd, "unknown", 10, false))
+	})
 }
 
 func TestRunAddInteractive_SupportedEndpoints(t *testing.T) {
@@ -966,6 +1004,137 @@ func TestResolveAddParentID_CaseSuiteFetchError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get suites for project")
 }
 
+func TestResolveAddParentID_ShortCircuitBranches(t *testing.T) {
+	mock := &client.MockClient{}
+
+	t.Run("current id already set", func(t *testing.T) {
+		got, err := resolveAddParentID(context.Background(), nil, mock, "suite", 99)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(99), got)
+	})
+
+	t.Run("no prompter in context", func(t *testing.T) {
+		got, err := resolveAddParentID(context.Background(), nil, mock, "suite", 0)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), got)
+	})
+
+	t.Run("default endpoint", func(t *testing.T) {
+		ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+		got, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, "project", 0)
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), got)
+	})
+}
+
+func TestResolveAddParentID_ProjectSelectionEndpoints(t *testing.T) {
+	for _, endpoint := range []string{"suite", "section", "run", "shared-step"} {
+		t.Run(endpoint, func(t *testing.T) {
+			ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter().
+				WithSelectResponses(interactive.SelectResponse{Index: 0}),
+			)
+
+			mock := &client.MockClient{
+				GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+					return data.GetProjectsResponse{{ID: 77, Name: "P77"}}, nil
+				},
+			}
+
+			got, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, endpoint, 0)
+			assert.NoError(t, err)
+			assert.Equal(t, int64(77), got)
+		})
+	}
+}
+
+func TestResolveAddParentID_CaseSingleSuiteSingleSection(t *testing.T) {
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}),
+	)
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 10, Name: "P1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 100, Name: "S1"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{{ID: 2000, Name: "Sec1"}}, nil
+		},
+	}
+
+	got, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, "case", 0)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(2000), got)
+}
+
+func TestResolveAddParentID_CaseSectionsFetchError(t *testing.T) {
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}),
+	)
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 10, Name: "P1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 100, Name: "S1"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return nil, errors.New("sections boom")
+		},
+	}
+
+	_, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, "case", 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get sections for project")
+}
+
+func TestResolveAddParentID_CaseSelectSuiteError(t *testing.T) {
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}),
+	)
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 10, Name: "P1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 100, Name: "S1"}, {ID: 200, Name: "S2"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{{ID: 1, Name: "Sec"}}, nil
+		},
+	}
+
+	_, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, "case", 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "select suite")
+}
+
+func TestResolveAddParentID_CaseSelectSectionError(t *testing.T) {
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}, interactive.SelectResponse{Index: 0}),
+	)
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 10, Name: "P1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 100, Name: "S1"}, {ID: 200, Name: "S2"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{{ID: 1, Name: "Sec1"}, {ID: 2, Name: "Sec2"}}, nil
+		},
+	}
+
+	_, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), mock, "case", 0)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "select section")
+}
+
 // TestAdd_SharedStep_Success проверяет создание shared step
 func TestAdd_SharedStep_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -1360,6 +1529,15 @@ func TestAdd_Attachment_InvalidRunID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "run_id")
+}
+
+func TestAdd_AttachmentPlanEntry_InvalidPlanID(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+	cmd.SetArgs([]string{"attachment", "plan-entry", "invalid", "entry-1", "/tmp/test.txt"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestAddAttachmentHelpers_DryRun(t *testing.T) {

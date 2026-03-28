@@ -124,6 +124,8 @@
 - [x] internal/client: добавлены HTTP-тесты для concurrent APIs (GetCasesParallel/GetSuitesParallel/GetCasesForSuitesParallel).
 - [x] internal/service: расширены tests для RunService/ResultService (validation/error branches).
 - [x] internal/client + migration: добавлены unit-тесты для client options и SharedStepMapping (sort/save/load).
+- [x] cmd core: добавлены tests для config/list/completion и выделен testable runMain в entrypoint.
+- [x] internal/selftest: добавлены tests для checks helpers и безопасных checker-веток.
 - [x] internal/ui + internal/debug: добавлены unit-тесты для runtime/display/table/editor/debug-print helpers.
 - [x] internal/service: добавлены unit-тесты для test service (Get/GetForRun/Update/ParseID).
 - [x] internal/service/migration: добавлены unit-тесты для export/log/mapping loader.

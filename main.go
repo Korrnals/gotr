@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,15 +13,26 @@ import (
 )
 
 func main() {
-	// Инициализация логгера
-	if err := log.InitDefault(); err != nil {
+	if err := runMain(log.InitDefault, log.Sync, cmd.Execute, signal.NotifyContext); err != nil {
 		panic(err)
 	}
-	defer log.Sync()
+}
 
-	// Подключаем OS-сигналы — Ctrl+C теперь отменяет контекст и все in-flight HTTP запросы
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+func runMain(
+	initLogger func() error,
+	syncLogger func() error,
+	execute func(context.Context),
+	notifyContext func(context.Context, ...os.Signal) (context.Context, context.CancelFunc),
+) error {
+	if err := initLogger(); err != nil {
+		return fmt.Errorf("init logger: %w", err)
+	}
+	defer func() { _ = syncLogger() }()
+
+	ctx, stop := notifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	cmd.Execute(ctx)
+	execute(ctx)
+
+	return nil
 }

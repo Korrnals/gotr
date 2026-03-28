@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -145,6 +146,52 @@ func TestUpdate_Run_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUpdateRun_FieldMapping_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			assert.Equal(t, int64(1000), runID)
+			require.NotNil(t, req.Name)
+			require.NotNil(t, req.Description)
+			require.NotNil(t, req.MilestoneID)
+			require.NotNil(t, req.AssignedTo)
+			require.NotNil(t, req.IncludeAll)
+			assert.Equal(t, "Run Name", *req.Name)
+			assert.Equal(t, "Run Desc", *req.Description)
+			assert.Equal(t, int64(11), *req.MilestoneID)
+			assert.Equal(t, int64(22), *req.AssignedTo)
+			assert.False(t, *req.IncludeAll)
+			assert.Equal(t, []int64{1, 3}, req.CaseIDs)
+			return &data.Run{ID: runID, Name: *req.Name}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	require.NoError(t, cmd.Flags().Set("name", "Run Name"))
+	require.NoError(t, cmd.Flags().Set("description", "Run Desc"))
+	require.NoError(t, cmd.Flags().Set("milestone-id", "11"))
+	require.NoError(t, cmd.Flags().Set("assignedto-id", "22"))
+	require.NoError(t, cmd.Flags().Set("include-all", "false"))
+	require.NoError(t, cmd.Flags().Set("case-ids", "1,bad,3"))
+
+	err := updateRun(mock, cmd, 1000, nil)
+	assert.NoError(t, err)
+}
+
+func TestUpdateRun_JSONSuccess(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			assert.Equal(t, int64(1000), runID)
+			require.NotNil(t, req.Name)
+			assert.Equal(t, "JSON Run", *req.Name)
+			return &data.Run{ID: runID, Name: *req.Name}, nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+
+	err := updateRun(mock, cmd, 1000, []byte(`{"name":"JSON Run"}`))
+	assert.NoError(t, err)
+}
+
 // TestUpdate_SharedStep_Success проверяет обновление shared step
 func TestUpdate_SharedStep_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -257,6 +304,54 @@ func TestUpdate_UnsupportedEndpoint(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "unsupported")
+}
+
+func TestRunUpdate_OrchestrationBranches(t *testing.T) {
+	t.Run("dry-run branch", func(t *testing.T) {
+		cmd := setupUpdateTest(t, &client.MockClient{})
+		cmd.Flags().Bool("dry-run", false, "")
+		require.NoError(t, cmd.Flags().Set("dry-run", "true"))
+		require.NoError(t, cmd.Flags().Set("name", "Dry Project"))
+		err := runUpdate(cmd, []string{"project", "1"})
+		assert.NoError(t, err)
+	})
+
+	t.Run("interactive branch", func(t *testing.T) {
+		mock := &client.MockClient{
+			UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+				return &data.GetProjectResponse{ID: projectID, Name: req.Name}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		cmd.Flags().BoolP("interactive", "i", false, "")
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Project", "Announcement").
+			WithConfirmResponses(true, true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+		require.NoError(t, cmd.Flags().Set("interactive", "true"))
+
+		err := runUpdate(cmd, []string{"project", "1"})
+		assert.NoError(t, err)
+	})
+
+	t.Run("json-file success branch", func(t *testing.T) {
+		tmpFile, err := os.CreateTemp("", "update-json-*.json")
+		require.NoError(t, err)
+		defer os.Remove(tmpFile.Name())
+		_, _ = tmpFile.WriteString(`{"name":"FromFile"}`)
+		_ = tmpFile.Close()
+
+		mock := &client.MockClient{
+			UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+				return &data.GetProjectResponse{ID: projectID, Name: req.Name}, nil
+			},
+		}
+		cmd := setupUpdateTest(t, mock)
+		require.NoError(t, cmd.Flags().Set("json-file", tmpFile.Name()))
+
+		err = runUpdate(cmd, []string{"project", "1"})
+		assert.NoError(t, err)
+	})
 }
 
 func TestUpdateProjectInteractive_Cancelled(t *testing.T) {

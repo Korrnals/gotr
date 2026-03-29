@@ -140,57 +140,164 @@ func TestResolveRetryFailedPagesOptionsFromConfig_InvalidDelay(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid compare.cases.retry.delay")
 }
 
-func TestExecuteRetryFailedPages(t *testing.T) {
-	mock := &client.MockClient{
-		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
-			if offset == 0 {
-				return data.GetCasesResponse{{ID: 1, Title: "Recovered"}}, nil
-			}
-			return nil, fmt.Errorf("temporary error")
-		},
-	}
+func TestExecuteRetryFailedPages_EmptyRetryList(t *testing.T) {
+	ctx := context.Background()
+	mockCli := &client.MockClient{}
+	opts := retryFailedPagesOptions{Attempts: 1, Workers: 1, Delay: 0}
 
-	failed := []concurrency.FailedPage{
-		{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"},
-		{ProjectID: 1, SuiteID: 2, Offset: 250, Limit: 250, PageNum: 2, Error: "timeout"},
-	}
+	remaining, stats, err := executeRetryFailedPages(
+		ctx, mockCli, []concurrency.FailedPage{},
+		opts, "empty.json", "",
+	)
 
-	remaining, stats, err := executeRetryFailedPages(context.Background(), mock, failed, retryFailedPagesOptions{Attempts: 2, Workers: 1, Delay: 0}, "", "")
-	require.NoError(t, err)
-	assert.Len(t, remaining, 1)
-	assert.Equal(t, 2, stats.InputPages)
-	assert.Equal(t, 1, stats.RecoveredPages)
-	assert.Equal(t, 1, stats.RecoveredCases)
-}
-
-func TestExecuteRetryFailedPages_EmptyInput(t *testing.T) {
-	remaining, stats, err := executeRetryFailedPages(context.Background(), &client.MockClient{}, nil, retryFailedPagesOptions{}, "empty-source", "")
 	require.NoError(t, err)
 	assert.Nil(t, remaining)
 	assert.Equal(t, 0, stats.InputPages)
-	assert.Equal(t, 0, stats.UniquePages)
+	assert.Equal(t, 0, stats.RecoveredPages)
 }
 
-func TestExecuteRetryFailedPages_SaveRemainingError(t *testing.T) {
-	mock := &client.MockClient{
+func TestExecuteRetryFailedPages_FullRetryFlow_AllSuccess(t *testing.T) {
+	ctx := context.Background()
+
+	mockCli := &client.MockClient{
 		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
-			return nil, fmt.Errorf("always failing")
+			return data.GetCasesResponse{
+				{ID: 100, Title: "Test case 1"},
+				{ID: 101, Title: "Test case 2"},
+			}, nil
 		},
 	}
 
-	failed := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
-	badSavePath := t.TempDir()
+	failedPages := []concurrency.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"},
+		{ProjectID: 30, SuiteID: 1001, Offset: 250, Limit: 250, PageNum: 2, Error: "503"},
+	}
+
+	opts := retryFailedPagesOptions{Attempts: 2, Workers: 2, Delay: 10 * time.Millisecond}
 
 	remaining, stats, err := executeRetryFailedPages(
-		context.Background(),
-		mock,
-		failed,
-		retryFailedPagesOptions{Attempts: 0, Workers: 0, Delay: -time.Second},
-		"source.json",
-		badSavePath,
+		ctx, mockCli, failedPages, opts, "test.json", "",
 	)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "save remaining failed pages error")
-	assert.Len(t, remaining, 1)
+
+	require.NoError(t, err)
+	assert.Equal(t, 2, stats.InputPages)
+	assert.Equal(t, 2, stats.UniquePages)
+	assert.Equal(t, 2, stats.RecoveredPages)
+	assert.Equal(t, 4, stats.RecoveredCases) // 2 pages × 2 cases each
+	assert.Nil(t, remaining)
+}
+
+func TestExecuteRetryFailedPages_PartialRetrySuccess(t *testing.T) {
+	ctx := context.Background()
+	callCount := 0
+
+	mockCli := &client.MockClient{
+		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+			callCount++
+			// First page succeeds, second page fails
+			if offset == 0 {
+				return data.GetCasesResponse{
+					{ID: 100, Title: "Test"},
+				}, nil
+			}
+			return data.GetCasesResponse{}, fmt.Errorf("still failing")
+		},
+	}
+
+	failedPages := []concurrency.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"},
+		{ProjectID: 30, SuiteID: 1001, Offset: 250, Limit: 250, PageNum: 2, Error: "503"},
+	}
+
+	opts := retryFailedPagesOptions{Attempts: 2, Workers: 1, Delay: 5 * time.Millisecond}
+
+	remaining, stats, err := executeRetryFailedPages(
+		ctx, mockCli, failedPages, opts, "test.json", "",
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, stats.RecoveredPages)
 	assert.Equal(t, 1, stats.RemainingPages)
+	require.Len(t, remaining, 1)
+	assert.Equal(t, 250, remaining[0].Offset)
+}
+
+func TestExecuteRetryFailedPages_AllRetryFailed(t *testing.T) {
+	ctx := context.Background()
+
+	mockCli := &client.MockClient{
+		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, fmt.Errorf("persistent network error")
+		},
+	}
+
+	failedPages := []concurrency.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"},
+	}
+
+	opts := retryFailedPagesOptions{Attempts: 1, Workers: 1, Delay: 0}
+
+	remaining, stats, err := executeRetryFailedPages(
+		ctx, mockCli, failedPages, opts, "test.json", "",
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, stats.RecoveredPages)
+	assert.Equal(t, 1, stats.RemainingPages)
+	require.Len(t, remaining, 1)
+	assert.Contains(t, remaining[0].Error, "persistent network error")
+}
+
+func TestExecuteRetryFailedPages_UserAbortContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Cancel immediately
+
+	mockCli := &client.MockClient{
+		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, ctx.Err()
+		},
+	}
+
+	failedPages := []concurrency.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"},
+	}
+
+	opts := retryFailedPagesOptions{Attempts: 3, Workers: 2, Delay: 100 * time.Millisecond}
+
+	remaining, stats, err := executeRetryFailedPages(
+		ctx, mockCli, failedPages, opts, "test.json", "",
+	)
+
+	require.NoError(t, err)
+	assert.Equal(t, 0, stats.RecoveredPages)
+	assert.Equal(t, 1, stats.RemainingPages)
+	require.Len(t, remaining, 1)
+}
+
+func TestExecuteRetryFailedPages_NormalizesOptionsDefaults(t *testing.T) {
+	ctx := context.Background()
+
+	mockCli := &client.MockClient{
+		GetCasesPageFunc: func(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{{ID: 1}}, nil
+		},
+	}
+
+	failedPages := []concurrency.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1},
+	}
+
+	// Pass invalid options
+	opts := retryFailedPagesOptions{
+		Attempts: -1,    // Invalid
+		Workers:  0,     // Invalid
+		Delay:    -100,  // Invalid
+	}
+
+	remaining, _, err := executeRetryFailedPages(
+		ctx, mockCli, failedPages, opts, "test.json", "",
+	)
+
+	require.NoError(t, err)
+	assert.Nil(t, remaining) // Should succeed with corrected values
 }

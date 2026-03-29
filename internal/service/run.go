@@ -59,10 +59,17 @@ func (s *RunService) GetByProject(ctx context.Context, projectID int64) (data.Ge
 
 // Create создаёт новый test run с валидацией параметров
 func (s *RunService) Create(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+	var name string
+	var suiteID int64
+	if req != nil {
+		name = req.Name
+		suiteID = req.SuiteID
+	}
+
 	log.L().Info("creating test run",
 		zap.Int64("project_id", projectID),
-		zap.String("name", req.Name),
-		zap.Int64("suite_id", req.SuiteID),
+		zap.String("name", name),
+		zap.Int64("suite_id", suiteID),
 	)
 
 	if err := s.validateID(projectID, "project_id"); err != nil {

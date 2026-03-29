@@ -124,6 +124,56 @@ func TestRetryWithContext_Cancelled(t *testing.T) {
 	assert.Contains(t, err.Error(), "context cancelled")
 }
 
+func TestRetryWithContext_NonRetryableError(t *testing.T) {
+	ctx := context.Background()
+	retryableErr := errors.New("retryable")
+	nonRetryableErr := errors.New("not-retryable")
+
+	config := &RetryConfig{
+		MaxRetries:      3,
+		InitialDelay:    1 * time.Millisecond,
+		RetryableErrors: []error{retryableErr},
+	}
+
+	callCount := 0
+	err := RetryWithContext(ctx, config, func() error {
+		callCount++
+		return nonRetryableErr
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-retryable error")
+	assert.Equal(t, 1, callCount)
+}
+
+func TestRetryWithContext_MaxRetriesExceeded(t *testing.T) {
+	ctx := context.Background()
+	config := &RetryConfig{
+		MaxRetries:   2,
+		InitialDelay: 1 * time.Millisecond,
+		MaxDelay:     2 * time.Millisecond,
+		Multiplier:   2.0,
+	}
+
+	callCount := 0
+	err := RetryWithContext(ctx, config, func() error {
+		callCount++
+		return errors.New("still failing")
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed after 3 attempts")
+	assert.Equal(t, 3, callCount)
+}
+
+func TestRetryWithContext_NilConfigUsesDefaultOnImmediateSuccess(t *testing.T) {
+	err := RetryWithContext(context.Background(), nil, func() error {
+		return nil
+	})
+
+	assert.NoError(t, err)
+}
+
 func TestIsRetryableError(t *testing.T) {
 	// No specific retryable errors configured - all are retryable
 	config := &RetryConfig{}

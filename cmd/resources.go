@@ -99,7 +99,7 @@ func extractGetEndpointName(uri string) string {
 	// Чистим trailing слеши и пробелы
 	name = strings.Trim(name, "/ ")
 
-	if name == "" {
+	if name == "" || name == "get_" {
 		return ""
 	}
 
@@ -224,12 +224,9 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 	switch outputType {
 	// Вывод в JSON — красиво и удобно для скриптов
 	case "json":
-		data, err := json.MarshalIndent(paths, "", "  ")
-		if err != nil {
-			return nil, fmt.Errorf("JSON formatting error: %w", err)
-		}
+		data, _ := json.MarshalIndent(paths, "", "  ")
 		fmt.Println(string(data))
-		return nil, err
+		return nil, nil
 	// Вывод 'Method + Endpoints'
 	case "short":
 		for _, p := range paths {

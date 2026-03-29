@@ -5,11 +5,16 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/config"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestRootCmd_Properties проверяет базовые свойства root команды
@@ -59,6 +64,24 @@ func TestGetClient_PanicWithoutClient(t *testing.T) {
 	})
 }
 
+func TestGetClient_Success(t *testing.T) {
+	httpClient := &client.HTTPClient{}
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, httpClient))
+
+	got := GetClient(cmd)
+	assert.Equal(t, httpClient, got)
+}
+
+func TestGetClient_PanicOnUnexpectedType(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, struct{}{}))
+
+	assert.Panics(t, func() {
+		_ = GetClient(cmd)
+	})
+}
+
 func TestGetClientInterface_WithMock(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := &cobra.Command{}
@@ -67,6 +90,24 @@ func TestGetClientInterface_WithMock(t *testing.T) {
 
 	got := GetClientInterface(cmd)
 	assert.Equal(t, mock, got)
+}
+
+func TestGetClientInterface_PanicWithoutClient(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	assert.Panics(t, func() {
+		_ = GetClientInterface(cmd)
+	})
+}
+
+func TestGetClientInterface_PanicOnUnexpectedType(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, struct{}{}))
+
+	assert.Panics(t, func() {
+		_ = GetClientInterface(cmd)
+	})
 }
 
 func TestExecute_SuccessPath(t *testing.T) {
@@ -123,4 +164,187 @@ func TestExecute_CanceledExitCode130(t *testing.T) {
 	if assert.Error(t, err) && errors.As(err, &exitErr) {
 		assert.Equal(t, 130, exitErr.ExitCode())
 	}
+}
+
+func TestInitConfig_WithInvalidYAML(t *testing.T) {
+	viper.Reset()
+	origWD, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(origWD)
+		viper.Reset()
+	})
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	invalidConfig := filepath.Join(tmpDir, "default.yaml")
+	require.NoError(t, os.WriteFile(invalidConfig, []byte("base_url: ["), 0o600))
+
+	assert.NotPanics(t, func() {
+		initConfig()
+	})
+}
+
+func TestInitConfig_ConfigNotFound(t *testing.T) {
+	viper.Reset()
+	origWD, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(origWD)
+		viper.Reset()
+	})
+
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	assert.NotPanics(t, func() {
+		initConfig()
+	})
+}
+
+func TestInitConfig_UserHomeDirError(t *testing.T) {
+	viper.Reset()
+	origWD, err := os.Getwd()
+	require.NoError(t, err)
+	origUserHomeDir := userHomeDir
+	t.Cleanup(func() {
+		_ = os.Chdir(origWD)
+		userHomeDir = origUserHomeDir
+		viper.Reset()
+	})
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+
+	userHomeDir = func() (string, error) {
+		return "", errors.New("boom")
+	}
+
+	assert.NotPanics(t, func() {
+		initConfig()
+	})
+}
+
+func TestRootPersistentPreRunE_NonInteractivePrompterInjected(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("base_url", "https://example.com")
+	viper.Set("username", "qa@example.com")
+	viper.Set("api_key", "api-key")
+
+	cmd := &cobra.Command{Use: "test-cmd"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("non-interactive", "true"))
+	cmd.SetContext(context.Background())
+
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	require.NoError(t, err)
+
+	assert.True(t, interactive.IsNonInteractive(cmd.Context()))
+	_, ok := interactive.PrompterFromContext(cmd.Context()).(*interactive.NonInteractivePrompter)
+	assert.True(t, ok)
+	assert.NotNil(t, cmd.Context().Value(httpClientKey))
+}
+
+func TestRootPersistentPreRunE_PasswordHasPriorityOverDefaultAPIKey(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("base_url", "https://example.com")
+	viper.Set("username", "qa@example.com")
+	viper.Set("password", "password-auth")
+	viper.Set("api_key", config.DefaultAPIKey)
+
+	cmd := &cobra.Command{Use: "test-cmd"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	cmd.SetContext(context.Background())
+
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	require.NoError(t, err)
+	assert.False(t, interactive.IsNonInteractive(cmd.Context()))
+	_, ok := interactive.PrompterFromContext(cmd.Context()).(*interactive.TerminalPrompter)
+	assert.True(t, ok)
+}
+
+func TestRootPersistentPreRunE_FallsBackToAPIKeyWhenPasswordEmpty(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("base_url", "https://example.com")
+	viper.Set("username", "qa@example.com")
+	viper.Set("password", "")
+	viper.Set("api_key", "api-key-fallback")
+
+	cmd := &cobra.Command{Use: "test-cmd"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	cmd.SetContext(context.Background())
+
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	require.NoError(t, err)
+	assert.NotNil(t, cmd.Context().Value(httpClientKey))
+}
+
+func TestRootPersistentPreRunE_RejectsDefaultConfigValues(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("base_url", config.DefaultBaseURL)
+	viper.Set("username", config.DefaultUsername)
+	viper.Set("api_key", config.DefaultAPIKey)
+
+	cmd := &cobra.Command{Use: "test-cmd"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	cmd.SetContext(context.Background())
+
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "configuration not set or contains default values")
+}
+
+func TestRootPersistentPreRunE_ReturnsClientCreationError(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("base_url", "://broken-url")
+	viper.Set("username", "qa@example.com")
+	viper.Set("api_key", "api-key")
+
+	cmd := &cobra.Command{Use: "test-cmd"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	cmd.SetContext(context.Background())
+
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to create client")
+}
+
+func TestInitConfig_FallbackToCurrentDirectoryWhenHomeUnavailable(t *testing.T) {
+	viper.Reset()
+	origWD, err := os.Getwd()
+	require.NoError(t, err)
+	origUserHomeDir := userHomeDir
+	t.Cleanup(func() {
+		_ = os.Chdir(origWD)
+		userHomeDir = origUserHomeDir
+		viper.Reset()
+	})
+
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "default.yaml"), []byte("base_url: from-current-dir\n"), 0o600))
+
+	userHomeDir = func() (string, error) {
+		return "", errors.New("home unavailable")
+	}
+
+	initConfig()
+	assert.Equal(t, filepath.Join(tmpDir, "default.yaml"), viper.ConfigFileUsed())
 }

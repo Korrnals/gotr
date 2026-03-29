@@ -127,3 +127,69 @@ func TestSelectSuiteForProject_Branches(t *testing.T) {
 		assert.Contains(t, err.Error(), "no suites found")
 	})
 }
+
+func TestSelectSuite_Run_Section_ErrorBranches(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("SelectSuite no suites", func(t *testing.T) {
+		_, err := SelectSuite(ctx, &spyPrompter{}, data.GetSuitesResponse{}, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no suites found")
+	})
+
+	t.Run("SelectSuite select error", func(t *testing.T) {
+		p := &spyPrompter{err: errors.New("select fail")}
+		_, err := SelectSuite(ctx, p, data.GetSuitesResponse{{ID: 1, Name: "S"}}, "Custom suite prompt")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to select suite")
+		assert.Equal(t, "Custom suite prompt", p.lastMessage)
+	})
+
+	t.Run("SelectRun no runs", func(t *testing.T) {
+		_, err := SelectRun(ctx, &spyPrompter{}, data.GetRunsResponse{}, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no runs found")
+	})
+
+	t.Run("SelectRun select error", func(t *testing.T) {
+		p := &spyPrompter{err: errors.New("select fail")}
+		_, err := SelectRun(ctx, p, data.GetRunsResponse{{ID: 2, Name: "R"}}, "Custom run prompt")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to select run")
+		assert.Equal(t, "Custom run prompt", p.lastMessage)
+	})
+
+	t.Run("SelectSection no sections", func(t *testing.T) {
+		_, err := SelectSection(ctx, &spyPrompter{}, data.GetSectionsResponse{}, "")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "no sections found")
+	})
+
+	t.Run("SelectSection select error", func(t *testing.T) {
+		p := &spyPrompter{err: errors.New("select fail")}
+		_, err := SelectSection(ctx, p, data.GetSectionsResponse{{ID: 3, Name: "Sec"}}, "Custom section prompt")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to select section")
+		assert.Equal(t, "Custom section prompt", p.lastMessage)
+	})
+}
+
+func TestSelectSuiteAndSection_DefaultPromptSuccess(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("SelectSuite default prompt", func(t *testing.T) {
+		p := &spyPrompter{idx: 0}
+		id, err := SelectSuite(ctx, p, data.GetSuitesResponse{{ID: 101, Name: "Suite"}}, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(101), id)
+		assert.Equal(t, "Select suite:", p.lastMessage)
+	})
+
+	t.Run("SelectSection default prompt", func(t *testing.T) {
+		p := &spyPrompter{idx: 0}
+		id, err := SelectSection(ctx, p, data.GetSectionsResponse{{ID: 202, Name: "Section"}}, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(202), id)
+		assert.Equal(t, "Select section:", p.lastMessage)
+	})
+}

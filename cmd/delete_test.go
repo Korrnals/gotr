@@ -254,3 +254,264 @@ func TestDelete_InvalidID_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid ID")
 }
+
+// ============= LAYER 1 AGGRESSIVE EXPANSION =============
+
+func TestDelete_AllEndpointsWithID_Success(t *testing.T) {
+	endpoints := []string{"project", "suite", "section", "case", "run", "shared-step"}
+	for _, endpoint := range endpoints {
+		t.Run(endpoint, func(t *testing.T) {
+			called := false
+			mock := &client.MockClient{
+				DeleteProjectFunc: func(ctx context.Context, projectID int64) error {
+					called = true
+					return nil
+				},
+				DeleteSuiteFunc: func(ctx context.Context, suiteID int64) error {
+					called = true
+					return nil
+				},
+				DeleteSectionFunc: func(ctx context.Context, sectionID int64) error {
+					called = true
+					return nil
+				},
+				DeleteCaseFunc: func(ctx context.Context, caseID int64) error {
+					called = true
+					return nil
+				},
+				DeleteRunFunc: func(ctx context.Context, runID int64) error {
+					called = true
+					return nil
+				},
+				DeleteSharedStepFunc: func(ctx context.Context, stepID int64, keep int) error {
+					called = true
+					return nil
+				},
+			}
+
+			cmd := setupDeleteTest(t, mock)
+			cmd.SetArgs([]string{endpoint, "999"})
+
+			err := cmd.Execute()
+			assert.NoError(t, err, "endpoint %s failed", endpoint)
+			assert.True(t, called, "API not called for %s", endpoint)
+		})
+	}
+}
+
+func TestDelete_Suite_Full_Interactive_Flow(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+				{ID: 2, Name: "Project 2"},
+			}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			if projectID == 2 {
+				return data.GetSuitesResponse{{ID: 100, Name: "Suite 100"}}, nil
+			}
+			return nil, nil
+		},
+		DeleteSuiteFunc: func(ctx context.Context, suiteID int64) error {
+			called = true
+			assert.Equal(t, int64(100), suiteID)
+			return nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 1}). // select Project 2
+		WithSelectResponses(interactive.SelectResponse{Index: 0})   // select Suite 100
+
+	cmd := setupDeleteTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+	cmd.SetArgs([]string{"suite"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestDelete_Section_Full_Interactive_Flow(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 10, Name: "Suite 10"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{
+				{ID: 20, Name: "Section A"},
+				{ID: 21, Name: "Section B"},
+			}, nil
+		},
+		DeleteSectionFunc: func(ctx context.Context, sectionID int64) error {
+			called = true
+			assert.Equal(t, int64(21), sectionID)
+			return nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}). // select suite
+		WithSelectResponses(interactive.SelectResponse{Index: 1})   // select section B
+
+	cmd := setupDeleteTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+	cmd.SetArgs([]string{"section"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestDelete_Case_Full_Interactive_Flow(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 10, Name: "S1"}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{
+				{ID: 100, Title: "Case 1"},
+				{ID: 101, Title: "Case 2"},
+				{ID: 102, Title: "Case 3"},
+			}, nil
+		},
+		DeleteCaseFunc: func(ctx context.Context, caseID int64) error {
+			called = true
+			assert.Equal(t, int64(101), caseID)
+			return nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 1}) // select Case 2
+
+	cmd := setupDeleteTest(t, mock)
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+	cmd.SetArgs([]string{"case"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.True(t, called)
+}
+
+func TestDelete_DryRun_AllEndpoints(t *testing.T) {
+	endpoints := []string{"project", "suite", "section", "case", "run", "shared-step"}
+	for _, endpoint := range endpoints {
+		t.Run(endpoint, func(t *testing.T) {
+			called := false
+			mock := &client.MockClient{
+				DeleteProjectFunc: func(ctx context.Context, projectID int64) error {
+					called = true
+					return nil
+				},
+				DeleteSuiteFunc: func(ctx context.Context, suiteID int64) error {
+					called = true
+					return nil
+				},
+				DeleteSectionFunc: func(ctx context.Context, sectionID int64) error {
+					called = true
+					return nil
+				},
+				DeleteCaseFunc: func(ctx context.Context, caseID int64) error {
+					called = true
+					return nil
+				},
+				DeleteRunFunc: func(ctx context.Context, runID int64) error {
+					called = true
+					return nil
+				},
+				DeleteSharedStepFunc: func(ctx context.Context, stepID int64, keep int) error {
+					called = true
+					return nil
+				},
+			}
+
+			cmd := setupDeleteTest(t, mock)
+			cmd.SetArgs([]string{endpoint, "999", "--dry-run"})
+
+			err := cmd.Execute()
+			assert.NoError(t, err)
+			assert.False(t, called, "should not call API in dry-run for %s", endpoint)
+		})
+	}
+}
+
+func TestDelete_UnsupportedEndpoint_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupDeleteTest(t, mock)
+	cmd.SetArgs([]string{"unsupported-endpoint", "123"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported endpoint")
+}
+
+func TestDelete_ZeroID_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := setupDeleteTest(t, mock)
+	cmd.SetArgs([]string{"project", "0"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid ID")
+}
+
+func TestSelectCaseID_EmptyList_Error(t *testing.T) {
+	p := interactive.NewMockPrompter()
+	cases := data.GetCasesResponse{}
+
+	id, err := selectCaseID(context.Background(), p, cases)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no cases found")
+	assert.Equal(t, int64(0), id)
+}
+
+func TestSelectCaseID_MultipleOptions(t *testing.T) {
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 2})
+	cases := data.GetCasesResponse{
+		{ID: 100, Title: "Case 1"},
+		{ID: 200, Title: "Case 2"},
+		{ID: 300, Title: "Case 3"},
+		{ID: 400, Title: "Case 4"},
+	}
+
+	id, err := selectCaseID(context.Background(), p, cases)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(300), id)
+}
+
+func TestSelectSharedStepID_MultipleOptions(t *testing.T) {
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 1})
+	steps := data.GetSharedStepsResponse{
+		{ID: 555, Title: "Step A"},
+		{ID: 666, Title: "Step B"},
+		{ID: 777, Title: "Step C"},
+	}
+
+	id, err := selectSharedStepID(p, steps)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(666), id)
+}
+
+func TestSelectSharedStepID_EmptyList_Error(t *testing.T) {
+	p := interactive.NewMockPrompter()
+	steps := data.GetSharedStepsResponse{}
+
+	id, err := selectSharedStepID(p, steps)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no shared steps found")
+	assert.Equal(t, int64(0), id)
+}

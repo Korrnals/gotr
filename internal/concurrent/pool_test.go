@@ -81,6 +81,34 @@ func TestParallelMap_EmptySlice(t *testing.T) {
 	assert.Nil(t, results)
 }
 
+func TestParallelMap_PreservesItemErrors(t *testing.T) {
+	items := []int{1, 2, 3}
+
+	results, err := ParallelMap(items, 2, func(item, index int) (int, error) {
+		if item == 2 {
+			return 0, errors.New("item error")
+		}
+		return item * 10, nil
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, results, 3)
+	assert.NoError(t, results[0].Error)
+	assert.Error(t, results[1].Error)
+	assert.Equal(t, 0, results[1].Data)
+	assert.NoError(t, results[2].Error)
+}
+
+func TestParallelMap_DefaultMaxWorkers(t *testing.T) {
+	items := []int{1, 2, 3, 4}
+	results, err := ParallelMap(items, 0, func(item, index int) (int, error) {
+		return item + index, nil
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, results, len(items))
+}
+
 func TestParallelForEach(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
 	var counter int32
@@ -107,6 +135,30 @@ func TestParallelForEach_WithError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "test error")
+}
+
+func TestParallelForEach_EmptySlice(t *testing.T) {
+	called := false
+	err := ParallelForEach([]int{}, 3, func(item, index int) error {
+		called = true
+		return nil
+	})
+
+	assert.NoError(t, err)
+	assert.False(t, called)
+}
+
+func TestParallelForEach_DefaultMaxWorkers(t *testing.T) {
+	items := []int{1, 2, 3, 4, 5}
+	var counter int32
+
+	err := ParallelForEach(items, 0, func(item, index int) error {
+		atomic.AddInt32(&counter, 1)
+		return nil
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, int32(len(items)), counter)
 }
 
 func TestBatchProcessor_Process(t *testing.T) {

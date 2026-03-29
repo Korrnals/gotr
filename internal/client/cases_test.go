@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -14,6 +15,31 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
+
+type errReadCloser struct{}
+
+func (e *errReadCloser) Read(_ []byte) (int, error) {
+	return 0, fmt.Errorf("forced read error")
+}
+
+func (e *errReadCloser) Close() error {
+	return nil
+}
+
+type staticRoundTripper struct {
+	resp *http.Response
+	err  error
+}
+
+func (s *staticRoundTripper) RoundTrip(_ *http.Request) (*http.Response, error) {
+	if s.err != nil {
+		return nil, s.err
+	}
+	if s.resp != nil {
+		return s.resp, nil
+	}
+	return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Body: io.NopCloser(strings.NewReader(`[]`)), Header: make(http.Header)}, nil
+}
 
 func TestAddCase(t *testing.T) {
 	tests := []struct {
@@ -1096,5 +1122,94 @@ func TestCasesFetcherFetchPageCtx(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "unexpected response format")
+	})
+}
+
+func TestDecodeCasesResponseWithSize_BadFlatJSON(t *testing.T) {
+	_, _, err := decodeCasesResponseWithSize([]byte("["))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "decode flat response")
+}
+
+func TestCaseMethods_RequestAndReadErrors(t *testing.T) {
+	t.Run("get cases page request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.GetCasesPage(context.Background(), 1, 1, 0, 10)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetCasesPage")
+	})
+
+	t.Run("get cases page read body error", func(t *testing.T) {
+		client, err := NewClient("http://example.com", "test", "test", false)
+		assert.NoError(t, err)
+		client.client.Transport = &staticRoundTripper{resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Header:     make(http.Header),
+			Body:       &errReadCloser{},
+		}}
+
+		_, err = client.GetCasesPage(context.Background(), 1, 1, 0, 10)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "response body read error GetCasesPage")
+	})
+
+	t.Run("get cases with progress request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.GetCasesWithProgress(context.Background(), 1, 0, 0, nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetCases")
+	})
+
+	t.Run("delete case request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		err := client.DeleteCase(context.Background(), 99)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error DeleteCase")
+	})
+
+	t.Run("copy cases request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		err := client.CopyCasesToSection(context.Background(), 10, &data.CopyCasesRequest{CaseIDs: []int64{1}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error CopyCasesToSection")
+	})
+
+	t.Run("move cases request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		err := client.MoveCasesToSection(context.Background(), 10, &data.MoveCasesRequest{CaseIDs: []int64{1}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error MoveCasesToSection")
+	})
+
+	t.Run("fetcher read body error", func(t *testing.T) {
+		c, err := NewClient("http://example.com", "test", "test", false)
+		assert.NoError(t, err)
+		c.client.Transport = &staticRoundTripper{resp: &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Header:     make(http.Header),
+			Body:       &errReadCloser{},
+		}}
+
+		f := &casesFetcher{client: c}
+		_, _, err = f.FetchPageCtx(context.Background(), concurrency.PageRequest{
+			SuiteTask: concurrency.SuiteTask{ProjectID: 1, SuiteID: 2},
+			Offset:    0,
+			Limit:     1,
+		})
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "read body error")
 	})
 }

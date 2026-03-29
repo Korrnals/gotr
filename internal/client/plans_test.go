@@ -685,3 +685,156 @@ func TestHTTPPlanEntries(t *testing.T) {
 		}
 	})
 }
+
+func TestHTTPPlans_ErrorBranches(t *testing.T) {
+	t.Run("get plan non-OK and decode", func(t *testing.T) {
+		t.Run("non-OK", func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusNotFound)
+				_, _ = w.Write([]byte(`{"error":"missing plan"}`))
+			}))
+			defer server.Close()
+
+			client, _ := NewClient(server.URL, "test", "test", false)
+			_, err := client.GetPlan(context.Background(), 0)
+			if err == nil {
+				t.Fatalf("expected GetPlan() error for non-OK status")
+			}
+		})
+
+		t.Run("decode", func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("{"))
+			}))
+			defer server.Close()
+
+			client, _ := NewClient(server.URL, "test", "test", false)
+			_, err := client.GetPlan(context.Background(), 0)
+			if err == nil {
+				t.Fatalf("expected GetPlan() decode error")
+			}
+			if !strings.Contains(err.Error(), "error decoding plan") {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	})
+
+	t.Run("get plans request/non-OK", func(t *testing.T) {
+		t.Run("request error", func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+			client, _ := NewClient(server.URL, "test", "test", false)
+			server.Close()
+
+			_, err := client.GetPlans(context.Background(), 0)
+			if err == nil {
+				t.Fatalf("expected GetPlans() request error")
+			}
+		})
+
+		t.Run("non-OK", func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte(`{"error":"bad get plans"}`))
+			}))
+			defer server.Close()
+
+			client, _ := NewClient(server.URL, "test", "test", false)
+			_, err := client.GetPlans(context.Background(), 0)
+			if err == nil {
+				t.Fatalf("expected GetPlans() non-OK error")
+			}
+		})
+	})
+
+	t.Run("post-based plan methods non-OK", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"bad post"}`))
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+
+		if _, err := client.AddPlan(context.Background(), 0, &data.AddPlanRequest{Name: ""}); err == nil {
+			t.Fatalf("expected AddPlan() non-OK error")
+		}
+		if _, err := client.UpdatePlan(context.Background(), 0, &data.UpdatePlanRequest{Name: ""}); err == nil {
+			t.Fatalf("expected UpdatePlan() non-OK error")
+		}
+		if _, err := client.ClosePlan(context.Background(), 0); err == nil {
+			t.Fatalf("expected ClosePlan() non-OK error")
+		}
+		if err := client.DeletePlan(context.Background(), 0); err == nil {
+			t.Fatalf("expected DeletePlan() non-OK error")
+		}
+		if _, err := client.AddPlanEntry(context.Background(), 0, &data.AddPlanEntryRequest{Name: "", SuiteID: 0}); err == nil {
+			t.Fatalf("expected AddPlanEntry() non-OK error")
+		}
+		if _, err := client.UpdatePlanEntry(context.Background(), 0, "", &data.UpdatePlanEntryRequest{Name: ""}); err == nil {
+			t.Fatalf("expected UpdatePlanEntry() non-OK error")
+		}
+		if err := client.DeletePlanEntry(context.Background(), 0, ""); err == nil {
+			t.Fatalf("expected DeletePlanEntry() non-OK error")
+		}
+	})
+
+	t.Run("post-based plan methods decode errors", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.String(), "delete_plan/") || strings.Contains(r.URL.String(), "delete_plan_entry/") {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{}`))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+
+		if _, err := client.AddPlan(context.Background(), 1, &data.AddPlanRequest{Name: "A"}); err == nil {
+			t.Fatalf("expected AddPlan() decode error")
+		}
+		if _, err := client.UpdatePlan(context.Background(), 1, &data.UpdatePlanRequest{Name: "A"}); err == nil {
+			t.Fatalf("expected UpdatePlan() decode error")
+		}
+		if _, err := client.ClosePlan(context.Background(), 1); err == nil {
+			t.Fatalf("expected ClosePlan() decode error")
+		}
+		if _, err := client.AddPlanEntry(context.Background(), 1, &data.AddPlanEntryRequest{Name: "A", SuiteID: 1}); err == nil {
+			t.Fatalf("expected AddPlanEntry() decode error")
+		}
+		if _, err := client.UpdatePlanEntry(context.Background(), 1, "", &data.UpdatePlanEntryRequest{Name: "A"}); err == nil {
+			t.Fatalf("expected UpdatePlanEntry() decode error")
+		}
+	})
+
+	t.Run("post-based plan methods request errors", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		client, _ := NewClient(server.URL, "test", "test", false)
+		server.Close()
+
+		if _, err := client.AddPlan(context.Background(), 1, &data.AddPlanRequest{Name: "A"}); err == nil {
+			t.Fatalf("expected AddPlan() request error")
+		}
+		if _, err := client.UpdatePlan(context.Background(), 1, &data.UpdatePlanRequest{Name: "A"}); err == nil {
+			t.Fatalf("expected UpdatePlan() request error")
+		}
+		if _, err := client.ClosePlan(context.Background(), 1); err == nil {
+			t.Fatalf("expected ClosePlan() request error")
+		}
+		if err := client.DeletePlan(context.Background(), 1); err == nil {
+			t.Fatalf("expected DeletePlan() request error")
+		}
+		if _, err := client.AddPlanEntry(context.Background(), 1, &data.AddPlanEntryRequest{Name: "A", SuiteID: 1}); err == nil {
+			t.Fatalf("expected AddPlanEntry() request error")
+		}
+		if _, err := client.UpdatePlanEntry(context.Background(), 1, "entry", &data.UpdatePlanEntryRequest{Name: "A"}); err == nil {
+			t.Fatalf("expected UpdatePlanEntry() request error")
+		}
+		if err := client.DeletePlanEntry(context.Background(), 1, "entry"); err == nil {
+			t.Fatalf("expected DeletePlanEntry() request error")
+		}
+	})
+}

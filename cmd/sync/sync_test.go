@@ -277,3 +277,65 @@ func TestCmd_Properties(t *testing.T) {
 	assert.NotEmpty(t, Cmd.Short)
 	assert.NotEmpty(t, Cmd.Long)
 }
+
+// ==================== Comprehensive tests for sync edge cases ====================
+
+func TestGetClientSafe_Context(t *testing.T) {
+	oldAccessor := clientAccessor
+	defer func() { clientAccessor = oldAccessor }()
+
+	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+		return nil
+	})
+
+	cmd := &cobra.Command{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cmd.SetContext(ctx)
+
+	result := getClientSafe(cmd)
+	assert.Nil(t, result) // Should be nil because accessor returns nil
+}
+
+func TestGetClientInterface_Nil(t *testing.T) {
+	oldAccessor := clientAccessor
+	defer func() { clientAccessor = oldAccessor }()
+
+	clientAccessor = nil
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	result := getClientInterface(cmd)
+	assert.Nil(t, result)
+}
+
+func TestSetTestClient_MultipleUpdates(t *testing.T) {
+	mock1 := &client.MockClient{}
+	mock2 := &client.MockClient{}
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	SetTestClient(cmd, mock1)
+	result1 := getClientInterface(cmd)
+	assert.Equal(t, mock1, result1)
+
+	SetTestClient(cmd, mock2)
+	result2 := getClientInterface(cmd)
+	assert.Equal(t, mock2, result2)
+}
+
+func TestSetGetClientForTests_NilAccessorInitially(t *testing.T) {
+	oldAccessor := clientAccessor
+	defer func() { clientAccessor = oldAccessor }()
+
+	clientAccessor = nil
+
+	fn := func(cmd *cobra.Command) *client.HTTPClient {
+		return nil
+	}
+
+	SetGetClientForTests(fn)
+	assert.NotNil(t, clientAccessor)
+}

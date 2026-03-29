@@ -1,6 +1,8 @@
 package output
 
 import (
+	"bytes"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"os"
@@ -9,7 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -302,6 +306,265 @@ func TestSaveToFile_InvalidPath(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotEmpty(t, path)
+}
+
+func TestOutputResult_Wrapper(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	AddFlag(cmd)
+
+	err := OutputResult(cmd, map[string]any{"ok": true}, "cases")
+	assert.NoError(t, err)
+}
+
+func TestOutputGetResult_QuietNoop(t *testing.T) {
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("quiet", "true"))
+
+	err := OutputGetResult(cmd, map[string]any{"id": 1}, time.Now())
+	assert.NoError(t, err)
+}
+
+func TestOutputGetResult_JSONFull(t *testing.T) {
+	cmd := &cobra.Command{Use: "get"}
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("type", "json-full"))
+
+	err := OutputGetResult(cmd, map[string]any{"id": 7}, time.Now())
+	assert.NoError(t, err)
+	assert.Contains(t, out.String(), "\"status\": \"200 OK\"")
+	assert.Contains(t, out.String(), "\"data\"")
+}
+
+func TestOutputGetResult_SaveFlag(t *testing.T) {
+	tempHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("save", "true"))
+
+	err := OutputGetResult(cmd, map[string]any{"id": 9}, time.Now())
+	assert.NoError(t, err)
+}
+
+func TestOutputGetResult_InteractivePromptError(t *testing.T) {
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	cmd.SetContext(interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter()))
+
+	err := OutputGetResult(cmd, map[string]any{"id": 1}, time.Now())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "interactive save selection failed")
+}
+
+func TestOutputGetResult_JQMarshalError(t *testing.T) {
+	viper.Set("jq_format", true)
+	t.Cleanup(viper.Reset)
+
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+
+	err := OutputGetResult(cmd, make(chan int), time.Now())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "jq marshal error")
+}
+
+func TestSaveToFileWithPath_YAMLAndUnsupported(t *testing.T) {
+	tempDir := t.TempDir()
+
+	yamlPath := tempDir + "/nested/data.yaml"
+	gotPath, err := SaveToFileWithPath(map[string]any{"k": "v"}, "yaml", yamlPath)
+	assert.NoError(t, err)
+	assert.Equal(t, yamlPath, gotPath)
+
+	_, err = SaveToFileWithPath(map[string]any{"k": "v"}, "xml", tempDir+"/x.xml")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported format")
+}
+
+func TestOutputResultWithFlags_AndPrintSuccess(t *testing.T) {
+	tempDir := t.TempDir()
+	outFile := tempDir + "/out.json"
+
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("output", "", "")
+	require.NoError(t, cmd.Flags().Set("output", outFile))
+
+	err := OutputResultWithFlags(cmd, map[string]any{"x": 1})
+	assert.NoError(t, err)
+	assert.FileExists(t, outFile)
+
+	require.NoError(t, cmd.Flags().Set("quiet", "true"))
+	PrintSuccess(cmd, "done %d", 1)
+}
+
+func TestOutput_InteractiveSkippablePromptErrorFallsBackToStdout(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	AddFlag(cmd)
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+
+	// No queued answers -> mock confirm queue exhausted, which is skippable.
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+	cmd.SetContext(ctx)
+
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+
+	path, err := Output(cmd, map[string]any{"id": 101}, "cases", "json")
+	require.NoError(t, err)
+	assert.Equal(t, "", path)
+	assert.Contains(t, out.String(), "\"id\": 101")
+}
+
+func TestOutput_NonInteractivePromptErrorIsReturned(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	AddFlag(cmd)
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter())
+	cmd.SetContext(ctx)
+
+	path, err := Output(cmd, map[string]any{"id": 202}, "cases", "json")
+	assert.Error(t, err)
+	assert.Equal(t, "", path)
+	assert.Contains(t, err.Error(), "interactive save selection failed")
+}
+
+func TestOutputBySavePath_ExplicitPath(t *testing.T) {
+	tempDir := t.TempDir()
+	explicitPath := tempDir + "/custom/data.json"
+
+	path, err := outputBySavePath(map[string]any{"ok": true}, "cases", "json", explicitPath)
+	require.NoError(t, err)
+	assert.Equal(t, explicitPath, path)
+	assert.FileExists(t, explicitPath)
+}
+
+func TestSaveToFileWithPath_CSV(t *testing.T) {
+	tempDir := t.TempDir()
+	csvPath := tempDir + "/rows/out.csv"
+
+	data := []TestCase{{ID: 1, Title: "One"}, {ID: 2, Title: "Two"}}
+	path, err := SaveToFileWithPath(data, "csv", csvPath)
+	require.NoError(t, err)
+	assert.Equal(t, csvPath, path)
+	assert.FileExists(t, csvPath)
+}
+
+func TestSaveToFileWithPath_JSONMarshalError(t *testing.T) {
+	path, err := SaveToFileWithPath(make(chan int), "json", t.TempDir()+"/bad.json")
+	assert.Error(t, err)
+	assert.Equal(t, "", path)
+	assert.Contains(t, err.Error(), "marshaling")
+}
+
+func TestSaveToFileWithPath_WriteError(t *testing.T) {
+	tempDir := t.TempDir()
+	path, err := SaveToFileWithPath(map[string]any{"k": "v"}, "json", tempDir)
+	assert.Error(t, err)
+	assert.Equal(t, "", path)
+	assert.Contains(t, err.Error(), "error writing file")
+}
+
+func TestSaveJSONToFile_SerializationError(t *testing.T) {
+	err := SaveJSONToFile(t.TempDir()+"/broken.json", make(chan int))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "serialization error")
+}
+
+func TestOutputResultWithFlags_QuietSavesWithoutPrintingJSON(t *testing.T) {
+	tempDir := t.TempDir()
+	outFile := tempDir + "/quiet.json"
+
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("output", "", "")
+	require.NoError(t, cmd.Flags().Set("quiet", "true"))
+	require.NoError(t, cmd.Flags().Set("output", outFile))
+
+	err := OutputResultWithFlags(cmd, map[string]any{"quiet": true})
+	require.NoError(t, err)
+	assert.FileExists(t, outFile)
+}
+
+func TestOutputResultWithFlags_SaveError(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("output", "", "")
+	require.NoError(t, cmd.Flags().Set("output", t.TempDir()))
+
+	err := OutputResultWithFlags(cmd, map[string]any{"x": 1})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "write file")
+}
+
+func TestOutputResultWithFlags_JSONFormattingError(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("output", "", "")
+
+	err := OutputResultWithFlags(cmd, make(chan int))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "JSON formatting error")
+}
+
+func TestPrintSuccess_EmitsWhenNotQuiet(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", false, "")
+
+	var buf bytes.Buffer
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	t.Cleanup(func() {
+		os.Stdout = old
+		_ = r.Close()
+	})
+
+	PrintSuccess(cmd, "done %d", 7)
+	_ = w.Close()
+	_, _ = buf.ReadFrom(r)
+
+	assert.Contains(t, buf.String(), "done 7")
 }
 
 // ==================== Tests for GenerateFilename ====================

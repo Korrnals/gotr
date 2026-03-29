@@ -80,9 +80,14 @@ func (s *ResultService) GetRunsForProject(ctx context.Context, projectID int64) 
 
 // AddForTest добавляет результат для test с валидацией
 func (s *ResultService) AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
+	var statusID int64
+	if req != nil {
+		statusID = req.StatusID
+	}
+
 	log.L().Info("adding result for test",
 		zap.Int64("test_id", testID),
-		zap.Int64("status_id", req.StatusID),
+		zap.Int64("status_id", statusID),
 	)
 
 	if err := s.validateID(testID, "test_id"); err != nil {
@@ -110,10 +115,15 @@ func (s *ResultService) AddForTest(ctx context.Context, testID int64, req *data.
 
 // AddForCase добавляет результат для case в run с валидацией
 func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+	var statusID int64
+	if req != nil {
+		statusID = req.StatusID
+	}
+
 	log.L().Info("adding result for case",
 		zap.Int64("run_id", runID),
 		zap.Int64("case_id", caseID),
-		zap.Int64("status_id", req.StatusID),
+		zap.Int64("status_id", statusID),
 	)
 
 	if err := s.validateID(runID, "run_id"); err != nil {
@@ -146,9 +156,14 @@ func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req
 
 // AddResults добавляет несколько results (bulk) с валидацией
 func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+	count := 0
+	if req != nil {
+		count = len(req.Results)
+	}
+
 	log.L().Info("adding bulk results",
 		zap.Int64("run_id", runID),
-		zap.Int("count", len(req.Results)),
+		zap.Int("count", count),
 	)
 
 	if err := s.validateID(runID, "run_id"); err != nil {

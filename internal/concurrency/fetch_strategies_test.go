@@ -2,7 +2,9 @@ package concurrency
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -316,4 +318,33 @@ func TestFetchParallelBySuite_WithReporter(t *testing.T) {
 	if reporter.batchesTotal.Load() != 4 { // 2 items × 2 suites
 		t.Fatalf("expected 4 total batch items, got %d", reporter.batchesTotal.Load())
 	}
+}
+
+func TestIsCancellationError(t *testing.T) {
+	t.Run("nil error", func(t *testing.T) {
+		if isCancellationError(nil) {
+			t.Fatal("expected false for nil error")
+		}
+	})
+
+	t.Run("wrapped canceled", func(t *testing.T) {
+		err := fmt.Errorf("wrapped: %w", context.Canceled)
+		if !isCancellationError(err) {
+			t.Fatal("expected true for wrapped context canceled")
+		}
+	})
+
+	t.Run("string-only deadline", func(t *testing.T) {
+		err := errors.New(strings.ToUpper("deadline exceeded by server"))
+		if !isCancellationError(err) {
+			t.Fatal("expected true for string deadline exceeded")
+		}
+	})
+
+	t.Run("regular error", func(t *testing.T) {
+		err := errors.New("api returned 500")
+		if isCancellationError(err) {
+			t.Fatal("expected false for regular error")
+		}
+	})
 }

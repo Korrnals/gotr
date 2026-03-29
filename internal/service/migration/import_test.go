@@ -4,6 +4,7 @@ package migration // white-box тесты — в том же пакете
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -219,4 +220,112 @@ func TestMigration_ImportSections(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMigration_ImportCasesReport_DryRunAndMixedResults(t *testing.T) {
+	mock := &MockClient{}
+
+	var reqByTitle sync.Map
+	mock.AddCaseFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		reqByTitle.Store(req.Title, req)
+		if req.Title == "broken" {
+			return nil, errors.New("target rejected case")
+		}
+		return &data.Case{ID: 500 + int64(len(req.Title))}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 1, 2, 2, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	created, errs, err := m.ImportCasesReport(context.Background(), data.GetCasesResponse{{ID: 1, Title: "skip"}}, true)
+	assert.NoError(t, err)
+	assert.Nil(t, created)
+	assert.Nil(t, errs)
+
+	m.mapping.AddPair(101, 9001, "created")
+
+	filtered := data.GetCasesResponse{
+		{
+			ID:    11,
+			Title: "good",
+			CustomStepsSeparated: []data.Step{
+				{Content: "mapped", SharedStepID: 101},
+				{Content: "missing", SharedStepID: 404},
+			},
+		},
+		{
+			ID:    12,
+			Title: "broken",
+			CustomStepsSeparated: []data.Step{
+				{Content: "still mapped", SharedStepID: 101},
+			},
+		},
+	}
+
+	created, errs, err = m.ImportCasesReport(context.Background(), filtered, false)
+	assert.NoError(t, err)
+	assert.Len(t, created, 1)
+	assert.Len(t, errs, 1)
+	assert.Contains(t, errs[0], "broken")
+	assert.Equal(t, 1, m.importedCases)
+
+	goodReqVal, ok := reqByTitle.Load("good")
+	assert.True(t, ok)
+	goodReq := goodReqVal.(*data.AddCaseRequest)
+	assert.Len(t, goodReq.CustomStepsSeparated, 2)
+	assert.Equal(t, int64(9001), goodReq.CustomStepsSeparated[0].SharedStepID)
+	assert.Equal(t, int64(404), goodReq.CustomStepsSeparated[1].SharedStepID)
+}
+
+func TestMigration_ImportCases_SharedStepIDMappingBranches(t *testing.T) {
+	mock := &MockClient{}
+
+	var (
+		mu         sync.Mutex
+		observedID = map[string][]int64{}
+	)
+	mock.AddCaseFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		mu.Lock()
+		ids := make([]int64, 0, len(req.CustomStepsSeparated))
+		for _, step := range req.CustomStepsSeparated {
+			ids = append(ids, step.SharedStepID)
+		}
+		observedID[req.Title] = ids
+		mu.Unlock()
+
+		return &data.Case{ID: 700 + int64(len(req.Title))}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 1, 2, 2, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	m.mapping.AddPair(55, 155, "created")
+
+	filtered := data.GetCasesResponse{
+		{
+			ID:    1,
+			Title: "mapped-case",
+			CustomStepsSeparated: []data.Step{
+				{Content: "mapped", SharedStepID: 55},
+			},
+		},
+		{
+			ID:    2,
+			Title: "unmapped-case",
+			CustomStepsSeparated: []data.Step{
+				{Content: "unmapped", SharedStepID: 999},
+			},
+		},
+	}
+
+	err = m.ImportCases(context.Background(), filtered, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 2, m.importedCases)
+
+	mu.Lock()
+	defer mu.Unlock()
+	assert.Equal(t, []int64{155}, observedID["mapped-case"])
+	assert.Equal(t, []int64{999}, observedID["unmapped-case"])
 }

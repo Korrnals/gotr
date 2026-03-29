@@ -294,3 +294,393 @@ func TestUploadAttachment_FileNotFound(t *testing.T) {
 		t.Fatalf("expected uploadAttachment() error for missing file")
 	}
 }
+
+func TestHTTPAttachments_ErrorBranches(t *testing.T) {
+	t.Run("delete attachment non-OK", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"cannot delete"}`))
+		}))
+		defer server.Close()
+
+		c, _ := NewClient(server.URL, "test", "test", false)
+		if err := c.DeleteAttachment(context.Background(), 123); err == nil {
+			t.Fatalf("expected DeleteAttachment() error")
+		}
+	})
+
+	t.Run("get attachment methods decode errors", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}))
+		defer server.Close()
+
+		c, _ := NewClient(server.URL, "test", "test", false)
+		if _, err := c.GetAttachment(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachment() decode error")
+		}
+		if _, err := c.GetAttachmentsForCase(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForCase() decode error")
+		}
+		if _, err := c.GetAttachmentsForPlan(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForPlan() decode error")
+		}
+		if _, err := c.GetAttachmentsForPlanEntry(context.Background(), 1, ""); err == nil {
+			t.Fatalf("expected GetAttachmentsForPlanEntry() decode error")
+		}
+		if _, err := c.GetAttachmentsForRun(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForRun() decode error")
+		}
+		if _, err := c.GetAttachmentsForTest(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForTest() decode error")
+		}
+	})
+
+	t.Run("get attachment methods non-OK", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"not found"}`))
+		}))
+		defer server.Close()
+
+		c, _ := NewClient(server.URL, "test", "test", false)
+		if _, err := c.GetAttachment(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachment() non-OK error")
+		}
+		if _, err := c.GetAttachmentsForCase(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForCase() non-OK error")
+		}
+		if _, err := c.GetAttachmentsForPlan(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForPlan() non-OK error")
+		}
+		if _, err := c.GetAttachmentsForPlanEntry(context.Background(), 1, "edge-entry"); err == nil {
+			t.Fatalf("expected GetAttachmentsForPlanEntry() non-OK error")
+		}
+		if _, err := c.GetAttachmentsForRun(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForRun() non-OK error")
+		}
+		if _, err := c.GetAttachmentsForTest(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForTest() non-OK error")
+		}
+	})
+
+	t.Run("get attachment methods request errors", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		c, _ := NewClient(server.URL, "test", "test", false)
+		server.Close()
+
+		if _, err := c.GetAttachment(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachment() request error")
+		}
+		if _, err := c.GetAttachmentsForCase(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForCase() request error")
+		}
+		if _, err := c.GetAttachmentsForPlan(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForPlan() request error")
+		}
+		if _, err := c.GetAttachmentsForPlanEntry(context.Background(), 1, ""); err == nil {
+			t.Fatalf("expected GetAttachmentsForPlanEntry() request error")
+		}
+		if _, err := c.GetAttachmentsForRun(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForRun() request error")
+		}
+		if _, err := c.GetAttachmentsForTest(context.Background(), 1); err == nil {
+			t.Fatalf("expected GetAttachmentsForTest() request error")
+		}
+	})
+}
+
+func TestUploadAttachment_HTTPErrorBranches(t *testing.T) {
+	tmpDir := t.TempDir()
+	filePath := filepath.Join(tmpDir, "upload.txt")
+	if err := os.WriteFile(filePath, []byte("payload"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error: %v", err)
+	}
+
+	t.Run("non-OK", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"upload rejected"}`))
+		}))
+		defer server.Close()
+
+		c, _ := NewClient(server.URL, "test", "test", false)
+		_, err := c.uploadAttachment(context.Background(), "add_attachment_to_case/1", filePath)
+		if err == nil {
+			t.Fatalf("expected uploadAttachment() non-OK error")
+		}
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}))
+		defer server.Close()
+
+		c, _ := NewClient(server.URL, "test", "test", false)
+		_, err := c.uploadAttachment(context.Background(), "add_attachment_to_case/1", filePath)
+		if err == nil {
+			t.Fatalf("expected uploadAttachment() decode error")
+		}
+		if !strings.Contains(err.Error(), "error decoding attachment response") {
+			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+		c, _ := NewClient(server.URL, "test", "test", false)
+		server.Close()
+
+		_, err := c.uploadAttachment(context.Background(), "add_attachment_to_case/1", filePath)
+		if err == nil {
+			t.Fatalf("expected uploadAttachment() request error")
+		}
+	})
+}
+
+func TestGetAttachmentsForPlanEntry_ErrorCases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case strings.Contains(r.URL.String(), "get_attachments_for_plan_entry/1/entry1"):
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"Server error"}`))
+		case strings.Contains(r.URL.String(), "get_attachments_for_plan_entry/2/entry2"):
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"Forbidden"}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	ctx := context.Background()
+
+	_, err := c.GetAttachmentsForPlanEntry(ctx, 1, "entry1")
+	if err == nil {
+		t.Fatal("GetAttachmentsForPlanEntry should error on 500")
+	}
+
+	_, err = c.GetAttachmentsForPlanEntry(ctx, 2, "entry2")
+	if err == nil {
+		t.Fatal("GetAttachmentsForPlanEntry should error on 403")
+	}
+}
+
+func TestGetAttachmentsForPlanEntry_EmptyResults(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_attachments_for_plan_entry") {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode([]data.Attachment{})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	attachments, err := c.GetAttachmentsForPlanEntry(context.Background(), 1, "entry1")
+	if err != nil {
+		t.Fatalf("GetAttachmentsForPlanEntry should not error on empty: %v", err)
+	}
+	if len(attachments) != 0 {
+		t.Errorf("Expected 0 attachments, got %d", len(attachments))
+	}
+}
+
+func TestGetAttachmentsForRun_ErrorCases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_attachments_for_run/1") {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"Invalid run ID"}`))
+			return
+		}
+		if strings.Contains(r.URL.String(), "get_attachments_for_run/2") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{invalid json}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	ctx := context.Background()
+
+	_, err := c.GetAttachmentsForRun(ctx, 1)
+	if err == nil {
+		t.Fatal("GetAttachmentsForRun should error on 400")
+	}
+
+	_, err = c.GetAttachmentsForRun(ctx, 2)
+	if err == nil {
+		t.Fatal("GetAttachmentsForRun should error on decode failure")
+	}
+}
+
+func TestGetAttachmentsForRun_EmptyResults(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_attachments_for_run") {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode([]data.Attachment{})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	attachments, err := c.GetAttachmentsForRun(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("GetAttachmentsForRun should not error on empty: %v", err)
+	}
+	if len(attachments) != 0 {
+		t.Errorf("Expected 0 attachments, got %d", len(attachments))
+	}
+}
+
+func TestGetAttachmentsForTest_ErrorCases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_attachments_for_test/999") {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"Test not found"}`))
+			return
+		}
+		if strings.Contains(r.URL.String(), "get_attachments_for_test/1") {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode([]data.Attachment{
+				{ID: 1, Size: 1024},
+				{ID: 2, Size: 2048},
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	ctx := context.Background()
+
+	_, err := c.GetAttachmentsForTest(ctx, 999)
+	if err == nil {
+		t.Fatal("GetAttachmentsForTest should error on 404")
+	}
+
+	attachments, err := c.GetAttachmentsForTest(ctx, 1)
+	if err != nil {
+		t.Fatalf("GetAttachmentsForTest should not error: %v", err)
+	}
+	if len(attachments) != 2 {
+		t.Errorf("Expected 2 attachments, got %d", len(attachments))
+	}
+}
+
+func TestDeleteAttachment_ErrorCases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "delete_attachment/1") {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"error":"Cannot delete"}`))
+			return
+		}
+		if strings.Contains(r.URL.String(), "delete_attachment/2") {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`{"error":"Not found"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	ctx := context.Background()
+
+	err := c.DeleteAttachment(ctx, 1)
+	if err == nil {
+		t.Fatal("DeleteAttachment should error on 403")
+	}
+
+	err = c.DeleteAttachment(ctx, 2)
+	if err == nil {
+		t.Fatal("DeleteAttachment should error on 404")
+	}
+}
+
+func TestGetAttachment_ErrorCases(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_attachment/1") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{broken:`))
+			return
+		}
+		if strings.Contains(r.URL.String(), "get_attachment/2") {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"Unauthorized"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	ctx := context.Background()
+
+	_, err := c.GetAttachment(ctx, 1)
+	if err == nil {
+		t.Fatal("GetAttachment should error on decode failure")
+	}
+
+	_, err = c.GetAttachment(ctx, 2)
+	if err == nil {
+		t.Fatal("GetAttachment should error on 401")
+	}
+}
+
+func TestGetAttachmentsForCase_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_attachments_for_case/1") {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode([]data.Attachment{
+				{ID: 10, Size: 512},
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	attachments, err := c.GetAttachmentsForCase(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("GetAttachmentsForCase: %v", err)
+	}
+	if len(attachments) != 1 || attachments[0].ID != 10 {
+		t.Errorf("GetAttachmentsForCase returned unexpected data: %+v", attachments)
+	}
+}
+
+func TestGetAttachmentsForPlan_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_attachments_for_plan/2") {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode([]data.Attachment{
+				{ID: 20, Size: 1024},
+				{ID: 21, Size: 2048},
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	attachments, err := c.GetAttachmentsForPlan(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("GetAttachmentsForPlan: %v", err)
+	}
+	if len(attachments) != 2 {
+		t.Errorf("GetAttachmentsForPlan expected 2, got %d", len(attachments))
+	}
+}

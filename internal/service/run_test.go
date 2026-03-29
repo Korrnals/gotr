@@ -4,10 +4,13 @@ package service
 import (
 	"context"
 	"errors"
+	"io"
+	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -225,6 +228,11 @@ func TestRunService_Methods(t *testing.T) {
 		assert.Len(t, runs, 1)
 	})
 
+	t.Run("GetByProject invalid id", func(t *testing.T) {
+		_, err := svc.GetByProject(ctx, 0)
+		assert.Error(t, err)
+	})
+
 	t.Run("Create validation error", func(t *testing.T) {
 		_, err := svc.Create(ctx, 22, &data.AddRunRequest{Name: "", SuiteID: 0})
 		assert.Error(t, err)
@@ -261,6 +269,14 @@ func TestRunService_Methods(t *testing.T) {
 		assert.Equal(t, int64(44), run.ID)
 	})
 
+	t.Run("Update client error", func(t *testing.T) {
+		mock.UpdateRunFunc = func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			return nil, errors.New("update failed")
+		}
+		_, err := svc.Update(ctx, 44, &data.UpdateRunRequest{})
+		assert.Error(t, err)
+	})
+
 	t.Run("Close success", func(t *testing.T) {
 		mock.CloseRunFunc = func(ctx context.Context, runID int64) (*data.Run, error) {
 			return &data.Run{ID: runID, CompletedOn: 123}, nil
@@ -268,6 +284,19 @@ func TestRunService_Methods(t *testing.T) {
 		run, err := svc.Close(ctx, 55)
 		assert.NoError(t, err)
 		assert.Equal(t, int64(55), run.ID)
+	})
+
+	t.Run("Close invalid id", func(t *testing.T) {
+		_, err := svc.Close(ctx, 0)
+		assert.Error(t, err)
+	})
+
+	t.Run("Close client error", func(t *testing.T) {
+		mock.CloseRunFunc = func(ctx context.Context, runID int64) (*data.Run, error) {
+			return nil, errors.New("close failed")
+		}
+		_, err := svc.Close(ctx, 55)
+		assert.Error(t, err)
 	})
 
 	t.Run("Delete success", func(t *testing.T) {
@@ -285,4 +314,84 @@ func TestRunService_Methods(t *testing.T) {
 		err := svc.Delete(ctx, 66)
 		assert.Error(t, err)
 	})
+
+	t.Run("Delete invalid id", func(t *testing.T) {
+		err := svc.Delete(ctx, 0)
+		assert.Error(t, err)
+	})
+}
+
+func TestRunService_Create_NilRequest_DoesNotPanic(t *testing.T) {
+	mock := &client.MockClient{}
+	svc := NewRunServiceFromInterface(mock)
+
+	assert.NotPanics(t, func() {
+		run, err := svc.Create(context.Background(), 100, nil)
+		assert.Nil(t, run)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request validation")
+	})
+}
+
+func TestRunService_ConstructorsAndWrappers(t *testing.T) {
+	httpClient := &client.HTTPClient{}
+	runSvc := NewRunService(httpClient)
+	assert.NotNil(t, runSvc)
+
+	t.Run("Output writes JSON", func(t *testing.T) {
+		cmd := &cobra.Command{Use: "run-test"}
+		cmd.Flags().Bool("quiet", false, "")
+		cmd.Flags().String("output", "", "")
+
+		out := captureStdout(t, func() {
+			err := runSvc.Output(context.Background(), cmd, map[string]any{"ok": true})
+			assert.NoError(t, err)
+		})
+
+		assert.Contains(t, out, "\"ok\": true")
+	})
+
+	t.Run("PrintSuccess prints when not quiet", func(t *testing.T) {
+		cmd := &cobra.Command{Use: "run-test"}
+		cmd.Flags().Bool("quiet", false, "")
+
+		out := captureStdout(t, func() {
+			runSvc.PrintSuccess(context.Background(), cmd, "run %d created", 7)
+		})
+
+		assert.Contains(t, out, "run 7 created")
+	})
+
+	t.Run("PrintSuccess silent in quiet mode", func(t *testing.T) {
+		cmd := &cobra.Command{Use: "run-test"}
+		cmd.Flags().Bool("quiet", true, "")
+
+		out := captureStdout(t, func() {
+			runSvc.PrintSuccess(context.Background(), cmd, "hidden")
+		})
+
+		assert.Equal(t, "", out)
+	})
+}
+
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	assert.NoError(t, err)
+
+	os.Stdout = w
+	defer func() {
+		os.Stdout = old
+	}()
+
+	fn()
+	assert.NoError(t, w.Close())
+
+	b, err := io.ReadAll(r)
+	assert.NoError(t, err)
+	assert.NoError(t, r.Close())
+
+	return string(b)
 }

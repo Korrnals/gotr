@@ -253,6 +253,37 @@ func TestMockPrompter_ExhaustedQueue(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMockPrompter_Select_Branches(t *testing.T) {
+	t.Run("explicit value", func(t *testing.T) {
+		m := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Value: "manual"})
+		idx, value, err := m.Select("select", []string{"x", "y"})
+		require.NoError(t, err)
+		assert.Equal(t, 0, idx)
+		assert.Equal(t, "manual", value)
+	})
+
+	t.Run("empty options", func(t *testing.T) {
+		m := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		_, _, err := m.Select("select", []string{})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "select options list is empty")
+	})
+
+	t.Run("index out of range", func(t *testing.T) {
+		m := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 5})
+		_, _, err := m.Select("select", []string{"x"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "mock select index out of range")
+	})
+
+	t.Run("select queue exhausted", func(t *testing.T) {
+		m := NewMockPrompter()
+		_, _, err := m.Select("select", []string{"x"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "mock select queue exhausted")
+	})
+}
+
 func TestSelectProject_WithMockPrompter(t *testing.T) {
 	ctx := context.Background()
 	mockPrompt := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})

@@ -286,3 +286,175 @@ Interpretation:
 - Delta vs COV-3 partial 17: **+0.5%**
 - Delta vs COV-1 baseline: **+10.0%**
 - COV-3 status: **IN PROGRESS**.
+
+## Coverage resync snapshot (2026-03-28 control pass)
+
+- Цель: синхронизировать «источник истины» по total после серии инкрементальных шагов.
+- Протокол:
+- `go test -vet=off -coverpkg=./... -coverprofile=/tmp/stage13_full.cover ./... >/tmp/stage13_full.log 2>&1`
+- `go tool cover -func=/tmp/stage13_full.cover | tail -n 5`
+- Актуальный total: **85.1%** (statements).
+- Примечание: в истории были нестабильные прогоны `-coverpkg` (долгий teardown в `cmd`), поэтому для фиксации метрики учитываются только успешные полные прогоны по протоколу.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 19)
+
+- Added tests:
+- `internal/client/users_test.go` (expanded with non-OK HTTP and decode-error branches for users/priorities/statuses/templates methods)
+- Recomputed full coverage total: **86.9%** (statements)
+- Delta vs control resync (85.1%): **+1.8%**
+- Delta vs COV-1 baseline: **+19.5%**
+- COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 20)
+
+- Added tests:
+- `internal/client/results_test.go` (expanded with non-OK/decode-error branches for add/get result methods)
+- Recomputed full coverage total: **86.9%** (statements)
+- Delta vs COV-3 partial 19: **+0.0%**
+- Delta vs COV-1 baseline: **+19.5%**
+- COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 21)
+
+- Added tests:
+- `internal/client/runs_test.go` (expanded with `GetRuns` success/error and decode-error branches for get/add/update/close)
+- Recomputed full coverage total: **87.0%** (statements)
+- Delta vs COV-3 partial 20: **+0.1%**
+- Delta vs COV-1 baseline: **+19.6%**
+- COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 22)
+
+- Added tests:
+- `internal/client/sharedsteps_test.go` (expanded with request/decode/non-OK branches for shared steps API methods)
+- Recomputed full coverage total: **87.0%** (statements)
+- Delta vs COV-3 partial 21: **+0.0%**
+- Delta vs COV-1 baseline: **+19.6%**
+- COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-5 partial 23)
+
+- Added tests:
+- `cmd/result/add_test.go` (added unit coverage for `buildAddResultRequest` required/all-fields and extra add-bulk error/dry-run branches)
+- Recomputed full coverage total: **87.0%** (statements)
+- Delta vs previous snapshot: **+0.0%**
+- Delta vs COV-1 baseline: **+19.6%**
+- COV-5 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-5 partial 24)
+
+- Added tests:
+- `cmd/root_test.go` (success/panic coverage for client accessors and `initConfig` invalid-YAML branch)
+- Recomputed full coverage total: **87.0%** (statements)
+- Delta vs COV-5 partial 23: **+0.0%**
+- Delta vs COV-1 baseline: **+19.6%**
+- COV-5 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-3 partial 25)
+
+- Added tests:
+- `internal/client/sections_test.go` (expanded with decode/request/partial-error branches for sections APIs)
+- Recomputed full coverage total: **87.1%** (statements)
+- Delta vs previous snapshot: **+0.1%**
+- Delta vs COV-1 baseline: **+19.7%**
+- COV-3 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-5 partial 26)
+
+- Added tests/refactor:
+- `cmd/resources.go` + `cmd/resources_test.go` (resolved unreachable branches and closed resource utility coverage in package profile)
+- Recomputed full coverage total (revalidated twice): **86.3%** (statements)
+- Delta vs previous snapshot: **-0.8%** (resync drift)
+- Delta vs COV-1 baseline: **+18.9%**
+- Notes: dedicated `./cmd` profile confirms `cmd/resources.go` at 100% by functions; full `-coverpkg` baseline fixed at 86.3 for current state.
+- COV-5 status: **IN PROGRESS**.
+
+## Coverage audit resync snapshot (2026-03-28, repeated)
+
+- Goal: восстановить точную картину покрытия для матрицы «покрыто / частично / не покрыто».
+- Run 1 (global KPI):
+- `go test -vet=off -coverpkg=./... -coverprofile=/tmp/stage13_audit.cover.out ./...`
+- Result: `total: 86.3%` (statements).
+- Run 2 (file-level audit truth):
+- `go test -vet=off -coverprofile=/tmp/stage13_pkg.cover.out ./...`
+- Result: `total: 85.8%` (statements).
+- File buckets from package-local profile:
+- fully covered files: **70**
+- partially covered files: **157**
+- zero-covered files: **2**
+- total tracked files: **229**
+- Zero-covered files:
+- `embedded/jq_embed.go`
+- `pkg/testrailapi/api_paths.go`
+- Lowest partial hotspots (top-priority backlog):
+- `cmd/compare/register.go`
+- `cmd/export.go`
+- `cmd/root.go`
+- `cmd/internal/testhelper/testhelper.go`
+- `internal/client/mock.go`
+- `internal/output/*`
+- `internal/ui/*`
+- Methodology note:
+- Пер-file bucket-анализ не берется из `-coverpkg` профиля, так как повторная инструментализация в package test binaries искажает агрегированные проценты по файлам. Для audit-классификации используется только package-local профиль.
+
+## Coverage delta snapshot (Phase 3.1 COV-5 partial 27)
+
+- Added tests:
+- `embedded/jq_embed_test.go` (success/error branches for embedded jq execution)
+- `pkg/testrailapi/api_paths_test.go` (API resource initialization and endpoint aggregation validation)
+- Recomputed package-local total: **86.4%** (statements)
+- File buckets (package-local): **71 full / 158 partial / 0 zero**
+- Zero-covered files: **none** (previously 2)
+- Recomputed global KPI (`-coverpkg`): **86.3%** (statements, unchanged)
+- Delta vs previous package-local snapshot (85.8%): **+0.6%**
+- COV-5 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-5 partial 28)
+
+- Added tests:
+- `cmd/compare/register_test.go` (coverage for `Register`, persistent flags and subcommands)
+- `cmd/export_test.go` (expanded `resolveExportInputs` edge-cases: no-prompter, select/input failures, id prompt)
+- `cmd/root_test.go` (expanded `GetClientInterface` fallback/panic and `initConfig` config-not-found path)
+- `cmd/internal/testhelper/testhelper_test.go` (full branch coverage for helper functions)
+- Recomputed package-local total: **86.8%** (statements)
+- File buckets (package-local): **73 full / 156 partial / 0 zero**
+- Recomputed global KPI (`-coverpkg`): **86.3%** (statements, unchanged)
+- Key per-file deltas:
+- `cmd/compare/register.go`: **3.33% -> 100.0%**
+- `cmd/export.go`: **41.25% -> 52.50%**
+- `cmd/root.go`: **42.42% -> 45.45%**
+- `cmd/internal/testhelper/testhelper.go`: **46.67% -> 100.0%**
+- Delta vs previous package-local snapshot (86.4%): **+0.4%**
+- COV-5 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-5 partial 29)
+
+- Added tests:
+- `internal/output/dryrun_test.go` (added coverage for `PrintOperation` and `PrintSimple`, including marshal-error body path)
+- Recomputed package-local total: **87.0%** (statements)
+- File buckets (package-local): **74 full / 155 partial / 0 zero**
+- Recomputed global KPI (`-coverpkg`): **86.3%** (latest stable control pass)
+- Key per-file delta:
+- `internal/output/dryrun.go`: **59.09% -> 100.0%**
+- Delta vs previous package-local snapshot (86.8%): **+0.2%**
+- COV-5 status: **IN PROGRESS**.
+
+## Coverage delta snapshot (Phase 3.1 COV-5 partial 30)
+
+- Added tests (parallel wave):
+- `internal/output/save_test.go` (OutputResult, OutputGetResult branches, OutputResultWithFlags, PrintSuccess, SaveToFileWithPath branches)
+- `internal/ui/display_test.go` (refreshLoop, render, Display.Finish, Infof/Successf/Warningf quiet-paths)
+- `internal/client/extended_test.go` (non-OK/decode error branches for groups/roles/result-fields/datasets/variables/bdd/labels)
+- `cmd/export_test.go` (resolveExportInputs tail branches incl. no-prompter ID and trim normalization)
+- `cmd/root_test.go` + `cmd/root.go` (initConfig home-dir error hook + edge coverage)
+- Recomputed package-local total: **88.2%** (statements)
+- File buckets (package-local): **74 full / 155 partial / 0 zero**
+- Recomputed global KPI (`-coverpkg`): **86.3%** (statements)
+- Key per-file deltas:
+- `internal/output/save.go`: **56.12% -> 83.16%**
+- `internal/ui/display.go`: **56.74% -> 98.58%**
+- `internal/client/extended.go`: **68.62% -> 75.86%**
+- `cmd/export.go`: **52.50% -> 53.75%**
+- `cmd/root.go`: **45.45% -> 46.97%**
+- Delta vs previous package-local snapshot (87.0%): **+1.2%**
+- COV-5 status: **IN PROGRESS**.

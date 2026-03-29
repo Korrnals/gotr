@@ -361,3 +361,131 @@ func TestGetResultsEndpoints(t *testing.T) {
 		assert.Len(t, results, 1)
 	})
 }
+
+func TestResults_ErrorBranches(t *testing.T) {
+	t.Run("AddResult decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_result/321", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.AddResult(context.Background(), 321, &data.AddResultRequest{StatusID: 1})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error result")
+	})
+
+	t.Run("AddResultForCase decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_result_for_case/12/34", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.AddResultForCase(context.Background(), 12, 34, &data.AddResultRequest{StatusID: 1})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error result")
+	})
+
+	t.Run("AddResults decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_results/55", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.AddResults(context.Background(), 55, &data.AddResultsRequest{Results: []data.ResultEntry{{TestID: 1, StatusID: 1}}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error results")
+	})
+
+	t.Run("AddResultsForCases non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_results_for_cases/55", r.URL.String())
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`bad`))
+		})
+		defer server.Close()
+
+		_, err := client.AddResultsForCases(context.Background(), 55, &data.AddResultsForCasesRequest{Results: []data.ResultForCaseEntry{{CaseID: 10, StatusID: 5}}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 400 Bad Request")
+	})
+
+	t.Run("AddResultsForCases decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_results_for_cases/56", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.AddResultsForCases(context.Background(), 56, &data.AddResultsForCasesRequest{Results: []data.ResultForCaseEntry{{CaseID: 11, StatusID: 1}}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error results")
+	})
+
+	t.Run("GetResults request error from API status", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Contains(t, r.URL.String(), "get_results/321")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`boom`))
+		})
+		defer server.Close()
+
+		_, err := client.GetResults(context.Background(), 321)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetResults")
+	})
+
+	t.Run("GetResultsForRun request error from API status", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Contains(t, r.URL.String(), "get_results_for_run/654")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`boom`))
+		})
+		defer server.Close()
+
+		_, err := client.GetResultsForRun(context.Background(), 654)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetResultsForRun")
+	})
+
+	t.Run("GetResultsForCase non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_results_for_case/7/8", r.URL.String())
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`missing`))
+		})
+		defer server.Close()
+
+		_, err := client.GetResultsForCase(context.Background(), 7, 8)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 404 Not Found")
+	})
+
+	t.Run("GetResultsForCase decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_results_for_case/9/10", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.GetResultsForCase(context.Background(), 9, 10)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error results")
+	})
+}

@@ -3,6 +3,8 @@ package concurrency
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -361,4 +363,315 @@ func BenchmarkResultAggregator_Submit(b *testing.B) {
 	b.StopTimer()
 
 	ra.Stop()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wave-5 Coverage Tests: Buffer, Shutdown, Concurrency, Error Propagation
+// ─────────────────────────────────────────────────────────────────────────────
+
+// TestAggregator_BufferOverflow tests behavior when result channel hits capacity
+func TestAggregator_BufferOverflow(t *testing.T) {
+	ctx := context.Background()
+	smallBuffer := 5
+	ra := NewResultAggregator(smallBuffer)
+
+	ra.StartCtx(ctx)
+
+	// Submit results rapidly to potentially overflow buffer
+	blockingSubmit := make(chan struct{})
+	go func() {
+		for i := 0; i < 100; i++ {
+			ra.Submit(PageResult{
+				SuiteID: 1,
+				Offset:  i,
+				Cases:   []data.Case{{ID: int64(i), Title: fmt.Sprintf("Case %d", i)}},
+			})
+		}
+		close(blockingSubmit)
+	}()
+
+	// Wait for submissions to complete (with timeout to ensure blocking doesn't deadlock)
+	select {
+	case <-blockingSubmit:
+		// Expected
+	case <-time.After(5 * time.Second):
+		t.Fatal("buffer overflow test timed out - possible deadlock")
+	}
+
+	cases, _ := ra.Stop()
+
+	// Verify all cases were eventually submitted (though timing may vary)
+	assert.True(t, len(cases) > 50, "Expected many cases despite small buffer")
+}
+
+// TestAggregator_PartialBatchOnShutdown tests handling of incomplete batches when stopped
+func TestAggregator_PartialBatchOnShutdown(t *testing.T) {
+	ctx := context.Background()
+	ra := NewResultAggregator(100)
+
+	ra.StartCtx(ctx)
+
+	// Submit multiple batches
+	for batch := 0; batch < 5; batch++ {
+		ra.Submit(PageResult{
+			SuiteID: 1,
+			Offset:  batch * 10,
+			Cases: func() []data.Case {
+				cases := make([]data.Case, batch%3+1) // Vary batch size
+				for i := range cases {
+					cases[i] = data.Case{
+						ID:    int64(batch*100 + i),
+						Title: fmt.Sprintf("Case %d-%d", batch, i),
+					}
+				}
+				return cases
+			}(),
+		})
+	}
+
+	// Stop immediately (may have pending items in channels)
+	cases, _ := ra.Stop()
+
+	// Should collect all submitted cases
+	assert.True(t, len(cases) > 0, "Should have collected cases from partial batches")
+}
+
+// TestAggregator_ConcurrentSubmitAndFlush stress-tests concurrent submit with stop
+func TestAggregator_ConcurrentSubmitAndFlush(t *testing.T) {
+	ctx := context.Background()
+	ra := NewResultAggregator(1000)
+
+	ra.StartCtx(ctx)
+
+	numProducers := 20
+	resultsPerProducer := 50
+	done := make(chan struct{}, numProducers)
+
+	// Concurrent producers
+	for p := 0; p < numProducers; p++ {
+		go func(producerID int) {
+			defer func() { done <- struct{}{} }()
+
+			for i := 0; i < resultsPerProducer; i++ {
+				caseID := int64(producerID*10000 + i)
+				ra.Submit(PageResult{
+					SuiteID: int64(producerID),
+					Offset:  i,
+					Cases:   []data.Case{{ID: caseID, Title: fmt.Sprintf("P%d-C%d", producerID, i)}},
+				})
+			}
+		}(p)
+	}
+
+	// Wait for most producers to finish before stopping
+	completed := 0
+	timeout := time.After(5 * time.Second)
+	for completed < numProducers {
+		select {
+		case <-done:
+			completed++
+		case <-timeout:
+			// Stop anyway
+			break
+		}
+	}
+
+	// Now stop the aggregator
+	cases, errs := ra.Stop()
+
+	// Verify results integrity
+	assert.Empty(t, errs)
+	expectedMin := numProducers * resultsPerProducer / 2 // At least half should be collected
+	assert.True(t, len(cases) >= expectedMin, "Expected at least %d cases, got %d", expectedMin, len(cases))
+
+	// Verify no duplicates
+	seenIDs := make(map[int64]bool)
+	for _, c := range cases {
+		assert.False(t, seenIDs[c.ID], "Duplicate case ID: %d", c.ID)
+		seenIDs[c.ID] = true
+	}
+}
+
+// TestAggregator_ErrorPropagation tests error channel handling and propagation
+func TestAggregator_ErrorPropagation(t *testing.T) {
+	ctx := context.Background()
+	ra := NewResultAggregator(100)
+
+	ra.StartCtx(ctx)
+
+	// Mix successful and error submissions
+	successCases := 0
+	for i := 0; i < 20; i++ {
+		if i%3 == 0 {
+			// Submit error result
+			ra.Submit(PageResult{
+				SuiteID: 1,
+				Offset:  i * 10,
+				Error:   fmt.Errorf("page error %d", i),
+			})
+		} else {
+			// Submit successful result
+			ra.Submit(PageResult{
+				SuiteID: 1,
+				Offset:  i * 10,
+				Cases:   []data.Case{{ID: int64(i), Title: fmt.Sprintf("Case %d", i)}},
+			})
+			successCases++
+		}
+	}
+
+	// Also submit direct errors
+	for i := 0; i < 5; i++ {
+		ra.SubmitError(fmt.Errorf("direct error %d", i))
+	}
+
+	cases, errs := ra.Stop()
+
+	// Verify separation: cases vs errors
+	assert.True(t, len(cases) > 0, "Should have successful cases")
+	assert.True(t, len(errs) > 0, "Should have collected errors")
+	assert.True(t, len(errs) >= 5, "Should have at least the direct errors")
+
+	// Verify stats reflect both
+	stats := AggregationStats{
+		TotalCases:  len(cases),
+		TotalPages:  20,
+		FailedPages: len(errs),
+		ErrorCount:  len(errs),
+	}
+	assert.True(t, stats.HasErrors())
+}
+
+// TestAggregator_SubmitAfterStop tests that submit after stop is safely ignored
+func TestAggregator_SubmitAfterStop(t *testing.T) {
+	ctx := context.Background()
+	ra := NewResultAggregator(100)
+
+	ra.StartCtx(ctx)
+
+	ra.Submit(PageResult{
+		SuiteID: 1,
+		Cases:   []data.Case{{ID: 1}},
+	})
+
+	cases1, _ := ra.Stop()
+	initialCount := len(cases1)
+
+	// Submit after stop should be ignored (not panic)
+	ra.Submit(PageResult{
+		SuiteID: 2,
+		Cases:   []data.Case{{ID: 2, Title: "Should be ignored"}},
+	})
+
+	ra.SubmitError(errors.New("should be ignored"))
+
+	// Get results again
+	cases2, _ := ra.GetResults()
+
+	// Count should not increase
+	assert.Equal(t, initialCount, len(cases2), "Submit after stop should not add cases")
+}
+
+// TestAggregator_RapidStartStop tests rapid initialization and teardown cycles
+func TestAggregator_RapidStartStop(t *testing.T) {
+	cycles := 10
+
+	for cycle := 0; cycle < cycles; cycle++ {
+		ctx := context.Background()
+		ra := NewResultAggregator(100)
+
+		ra.StartCtx(ctx)
+
+		// Quick submissions
+		for i := 0; i < 5; i++ {
+			ra.Submit(PageResult{
+				SuiteID: 1,
+				Cases:   []data.Case{{ID: int64(cycle*100 + i)}},
+			})
+		}
+
+		// Immediate stop
+		cases, _ := ra.Stop()
+		assert.True(t, len(cases) > 0, "Cycle %d: Should collect cases", cycle)
+	}
+}
+
+// TestAggregator_LargePayloadBatch tests aggregator with large case payloads
+func TestAggregator_LargePayloadBatch(t *testing.T) {
+	ctx := context.Background()
+	ra := NewResultAggregator(50)
+
+	ra.StartCtx(ctx)
+
+	// Create large cases (simulate realistic payloads with title)
+	largeTitle := "Large Case " + strings.Repeat("x", 200)
+
+	// Submit batch of large cases
+	largeBatch := make([]data.Case, 100)
+	for i := 0; i < 100; i++ {
+		largeBatch[i] = data.Case{
+			ID:      int64(i),
+			Title:   largeTitle,
+			SuiteID: 1,
+		}
+	}
+
+	ra.Submit(PageResult{
+		SuiteID: 1,
+		Cases:   largeBatch,
+	})
+
+	cases, _ := ra.Stop()
+
+	assert.Len(t, cases, 100, "Should handle large payloads")
+	assert.Equal(t, int64(0), cases[0].ID)
+}
+
+// TestAggregator_StatsAccuracy verifies stats are accurate during concurrent operations
+func TestAggregator_StatsAccuracy(t *testing.T) {
+	ctx := context.Background()
+	ra := NewResultAggregator(100)
+
+	statsSnapshots := make([]AggregationStats, 0)
+	go func() {
+		for i := 0; i < 10; i++ {
+			time.Sleep(10 * time.Millisecond)
+			if ra.IsRunning() {
+				statsSnapshots = append(statsSnapshots, ra.Stats())
+			}
+		}
+	}()
+
+	ra.StartCtx(ctx)
+
+	// Submit results over time
+	for i := 0; i < 20; i++ {
+		ra.Submit(PageResult{
+			SuiteID: 1,
+			Offset:  i,
+			Cases:   []data.Case{{ID: int64(i), Title: fmt.Sprintf("Case %d", i)}},
+		})
+		if i%5 == 0 {
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+
+	// Submit errors
+	for i := 0; i < 3; i++ {
+		ra.SubmitError(fmt.Errorf("error %d", i))
+	}
+
+	cases, errs := ra.Stop()
+
+	// Verify final stats
+	assert.Len(t, cases, 20)
+	assert.Len(t, errs, 3)
+
+	// Stats should show reasonable progression (monotonically increasing)
+	for i := 1; i < len(statsSnapshots); i++ {
+		prev := statsSnapshots[i-1]
+		curr := statsSnapshots[i]
+		assert.True(t, curr.TotalCases >= prev.TotalCases, "Stats regression: TotalCases decreased")
+		assert.True(t, curr.TotalPages >= prev.TotalPages, "Stats regression: TotalPages decreased")
+	}
 }

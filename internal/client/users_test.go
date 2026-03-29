@@ -459,3 +459,135 @@ func TestHTTPUsersWriteAndMetaEndpoints(t *testing.T) {
 		assert.Len(t, templates, 1)
 	})
 }
+
+func TestHTTPUsers_ErrorBranches(t *testing.T) {
+	t.Run("GetUsers non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_users", r.URL.String())
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`bad request`))
+		})
+		defer server.Close()
+
+		_, err := client.GetUsers(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 400 Bad Request")
+	})
+
+	t.Run("GetUsers decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_users", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken_json":`))
+		})
+		defer server.Close()
+
+		_, err := client.GetUsers(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding users")
+	})
+
+	t.Run("GetUsersByProject non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_users/77", r.URL.String())
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`denied`))
+		})
+		defer server.Close()
+
+		_, err := client.GetUsersByProject(context.Background(), 77)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 401 Unauthorized")
+	})
+
+	t.Run("GetUser non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_user/11", r.URL.String())
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte(`not found`))
+		})
+		defer server.Close()
+
+		_, err := client.GetUser(context.Background(), 11)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 404 Not Found")
+	})
+
+	t.Run("GetUserByEmail non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Contains(t, r.URL.String(), "get_user_by_email")
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`forbidden`))
+		})
+		defer server.Close()
+
+		_, err := client.GetUserByEmail(context.Background(), "john@example.com")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 403 Forbidden")
+	})
+
+	t.Run("AddUser non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/add_user", r.URL.String())
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`invalid payload`))
+		})
+		defer server.Close()
+
+		_, err := client.AddUser(context.Background(), data.AddUserRequest{Name: "Jane", Email: "bad"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 400 Bad Request")
+	})
+
+	t.Run("UpdateUser non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/update_user/21", r.URL.String())
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`invalid payload`))
+		})
+		defer server.Close()
+
+		_, err := client.UpdateUser(context.Background(), 21, data.UpdateUserRequest{Name: "bad"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 400 Bad Request")
+	})
+
+	t.Run("GetPriorities decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_priorities", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken_json":`))
+		})
+		defer server.Close()
+
+		_, err := client.GetPriorities(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding priorities")
+	})
+
+	t.Run("GetStatuses non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_statuses", r.URL.String())
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`boom`))
+		})
+		defer server.Close()
+
+		_, err := client.GetStatuses(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 500 Internal Server Error")
+	})
+
+	t.Run("GetTemplates decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "/index.php?/api/v2/get_templates/30", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken_json":`))
+		})
+		defer server.Close()
+
+		_, err := client.GetTemplates(context.Background(), 30)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding templates")
+	})
+}

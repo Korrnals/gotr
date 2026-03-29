@@ -7,6 +7,8 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestTestServiceGet(t *testing.T) {
@@ -68,6 +70,18 @@ func TestTestServiceGetForRun(t *testing.T) {
 			t.Fatalf("unexpected tests result: %+v", res)
 		}
 	})
+
+	t.Run("client error", func(t *testing.T) {
+		mock := &client.MockClient{}
+		mock.GetTestsFunc = func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return nil, errors.New("get tests failed")
+		}
+
+		svc := NewTestService(mock)
+		res, err := svc.GetForRun(context.Background(), 20, nil)
+		assert.Nil(t, res)
+		assert.Error(t, err)
+	})
 }
 
 func TestTestServiceUpdate(t *testing.T) {
@@ -107,6 +121,18 @@ func TestTestServiceUpdate(t *testing.T) {
 			t.Fatalf("unexpected updated test: %+v", res)
 		}
 	})
+
+	t.Run("client error", func(t *testing.T) {
+		mock := &client.MockClient{}
+		mock.UpdateTestFunc = func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+			return nil, errors.New("update failed")
+		}
+
+		svc := NewTestService(mock)
+		res, err := svc.Update(context.Background(), 100, &data.UpdateTestRequest{StatusID: 5})
+		assert.Nil(t, res)
+		assert.Error(t, err)
+	})
 }
 
 func TestTestServiceParseID(t *testing.T) {
@@ -138,5 +164,50 @@ func TestTestServiceParseID(t *testing.T) {
 		if id != 123 {
 			t.Fatalf("ParseID() = %d, want 123", id)
 		}
+	})
+
+	t.Run("index out of range", func(t *testing.T) {
+		_, err := svc.ParseID(context.Background(), []string{"100"}, 2)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "ID is required")
+	})
+}
+
+func TestTestService_OutputAndPrintSuccess(t *testing.T) {
+	svc := NewTestService(&client.MockClient{})
+
+	t.Run("Output writes JSON", func(t *testing.T) {
+		cmd := &cobra.Command{Use: "test-service"}
+		cmd.Flags().Bool("quiet", false, "")
+		cmd.Flags().String("output", "", "")
+
+		out := captureStdout(t, func() {
+			err := svc.Output(context.Background(), cmd, map[string]any{"kind": "test"})
+			assert.NoError(t, err)
+		})
+
+		assert.Contains(t, out, "\"kind\": \"test\"")
+	})
+
+	t.Run("PrintSuccess prints when not quiet", func(t *testing.T) {
+		cmd := &cobra.Command{Use: "test-service"}
+		cmd.Flags().Bool("quiet", false, "")
+
+		out := captureStdout(t, func() {
+			svc.PrintSuccess(context.Background(), cmd, "test %d updated", 9)
+		})
+
+		assert.Contains(t, out, "test 9 updated")
+	})
+
+	t.Run("PrintSuccess silent in quiet mode", func(t *testing.T) {
+		cmd := &cobra.Command{Use: "test-service"}
+		cmd.Flags().Bool("quiet", true, "")
+
+		out := captureStdout(t, func() {
+			svc.PrintSuccess(context.Background(), cmd, "hidden")
+		})
+
+		assert.Equal(t, "", out)
 	})
 }

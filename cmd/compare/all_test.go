@@ -15,6 +15,7 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ==================== Тесты для allResult структуры ====================
@@ -554,3 +555,81 @@ func TestDeriveAllExecutionStatus(t *testing.T) {
 
 	assert.Equal(t, CompareStatusComplete, deriveAllExecutionStatus(base, false, nil))
 }
+
+// ==================== Comprehensive tests for isContextCancellationError ====================
+
+func TestIsContextCancellationError_NilError(t *testing.T) {
+	assert.False(t, isContextCancellationError(nil))
+}
+
+func TestIsContextCancellationError_ContextCanceled(t *testing.T) {
+	assert.True(t, isContextCancellationError(context.Canceled))
+}
+
+func TestIsContextCancellationError_ContextDeadlineExceeded(t *testing.T) {
+	assert.True(t, isContextCancellationError(context.DeadlineExceeded))
+}
+
+func TestIsContextCancellationError_StringMatch_ContextCanceled(t *testing.T) {
+	err := errors.New("operation failed: context canceled due to timeout")
+	assert.True(t, isContextCancellationError(err))
+}
+
+func TestIsContextCancellationError_StringMatch_DeadlineExceeded(t *testing.T) {
+	err := errors.New("request failed: deadline exceeded")
+	assert.True(t, isContextCancellationError(err))
+}
+
+func TestIsContextCancellationError_CaseInsensitive(t *testing.T) {
+	err := errors.New("CONTEXT CANCELED")
+	assert.True(t, isContextCancellationError(err))
+
+	err2 := errors.New("DeAdLiNe ExCeEdEd")
+	assert.True(t, isContextCancellationError(err2))
+}
+
+func TestIsContextCancellationError_NotMatchingError(t *testing.T) {
+	err := errors.New("network timeout")
+	assert.False(t, isContextCancellationError(err))
+
+	err2 := errors.New("connection refused")
+	assert.False(t, isContextCancellationError(err2))
+}
+
+func TestSplitErrorsBySupport_SeparatesAndSorts(t *testing.T) {
+	unsupported, regular := splitErrorsBySupport(map[string]error{
+		"runs":     errors.New("read tcp timeout"),
+		"datasets": errors.New("API returned 404 File Not Found: Unknown method 'get_datasets'"),
+		"groups":   errors.New("API returned 404 File Not Found: Unknown method 'get_groups'"),
+		"cases":    errors.New("upstream 503"),
+	})
+
+	assert.Equal(t, []string{"datasets", "groups"}, unsupported)
+	assert.Equal(t, []string{"cases", "runs"}, regular)
+}
+
+func TestFillInterruptedResults_FillsAllMissingAndPreservesExisting(t *testing.T) {
+	res := &allResult{
+		Cases: &CompareResult{Status: CompareStatusComplete, Resource: "cases"},
+	}
+
+	fillInterruptedResults(res, 10, 20)
+
+	assert.Equal(t, CompareStatusComplete, res.Cases.Status)
+	require.NotNil(t, res.Suites)
+	require.NotNil(t, res.Sections)
+	require.NotNil(t, res.SharedSteps)
+	require.NotNil(t, res.Runs)
+	require.NotNil(t, res.Plans)
+	require.NotNil(t, res.Milestones)
+	require.NotNil(t, res.Datasets)
+	require.NotNil(t, res.Groups)
+	require.NotNil(t, res.Labels)
+	require.NotNil(t, res.Templates)
+	require.NotNil(t, res.Configurations)
+	assert.Equal(t, CompareStatusInterrupted, res.Suites.Status)
+	assert.Equal(t, int64(10), res.Suites.Project1ID)
+	assert.Equal(t, int64(20), res.Suites.Project2ID)
+}
+
+

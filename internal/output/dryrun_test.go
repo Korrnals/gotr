@@ -36,6 +36,27 @@ func TestDryRunPrinter_PrintBatch(t *testing.T) {
 	})
 }
 
+func TestDryRunPrinter_PrintOperation(t *testing.T) {
+	p := NewDryRunPrinter("test-cmd")
+	withDevNull(func() {
+		// nil body path
+		p.PrintOperation("create", "POST", "/api/v2/add_case/1", nil)
+
+		// marshal success path
+		p.PrintOperation("update", "POST", "/api/v2/update_case/1", map[string]any{"title": "Case"})
+
+		// marshal error path
+		p.PrintOperation("bad", "POST", "/api/v2/add_case/1", map[string]any{"fn": func() {}})
+	})
+}
+
+func TestDryRunPrinter_PrintSimple(t *testing.T) {
+	p := NewDryRunPrinter("test-cmd")
+	withDevNull(func() {
+		p.PrintSimple("delete", "delete run 10")
+	})
+}
+
 func TestDryRunPrinter_FormatBodyForDisplay(t *testing.T) {
 	// nil body
 	got := FormatBodyForDisplay(nil)

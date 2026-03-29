@@ -99,3 +99,5 @@ func TestResolveCompareCasesRuntimeConfig_InvalidDurations(t *testing.T) {
 	_, err = resolveCompareCasesRuntimeConfig(nil, "https://team.testrail.io")
 	assert.Error(t, err)
 }
+
+

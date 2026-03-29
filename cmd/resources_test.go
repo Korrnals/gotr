@@ -27,6 +27,9 @@ func TestExtractAllEndpointName(t *testing.T) {
 func TestExtractGetEndpointName(t *testing.T) {
 	assert.Equal(t, "get_projects", extractGetEndpointName("index.php?/api/v2/get_projects"))
 	assert.Equal(t, "get_cases", extractGetEndpointName("index.php?/api/v2/get_cases/{project_id}&suite_id=1"))
+	assert.Equal(t, "get_cases", extractGetEndpointName("index.php?/api/v2/get_cases&suite_id=1"))
+	assert.Equal(t, "get_cases", extractGetEndpointName("index.php?/api/v2/get_cases/{project_id}"))
+	assert.Equal(t, "", extractGetEndpointName("index.php?/api/v2/get_"))
 	assert.Equal(t, "", extractGetEndpointName("index.php?/api/v2/add_case/{section_id}"))
 }
 
@@ -109,7 +112,17 @@ func TestBuildRequestParams_AppendIDAndExtraFlags(t *testing.T) {
 }
 
 func TestGetResourcePaths(t *testing.T) {
-	assert.NotNil(t, getResourcePaths("projects"))
+	resources := []string{
+		"all", "cases", "casefields", "casetypes", "configurations", "projects", "priorities",
+		"runs", "tests", "suites", "sections", "statuses", "milestones", "plans", "results",
+		"resultfields", "reports", "attachments", "users", "roles", "templates", "groups",
+		"sharedsteps", "variables", "labels", "datasets", "bdds",
+	}
+
+	for _, resource := range resources {
+		assert.NotNil(t, getResourcePaths(resource), resource)
+	}
+
 	assert.Nil(t, getResourcePaths("unknown-resource"))
 }
 
@@ -177,4 +190,26 @@ func TestGetResourceEndpoints_DefaultMode(t *testing.T) {
 	endpoints, callErr := getResourceEndpoints("projects", "table")
 	assert.NoError(t, callErr)
 	assert.Nil(t, endpoints)
+}
+
+func TestGetResourceEndpoints_DefaultMode_WithParams(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	defer func() {
+		os.Stdout = oldStdout
+		_ = r.Close()
+	}()
+
+	endpoints, callErr := getResourceEndpoints("cases", "table")
+	assert.NoError(t, callErr)
+	assert.Nil(t, endpoints)
+
+	require.NoError(t, w.Close())
+
+	var buf bytes.Buffer
+	_, copyErr := io.Copy(&buf, r)
+	require.NoError(t, copyErr)
+	assert.Contains(t, buf.String(), "Parameters:")
 }

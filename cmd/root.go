@@ -21,6 +21,7 @@ var (
 	Version = "3.0.0-dev" // значение по умолчанию для локальной разработки
 	Commit  = "unknown"
 	Date    = "unknown"
+	userHomeDir = os.UserHomeDir
 )
 
 // rootCmd — главная команда: gotr
@@ -142,7 +143,7 @@ func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
 
 func initConfig() {
 	// 1. Добавляем стандартные пути поиска
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		// Не паникуем — просто продолжаем без home-пути
 		ui.Warningf(os.Stderr, "cannot get user home directory: %v", err)

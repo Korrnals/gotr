@@ -4,6 +4,7 @@ package compare
 import (
 	"bytes"
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -188,3 +190,193 @@ func TestCollectCompareCasesFlagOverrides(t *testing.T) {
 	overrides := collectCompareCasesFlagOverrides(cmd)
 	assert.Equal(t, 100, overrides["rate_limit"])
 }
+
+// ==================== Comprehensive tests for compareCasesInternal ====================
+
+func TestCompareCasesInternal_ErrorInFetchCases(t *testing.T) {
+	mockClient := &client.MockClient{
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return nil, errors.New("API error: connection refused")
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("field", "title", "")
+
+	_, _, err := compareCasesInternal(context.Background(), cmd, mockClient, 30, 31, "title", nil)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "connection refused")
+}
+
+func TestCompareCasesInternal_EmptyCasesInBothProjects(t *testing.T) {
+	mockClient := &client.MockClient{
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("field", "title", "")
+
+	result, _, err := compareCasesInternal(context.Background(), cmd, mockClient, 30, 31, "title", nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, result.OnlyInFirst, 0)
+	assert.Len(t, result.OnlyInSecond, 0)
+	assert.Len(t, result.Common, 0)
+}
+
+func TestCompareCasesInternal_AllCasesInFirstProject(t *testing.T) {
+	mockClient := &client.MockClient{
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			if projectID == 30 {
+				return data.GetCasesResponse{
+					{ID: 1, Title: "Case A"},
+					{ID: 2, Title: "Case B"},
+				}, nil
+			}
+			return data.GetCasesResponse{}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("field", "title", "")
+
+	result, _, err := compareCasesInternal(context.Background(), cmd, mockClient, 30, 31, "title", nil)
+	assert.NoError(t, err)
+	assert.Len(t, result.OnlyInFirst, 2)
+	assert.Len(t, result.OnlyInSecond, 0)
+}
+
+func TestCompareCasesInternal_ContextCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // Immediately cancel
+
+	mockClient := &client.MockClient{
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			return data.GetCasesResponse{}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().String("field", "title", "")
+
+	_, _, err := compareCasesInternal(ctx, cmd, mockClient, 30, 31, "title", nil)
+	assert.Error(t, err)
+}
+
+// ==================== Comprehensive tests for saveFailedPagesReport ====================
+
+func TestSaveFailedPagesReport_WithMultiplePages(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "failed_report.json")
+
+	pages := []concurrency.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"},
+		{ProjectID: 30, SuiteID: 1001, Offset: 250, Limit: 250, PageNum: 2, Error: "503"},
+		{ProjectID: 31, SuiteID: 2002, Offset: 500, Limit: 250, PageNum: 3, Error: "connection refused"},
+	}
+
+	savedPath, err := saveFailedPagesReport(pages, path)
+	assert.NoError(t, err)
+	assert.Equal(t, path, savedPath)
+
+	content, readErr := os.ReadFile(path)
+	assert.NoError(t, readErr)
+	assert.Contains(t, string(content), "failed_pages")
+	assert.Contains(t, string(content), "timeout")
+	assert.Contains(t, string(content), "503")
+}
+
+func TestCompareCasesInternal_GetSuitesParallelPartialErrorStillCompares(t *testing.T) {
+	mockClient := &client.MockClient{
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			if projectID == 30 {
+				return data.GetSuitesResponse{{ID: 1001, Name: "Suite A"}}, nil
+			}
+			return nil, errors.New("partial suites load")
+		},
+		GetCasesParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, cfg *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
+			require.NotNil(t, cfg)
+			return data.GetCasesResponse{{ID: 1, Title: "Shared", SectionID: 11}}, &concurrency.ExecutionResult{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{{ID: 2, Title: "Shared", SectionID: 22}}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", true, "")
+
+	result, stats, err := compareCasesInternal(context.Background(), cmd, mockClient, 30, 31, "title")
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, 1, len(result.Common))
+	assert.Equal(t, CompareStatusComplete, result.Status)
+	assert.False(t, stats.Interrupted)
+}
+
+func TestCompareCasesInternal_InvalidTimeoutConfig_ReturnsError(t *testing.T) {
+	viper.Set("compare.cases.timeout", "bad-timeout")
+	t.Cleanup(func() {
+		viper.Set("compare.cases.timeout", "30m")
+	})
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", true, "")
+
+	preloaded := map[int64]data.GetSuitesResponse{
+		30: {},
+		31: {},
+	}
+
+	_, _, err := compareCasesInternal(context.Background(), cmd, &client.MockClient{}, 30, 31, "title", preloaded)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid compare.cases.timeout")
+}
+
+func TestCompareCasesInternal_FailedPagesMarkedAsPartial_WhenAutoRetryDisabled(t *testing.T) {
+	viper.Set("compare.cases.auto_retry_failed_pages", false)
+	t.Cleanup(func() {
+		viper.Set("compare.cases.auto_retry_failed_pages", true)
+	})
+
+	mockClient := &client.MockClient{
+		GetCasesParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, cfg *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
+			return data.GetCasesResponse{{ID: projectID, Title: "Case", SectionID: 10}}, &concurrency.ExecutionResult{
+				FailedPages: []concurrency.FailedPage{{
+					ProjectID: projectID,
+					SuiteID:   suiteIDs[0],
+					Offset:    0,
+					Limit:     250,
+					PageNum:   1,
+					Error:     "timeout",
+				}},
+				Stats: concurrency.AggregationStats{
+					TotalPages:  1,
+					FailedPages: 1,
+				},
+			}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", true, "")
+
+	preloaded := map[int64]data.GetSuitesResponse{
+		30: {{ID: 1001, Name: "Suite A"}},
+		31: {{ID: 2001, Name: "Suite B"}},
+	}
+
+	result, stats, err := compareCasesInternal(context.Background(), cmd, mockClient, 30, 31, "title", preloaded)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, CompareStatusPartial, result.Status)
+	assert.Equal(t, 2, stats.FailedPagesBefore)
+	assert.Equal(t, 2, stats.FailedPagesAfter)
+	assert.False(t, stats.RetryAttempted)
+}
+

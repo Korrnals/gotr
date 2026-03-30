@@ -515,3 +515,117 @@ func TestSelectSharedStepID_EmptyList_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "no shared steps found")
 	assert.Equal(t, int64(0), id)
 }
+
+func TestResolveDeleteID_UnsupportedEndpoint(t *testing.T) {
+	id, err := resolveDeleteID(context.Background(), interactive.NewMockPrompter(), &client.MockClient{}, "weird")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported endpoint")
+	assert.Zero(t, id)
+}
+
+func TestResolveDeleteID_ErrorBranches(t *testing.T) {
+	t.Run("suite get suites error", func(t *testing.T) {
+		mock := &client.MockClient{
+			GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+				return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+			},
+			GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+				return nil, assert.AnError
+			},
+		}
+
+		p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+		id, err := resolveDeleteID(context.Background(), p, mock, "suite")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get suites for project 1")
+		assert.Zero(t, id)
+	})
+
+	t.Run("section get sections error", func(t *testing.T) {
+		mock := &client.MockClient{
+			GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+				return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+			},
+			GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+				return data.GetSuitesResponse{{ID: 10, Name: "S1"}}, nil
+			},
+			GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+				return nil, assert.AnError
+			},
+		}
+
+		p := interactive.NewMockPrompter().
+			WithSelectResponses(interactive.SelectResponse{Index: 0}).
+			WithSelectResponses(interactive.SelectResponse{Index: 0})
+		id, err := resolveDeleteID(context.Background(), p, mock, "section")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get sections for project 1 suite 10")
+		assert.Zero(t, id)
+	})
+
+	t.Run("case get cases error", func(t *testing.T) {
+		mock := &client.MockClient{
+			GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+				return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+			},
+			GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+				return data.GetSuitesResponse{{ID: 10, Name: "S1"}}, nil
+			},
+			GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+				return nil, assert.AnError
+			},
+		}
+
+		p := interactive.NewMockPrompter().
+			WithSelectResponses(interactive.SelectResponse{Index: 0}).
+			WithSelectResponses(interactive.SelectResponse{Index: 0})
+		id, err := resolveDeleteID(context.Background(), p, mock, "case")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get cases for project 1 suite 10")
+		assert.Zero(t, id)
+	})
+
+	t.Run("run get runs error", func(t *testing.T) {
+		mock := &client.MockClient{
+			GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+				return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+			},
+			GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+				return nil, assert.AnError
+			},
+		}
+
+		p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+		id, err := resolveDeleteID(context.Background(), p, mock, "run")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get runs for project 1")
+		assert.Zero(t, id)
+	})
+
+	t.Run("shared-step get steps error", func(t *testing.T) {
+		mock := &client.MockClient{
+			GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+				return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+			},
+			GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+				return nil, assert.AnError
+			},
+		}
+
+		p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+		id, err := resolveDeleteID(context.Background(), p, mock, "shared-step")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to get shared steps for project 1")
+		assert.Zero(t, id)
+	})
+}
+
+func TestSelectSharedStepID_SelectError(t *testing.T) {
+	p := interactive.NewNonInteractivePrompter()
+	steps := data.GetSharedStepsResponse{{ID: 101, Title: "Step X"}}
+
+	id, err := selectSharedStepID(p, steps)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select shared step")
+	assert.Zero(t, id)
+}

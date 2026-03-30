@@ -11,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -147,6 +148,30 @@ func TestAddCmd_NoArgs_NonInteractive(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestAddCmd_NoArgs_NoPrompter(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newAddCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--status-id", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "test_id required in non-interactive mode")
+}
+
+func TestAddCmd_NilClient(t *testing.T) {
+	nilClientFunc := func(*cobra.Command) client.ClientInterface {
+		return nil
+	}
+
+	cmd := newAddCmd(nilClientFunc)
+	cmd.SetArgs([]string{"12345", "--status-id", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 // ==================== Тесты для result add-case ====================

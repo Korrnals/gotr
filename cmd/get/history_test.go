@@ -105,6 +105,141 @@ func TestCaseHistoryCmd_NoArgs_Interactive(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestCaseHistoryCmd_NoArgs_Interactive_GetSuitesError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return nil, fmt.Errorf("failed to get suites")
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get suites")
+}
+
+func TestCaseHistoryCmd_NoArgs_Interactive_NoSuites(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no suites found")
+}
+
+func TestCaseHistoryCmd_NoArgs_Interactive_SelectSuiteError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}, {ID: 20070, Name: "Other Suite"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select")
+}
+
+func TestCaseHistoryCmd_NoArgs_Interactive_GetCasesError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return nil, fmt.Errorf("failed to get cases")
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get cases")
+}
+
+func TestCaseHistoryCmd_NoArgs_Interactive_NoCases(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no cases found")
+}
+
+func TestCaseHistoryCmd_NoArgs_Interactive_SelectCaseError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{{ID: 12345, Title: "Case 12345"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select case")
+}
+
 func TestCaseHistoryCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	mock := &client.MockClient{
 		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
@@ -220,6 +355,66 @@ func TestSharedStepHistoryCmd_NoArgs_Interactive(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestSharedStepHistoryCmd_NoArgs_Interactive_GetStepsError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return nil, fmt.Errorf("failed to get shared steps")
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSharedStepHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get shared steps")
+}
+
+func TestSharedStepHistoryCmd_NoArgs_Interactive_NoSteps(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return data.GetSharedStepsResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSharedStepHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no shared steps found")
+}
+
+func TestSharedStepHistoryCmd_NoArgs_Interactive_SelectStepError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return data.GetSharedStepsResponse{{ID: 56789, Title: "Shared Step"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSharedStepHistoryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select shared step")
+}
+
 func TestSharedStepHistoryCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	mock := &client.MockClient{
 		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
@@ -276,4 +471,9 @@ func TestSharedStepHistoryCmd_NilClient(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestHistoryCommands_GlobalRegistrationVarsInitialized(t *testing.T) {
+	assert.NotNil(t, caseHistoryCmd)
+	assert.NotNil(t, sharedStepHistoryCmd)
 }

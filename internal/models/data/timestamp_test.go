@@ -62,6 +62,37 @@ func TestTimestamp_UnmarshalJSON_date(t *testing.T) {
 	assert.True(t, ts.IsValid())
 }
 
+func TestTimestamp_UnmarshalJSON_float(t *testing.T) {
+	data := []byte("1705315200.9")
+	var ts Timestamp
+	require.NoError(t, json.Unmarshal(data, &ts))
+	assert.Equal(t, int64(1705315200), ts.Unix())
+}
+
+func TestTimestamp_UnmarshalJSON_emptyString_ReturnsError(t *testing.T) {
+	data := []byte(`""`)
+	var ts Timestamp
+	err := json.Unmarshal(data, &ts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot parse timestamp")
+}
+
+func TestTimestamp_UnmarshalJSON_invalidDateString_ReturnsError(t *testing.T) {
+	data := []byte(`"2024-13-40"`)
+	var ts Timestamp
+	err := json.Unmarshal(data, &ts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot parse timestamp")
+}
+
+func TestTimestamp_UnmarshalJSON_invalidType_ReturnsError(t *testing.T) {
+	data := []byte(`{"value":1}`)
+	var ts Timestamp
+	err := json.Unmarshal(data, &ts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot unmarshal timestamp from")
+}
+
 func TestTimestamp_MarshalJSON_zero(t *testing.T) {
 	var ts Timestamp
 	out, err := json.Marshal(ts)

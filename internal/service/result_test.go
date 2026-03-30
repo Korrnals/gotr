@@ -182,6 +182,12 @@ func TestResultService_AddMethods(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("AddResultsForCases invalid run id", func(t *testing.T) {
+		_, err := svc.AddResultsForCases(ctx, 0, &data.AddResultsForCasesRequest{Results: []data.ResultForCaseEntry{{CaseID: 6, StatusID: 1}}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "run_id")
+	})
+
 	t.Run("AddResultsForCases client error", func(t *testing.T) {
 		mock.AddResultsForCasesFunc = func(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 			return nil, errors.New("bulk cases add failed")

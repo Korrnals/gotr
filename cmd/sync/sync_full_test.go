@@ -153,3 +153,58 @@ func TestSyncFull_NoFlags_NonInteractive_Error(t *testing.T) {
 	assert.False(t, addShared, "AddSharedStep не должен вызываться в non-interactive")
 	assert.False(t, addCase, "AddCase не должен вызываться в non-interactive")
 }
+
+func TestSyncFull_NoFlags_InteractiveSuccess(t *testing.T) {
+	addShared := false
+	addCase := false
+
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "P1"}, {ID: 2, Name: "P2"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 10, Name: "S10"}, {ID: 20, Name: "S20"}}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
+				return data.GetSharedStepsResponse{{ID: 1, Title: "A"}}, nil
+			}
+			return data.GetSharedStepsResponse{}, nil
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			addShared = true
+			return &data.SharedStep{ID: 100}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			if projectID == 1 && suiteID == 10 {
+				return data.GetCasesResponse{{ID: 1, Title: "Case1"}}, nil
+			}
+			return data.GetCasesResponse{}, nil
+		},
+		AddCaseFunc: func(ctx context.Context, suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+			addCase = true
+			return &data.Case{ID: 100}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetFullFlags()
+	cmd := fullCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("approve", "true")
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 1}).
+		WithSelectResponses(interactive.SelectResponse{Index: 1})
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.NoError(t, err)
+	assert.True(t, addShared, "AddSharedStep должен вызываться после интерактивного выбора")
+	assert.True(t, addCase, "AddCase должен вызываться после интерактивного выбора")
+}

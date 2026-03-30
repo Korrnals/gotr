@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -168,6 +169,93 @@ func TestCasesCmd_WithField(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestCasesCmd_NoClient(t *testing.T) {
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	})
+
+	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestCasesCmd_GetProjectNamesError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, errors.New("project lookup failed")
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project lookup failed")
+}
+
+func TestCasesCmd_CompareError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "P"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{{ID: 10, Name: "S"}}, nil
+		},
+		GetCasesParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, cfg *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
+			return nil, nil, context.Canceled
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
+	cctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	cmd.SetContext(cctx)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	if assert.Error(t, err) {
+		assert.Contains(t, err.Error(), "context canceled")
+	}
+}
+
+func TestCasesCmd_PrintCompareResultError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "P"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return []data.Case{}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=xml", "--save-to=out.xml", "--quiet"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported format")
+}
+
 // ==================== Тесты для plansCmd ====================
 
 func TestPlansCmd_Success(t *testing.T) {
@@ -238,6 +326,89 @@ func TestSectionsCmd_Success(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
+}
+
+func TestSectionsCmd_NoClient(t *testing.T) {
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	})
+
+	cmd := newSectionsCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestSectionsCmd_GetProjectNamesError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, errors.New("project lookup failed")
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newSectionsCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project lookup failed")
+}
+
+func TestSectionsCmd_CompareError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "P"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{{ID: 10, Name: "S"}}, nil
+		},
+		GetSectionsParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, cfg *concurrency.ControllerConfig) (data.GetSectionsResponse, error) {
+			return nil, errors.New("sections fetch failed")
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newSectionsCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to load project")
+}
+
+func TestSectionsCmd_PrintCompareResultError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "P"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			return []data.Section{}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newSectionsCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=xml", "--save-to=out.xml", "--quiet"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported format")
 }
 
 // ==================== Тесты для milestonesCmd ====================
@@ -589,4 +760,127 @@ func captureStdout(buf *bytes.Buffer) *bytes.Buffer {
 
 func restoreStdout(old *bytes.Buffer) {
 	_ = old
+}
+
+func TestCasesCmd_InvalidPid_FactoryBranch(t *testing.T) {
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return &client.MockClient{}
+	})
+
+	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=invalid", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+func TestCasesCmd_QuietBranch(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return []data.Case{}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newCasesCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--quiet"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestSectionsCmd_InvalidPid_FactoryBranch(t *testing.T) {
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return &client.MockClient{}
+	})
+
+	cmd := newSectionsCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=invalid"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+func TestSectionsCmd_QuietBranch(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			return []data.Section{}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newSectionsCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--quiet"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestSimpleCompareCmd_NoClient(t *testing.T) {
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	})
+
+	cmd := newSimpleCompareCmd(
+		"dummy",
+		"dummy",
+		"dummy",
+		"dummy",
+		func(ctx context.Context, cli client.ClientInterface, pid int64) ([]ItemInfo, error) {
+			return []ItemInfo{}, nil
+		},
+	)
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestSimpleCompareCmd_FetchErrorWrapped(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newSimpleCompareCmd(
+		"broken",
+		"broken",
+		"broken",
+		"broken",
+		func(ctx context.Context, cli client.ClientInterface, pid int64) ([]ItemInfo, error) {
+			return nil, errors.New("fetch failed")
+		},
+	)
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "comparison error broken")
 }

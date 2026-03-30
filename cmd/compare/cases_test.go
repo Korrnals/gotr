@@ -92,6 +92,49 @@ func TestSaveFailedPagesReport(t *testing.T) {
 	assert.Contains(t, string(data), "failed_pages")
 }
 
+func TestSaveFailedPagesReport_EmptyInput(t *testing.T) {
+	savedPath, err := saveFailedPagesReport(nil, "")
+	assert.NoError(t, err)
+	assert.Equal(t, "", savedPath)
+}
+
+func TestSaveFailedPagesReport_DefaultPathWhenRequestedEmpty(t *testing.T) {
+	pages := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
+
+	savedPath, err := saveFailedPagesReport(pages, "   ")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, savedPath)
+
+	data, readErr := os.ReadFile(savedPath)
+	assert.NoError(t, readErr)
+	assert.Contains(t, string(data), "failed_pages")
+	assert.Contains(t, string(data), "generated_at")
+}
+
+func TestSaveFailedPagesReport_CustomPathDirCreateError(t *testing.T) {
+	pages := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
+
+	base := filepath.Join(t.TempDir(), "not-a-dir")
+	require.NoError(t, os.WriteFile(base, []byte("file"), 0644))
+	path := filepath.Join(base, "failed.json")
+
+	_, err := saveFailedPagesReport(pages, path)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "creating directory")
+}
+
+func TestSaveFailedPagesReport_DefaultDirCreateError(t *testing.T) {
+	pages := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
+
+	fakeHomeFile := filepath.Join(t.TempDir(), "home-as-file")
+	require.NoError(t, os.WriteFile(fakeHomeFile, []byte("not-a-dir"), 0644))
+	t.Setenv("HOME", fakeHomeFile)
+
+	_, err := saveFailedPagesReport(pages, "")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "creating reports directory")
+}
+
 func TestFetchCasesForProject_NoSuites(t *testing.T) {
 	mock := &client.MockClient{
 		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
@@ -378,5 +421,53 @@ func TestCompareCasesInternal_FailedPagesMarkedAsPartial_WhenAutoRetryDisabled(t
 	assert.Equal(t, 2, stats.FailedPagesBefore)
 	assert.Equal(t, 2, stats.FailedPagesAfter)
 	assert.False(t, stats.RetryAttempted)
+}
+
+func TestCompareCasesInternal_Project1LoadError(t *testing.T) {
+	mockClient := &client.MockClient{
+		GetCasesParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, cfg *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
+			if projectID == 30 {
+				return nil, nil, errors.New("project1 fetch failed")
+			}
+			return data.GetCasesResponse{{ID: 1, Title: "Shared", SectionID: 11}}, &concurrency.ExecutionResult{}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", true, "")
+
+	preloaded := map[int64]data.GetSuitesResponse{
+		30: {{ID: 1001, Name: "Suite A"}},
+		31: {{ID: 2001, Name: "Suite B"}},
+	}
+
+	result, _, err := compareCasesInternal(context.Background(), cmd, mockClient, 30, 31, "title", preloaded)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "failed to load project 30")
+}
+
+func TestCompareCasesInternal_Project2LoadError(t *testing.T) {
+	mockClient := &client.MockClient{
+		GetCasesParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, cfg *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
+			if projectID == 31 {
+				return nil, nil, errors.New("project2 fetch failed")
+			}
+			return data.GetCasesResponse{{ID: 1, Title: "Shared", SectionID: 11}}, &concurrency.ExecutionResult{}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	cmd.Flags().Bool("quiet", true, "")
+
+	preloaded := map[int64]data.GetSuitesResponse{
+		30: {{ID: 1001, Name: "Suite A"}},
+		31: {{ID: 2001, Name: "Suite B"}},
+	}
+
+	result, _, err := compareCasesInternal(context.Background(), cmd, mockClient, 30, 31, "title", preloaded)
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "failed to load project 31")
 }
 

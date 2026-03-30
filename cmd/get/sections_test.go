@@ -268,3 +268,45 @@ func TestSectionsListCmd_APIError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
 }
+
+func TestSectionGetCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "section_id required")
+}
+
+func TestSectionGetCmd_NoArgs_Interactive_GetSectionsError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return nil, fmt.Errorf("sections unavailable")
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get sections list")
+}
+
+func TestSelectSectionID_SelectError(t *testing.T) {
+	sections := data.GetSectionsResponse{{ID: 10, Name: "S-10"}}
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+
+	sectionID, err := selectSectionID(ctx, sections)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), sectionID)
+	assert.Contains(t, err.Error(), "failed to select section")
+}

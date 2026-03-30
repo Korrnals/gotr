@@ -6,6 +6,36 @@ import (
 	"testing"
 )
 
+func TestBaseDirAndDerivedPaths_HomeUnset(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	if _, err := BaseDir(); err == nil {
+		t.Skip("os.UserHomeDir resolved home without HOME; skipping error-branch assertions")
+	}
+
+	checks := []struct {
+		name string
+		fn   func() (string, error)
+	}{
+		{name: "ConfigDirPath", fn: ConfigDirPath},
+		{name: "LogsDirPath", fn: LogsDirPath},
+		{name: "SelftestDirPath", fn: SelftestDirPath},
+		{name: "CacheDirPath", fn: CacheDirPath},
+		{name: "ExportsDirPath", fn: ExportsDirPath},
+		{name: "TempDirPath", fn: TempDirPath},
+		{name: "ConfigFile", fn: ConfigFile},
+		{name: "EnsureLogsDirPath", fn: EnsureLogsDirPath},
+	}
+
+	for _, tc := range checks {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := tc.fn(); err == nil {
+				t.Fatalf("expected error for %s when home is unresolved", tc.name)
+			}
+		})
+	}
+}
+
 func TestBaseAndDerivedPaths(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -89,6 +119,37 @@ func TestEnsureLogsDirPath(t *testing.T) {
 	}
 }
 
+func TestEnsureLogsDirPath_AlreadyExists(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	first, err := EnsureLogsDirPath()
+	if err != nil {
+		t.Fatalf("first EnsureLogsDirPath error: %v", err)
+	}
+	second, err := EnsureLogsDirPath()
+	if err != nil {
+		t.Fatalf("second EnsureLogsDirPath error: %v", err)
+	}
+	if first != second {
+		t.Fatalf("paths differ: first=%q second=%q", first, second)
+	}
+}
+
+func TestEnsureLogsDirPath_MkdirError(t *testing.T) {
+	parent := t.TempDir()
+	homeFile := filepath.Join(parent, "not-a-dir")
+	if err := os.WriteFile(homeFile, []byte("x"), 0600); err != nil {
+		t.Fatalf("write home file: %v", err)
+	}
+	t.Setenv("HOME", homeFile)
+
+	_, err := EnsureLogsDirPath()
+	if err == nil {
+		t.Fatal("expected error when home path is a file")
+	}
+}
+
 func TestEnsureAllDirsAndEnsureDir(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
@@ -122,5 +183,40 @@ func TestEnsureAllDirsAndEnsureDir(t *testing.T) {
 	}
 	if st, err := os.Stat(custom); err != nil || !st.IsDir() {
 		t.Fatalf("expected custom dir %q to exist", custom)
+	}
+}
+
+func TestEnsureAllDirs_MkdirError(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	baseFile := filepath.Join(home, DirName)
+	if err := os.WriteFile(baseFile, []byte("x"), 0600); err != nil {
+		t.Fatalf("write base file: %v", err)
+	}
+
+	if err := EnsureAllDirs(); err == nil {
+		t.Fatal("expected EnsureAllDirs to fail when base path is a file")
+	}
+}
+
+func TestEnsureDir_ErrorPaths(t *testing.T) {
+	errExpected := os.ErrInvalid
+	err := EnsureDir(func() (string, error) { return "", errExpected })
+	if err == nil {
+		t.Fatal("expected EnsureDir to return dirFunc error")
+	}
+
+	home := t.TempDir()
+	filePath := filepath.Join(home, "not-a-dir")
+	if err := os.WriteFile(filePath, []byte("x"), 0600); err != nil {
+		t.Fatalf("write file: %v", err)
+	}
+
+	err = EnsureDir(func() (string, error) {
+		return filepath.Join(filePath, "child"), nil
+	})
+	if err == nil {
+		t.Fatal("expected EnsureDir to fail when parent is a file")
 	}
 }

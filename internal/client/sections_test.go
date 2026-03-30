@@ -447,4 +447,17 @@ func TestSections_ErrorBranches(t *testing.T) {
 		assert.Error(t, err)
 		assert.NotEmpty(t, sections)
 	})
+
+	t.Run("GetSectionsParallelCtx all suites failed returns nil sections", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("boom"))
+		})
+		defer server.Close()
+
+		cfg := &concurrency.ControllerConfig{MaxConcurrentSuites: 2, Timeout: time.Second}
+		sections, err := client.GetSectionsParallelCtx(context.Background(), 30, []int64{100, 200}, cfg)
+		assert.Error(t, err)
+		assert.Nil(t, sections)
+	})
 }

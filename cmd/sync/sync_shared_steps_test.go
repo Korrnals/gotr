@@ -425,3 +425,50 @@ func TestSyncSharedSteps_SavePromptsErrorInNonInteractive_Ignored(t *testing.T) 
 	assert.NoError(t, globErr)
 	assert.Empty(t, files, "mapping файл не должен сохраняться при ошибке confirm")
 }
+
+func TestSyncSharedSteps_NoFlags_InteractiveSuccess(t *testing.T) {
+	addCalled := false
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "P30"}, {ID: 31, Name: "P31"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 10, Name: "S10"}}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 30 {
+				return data.GetSharedStepsResponse{{ID: 1, Title: "Step A"}}, nil
+			}
+			return data.GetSharedStepsResponse{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, nil
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			addCalled = true
+			return &data.SharedStep{ID: 200, Title: r.Title}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetSharedStepsFlags()
+	cmd := sharedStepsCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("approve", "true")
+	cmd.Flags().Set("save-mapping", "true")
+	cmd.Flags().Set("save-filtered", "true")
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithConfirmResponses(true).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 1})
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.NoError(t, err)
+	assert.True(t, addCalled, "AddSharedStep должен вызываться после интерактивного выбора")
+}

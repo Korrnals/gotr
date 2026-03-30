@@ -79,3 +79,36 @@ func TestHTTPClient_GetCasesForSuitesParallel(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, all, 3)
 }
+
+func TestHTTPClient_GetCasesForSuitesParallel_ErrorBranches(t *testing.T) {
+	t.Run("returns nil when all suites failed", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("boom"))
+		})
+		defer server.Close()
+
+		all, err := client.GetCasesForSuitesParallel(context.Background(), 30, []int64{1}, 1, nil)
+		assert.Error(t, err)
+		assert.Nil(t, all)
+	})
+
+	t.Run("returns partial flattened cases with error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			suiteID := r.URL.Query().Get("suite_id")
+			if suiteID == "2" {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte("suite failed"))
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(data.GetCasesResponse{{ID: 101, SuiteID: 1}})
+		})
+		defer server.Close()
+
+		all, err := client.GetCasesForSuitesParallel(context.Background(), 30, []int64{1, 2}, 2, nil)
+		assert.Error(t, err)
+		assert.Len(t, all, 1)
+		assert.Equal(t, int64(101), all[0].ID)
+	})
+}

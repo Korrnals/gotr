@@ -289,6 +289,59 @@ func TestCompareSectionsInternal_UsesHeavyRuntimeConfig(t *testing.T) {
 	assert.Equal(t, 7*time.Minute, captured[0].Timeout)
 }
 
+func TestCompareSectionsInternalWithSuites_Project1ContextCanceled(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	preloaded := map[int64]data.GetSuitesResponse{
+		1: {{ID: 101, Name: "Suite A"}},
+		2: {{ID: 201, Name: "Suite B"}},
+	}
+
+	mock := &client.MockClient{
+		GetSectionsParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error) {
+			if projectID == 1 {
+				return nil, context.Canceled
+			}
+			return data.GetSectionsResponse{{ID: 2, SuiteID: 201, Name: "B"}}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	result, err := compareSectionsInternalWithSuites(ctx, cmd, mock, 1, 2, true, preloaded)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	assert.Nil(t, result)
+}
+
+func TestCompareSectionsInternalWithSuites_Project2ErrorWrapped(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	preloaded := map[int64]data.GetSuitesResponse{
+		1: {{ID: 101, Name: "Suite A"}},
+		2: {{ID: 201, Name: "Suite B"}},
+	}
+
+	mock := &client.MockClient{
+		GetSectionsParallelCtxFunc: func(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error) {
+			if projectID == 2 {
+				return nil, errors.New("project2 sections failed")
+			}
+			return data.GetSectionsResponse{{ID: 1, SuiteID: 101, Name: "A"}}, nil
+		},
+	}
+
+	cmd := &cobra.Command{}
+	result, err := compareSectionsInternalWithSuites(context.Background(), cmd, mock, 1, 2, true, preloaded)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "failed to load project 2 sections")
+}
+
 // ==================== Тесты для compareSimpleInternal (plans) ====================
 
 func TestComparePlansInternal_Success(t *testing.T) {

@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -233,4 +234,34 @@ func TestSaveResponseToFile(t *testing.T) {
 			t.Fatalf("expected default file to be written: %v", err)
 		}
 	})
+}
+
+type requestReadErrorCloser struct{}
+
+func (requestReadErrorCloser) Read([]byte) (int, error) { return 0, errors.New("read boom") }
+func (requestReadErrorCloser) Close() error              { return nil }
+
+func TestReadResponse_ReadError(t *testing.T) {
+	client := &HTTPClient{}
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Status:     "200 OK",
+		Body:       requestReadErrorCloser{},
+		Header:     http.Header{},
+	}
+
+	_, err := client.ReadResponse(context.Background(), resp, time.Millisecond, "json")
+	if err == nil {
+		t.Fatal("expected ReadResponse error")
+	}
+}
+
+func TestSaveResponseToFile_WriteError(t *testing.T) {
+	client := &HTTPClient{}
+	data := ResponseData{Body: map[string]any{"k": "v"}}
+
+	err := client.SaveResponseToFile(context.Background(), data, t.TempDir(), "json")
+	if err == nil {
+		t.Fatal("expected SaveResponseToFile error")
+	}
 }

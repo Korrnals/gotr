@@ -99,6 +99,44 @@ func TestHTTPGetReports(t *testing.T) {
 	}
 }
 
+func TestHTTPGetReports_ErrorBranches(t *testing.T) {
+	t.Run("transport error", func(t *testing.T) {
+		client, _ := NewClient("http://127.0.0.1:1", "test", "test", false)
+		_, err := client.GetReports(context.Background(), 1)
+		if err == nil {
+			t.Fatalf("expected transport error")
+		}
+	})
+
+	t.Run("non-200", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"bad request"}`))
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+		_, err := client.GetReports(context.Background(), 1)
+		if err == nil {
+			t.Fatalf("expected error for non-200 response")
+		}
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{invalid`))
+		}))
+		defer server.Close()
+
+		client, _ := NewClient(server.URL, "test", "test", false)
+		_, err := client.GetReports(context.Background(), 1)
+		if err == nil {
+			t.Fatalf("expected decode error")
+		}
+	})
+}
+
 func TestHTTPRunReport(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

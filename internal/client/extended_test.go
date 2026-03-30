@@ -1501,3 +1501,51 @@ func TestExtended_BDD_ErrorCases(t *testing.T) {
 		t.Errorf("GetBDD returned wrong ID: %d", bdd.ID)
 	}
 }
+
+func TestExtended_DeleteMethods_RequestAndSuccessBranches(t *testing.T) {
+	t.Run("delete methods success", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case strings.Contains(r.URL.String(), "delete_group/17"):
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{}`))
+			case strings.Contains(r.URL.String(), "delete_dataset/18"):
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{}`))
+			case strings.Contains(r.URL.String(), "delete_variable/19"):
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{}`))
+			default:
+				t.Fatalf("unexpected URL: %s", r.URL.String())
+			}
+		})
+		defer s.Close()
+
+		ctx := context.Background()
+		if err := c.DeleteGroup(ctx, 17); err != nil {
+			t.Fatalf("DeleteGroup success branch failed: %v", err)
+		}
+		if err := c.DeleteDataset(ctx, 18); err != nil {
+			t.Fatalf("DeleteDataset success branch failed: %v", err)
+		}
+		if err := c.DeleteVariable(ctx, 19); err != nil {
+			t.Fatalf("DeleteVariable success branch failed: %v", err)
+		}
+	})
+
+	t.Run("delete methods request error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		s.Close()
+
+		ctx := context.Background()
+		if err := c.DeleteGroup(ctx, 17); err == nil {
+			t.Fatal("expected DeleteGroup request error")
+		}
+		if err := c.DeleteDataset(ctx, 18); err == nil {
+			t.Fatal("expected DeleteDataset request error")
+		}
+		if err := c.DeleteVariable(ctx, 19); err == nil {
+			t.Fatal("expected DeleteVariable request error")
+		}
+	})
+}

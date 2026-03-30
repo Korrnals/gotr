@@ -352,6 +352,28 @@ func TestEntryDeleteCmd_NoArgs_NonInteractive(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestEntryDeleteCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryDeleteCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "plan_id is required in non-interactive mode")
+}
+
+func TestEntryDeleteCmd_MissingEntryID_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryDeleteCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "entry_id is required in non-interactive mode")
+}
+
 func TestParseIntList_NegativeNumbers(t *testing.T) {
 	// Negative numbers should be filtered out
 	ids := parseIntList("1,-5,3")

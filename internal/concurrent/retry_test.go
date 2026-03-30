@@ -301,3 +301,36 @@ func TestCircuitBreaker_Execute_Nil(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, executed)
 }
+
+func TestCircuitBreaker_CanExecute_OpenWithoutTimeout(t *testing.T) {
+	cb := NewCircuitBreaker(1, time.Minute)
+
+	cb.mu.Lock()
+	cb.state = CircuitOpen
+	cb.lastFailure = time.Now()
+	cb.mu.Unlock()
+
+	assert.False(t, cb.canExecute())
+	assert.Equal(t, CircuitOpen, cb.State())
+}
+
+func TestCircuitBreaker_CanExecute_HalfOpen(t *testing.T) {
+	cb := NewCircuitBreaker(1, time.Minute)
+
+	cb.mu.Lock()
+	cb.state = CircuitHalfOpen
+	cb.mu.Unlock()
+
+	assert.True(t, cb.canExecute())
+	assert.Equal(t, CircuitHalfOpen, cb.State())
+}
+
+func TestCircuitBreaker_CanExecute_DefaultStateFallback(t *testing.T) {
+	cb := NewCircuitBreaker(1, time.Minute)
+
+	cb.mu.Lock()
+	cb.state = CircuitState(999)
+	cb.mu.Unlock()
+
+	assert.True(t, cb.canExecute())
+}

@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -386,6 +387,63 @@ func TestOutputGetResult_InteractivePromptError(t *testing.T) {
 	assert.Contains(t, err.Error(), "interactive save selection failed")
 }
 
+func TestOutputGetResult_SkippablePromptErrorContinues(t *testing.T) {
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("quiet", "true"))
+
+	// Mock prompter without queued answers triggers a skippable queue-exhausted error.
+	cmd.SetContext(interactive.WithPrompter(context.Background(), interactive.NewMockPrompter()))
+
+	err := OutputGetResult(cmd, map[string]any{"id": 1}, time.Now())
+	assert.NoError(t, err)
+}
+
+func TestOutputGetResult_SaveError(t *testing.T) {
+	base := t.TempDir()
+	badHome := filepath.Join(base, "home-as-file")
+	require.NoError(t, os.WriteFile(badHome, []byte("x"), 0o644))
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", badHome)
+	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("save", "true"))
+
+	err := OutputGetResult(cmd, map[string]any{"id": 1}, time.Now())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "save error")
+}
+
+func TestOutputGetResult_JQRuntimeError(t *testing.T) {
+	cmd := &cobra.Command{Use: "get"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().String("type", "json", "")
+	cmd.Flags().Bool("save", false, "")
+	cmd.Flags().Bool("jq", false, "")
+	cmd.Flags().String("jq-filter", "", "")
+	cmd.Flags().Bool("body-only", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("jq", "true"))
+	require.NoError(t, cmd.Flags().Set("jq-filter", "["))
+
+	err := OutputGetResult(cmd, map[string]any{"id": 1}, time.Now())
+	assert.Error(t, err)
+}
+
 func TestOutputGetResult_JQMarshalError(t *testing.T) {
 	viper.Set("jq_format", true)
 	t.Cleanup(viper.Reset)
@@ -700,6 +758,34 @@ func TestGetRowValues_Map(t *testing.T) {
 	headers := []string{"key1", "key2"}
 	values := getRowValues(reflect.ValueOf(v), headers)
 	assert.Equal(t, []string{"value1", "42"}, values)
+}
+
+func TestSaveToCSV_CreateError(t *testing.T) {
+	_, err := saveToCSV([]TestCase{{ID: 1, Title: "x"}}, "/definitely/missing/path/out.csv")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error creating CSV file")
+}
+
+func TestSaveToCSV_HeaderWriteError(t *testing.T) {
+	if _, err := os.Stat("/dev/full"); err != nil {
+		t.Skip("/dev/full not available")
+	}
+
+	data := []map[string]string{{strings.Repeat("k", 10000): "v"}}
+	_, err := saveToCSV(data, "/dev/full")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error writing CSV headers")
+}
+
+func TestSaveToCSV_RowWriteError(t *testing.T) {
+	if _, err := os.Stat("/dev/full"); err != nil {
+		t.Skip("/dev/full not available")
+	}
+
+	data := []map[string]string{{"k": strings.Repeat("v", 20000)}}
+	_, err := saveToCSV(data, "/dev/full")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "error writing CSV row")
 }
 
 // ==================== Integration Tests ====================

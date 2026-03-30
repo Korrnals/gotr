@@ -17,6 +17,7 @@ const (
 	DefaultAPIKey   = "your_api_key_here"
 )
 
+// ConfigData stores serialized gotr configuration fields.
 type ConfigData struct {
 	BaseURL  string `yaml:"base_url"`
 	Username string `yaml:"username"`

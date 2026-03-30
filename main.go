@@ -1,3 +1,4 @@
+// Package main provides the gotr CLI entrypoint.
 // main.go — util entrypoint
 package main
 

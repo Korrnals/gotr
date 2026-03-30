@@ -17,6 +17,7 @@ type PriorityItem struct {
 // priorityHeap implements heap.Interface
 type priorityHeap []PriorityItem
 
+// Len returns the number of items in the heap.
 func (h priorityHeap) Len() int { return len(h) }
 
 // Less defines priority order: higher priority values come first
@@ -32,12 +33,14 @@ func (h priorityHeap) Less(i, j int) bool {
 	return h[i].Task.SuiteID < h[j].Task.SuiteID
 }
 
+// Swap swaps two heap items and updates their tracked indices.
 func (h priorityHeap) Swap(i, j int) {
 	h[i], h[j] = h[j], h[i]
 	h[i].Index = i
 	h[j].Index = j
 }
 
+// Push appends a new item to the heap and initializes its index.
 func (h *priorityHeap) Push(x interface{}) {
 	n := len(*h)
 	item := x.(PriorityItem)
@@ -45,6 +48,7 @@ func (h *priorityHeap) Push(x interface{}) {
 	*h = append(*h, item)
 }
 
+// Pop removes and returns the last heap item, as required by heap.Interface.
 func (h *priorityHeap) Pop() interface{} {
 	old := *h
 	n := len(old)

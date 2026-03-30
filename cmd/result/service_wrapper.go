@@ -36,46 +36,57 @@ type resultServiceWrapper struct {
 // Проверка что resultServiceWrapper реализует ResultServiceInterface
 var _ ResultServiceInterface = (*resultServiceWrapper)(nil)
 
+// ParseID delegates ID parsing to the underlying result service.
 func (w *resultServiceWrapper) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	return w.svc.ParseID(ctx, args, index)
 }
 
+// PrintSuccess delegates success message formatting to the underlying result service.
 func (w *resultServiceWrapper) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	w.svc.PrintSuccess(ctx, cmd, format, args...)
 }
 
+// Output delegates command output formatting to the underlying result service.
 func (w *resultServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return w.svc.Output(ctx, cmd, data)
 }
 
+// AddForTest delegates single-test result creation to the underlying result service.
 func (w *resultServiceWrapper) AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 	return w.svc.AddForTest(ctx, testID, req)
 }
 
+// AddForCase delegates case result creation to the underlying result service.
 func (w *resultServiceWrapper) AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 	return w.svc.AddForCase(ctx, runID, caseID, req)
 }
 
+// AddResults delegates bulk test result creation to the underlying result service.
 func (w *resultServiceWrapper) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 	return w.svc.AddResults(ctx, runID, req)
 }
 
+// AddResultsForCases delegates bulk case result creation to the underlying result service.
 func (w *resultServiceWrapper) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	return w.svc.AddResultsForCases(ctx, runID, req)
 }
 
+// GetForTest delegates test result retrieval to the underlying result service.
 func (w *resultServiceWrapper) GetForTest(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 	return w.svc.GetForTest(ctx, testID)
 }
 
+// GetForCase delegates run/case result retrieval to the underlying result service.
 func (w *resultServiceWrapper) GetForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 	return w.svc.GetForCase(ctx, runID, caseID)
 }
 
+// GetForRun delegates run result retrieval to the underlying result service.
 func (w *resultServiceWrapper) GetForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 	return w.svc.GetForRun(ctx, runID)
 }
 
+// GetRunsForProject delegates run listing to the underlying result service.
 func (w *resultServiceWrapper) GetRunsForProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	return w.svc.GetRunsForProject(ctx, projectID)
 }

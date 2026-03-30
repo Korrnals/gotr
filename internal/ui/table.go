@@ -29,6 +29,7 @@ import (
 // OutputFormat — допустимые значения флага --format.
 type OutputFormat string
 
+// Supported output formats for table rendering and command output selection.
 const (
 	FormatTable    OutputFormat = "table"
 	FormatJSON     OutputFormat = "json"

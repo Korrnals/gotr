@@ -16,16 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type errReadCloser struct{}
-
-func (e *errReadCloser) Read(_ []byte) (int, error) {
-	return 0, fmt.Errorf("forced read error")
-}
-
-func (e *errReadCloser) Close() error {
-	return nil
-}
-
 type staticRoundTripper struct {
 	resp *http.Response
 	err  error
@@ -1148,7 +1138,7 @@ func TestCaseMethods_RequestAndReadErrors(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Status:     "200 OK",
 			Header:     make(http.Header),
-			Body:       &errReadCloser{},
+			Body:       requestReadErrorCloser{},
 		}}
 
 		_, err = client.GetCasesPage(context.Background(), 1, 1, 0, 10)
@@ -1199,7 +1189,7 @@ func TestCaseMethods_RequestAndReadErrors(t *testing.T) {
 			StatusCode: http.StatusOK,
 			Status:     "200 OK",
 			Header:     make(http.Header),
-			Body:       &errReadCloser{},
+			Body:       requestReadErrorCloser{},
 		}}
 
 		f := &casesFetcher{client: c}
@@ -1212,4 +1202,42 @@ func TestCaseMethods_RequestAndReadErrors(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "read body error")
 	})
+}
+
+func TestCaseDeleteCopyMove_EdgeSuccessBranches(t *testing.T) {
+	client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		switch r.URL.String() {
+		case "/index.php?/api/v2/delete_case/301":
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		case "/index.php?/api/v2/delete_cases/302":
+			var req data.DeleteCasesRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			assert.Len(t, req.CaseIDs, 0)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		case "/index.php?/api/v2/copy_cases_to_section/303":
+			var req data.CopyCasesRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			assert.Equal(t, []int64{7}, req.CaseIDs)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		case "/index.php?/api/v2/move_cases_to_section/304":
+			var req data.MoveCasesRequest
+			_ = json.NewDecoder(r.Body).Decode(&req)
+			assert.Equal(t, int64(90), req.SuiteID)
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		default:
+			t.Fatalf("unexpected URL: %s", r.URL.String())
+		}
+	})
+	defer server.Close()
+
+	ctx := context.Background()
+	assert.NoError(t, client.DeleteCase(ctx, 301))
+	assert.NoError(t, client.DeleteCases(ctx, 302, &data.DeleteCasesRequest{CaseIDs: []int64{}}))
+	assert.NoError(t, client.CopyCasesToSection(ctx, 303, &data.CopyCasesRequest{CaseIDs: []int64{7}}))
+	assert.NoError(t, client.MoveCasesToSection(ctx, 304, &data.MoveCasesRequest{CaseIDs: []int64{8}, SuiteID: 90}))
 }

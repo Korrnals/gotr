@@ -106,3 +106,14 @@ func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
+
+func TestListCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id is required in non-interactive mode")
+}

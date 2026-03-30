@@ -61,6 +61,19 @@ func TestGetProjectRoot(t *testing.T) {
 	assert.Equal(t, root, got)
 }
 
+func TestGetProjectRoot_CurrentDirHasGoMod(t *testing.T) {
+	oldWD, err := os.Getwd()
+	assert.NoError(t, err)
+	defer func() { _ = os.Chdir(oldWD) }()
+
+	root := t.TempDir()
+	assert.NoError(t, os.WriteFile(filepath.Join(root, "go.mod"), []byte("module x\n"), 0o644))
+	assert.NoError(t, os.Chdir(root))
+
+	got := getProjectRoot()
+	assert.Equal(t, root, got)
+}
+
 func TestBinaryInfoAndGoEnvCheckers(t *testing.T) {
 	b := BinaryInfoChecker{Version: "1.2.3", Commit: "abcdef123456", BuildTime: "now"}
 	res := b.Check()
@@ -153,6 +166,59 @@ func TestConfigAndBaseDirCheckers(t *testing.T) {
 	baseRes := baseChecker.Check()
 	assert.Equal(t, ResultPass, baseRes.Result)
 	assert.NotEmpty(t, baseRes.Message)
+}
+
+func TestConfigChecker_ConfigPathError(t *testing.T) {
+	origHome := os.Getenv("HOME")
+	origUserProfile := os.Getenv("USERPROFILE")
+	origHomeDrive := os.Getenv("HOMEDRIVE")
+	origHomePath := os.Getenv("HOMEPATH")
+	origXdg := os.Getenv("XDG_CONFIG_HOME")
+
+	t.Setenv("HOME", "")
+	t.Setenv("USERPROFILE", "")
+	t.Setenv("HOMEDRIVE", "")
+	t.Setenv("HOMEPATH", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
+
+	res := ConfigChecker{}.Check()
+
+	if origHome == "" && origUserProfile == "" && origHomeDrive == "" && origHomePath == "" && origXdg == "" {
+		if res.Result != ResultFail || res.Error == nil {
+			t.Skip("os.UserHomeDir resolved home on this platform/user setup")
+		}
+		return
+	}
+
+	if res.Error == nil {
+		t.Skip("os.UserHomeDir resolved home from system user database")
+	}
+	assert.Equal(t, ResultFail, res.Result)
+	assert.Contains(t, res.Message, "Cannot determine config path")
+}
+
+func TestBaseDirChecker_AllDirectoriesExist(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	pathsToCreate := []func() (string, error){
+		paths.ConfigDirPath,
+		paths.LogsDirPath,
+		paths.SelftestDirPath,
+		paths.CacheDirPath,
+		paths.ExportsDirPath,
+		paths.TempDirPath,
+	}
+
+	for _, fn := range pathsToCreate {
+		dir, err := fn()
+		assert.NoError(t, err)
+		assert.NoError(t, os.MkdirAll(dir, 0o755))
+	}
+
+	res := BaseDirChecker{}.Check()
+	assert.Equal(t, ResultPass, res.Result)
+	assert.Equal(t, "All directories exist", res.Message)
 }
 
 func TestCoverageCheckerHelpers(t *testing.T) {

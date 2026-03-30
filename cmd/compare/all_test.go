@@ -153,6 +153,54 @@ func TestAllCmd_WithErrors(t *testing.T) {
 	assert.NoError(t, err) // Команда не должна падать из-за ошибок отдельных ресурсов
 }
 
+func TestAllCmd_AllResourceErrorsStillCompletes(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+		GetSuitesParallelFunc: func(ctx context.Context, projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+			return nil, errors.New("parallel suites failed")
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return nil, errors.New("sharedsteps failed")
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return nil, errors.New("runs failed")
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return nil, errors.New("plans failed")
+		},
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
+			return nil, errors.New("milestones failed")
+		},
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
+			return nil, errors.New("datasets failed")
+		},
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
+			return nil, errors.New("groups failed")
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			return nil, errors.New("labels failed")
+		},
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
+			return nil, errors.New("templates failed")
+		},
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
+			return nil, errors.New("configurations failed")
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--quiet"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
 func TestAllCmd_SaveYAML(t *testing.T) {
 	mock := &client.MockClient{
 		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
@@ -212,6 +260,213 @@ func TestAllCmd_SaveYAML(t *testing.T) {
 	err := cmd.Execute()
 	// Command should succeed - save flag triggers save to default location
 	assert.NoError(t, err)
+}
+
+func TestAllCmd_SaveDefaultTable(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return []data.Case{}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			return []data.Section{}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return []data.SharedStep{}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return []data.Run{}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return []data.Plan{}, nil
+		},
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
+			return []data.Milestone{}, nil
+		},
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
+			return []data.Dataset{}, nil
+		},
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
+			return []data.Group{}, nil
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			return []data.Label{}, nil
+		},
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
+			return []data.Template{}, nil
+		},
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
+			return []data.ConfigGroup{}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--save", "--quiet"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAllCmd_SaveToJsonByExtension(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return []data.Case{}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			return []data.Section{}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return []data.SharedStep{}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return []data.Run{}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return []data.Plan{}, nil
+		},
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
+			return []data.Milestone{}, nil
+		},
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
+			return []data.Dataset{}, nil
+		},
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
+			return []data.Group{}, nil
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			return []data.Label{}, nil
+		},
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
+			return []data.Template{}, nil
+		},
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
+			return []data.ConfigGroup{}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	tmpDir := t.TempDir()
+	savePath := filepath.Join(tmpDir, "result.json")
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--save-to=" + savePath, "--quiet"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+
+	content, readErr := os.ReadFile(savePath)
+	assert.NoError(t, readErr)
+	assert.NotEmpty(t, content)
+}
+
+func TestAllCmd_NoClient(t *testing.T) {
+	originalGetClient := getClient
+	defer func() { getClient = originalGetClient }()
+
+	SetGetClientForTests(nil)
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestAllCmd_GetProjectNamesError(t *testing.T) {
+	originalGetClient := getClient
+	defer func() { getClient = originalGetClient }()
+
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, errors.New("projects unavailable")
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get project 1")
+}
+
+func TestAllCmd_SaveTo_UnsupportedFormat_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return []data.Case{}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			return []data.Section{}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return []data.SharedStep{}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return []data.Run{}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return []data.Plan{}, nil
+		},
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
+			return []data.Milestone{}, nil
+		},
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
+			return []data.Dataset{}, nil
+		},
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
+			return []data.Group{}, nil
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			return []data.Label{}, nil
+		},
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
+			return []data.Template{}, nil
+		},
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
+			return []data.ConfigGroup{}, nil
+		},
+	}
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=xml", "--save-to=out.txt"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported format 'xml' for save")
 }
 
 func TestBuildAllMeta_Interrupted(t *testing.T) {
@@ -630,6 +885,113 @@ func TestFillInterruptedResults_FillsAllMissingAndPreservesExisting(t *testing.T
 	assert.Equal(t, CompareStatusInterrupted, res.Suites.Status)
 	assert.Equal(t, int64(10), res.Suites.Project1ID)
 	assert.Equal(t, int64(20), res.Suites.Project2ID)
+}
+
+func newAllCmdHappyPathMock() *client.MockClient {
+	return &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return []data.Suite{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return []data.Case{}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+			return []data.Section{}, nil
+		},
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			return []data.SharedStep{}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return []data.Run{}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			return []data.Plan{}, nil
+		},
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
+			return []data.Milestone{}, nil
+		},
+		GetDatasetsFunc: func(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
+			return []data.Dataset{}, nil
+		},
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
+			return []data.Group{}, nil
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			return []data.Label{}, nil
+		},
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
+			return []data.Template{}, nil
+		},
+		GetConfigsFunc: func(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
+			return []data.ConfigGroup{}, nil
+		},
+	}
+}
+
+func TestAllCmd_SaveDefaultStructuredFormats(t *testing.T) {
+	for _, format := range []string{"json", "yaml"} {
+		t.Run(format, func(t *testing.T) {
+			mock := newAllCmdHappyPathMock()
+			SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+				return mock
+			})
+
+			cmd := newAllCmd()
+			addPersistentFlagsForTests(cmd)
+			cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--save", "--format=" + format, "--quiet"})
+
+			err := cmd.Execute()
+			assert.NoError(t, err)
+		})
+	}
+}
+
+func TestAllCmd_SaveToTableCustomPath(t *testing.T) {
+	mock := newAllCmdHappyPathMock()
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	savePath := filepath.Join(t.TempDir(), "summary.txt")
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=table", "--save-to=" + savePath, "--quiet"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+
+	content, readErr := os.ReadFile(savePath)
+	assert.NoError(t, readErr)
+	assert.Contains(t, string(content), "RESOURCE SUMMARY")
+}
+
+func TestAllCmd_InterruptedFlowWithCanceledContext(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	mock := newAllCmdHappyPathMock()
+	mock.GetSuitesParallelFunc = func(ctx context.Context, projectIDs []int64, workers int) (map[int64]data.GetSuitesResponse, error) {
+		return nil, context.Canceled
+	}
+	mock.GetSuitesFunc = func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+		return nil, context.Canceled
+	}
+
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return mock
+	})
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--quiet"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
 }
 
 

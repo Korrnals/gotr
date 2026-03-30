@@ -38,6 +38,27 @@ func TestLoadFailedPages_Success(t *testing.T) {
 	assert.Equal(t, int64(2002), pages[1].SuiteID)
 }
 
+func TestLoadFailedPages_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "failed_invalid.json")
+	require.NoError(t, os.WriteFile(path, []byte("{invalid"), 0644))
+
+	_, err := loadFailedPages(path)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to parse JSON report")
+}
+
+func TestLoadFailedPages_NilFailedPagesField(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "failed_nil.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0}`), 0644))
+
+	pages, err := loadFailedPages(path)
+	require.NoError(t, err)
+	assert.NotNil(t, pages)
+	assert.Len(t, pages, 0)
+}
+
 func TestDedupeFailedPages_RemovesDuplicates(t *testing.T) {
 	in := []concurrency.FailedPage{
 		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1},
@@ -49,6 +70,21 @@ func TestDedupeFailedPages_RemovesDuplicates(t *testing.T) {
 	require.Len(t, out, 2)
 	assert.Equal(t, 0, out[0].Offset)
 	assert.Equal(t, 250, out[1].Offset)
+}
+
+func TestDedupeFailedPages_EmptyInput(t *testing.T) {
+	out := dedupeFailedPages(nil)
+	assert.Nil(t, out)
+}
+
+func TestDedupeFailedPages_DerivesPageNumFromOffsetAndLimit(t *testing.T) {
+	in := []concurrency.FailedPage{
+		{ProjectID: 30, SuiteID: 1001, Offset: 500, Limit: 250, PageNum: 0},
+	}
+
+	out := dedupeFailedPages(in)
+	require.Len(t, out, 1)
+	assert.Equal(t, 3, out[0].PageNum)
 }
 
 func TestResolveRetryFailedPagesOptionsFromConfig_UsesConfigDefaults(t *testing.T) {
@@ -127,6 +163,52 @@ func TestRunRetryFailedPages_LoadFileError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to read file")
 }
 
+func TestRunRetryFailedPages_ResolveOptionsError(t *testing.T) {
+	originalGetClient := getClient
+	defer func() { getClient = originalGetClient }()
+
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	viper.Set("compare.cases.retry.delay", "invalid-duration")
+
+	getClient = func(cmd *cobra.Command) client.ClientInterface {
+		return &client.MockClient{}
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "failed.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0,"failed_pages":[]}`), 0644))
+
+	cmd := newRetryFailedPagesCmd()
+	require.NoError(t, cmd.Flags().Set("from", path))
+
+	err := runRetryFailedPages(cmd, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid compare.cases.retry.delay")
+}
+
+func TestRunRetryFailedPages_Success(t *testing.T) {
+	originalGetClient := getClient
+	defer func() { getClient = originalGetClient }()
+
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	getClient = func(cmd *cobra.Command) client.ClientInterface {
+		return &client.MockClient{}
+	}
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "failed.json")
+	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0,"failed_pages":[]}`), 0644))
+
+	cmd := newRetryFailedPagesCmd()
+	require.NoError(t, cmd.Flags().Set("from", path))
+
+	err := runRetryFailedPages(cmd, nil)
+	require.NoError(t, err)
+}
+
 func TestResolveRetryFailedPagesOptionsFromConfig_InvalidDelay(t *testing.T) {
 	viper.Reset()
 	t.Cleanup(viper.Reset)
@@ -154,6 +236,23 @@ func TestExecuteRetryFailedPages_EmptyRetryList(t *testing.T) {
 	assert.Nil(t, remaining)
 	assert.Equal(t, 0, stats.InputPages)
 	assert.Equal(t, 0, stats.RecoveredPages)
+}
+
+func TestExecuteRetryFailedPages_EmptyRetryListWithoutSourceLabel(t *testing.T) {
+	ctx := context.Background()
+	mockCli := &client.MockClient{}
+	opts := retryFailedPagesOptions{Attempts: 1, Workers: 1, Delay: 0}
+
+	remaining, stats, err := executeRetryFailedPages(
+		ctx, mockCli, []concurrency.FailedPage{},
+		opts, "", "",
+	)
+
+	require.NoError(t, err)
+	assert.Nil(t, remaining)
+	assert.Equal(t, 0, stats.InputPages)
+	assert.Equal(t, 0, stats.UniquePages)
+	assert.Equal(t, 0, stats.RemainingPages)
 }
 
 func TestExecuteRetryFailedPages_FullRetryFlow_AllSuccess(t *testing.T) {

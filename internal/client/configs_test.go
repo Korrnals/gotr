@@ -4,6 +4,7 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -652,4 +653,43 @@ func TestDeleteConfig_PermissionDenied(t *testing.T) {
 	if err == nil {
 		t.Fatal("DeleteConfig with 403 should error")
 	}
+}
+
+func TestDeleteConfigMethods_EndpointBodyAndRequestBranches(t *testing.T) {
+	t.Run("success sends JSON object body", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost {
+				t.Fatalf("expected POST, got %s", r.Method)
+			}
+			if !strings.Contains(r.URL.String(), "delete_config_group/5") && !strings.Contains(r.URL.String(), "delete_config/6") {
+				t.Fatalf("unexpected URL: %s", r.URL.String())
+			}
+			body, _ := io.ReadAll(r.Body)
+			if strings.TrimSpace(string(body)) != "{}" {
+				t.Fatalf("expected {} body, got %q", string(body))
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{}`))
+		})
+		defer s.Close()
+
+		if err := c.DeleteConfigGroup(context.Background(), 5); err != nil {
+			t.Fatalf("DeleteConfigGroup success branch failed: %v", err)
+		}
+		if err := c.DeleteConfig(context.Background(), 6); err != nil {
+			t.Fatalf("DeleteConfig success branch failed: %v", err)
+		}
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		s.Close()
+
+		if err := c.DeleteConfigGroup(context.Background(), 5); err == nil {
+			t.Fatal("expected DeleteConfigGroup request error")
+		}
+		if err := c.DeleteConfig(context.Background(), 6); err == nil {
+			t.Fatal("expected DeleteConfig request error")
+		}
+	})
 }

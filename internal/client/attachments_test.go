@@ -684,3 +684,13 @@ func TestGetAttachmentsForPlan_Success(t *testing.T) {
 		t.Errorf("GetAttachmentsForPlan expected 2, got %d", len(attachments))
 	}
 }
+
+func TestDeleteAttachment_RequestError(t *testing.T) {
+	c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+	s.Close()
+
+	err := c.DeleteAttachment(context.Background(), 77)
+	if err == nil {
+		t.Fatal("DeleteAttachment should return request error when server is closed")
+	}
+}

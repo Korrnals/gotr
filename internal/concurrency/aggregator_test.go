@@ -45,6 +45,26 @@ func TestResultAggregator_Basic(t *testing.T) {
 	assert.ElementsMatch(t, []int64{1, 2, 3}, ids)
 }
 
+func TestNewResultAggregator_DefaultBufferConfig(t *testing.T) {
+	for _, size := range []int{0, -1} {
+		ra := NewResultAggregator(size)
+		assert.NotNil(t, ra)
+		assert.Equal(t, 1000, ra.bufferSize)
+		assert.NotNil(t, ra.seenIDs)
+		assert.NotNil(t, ra.errors)
+		assert.Empty(t, ra.errors)
+	}
+}
+
+func TestNewResultAggregator_ExplicitBufferConfig(t *testing.T) {
+	ra := NewResultAggregator(128)
+	assert.NotNil(t, ra)
+	assert.Equal(t, 128, ra.bufferSize)
+	assert.NotNil(t, ra.seenIDs)
+	assert.NotNil(t, ra.errors)
+	assert.Empty(t, ra.errors)
+}
+
 func TestResultAggregator_Wait(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
@@ -275,6 +295,69 @@ func TestResultAggregator_NilError(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestResultAggregator_SubmitErrorBranches(t *testing.T) {
+	t.Run("ignored when not started", func(t *testing.T) {
+		ra := NewResultAggregator(1)
+		ra.SubmitError(errors.New("not-started"))
+		_, errs := ra.GetResults()
+		assert.Empty(t, errs)
+	})
+
+	t.Run("ignored when stopped", func(t *testing.T) {
+		ra := NewResultAggregator(1)
+		ra.started = true
+		ra.stopped = true
+		ra.errCh = make(chan error, 1)
+
+		ra.SubmitError(errors.New("stopped"))
+		assert.Equal(t, 0, len(ra.errCh))
+	})
+
+	t.Run("enqueues when channel has capacity", func(t *testing.T) {
+		ra := NewResultAggregator(1)
+		ra.started = true
+		ra.errCh = make(chan error, 1)
+
+		expected := errors.New("enqueue")
+		ra.SubmitError(expected)
+
+		select {
+		case got := <-ra.errCh:
+			assert.Equal(t, expected, got)
+		default:
+			t.Fatal("expected error to be enqueued")
+		}
+	})
+
+	t.Run("drops when channel is full", func(t *testing.T) {
+		ra := NewResultAggregator(1)
+		ra.started = true
+		ra.errCh = make(chan error, 1)
+
+		first := errors.New("first")
+		second := errors.New("second")
+		ra.errCh <- first
+		ra.SubmitError(second)
+
+		assert.Equal(t, 1, len(ra.errCh))
+		got := <-ra.errCh
+		assert.Equal(t, first, got)
+	})
+}
+
+func TestResultAggregator_AddError_NilIgnored(t *testing.T) {
+	ra := NewResultAggregator(10)
+
+	// Directly exercise nil guard branch.
+	ra.addError(nil)
+	_, errs := ra.GetResults()
+	assert.Empty(t, errs)
+
+	ra.addError(errors.New("real error"))
+	_, errs = ra.GetResults()
+	assert.Len(t, errs, 1)
+}
+
 func TestCombinedError(t *testing.T) {
 	t.Run("no errors", func(t *testing.T) {
 		err := CombinedError(nil)
@@ -466,12 +549,16 @@ func TestAggregator_ConcurrentSubmitAndFlush(t *testing.T) {
 	// Wait for most producers to finish before stopping
 	completed := 0
 	timeout := time.After(5 * time.Second)
+	timedOut := false
 	for completed < numProducers {
 		select {
 		case <-done:
 			completed++
 		case <-timeout:
-			// Stop anyway
+			// Timeout reached: stop waiting and proceed to shutdown.
+			timedOut = true
+		}
+		if timedOut {
 			break
 		}
 	}

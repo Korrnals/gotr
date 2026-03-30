@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -526,6 +527,19 @@ func TestHTTPUsers_ErrorBranches(t *testing.T) {
 		assert.Contains(t, err.Error(), "API returned 403 Forbidden")
 	})
 
+	t.Run("GetUserByEmail decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Contains(t, r.URL.String(), "get_user_by_email")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{invalid`))
+		})
+		defer server.Close()
+
+		_, err := client.GetUserByEmail(context.Background(), "john@example.com")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding user")
+	})
+
 	t.Run("AddUser non-OK", func(t *testing.T) {
 		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "/index.php?/api/v2/add_user", r.URL.String())
@@ -589,5 +603,57 @@ func TestHTTPUsers_ErrorBranches(t *testing.T) {
 		_, err := client.GetTemplates(context.Background(), 30)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "error decoding templates")
+	})
+}
+
+func TestHTTPUsers_TransportAndDecodeBranchesForHotspots(t *testing.T) {
+	t.Run("transport errors", func(t *testing.T) {
+		client, _ := NewClient("http://127.0.0.1:1", "test", "test", false)
+
+		_, err := client.GetUserByEmail(context.Background(), "john@example.com")
+		assert.Error(t, err)
+
+		_, err = client.AddUser(context.Background(), data.AddUserRequest{Name: "Jane", Email: "jane@example.com"})
+		assert.Error(t, err)
+
+		_, err = client.UpdateUser(context.Background(), 1, data.UpdateUserRequest{Name: "Jane"})
+		assert.Error(t, err)
+
+		_, err = client.GetPriorities(context.Background())
+		assert.Error(t, err)
+
+		_, err = client.GetStatuses(context.Background())
+		assert.Error(t, err)
+	})
+
+	t.Run("decode errors for add-update-statuses", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			switch {
+			case strings.Contains(r.URL.String(), "add_user"):
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{invalid`))
+			case strings.Contains(r.URL.String(), "update_user/"):
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{invalid`))
+			case strings.Contains(r.URL.String(), "get_statuses"):
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{invalid`))
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
+		})
+		defer server.Close()
+
+		_, err := client.AddUser(context.Background(), data.AddUserRequest{Name: "Jane", Email: "jane@example.com"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding user")
+
+		_, err = client.UpdateUser(context.Background(), 1, data.UpdateUserRequest{Name: "Jane"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding user")
+
+		_, err = client.GetStatuses(context.Background())
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "error decoding statuses")
 	})
 }

@@ -1419,6 +1419,86 @@ func TestAdd_Suite_NonInteractive_MissingID_NoMutatingCall(t *testing.T) {
 	assert.False(t, called)
 }
 
+func TestAddProjectInteractive_ErrorBranches(t *testing.T) {
+	t.Run("input error", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), interactive.NewNonInteractivePrompter()))
+
+		err := addProjectInteractive(&client.MockClient{}, cmd)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "input error")
+	})
+
+	t.Run("client error", func(t *testing.T) {
+		mock := &client.MockClient{
+			AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+				return nil, errors.New("project create boom")
+			},
+		}
+
+		cmd := setupAddTest(t, mock)
+		p := interactive.NewMockPrompter().
+			WithInputResponses("Project Z", "Announcement Z").
+			WithConfirmResponses(true, true)
+		cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+		err := addProjectInteractive(mock, cmd)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to create project")
+	})
+}
+
+func TestRunAdd_RequiredIDAndUnsupportedBranches(t *testing.T) {
+	t.Run("suite requires project id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"suite"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "project_id required")
+	})
+
+	t.Run("section requires project id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"section"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "project_id required")
+	})
+
+	t.Run("case requires section id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"case"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "section_id required")
+	})
+
+	t.Run("run requires project id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"run"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "project_id required")
+	})
+
+	t.Run("result requires test id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"result"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "test_id required")
+	})
+
+	t.Run("shared-step requires project id", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"shared-step"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "project_id required")
+	})
+
+	t.Run("unsupported endpoint", func(t *testing.T) {
+		cmd := setupAddTest(t, &client.MockClient{})
+		err := runAdd(cmd, []string{"nope-endpoint"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unsupported endpoint")
+	})
+}
+
 // TestAdd_UnsupportedEndpoint проверяет ошибку при неподдерживаемом endpoint
 func TestAdd_UnsupportedEndpoint(t *testing.T) {
 	mock := &client.MockClient{}

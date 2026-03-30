@@ -113,3 +113,12 @@ func TestMain_PanicPath(t *testing.T) {
 	err := cmd.Run()
 	assert.Error(t, err)
 }
+
+func TestExecuteMain_DefaultClosure_HelpPath(t *testing.T) {
+	originalArgs := os.Args
+	defer func() { os.Args = originalArgs }()
+
+	os.Args = []string{"gotr", "--help"}
+	err := executeMain()
+	assert.NoError(t, err)
+}

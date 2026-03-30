@@ -588,3 +588,57 @@ func TestGetMilestone_DecodeError(t *testing.T) {
 		t.Fatal("GetMilestone with invalid JSON should error")
 	}
 }
+
+func TestAddAndUpdateMilestone_HTTPDecodeAndRequestBranches(t *testing.T) {
+	t.Run("add milestone decode error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "add_milestone/7") {
+				t.Fatalf("unexpected URL: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		})
+		defer s.Close()
+
+		_, err := c.AddMilestone(context.Background(), 7, &data.AddMilestoneRequest{Name: "M"})
+		if err == nil {
+			t.Fatal("expected decode error for AddMilestone")
+		}
+	})
+
+	t.Run("add milestone request error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		s.Close()
+
+		_, err := c.AddMilestone(context.Background(), 7, &data.AddMilestoneRequest{Name: "M"})
+		if err == nil {
+			t.Fatal("expected request error for AddMilestone")
+		}
+	})
+
+	t.Run("update milestone decode error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "update_milestone/9") {
+				t.Fatalf("unexpected URL: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		})
+		defer s.Close()
+
+		_, err := c.UpdateMilestone(context.Background(), 9, &data.UpdateMilestoneRequest{Name: "U"})
+		if err == nil {
+			t.Fatal("expected decode error for UpdateMilestone")
+		}
+	})
+
+	t.Run("update milestone request error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		s.Close()
+
+		_, err := c.UpdateMilestone(context.Background(), 9, &data.UpdateMilestoneRequest{Name: "U"})
+		if err == nil {
+			t.Fatal("expected request error for UpdateMilestone")
+		}
+	})
+}

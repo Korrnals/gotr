@@ -306,3 +306,28 @@ func TestGetTestsHelpers(t *testing.T) {
 		assert.Len(t, tests, 1)
 	})
 }
+
+func TestUpdateTest_HTTPErrorAndDecodeBranches(t *testing.T) {
+	t.Run("decode error on 200", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPost, r.Method)
+			assert.Contains(t, r.URL.String(), "update_test/42")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		})
+		defer server.Close()
+
+		_, err := client.UpdateTest(context.Background(), 42, &data.UpdateTestRequest{StatusID: 5})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error test")
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.UpdateTest(context.Background(), 42, &data.UpdateTestRequest{AssignedTo: 7})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error UpdateTest")
+	})
+}

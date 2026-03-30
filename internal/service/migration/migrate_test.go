@@ -64,6 +64,29 @@ func TestMigration_MigrateSharedSteps(t *testing.T) {
 		assert.True(t, exists)
 		assert.Equal(t, int64(200), id)
 	})
+
+	t.Run("Ошибка получения source cases после успешного fetch shared steps", func(t *testing.T) {
+		getCasesCalls := 0
+		mock := &MockClient{
+			GetSharedStepsFunc: func(ctx context.Context, p int64) (data.GetSharedStepsResponse, error) {
+				if p == 1 {
+					return data.GetSharedStepsResponse{{ID: 1, Title: "S1"}}, nil
+				}
+				return data.GetSharedStepsResponse{}, nil
+			},
+			GetCasesFunc: func(ctx context.Context, p, s, sec int64) (data.GetCasesResponse, error) {
+				getCasesCalls++
+				return nil, errors.New("source_cases_for_shared_steps_error")
+			},
+		}
+
+		m := setupTestMigration(t, mock)
+		err := m.MigrateSharedSteps(context.Background(), false)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "source_cases_for_shared_steps_error")
+		assert.Equal(t, 1, getCasesCalls)
+	})
 }
 
 // TestMigration_MigrateSections проверяет поведение миграции для разделов (sections)
@@ -147,6 +170,63 @@ func TestMigration_MigrateFull(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "sections_error")
 		assert.False(t, calledCases, "MigrateCases не должен был вызываться")
+	})
+
+	t.Run("Остановка при ошибке в shared steps — финальный этап cases не запускается", func(t *testing.T) {
+		calledCases := false
+
+		mock := &MockClient{
+			GetSuitesFunc: func(ctx context.Context, p int64) (data.GetSuitesResponse, error) {
+				return data.GetSuitesResponse{}, nil
+			},
+			GetSectionsFunc: func(ctx context.Context, p, s int64) (data.GetSectionsResponse, error) {
+				return data.GetSectionsResponse{}, nil
+			},
+			GetSharedStepsFunc: func(ctx context.Context, p int64) (data.GetSharedStepsResponse, error) {
+				return nil, errors.New("shared_steps_error")
+			},
+			GetCasesFunc: func(ctx context.Context, p, s, sec int64) (data.GetCasesResponse, error) {
+				calledCases = true
+				return data.GetCasesResponse{}, nil
+			},
+		}
+
+		m := setupTestMigration(t, mock)
+		err := m.MigrateFull(context.Background(), false)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "shared_steps_error")
+		assert.False(t, calledCases, "MigrateCases не должен был вызываться после ошибки shared steps")
+	})
+
+	t.Run("Ошибка на этапе cases после успешных предыдущих этапов", func(t *testing.T) {
+		getCasesCalls := 0
+
+		mock := &MockClient{
+			GetSuitesFunc: func(ctx context.Context, p int64) (data.GetSuitesResponse, error) {
+				return data.GetSuitesResponse{}, nil
+			},
+			GetSectionsFunc: func(ctx context.Context, p, s int64) (data.GetSectionsResponse, error) {
+				return data.GetSectionsResponse{}, nil
+			},
+			GetSharedStepsFunc: func(ctx context.Context, p int64) (data.GetSharedStepsResponse, error) {
+				return data.GetSharedStepsResponse{}, nil
+			},
+			GetCasesFunc: func(ctx context.Context, p, s, sec int64) (data.GetCasesResponse, error) {
+				getCasesCalls++
+				if getCasesCalls == 1 {
+					return data.GetCasesResponse{}, nil
+				}
+				return nil, errors.New("cases_stage_error")
+			},
+		}
+
+		m := setupTestMigration(t, mock)
+		err := m.MigrateFull(context.Background(), false)
+
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cases_stage_error")
+		assert.GreaterOrEqual(t, getCasesCalls, 2)
 	})
 
 	t.Run("DryRun не вызывает создание сущностей", func(t *testing.T) {

@@ -2,11 +2,19 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
+
+type noopProgressMonitor struct{}
+
+func (noopProgressMonitor) Increment()      {}
+func (noopProgressMonitor) IncrementBy(int) {}
 
 func TestGetCasesParallel(t *testing.T) {
 	tests := []struct {
@@ -159,6 +167,79 @@ func TestGetSuitesParallel(t *testing.T) {
 	}
 }
 
+func TestHTTPClient_GetSuitesParallel_EmptyProjectIDs(t *testing.T) {
+	httpClient := &HTTPClient{}
+	result, err := httpClient.GetSuitesParallel(context.Background(), nil, 2, nil)
+	if err != nil {
+		t.Fatalf("GetSuitesParallel() error = %v", err)
+	}
+	if len(result) != 0 {
+		t.Fatalf("expected empty map, got %d entries", len(result))
+	}
+}
+
+func TestHTTPClient_GetSuitesParallel_SuccessAndPartialFailure(t *testing.T) {
+	t.Run("success with monitor and default workers", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodGet {
+				t.Fatalf("expected GET method, got %s", r.Method)
+			}
+			if r.URL.Path != "/index.php" {
+				t.Fatalf("unexpected path: %s", r.URL.Path)
+			}
+			if !containsAny(r.URL.String(), []string{"get_suites/30", "get_suites/31"}) {
+				t.Fatalf("unexpected url: %s", r.URL.String())
+			}
+
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(data.GetSuitesResponse{{ID: 10, Name: "Suite"}})
+		})
+		defer server.Close()
+
+		result, err := client.GetSuitesParallel(context.Background(), []int64{30, 31}, 0, noopProgressMonitor{})
+		if err != nil {
+			t.Fatalf("GetSuitesParallel() unexpected error: %v", err)
+		}
+		if len(result) != 2 {
+			t.Fatalf("expected 2 project results, got %d", len(result))
+		}
+	})
+
+	t.Run("partial failure", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			if containsAny(r.URL.String(), []string{"get_suites/30"}) {
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(data.GetSuitesResponse{{ID: 101, Name: "Suite P1"}})
+				return
+			}
+			if containsAny(r.URL.String(), []string{"get_suites/31"}) {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(`boom`))
+				return
+			}
+			w.WriteHeader(http.StatusNotFound)
+		})
+		defer server.Close()
+
+		result, err := client.GetSuitesParallel(context.Background(), []int64{30, 31}, 2, nil)
+		if err == nil {
+			t.Fatalf("expected partial failure error")
+		}
+		if len(result) != 1 {
+			t.Fatalf("expected one successful project result, got %d", len(result))
+		}
+	})
+}
+
+func containsAny(s string, parts []string) bool {
+	for _, part := range parts {
+		if part != "" && strings.Contains(s, part) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestGetCasesForSuitesParallel(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -213,4 +294,40 @@ func TestGetCasesForSuitesParallel(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetCasesForSuitesParallel_ErrorBranches(t *testing.T) {
+	t.Run("returns nil when no results and error", func(t *testing.T) {
+		mock := &MockClient{}
+		mock.GetCasesParallelFunc = func(ctx context.Context, projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error) {
+			return map[int64]data.GetCasesResponse{}, fmt.Errorf("upstream failed")
+		}
+
+		cases, err := mock.GetCasesForSuitesParallel(context.Background(), 30, []int64{1, 2}, 2, nil)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if cases != nil {
+			t.Fatalf("expected nil cases, got %v", cases)
+		}
+	})
+
+	t.Run("mock keeps nil on error even with partial map", func(t *testing.T) {
+		mock := &MockClient{}
+		mock.GetCasesParallelFunc = func(ctx context.Context, projectID int64, suiteIDs []int64, workers int) (map[int64]data.GetCasesResponse, error) {
+			return map[int64]data.GetCasesResponse{
+				1: {
+					{ID: 11, Title: "A", SuiteID: 1},
+				},
+			}, fmt.Errorf("partial failure")
+		}
+
+		cases, err := mock.GetCasesForSuitesParallel(context.Background(), 30, []int64{1, 2}, 2, nil)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+		if cases != nil {
+			t.Fatalf("expected nil cases for mock path, got %+v", cases)
+		}
+	})
 }

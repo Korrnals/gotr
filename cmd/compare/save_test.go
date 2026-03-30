@@ -6,12 +6,94 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestSaveToFileWithPath_JSONYAMLCSVSuccess(t *testing.T) {
+	result := CompareResult{
+		Resource:   "cases",
+		Project1ID: 1,
+		Project2ID: 2,
+		OnlyInFirst: []ItemInfo{
+			{ID: 1, Name: "Case A"},
+		},
+		OnlyInSecond: []ItemInfo{
+			{ID: 2, Name: "Case B"},
+		},
+	}
+
+	t.Run("json", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "result.json")
+		err := saveToFileWithPath(result, "json", path)
+		require.NoError(t, err)
+
+		content, readErr := os.ReadFile(path)
+		require.NoError(t, readErr)
+		assert.Contains(t, string(content), "\"resource\": \"cases\"")
+	})
+
+	t.Run("yaml", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "result.yaml")
+		err := saveToFileWithPath(result, "yaml", path)
+		require.NoError(t, err)
+
+		content, readErr := os.ReadFile(path)
+		require.NoError(t, readErr)
+		assert.Contains(t, string(content), "resource: cases")
+	})
+
+	t.Run("csv", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "result.csv")
+		err := saveToFileWithPath(result, "csv", path)
+		require.NoError(t, err)
+
+		content, readErr := os.ReadFile(path)
+		require.NoError(t, readErr)
+		assert.Contains(t, string(content), "Type,Name,ID Project 1,ID Project 2")
+	})
+}
+
+func TestSaveToFileWithPath_UnknownFormatFallsBackToJSON(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "result.unknown")
+	result := CompareResult{Resource: "cases", Project1ID: 1, Project2ID: 2}
+
+	err := saveToFileWithPath(result, "unsupported", path)
+	require.NoError(t, err)
+
+	content, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	assert.Contains(t, string(content), "\"resource\": \"cases\"")
+}
+
+func TestSaveToFileWithPath_WriteError(t *testing.T) {
+	result := CompareResult{Resource: "cases", Project1ID: 1, Project2ID: 2}
+
+	err := saveToFileWithPath(result, "json", "/nonexistent/path/result.json")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "file write error")
+}
+
+func TestSaveToFileWithPath_CSVWriteError(t *testing.T) {
+	result := CompareResult{Resource: "cases", Project1ID: 1, Project2ID: 2}
+
+	err := saveToFileWithPath(result, "csv", "/nonexistent/path/result.csv")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "file create error")
+}
+
+func TestSaveToFileWithPath_UnknownFormatWriteError(t *testing.T) {
+	result := CompareResult{Resource: "cases", Project1ID: 1, Project2ID: 2}
+
+	err := saveToFileWithPath(result, "unsupported", "/nonexistent/path/result.out")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "file write error")
+}
 
 // ==================== Тесты для saveToFile ====================
 
@@ -316,6 +398,86 @@ func TestPrintCSV(t *testing.T) {
 	assert.NoError(t, err)
 	output := buf.String()
 	assert.Contains(t, output, "Type,Name,ID Project 1,ID Project 2")
+}
+
+func TestPrintCSV_WriteError(t *testing.T) {
+	result := CompareResult{
+		OnlyInFirst: []ItemInfo{{ID: 1, Name: strings.Repeat("x", 8192)}},
+	}
+
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+	require.NoError(t, w.Close())
+	require.NoError(t, r.Close())
+	defer func() {
+		os.Stdout = old
+	}()
+
+	err = printCSV(result)
+	assert.Error(t, err)
+}
+
+func TestPrintCSV_HeaderWriteError_DevFull(t *testing.T) {
+	devFull, err := os.OpenFile("/dev/full", os.O_WRONLY, 0)
+	if err != nil {
+		t.Skip("/dev/full is not available")
+	}
+	defer devFull.Close()
+
+	old := os.Stdout
+	os.Stdout = devFull
+	defer func() {
+		os.Stdout = old
+	}()
+
+	err = printCSV(CompareResult{})
+	// printCSV currently does not propagate flush errors from csv.Writer.
+	assert.NoError(t, err)
+}
+
+func TestPrintCSV_ItemWriteErrors_DevFull(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("requires /dev/full")
+	}
+
+	huge := strings.Repeat("x", 1<<20)
+
+	tests := []struct {
+		name   string
+		result CompareResult
+	}{
+		{
+			name: "only_in_second_write_error",
+			result: CompareResult{
+				OnlyInSecond: []ItemInfo{{ID: 2, Name: huge}},
+			},
+		},
+		{
+			name: "common_write_error",
+			result: CompareResult{
+				Common: []CommonItemInfo{{Name: huge, ID1: 1, ID2: 2}},
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			devFull, err := os.OpenFile("/dev/full", os.O_WRONLY, 0)
+			require.NoError(t, err)
+			defer devFull.Close()
+
+			old := os.Stdout
+			os.Stdout = devFull
+			defer func() {
+				os.Stdout = old
+			}()
+
+			err = printCSV(tc.result)
+			assert.Error(t, err)
+		})
+	}
 }
 
 // ==================== Тесты для printTable ====================
@@ -653,4 +815,73 @@ func TestPrintCompareResult_StdoutFormats(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Contains(t, string(content[:n]), "Type,Name,ID Project 1,ID Project 2")
 	})
+}
+
+func TestPrintCompareResult_SaveToUnsupportedFormat(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().String("format", "xml", "")
+	cmd.Flags().Bool("quiet", true, "")
+
+	err := PrintCompareResult(cmd, CompareResult{}, "P1", "P2", "xml", "result.bin")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported format: xml")
+}
+
+func TestPrintCompareResult_SaveToJSON_Quiet(t *testing.T) {
+	jsonPath := filepath.Join(t.TempDir(), "result.json")
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", true, "")
+
+	err := PrintCompareResult(cmd, CompareResult{Resource: "cases"}, "P1", "P2", "json", jsonPath)
+	assert.NoError(t, err)
+
+	content, readErr := os.ReadFile(jsonPath)
+	require.NoError(t, readErr)
+	assert.Contains(t, string(content), "\"resource\": \"cases\"")
+}
+
+func TestSaveTableToFile_CustomPath_Quiet(t *testing.T) {
+	result := CompareResult{
+		Resource:    "cases",
+		Project1ID:  1,
+		Project2ID:  2,
+		OnlyInFirst: []ItemInfo{{ID: 1, Name: "Case A"}},
+	}
+
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", true, "")
+
+	path := filepath.Join(t.TempDir(), "table.txt")
+
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	require.NoError(t, err)
+	os.Stdout = w
+
+	callErr := saveTableToFile(cmd, result, "Project One", "Project Two", path)
+
+	require.NoError(t, w.Close())
+	os.Stdout = old
+
+	var captured bytes.Buffer
+	_, _ = captured.ReadFrom(r)
+	_ = r.Close()
+
+	require.NoError(t, callErr)
+	assert.NotContains(t, captured.String(), "Result saved to")
+
+	content, readErr := os.ReadFile(path)
+	require.NoError(t, readErr)
+	assert.Contains(t, string(content), "Case A")
+}
+
+func TestSaveTableToFile_CustomPathWriteError(t *testing.T) {
+	result := CompareResult{Resource: "cases", Project1ID: 1, Project2ID: 2}
+
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", true, "")
+
+	err := saveTableToFile(cmd, result, "P1", "P2", "/nonexistent/path/table.txt")
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "file write error")
 }

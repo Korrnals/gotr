@@ -255,6 +255,17 @@ func TestPriorityQueue_PushWithPriority(t *testing.T) {
 	assert.Equal(t, int64(2), task.SuiteID) // Low priority despite large size
 }
 
+func TestPriorityQueue_PushWithPriority_ClosedQueueNoop(t *testing.T) {
+	pq := NewPriorityQueue()
+	pq.Close()
+
+	pq.PushWithPriority(SuiteTask{SuiteID: 99, EstimatedSize: 1000}, PriorityHigh)
+
+	assert.Equal(t, 0, pq.Len())
+	_, ok := pq.TryPop()
+	assert.False(t, ok)
+}
+
 func TestPriorityQueue_GetAll(t *testing.T) {
 	pq := NewPriorityQueue()
 	pq.Push(SuiteTask{SuiteID: 10, EstimatedSize: 100})

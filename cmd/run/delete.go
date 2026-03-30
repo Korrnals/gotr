@@ -16,38 +16,47 @@ type runServiceWrapper struct {
 	svc *service.RunService
 }
 
+// Delete delegates run deletion to the underlying run service.
 func (w *runServiceWrapper) Delete(ctx context.Context, runID int64) error {
 	return w.svc.Delete(ctx, runID)
 }
 
+// ParseID delegates run ID parsing to the underlying run service.
 func (w *runServiceWrapper) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	return w.svc.ParseID(ctx, args, index)
 }
 
+// PrintSuccess delegates success message formatting to the underlying run service.
 func (w *runServiceWrapper) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	w.svc.PrintSuccess(ctx, cmd, format, args...)
 }
 
+// Create delegates run creation to the underlying run service.
 func (w *runServiceWrapper) Create(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 	return w.svc.Create(ctx, projectID, req)
 }
 
+// Output delegates command output formatting to the underlying run service.
 func (w *runServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return w.svc.Output(ctx, cmd, data)
 }
 
+// Close delegates run closing to the underlying run service.
 func (w *runServiceWrapper) Close(ctx context.Context, runID int64) (*data.Run, error) {
 	return w.svc.Close(ctx, runID)
 }
 
+// Update delegates run updates to the underlying run service.
 func (w *runServiceWrapper) Update(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 	return w.svc.Update(ctx, runID, req)
 }
 
+// Get delegates run retrieval by ID to the underlying run service.
 func (w *runServiceWrapper) Get(ctx context.Context, runID int64) (*data.Run, error) {
 	return w.svc.Get(ctx, runID)
 }
 
+// GetByProject delegates project run listing to the underlying run service.
 func (w *runServiceWrapper) GetByProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	return w.svc.GetByProject(ctx, projectID)
 }

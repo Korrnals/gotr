@@ -16,6 +16,7 @@ import (
 
 const apiPrefix = "index.php?/api/v2/"
 
+// HTTPClient wraps HTTP transport and base URL handling for TestRail API calls.
 type HTTPClient struct {
 	client  *http.Client
 	baseURL *url.URL
@@ -35,6 +36,7 @@ type authTransport struct {
 	base     http.RoundTripper
 }
 
+// RoundTrip injects authentication and required default headers into each request.
 func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.SetBasicAuth(t.username, t.apiKey)
 	// Устанавливаем Content-Type только если он не установлен

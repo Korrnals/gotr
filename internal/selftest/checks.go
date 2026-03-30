@@ -19,9 +19,13 @@ var execCommand = exec.Command
 // ConfigChecker проверяет конфигурацию в ~/.gotr/config/
 type ConfigChecker struct{}
 
-func (c ConfigChecker) Name() string     { return "Configuration File" }
+// Name returns the display name of the configuration check.
+func (c ConfigChecker) Name() string { return "Configuration File" }
+
+// Category returns the check category shown in self-test output.
 func (c ConfigChecker) Category() string { return "Configuration" }
 
+// Check verifies that the default configuration file exists.
 func (c ConfigChecker) Check() CheckResult {
 	// Проверяем путь ~/.gotr/config/default.yaml
 	configPath, err := paths.ConfigFile()
@@ -55,9 +59,13 @@ func (c ConfigChecker) Check() CheckResult {
 // BaseDirChecker проверяет структуру ~/.testrail/
 type BaseDirChecker struct{}
 
-func (c BaseDirChecker) Name() string     { return "Base Directory Structure" }
+// Name returns the display name of the base-directory check.
+func (c BaseDirChecker) Name() string { return "Base Directory Structure" }
+
+// Category returns the check category shown in self-test output.
 func (c BaseDirChecker) Category() string { return "Configuration" }
 
+// Check validates and creates required gotr runtime directories.
 func (c BaseDirChecker) Check() CheckResult {
 	missing := []string{}
 
@@ -112,9 +120,13 @@ type BinaryInfoChecker struct {
 	BuildTime string
 }
 
-func (c BinaryInfoChecker) Name() string     { return "Binary Information" }
+// Name returns the display name of the binary information check.
+func (c BinaryInfoChecker) Name() string { return "Binary Information" }
+
+// Category returns the check category shown in self-test output.
 func (c BinaryInfoChecker) Category() string { return "System" }
 
+// Check reports build metadata embedded into the binary.
 func (c BinaryInfoChecker) Check() CheckResult {
 	return CheckResult{
 		Result:  ResultPass,
@@ -126,9 +138,13 @@ func (c BinaryInfoChecker) Check() CheckResult {
 // GoEnvChecker проверяет окружение Go
 type GoEnvChecker struct{}
 
-func (c GoEnvChecker) Name() string     { return "Go Environment" }
+// Name returns the display name of the Go environment check.
+func (c GoEnvChecker) Name() string { return "Go Environment" }
+
+// Category returns the check category shown in self-test output.
 func (c GoEnvChecker) Category() string { return "System" }
 
+// Check reports the active Go runtime and platform environment.
 func (c GoEnvChecker) Check() CheckResult {
 	goVersion := runtime.Version()
 	goOS := runtime.GOOS
@@ -145,9 +161,13 @@ func (c GoEnvChecker) Check() CheckResult {
 // AllTestsChecker запускает все тесты проекта
 type AllTestsChecker struct{}
 
-func (c AllTestsChecker) Name() string     { return "All Unit Tests" }
+// Name returns the display name of the full test-suite check.
+func (c AllTestsChecker) Name() string { return "All Unit Tests" }
+
+// Category returns the check category shown in self-test output.
 func (c AllTestsChecker) Category() string { return "Tests" }
 
+// Check runs the project test suite and summarizes pass/fail statistics.
 func (c AllTestsChecker) Check() CheckResult {
 	// Запускаем все тесты во всех пакетах
 	cmd := execCommand("go", "test", "./...", "-v")
@@ -206,9 +226,13 @@ func (c AllTestsChecker) Check() CheckResult {
 // CoverageChecker проверяет покрытие кода
 type CoverageChecker struct{}
 
-func (c CoverageChecker) Name() string     { return "Code Coverage" }
+// Name returns the display name of the coverage check.
+func (c CoverageChecker) Name() string { return "Code Coverage" }
+
+// Category returns the check category shown in self-test output.
 func (c CoverageChecker) Category() string { return "Coverage" }
 
+// Check runs coverage collection and reports overall coverage health.
 func (c CoverageChecker) Check() CheckResult {
 	// Запускаем тесты с coverage для всех пакетов
 	cmd := execCommand("go", "test", "./...", "-coverprofile=/tmp/gotr-coverage.out")

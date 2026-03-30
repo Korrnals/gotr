@@ -111,9 +111,11 @@ func (api *TestRailAPI) Paths() []APIPath {
 
 // --- Resources ---
 
+// Attachments lists API endpoints for the corresponding TestRail resource.
 type Attachments struct{}
 
-func (a *Attachments) Paths() []APIPath {
+// Paths returns API endpoints for Attachments.
+func (r *Attachments) Paths() []APIPath {
 	return []APIPath{
 		{Method: "POST", URI: "index.php?/api/v2/add_attachment_to_case/{case_id}", Description: "Add attachment to case"},
 		{Method: "POST", URI: "index.php?/api/v2/add_attachment_to_plan/{plan_id}", Description: "Add attachment to plan"},
@@ -123,9 +125,11 @@ func (a *Attachments) Paths() []APIPath {
 	}
 }
 
+// Cases lists API endpoints for the corresponding TestRail resource.
 type Cases struct{}
 
-func (c *Cases) Paths() []APIPath {
+// Paths returns API endpoints for Cases.
+func (r *Cases) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_case/{case_id}", Description: "Get single test case", Params: map[string]string{"case_id": "Required"}},
 		{Method: "GET", URI: "index.php?/api/v2/get_cases/{project_id}", Description: "Get list of test cases for project (supports filters like suite_id, section_id)"},
@@ -140,26 +144,32 @@ func (c *Cases) Paths() []APIPath {
 	}
 }
 
+// CaseFields lists API endpoints for the corresponding TestRail resource.
 type CaseFields struct{}
 
-func (cf *CaseFields) Paths() []APIPath {
+// Paths returns API endpoints for CaseFields.
+func (r *CaseFields) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_case_fields", Description: "Get list of available case fields"},
 		{Method: "POST", URI: "index.php?/api/v2/add_case_field", Description: "Create new custom case field"},
 	}
 }
 
+// CaseTypes lists API endpoints for the corresponding TestRail resource.
 type CaseTypes struct{}
 
-func (ct *CaseTypes) Paths() []APIPath {
+// Paths returns API endpoints for CaseTypes.
+func (r *CaseTypes) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_case_types", Description: "Get list of available case types"},
 	}
 }
 
+// Configurations lists API endpoints for the corresponding TestRail resource.
 type Configurations struct{}
 
-func (cfg *Configurations) Paths() []APIPath {
+// Paths returns API endpoints for Configurations.
+func (r *Configurations) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_configs/{project_id}", Description: "Get configurations for project"},
 		{Method: "POST", URI: "index.php?/api/v2/add_config_group/{project_id}", Description: "Add config group"},
@@ -171,9 +181,11 @@ func (cfg *Configurations) Paths() []APIPath {
 	}
 }
 
+// Milestones lists API endpoints for the corresponding TestRail resource.
 type Milestones struct{}
 
-func (m *Milestones) Paths() []APIPath {
+// Paths returns API endpoints for Milestones.
+func (r *Milestones) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_milestone/{milestone_id}", Description: "Get single milestone"},
 		{Method: "GET", URI: "index.php?/api/v2/get_milestones/{project_id}", Description: "Get milestones for project"},
@@ -183,9 +195,11 @@ func (m *Milestones) Paths() []APIPath {
 	}
 }
 
+// Plans lists API endpoints for the corresponding TestRail resource.
 type Plans struct{}
 
-func (p *Plans) Paths() []APIPath {
+// Paths returns API endpoints for Plans.
+func (r *Plans) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_plan/{plan_id}", Description: "Get single test plan"},
 		{Method: "GET", URI: "index.php?/api/v2/get_plans/{project_id}", Description: "Get test plans for project"},
@@ -199,17 +213,21 @@ func (p *Plans) Paths() []APIPath {
 	}
 }
 
+// Priorities lists API endpoints for the corresponding TestRail resource.
 type Priorities struct{}
 
-func (pr *Priorities) Paths() []APIPath {
+// Paths returns API endpoints for Priorities.
+func (r *Priorities) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_priorities", Description: "Get list of available priorities"},
 	}
 }
 
+// Projects lists API endpoints for the corresponding TestRail resource.
 type Projects struct{}
 
-func (p *Projects) Paths() []APIPath {
+// Paths returns API endpoints for Projects.
+func (r *Projects) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_project/{project_id}", Description: "Get single project"},
 		{Method: "GET", URI: "index.php?/api/v2/get_projects", Description: "Get all projects (with filters)"},
@@ -219,8 +237,10 @@ func (p *Projects) Paths() []APIPath {
 	}
 }
 
+// Results lists API endpoints for the corresponding TestRail resource.
 type Results struct{}
 
+// Paths returns API endpoints for Results.
 func (r *Results) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_results/{test_id}", Description: "Get results for test"},
@@ -233,16 +253,20 @@ func (r *Results) Paths() []APIPath {
 	}
 }
 
+// ResultFields lists API endpoints for the corresponding TestRail resource.
 type ResultFields struct{}
 
-func (rf *ResultFields) Paths() []APIPath {
+// Paths returns API endpoints for ResultFields.
+func (r *ResultFields) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_result_fields", Description: "Get list of available result fields"},
 	}
 }
 
+// Runs lists API endpoints for the corresponding TestRail resource.
 type Runs struct{}
 
+// Paths returns API endpoints for Runs.
 func (r *Runs) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_run/{run_id}", Description: "Get single test run"},
@@ -254,9 +278,11 @@ func (r *Runs) Paths() []APIPath {
 	}
 }
 
+// Sections lists API endpoints for the corresponding TestRail resource.
 type Sections struct{}
 
-func (s *Sections) Paths() []APIPath {
+// Paths returns API endpoints for Sections.
+func (r *Sections) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_section/{section_id}", Description: "Get single section"},
 		{Method: "GET", URI: "index.php?/api/v2/get_sections/{project_id}&suite_id={suite_id}", Description: "Get sections for project/suite"},
@@ -266,17 +292,21 @@ func (s *Sections) Paths() []APIPath {
 	}
 }
 
+// Statuses lists API endpoints for the corresponding TestRail resource.
 type Statuses struct{}
 
-func (s *Statuses) Paths() []APIPath {
+// Paths returns API endpoints for Statuses.
+func (r *Statuses) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_statuses", Description: "Get list of available statuses"},
 	}
 }
 
+// Suites lists API endpoints for the corresponding TestRail resource.
 type Suites struct{}
 
-func (s *Suites) Paths() []APIPath {
+// Paths returns API endpoints for Suites.
+func (r *Suites) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_suite/{suite_id}", Description: "Get single test suite"},
 		{Method: "GET", URI: "index.php?/api/v2/get_suites/{project_id}", Description: "Get test suites for project"},
@@ -286,9 +316,11 @@ func (s *Suites) Paths() []APIPath {
 	}
 }
 
+// Tests lists API endpoints for the corresponding TestRail resource.
 type Tests struct{}
 
-func (t *Tests) Paths() []APIPath {
+// Paths returns API endpoints for Tests.
+func (r *Tests) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_test/{test_id}", Description: "Get single test"},
 		{Method: "GET", URI: "index.php?/api/v2/get_tests/{run_id}", Description: "Get tests for run (supports status_id filter)"},
@@ -296,9 +328,11 @@ func (t *Tests) Paths() []APIPath {
 	}
 }
 
+// Users lists API endpoints for the corresponding TestRail resource.
 type Users struct{}
 
-func (u *Users) Paths() []APIPath {
+// Paths returns API endpoints for Users.
+func (r *Users) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_user/{user_id}", Description: "Get user by ID"},
 		{Method: "GET", URI: "index.php?/api/v2/get_user_by_email&email={email}", Description: "Get user by email"},
@@ -306,8 +340,10 @@ func (u *Users) Paths() []APIPath {
 	}
 }
 
+// Reports lists API endpoints for the corresponding TestRail resource.
 type Reports struct{}
 
+// Paths returns API endpoints for Reports.
 func (r *Reports) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_reports/{project_id}", Description: "Get available reports for project"},
@@ -316,8 +352,10 @@ func (r *Reports) Paths() []APIPath {
 	}
 }
 
+// Roles lists API endpoints for the corresponding TestRail resource.
 type Roles struct{}
 
+// Paths returns API endpoints for Roles.
 func (r *Roles) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_roles", Description: "Get list of available roles"},
@@ -326,17 +364,21 @@ func (r *Roles) Paths() []APIPath {
 	}
 }
 
+// Templates lists API endpoints for the corresponding TestRail resource.
 type Templates struct{}
 
-func (t *Templates) Paths() []APIPath {
+// Paths returns API endpoints for Templates.
+func (r *Templates) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_templates/{project_id}", Description: "Get list of available templates for project", Params: map[string]string{"project_id": "Required"}},
 	}
 }
 
+// Groups lists API endpoints for the corresponding TestRail resource.
 type Groups struct{}
 
-func (g *Groups) Paths() []APIPath {
+// Paths returns API endpoints for Groups.
+func (r *Groups) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_group/{group_id}", Description: "Get single group", Params: map[string]string{"group_id": "Required"}},
 		{Method: "GET", URI: "index.php?/api/v2/get_groups/{project_id}", Description: "Get groups for project", Params: map[string]string{"project_id": "Required"}},
@@ -346,9 +388,11 @@ func (g *Groups) Paths() []APIPath {
 	}
 }
 
+// SharedSteps lists API endpoints for the corresponding TestRail resource.
 type SharedSteps struct{}
 
-func (s *SharedSteps) Paths() []APIPath {
+// Paths returns API endpoints for SharedSteps.
+func (r *SharedSteps) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_shared_step/{shared_step_id}", Description: "Get single shared step", Params: map[string]string{"shared_step_id": "Required"}},
 		{Method: "GET", URI: "index.php?/api/v2/get_shared_step_history/{shared_step_id}", Description: "Get history for shared step"},
@@ -359,9 +403,11 @@ func (s *SharedSteps) Paths() []APIPath {
 	}
 }
 
+// Variables lists API endpoints for the corresponding TestRail resource.
 type Variables struct{}
 
-func (v *Variables) Paths() []APIPath {
+// Paths returns API endpoints for Variables.
+func (r *Variables) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_variables/{dataset_id}", Description: "Get variables for dataset"},
 		{Method: "POST", URI: "index.php?/api/v2/add_variable/{dataset_id}", Description: "Add new variable"},
@@ -370,9 +416,11 @@ func (v *Variables) Paths() []APIPath {
 	}
 }
 
+// Labels lists API endpoints for the corresponding TestRail resource.
 type Labels struct{}
 
-func (l *Labels) Paths() []APIPath {
+// Paths returns API endpoints for Labels.
+func (r *Labels) Paths() []APIPath {
 	return []APIPath{
 		// Labels часто обновляются через тесты/результаты, но есть bulk-методы
 		{Method: "POST", URI: "index.php?/api/v2/update_test_labels/{test_id}", Description: "Update labels for test"},
@@ -381,9 +429,11 @@ func (l *Labels) Paths() []APIPath {
 	}
 }
 
+// Datasets lists API endpoints for the corresponding TestRail resource.
 type Datasets struct{}
 
-func (d *Datasets) Paths() []APIPath {
+// Paths returns API endpoints for Datasets.
+func (r *Datasets) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_dataset/{dataset_id}", Description: "Get single dataset", Params: map[string]string{"dataset_id": "Required"}},
 		{Method: "GET", URI: "index.php?/api/v2/get_datasets/{project_id}", Description: "Get datasets for project"},
@@ -393,9 +443,11 @@ func (d *Datasets) Paths() []APIPath {
 	}
 }
 
+// BDDs lists API endpoints for the corresponding TestRail resource.
 type BDDs struct{}
 
-func (b *BDDs) Paths() []APIPath {
+// Paths returns API endpoints for BDDs.
+func (r *BDDs) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_bdd/{case_id}", Description: "Export BDD scenario as .feature file", Params: map[string]string{"case_id": "Required"}},
 		{Method: "POST", URI: "index.php?/api/v2/add_bdd/{case_id}", Description: "Import BDD scenario from .feature file"},

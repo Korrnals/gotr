@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
@@ -24,11 +22,6 @@ func (c *HTTPClient) GetGroups(ctx context.Context, projectID int64) (data.GetGr
 		return nil, fmt.Errorf("error getting groups for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var groups data.GetGroupsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&groups); err != nil {
@@ -45,11 +38,6 @@ func (c *HTTPClient) GetGroup(ctx context.Context, groupID int64) (*data.Group, 
 		return nil, fmt.Errorf("error getting group %d: %w", groupID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var group data.Group
 	if err := json.NewDecoder(resp.Body).Decode(&group); err != nil {
@@ -73,11 +61,6 @@ func (c *HTTPClient) AddGroup(ctx context.Context, projectID int64, name string,
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var group data.Group
 	if err := json.NewDecoder(resp.Body).Decode(&group); err != nil {
 		return nil, fmt.Errorf("error decoding group: %w", err)
@@ -100,11 +83,6 @@ func (c *HTTPClient) UpdateGroup(ctx context.Context, groupID int64, name string
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var group data.Group
 	if err := json.NewDecoder(resp.Body).Decode(&group); err != nil {
 		return nil, fmt.Errorf("error decoding group: %w", err)
@@ -121,10 +99,6 @@ func (c *HTTPClient) DeleteGroup(ctx context.Context, groupID int64) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 	return nil
 }
 
@@ -137,11 +111,6 @@ func (c *HTTPClient) GetRoles(ctx context.Context) (data.GetRolesResponse, error
 		return nil, fmt.Errorf("error getting roles: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var roles data.GetRolesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&roles); err != nil {
@@ -159,11 +128,6 @@ func (c *HTTPClient) GetRole(ctx context.Context, roleID int64) (*data.Role, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var role data.Role
 	if err := json.NewDecoder(resp.Body).Decode(&role); err != nil {
 		return nil, fmt.Errorf("error decoding role: %w", err)
@@ -180,11 +144,6 @@ func (c *HTTPClient) GetResultFields(ctx context.Context) (data.GetResultFieldsR
 		return nil, fmt.Errorf("error getting result fields: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var fields data.GetResultFieldsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&fields); err != nil {
@@ -204,11 +163,6 @@ func (c *HTTPClient) GetDatasets(ctx context.Context, projectID int64) (data.Get
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var datasets data.GetDatasetsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&datasets); err != nil {
 		return nil, fmt.Errorf("error decoding datasets: %w", err)
@@ -224,11 +178,6 @@ func (c *HTTPClient) GetDataset(ctx context.Context, datasetID int64) (*data.Dat
 		return nil, fmt.Errorf("error getting dataset %d: %w", datasetID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var dataset data.Dataset
 	if err := json.NewDecoder(resp.Body).Decode(&dataset); err != nil {
@@ -249,11 +198,6 @@ func (c *HTTPClient) AddDataset(ctx context.Context, projectID int64, name strin
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var dataset data.Dataset
 	if err := json.NewDecoder(resp.Body).Decode(&dataset); err != nil {
 		return nil, fmt.Errorf("error decoding dataset: %w", err)
@@ -273,11 +217,6 @@ func (c *HTTPClient) UpdateDataset(ctx context.Context, datasetID int64, name st
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var dataset data.Dataset
 	if err := json.NewDecoder(resp.Body).Decode(&dataset); err != nil {
 		return nil, fmt.Errorf("error decoding dataset: %w", err)
@@ -294,10 +233,6 @@ func (c *HTTPClient) DeleteDataset(ctx context.Context, datasetID int64) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 	return nil
 }
 
@@ -311,11 +246,6 @@ func (c *HTTPClient) GetVariables(ctx context.Context, datasetID int64) (data.Ge
 		return nil, fmt.Errorf("error getting variables for dataset %d: %w", datasetID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var variables data.GetVariablesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&variables); err != nil {
@@ -336,11 +266,6 @@ func (c *HTTPClient) AddVariable(ctx context.Context, datasetID int64, name stri
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var variable data.Variable
 	if err := json.NewDecoder(resp.Body).Decode(&variable); err != nil {
 		return nil, fmt.Errorf("error decoding variable: %w", err)
@@ -360,11 +285,6 @@ func (c *HTTPClient) UpdateVariable(ctx context.Context, variableID int64, name 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var variable data.Variable
 	if err := json.NewDecoder(resp.Body).Decode(&variable); err != nil {
 		return nil, fmt.Errorf("error decoding variable: %w", err)
@@ -381,10 +301,6 @@ func (c *HTTPClient) DeleteVariable(ctx context.Context, variableID int64) error
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 	return nil
 }
 
@@ -398,11 +314,6 @@ func (c *HTTPClient) GetBDD(ctx context.Context, caseID int64) (*data.BDD, error
 		return nil, fmt.Errorf("error getting BDD for case %d: %w", caseID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var bdd data.BDD
 	if err := json.NewDecoder(resp.Body).Decode(&bdd); err != nil {
@@ -422,11 +333,6 @@ func (c *HTTPClient) AddBDD(ctx context.Context, caseID int64, content string) (
 		return nil, fmt.Errorf("error creating BDD: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var bdd data.BDD
 	if err := json.NewDecoder(resp.Body).Decode(&bdd); err != nil {
@@ -449,10 +355,6 @@ func (c *HTTPClient) UpdateTestLabels(ctx context.Context, testID int64, labels 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 	return nil
 }
 
@@ -471,10 +373,6 @@ func (c *HTTPClient) UpdateTestsLabels(ctx context.Context, runID int64, testIDs
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 	return nil
 }
 
@@ -486,11 +384,6 @@ func (c *HTTPClient) GetLabels(ctx context.Context, projectID int64) (data.GetLa
 		return nil, fmt.Errorf("error getting labels for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var labels data.GetLabelsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&labels); err != nil {
@@ -507,11 +400,6 @@ func (c *HTTPClient) GetLabel(ctx context.Context, labelID int64) (*data.Label, 
 		return nil, fmt.Errorf("error getting label %d: %w", labelID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var label data.Label
 	if err := json.NewDecoder(resp.Body).Decode(&label); err != nil {
@@ -530,11 +418,6 @@ func (c *HTTPClient) UpdateLabel(ctx context.Context, labelID int64, req data.Up
 		return nil, fmt.Errorf("error updating label: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var label data.Label
 	if err := json.NewDecoder(resp.Body).Decode(&label); err != nil {

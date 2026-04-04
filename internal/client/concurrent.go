@@ -97,11 +97,6 @@ func (c *HTTPClient) GetCasesParallel(ctx context.Context, projectID int64, suit
 		return results, fmt.Errorf("parallel execution failed: %w", err)
 	}
 
-	// Если были ошибки, возвращаем их
-	if len(errs) > 0 {
-		return results, fmt.Errorf("partial failure: %d/%d suites failed", len(errs), len(suiteIDs))
-	}
-
 	return results, nil
 }
 
@@ -168,11 +163,6 @@ func (c *HTTPClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 	// Ждем завершения
 	if err := pool.Wait(); err != nil {
 		return results, fmt.Errorf("parallel execution failed: %w", err)
-	}
-
-	// Если были ошибки
-	if len(errs) > 0 {
-		return results, fmt.Errorf("partial failure: %d/%d projects failed", len(errs), len(projectIDs))
 	}
 
 	return results, nil

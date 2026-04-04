@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strconv"
 
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -23,12 +21,6 @@ func (c *HTTPClient) GetTest(ctx context.Context, testID int64) (*data.Test, err
 		return nil, fmt.Errorf("request error GetTest for test %d: %w", testID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting test %d: %s",
-			resp.Status, testID, string(body))
-	}
 
 	var test data.Test
 	if err := json.NewDecoder(resp.Body).Decode(&test); err != nil {
@@ -57,11 +49,7 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateTestRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("update_test/%d", testID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -69,12 +57,6 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 		return nil, fmt.Errorf("request error UpdateTest for test %d: %w", testID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s updating test %d: %s",
-			resp.Status, testID, string(body))
-	}
 
 	var test data.Test
 	if err := json.NewDecoder(resp.Body).Decode(&test); err != nil {

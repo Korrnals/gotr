@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
@@ -21,11 +19,6 @@ func (c *HTTPClient) GetPlan(ctx context.Context, planID int64) (*data.Plan, err
 		return nil, fmt.Errorf("error getting plan %d: %w", planID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -50,21 +43,12 @@ func (c *HTTPClient) GetPlans(ctx context.Context, projectID int64) (data.GetPla
 func (c *HTTPClient) AddPlan(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan/%d", projectID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
-
+	jsonBody, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating plan: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -78,21 +62,12 @@ func (c *HTTPClient) AddPlan(ctx context.Context, projectID int64, req *data.Add
 func (c *HTTPClient) UpdatePlan(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan/%d", planID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
-
+	jsonBody, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan %d: %w", planID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -112,11 +87,6 @@ func (c *HTTPClient) ClosePlan(ctx context.Context, planID int64) (*data.Plan, e
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
-
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
 		return nil, fmt.Errorf("error decoding closed plan: %w", err)
@@ -135,10 +105,6 @@ func (c *HTTPClient) DeletePlan(ctx context.Context, planID int64) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
 	return nil
 }
 
@@ -147,21 +113,12 @@ func (c *HTTPClient) DeletePlan(ctx context.Context, planID int64) error {
 func (c *HTTPClient) AddPlanEntry(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan_entry/%d", planID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
-
+	jsonBody, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error adding plan entry: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -175,21 +132,12 @@ func (c *HTTPClient) AddPlanEntry(ctx context.Context, planID int64, req *data.A
 func (c *HTTPClient) UpdatePlanEntry(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan_entry/%d/%s", planID, entryID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
-
+	jsonBody, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan entry %s: %w", entryID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for entry %s: %s", resp.Status, entryID, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -209,9 +157,5 @@ func (c *HTTPClient) DeletePlanEntry(ctx context.Context, planID int64, entryID 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s for entry %s: %s", resp.Status, entryID, string(body))
-	}
 	return nil
 }

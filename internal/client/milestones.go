@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
@@ -22,12 +20,6 @@ func (c *HTTPClient) GetMilestone(ctx context.Context, milestoneID int64) (*data
 		return nil, fmt.Errorf("request error GetMilestone for milestone %d: %w", milestoneID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting milestone %d: %s",
-			resp.Status, milestoneID, string(body))
-	}
 
 	var milestone data.Milestone
 	if err := json.NewDecoder(resp.Body).Decode(&milestone); err != nil {
@@ -55,11 +47,7 @@ func (c *HTTPClient) AddMilestone(ctx context.Context, projectID int64, req *dat
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddMilestoneRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_milestone/%d", projectID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -67,12 +55,6 @@ func (c *HTTPClient) AddMilestone(ctx context.Context, projectID int64, req *dat
 		return nil, fmt.Errorf("request error AddMilestone for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s creating milestone for project %d: %s",
-			resp.Status, projectID, string(body))
-	}
 
 	var milestone data.Milestone
 	if err := json.NewDecoder(resp.Body).Decode(&milestone); err != nil {
@@ -89,11 +71,7 @@ func (c *HTTPClient) UpdateMilestone(ctx context.Context, milestoneID int64, req
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateMilestoneRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("update_milestone/%d", milestoneID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -101,12 +79,6 @@ func (c *HTTPClient) UpdateMilestone(ctx context.Context, milestoneID int64, req
 		return nil, fmt.Errorf("request error UpdateMilestone for milestone %d: %w", milestoneID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s updating milestone %d: %s",
-			resp.Status, milestoneID, string(body))
-	}
 
 	var milestone data.Milestone
 	if err := json.NewDecoder(resp.Body).Decode(&milestone); err != nil {
@@ -126,12 +98,6 @@ func (c *HTTPClient) DeleteMilestone(ctx context.Context, milestoneID int64) err
 		return fmt.Errorf("request error DeleteMilestone for milestone %d: %w", milestoneID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s deleting milestone %d: %s",
-			resp.Status, milestoneID, string(body))
-	}
 
 	return nil
 }

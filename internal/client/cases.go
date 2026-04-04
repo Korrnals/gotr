@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -125,11 +124,6 @@ func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID int64, 
 		}
 		defer resp.Body.Close()
 
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			return nil, fmt.Errorf("API returned %s getting project cases %d: %s", resp.Status, projectID, string(body))
-		}
-
 		body, readErr := io.ReadAll(resp.Body)
 		if readErr != nil {
 			return nil, fmt.Errorf("response body read error (offset=%d): %w", offset, readErr)
@@ -168,12 +162,6 @@ func (c *HTTPClient) GetCase(ctx context.Context, caseID int64) (*data.Case, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting case %d: %s",
-			resp.Status, caseID, string(body))
-	}
-
 	var kase data.Case
 	if err := json.NewDecoder(resp.Body).Decode(&kase); err != nil {
 		return nil, fmt.Errorf("decode error case %d: %w", caseID, err)
@@ -191,12 +179,6 @@ func (c *HTTPClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting history case %d: %s",
-			resp.Status, caseID, string(body))
-	}
-
 	var result data.GetHistoryForCaseResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode error history case %d: %w", caseID, err)
@@ -208,10 +190,7 @@ func (c *HTTPClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data
 // AddCase создаёт новый кейс in section.
 // Требует sectionID и Title в запросе.
 func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddCaseRequest: %w", err)
-	}
+	bodyBytes, _ := json.Marshal(req)
 
 	endpoint := fmt.Sprintf("add_case/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -219,12 +198,6 @@ func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.Add
 		return nil, fmt.Errorf("request error AddCase in section %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s creating case in section %d: %s",
-			resp.Status, sectionID, string(body))
-	}
 
 	var result data.Case
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -237,10 +210,7 @@ func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.Add
 // UpdateCase обновляет существующий кейс.
 // Поддерживает частичные обновления.
 func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateCaseRequest: %w", err)
-	}
+	bodyBytes, _ := json.Marshal(req)
 
 	endpoint := fmt.Sprintf("update_case/%d", caseID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -248,12 +218,6 @@ func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.Upd
 		return nil, fmt.Errorf("request error UpdateCase %d: %w", caseID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s updating case %d: %s",
-			resp.Status, caseID, string(body))
-	}
 
 	var result data.Case
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -265,10 +229,7 @@ func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.Upd
 
 // UpdateCases — bulk-обновление cases in suite.
 func (c *HTTPClient) UpdateCases(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateCasesRequest: %w", err)
-	}
+	bodyBytes, _ := json.Marshal(req)
 
 	endpoint := fmt.Sprintf("update_cases/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -276,12 +237,6 @@ func (c *HTTPClient) UpdateCases(ctx context.Context, suiteID int64, req *data.U
 		return nil, fmt.Errorf("request error UpdateCases in suite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s bulk updating in suite %d: %s",
-			resp.Status, suiteID, string(body))
-	}
 
 	var result data.GetCasesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -301,20 +256,12 @@ func (c *HTTPClient) DeleteCase(ctx context.Context, caseID int64) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("delete error case %d: %s, body: %s", caseID, resp.Status, string(body))
-	}
-
 	return nil
 }
 
 // DeleteCases — bulk-удаление cases in suite.
 func (c *HTTPClient) DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("marshal error DeleteCasesRequest: %w", err)
-	}
+	bodyBytes, _ := json.Marshal(req)
 
 	endpoint := fmt.Sprintf("delete_cases/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -322,11 +269,6 @@ func (c *HTTPClient) DeleteCases(ctx context.Context, suiteID int64, req *data.D
 		return fmt.Errorf("request error DeleteCases in suite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("bulk delete error cases in suite %d: %s, body: %s", suiteID, resp.Status, string(body))
-	}
 
 	return nil
 }
@@ -339,11 +281,6 @@ func (c *HTTPClient) GetCaseTypes(ctx context.Context) (data.GetCaseTypesRespons
 		return nil, fmt.Errorf("request error GetCaseTypes: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting case types: %s", resp.Status, string(body))
-	}
 
 	var result data.GetCaseTypesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -362,11 +299,6 @@ func (c *HTTPClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsRespo
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting case fields: %s", resp.Status, string(body))
-	}
-
 	var result data.GetCaseFieldsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("decode error case fields: %w", err)
@@ -377,10 +309,7 @@ func (c *HTTPClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsRespo
 
 // AddCaseField создаёт новое поле case.
 func (c *HTTPClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddCaseFieldRequest: %w", err)
-	}
+	bodyBytes, _ := json.Marshal(req)
 
 	endpoint := "add_case_field"
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -388,11 +317,6 @@ func (c *HTTPClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldReq
 		return nil, fmt.Errorf("request error AddCaseField: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s creating field case: %s", resp.Status, string(body))
-	}
 
 	var result data.AddCaseFieldResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -505,10 +429,7 @@ func casesEqualByField(c1, c2 data.Case, field string) bool {
 // CopyCasesToSection копирует кейсы в указанную секцию
 // POST index.php?/api/v2/copy_cases_to_section/:section_id
 func (c *HTTPClient) CopyCasesToSection(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("marshal error CopyCasesRequest: %w", err)
-	}
+	bodyBytes, _ := json.Marshal(req)
 
 	endpoint := fmt.Sprintf("copy_cases_to_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -517,21 +438,13 @@ func (c *HTTPClient) CopyCasesToSection(ctx context.Context, sectionID int64, re
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("copy error cases to section %d: %s, body: %s", sectionID, resp.Status, string(body))
-	}
-
 	return nil
 }
 
 // MoveCasesToSection перемещает кейсы в указанную секцию
 // POST index.php?/api/v2/move_cases_to_section/:section_id
 func (c *HTTPClient) MoveCasesToSection(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("marshal error MoveCasesRequest: %w", err)
-	}
+	bodyBytes, _ := json.Marshal(req)
 
 	endpoint := fmt.Sprintf("move_cases_to_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -539,11 +452,6 @@ func (c *HTTPClient) MoveCasesToSection(ctx context.Context, sectionID int64, re
 		return fmt.Errorf("request error MoveCasesToSection for section %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("move error cases to section %d: %s, body: %s", sectionID, resp.Status, string(body))
-	}
 
 	return nil
 }

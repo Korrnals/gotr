@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
@@ -22,11 +20,6 @@ func (c *HTTPClient) GetConfigs(ctx context.Context, projectID int64) (data.GetC
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for project %d: %s", resp.Status, projectID, string(body))
-	}
-
 	var configs data.GetConfigsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&configs); err != nil {
 		return nil, fmt.Errorf("error decoding configs: %w", err)
@@ -39,21 +32,13 @@ func (c *HTTPClient) GetConfigs(ctx context.Context, projectID int64) (data.GetC
 func (c *HTTPClient) AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("add_config_group/%d", projectID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
+	jsonBody, _ := json.Marshal(req)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating config group: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var group data.ConfigGroup
 	if err := json.NewDecoder(resp.Body).Decode(&group); err != nil {
@@ -67,21 +52,13 @@ func (c *HTTPClient) AddConfigGroup(ctx context.Context, projectID int64, req *d
 func (c *HTTPClient) AddConfig(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("add_config/%d", groupID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
+	jsonBody, _ := json.Marshal(req)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating config: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var config data.Config
 	if err := json.NewDecoder(resp.Body).Decode(&config); err != nil {
@@ -95,21 +72,13 @@ func (c *HTTPClient) AddConfig(ctx context.Context, groupID int64, req *data.Add
 func (c *HTTPClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("update_config_group/%d", groupID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
+	jsonBody, _ := json.Marshal(req)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating config group %d: %w", groupID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for group %d: %s", resp.Status, groupID, string(body))
-	}
 
 	var group data.ConfigGroup
 	if err := json.NewDecoder(resp.Body).Decode(&group); err != nil {
@@ -123,21 +92,13 @@ func (c *HTTPClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *
 func (c *HTTPClient) UpdateConfig(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("update_config/%d", configID)
 
-	jsonBody, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
-	}
+	jsonBody, _ := json.Marshal(req)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating config %d: %w", configID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for config %d: %s", resp.Status, configID, string(body))
-	}
 
 	var config data.Config
 	if err := json.NewDecoder(resp.Body).Decode(&config); err != nil {
@@ -157,10 +118,6 @@ func (c *HTTPClient) DeleteConfigGroup(ctx context.Context, groupID int64) error
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s for group %d: %s", resp.Status, groupID, string(body))
-	}
 	return nil
 }
 
@@ -175,9 +132,5 @@ func (c *HTTPClient) DeleteConfig(ctx context.Context, configID int64) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s for config %d: %s", resp.Status, configID, string(body))
-	}
 	return nil
 }

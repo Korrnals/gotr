@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
@@ -15,23 +13,13 @@ import (
 // AddResult добавляет результат for test
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresult
 func (c *HTTPClient) AddResult(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddResultRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_result/%d", testID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error AddResult for test %d: %w", testID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s adding result for test %d: %s",
-			resp.Status, testID, string(body))
-	}
 
 	var result data.Result
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -44,23 +32,13 @@ func (c *HTTPClient) AddResult(ctx context.Context, testID int64, req *data.AddR
 // AddResultForCase добавляет результат для case в ране
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresultforcase
 func (c *HTTPClient) AddResultForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddResultRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_result_for_case/%d/%d", runID, caseID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error AddResultForCase for run %d, case %d: %w", runID, caseID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s adding result for run %d, case %d: %s",
-			resp.Status, runID, caseID, string(body))
-	}
 
 	var result data.Result
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -73,23 +51,13 @@ func (c *HTTPClient) AddResultForCase(ctx context.Context, runID, caseID int64, 
 // AddResults добавляет результаты для нескольких тестов в ране (bulk)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresults
 func (c *HTTPClient) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddResultsRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_results/%d", runID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error AddResults for run %d: %w", runID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s bulk adding results for run %d: %s",
-			resp.Status, runID, string(body))
-	}
 
 	var results data.GetResultsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
@@ -102,23 +70,13 @@ func (c *HTTPClient) AddResults(ctx context.Context, runID int64, req *data.AddR
 // AddResultsForCases добавляет результаты for cases in run (bulk)
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresultsforcases
 func (c *HTTPClient) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddResultsForCasesRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_results_for_cases/%d", runID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error AddResultsForCases for run %d: %w", runID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s bulk adding results for cases in run %d: %s",
-			resp.Status, runID, string(body))
-	}
 
 	var results data.GetResultsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
@@ -159,12 +117,6 @@ func (c *HTTPClient) GetResultsForCase(ctx context.Context, runID, caseID int64)
 		return nil, fmt.Errorf("request error GetResultsForCase for run %d, case %d: %w", runID, caseID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting results for run %d, case %d: %s",
-			resp.Status, runID, caseID, string(body))
-	}
 
 	var results data.GetResultsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {

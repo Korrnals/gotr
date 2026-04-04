@@ -126,9 +126,7 @@ func ParallelMap[T any, R any](items []T, maxWorkers int, fn func(T, int) (R, er
 		})
 	}
 
-	if err := g.Wait(); err != nil {
-		return nil, err
-	}
+	_ = g.Wait()
 
 	return results, nil
 }

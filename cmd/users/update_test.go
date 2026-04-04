@@ -161,3 +161,49 @@ func TestUpdateCmd_DryRun_NoMutatingCall(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, called)
 }
+
+func TestUpdateCmd_NoArgs_NoPrompter(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--name", "Test"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestUpdateCmd_ResetAdminAndInactiveFalse(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateUserFunc: func(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
+			assert.Equal(t, int64(123), userID)
+			assert.Equal(t, 0, req.IsAdmin)
+			assert.Equal(t, 1, req.IsActive)
+			return &data.User{ID: 123, Name: "Test User", IsAdmin: false, IsActive: true}, nil
+		},
+	}
+
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"123", "--admin=false", "--inactive=false"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestUpdateCmd_NoArgs_InteractiveResolveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetUsersFunc: func(ctx context.Context) (data.GetUsersResponse, error) {
+			return nil, fmt.Errorf("users boom")
+		},
+	}
+
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{"--name", "Updated Name"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "users boom")
+}

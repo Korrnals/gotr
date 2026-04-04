@@ -238,6 +238,12 @@ func TestRunService_Methods(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("Create invalid project id", func(t *testing.T) {
+		_, err := svc.Create(ctx, 0, &data.AddRunRequest{Name: "n", SuiteID: 1})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "project_id")
+	})
+
 	t.Run("Create client error", func(t *testing.T) {
 		mock.AddRunFunc = func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 			return nil, errors.New("add failed")

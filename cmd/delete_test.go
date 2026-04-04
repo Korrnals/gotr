@@ -629,3 +629,83 @@ func TestSelectSharedStepID_SelectError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to select shared step")
 	assert.Zero(t, id)
 }
+
+// ============= LAYER 2: delete.go missing branches =============
+
+func TestDelete_NoArgs_NoPrompter_Error(t *testing.T) {
+cmd := setupDeleteTest(t, &client.MockClient{})
+// No interactive.WithPrompter in context → !HasPrompterInContext = true
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "endpoint and id required")
+}
+
+func TestDelete_Interactive_ResolveIDError(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return nil, assert.AnError
+},
+}
+// Interactive mode, endpoint from prompter, then resolveDeleteID fails
+p := interactive.NewMockPrompter().
+WithSelectResponses(interactive.SelectResponse{Index: 0}) // select endpoint "project"
+
+cmd := setupDeleteTest(t, mock)
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+cmd.SetArgs([]string{"project"}) // supply endpoint, id=0 → resolveDeleteID
+
+err := cmd.Execute()
+assert.Error(t, err)
+}
+
+func TestSelectCaseID_SelectError(t *testing.T) {
+p := interactive.NewNonInteractivePrompter()
+cases := data.GetCasesResponse{{ID: 100, Title: "Case 1"}}
+
+id, err := selectCaseID(context.Background(), p, cases)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "failed to select case")
+assert.Zero(t, id)
+}
+
+func TestResolveDeleteID_SelectProjectErrors(t *testing.T) {
+endpoints := []string{"suite", "section", "case", "run", "shared-step"}
+for _, ep := range endpoints {
+ep := ep
+t.Run(ep+" get projects error", func(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return nil, assert.AnError
+},
+}
+p := interactive.NewMockPrompter()
+id, err := resolveDeleteID(context.Background(), p, mock, ep)
+assert.Error(t, err)
+assert.Zero(t, id)
+})
+}
+}
+
+func TestResolveDeleteID_SelectSuiteForProjectErrors(t *testing.T) {
+endpoints := []string{"section", "case"}
+for _, ep := range endpoints {
+ep := ep
+t.Run(ep+" get suites for project error", func(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+return nil, assert.AnError
+},
+}
+p := interactive.NewMockPrompter().
+WithSelectResponses(interactive.SelectResponse{Index: 0})
+id, err := resolveDeleteID(context.Background(), p, mock, ep)
+assert.Error(t, err)
+assert.Zero(t, id)
+})
+}
+}

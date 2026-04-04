@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -253,6 +254,18 @@ func TestSectionsListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestSectionsListCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newSectionsListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no projects found")
+}
+
 func TestSectionsListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
 		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
@@ -299,6 +312,85 @@ func TestSectionGetCmd_NoArgs_Interactive_GetSectionsError(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get sections list")
+}
+
+func TestSectionGetCmd_NoArgs_Interactive_EmptySections(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no sections found")
+}
+
+func TestSectionGetCmd_NilClient(t *testing.T) {
+	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	}
+
+	cmd := newSectionGetCmd(nilClientFunc)
+	cmd.SetArgs([]string{"100"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestSectionsListCmd_ProjectIDFlagOverridesArg(t *testing.T) {
+	mock := &client.MockClient{
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			assert.Equal(t, int64(40), projectID)
+			return data.GetSectionsResponse{{ID: 1, Name: "Section 1", SuiteID: 20069}}, nil
+		},
+	}
+
+	cmd := newSectionsListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"30", "--project-id", "40"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestSectionsListCmd_NoArgs_Interactive_SelectProjectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("project lookup failed")
+		},
+	}
+
+	p := interactive.NewMockPrompter()
+	cmd := newSectionsListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project lookup failed")
+}
+
+func TestSectionsListCmd_NilClient(t *testing.T) {
+	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	}
+
+	cmd := newSectionsListCmd(nilClientFunc)
+	cmd.SetArgs([]string{"30"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestSelectSectionID_SelectError(t *testing.T) {

@@ -171,6 +171,18 @@ func TestAddCmd_NoSection_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestAddCmd_NoSection_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--title=Case without section"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "section_id required")
+}
+
 // ==================== Flag Tests ====================
 
 func TestAddCmd_AllFlags(t *testing.T) {

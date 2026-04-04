@@ -326,6 +326,47 @@ func TestRootPersistentPreRunE_ReturnsClientCreationError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to create client")
 }
 
+func TestRootPersistentPreRunE_InsecureOptionEnabled(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("base_url", "https://example.com")
+	viper.Set("username", "qa@example.com")
+	viper.Set("api_key", "api-key")
+	viper.Set("insecure", true)
+
+	cmd := &cobra.Command{Use: "test-cmd"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	cmd.SetContext(context.Background())
+
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	require.NoError(t, err)
+	assert.NotNil(t, cmd.Context().Value(httpClientKey))
+}
+
+func TestInitConfig_NonNotFoundReadError(t *testing.T) {
+	viper.Reset()
+	origWD, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(origWD)
+		viper.Reset()
+	})
+
+	tmpDir := t.TempDir()
+	t.Setenv("HOME", tmpDir)
+	require.NoError(t, os.Chdir(tmpDir))
+
+	configDir := filepath.Join(tmpDir, ".gotr", "config")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(configDir, "default.yaml"), []byte("base_url: ["), 0o600))
+
+	assert.NotPanics(t, func() {
+		initConfig()
+	})
+}
+
 func TestInitConfig_FallbackToCurrentDirectoryWhenHomeUnavailable(t *testing.T) {
 	viper.Reset()
 	origWD, err := os.Getwd()
@@ -347,4 +388,51 @@ func TestInitConfig_FallbackToCurrentDirectoryWhenHomeUnavailable(t *testing.T) 
 
 	initConfig()
 	assert.Equal(t, filepath.Join(tmpDir, "default.yaml"), viper.ConfigFileUsed())
+}
+
+func TestInitConfig_ReadsConfigFromHomePath(t *testing.T) {
+	viper.Reset()
+	origUserHomeDir := userHomeDir
+	t.Cleanup(func() {
+		userHomeDir = origUserHomeDir
+		viper.Reset()
+	})
+
+	tmpHome := t.TempDir()
+	configDir := filepath.Join(tmpHome, ".gotr", "config")
+	require.NoError(t, os.MkdirAll(configDir, 0o755))
+	configPath := filepath.Join(configDir, "default.yaml")
+	require.NoError(t, os.WriteFile(configPath, []byte("base_url: home-config\n"), 0o600))
+
+	userHomeDir = func() (string, error) {
+		return tmpHome, nil
+	}
+
+	initConfig()
+	assert.Equal(t, configPath, viper.ConfigFileUsed())
+}
+
+func TestInitConfig_ReadsConfigFromCurrentDirWhenHomeHasNoConfig(t *testing.T) {
+	viper.Reset()
+	origWD, err := os.Getwd()
+	require.NoError(t, err)
+	origUserHomeDir := userHomeDir
+	t.Cleanup(func() {
+		_ = os.Chdir(origWD)
+		userHomeDir = origUserHomeDir
+		viper.Reset()
+	})
+
+	tmpHome := t.TempDir()
+	tmpWD := t.TempDir()
+	wdConfig := filepath.Join(tmpWD, "default.yaml")
+	require.NoError(t, os.WriteFile(wdConfig, []byte("base_url: wd-config\n"), 0o600))
+	require.NoError(t, os.Chdir(tmpWD))
+
+	userHomeDir = func() (string, error) {
+		return tmpHome, nil
+	}
+
+	initConfig()
+	assert.Equal(t, wdConfig, viper.ConfigFileUsed())
 }

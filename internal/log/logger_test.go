@@ -55,6 +55,26 @@ func TestCreateLoggerMkdirAllError(t *testing.T) {
 	}
 }
 
+func TestCreateLoggerOpenFileError(t *testing.T) {
+	resetLoggerState(t)
+
+	logDir := filepath.Join(t.TempDir(), "no-write")
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.Chmod(logDir, 0o500); err != nil {
+		t.Fatalf("Chmod() error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chmod(logDir, 0o755)
+	})
+
+	_, err := createLogger(Config{Level: "info", LogDir: logDir})
+	if err == nil {
+		t.Fatalf("expected createLogger error when log file cannot be opened")
+	}
+}
+
 func TestCreateLoggerAndWrappers(t *testing.T) {
 	resetLoggerState(t)
 

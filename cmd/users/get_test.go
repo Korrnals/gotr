@@ -106,3 +106,31 @@ func TestGetCmd_NoArgs_NonInteractive(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
+
+func TestGetCmd_NoArgs_NoPrompter(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestGetCmd_NoArgs_InteractiveResolveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetUsersFunc: func(ctx context.Context) (data.GetUsersResponse, error) {
+			return nil, fmt.Errorf("users boom")
+		},
+	}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "users boom")
+}

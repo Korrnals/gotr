@@ -221,6 +221,33 @@ func TestBaseDirChecker_AllDirectoriesExist(t *testing.T) {
 	assert.Equal(t, "All directories exist", res.Message)
 }
 
+func TestBaseDirChecker_FileInsteadOfDir(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	configPath, err := paths.ConfigDirPath()
+	assert.NoError(t, err)
+	assert.NoError(t, os.MkdirAll(filepath.Dir(configPath), 0o755))
+	assert.NoError(t, os.WriteFile(configPath, []byte("x"), 0o644))
+
+	res := BaseDirChecker{}.Check()
+	assert.Equal(t, ResultPass, res.Result)
+	assert.Equal(t, "Directories created", res.Message)
+	assert.Contains(t, res.Details, "config")
+}
+
+func TestBaseDirChecker_PathResolutionError(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	res := BaseDirChecker{}.Check()
+	if res.Error == nil {
+		t.Skip("os.UserHomeDir resolved home without HOME; skipping error-branch assertion")
+	}
+
+	assert.Equal(t, ResultFail, res.Result)
+	assert.Contains(t, res.Message, "Cannot determine")
+}
+
 func TestCoverageCheckerHelpers(t *testing.T) {
 	c := CoverageChecker{}
 	assert.Equal(t, "Code Coverage", c.Name())

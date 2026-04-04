@@ -110,6 +110,28 @@ func TestEntryUpdateCmd_MissingEntryID(t *testing.T) {
 	assert.Contains(t, err.Error(), "entry_id is required")
 }
 
+func TestEntryUpdateCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryUpdateCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "plan_id is required in non-interactive mode")
+}
+
+func TestEntryUpdateCmd_EmptyEntryID_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryUpdateCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", ""})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "entry_id is required")
+}
+
 // ==================== Entry Delete Tests ====================
 
 func TestEntryDeleteCmd_DryRun(t *testing.T) {
@@ -302,6 +324,38 @@ func TestEntryUpdateCmd_NoArgs_NonInteractive(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestEntryUpdateCmd_NoArgs_Interactive_ResolvePlanError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects api failed")
+		},
+	}
+	cmd := newEntryUpdateCmd(getClientForTests)
+	ctx := interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewMockPrompter())
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{"--name=Updated Entry"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "projects api failed")
+}
+
+func TestEntryUpdateCmd_MissingEntryID_Interactive_ResolveEntryError(t *testing.T) {
+	mock := &client.MockClient{
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			return nil, fmt.Errorf("plan api failed")
+		},
+	}
+	cmd := newEntryUpdateCmd(getClientForTests)
+	ctx := interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewMockPrompter())
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{"100"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "plan api failed")
+}
+
 func TestEntryDeleteCmd_NoArgs_Interactive(t *testing.T) {
 	called := false
 	mock := &client.MockClient{
@@ -352,6 +406,38 @@ func TestEntryDeleteCmd_NoArgs_NonInteractive(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestEntryDeleteCmd_NoArgs_Interactive_ResolvePlanError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects api failed")
+		},
+	}
+	cmd := newEntryDeleteCmd(getClientForTests)
+	ctx := interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewMockPrompter())
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "projects api failed")
+}
+
+func TestEntryDeleteCmd_MissingEntryID_Interactive_ResolveEntryError(t *testing.T) {
+	mock := &client.MockClient{
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			return nil, fmt.Errorf("plan api failed")
+		},
+	}
+	cmd := newEntryDeleteCmd(getClientForTests)
+	ctx := interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewMockPrompter())
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{"100"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "plan api failed")
+}
+
 func TestEntryDeleteCmd_NoArgs_NoPrompter_Error(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newEntryDeleteCmd(getClientForTests)
@@ -372,6 +458,17 @@ func TestEntryDeleteCmd_MissingEntryID_NoPrompter_Error(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "entry_id is required in non-interactive mode")
+}
+
+func TestEntryDeleteCmd_EmptyEntryID_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryDeleteCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", ""})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "entry_id is required")
 }
 
 func TestParseIntList_NegativeNumbers(t *testing.T) {
@@ -405,6 +502,17 @@ func TestEntryAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestEntryAddCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newEntryAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--suite-id=50"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "plan_id is required in non-interactive mode")
 }
 
 func TestEntryAddCmd_NoArgs_Interactive(t *testing.T) {

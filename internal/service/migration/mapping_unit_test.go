@@ -5,9 +5,22 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
+
+func TestSharedStepMapping_Save_MarshalError(t *testing.T) {
+	sm := NewSharedStepMapping(1, 2)
+	sm.AddPair(1, 101, "created")
+
+	// time.Time with year > 9999 causes json.Marshal to fail deterministically.
+	sm.CreatedAt = time.Date(10000, time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	err := sm.Save(t.TempDir())
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "year outside of range")
+}
 
 func TestSharedStepMapping_BasicOperations(t *testing.T) {
 	sm := NewSharedStepMapping(1, 2)

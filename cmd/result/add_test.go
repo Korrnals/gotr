@@ -80,6 +80,22 @@ func TestAddCmd_MissingStatusID(t *testing.T) {
 	assert.Contains(t, err.Error(), "status-id")
 }
 
+func TestAddCmd_MissingStatusID_RunEBranch(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newAddCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"12345"})
+
+	if flag := cmd.Flags().Lookup("status-id"); flag != nil {
+		delete(flag.Annotations, cobra.BashCompOneRequiredFlag)
+	}
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--status-id is required")
+}
+
 func TestAddCmd_InvalidTestID(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -203,6 +219,22 @@ func TestAddCaseCmd_MissingCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestAddCaseCmd_MissingStatusID_RunEBranch(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newAddCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", "--case-id", "200"})
+
+	if flag := cmd.Flags().Lookup("status-id"); flag != nil {
+		delete(flag.Annotations, cobra.BashCompOneRequiredFlag)
+	}
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--status-id is required")
 }
 
 func TestBuildAddResultRequest_AllFields(t *testing.T) {

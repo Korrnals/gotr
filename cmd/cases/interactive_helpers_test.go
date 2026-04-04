@@ -132,3 +132,41 @@ func TestSelectCaseID_NonInteractive(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to select case")
 	assert.Zero(t, id)
 }
+
+// ============= LAYER 2: SelectProject and SelectSuite error paths =============
+
+func TestResolveCaseIDInteractive_SelectProjectError(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return nil, assert.AnError
+},
+}
+p := interactive.NewMockPrompter()
+ctx := interactive.WithPrompter(context.Background(), p)
+
+id, err := resolveCaseIDInteractive(ctx, mock)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "failed to get projects list")
+assert.Zero(t, id)
+}
+
+func TestResolveCaseIDInteractive_SelectSuiteError(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+return data.GetSuitesResponse{{ID: 10, Name: "S1"}}, nil
+},
+}
+// Index 0 for project selection (ok), index 9 for suite (out of range → error)
+p := interactive.NewMockPrompter().
+WithSelectResponses(interactive.SelectResponse{Index: 0}).
+WithSelectResponses(interactive.SelectResponse{Index: 9})
+ctx := interactive.WithPrompter(context.Background(), p)
+
+id, err := resolveCaseIDInteractive(ctx, mock)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "failed to select suite")
+assert.Zero(t, id)
+}

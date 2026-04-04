@@ -177,6 +177,101 @@ func TestUpdateRun_FieldMapping_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestUpdateProject_FieldMapping_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+			assert.Equal(t, int64(100), projectID)
+			assert.Equal(t, "Project Name", req.Name)
+			assert.Equal(t, "Ann", req.Announcement)
+			assert.True(t, req.ShowAnnouncement)
+			assert.True(t, req.IsCompleted)
+			return &data.GetProjectResponse{ID: projectID, Name: req.Name}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	require.NoError(t, cmd.Flags().Set("name", "Project Name"))
+	require.NoError(t, cmd.Flags().Set("announcement", "Ann"))
+	require.NoError(t, cmd.Flags().Set("show-announcement", "true"))
+	require.NoError(t, cmd.Flags().Set("is-completed", "true"))
+
+	err := updateProject(mock, cmd, 100, nil)
+	assert.NoError(t, err)
+}
+
+func TestUpdateSuite_FieldMapping_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateSuiteFunc: func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+			assert.Equal(t, int64(200), suiteID)
+			assert.Equal(t, "Suite Name", req.Name)
+			assert.Equal(t, "Suite Desc", req.Description)
+			assert.True(t, req.IsCompleted)
+			return &data.Suite{ID: suiteID, Name: req.Name}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	require.NoError(t, cmd.Flags().Set("name", "Suite Name"))
+	require.NoError(t, cmd.Flags().Set("description", "Suite Desc"))
+	require.NoError(t, cmd.Flags().Set("is-completed", "true"))
+
+	err := updateSuite(mock, cmd, 200, nil)
+	assert.NoError(t, err)
+}
+
+func TestUpdateSection_FieldMapping_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+			assert.Equal(t, int64(300), sectionID)
+			assert.Equal(t, "Section Name", req.Name)
+			assert.Equal(t, "Section Desc", req.Description)
+			return &data.Section{ID: sectionID, Name: req.Name}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	require.NoError(t, cmd.Flags().Set("name", "Section Name"))
+	require.NoError(t, cmd.Flags().Set("description", "Section Desc"))
+
+	err := updateSection(mock, cmd, 300, nil)
+	assert.NoError(t, err)
+}
+
+func TestUpdateCase_FieldMapping_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+			assert.Equal(t, int64(400), caseID)
+			require.NotNil(t, req.Title)
+			require.NotNil(t, req.TypeID)
+			require.NotNil(t, req.PriorityID)
+			require.NotNil(t, req.Refs)
+			assert.Equal(t, "Case Name", *req.Title)
+			assert.Equal(t, int64(2), *req.TypeID)
+			assert.Equal(t, int64(3), *req.PriorityID)
+			assert.Equal(t, "REF-123", *req.Refs)
+			return &data.Case{ID: caseID, Title: *req.Title}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	require.NoError(t, cmd.Flags().Set("title", "Case Name"))
+	require.NoError(t, cmd.Flags().Set("type-id", "2"))
+	require.NoError(t, cmd.Flags().Set("priority-id", "3"))
+	require.NoError(t, cmd.Flags().Set("refs", "REF-123"))
+
+	err := updateCase(mock, cmd, 400, nil)
+	assert.NoError(t, err)
+}
+
+func TestRunUpdate_Interactive_UnsupportedEndpoint(t *testing.T) {
+	cmd := setupUpdateTest(t, &client.MockClient{})
+	cmd.Flags().BoolP("interactive", "i", false, "")
+	require.NoError(t, cmd.Flags().Set("interactive", "true"))
+
+	err := runUpdate(cmd, []string{"labels", "1"})
+	assert.ErrorContains(t, err, "interactive mode not supported")
+}
+
 func TestUpdateRun_JSONSuccess(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
@@ -352,6 +447,30 @@ func TestRunUpdate_OrchestrationBranches(t *testing.T) {
 		err = runUpdate(cmd, []string{"project", "1"})
 		assert.NoError(t, err)
 	})
+}
+
+func TestRunUpdate_UnsupportedEndpoint_Direct(t *testing.T) {
+	cmd := setupUpdateTest(t, &client.MockClient{})
+
+	err := runUpdate(cmd, []string{"unsupported", "1"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported endpoint")
+}
+
+func TestRunUpdate_LabelsRouting_Success(t *testing.T) {
+	mock := &client.MockClient{
+		UpdateTestLabelsFunc: func(ctx context.Context, testID int64, labels []string) error {
+			assert.Equal(t, int64(99), testID)
+			assert.Equal(t, []string{"bug", "regression"}, labels)
+			return nil
+		},
+	}
+	cmd := setupUpdateTest(t, mock)
+	cmd.Flags().String("labels", "", "")
+	require.NoError(t, cmd.Flags().Set("labels", "bug,regression"))
+
+	err := runUpdate(cmd, []string{"labels", "99"})
+	assert.NoError(t, err)
 }
 
 func TestUpdateProjectInteractive_Cancelled(t *testing.T) {
@@ -1111,4 +1230,51 @@ func TestUpdateLabels_Success(t *testing.T) {
 	err := updateLabels(mock, cmd, 99)
 	assert.NoError(t, err)
 	assert.True(t, called)
+}
+
+func TestRunUpdate_JSONFileReadError(t *testing.T) {
+	cmd := setupUpdateTest(t, &client.MockClient{})
+	require.NoError(t, cmd.Flags().Set("json-file", "/path/that/does/not/exist.json"))
+
+	err := runUpdate(cmd, []string{"project", "1"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "JSON file read error")
+}
+
+func TestRunUpdate_DryRun_UnsupportedEndpoint(t *testing.T) {
+	cmd := setupUpdateTest(t, &client.MockClient{})
+	cmd.Flags().Bool("dry-run", false, "")
+	require.NoError(t, cmd.Flags().Set("dry-run", "true"))
+
+	err := runUpdate(cmd, []string{"unsupported", "1"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported endpoint for dry-run")
+}
+
+func TestUpdateSectionInteractive_MultilineInputError(t *testing.T) {
+	cmd := setupUpdateTest(t, &client.MockClient{})
+	p := interactive.NewMockPrompter().WithInputResponses("Name only")
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateSectionInteractive(&client.MockClient{}, cmd, 10)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "input error")
+}
+
+func TestUpdateSectionInteractive_ConfirmError(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+			called = true
+			return &data.Section{ID: sectionID, Name: req.Name}, nil
+		},
+	}
+
+	cmd := setupUpdateTest(t, mock)
+	p := interactive.NewMockPrompter().WithInputResponses("Name", "Description")
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+
+	err := updateSectionInteractive(mock, cmd, 10)
+	assert.NoError(t, err)
+	assert.False(t, called)
 }

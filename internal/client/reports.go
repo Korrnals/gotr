@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
@@ -20,11 +18,6 @@ func (c *HTTPClient) GetReports(ctx context.Context, projectID int64) (data.GetR
 		return nil, fmt.Errorf("error getting reports for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for project %d: %s", resp.Status, projectID, string(body))
-	}
 
 	var reports data.GetReportsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reports); err != nil {
@@ -43,11 +36,6 @@ func (c *HTTPClient) RunReport(ctx context.Context, templateID int64) (*data.Run
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for template %d: %s", resp.Status, templateID, string(body))
-	}
-
 	var reportResp data.RunReportResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reportResp); err != nil {
 		return nil, fmt.Errorf("error decoding report response: %w", err)
@@ -65,11 +53,6 @@ func (c *HTTPClient) RunCrossProjectReport(ctx context.Context, templateID int64
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for template %d: %s", resp.Status, templateID, string(body))
-	}
-
 	var reportResp data.RunReportResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reportResp); err != nil {
 		return nil, fmt.Errorf("error decoding report response: %w", err)
@@ -86,11 +69,6 @@ func (c *HTTPClient) GetCrossProjectReports(ctx context.Context) (data.GetReport
 		return nil, fmt.Errorf("error getting cross-project reports: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var reports data.GetReportsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reports); err != nil {

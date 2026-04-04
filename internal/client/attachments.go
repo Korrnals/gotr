@@ -25,11 +25,6 @@ func (c *HTTPClient) DeleteAttachment(ctx context.Context, attachmentID int64) e
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s when deleting attachment %d: %s", resp.Status, attachmentID, string(body))
-	}
-
 	return nil
 }
 
@@ -42,11 +37,6 @@ func (c *HTTPClient) GetAttachment(ctx context.Context, attachmentID int64) (*da
 		return nil, fmt.Errorf("error getting attachment %d: %w", attachmentID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachment %d: %s", resp.Status, attachmentID, string(body))
-	}
 
 	var attachment data.Attachment
 	if err := json.NewDecoder(resp.Body).Decode(&attachment); err != nil {
@@ -66,11 +56,6 @@ func (c *HTTPClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (d
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for case %d: %s", resp.Status, caseID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for case %d: %w", caseID, err)
@@ -88,11 +73,6 @@ func (c *HTTPClient) GetAttachmentsForPlan(ctx context.Context, planID int64) (d
 		return nil, fmt.Errorf("error getting attachments for plan %d: %w", planID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for plan %d: %s", resp.Status, planID, string(body))
-	}
 
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
@@ -112,11 +92,6 @@ func (c *HTTPClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int6
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for plan entry %s: %s", resp.Status, entryID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for plan entry %s: %w", entryID, err)
@@ -135,11 +110,6 @@ func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (dat
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for run %d: %s", resp.Status, runID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for run %d: %w", runID, err)
@@ -157,11 +127,6 @@ func (c *HTTPClient) GetAttachmentsForTest(ctx context.Context, testID int64) (d
 		return nil, fmt.Errorf("error getting attachments for test %d: %w", testID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for test %d: %s", resp.Status, testID, string(body))
-	}
 
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
@@ -221,21 +186,9 @@ func (c *HTTPClient) uploadAttachment(ctx context.Context, endpoint, filePath st
 
 	// Добавляем файл в форму
 	fileName := filepath.Base(filePath)
-	part, err := writer.CreateFormFile("attachment", fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error creating form file: %w", err)
-	}
-
-	_, err = io.Copy(part, file)
-	if err != nil {
-		return nil, fmt.Errorf("error copying file to form: %w", err)
-	}
-
-	// Закрываем writer
-	err = writer.Close()
-	if err != nil {
-		return nil, fmt.Errorf("error closing multipart writer: %w", err)
-	}
+	part, _ := writer.CreateFormFile("attachment", fileName)
+	_, _ = io.Copy(part, file)
+	_ = writer.Close()
 
 	// Используем DoRequest для выполнения запроса
 	resp, err := c.DoRequest(ctx, "POST", endpoint, &requestBody, map[string]string{

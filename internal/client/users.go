@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
@@ -20,11 +18,6 @@ func (c *HTTPClient) GetUsers(ctx context.Context) (data.GetUsersResponse, error
 		return nil, fmt.Errorf("error getting users: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var users data.GetUsersResponse
 	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
@@ -43,11 +36,6 @@ func (c *HTTPClient) GetUsersByProject(ctx context.Context, projectID int64) (da
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var users data.GetUsersResponse
 	if err := json.NewDecoder(resp.Body).Decode(&users); err != nil {
 		return nil, fmt.Errorf("error decoding users: %w", err)
@@ -65,11 +53,6 @@ func (c *HTTPClient) GetUser(ctx context.Context, userID int64) (*data.User, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for user %d: %s", resp.Status, userID, string(body))
-	}
-
 	var user data.User
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
 		return nil, fmt.Errorf("error decoding user: %w", err)
@@ -86,11 +69,6 @@ func (c *HTTPClient) GetUserByEmail(ctx context.Context, email string) (*data.Us
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var user data.User
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
 		return nil, fmt.Errorf("error decoding user: %w", err)
@@ -101,21 +79,12 @@ func (c *HTTPClient) GetUserByEmail(ctx context.Context, email string) (*data.Us
 // AddUser создаёт нового пользователя
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#adduser
 func (c *HTTPClient) AddUser(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling AddUserRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, "add_user", bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error adding user: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var user data.User
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
@@ -128,21 +97,12 @@ func (c *HTTPClient) AddUser(ctx context.Context, req data.AddUserRequest) (*dat
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#updateuser
 func (c *HTTPClient) UpdateUser(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 	endpoint := fmt.Sprintf("update_user/%d", userID)
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling UpdateUserRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating user %d: %w", userID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var user data.User
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
@@ -160,11 +120,6 @@ func (c *HTTPClient) GetPriorities(ctx context.Context) (data.GetPrioritiesRespo
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
-
 	var priorities data.GetPrioritiesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&priorities); err != nil {
 		return nil, fmt.Errorf("error decoding priorities: %w", err)
@@ -180,11 +135,6 @@ func (c *HTTPClient) GetStatuses(ctx context.Context) (data.GetStatusesResponse,
 		return nil, fmt.Errorf("error getting statuses: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var statuses data.GetStatusesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&statuses); err != nil {
@@ -202,11 +152,6 @@ func (c *HTTPClient) GetTemplates(ctx context.Context, projectID int64) (data.Ge
 		return nil, fmt.Errorf("error getting templates for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for project %d: %s", resp.Status, projectID, string(body))
-	}
 
 	var templates data.GetTemplatesResponse
 	if err := json.NewDecoder(resp.Body).Decode(&templates); err != nil {

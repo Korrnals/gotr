@@ -5,9 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/Korrnals/gotr/internal/models/data"
-	"io"
-	"net/http"
 )
 
 // GetSuites получает список всех тест-сюит проекта.
@@ -29,11 +28,6 @@ func (c *HTTPClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, 
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting suite %d: %s", resp.Status, suiteID, string(body))
-	}
-
 	var suite data.Suite
 	if err := json.NewDecoder(resp.Body).Decode(&suite); err != nil {
 		return nil, fmt.Errorf("decode error suite %d: %w", suiteID, err)
@@ -44,22 +38,13 @@ func (c *HTTPClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, 
 
 // AddSuite создаёт новую тест-сюиту in project.
 func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddSuiteRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_suite/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error AddSuite for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s creating suite in project %d: %s", resp.Status, projectID, string(body))
-	}
 
 	var suite data.Suite
 	if err := json.NewDecoder(resp.Body).Decode(&suite); err != nil {
@@ -71,22 +56,13 @@ func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.Ad
 
 // UpdateSuite обновляет существующую тест-сюиту.
 func (c *HTTPClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateSuiteRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("update_suite/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error UpdateSuite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s updating suite %d: %s", resp.Status, suiteID, string(body))
-	}
 
 	var suite data.Suite
 	if err := json.NewDecoder(resp.Body).Decode(&suite); err != nil {
@@ -105,11 +81,6 @@ func (c *HTTPClient) DeleteSuite(ctx context.Context, suiteID int64) error {
 		return fmt.Errorf("request error DeleteSuite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("delete error suite %d: %s, body: %s", suiteID, resp.Status, string(body))
-	}
 
 	return nil
 }

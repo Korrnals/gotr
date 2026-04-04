@@ -5,9 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/Korrnals/gotr/internal/models/data"
-	"io"
-	"net/http"
 )
 
 // GetProjects получает список всех проектов.
@@ -48,11 +47,7 @@ func (c *HTTPClient) GetProject(ctx context.Context, projectID int64) (*data.Get
 // Принимает AddProjectRequest с обязательным Name.
 // Возвращает созданный проект.
 func (c *HTTPClient) AddProject(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddProjectRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := "add_project"
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -72,11 +67,7 @@ func (c *HTTPClient) AddProject(ctx context.Context, req *data.AddProjectRequest
 // Требует прав администратора.
 func (c *HTTPClient) UpdateProject(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
 	endpoint := fmt.Sprintf("update_project/%d", projectID)
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateProjectRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error UpdateProject %d: %w", projectID, err)
@@ -102,9 +93,5 @@ func (c *HTTPClient) DeleteProject(ctx context.Context, projectID int64) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("delete error project %d: %s, body: %s", projectID, resp.Status, string(body))
-	}
 	return nil
 }

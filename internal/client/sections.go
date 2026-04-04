@@ -6,8 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/concurrency"
@@ -124,11 +122,6 @@ func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Sec
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting section %d: %s", resp.Status, sectionID, string(body))
-	}
-
 	var section data.Section
 	if err := json.NewDecoder(resp.Body).Decode(&section); err != nil {
 		return nil, fmt.Errorf("decode error section %d: %w", sectionID, err)
@@ -139,22 +132,13 @@ func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Sec
 
 // AddSection — создаёт новую секцию in suite проекта
 func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddSectionRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_section/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error AddSection for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s creating section in project %d: %s", resp.Status, projectID, string(body))
-	}
 
 	var section data.Section
 	if err := json.NewDecoder(resp.Body).Decode(&section); err != nil {
@@ -166,22 +150,13 @@ func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.
 
 // UpdateSection — обновляет секцию (name, description, parent_id для перемещения)
 func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateSectionRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("update_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error UpdateSection %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s updating section %d: %s", resp.Status, sectionID, string(body))
-	}
 
 	var section data.Section
 	if err := json.NewDecoder(resp.Body).Decode(&section); err != nil {
@@ -199,11 +174,6 @@ func (c *HTTPClient) DeleteSection(ctx context.Context, sectionID int64) error {
 		return fmt.Errorf("request error DeleteSection %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s deleting section %d: %s", resp.Status, sectionID, string(body))
-	}
 
 	return nil
 }

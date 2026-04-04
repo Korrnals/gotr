@@ -38,14 +38,10 @@ func TestTimestamp_UnmarshalJSON_int(t *testing.T) {
 }
 
 func TestTimestamp_UnmarshalJSON_null(t *testing.T) {
-	// JSON null unmarshal into int64/float64 returns 0 (no error),
-	// so the result is time.Unix(0,0) — which is NOT zero in go-time terms.
-	// This test simply documents the actual behavior.
 	data := []byte("null")
 	var ts Timestamp
 	require.NoError(t, json.Unmarshal(data, &ts))
-	// 0-value unix epoch is not a zero time.Time{}
-	assert.False(t, ts.Time.IsZero())
+	assert.True(t, ts.Time.IsZero())
 }
 
 func TestTimestamp_UnmarshalJSON_rfc3339(t *testing.T) {

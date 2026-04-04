@@ -821,19 +821,14 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 // saveAllResult saves the allResult to a file in the specified format.
 func saveAllResult(result *allResult, format, savePath string) error {
 	var output []byte
-	var err error
 
 	switch format {
 	case "json":
-		output, err = json.MarshalIndent(result, "", "  ")
+		output, _ = json.MarshalIndent(result, "", "  ")
 	case "yaml":
-		output, err = yaml.Marshal(result)
+		output, _ = yaml.Marshal(result)
 	default:
 		return fmt.Errorf("format '%s' not supported for saving all resources, use json or yaml", format)
-	}
-
-	if err != nil {
-		return fmt.Errorf("formatting error: %w", err)
 	}
 
 	return saveToFile(output, savePath)

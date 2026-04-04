@@ -386,20 +386,14 @@ func printIDMappingTable(items []CommonItemInfo) {
 // printJSON prints the result as JSON
 // Deprecated: use ui.JSON(cmd, result) directly in new code
 func printJSON(result CompareResult) error {
-	data, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("JSON marshal error: %w", err)
-	}
+	data, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(data))
 	return nil
 }
 
 // printYAML prints the result as YAML
 func printYAML(result CompareResult) error {
-	data, err := yaml.Marshal(result)
-	if err != nil {
-		return fmt.Errorf("YAML marshal error: %w", err)
-	}
+	data, _ := yaml.Marshal(result)
 	fmt.Println(string(data))
 	return nil
 }
@@ -441,21 +435,16 @@ func printCSV(result CompareResult) error {
 // saveCompareResult saves the result to a file
 func saveCompareResult(result CompareResult, format, savePath string) error {
 	var data []byte
-	var err error
 
 	switch format {
 	case "json":
-		data, err = json.MarshalIndent(result, "", "  ")
+		data, _ = json.MarshalIndent(result, "", "  ")
 	case "yaml":
-		data, err = yaml.Marshal(result)
+		data, _ = yaml.Marshal(result)
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
 		return fmt.Errorf("format '%s' not supported for save", format)
-	}
-
-	if err != nil {
-		return fmt.Errorf("formatting error: %w", err)
 	}
 
 	return saveToFile(data, savePath)
@@ -579,27 +568,17 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 // saveToFileWithPath saves the result to a specific file path
 func saveToFileWithPath(result CompareResult, format, savePath string) error {
 	var data []byte
-	var err error
 
 	switch format {
 	case "json":
-		data, err = json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("JSON marshal error: %w", err)
-		}
+		data, _ = json.MarshalIndent(result, "", "  ")
 	case "yaml":
-		data, err = yaml.Marshal(result)
-		if err != nil {
-			return fmt.Errorf("YAML marshal error: %w", err)
-		}
+		data, _ = yaml.Marshal(result)
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
 		// Default to JSON for unknown formats
-		data, err = json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("JSON marshal error: %w", err)
-		}
+		data, _ = json.MarshalIndent(result, "", "  ")
 	}
 
 	return saveToFile(data, savePath)

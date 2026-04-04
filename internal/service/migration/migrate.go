@@ -21,10 +21,7 @@ func (m *Migration) MigrateSharedSteps(ctx context.Context, dryRun bool) error {
 		caseIDsSet[c.ID] = struct{}{}
 	}
 
-	filtered, err := m.FilterSharedSteps(source, target, caseIDsSet)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterSharedSteps(source, target, caseIDsSet)
 
 	return m.ImportSharedSteps(ctx, filtered, dryRun)
 }
@@ -38,10 +35,7 @@ func (m *Migration) MigrateSuites(ctx context.Context, dryRun bool) error {
 		return err
 	}
 
-	filtered, err := m.FilterSuites(source, target)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterSuites(source, target)
 
 	return m.ImportSuites(ctx, filtered, dryRun)
 }
@@ -55,10 +49,7 @@ func (m *Migration) MigrateCases(ctx context.Context, dryRun bool) error {
 		return err
 	}
 
-	filtered, err := m.FilterCases(source, target)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterCases(source, target)
 
 	return m.ImportCases(ctx, filtered, dryRun)
 }
@@ -72,10 +63,7 @@ func (m *Migration) MigrateSections(ctx context.Context, dryRun bool) error {
 		return err
 	}
 
-	filtered, err := m.FilterSections(source, target)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterSections(source, target)
 
 	return m.ImportSections(ctx, filtered, dryRun) // переиспользуем ImportSections из import.go
 }

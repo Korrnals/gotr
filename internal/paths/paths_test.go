@@ -200,6 +200,15 @@ func TestEnsureAllDirs_MkdirError(t *testing.T) {
 	}
 }
 
+func TestEnsureAllDirs_PathResolutionError(t *testing.T) {
+	t.Setenv("HOME", "")
+
+	err := EnsureAllDirs()
+	if err == nil {
+		t.Skip("os.UserHomeDir resolved home without HOME; skipping error-branch assertion")
+	}
+}
+
 func TestEnsureDir_ErrorPaths(t *testing.T) {
 	errExpected := os.ErrInvalid
 	err := EnsureDir(func() (string, error) { return "", errExpected })

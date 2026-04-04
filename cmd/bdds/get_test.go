@@ -164,3 +164,33 @@ func TestRegister(t *testing.T) {
 	addCmd, _, _ := root.Find([]string{"bdds", "add"})
 	assert.NotNil(t, addCmd)
 }
+
+// ============= LAYER 2: !HasPrompterInContext branch + resolveCaseIDInteractive error =============
+
+func TestGetCmd_NoArgs_NoPrompterInContext_Error(t *testing.T) {
+mock := &client.MockClient{}
+cmd := newGetCmd(getClientForTests)
+// No interactive.WithPrompter → HasPrompterInContext = false
+cmd.SetContext(setupTestCmd(t, mock).Context())
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestGetCmd_NoArgs_Interactive_GetProjectsError(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return nil, fmt.Errorf("projects boom")
+},
+}
+p := interactive.NewMockPrompter()
+cmd := newGetCmd(getClientForTests)
+cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "projects boom")
+}

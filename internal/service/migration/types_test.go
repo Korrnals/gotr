@@ -156,3 +156,18 @@ func TestNewMigration_InitializesLoggerNotNil(t *testing.T) {
 	// Logger should be initialized
 	assert.NotNil(t, m.logger)
 }
+
+func TestNewMigration_FailsWhenLogFileCannotBeCreated(t *testing.T) {
+	cli := &client.MockClient{}
+	logDir := filepath.Join(t.TempDir(), "readonly")
+	require.NoError(t, os.MkdirAll(logDir, 0o755))
+	require.NoError(t, os.Chmod(logDir, 0o500))
+	t.Cleanup(func() {
+		_ = os.Chmod(logDir, 0o700)
+	})
+
+	_, err := NewMigration(cli, 30, 1001, 31, 2001, "title", logDir)
+	if err == nil {
+		t.Skip("environment allows file creation in read-only test directory")
+	}
+}

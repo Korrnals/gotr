@@ -202,6 +202,17 @@ func TestUpdateLabelCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestUpdateLabelCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateLabelCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--project", "1", "--title", "Test"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "label_id is required in non-interactive mode")
+}
+
 func TestUpdateLabelCmd_TooManyArgs(t *testing.T) {
 	mock := &client.MockClient{}
 

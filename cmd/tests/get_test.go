@@ -181,3 +181,35 @@ func TestGetCmd_WithSave(t *testing.T) {
 	err := cmd.Execute()
 	assert.NoError(t, err)
 }
+
+func TestGetCmd_ResolveInteractiveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects boom")
+		},
+	}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+func TestGetCmd_WithSave_SaveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
+			return &data.Test{ID: testID}, nil
+		},
+	}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"12345", "--save", "--output", "/nonexistent/dir/test.json"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}

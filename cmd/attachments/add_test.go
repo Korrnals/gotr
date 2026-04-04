@@ -1167,3 +1167,145 @@ func TestRegister(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, saveFlag)
 }
+
+// ============= LAYER 2: !HasPrompterInContext branches =============
+
+func TestNewAddCaseCmd_NoID_NoPrompter_Error(t *testing.T) {
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddCaseCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+parentCmd.SetArgs([]string{"case", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "case_id required")
+}
+
+func TestNewAddPlanCmd_NoID_NoPrompter_Error(t *testing.T) {
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddPlanCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+parentCmd.SetArgs([]string{"plan", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "plan_id required")
+}
+
+func TestNewAddPlanEntryCmd_OnlyPlanID_NoPrompter_Error(t *testing.T) {
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+parentCmd.SetArgs([]string{"plan-entry", "100", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "entry_id required")
+}
+
+func TestNewAddResultCmd_NoID_NoPrompter_Error(t *testing.T) {
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddResultCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+parentCmd.SetArgs([]string{"result", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "result_id required")
+}
+
+func TestNewAddRunCmd_NoID_NoPrompter_Error(t *testing.T) {
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddRunCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+parentCmd.SetArgs([]string{"run", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "run_id required")
+}
+
+// ============= LAYER 2 EXTENSION: newAddPlanEntryCmd remaining branches =============
+
+func TestNewAddPlanEntryCmd_OnlyFilePath_NoPrompter_Error(t *testing.T) {
+// default case (1 arg) with no prompter → plan_id required
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+parentCmd.SetArgs([]string{"plan-entry", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "plan_id required")
+}
+
+func TestNewAddPlanEntryCmd_InvalidPlanIDTwoArgs(t *testing.T) {
+// case 2 with invalid planID → ValidateRequiredID error
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+parentCmd.SetArgs([]string{"plan-entry", "invalid", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "plan_id")
+}
+
+func TestNewAddPlanEntryCmd_ResolvePlanEntryError(t *testing.T) {
+// case 2 with valid planID, interactive, but resolvePlanEntryIDInteractive fails
+mock := &client.MockClient{
+GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+return nil, assert.AnError
+},
+}
+
+p := interactive.NewMockPrompter()
+
+parentCmd := &cobra.Command{Use: "add"}
+parentCmd.PersistentFlags().Bool("dry-run", false, "")
+output.AddFlag(parentCmd)
+
+cmd := newAddPlanEntryCmd(testhelper.GetClientForTests)
+parentCmd.AddCommand(cmd)
+
+parentCmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+parentCmd.SetArgs([]string{"plan-entry", "200", "./dummy.txt"})
+
+err := parentCmd.Execute()
+assert.Error(t, err)
+}

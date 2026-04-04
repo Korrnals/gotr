@@ -329,3 +329,49 @@ func TestMigration_ImportCases_SharedStepIDMappingBranches(t *testing.T) {
 	assert.Equal(t, []int64{155}, observedID["mapped-case"])
 	assert.Equal(t, []int64{999}, observedID["unmapped-case"])
 }
+
+func TestMigration_ImportSharedSteps_CopiesCustomSteps(t *testing.T) {
+	mock := &MockClient{}
+
+	var capturedReq *data.AddSharedStepRequest
+	mock.AddSharedStepFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+		copied := *req
+		copied.CustomStepsSeparated = append([]data.Step(nil), req.CustomStepsSeparated...)
+		capturedReq = &copied
+		return &data.SharedStep{ID: 501}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 1, 2, 2, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	filtered := data.GetSharedStepsResponse{
+		{
+			ID:    50,
+			Title: "step-with-content",
+			CustomStepsSeparated: []data.Step{
+				{Content: "c1", AdditionalInfo: "a1", Expected: "e1", Refs: "r1"},
+				{Content: "c2", AdditionalInfo: "a2", Expected: "e2", Refs: "r2"},
+			},
+		},
+	}
+
+	err = m.ImportSharedSteps(context.Background(), filtered, false)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, capturedReq) {
+		assert.Equal(t, "step-with-content", capturedReq.Title)
+		assert.Len(t, capturedReq.CustomStepsSeparated, 2)
+		assert.Equal(t, "c1", capturedReq.CustomStepsSeparated[0].Content)
+		assert.Equal(t, "a1", capturedReq.CustomStepsSeparated[0].AdditionalInfo)
+		assert.Equal(t, "e1", capturedReq.CustomStepsSeparated[0].Expected)
+		assert.Equal(t, "r1", capturedReq.CustomStepsSeparated[0].Refs)
+		assert.Equal(t, "c2", capturedReq.CustomStepsSeparated[1].Content)
+	}
+
+	got, ok := m.mapping.GetTargetBySource(50)
+	assert.True(t, ok)
+	assert.Equal(t, int64(501), got)
+	assert.Equal(t, 1, m.mapping.Count)
+	assert.Equal(t, 1, m.importedCases)
+}

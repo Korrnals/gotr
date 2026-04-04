@@ -136,6 +136,12 @@ func TestResultService_AddMethods(t *testing.T) {
 		assert.Error(t, err)
 	})
 
+	t.Run("AddForCase invalid case id", func(t *testing.T) {
+		_, err := svc.AddForCase(ctx, 2, 0, &data.AddResultRequest{StatusID: 1})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "case_id")
+	})
+
 	t.Run("AddForCase client error", func(t *testing.T) {
 		mock.AddResultForCaseFunc = func(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 			return nil, errors.New("case add failed")
@@ -157,6 +163,12 @@ func TestResultService_AddMethods(t *testing.T) {
 	t.Run("AddResults validation error", func(t *testing.T) {
 		_, err := svc.AddResults(ctx, 4, &data.AddResultsRequest{Results: []data.ResultEntry{}})
 		assert.Error(t, err)
+	})
+
+	t.Run("AddResults invalid run id", func(t *testing.T) {
+		_, err := svc.AddResults(ctx, 0, &data.AddResultsRequest{Results: []data.ResultEntry{{TestID: 1, StatusID: 2}}})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "run_id")
 	})
 
 	t.Run("AddResults client error", func(t *testing.T) {
@@ -417,6 +429,17 @@ func TestResultService_validateAddResultsRequest(t *testing.T) {
 			},
 			wantErr: true,
 			errMsg:  "status_id",
+		},
+		{
+			name: "invalid status in second result",
+			req: &data.AddResultsRequest{
+				Results: []data.ResultEntry{
+					{TestID: 1, StatusID: 1},
+					{TestID: 2, StatusID: 0},
+				},
+			},
+			wantErr: true,
+			errMsg:  "result[1]",
 		},
 	}
 

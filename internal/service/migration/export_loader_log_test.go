@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -82,6 +83,50 @@ func TestMigrationExportFunctions(t *testing.T) {
 		}
 		if got := countFilesByPrefix(t, dir, "sections_all_"); got != 1 {
 			t.Fatalf("expected 1 sections export file, got %d", got)
+		}
+	})
+
+	t.Run("suites and sections export use default dir when empty", func(t *testing.T) {
+		cwd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Getwd() error = %v", err)
+		}
+
+		base := t.TempDir()
+		if err := os.Chdir(base); err != nil {
+			t.Fatalf("Chdir() error = %v", err)
+		}
+		t.Cleanup(func() {
+			_ = os.Chdir(cwd)
+		})
+
+		if err := m.ExportSuites(data.GetSuitesResponse{{ID: 21, Name: "DefaultDirSuite"}}, true, ""); err != nil {
+			t.Fatalf("ExportSuites() with default dir error = %v", err)
+		}
+		if err := m.ExportSections(data.GetSectionsResponse{{ID: 22, Name: "DefaultDirSection"}}, true, ""); err != nil {
+			t.Fatalf("ExportSections() with default dir error = %v", err)
+		}
+
+		exportDir := filepath.Join(base, ".testrail")
+		if got := countFilesByPrefix(t, exportDir, "suites_filtered_"); got != 1 {
+			t.Fatalf("expected 1 suites filtered export in default dir, got %d", got)
+		}
+		if got := countFilesByPrefix(t, exportDir, "sections_filtered_"); got != 1 {
+			t.Fatalf("expected 1 sections filtered export in default dir, got %d", got)
+		}
+
+		if runtime.GOOS == "windows" {
+			t.Skip("skip file-as-dir branch on windows due path semantics differences")
+		}
+
+		badPath := filepath.Join(base, "not_a_dir")
+		if err := os.WriteFile(badPath, []byte("x"), 0o644); err != nil {
+			t.Fatalf("WriteFile(%s) error = %v", badPath, err)
+		}
+
+		err = m.ExportSuites(data.GetSuitesResponse{{ID: 23, Name: "ErrSuite"}}, false, badPath)
+		if err == nil {
+			t.Fatalf("expected error when export dir points to a file")
 		}
 	})
 
@@ -545,6 +590,29 @@ func TestMigrationExportSuitesAndSections_Hotspots(t *testing.T) {
 		err = m.ExportSections(data.GetSectionsResponse{{ID: 4, Name: "Section"}}, false, notDir)
 		if err == nil {
 			t.Fatalf("expected ExportSections() error for file path as dir")
+		}
+	})
+
+	t.Run("write failure on read-only directory", func(t *testing.T) {
+		dir := filepath.Join(t.TempDir(), "readonly")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatalf("MkdirAll() error = %v", err)
+		}
+		if err := os.Chmod(dir, 0o500); err != nil {
+			t.Fatalf("Chmod() error = %v", err)
+		}
+		defer func() {
+			_ = os.Chmod(dir, 0o700)
+		}()
+
+		err := m.ExportSuites(data.GetSuitesResponse{{ID: 5, Name: "Suite"}}, false, dir)
+		if err == nil {
+			t.Fatalf("expected ExportSuites() write error")
+		}
+
+		err = m.ExportSections(data.GetSectionsResponse{{ID: 6, Name: "Section"}}, false, dir)
+		if err == nil {
+			t.Fatalf("expected ExportSections() write error")
 		}
 	})
 }

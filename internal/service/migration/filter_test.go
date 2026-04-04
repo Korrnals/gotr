@@ -265,3 +265,86 @@ func TestFilterCases_TableDriven(t *testing.T) {
 		})
 	}
 }
+
+func TestFilterSharedSteps_TableDriven(t *testing.T) {
+	testCases := []struct {
+		name                string
+		compareField        string
+		source              data.GetSharedStepsResponse
+		target              data.GetSharedStepsResponse
+		sourceCaseIDs       map[int64]struct{}
+		wantFilteredTitles  []string
+		wantMappingSourceID int64
+		wantMappingTargetID int64
+		wantMappingExists   bool
+	}{
+		{
+			name:         "used by source suite is excluded from candidates",
+			compareField: "Title",
+			source: data.GetSharedStepsResponse{
+				{ID: 1, Title: "Used", CaseIDs: []int64{10}},
+				{ID: 2, Title: "Unused", CaseIDs: []int64{20}},
+			},
+			target: data.GetSharedStepsResponse{},
+			sourceCaseIDs: map[int64]struct{}{
+				10: {},
+			},
+			wantFilteredTitles: []string{"Unused"},
+			wantMappingExists:  false,
+		},
+		{
+			name:         "duplicate candidate is mapped as existing",
+			compareField: "Title",
+			source: data.GetSharedStepsResponse{
+				{ID: 3, Title: "Duplicate", CaseIDs: []int64{99}},
+				{ID: 4, Title: "New", CaseIDs: []int64{100}},
+			},
+			target: data.GetSharedStepsResponse{
+				{ID: 300, Title: "Duplicate"},
+			},
+			sourceCaseIDs:       map[int64]struct{}{},
+			wantFilteredTitles:  []string{"New"},
+			wantMappingSourceID: 3,
+			wantMappingTargetID: 300,
+			wantMappingExists:   true,
+		},
+		{
+			name:         "compare field fallback keeps candidates without field match",
+			compareField: "UnknownField",
+			source: data.GetSharedStepsResponse{
+				{ID: 5, Title: "A", CaseIDs: []int64{}},
+				{ID: 6, Title: "B", CaseIDs: []int64{}},
+			},
+			target: data.GetSharedStepsResponse{
+				{ID: 600, Title: "A"},
+			},
+			sourceCaseIDs:      map[int64]struct{}{},
+			wantFilteredTitles: []string{"A", "B"},
+			wantMappingExists:  false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := setupTestMigration(t, &MockClient{})
+			m.compareField = tc.compareField
+
+			filtered, err := m.FilterSharedSteps(tc.source, tc.target, tc.sourceCaseIDs)
+			assert.NoError(t, err)
+
+			filteredTitles := make([]string, 0, len(filtered))
+			for _, s := range filtered {
+				filteredTitles = append(filteredTitles, s.Title)
+			}
+			assert.Equal(t, tc.wantFilteredTitles, filteredTitles)
+
+			if tc.wantMappingExists {
+				got, ok := m.mapping.GetTargetBySource(tc.wantMappingSourceID)
+				assert.True(t, ok)
+				assert.Equal(t, tc.wantMappingTargetID, got)
+			} else {
+				assert.Equal(t, 0, m.mapping.Count)
+			}
+		})
+	}
+}

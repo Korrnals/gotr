@@ -73,6 +73,18 @@ func TestResolveLabelIDInteractive_TableDriven(t *testing.T) {
 			},
 			wantErrPart: "no labels found",
 		},
+		{
+			name: "get labels error",
+			ctx: interactive.WithPrompter(context.Background(),
+				interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})),
+			cli: &client.MockClient{
+				GetProjectsFunc: baseClient.GetProjectsFunc,
+				GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+					return nil, assert.AnError
+				},
+			},
+			wantErrPart: "failed to get labels",
+		},
 	}
 
 	for _, tt := range tests {

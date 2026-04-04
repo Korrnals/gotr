@@ -28,8 +28,5 @@ func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 	if c, ok := val.(client.ClientInterface); ok {
 		return c
 	}
-	if c, ok := val.(*client.MockClient); ok {
-		return c
-	}
 	return nil
 }

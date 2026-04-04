@@ -1067,6 +1067,37 @@ func TestRunAdd_OrchestrationBranches(t *testing.T) {
 	})
 }
 
+func TestRunAdd_CaseRequiresSectionID(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+
+	err := runAdd(cmd, []string{"case"})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "section_id required")
+}
+
+func TestAddSection_JSONParseError(t *testing.T) {
+	cmd := setupAddTest(t, &client.MockClient{})
+
+	err := addSection(&client.MockClient{}, cmd, 5, []byte("{"))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "JSON parse error")
+}
+
+func TestRunAdd_SectionRouting_Success(t *testing.T) {
+	mock := &client.MockClient{
+		AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			assert.Equal(t, int64(7), projectID)
+			assert.Equal(t, "Section Routed", req.Name)
+			return &data.Section{ID: 70, Name: req.Name}, nil
+		},
+	}
+	cmd := setupAddTest(t, mock)
+	require.NoError(t, cmd.Flags().Set("name", "Section Routed"))
+
+	err := runAdd(cmd, []string{"section", "7"})
+	assert.NoError(t, err)
+}
+
 func TestRunAdd_AutoInteractive_Project(t *testing.T) {
 	mock := &client.MockClient{
 		AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
@@ -1856,3 +1887,234 @@ func TestAddAttachmentHelpers_ClientErrors(t *testing.T) {
 	})
 }
 
+
+// ============= LAYER 2: UNCOVERED BRANCHES =============
+
+func TestAddProject_NameRequired(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+err := addProject(&client.MockClient{}, cmd, nil)
+assert.ErrorContains(t, err, "--name is required")
+}
+
+func TestAddSuite_NameRequired(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+err := addSuite(&client.MockClient{}, cmd, 1, nil)
+assert.ErrorContains(t, err, "--name is required")
+}
+
+func TestAddCase_TitleRequired(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+err := addCase(&client.MockClient{}, cmd, 1, nil)
+assert.ErrorContains(t, err, "--title is required")
+}
+
+func TestAddRun_NameRequired(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+err := addRun(&client.MockClient{}, cmd, 1, nil)
+assert.ErrorContains(t, err, "--name is required")
+}
+
+func TestAddRun_WithCaseIDs(t *testing.T) {
+called := false
+mock := &client.MockClient{
+AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+called = true
+assert.Equal(t, []int64{10, 20}, req.CaseIDs)
+return &data.Run{ID: 77, Name: req.Name}, nil
+},
+}
+cmd := setupAddTest(t, mock)
+require.NoError(t, cmd.Flags().Set("name", "Run With Cases"))
+require.NoError(t, cmd.Flags().Set("case-ids", "10,20"))
+err := addRun(mock, cmd, 5, nil)
+assert.NoError(t, err)
+assert.True(t, called)
+}
+
+func TestAddResult_StatusRequired(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+err := addResult(&client.MockClient{}, cmd, 1, nil)
+assert.ErrorContains(t, err, "--status-id is required")
+}
+
+func TestResolveAddParentID_Case_NoSuites(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+return data.GetSuitesResponse{}, nil
+},
+GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+assert.Equal(t, int64(0), suiteID)
+return data.GetSectionsResponse{
+{ID: 10, Name: "Sec A"},
+{ID: 20, Name: "Sec B"},
+}, nil
+},
+}
+p := interactive.NewMockPrompter().
+WithSelectResponses(interactive.SelectResponse{Index: 0}).
+WithSelectResponses(interactive.SelectResponse{Index: 1})
+ctx := interactive.WithPrompter(context.Background(), p)
+id, err := resolveAddParentID(ctx, p, mock, "case", 0)
+assert.NoError(t, err)
+assert.Equal(t, int64(20), id)
+}
+
+func TestResolveAddParentID_Case_SingleSection(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+return data.GetSuitesResponse{{ID: 10, Name: "S1"}}, nil
+},
+GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+return data.GetSectionsResponse{{ID: 55, Name: "Only Sec"}}, nil
+},
+}
+p := interactive.NewMockPrompter().
+WithSelectResponses(interactive.SelectResponse{Index: 0})
+ctx := interactive.WithPrompter(context.Background(), p)
+id, err := resolveAddParentID(ctx, p, mock, "case", 0)
+assert.NoError(t, err)
+assert.Equal(t, int64(55), id)
+}
+
+func TestResolveAddParentID_Case_ErrorBranches(t *testing.T) {
+t.Run("get suites error", func(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+return nil, errors.New("suites boom")
+},
+}
+p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+ctx := interactive.WithPrompter(context.Background(), p)
+id, err := resolveAddParentID(ctx, p, mock, "case", 0)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "failed to get suites for project 1")
+assert.Zero(t, id)
+})
+t.Run("get sections error", func(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+return data.GetSuitesResponse{{ID: 10, Name: "S1"}}, nil
+},
+GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+return nil, errors.New("sections boom")
+},
+}
+p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+ctx := interactive.WithPrompter(context.Background(), p)
+id, err := resolveAddParentID(ctx, p, mock, "case", 0)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "failed to get sections for project 1")
+assert.Zero(t, id)
+})
+}
+
+func TestAddSuiteInteractive_InputError(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+p := interactive.NewNonInteractivePrompter()
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+err := addSuiteInteractive(&client.MockClient{}, cmd, 10)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "input error")
+}
+
+func TestAddCaseInteractive_InputError(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+p := interactive.NewNonInteractivePrompter()
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+err := addCaseInteractive(&client.MockClient{}, cmd, 20)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "input error")
+}
+
+func TestAddRunInteractive_InputError(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+p := interactive.NewNonInteractivePrompter()
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+err := addRunInteractive(&client.MockClient{}, cmd, 30)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "input error")
+}
+
+func TestAddSectionInteractive_FirstInputError(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+p := interactive.NewNonInteractivePrompter()
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+err := addSectionInteractive(&client.MockClient{}, cmd, 10)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "input error")
+}
+
+func TestAddSectionInteractive_DescInputError(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+// name ok, description (MultilineInput) exhausts queue → error
+p := interactive.NewMockPrompter().WithInputResponses("Section A")
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+err := addSectionInteractive(&client.MockClient{}, cmd, 10)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "input error")
+}
+
+func TestAddSectionInteractive_SuiteIDInputError(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+// name ok, description ok, suiteID Input exhausts queue → error
+p := interactive.NewMockPrompter().WithInputResponses("Section A", "Desc A")
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+err := addSectionInteractive(&client.MockClient{}, cmd, 10)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "input error")
+}
+
+func TestRunAdd_ResultForCase_MissingArgs(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+err := runAdd(cmd, []string{"result-for-case"})
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "run_id and case_id required")
+}
+
+// ============= LAYER 2 EXTENSION: remaining add.go branches =============
+
+func TestResolveAddParentID_Case_SelectProjectError(t *testing.T) {
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return nil, errors.New("projects boom")
+},
+}
+p := interactive.NewMockPrompter()
+ctx := interactive.WithPrompter(context.Background(), p)
+id, err := resolveAddParentID(ctx, p, mock, "case", 0)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "projects boom")
+assert.Zero(t, id)
+}
+
+func TestAddSectionInteractive_ParentSectionIDInputError(t *testing.T) {
+cmd := setupAddTest(t, &client.MockClient{})
+// name ok, description ok, suiteID ok ("2" → valid), parentSectionID exhausted → error
+p := interactive.NewMockPrompter().WithInputResponses("Section A", "Desc A", "2")
+cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+err := addSectionInteractive(&client.MockClient{}, cmd, 10)
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "input error")
+}
+
+func TestRunAdd_Section_NoID(t *testing.T) {
+// section endpoint with id=0 and no interactive mode → "project_id required"
+cmd := setupAddTest(t, &client.MockClient{})
+// setupAddTest has no WithPrompter → !HasPrompterInContext = true → resolveAddParentID returns (0, nil)
+// then runAdd switch "section": id==0 → "project_id required"
+err := runAdd(cmd, []string{"section"})
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "project_id required")
+}

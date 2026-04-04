@@ -93,6 +93,22 @@ func TestTimestamp_UnmarshalJSON_invalidType_ReturnsError(t *testing.T) {
 	assert.Contains(t, err.Error(), "cannot unmarshal timestamp from")
 }
 
+func TestTimestamp_UnmarshalJSON_bool_ReturnsError(t *testing.T) {
+	data := []byte("true")
+	var ts Timestamp
+	err := json.Unmarshal(data, &ts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot unmarshal timestamp from")
+}
+
+func TestTimestamp_UnmarshalJSON_invalidRFC3339Like_ReturnsError(t *testing.T) {
+	data := []byte(`"2024-01-15T12:00:00"`)
+	var ts Timestamp
+	err := json.Unmarshal(data, &ts)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot parse timestamp")
+}
+
 func TestTimestamp_MarshalJSON_zero(t *testing.T) {
 	var ts Timestamp
 	out, err := json.Marshal(ts)

@@ -105,6 +105,17 @@ func TestAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestAddCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--name", "username"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dataset_id is required in non-interactive mode")
+}
+
 func TestAddCmd_NoArgs_Interactive(t *testing.T) {
 	mock := &client.MockClient{
 		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {

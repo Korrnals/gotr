@@ -109,6 +109,21 @@ func TestParallelMap_DefaultMaxWorkers(t *testing.T) {
 	assert.Len(t, results, len(items))
 }
 
+func TestParallelMap_NegativeMaxWorkers(t *testing.T) {
+	items := []int{1, 2, 3, 4}
+	results, err := ParallelMap(items, -3, func(item, index int) (int, error) {
+		return item * 3, nil
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, results, len(items))
+	for i, result := range results {
+		assert.NoError(t, result.Error)
+		assert.Equal(t, i, result.Index)
+		assert.Equal(t, items[i]*3, result.Data)
+	}
+}
+
 func TestParallelForEach(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
 	var counter int32

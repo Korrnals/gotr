@@ -1,68 +1,37 @@
 # Команды milestones
 
-Language: Русский | [English](../../../en/guides/commands/milestones.md)
-
-## Навигация
-
-- [Документация](../../index.md)
-  - [Гайды](../index.md)
-    - [Установка](../installation.md)
-    - [Конфигурация](../configuration.md)
-    - [Интерактивный режим](../interactive-mode.md)
-    - [Прогресс](../progress.md)
-    - [Каталог команд](index.md)
-      - [Общие](global-flags.md)
-      - [CRUD операции](add.md)
-      - [Основные ресурсы](get.md)
-      - [Специальные ресурсы](bdds.md)
-        - [bdds](bdds.md)
-        - [configurations](configurations.md)
-        - [datasets](datasets.md)
-        - [groups](groups.md)
-        - [labels](labels.md)
-        - [milestones](milestones.md)
-        - [roles](roles.md)
-        - [templates](templates.md)
-        - [users](users.md)
-        - [variables](variables.md)
-        - [other](other.md)
-  - [Архитектура](../../architecture/index.md)
-  - [Эксплуатация](../../operations/index.md)
-  - [Отчёты](../../reports/index.md)
-- [Главная](../../../../README_ru.md)
-
-Команда `gotr milestones` управляет вехами проекта.
+Команда `gotr milestones` — управление вехами и версиями.
 
 ## Что делает
 
-- Управляет вехами проекта.
-- Позволяет планировать и контролировать релизные этапы.
-- Используется для привязки run и отчётов к релизному циклу.
+- Основная операция для milestones
+- Интеграция с другими командами
+- Поддержка интерактивного режима
 
 ## Когда использовать
 
-- Когда нужно получить предсказуемый CLI-поток для автоматизации.
-- Когда важно сократить ручные действия и риск ошибок.
-- Когда операция должна одинаково выполняться локально и в CI/CD.
+- Для операций milestones в тестировании
+- Когда нужна автоматизация процесса
+- В CI/CD конвейерах
 
 ## Примеры
 
 ```bash
-# Справка по команде
-gotr milestones --help
-
-# Справка по подкоманде
-gotr milestones get --help
-
-# Базовый вызов
-gotr milestones --json
+gotr milestones --help      # справка
+gotr milestones --project 30 # базовый запуск
 ```
 
-## Полезные флаги
+## Основные флаги
 
-- `--json` для вывода в машинно-обрабатываемом формате.
-- `--output` / `--save` для сохранения результата в файл.
-- `--verbose` для детальной диагностики выполнения.
+| Флаг | Описание |
+| --- | --- |
+| `--help` | Справка по команде |
+| `--verbose` | Детальный вывод |
+
+## FAQ
+
+**Q: Как получить справку?**  
+A: `gotr milestones --help`.
 
 ---
 

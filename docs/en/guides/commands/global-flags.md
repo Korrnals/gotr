@@ -1,4 +1,4 @@
-# Global Flags
+# Reference: Global Flags
 
 Language: [Русский](../../../ru/guides/commands/global-flags.md) | English
 
@@ -24,39 +24,75 @@ Language: [Русский](../../../ru/guides/commands/global-flags.md) | Englis
   - [Reports](../../reports/index.md)
 - [Home](../../../../README.md)
 
-Global flags for `gotr` apply to all subcommands and define connection settings, output format, and runtime behavior.
 
-## What it does
+## Overview
+gotr — a convenient utility for working with TestRail API v2.
+Supports browsing available endpoints, executing requests, and more.
 
-- Defines shared connection and authentication parameters for all commands.
-- Controls output and execution mode (`--json`, `--quiet`, `--verbose`, `--dry-run`).
-- Keeps CLI behavior consistent across local and CI environments.
+## Syntax
+```bash
+gotr [command]
+```
 
-## When to use
+## Subcommands
 
-- When you need a predictable CLI flow for automation.
-- When you want to minimize manual steps and human error.
-- When the operation must run the same way locally and in CI/CD.
+| Subcommand | Description |
+| --- | --- |
+| `add` | Create a new resource (POST request) |
+| `attachments` | Manage file attachments |
+| `bdds` | Manage BDD scenarios |
+| `cases` | Manage test cases |
+| `compare` | Compare data between projects |
+| `completion` | Generate completion script |
+| `config` | Manage gotr configuration |
+| `datasets` | Manage datasets (test data) |
+| `delete` | Delete a resource (DELETE/POST request) |
+| `export` | Export data from TestRail to JSON file |
+| `get` | GET requests to TestRail API |
+| `groups` | Manage user groups |
+| `labels` | Manage test labels |
+| `list` | List available TestRail API endpoints by resource |
+| `milestones` | Manage project milestones |
+| `plans` | Manage test plans |
+| `reports` | Manage project reports |
+| `result` | Manage test results in TestRail |
+| `roles` | Manage user roles |
+| `run` | Manage test runs in TestRail |
+| `self-test` | Run self-diagnostic tests |
+| `sync` | Sync TestRail data between projects |
+| `templates` | Manage test case templates |
+| `test` | Manage tests in TestRail |
+| `tests` | Manage tests |
+| `update` | Update an existing resource (POST request) |
+| `users` | Manage TestRail users |
+| `variables` | Manage test case variables |
+
+## Flags
+
+```text
+-k, --api-key string    TestRail API key
+-c, --config            Create default configuration file
+-f, --format string     Output format: table, json, csv, md, html (default "table")
+-h, --help              help for gotr
+--insecure              Skip TLS certificate verification
+--non-interactive       Disable interactive prompts; exit with error if input is required
+-q, --quiet             Suppress output (progress, stats, save messages)
+--url string            TestRail base URL
+-u, --username string   TestRail user email
+-v, --version           version for gotr
+```
 
 ## Examples
 
 ```bash
-# Command help
-gotr global-flags --help
-
-# Subcommand help
-gotr global-flags get --help
-
-# Basic call
-gotr global-flags --json
+gotr --help
+gotr list --help
 ```
 
-## Useful flags
+## Source of Truth
 
-- `--json` for machine-readable output.
-- `--output` / `--save` to persist results to files.
-- `--verbose` for detailed execution diagnostics.
+- Sections above are generated from actual CLI `--help` output from current code.
 
 ---
 
-← [Команды](index.md) · [Гайды](../index.md) · [Документация](../../index.md)
+← [Commands](index.md) · [Guides](../index.md) · [Documentation](../../index.md)

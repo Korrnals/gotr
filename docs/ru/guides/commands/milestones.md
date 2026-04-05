@@ -1,37 +1,84 @@
-# Команды milestones
+# Команда: milestones
 
-Команда `gotr milestones` — управление вехами и версиями.
+Language: Русский | [English](../../../en/guides/commands/milestones.md)
 
-## Что делает
+## Навигация
 
-- Основная операция для milestones
-- Интеграция с другими командами
-- Поддержка интерактивного режима
+- [Документация](../../index.md)
+  - [Гайды](../index.md)
+    - [Установка](../installation.md)
+    - [Конфигурация](../configuration.md)
+    - [Интерактивный режим](../interactive-mode.md)
+    - [Прогресс](../progress.md)
+    - [Каталог команд](index.md)
+      - [Общие](global-flags.md)
+      - [CRUD операции](add.md)
+      - [Основные ресурсы](get.md)
+      - [Специальные ресурсы](bdds.md)
+        - [bdds](bdds.md)
+        - [configurations](configurations.md)
+        - [datasets](datasets.md)
+        - [groups](groups.md)
+        - [labels](labels.md)
+        - [milestones](milestones.md)
+        - [roles](roles.md)
+        - [templates](templates.md)
+        - [users](users.md)
+        - [variables](variables.md)
+  - [Архитектура](../../architecture/index.md)
+  - [Эксплуатация](../../operations/index.md)
+  - [Отчёты](../../reports/index.md)
+- [Главная](../../../../README_ru.md)
 
-## Когда использовать
 
-- Для операций milestones в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Обзор
+Управление майлстонами (вехами/этапами) проекта.
+Майлстоны используются для группировки тестовых прогонов по этапам разработки
+
+## Синтаксис
+```bash
+gotr milestones [command]
+```
+
+## Подкоманды
+
+| Подкоманда | Описание |
+| --- | --- |
+| `add` | Создать новый майлстон |
+| `delete` | Удалить майлстон |
+| `get` | Получить информацию о майлстоне по ID |
+| `list` | Список майлстонов проекта |
+| `update` | Обновить существующий майлстон |
+
+## Флаги
+
+```text
+-h, --help   справка для milestones
+```
+
+## Глобальные флаги
+
+```text
+-k, --api-key string    API ключ TestRail
+-c, --config            Создать дефолтный файл конфигурации
+-f, --format string     Формат вывода: table, json, csv, md, html (default "table")
+--insecure              Пропустить проверку TLS сертификата
+--non-interactive       Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод
+-q, --quiet             Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)
+--url string            Базовый URL TestRail
+-u, --username string   Email пользователя TestRail
+```
 
 ## Примеры
 
 ```bash
-gotr milestones --help      # справка
-gotr milestones --project 30 # базовый запуск
+gotr milestones --help
+gotr milestones add --help
 ```
 
-## Основные флаги
+## Источник
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr milestones --help`.
+- Данные разделов выше сформированы из фактического вывода `--help` текущего кода CLI.
 
 ---
 

@@ -1,37 +1,81 @@
-# Команды bdds
+# Команда: bdds
 
-Команда `gotr bdds` — работа с BDD сценариями.
+Language: Русский | [English](../../../en/guides/commands/bdds.md)
 
-## Что делает
+## Навигация
 
-- Основная операция для bdds
-- Интеграция с другими командами
-- Поддержка интерактивного режима
+- [Документация](../../index.md)
+  - [Гайды](../index.md)
+    - [Установка](../installation.md)
+    - [Конфигурация](../configuration.md)
+    - [Интерактивный режим](../interactive-mode.md)
+    - [Прогресс](../progress.md)
+    - [Каталог команд](index.md)
+      - [Общие](global-flags.md)
+      - [CRUD операции](add.md)
+      - [Основные ресурсы](get.md)
+      - [Специальные ресурсы](bdds.md)
+        - [bdds](bdds.md)
+        - [configurations](configurations.md)
+        - [datasets](datasets.md)
+        - [groups](groups.md)
+        - [labels](labels.md)
+        - [milestones](milestones.md)
+        - [roles](roles.md)
+        - [templates](templates.md)
+        - [users](users.md)
+        - [variables](variables.md)
+  - [Архитектура](../../architecture/index.md)
+  - [Эксплуатация](../../operations/index.md)
+  - [Отчёты](../../reports/index.md)
+- [Главная](../../../../README_ru.md)
 
-## Когда использовать
 
-- Для операций bdds в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Обзор
+Управление BDD (Behavior Driven Development) сценариями.
+BDD сценарии описывают поведение системы в формате Given-When-Then
+
+## Синтаксис
+```bash
+gotr bdds [command]
+```
+
+## Подкоманды
+
+| Подкоманда | Описание |
+| --- | --- |
+| `add` | Добавить BDD сценарий к тест-кейсу |
+| `get` | Получить BDD сценарий для тест-кейса |
+
+## Флаги
+
+```text
+-h, --help   справка для bdds
+```
+
+## Глобальные флаги
+
+```text
+-k, --api-key string    API ключ TestRail
+-c, --config            Создать дефолтный файл конфигурации
+-f, --format string     Формат вывода: table, json, csv, md, html (default "table")
+--insecure              Пропустить проверку TLS сертификата
+--non-interactive       Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод
+-q, --quiet             Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)
+--url string            Базовый URL TestRail
+-u, --username string   Email пользователя TestRail
+```
 
 ## Примеры
 
 ```bash
-gotr bdds --help      # справка
-gotr bdds --project 30 # базовый запуск
+gotr bdds --help
+gotr bdds add --help
 ```
 
-## Основные флаги
+## Источник
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr bdds --help`.
+- Данные разделов выше сформированы из фактического вывода `--help` текущего кода CLI.
 
 ---
 

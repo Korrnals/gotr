@@ -1,37 +1,82 @@
-# Команды labels
+# Command: labels
 
-Команда `gotr labels` — работа с метками и тегами.
+Language: [Русский](../../../ru/guides/commands/labels.md) | English
 
-## What it does
+## Navigation
 
-- Основная операция для labels
-- Интеграция с другими командами
-- Поддержка интерактивного режима
+- [Documentation](../../index.md)
+  - [Guides](../index.md)
+    - [Installation](../installation.md)
+    - [Configuration](../configuration.md)
+    - [Interactive Mode](../interactive-mode.md)
+    - [Progress](../progress.md)
+    - [Commands Index](index.md)
+      - [General](global-flags.md)
+      - [CRUD Operations](add.md)
+      - [Core Resources](get.md)
+      - [Special Resources](bdds.md)
+        - [bdds](bdds.md)
+        - [configurations](configurations.md)
+        - [datasets](datasets.md)
+        - [groups](groups.md)
+        - [labels](labels.md)
+        - [milestones](milestones.md)
+        - [roles](roles.md)
+        - [templates](templates.md)
+        - [users](users.md)
+        - [variables](variables.md)
+  - [Architecture](../../architecture/index.md)
+  - [Operations](../../operations/index.md)
+  - [Reports](../../reports/index.md)
+- [Home](../../../../README.md)
 
-## When to use
 
-- Для операций labels в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Overview
+Manage labels for tests and test runs.
+Labels allow categorizing and grouping tests for easy analysis.
+
+## Syntax
+```bash
+gotr labels [command]
+```
+
+## Subcommands
+
+| Subcommand | Description |
+| --- | --- |
+| `get` | Get label information |
+| `list` | Get project label list |
+| `update` | Update labels for tests |
+
+## Flags
+
+```text
+-h, --help   help for labels
+```
+
+## Global Flags
+
+```text
+-k, --api-key string    TestRail API key
+-c, --config            Create default configuration file
+-f, --format string     Output format: table, json, csv, md, html (default "table")
+--insecure              Skip TLS certificate verification
+--non-interactive       Disable interactive prompts; exit with error if input is required
+-q, --quiet             Suppress output (progress, stats, save messages)
+--url string            TestRail base URL
+-u, --username string   TestRail user email
+```
 
 ## Examples
 
 ```bash
-gotr labels --help      # справка
-gotr labels --project 30 # базовый запуск
+gotr labels --help
+gotr labels get --help
 ```
 
-## Main flags
+## Source of Truth
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr labels --help`.
+- Sections above are generated from actual CLI `--help` output from current code.
 
 ---
 

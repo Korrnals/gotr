@@ -1,38 +1,67 @@
-# Команды completion
+# Команда: completion
 
-Команда `gotr completion` — автодополнение для shell
+Language: Русский | [English](../../../en/guides/commands/completion.md)
 
-## Что делает
+## Навигация
 
-- Основная операция для completion
-- Интеграция с другими командами  
-- Поддержка интерактивного режима
+- [Документация](../../index.md)
+  - [Гайды](../index.md)
+    - [Установка](../installation.md)
+    - [Конфигурация](../configuration.md)
+    - [Интерактивный режим](../interactive-mode.md)
+    - [Прогресс](../progress.md)
+    - [Каталог команд](index.md)
+      - [Общие](global-flags.md)
+        - [global-flags](global-flags.md)
+        - [config](config.md)
+        - [completion](completion.md)
+        - [self-test](self-test.md)
+      - [CRUD операции](add.md)
+      - [Основные ресурсы](get.md)
+      - [Специальные ресурсы](bdds.md)
+  - [Архитектура](../../architecture/index.md)
+  - [Эксплуатация](../../operations/index.md)
+  - [Отчёты](../../reports/index.md)
+- [Главная](../../../../README_ru.md)
 
-## Когда использовать
 
-- Для операций completion в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Обзор
+Генерирует скрипт автодополнения для указанной оболочки.
+Примеры:
+
+## Синтаксис
+```bash
+gotr completion [bash|zsh|fish|powershell]
+```
+
+## Флаги
+
+```text
+-h, --help   справка для completion
+```
+
+## Глобальные флаги
+
+```text
+-k, --api-key string    API ключ TestRail
+-c, --config            Создать дефолтный файл конфигурации
+-f, --format string     Формат вывода: table, json, csv, md, html (default "table")
+--insecure              Пропустить проверку TLS сертификата
+--non-interactive       Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод
+-q, --quiet             Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)
+--url string            Базовый URL TestRail
+-u, --username string   Email пользователя TestRail
+```
 
 ## Примеры
 
 ```bash
-gotr completion --help      # справка
-gotr completion --project 30 # базовый запуск
+gotr completion --help
 ```
 
-## Основные флаги
+## Источник
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-| `--dry-run` | Предпросмотр |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr completion --help`.
+- Данные разделов выше сформированы из фактического вывода `--help` текущего кода CLI.
 
 ---
 

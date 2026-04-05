@@ -1,69 +1,38 @@
-# Labels
+# Команды labels
 
-Language: [Русский](../../../ru/guides/commands/labels.md) | English
-
-## Navigation
-
-- [Documentation](../../index.md)
-  - [Guides](../index.md)
-    - [Installation](../installation.md)
-    - [Configuration](../configuration.md)
-    - [Interactive Mode](../interactive-mode.md)
-    - [Progress](../progress.md)
-    - [Commands Index](index.md)
-      - [General](global-flags.md)
-      - [CRUD Operations](add.md)
-      - [Core Resources](get.md)
-      - [Special Resources](bdds.md)
-        - [bdds](bdds.md)
-        - [configurations](configurations.md)
-        - [datasets](datasets.md)
-        - [groups](groups.md)
-        - [labels](labels.md)
-        - [milestones](milestones.md)
-        - [roles](roles.md)
-        - [templates](templates.md)
-        - [users](users.md)
-        - [variables](variables.md)
-        - [other](other.md)
-  - [Architecture](../../architecture/index.md)
-  - [Operations](../../operations/index.md)
-  - [Reports](../../reports/index.md)
-- [Home](../../../../README.md)
-
-The `gotr labels` command manages labels and categorization.
+Команда `gotr labels` — работа с метками и тегами.
 
 ## What it does
 
-- Handles API operations for the `labels` command scope.
-- Provides deterministic CLI behavior for scripts and CI/CD pipelines.
-- Helps reduce manual work by standardizing repetitive workflows.
+- Основная операция для labels
+- Интеграция с другими командами
+- Поддержка интерактивного режима
 
 ## When to use
 
-- When you need a predictable CLI flow for automation.
-- When you want to minimize manual steps and human error.
-- When the operation must run the same way locally and in CI/CD.
+- Для операций labels в тестировании
+- Когда нужна автоматизация процесса
+- В CI/CD конвейерах
 
 ## Examples
 
 ```bash
-# Command help
-gotr labels --help
-
-# Subcommand help
-gotr labels get --help
-
-# Basic call
-gotr labels --json
+gotr labels --help      # справка
+gotr labels --project 30 # базовый запуск
 ```
 
-## Useful flags
+## Main flags
 
-- `--json` for machine-readable output.
-- `--output` / `--save` to persist results to files.
-- `--verbose` for detailed execution diagnostics.
+| Флаг | Описание |
+| --- | --- |
+| `--help` | Справка по команде |
+| `--verbose` | Детальный вывод |
+
+## FAQ
+
+**Q: Как получить справку?**  
+A: `gotr labels --help`.
 
 ---
 
-← [Команды](index.md) · [Гайды](../index.md) · [Документация](../../index.md)
+← [Commands](index.md) · [Guides](../index.md) · [Documentation](../../index.md)

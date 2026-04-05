@@ -1,75 +1,37 @@
 # Команды attachments
 
-Language: Русский | [English](../../../en/guides/commands/attachments.md)
-
-## Навигация
-
-- [Документация](../../index.md)
-  - [Гайды](../index.md)
-    - [Установка](../installation.md)
-    - [Конфигурация](../configuration.md)
-    - [Интерактивный режим](../interactive-mode.md)
-    - [Прогресс](../progress.md)
-    - [Каталог команд](index.md)
-      - [Общие](global-flags.md)
-      - [CRUD операции](add.md)
-      - [Основные ресурсы](get.md)
-        - [get](get.md)
-        - [sync](sync.md)
-        - [compare](compare.md)
-        - [cases](cases.md)
-        - [run](run.md)
-        - [result](result.md)
-        - [test](test.md)
-        - [tests](tests.md)
-        - [attachments](attachments.md)
-        - [plans](plans.md)
-        - [reports](reports.md)
-      - [Специальные ресурсы](bdds.md)
-  - [Архитектура](../../architecture/index.md)
-  - [Эксплуатация](../../operations/index.md)
-  - [Отчёты](../../reports/index.md)
-- [Главная](../../../../README_ru.md)
-
-Команда `gotr attachments` загружает и получает вложения.
+Команда `gotr attachments` — управление файлами и аттачментами.
 
 ## Что делает
 
-- Загружает и скачивает вложения.
-- Используется для хранения логов, скриншотов и артефактов прогона.
-- Помогает связывать результаты тестов с доказательной базой.
+- Основная операция для attachments
+- Интеграция с другими командами
+- Поддержка интерактивного режима
 
 ## Когда использовать
 
-- Когда нужно получить предсказуемый CLI-поток для автоматизации.
-- Когда важно сократить ручные действия и риск ошибок.
-- Когда операция должна одинаково выполняться локально и в CI/CD.
-
-## Подкоманды
-
-- `gotr attachments add`
-- `gotr attachments get`
-- `gotr attachments list`
-- `gotr attachments delete`
+- Для операций attachments в тестировании
+- Когда нужна автоматизация процесса
+- В CI/CD конвейерах
 
 ## Примеры
 
 ```bash
-# Справка по команде
-gotr attachments --help
-
-# Справка по подкоманде
-gotr attachments get --help
-
-# Базовый вызов
-gotr attachments --json
+gotr attachments --help      # справка
+gotr attachments --project 30 # базовый запуск
 ```
 
-## Полезные флаги
+## Основные флаги
 
-- `--json` для вывода в машинно-обрабатываемом формате.
-- `--output` / `--save` для сохранения результата в файл.
-- `--verbose` для детальной диагностики выполнения.
+| Флаг | Описание |
+| --- | --- |
+| `--help` | Справка по команде |
+| `--verbose` | Детальный вывод |
+
+## FAQ
+
+**Q: Как получить справку?**  
+A: `gotr attachments --help`.
 
 ---
 

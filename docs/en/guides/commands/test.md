@@ -1,69 +1,38 @@
-# Test
+# Команды test
 
-Language: [Русский](../../../ru/guides/commands/test.md) | English
-
-## Navigation
-
-- [Documentation](../../index.md)
-  - [Guides](../index.md)
-    - [Installation](../installation.md)
-    - [Configuration](../configuration.md)
-    - [Interactive Mode](../interactive-mode.md)
-    - [Progress](../progress.md)
-    - [Commands Index](index.md)
-      - [General](global-flags.md)
-      - [CRUD Operations](add.md)
-      - [Core Resources](get.md)
-        - [get](get.md)
-        - [sync](sync.md)
-        - [compare](compare.md)
-        - [cases](cases.md)
-        - [run](run.md)
-        - [result](result.md)
-        - [test](test.md)
-        - [tests](tests.md)
-        - [attachments](attachments.md)
-        - [plans](plans.md)
-        - [reports](reports.md)
-      - [Special Resources](bdds.md)
-  - [Architecture](../../architecture/index.md)
-  - [Operations](../../operations/index.md)
-  - [Reports](../../reports/index.md)
-- [Home](../../../../README.md)
-
-The `gotr test` command works with individual tests inside runs.
+Команда `gotr test` — операции с отдельными тестами.
 
 ## What it does
 
-- Handles API operations for the `test` command scope.
-- Provides deterministic CLI behavior for scripts and CI/CD pipelines.
-- Helps reduce manual work by standardizing repetitive workflows.
+- Основная операция для test
+- Интеграция с другими командами
+- Поддержка интерактивного режима
 
 ## When to use
 
-- When you need a predictable CLI flow for automation.
-- When you want to minimize manual steps and human error.
-- When the operation must run the same way locally and in CI/CD.
+- Для операций test в тестировании
+- Когда нужна автоматизация процесса
+- В CI/CD конвейерах
 
 ## Examples
 
 ```bash
-# Command help
-gotr test --help
-
-# Subcommand help
-gotr test get --help
-
-# Basic call
-gotr test --json
+gotr test --help      # справка
+gotr test --project 30 # базовый запуск
 ```
 
-## Useful flags
+## Main flags
 
-- `--json` for machine-readable output.
-- `--output` / `--save` to persist results to files.
-- `--verbose` for detailed execution diagnostics.
+| Флаг | Описание |
+| --- | --- |
+| `--help` | Справка по команде |
+| `--verbose` | Детальный вывод |
+
+## FAQ
+
+**Q: Как получить справку?**  
+A: `gotr test --help`.
 
 ---
 
-← [Команды](index.md) · [Гайды](../index.md) · [Документация](../../index.md)
+← [Commands](index.md) · [Guides](../index.md) · [Documentation](../../index.md)

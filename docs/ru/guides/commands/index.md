@@ -45,7 +45,6 @@ Language: Русский | [English](../../../en/guides/commands/index.md)
         - [templates](templates.md)
         - [users](users.md)
         - [variables](variables.md)
-        - [other](other.md)
   - [Архитектура](../../architecture/index.md)
   - [Эксплуатация](../../operations/index.md)
   - [Отчёты](../../reports/index.md)
@@ -106,7 +105,6 @@ Language: Русский | [English](../../../en/guides/commands/index.md)
 - [templates](templates.md) — шаблоны кейсов.
 - [users](users.md) — пользователи и атрибуты.
 - [variables](variables.md) — переменные и параметры.
-- [other](other.md) — редкие и legacy-команды.
 
 ---
 

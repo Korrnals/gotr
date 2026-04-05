@@ -1,37 +1,86 @@
-# Команды cases
+# Command: cases
 
-Команда `gotr cases` — расширенные операции с test cases.
+Language: [Русский](../../../ru/guides/commands/cases.md) | English
 
-## What it does
+## Navigation
 
-- Основная операция для cases
-- Интеграция с другими командами
-- Поддержка интерактивного режима
+- [Documentation](../../index.md)
+  - [Guides](../index.md)
+    - [Installation](../installation.md)
+    - [Configuration](../configuration.md)
+    - [Interactive Mode](../interactive-mode.md)
+    - [Progress](../progress.md)
+    - [Commands Index](index.md)
+      - [General](global-flags.md)
+      - [CRUD Operations](add.md)
+      - [Core Resources](get.md)
+        - [get](get.md)
+        - [sync](sync.md)
+        - [compare](compare.md)
+        - [cases](cases.md)
+        - [run](run.md)
+        - [result](result.md)
+        - [test](test.md)
+        - [tests](tests.md)
+        - [attachments](attachments.md)
+        - [plans](plans.md)
+        - [reports](reports.md)
+      - [Special Resources](bdds.md)
+  - [Architecture](../../architecture/index.md)
+  - [Operations](../../operations/index.md)
+  - [Reports](../../reports/index.md)
+- [Home](../../../../README.md)
 
-## When to use
 
-- Для операций cases в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Overview
+Manage test cases: create, read, update, delete, and bulk operations.
+Main operations:
+
+## Syntax
+```bash
+gotr cases [command]
+```
+
+## Subcommands
+
+| Subcommand | Description |
+| --- | --- |
+| `add` | Create a new test case |
+| `bulk` | Bulk operations on test cases |
+| `delete` | Delete a test case |
+| `get` | Get a test case by ID |
+| `list` | List test cases |
+| `update` | Update a test case |
+
+## Flags
+
+```text
+-h, --help   help for cases
+```
+
+## Global Flags
+
+```text
+-k, --api-key string    TestRail API key
+-c, --config            Create default configuration file
+-f, --format string     Output format: table, json, csv, md, html (default "table")
+--insecure              Skip TLS certificate verification
+--non-interactive       Disable interactive prompts; exit with error if input is required
+-q, --quiet             Suppress output (progress, stats, save messages)
+--url string            TestRail base URL
+-u, --username string   TestRail user email
+```
 
 ## Examples
 
 ```bash
-gotr cases --help      # справка
-gotr cases --project 30 # базовый запуск
+gotr cases --help
+gotr cases add --help
 ```
 
-## Main flags
+## Source of Truth
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr cases --help`.
+- Sections above are generated from actual CLI `--help` output from current code.
 
 ---
 

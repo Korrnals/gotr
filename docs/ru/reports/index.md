@@ -29,11 +29,11 @@ Language: Русский | [English](../../en/reports/index.md)
 Комплексная оценка качества и готовности к выпуску.
 
 - [Обзор Stage 13](stage13/index.md) — цели и результаты финального этапа
-- [API Compliance](stage13/stage13-api-compliance-matrix.md) — соответствие контрактам API
-- [CLI Contract](stage13/stage13-cli-contract-matrix.md) — соответствие CLI-интерфейса
-- [Architecture Conformance](stage13/stage13-architecture-conformance.md) — проверка слоёв и принципов
-- [Quality Metrics](stage13/stage13-quality-metrics.md) — базовые метрики качества
-- [Coverage Checklist](stage13/stage13-coverage-checklist.md) — матрица покрытия тестами
+- [API Compliance](stage13/api-compliance-matrix.md) — соответствие контрактам API
+- [CLI Contract](stage13/cli-contract-matrix.md) — соответствие CLI-интерфейса
+- [Architecture Conformance](stage13/architecture-conformance.md) — проверка слоёв и принципов
+- [Quality Metrics](stage13/quality-metrics.md) — базовые метрики качества
+- [Coverage Checklist](stage13/coverage-checklist.md) — матрица покрытия тестами
 
 ### Исторические материалы
 

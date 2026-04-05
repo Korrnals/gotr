@@ -1,37 +1,70 @@
-# Команды self-test
+# Command: self-test
 
-Команда `gotr self-test` — самотестирование инструмента.
+Language: [Русский](../../../ru/guides/commands/self-test.md) | English
 
-## What it does
+## Navigation
 
-- Основная операция для self-test
-- Интеграция с другими командами
-- Поддержка интерактивного режима
+- [Documentation](../../index.md)
+  - [Guides](../index.md)
+    - [Installation](../installation.md)
+    - [Configuration](../configuration.md)
+    - [Interactive Mode](../interactive-mode.md)
+    - [Progress](../progress.md)
+    - [Commands Index](index.md)
+      - [General](global-flags.md)
+        - [global-flags](global-flags.md)
+        - [config](config.md)
+        - [completion](completion.md)
+        - [self-test](self-test.md)
+      - [CRUD Operations](add.md)
+      - [Core Resources](get.md)
+      - [Special Resources](bdds.md)
+  - [Architecture](../../architecture/index.md)
+  - [Operations](../../operations/index.md)
+  - [Reports](../../reports/index.md)
+- [Home](../../../../README.md)
 
-## When to use
 
-- Для операций self-test в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Overview
+Run comprehensive self-diagnostic tests to verify gotr installation,
+configuration, and internal health.
+
+## Syntax
+```bash
+gotr self-test [flags]
+```
+
+## Flags
+
+```text
+--failures-only     Show only failed checks
+-h, --help          help for self-test
+--include-skipped   Include skipped checks in output
+--json              Output results as JSON
+```
+
+## Global Flags
+
+```text
+-k, --api-key string    TestRail API key
+-c, --config            Create default configuration file
+-f, --format string     Output format: table, json, csv, md, html (default "table")
+--insecure              Skip TLS certificate verification
+--non-interactive       Disable interactive prompts; exit with error if input is required
+-q, --quiet             Suppress output (progress, stats, save messages)
+--url string            TestRail base URL
+-u, --username string   TestRail user email
+```
 
 ## Examples
 
 ```bash
-gotr self-test --help      # справка
-gotr self-test --project 30 # базовый запуск
+gotr self-test --help
 ```
 
-## Main flags
+## Source of Truth
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr self-test --help`.
+- Sections above are generated from actual CLI `--help` output from current code.
 
 ---
 

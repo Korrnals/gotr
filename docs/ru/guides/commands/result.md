@@ -1,37 +1,88 @@
-# Команды result
+# Команда: result
 
-Команда `gotr result` — управление результатами тестирования.
+Language: Русский | [English](../../../en/guides/commands/result.md)
 
-## Что делает
+## Навигация
 
-- Основная операция для result
-- Интеграция с другими командами
-- Поддержка интерактивного режима
+- [Документация](../../index.md)
+  - [Гайды](../index.md)
+    - [Установка](../installation.md)
+    - [Конфигурация](../configuration.md)
+    - [Интерактивный режим](../interactive-mode.md)
+    - [Прогресс](../progress.md)
+    - [Каталог команд](index.md)
+      - [Общие](global-flags.md)
+      - [CRUD операции](add.md)
+      - [Основные ресурсы](get.md)
+        - [get](get.md)
+        - [sync](sync.md)
+        - [compare](compare.md)
+        - [cases](cases.md)
+        - [run](run.md)
+        - [result](result.md)
+        - [test](test.md)
+        - [tests](tests.md)
+        - [attachments](attachments.md)
+        - [plans](plans.md)
+        - [reports](reports.md)
+      - [Специальные ресурсы](bdds.md)
+  - [Архитектура](../../architecture/index.md)
+  - [Эксплуатация](../../operations/index.md)
+  - [Отчёты](../../reports/index.md)
+- [Главная](../../../../README_ru.md)
 
-## Когда использовать
 
-- Для операций result в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Обзор
+Команды для добавления и получения результатов тестов (test results) в TestRail.
+Test result — это результат выполнения отдельного теста (passed, failed, blocked и т.д.)
+
+## Синтаксис
+```bash
+gotr result [flags]
+gotr result [command]
+```
+
+## Подкоманды
+
+| Подкоманда | Описание |
+| --- | --- |
+| `add` | Добавить результат для test |
+| `add-bulk` | Массовое добавление результатов |
+| `add-case` | Добавить результат для кейса в run |
+| `fields` | Получить список полей результатов |
+| `get` | Получить результаты для test |
+| `get-case` | Получить результаты для кейса в run |
+| `list` | Получить результаты для test run |
+
+## Флаги
+
+```text
+-h, --help   справка для result
+```
+
+## Глобальные флаги
+
+```text
+-k, --api-key string    API ключ TestRail
+-c, --config            Создать дефолтный файл конфигурации
+-f, --format string     Формат вывода: table, json, csv, md, html (default "table")
+--insecure              Пропустить проверку TLS сертификата
+--non-interactive       Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод
+-q, --quiet             Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)
+--url string            Базовый URL TestRail
+-u, --username string   Email пользователя TestRail
+```
 
 ## Примеры
 
 ```bash
-gotr result --help      # справка
-gotr result --project 30 # базовый запуск
+gotr result --help
+gotr result add --help
 ```
 
-## Основные флаги
+## Источник
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr result --help`.
+- Данные разделов выше сформированы из фактического вывода `--help` текущего кода CLI.
 
 ---
 

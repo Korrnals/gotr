@@ -29,11 +29,11 @@ Language: [Русский](../../ru/reports/index.md) | English
 Comprehensive quality assessment and release readiness.
 
 - [Stage 13 Overview](stage13/index.md) — goals and results of final phase
-- [API Compliance](stage13/stage13-api-compliance-matrix.md) — API contract compliance
-- [CLI Contract](stage13/stage13-cli-contract-matrix.md) — CLI interface compliance
-- [Architecture Conformance](stage13/stage13-architecture-conformance.md) — layer and principles verification
-- [Quality Metrics](stage13/stage13-quality-metrics.md) — baseline quality metrics
-- [Coverage Checklist](stage13/stage13-coverage-checklist.md) — test coverage matrix
+- [API Compliance](stage13/api-compliance-matrix.md) — API contract compliance
+- [CLI Contract](stage13/cli-contract-matrix.md) — CLI interface compliance
+- [Architecture Conformance](stage13/architecture-conformance.md) — layer and principles verification
+- [Quality Metrics](stage13/quality-metrics.md) — baseline quality metrics
+- [Coverage Checklist](stage13/coverage-checklist.md) — test coverage matrix
 
 ### Historical Materials
 

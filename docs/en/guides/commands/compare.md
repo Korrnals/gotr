@@ -1,19 +1,19 @@
-# Команды COMPARE (анализ и сравнение)
+# Command: compare
 
-Language: English | [Русский](../../../ru/guides/commands/compare.md)
+Language: [Русский](../../../ru/guides/commands/compare.md) | English
 
-## Навигация
+## Navigation
 
-- [Документация](../../index.md)
-  - [Гайды](../index.md)
-    - [Установка](../installation.md)
-    - [Конфигурация](../configuration.md)
-    - [Интерактивный режим](../interactive-mode.md)
-    - [Прогресс](../progress.md)
-    - [Каталог команд](index.md)
-      - [Общие](global-flags.md)
-      - [CRUD операции](add.md)
-      - [Основные ресурсы](get.md)
+- [Documentation](../../index.md)
+  - [Guides](../index.md)
+    - [Installation](../installation.md)
+    - [Configuration](../configuration.md)
+    - [Interactive Mode](../interactive-mode.md)
+    - [Progress](../progress.md)
+    - [Commands Index](index.md)
+      - [General](global-flags.md)
+      - [CRUD Operations](add.md)
+      - [Core Resources](get.md)
         - [get](get.md)
         - [sync](sync.md)
         - [compare](compare.md)
@@ -25,232 +25,81 @@ Language: English | [Русский](../../../ru/guides/commands/compare.md)
         - [attachments](attachments.md)
         - [plans](plans.md)
         - [reports](reports.md)
-      - [Специальные ресурсы](bdds.md)
-  - [Архитектура](../../architecture/index.md)
-  - [Эксплуатация](../../operations/index.md)
-  - [Отчёты](../../reports/index.md)
-- [Home](../../../../README_ru.md)
+      - [Special Resources](bdds.md)
+  - [Architecture](../../architecture/index.md)
+  - [Operations](../../operations/index.md)
+  - [Reports](../../reports/index.md)
+- [Home](../../../../README.md)
 
-## Обзор
 
-Команда `gotr compare` выполняет **глубокий анализ различий** между проектами, сьютами, кейсами и другими структурами TestRail. Используется для валидации миграций, обнаружения несоответствий, аудита данных и подготовки отчётов перед синхронизацией.
+## Overview
+Compare resources between two TestRail projects.
+Supported resources:
 
-## What it does
-
-- **Сравнение структур**: Сьюты, секции, иерархия
-- **Сравнение контента**: Кейсы, шаги, ожидаемые результаты
-- **Анализ дубликатов**: Поиск кейсов с идентичным содержанием
-- **Статистика**: Подсчёт new, modified, deleted, duplicates
-- **Экспорт отчётов**: JSON, CSV для дальнейшей обработки
-- **Интерактивный режим**: Просмотр в диалоге
-- **Фильтрация**: По полям, диапазонам ID, статусам
-
-## When to use
-
-- До миграции (sync): проверить наличие дубликатов в dst
-- После миграции: валидировать что всё скопировалось корректно
-- Для аудита: регулярная проверка целостности данных
-- Для отчётов: анализ расхождений между версиями
+## Syntax
+```bash
+gotr compare [command]
+```
 
 ## Subcommands
 
-### `gotr compare projects` — сравнение проектов
+| Subcommand | Description |
+| --- | --- |
+| `all` | Compare all resources between two projects |
+| `cases` | Compare test cases between projects |
+| `configurations` | Compare configurations between projects |
+| `datasets` | Compare datasets between projects |
+| `groups` | Compare groups between projects |
+| `labels` | Compare labels between projects |
+| `milestones` | Compare milestones between projects |
+| `plans` | Compare test plans between projects |
+| `runs` | Compare test runs between projects |
+| `sections` | Compare sections between projects |
+| `sharedsteps` | Compare shared steps between projects |
+| `suites` | Compare test suites between projects |
+| `templates` | Compare templates between projects |
 
-Обзор: статистика по кейсам, сьютам, шаблонам, конфигурациям.
+## Flags
+
+```text
+-h, --help               help for compare
+--page-retries int       Number of retries per page in the main loading phase (default 5)
+--parallel-pages int     Maximum number of parallel pages within a suite (default 6)
+--parallel-suites int    Maximum number of parallel suites (default 10)
+-1, --pid1 string        First project ID (required)
+-2, --pid2 string        Second project ID (required)
+--rate-limit int         API request limit per minute. -1 = auto by profile/deployment, 0 = no limit, >0 = fixed value. (default -1)
+--retry-attempts int     Number of attempts for auto-retry of failed pages (default 5)
+--retry-delay duration   Pause between retries for a single page during auto-retry (default 200ms)
+--retry-workers int      Number of parallel workers during auto-retry of failed pages (default 12)
+--save                   Save result to file (default: ~/.gotr/exports/)
+--save-to string         Save result to specified file
+--timeout duration       Timeout for compare operation (default 30m0s)
+```
+
+## Global Flags
+
+```text
+-k, --api-key string    TestRail API key
+-c, --config            Create default configuration file
+-f, --format string     Output format: table, json, csv, md, html (default "table")
+--insecure              Skip TLS certificate verification
+--non-interactive       Disable interactive prompts; exit with error if input is required
+-q, --quiet             Suppress output (progress, stats, save messages)
+--url string            TestRail base URL
+-u, --username string   TestRail user email
+```
+
+## Examples
 
 ```bash
-gotr compare projects --src-project 30 --dst-project 31
+gotr compare --help
+gotr compare all --help
 ```
 
-### `gotr compare suites` — сравнение сьютов
+## Source of Truth
 
-Структурные различия (секции, порядок, параметры).
-
-```bash
-gotr compare suites --src-project 30 --src-suite 20069 \
-                    --dst-project 31 --dst-suite 19859 \
-                    --report summary
-```
-
-### `gotr compare cases` — сравнение кейсов
-
-Детальный анализ кейсов: what's new, modified, deleted, duplicates.
-
-```bash
-gotr compare cases --src-project 30 --src-suite 20069 \
-                   --dst-project 31 --dst-suite 19859 \
-                   --report detailed \
-                   --output diff.csv
-```
-
-### `gotr compare sections` — сравнение иерархии секций
-
-Структура папок и организация.
-
-```bash
-gotr compare sections --src-project 30 --src-suite 20069 \
-                      --dst-project 31 --dst-suite 19859 \
-                      --output sections_diff.json
-```
-
-## Examples реальных сценариев
-
-### Пример 1: Аудит после миграции (проверить полноту)
-
-```bash
-# Быстрая статистика
-gotr compare suites --src-project 30 --src-suite 20069 \
-                    --dst-project 31 --dst-suite 19859 \
-                    --report summary
-
-# Если есть расхождения → детальный анализ
-gotr compare cases --src-project 30 --src-suite 20069 \
-                   --dst-project 31 --dst-suite 19859 \
-                   --report detailed \
-                   --output details.csv
-```
-
-### Пример 2: Поиск дубликатов в целевом проекте
-
-```bash
-# Перед миграцией — есть ли уже похожие кейсы?
-gotr compare cases --src-project 30 --src-suite 20069 \
-                   --dst-project 31 \
-                   --find-duplicates \
-                   --compare-field title
-```
-
-### Пример 3: Экспорт различий для анализа
-
-```bash
-gotr compare cases --src-project 30 --src-suite 20069 \
-                   --dst-project 31 --dst-suite 19859 \
-                   --output report_for_qa.csv
-
-# Откройте в Excel для ручного анализа
-```
-
-## Flags и параметры
-
-### Обязательные
-
-| Флаг | Описание | Пример |
-| --- | --- | --- |
-| `--src-project` | ID исходного проекта | `--src-project 30` |
-| `--dst-project` | ID целевого проекта | `--dst-project 31` |
-
-### Контекст (опциональные)
-
-| Флаг | Описание | По умолчанию |
-| --- | --- | --- |
-| `--src-suite` | Исходный сьют | Все сьюты src-project |
-| `--dst-suite` | Целевой сьют | Все сьюты dst-project |
-
-### Стратегия сравнения
-
-| Флаг | Описание | Когда |
-| --- | --- | --- |
-| `--compare-field` | Поле для сравнения (title/name/id) | Когда `title` недостаточно |
-| `--ignore-draft` | Пропустить черновики | Когда draft не важны |
-| `--ignore-case` | Case-insensitive matching | Для нечувствительного матча |
-
-### Вывод и отчёты
-
-| Флаг | Описание | Опции |
-| --- | --- | --- |
-| `--report` | Формат отчёта | `summary` / `detailed` |
-| `--output` | Сохранить результаты | `report.csv`, `report.json` |
-| `--quiet` | Минимум вывода | Для CI |
-| `--verbose` | Максимум деталей | Для отладки |
-
-### Анализ
-
-| Флаг | Описание | Пример |
-| --- | --- | --- |
-| `--find-duplicates` | Поиск дубликатов | `--find-duplicates` |
-| `--group-by` | Группировка результатов | `--group-by section` |
-
-## Algorithm сравнения
-
-```txt
-compare cases выполняет:
-
-1. Load данные
-   ├─ src_data = fetch src project/suite/cases
-   └─ dst_data = fetch dst project/suite/cases
-
-2. Индексирование по compare-field
-   ├─ src_index[compare_field] = case_id
-   └─ dst_index[compare_field] = case_id
-
-3. Проход по каждому src case
-   ├─ lookup: есть ли в dst по compare-field?
-   ├─ if found → структурное сравнение
-   │   ├─ Identical → status = PRESENT
-   │   └─ Different → status = MODIFIED
-   └─ if not found → поиск похожего
-       ├─ if similar found → status = POTENTIAL_DUPLICATE
-       └─ if not found → status = MISSING
-
-4. Классификация
-   ├─ PRESENT: совпадают (успешная синхронизация)
-   ├─ MODIFIED: есть но отличаются (нужно обновить)
-   ├─ MISSING: не найдены в dst (не синхронизированы)
-   └─ POTENTIAL_DUPLICATE: похожи по содержанию
-
-5. Экспорт результатов
-   ├─ summary: только статистика
-   ├─ detailed: полный список с diff
-   └─ --output: в файл JSON/CSV
-```
-
-## Обработка ошибок
-
-| Ошибка | Причина | Решение |
-| --- | --- | --- |
-| `Project not found` | Проект не существует | `gotr get projects` |
-| `Suite not found` | Сьют не найден | Проверить `--src-suite` / `--dst-suite` |
-| `Compare field invalid` | Неправильное поле | Используйте: title, name, id |
-| `Output file permission denied` | Нет доступа к файлу | Проверить права на директорию |
-| `API timeout` | Сравнение заняло > timeout | ↑ `--timeout` или используйте `--src-suite` |
-| `Memory exceeded` | Слишком большой dataset | Используйте `--src-suite` для сужения |
-
-## Типичный workflow
-
-```bash
-# 1. Подготовка к миграции
-gotr compare cases --src-project 30 --src-suite 20069 \
-                   --dst-project 31 \
-                   --find-duplicates \
-                   --report summary
-# Если дубликатов мало → можем мигрировать
-
-# 2. После миграции (sync full)
-gotr compare cases --src-project 30 --src-suite 20069 \
-                   --dst-project 31 --dst-suite 19859 \
-                   --report detailed \
-                   --output post_sync_diff.csv
-
-# 3. Проанализировать различия
-cat post_sync_diff.csv | grep "MODIFIED"
-```
-
-## FAQ
-
-**Q: Чем compare отличается от sync --dry-run?**  
-A: `sync --dry-run` показывает что будет **создано**. `compare` анализирует **уже существующие** различия.
-
-**Q: Как найти повреждённые данные при миграции?**  
-A: `gotr compare cases --report detailed` → ищите статус `MODIFIED`.
-
-**Q: Можно ли сравнивать между разными TestRail инстансами?**  
-A: Нет. Для этого используйте `export` + `import`.
-
-**Q: На 100k+ кейсов что будет?**  
-A: Используйте `--src-suite` для сужения scope, иначе может занять часы.
-
-**Q: Что означает "POTENTIAL_DUPLICATE"?**  
-A: Кейс существует в dst но под другим именем (похож по содержанию). Проверьте вручную.
+- Sections above are generated from actual CLI `--help` output from current code.
 
 ---
 

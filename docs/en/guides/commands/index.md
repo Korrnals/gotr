@@ -45,7 +45,6 @@ Language: [Русский](../../../ru/guides/commands/index.md) | English
         - [templates](templates.md)
         - [users](users.md)
         - [variables](variables.md)
-        - [other](other.md)
   - [Architecture](../../architecture/index.md)
   - [Operations](../../operations/index.md)
   - [Reports](../../reports/index.md)
@@ -106,7 +105,6 @@ Extended resources and specialized endpoint groups.
 - [templates](templates.md) — case templates.
 - [users](users.md) — users and user attributes.
 - [variables](variables.md) — variables and values.
-- [other](other.md) — rare and legacy-oriented commands.
 
 ---
 

@@ -1,37 +1,87 @@
-# Команды run
+# Команда: run
 
-Команда `gotr run` — запуск тестовых планов.
+Language: Русский | [English](../../../en/guides/commands/run.md)
 
-## Что делает
+## Навигация
 
-- Основная операция для run
-- Интеграция с другими командами
-- Поддержка интерактивного режима
+- [Документация](../../index.md)
+  - [Гайды](../index.md)
+    - [Установка](../installation.md)
+    - [Конфигурация](../configuration.md)
+    - [Интерактивный режим](../interactive-mode.md)
+    - [Прогресс](../progress.md)
+    - [Каталог команд](index.md)
+      - [Общие](global-flags.md)
+      - [CRUD операции](add.md)
+      - [Основные ресурсы](get.md)
+        - [get](get.md)
+        - [sync](sync.md)
+        - [compare](compare.md)
+        - [cases](cases.md)
+        - [run](run.md)
+        - [result](result.md)
+        - [test](test.md)
+        - [tests](tests.md)
+        - [attachments](attachments.md)
+        - [plans](plans.md)
+        - [reports](reports.md)
+      - [Специальные ресурсы](bdds.md)
+  - [Архитектура](../../architecture/index.md)
+  - [Эксплуатация](../../operations/index.md)
+  - [Отчёты](../../reports/index.md)
+- [Главная](../../../../README_ru.md)
 
-## Когда использовать
 
-- Для операций run в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Обзор
+Команды для управления test runs (тестовыми прогонами) в TestRail.
+Test run — это экземпляр тест-сюиты, запущенный для выполнения тестов.
+
+## Синтаксис
+```bash
+gotr run [flags]
+gotr run [command]
+```
+
+## Подкоманды
+
+| Подкоманда | Описание |
+| --- | --- |
+| `close` | Закрыть test run |
+| `create` | Создать новый test run |
+| `delete` | Удалить test run |
+| `get` | Получить информацию о test run |
+| `list` | Получить список test runs проекта |
+| `update` | Обновить test run |
+
+## Флаги
+
+```text
+-h, --help   справка для run
+```
+
+## Глобальные флаги
+
+```text
+-k, --api-key string    API ключ TestRail
+-c, --config            Создать дефолтный файл конфигурации
+-f, --format string     Формат вывода: table, json, csv, md, html (default "table")
+--insecure              Пропустить проверку TLS сертификата
+--non-interactive       Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод
+-q, --quiet             Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)
+--url string            Базовый URL TestRail
+-u, --username string   Email пользователя TestRail
+```
 
 ## Примеры
 
 ```bash
-gotr run --help      # справка
-gotr run --project 30 # базовый запуск
+gotr run --help
+gotr run close --help
 ```
 
-## Основные флаги
+## Источник
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr run --help`.
+- Данные разделов выше сформированы из фактического вывода `--help` текущего кода CLI.
 
 ---
 

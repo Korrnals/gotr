@@ -1,38 +1,91 @@
-# Команды GET
+# Команда: get
 
-Команда `gotr get` — получение данных из TestRail
+Language: Русский | [English](../../../en/guides/commands/get.md)
 
-## Что делает
+## Навигация
 
-- Основная операция для get
-- Интеграция с другими командами  
-- Поддержка интерактивного режима
+- [Документация](../../index.md)
+  - [Гайды](../index.md)
+    - [Установка](../installation.md)
+    - [Конфигурация](../configuration.md)
+    - [Интерактивный режим](../interactive-mode.md)
+    - [Прогресс](../progress.md)
+    - [Каталог команд](index.md)
+      - [Общие](global-flags.md)
+      - [CRUD операции](add.md)
+      - [Основные ресурсы](get.md)
+        - [get](get.md)
+        - [sync](sync.md)
+        - [compare](compare.md)
+        - [cases](cases.md)
+        - [run](run.md)
+        - [result](result.md)
+        - [test](test.md)
+        - [tests](tests.md)
+        - [attachments](attachments.md)
+        - [plans](plans.md)
+        - [reports](reports.md)
+      - [Специальные ресурсы](bdds.md)
+  - [Архитектура](../../architecture/index.md)
+  - [Эксплуатация](../../operations/index.md)
+  - [Отчёты](../../reports/index.md)
+- [Главная](../../../../README_ru.md)
 
-## Когда использовать
 
-- Для операций get в тестировании
-- Когда нужна автоматизация процесса
-- В CI/CD конвейерах
+## Обзор
+Выполняет GET-запросы к TestRail API.
+Подкоманды:
+
+## Синтаксис
+```bash
+gotr get [command]
+```
+
+## Подкоманды
+
+| Подкоманда | Описание |
+| --- | --- |
+| `case` | Получить один кейс по ID кейса |
+| `case-fields` | Получить список полей кейсов |
+| `case-history` | Получить историю изменений кейса по ID кейса |
+| `case-types` | Получить список типов кейсов |
+| `cases` | Получить кейсы проекта |
+| `project` | Получить один проект по ID проекта |
+| `projects` | Получить все projects |
+| `sharedstep` | Получить один shared step по ID шага |
+| `sharedsteps` | Получить shared steps проекта |
+| `suite` | Получить одну тест-сюиту по ID сюиты |
+| `suites` | Получить тест-сюиты проекта |
+
+## Флаги
+
+```text
+-h, --help   справка для get
+```
+
+## Глобальные флаги
+
+```text
+-k, --api-key string    API ключ TestRail
+-c, --config            Создать дефолтный файл конфигурации
+-f, --format string     Формат вывода: table, json, csv, md, html (default "table")
+--insecure              Пропустить проверку TLS сертификата
+--non-interactive       Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод
+-q, --quiet             Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)
+--url string            Базовый URL TestRail
+-u, --username string   Email пользователя TestRail
+```
 
 ## Примеры
 
 ```bash
-gotr get --help      # справка
-gotr get --project 30 # базовый запуск
+gotr get --help
+gotr get case --help
 ```
 
-## Основные флаги
+## Источник
 
-| Флаг | Описание |
-| --- | --- |
-| `--help` | Справка по команде |
-| `--verbose` | Детальный вывод |
-| `--dry-run` | Предпросмотр |
-
-## FAQ
-
-**Q: Как получить справку?**  
-A: `gotr get --help`.
+- Данные разделов выше сформированы из фактического вывода `--help` текущего кода CLI.
 
 ---
 

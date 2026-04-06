@@ -50,6 +50,10 @@ gotr config view
 gotr config edit
 ```
 
+Примечания безопасности:
+- gotr config init создает файл с правами 0600 (чтение/запись только для владельца).
+- gotr config view маскирует чувствительные ключи api_key, password, token, authorization как "***".
+
 ### Структура config.yaml
 
 ```yaml

@@ -8,10 +8,14 @@ on:
       - release-*
       - stage-*
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality-gates:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -36,7 +40,7 @@ jobs:
       - name: Run unit tests
         env:
           EDITOR: "true"  # prevent editor_test from hanging on interactive vi
-        run: go test -timeout 300s ./...
+        run: go test -timeout 300s -count=1 ./...
 
       - name: Run go vet
         run: go vet ./...
@@ -49,7 +53,7 @@ jobs:
         env:
           CGO_ENABLED: 1
           EDITOR: "true"  # prevent editor_test from hanging on interactive vi
-        run: go test -race -timeout 300s ./...
+        run: go test -race -timeout 300s -count=1 -p 2 ./...
 
       - name: Run vulnerability scan
         run: govulncheck ./...

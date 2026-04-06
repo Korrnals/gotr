@@ -1,4 +1,4 @@
-name: stage13-ci
+name: ci
 
 on:
   pull_request:

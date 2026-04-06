@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetByEmailCmd создаёт команду 'users get-by-email'
-// Эндпоинт: GET /get_user_by_email
+// newGetByEmailCmd creates the 'users get-by-email' command.
+// Endpoint: GET /get_user_by_email
 func newGetByEmailCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get-by-email [email]",

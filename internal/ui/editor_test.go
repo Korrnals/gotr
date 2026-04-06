@@ -170,8 +170,15 @@ func TestOpenEditor_WarningMessageFallback(t *testing.T) {
 	require.NoError(t, os.WriteFile(file, []byte("test"), 0o644))
 
 	prev := os.Getenv("EDITOR")
-	t.Cleanup(func() { _ = os.Setenv("EDITOR", prev) })
+	prevPath := os.Getenv("PATH")
+	t.Cleanup(func() {
+		_ = os.Setenv("EDITOR", prev)
+		_ = os.Setenv("PATH", prevPath)
+	})
 	require.NoError(t, os.Setenv("EDITOR", ""))
+	// Set PATH to empty dir so fallback editor (vi) is not found;
+	// prevents the test from hanging on an interactive vi session.
+	require.NoError(t, os.Setenv("PATH", tmp))
 
 	// Note: Warningf writes to the provided writer, not os.Stdout
 	// This test verifies the function structure only

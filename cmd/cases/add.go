@@ -13,17 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'cases add'
-// Эндпоинт: POST /add_case/{section_id}
+// newAddCmd creates the 'cases add' command.
+// Endpoint: POST /add_case/{section_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [section_id]",
-		Short: "Создать новый тест-кейс",
-		Long:  `Создаёт новый тест-кейс в указанной секции.`,
-		Example: `  # Создать тест-кейс с параметрами
-  gotr cases add 100 --title="Тест авторизации" --template-id=1
+		Short: "Create a new test case",
+		Long:  `Creates a new test case in the specified section.`,
+		Example: `  # Create a test case with parameters
+  gotr cases add 100 --title="Auth test" --template-id=1
 
-  # Создать из JSON-файла
+  # Create from a JSON file
   gotr cases add 100 --json-file=case.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -89,14 +89,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().Bool("dry-run", false, "Preview the action without creating anything")
 	output.AddFlag(cmd)
-	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными кейса")
-	cmd.Flags().String("title", "", "Название тест-кейса")
-	cmd.Flags().Int64("template-id", 0, "ID шаблона")
-	cmd.Flags().Int64("type-id", 0, "ID типа теста")
-	cmd.Flags().Int64("priority-id", 0, "ID приоритета")
-	cmd.Flags().String("refs", "", "Ссылки (референсы)")
+	cmd.Flags().String("json-file", "", "Path to a JSON file with case data")
+	cmd.Flags().String("title", "", "Test case title")
+	cmd.Flags().Int64("template-id", 0, "Template ID")
+	cmd.Flags().Int64("type-id", 0, "Test type ID")
+	cmd.Flags().Int64("priority-id", 0, "Priority ID")
+	cmd.Flags().String("refs", "", "References")
 
 	return cmd
 }

@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'milestones get'
-// Эндпоинт: GET /get_milestone/{milestone_id}
+// newGetCmd creates the 'milestones get' command.
+// Endpoint: GET /get_milestone/{milestone_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [milestone_id]",

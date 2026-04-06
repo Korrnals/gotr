@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCreateCmd создаёт команду create для test run (используется в тестах)
+// newCreateCmd creates the create command for test runs (also used in tests).
 func newCreateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create [project-id]",
@@ -67,7 +67,7 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 				}
 			}
 
-			// Собираем параметры из флагов
+			// Collect parameters from flags
 			name, _ := cmd.Flags().GetString("name")
 			description, _ := cmd.Flags().GetString("description")
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
@@ -100,7 +100,7 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 				IncludeAll:  includeAll,
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run create")
@@ -137,7 +137,7 @@ Test run создаётся на основе тест-сюиты (suite). Мо�
 	return cmd
 }
 
-// createCmd — экспортированная команда для регистрации
+// createCmd is the exported command for registration.
 var createCmd = newCreateCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду для получения списка тестов
+// newListCmd creates the command for listing tests.
 func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [run-id]",
@@ -66,7 +66,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				}
 			}
 
-			// Собираем фильтры
+			// Collect filters
 			filters := make(map[string]string)
 
 			if cmd.Flags().Changed("status-id") {
@@ -84,7 +84,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				return fmt.Errorf("failed to get test list: %w", err)
 			}
 
-			// Проверяем нужно ли сохранить в файл
+			// Check if output should be saved to file
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
 				filepath, err := output.Output(cmd, tests, "test", "json")

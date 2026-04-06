@@ -17,13 +17,13 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.8.0-blue.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Профессиональный инструмент командной строки для работы с TestRail API v2. Разработан для QA-инженеров и специалистов по автоматизации тестирования, которым требуется эффективное управление данными, возможности миграции и бесшовная интеграция с CI/CD.
 
-> **Актуальная версия: v2.8.0** — Stage 6.8 завершён: унификация concurrency, generic compare-подкоманды, пакет `internal/concurrency/`. См. [CHANGELOG](CHANGELOG.md)
+> **Актуальная версия: v3.0.0** — Stage 13 завершён: финальный рефакторинг, полное покрытие API, архитектурная чистка. См. [CHANGELOG](CHANGELOG.md)
 
 ## Обзор
 

@@ -15,31 +15,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// addCmd — команда для создания ресурсов через POST-запросы
+// addCmd creates resources via POST requests.
 var addCmd = &cobra.Command{
 	Use:   "add <endpoint> [id]",
-	Short: "Создать новый ресурс (POST-запрос)",
-	Long: `Создаёт новый объект в TestRail через POST API.
+	Short: "Create a new resource (POST request)",
+	Long: `Creates a new object in TestRail via the POST API.
 
-Поддерживаемые эндпоинты:
-  project              Создать проект
-  suite <project_id>   Создать сьют in project
-  section <project_id> Создать секцию in project/сьюте
-  case <section_id>    Создать тест-кейс в секции
-  run <project_id>     Создать тест-ран
-  result <test_id>     Добавить результат теста
-  result-for-case <run_id> <case_id>  Добавить результат для кейса
-  shared-step <project_id>  Создать shared step
-  milestone <project_id>    Создать milestone
-  plan <project_id>         Создать test plan
-  entry <plan_id>           Добавить entry в plan
-  attachment case <case_id> <file>    Добавить вложение к кейсу
-  attachment plan <plan_id> <file>    Добавить вложение к плану
-  attachment plan-entry <plan_id> <entry_id> <file>  Добавить вложение к entry
-  attachment result <result_id> <file>  Добавить вложение к результату
-  attachment run <run_id> <file>      Добавить вложение к рану
+Supported endpoints:
+  project              Create a project
+  suite <project_id>   Create a suite in a project
+  section <project_id> Create a section in a project/suite
+  case <section_id>    Create a test case in a section
+  run <project_id>     Create a test run
+  result <test_id>     Add a test result
+  result-for-case <run_id> <case_id>  Add a result for a case
+  shared-step <project_id>  Create a shared step
+  milestone <project_id>    Create a milestone
+  plan <project_id>         Create a test plan
+  entry <plan_id>           Add an entry to a plan
+  attachment case <case_id> <file>    Attach a file to a case
+  attachment plan <plan_id> <file>    Attach a file to a plan
+  attachment plan-entry <plan_id> <entry_id> <file>  Attach a file to an entry
+  attachment result <result_id> <file>  Attach a file to a result
+  attachment run <run_id> <file>      Attach a file to a run
 
-Примеры:
+Examples:
   gotr add project --name "New Project" --announcement "Desc"
   gotr add suite 1 --name "Smoke Tests"
   gotr add case 100 --title "Login test" --template-id 1
@@ -49,7 +49,7 @@ var addCmd = &cobra.Command{
   gotr add attachment plan 100 ./report.pdf
   gotr add attachment result 98765 ./log.txt
 
-Интерактивный режим (wizard):
+Interactive mode (wizard):
   gotr add project -i
   gotr add suite 1 -i
   gotr add case 100 -i
@@ -60,30 +60,30 @@ Dry-run mode:
 }
 
 func init() {
-	// Общие флаги для создания
-	addCmd.Flags().StringP("name", "n", "", "Название ресурса")
-	addCmd.Flags().String("description", "", "Описание/announcement")
-	addCmd.Flags().String("announcement", "", "Announcement (для проекта)")
-	addCmd.Flags().Bool("show-announcement", false, "Показывать announcement")
-	addCmd.Flags().Int64("suite-id", 0, "ID сьюта")
-	addCmd.Flags().Int64("section-id", 0, "ID секции")
-	addCmd.Flags().Int64("milestone-id", 0, "ID milestone")
-	addCmd.Flags().Int64("template-id", 0, "ID шаблона (для case)")
-	addCmd.Flags().Int64("type-id", 0, "ID типа (для case)")
-	addCmd.Flags().Int64("priority-id", 0, "ID приоритета (для case)")
-	addCmd.Flags().String("title", "", "Заголовок (для case)")
-	addCmd.Flags().String("refs", "", "Ссылки (references)")
-	addCmd.Flags().String("comment", "", "Комментарий (для result)")
-	addCmd.Flags().Int64("status-id", 0, "ID статуса (для result)")
-	addCmd.Flags().String("elapsed", "", "Время выполнения (для result)")
-	addCmd.Flags().String("defects", "", "Дефекты (для result)")
-	addCmd.Flags().Int64("assignedto-id", 0, "ID назначенного пользователя")
-	addCmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
-	addCmd.Flags().Bool("include-all", true, "Включить все кейсы (для run)")
-	addCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
+	// Common flags for resource creation
+	addCmd.Flags().StringP("name", "n", "", "Resource name")
+	addCmd.Flags().String("description", "", "Description/announcement")
+	addCmd.Flags().String("announcement", "", "Announcement (for project)")
+	addCmd.Flags().Bool("show-announcement", false, "Show announcement")
+	addCmd.Flags().Int64("suite-id", 0, "Suite ID")
+	addCmd.Flags().Int64("section-id", 0, "Section ID")
+	addCmd.Flags().Int64("milestone-id", 0, "Milestone ID")
+	addCmd.Flags().Int64("template-id", 0, "Template ID (for case)")
+	addCmd.Flags().Int64("type-id", 0, "Type ID (for case)")
+	addCmd.Flags().Int64("priority-id", 0, "Priority ID (for case)")
+	addCmd.Flags().String("title", "", "Title (for case)")
+	addCmd.Flags().String("refs", "", "References")
+	addCmd.Flags().String("comment", "", "Comment (for result)")
+	addCmd.Flags().Int64("status-id", 0, "Status ID (for result)")
+	addCmd.Flags().String("elapsed", "", "Elapsed time (for result)")
+	addCmd.Flags().String("defects", "", "Defects (for result)")
+	addCmd.Flags().Int64("assignedto-id", 0, "Assigned user ID")
+	addCmd.Flags().String("case-ids", "", "Comma-separated case IDs (for run)")
+	addCmd.Flags().Bool("include-all", true, "Include all cases (for run)")
+	addCmd.Flags().String("json-file", "", "Path to JSON data file")
 	output.AddFlag(addCmd)
-	addCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
-	addCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
+	addCmd.Flags().Bool("dry-run", false, "Show what would be executed without making changes")
+	addCmd.Flags().BoolP("interactive", "i", false, "Interactive mode (wizard)")
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
@@ -94,10 +94,10 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	endpoint := args[0]
 	ctx := cmd.Context()
 
-	// Получаем клиент
+	// Get the client
 	cli := GetClientInterface(cmd)
 
-	// Определяем ID из аргументов (не для attachment - у него своя структура аргументов)
+	// Parse ID from args (attachment has its own argument structure)
 	var id int64
 	if len(args) > 1 && endpoint != "attachment" {
 		parsedID, err := flags.ValidateRequiredID(args, 1, "ID")
@@ -113,7 +113,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	}
 	id = resolvedID
 
-	// Читаем JSON из файла если указан
+	// Read JSON from file if specified
 	jsonFile, _ := cmd.Flags().GetString("json-file")
 	var jsonData []byte
 	if jsonFile != "" {
@@ -124,20 +124,20 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Проверяем dry-run режим (не для attachment - у него свой dry-run внутри)
+	// Check dry-run mode (attachment has its own dry-run handling)
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun && endpoint != "attachment" {
 		dr := output.NewDryRunPrinter("add " + endpoint)
 		return runAddDryRun(cmd, dr, endpoint, id, jsonData)
 	}
 
-	// Проверяем интерактивный режим
+	// Check interactive mode
 	isInteractive, _ := cmd.Flags().GetBool("interactive")
 	if isInteractive || shouldAutoRunAddInteractive(cmd, endpoint, id, jsonFile != "") {
 		return runAddInteractive(cli, cmd, endpoint, id)
 	}
 
-	// Маршрутизация по endpoint
+	// Route by endpoint
 	switch endpoint {
 	case "project":
 		return addProject(cli, cmd, jsonData)
@@ -279,7 +279,7 @@ func resolveAddParentID(ctx context.Context, p interactive.Prompter, cli client.
 	}
 }
 
-// runAddInteractive запускает интерактивный wizard для создания ресурса
+// runAddInteractive starts an interactive wizard for creating a resource.
 func runAddInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint string, parentID int64) error {
 	switch endpoint {
 	case "project":
@@ -329,14 +329,14 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	// Предпросмотр
+	// Preview
 	ui.Preview(os.Stdout, "Create Project", []ui.PreviewField{
 		{Label: "Name", Value: answers.Name},
 		{Label: "Announcement", Value: answers.Announcement},
 		{Label: "Show announce", Value: answers.ShowAnnouncement},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -367,14 +367,14 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	// Предпросмотр
+	// Preview
 	ui.Preview(os.Stdout, "Create Suite", []ui.PreviewField{
 		{Label: "Name", Value: answers.Name},
 		{Label: "Description", Value: answers.Description},
 		{Label: "Project ID", Value: projectID},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -404,7 +404,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	// Предпросмотр
+	// Preview
 	ui.Preview(os.Stdout, "Create Case", []ui.PreviewField{
 		{Label: "Title", Value: answers.Title},
 		{Label: "Section ID", Value: sectionID},
@@ -412,7 +412,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 		{Label: "Priority ID", Value: answers.PriorityID},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -445,7 +445,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	// Предпросмотр
+	// Preview
 	ui.Preview(os.Stdout, "Create Run", []ui.PreviewField{
 		{Label: "Name", Value: answers.Name},
 		{Label: "Description", Value: answers.Description},
@@ -454,7 +454,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 		{Label: "Project ID", Value: projectID},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -521,7 +521,7 @@ func addSectionInteractive(cli client.ClientInterface, cmd *cobra.Command, proje
 		{Label: "Parent Section ID", Value: parentSectionID},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -562,7 +562,7 @@ func addSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command, pr
 		{Label: "Project ID", Value: projectID},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить создание?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -580,9 +580,9 @@ func addSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command, pr
 	return output.OutputResult(cmd, step, "result")
 }
 
-// runAddDryRun выполняет dry-run для add команды
+// runAddDryRun performs a dry-run for the add command.
 func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string, id int64, jsonData []byte) error {
-	// Читаем флаги
+	// Read flags
 	name, _ := cmd.Flags().GetString("name")
 	title, _ := cmd.Flags().GetString("title")
 	description, _ := cmd.Flags().GetString("description")
@@ -745,8 +745,8 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 		dr.PrintOperation(fmt.Sprintf("Create Shared Step in Project %d", id), method, url, body)
 
 	case "attachment":
-		// Для attachment dry-run обрабатывается отдельно в runAddAttachment
-		// Этот case не должен вызываться напрямую
+		// Attachment dry-run is handled separately in runAddAttachment.
+		// This case should not be called directly.
 		return fmt.Errorf("use --dry-run with a specific attachment subcommand")
 
 	default:
@@ -1013,7 +1013,7 @@ func splitString(s, sep string) []string {
 	return result
 }
 
-// runAddAttachment обрабатывает добавление вложений (DEPRECATED: use 'gotr attachments add' instead)
+// runAddAttachment handles attachment creation (DEPRECATED: use 'gotr attachments add' instead).
 func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr add attachment' is deprecated. Use 'gotr attachments add' instead.")
 
@@ -1087,7 +1087,7 @@ func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []str
 
 func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID int64, filePath string) error {
 	ctx := cmd.Context()
-	// Проверяем dry-run режим
+	// Check dry-run mode
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("add attachment case")
@@ -1095,7 +1095,7 @@ func addAttachmentToCase(cli client.ClientInterface, cmd *cobra.Command, caseID 
 		return nil
 	}
 
-	// Проверяем существование файла
+	// Check that the file exists
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return fmt.Errorf("file not found: %s", filePath)
 	}

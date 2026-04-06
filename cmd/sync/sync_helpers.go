@@ -8,7 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/ui"
 )
 
-// newMigration — seam для тестов; по умолчанию указывает на migration.NewMigration
+// newMigration is a test seam; defaults to migration.NewMigration.
 var newMigration = migration.NewMigration
 
 func newSyncOperation(title string, quiet bool) ui.Operation {

@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду для удаления группы
+// newDeleteCmd creates the 'groups delete' command.
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [group_id]",

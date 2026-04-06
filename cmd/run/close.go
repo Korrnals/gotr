@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCloseCmd создаёт команду 'run close'
+// newCloseCmd creates the 'run close' command.
 func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close [run-id]",
@@ -47,7 +47,7 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 
 			svc := newRunServiceFromInterface(cli)
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run close")
@@ -75,7 +75,7 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 	return cmd
 }
 
-// closeCmd — экспортированная команда
+// closeCmd is the exported command.
 var closeCmd = newCloseCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

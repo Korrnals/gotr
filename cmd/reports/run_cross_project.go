@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newRunCrossProjectCmd создаёт команду 'reports run-cross-project'
-// Эндпоинт: GET /run_cross_project_report/{template_id}
+// newRunCrossProjectCmd creates the 'reports run-cross-project' command.
+// Endpoint: GET /run_cross_project_report/{template_id}
 func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run-cross-project [template_id]",

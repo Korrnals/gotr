@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCaseTypesCmd создаёт команду для получения типов кейсов
+// newCaseTypesCmd creates the command for retrieving case types.
 func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-types",
@@ -31,7 +31,7 @@ func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cob
 	}
 }
 
-// newCaseFieldsCmd создаёт команду для получения полей кейсов
+// newCaseFieldsCmd creates the command for retrieving case fields.
 func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-fields",
@@ -54,12 +54,12 @@ func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 	}
 }
 
-// caseTypesCmd — экспортированная команда для регистрации
+// caseTypesCmd is the exported command registered with the root.
 var caseTypesCmd = newCaseTypesCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// caseFieldsCmd — экспортированная команда для регистрации
+// caseFieldsCmd is the exported command registered with the root.
 var caseFieldsCmd = newCaseFieldsCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

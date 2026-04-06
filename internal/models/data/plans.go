@@ -1,7 +1,7 @@
 // internal/models/data/plans.go
 package data
 
-// Plan — тест-план в TestRail
+// Plan represents a test plan in TestRail.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans
 type Plan struct {
 	ID                int64          `json:"id"`                            // The unique ID of the test plan
@@ -24,8 +24,8 @@ type Plan struct {
 	CreatedBy         int64          `json:"created_by,omitempty"`          // The ID of the user who created the test plan
 }
 
-// PlanEntry — запись (entry) в тест-плане
-// Каждый entry представляет собой конфигурацию run в плане
+// PlanEntry represents an entry in a test plan.
+// Each entry defines a run configuration within the plan.
 type PlanEntry struct {
 	ID          string    `json:"id"`                    // The unique ID of the test plan entry
 	Name        string    `json:"name"`                  // The name of the test plan entry
@@ -40,13 +40,13 @@ type PlanEntry struct {
 	CreatedBy   int64     `json:"created_by,omitempty"`  // The ID of the user who created the entry
 }
 
-// GetPlansResponse — ответ на get_plans
+// GetPlansResponse is the response for get_plans.
 type GetPlansResponse []Plan
 
-// GetPlanResponse — ответ на get_plan
+// GetPlanResponse is the response for get_plan.
 type GetPlanResponse Plan
 
-// AddPlanRequest — запрос на создание плана
+// AddPlanRequest is the request to create a plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplan
 type AddPlanRequest struct {
 	Name        string           `json:"name"`                   // The name of the test plan (required)
@@ -55,7 +55,7 @@ type AddPlanRequest struct {
 	Entries     []PlanEntryInput `json:"entries,omitempty"`      // An array of test plan entries to create
 }
 
-// PlanEntryInput — входные данные для создания entry в плане
+// PlanEntryInput defines the input data for creating a plan entry.
 type PlanEntryInput struct {
 	Name        string     `json:"name"`                  // The name of the test plan entry (required)
 	Description string     `json:"description,omitempty"` // The description of the test plan entry
@@ -67,7 +67,7 @@ type PlanEntryInput struct {
 	Runs        []RunInput `json:"runs,omitempty"`        // Array of configurations for multiple runs
 }
 
-// RunInput — входные данные для создания run в entry
+// RunInput defines the input data for creating a run within an entry.
 type RunInput struct {
 	ConfigIDs   []int64 `json:"config_ids,omitempty"`  // Array of configuration IDs for this run
 	AssignedTo  int64   `json:"assignedto,omitempty"`  // The ID of the user the run is assigned to
@@ -75,7 +75,7 @@ type RunInput struct {
 	CaseIDs     []int64 `json:"case_ids,omitempty"`    // Array of case IDs for this run
 }
 
-// UpdatePlanRequest — запрос на обновление плана
+// UpdatePlanRequest is the request to update a plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplan
 type UpdatePlanRequest struct {
 	Name        string `json:"name,omitempty"`         // The name of the test plan
@@ -83,7 +83,7 @@ type UpdatePlanRequest struct {
 	MilestoneID int64  `json:"milestone_id,omitempty"` // The ID of the milestone to link to
 }
 
-// AddPlanEntryRequest — запрос на добавление entry в существующий план
+// AddPlanEntryRequest is the request to add an entry to an existing plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplanentry
 type AddPlanEntryRequest struct {
 	Name        string  `json:"name"`                  // The name of the test plan entry (required)
@@ -95,7 +95,7 @@ type AddPlanEntryRequest struct {
 	ConfigIDs   []int64 `json:"config_ids,omitempty"`  // Array of configuration IDs
 }
 
-// UpdatePlanEntryRequest — запрос на обновление entry в плане
+// UpdatePlanEntryRequest is the request to update an entry in a plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplanentry
 type UpdatePlanEntryRequest struct {
 	Name        string  `json:"name,omitempty"`        // The name of the test plan entry
@@ -105,5 +105,5 @@ type UpdatePlanEntryRequest struct {
 	CaseIDs     []int64 `json:"case_ids,omitempty"`    // Array of case IDs to include
 }
 
-// ClosePlanRequest — запрос на закрытие плана (обычно пустой)
+// ClosePlanRequest is the request to close a plan (usually empty).
 type ClosePlanRequest struct{}

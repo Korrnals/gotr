@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 )
 
-// Case — основная структура одного case (используется в get_case и get_cases)
+// Case is the primary structure for a single test case (used in get_case and get_cases).
 type Case struct {
 	ID                   int64   `json:"id"`
 	Title                string  `json:"title,omitempty"`
@@ -28,33 +28,33 @@ type Case struct {
 	CustomPreconds       string  `json:"custom_preconds,omitempty"`
 	CustomSteps          string  `json:"custom_steps,omitempty"`
 	CustomExpected       string  `json:"custom_expected,omitempty"`
-	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Step из shared.go
+	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Structured steps (Step from shared.go)
 	CustomMission        string  `json:"custom_mission,omitempty"`
 	CustomGoals          string  `json:"custom_goals,omitempty"`
-	Labels               []Label `json:"labels,omitempty"` // Label из shared.go
-	// Для полностью кастомных полей (если TestRail вернёт неизвестное)
+	Labels               []Label `json:"labels,omitempty"` // Label from shared.go
+	// For fully custom fields (if TestRail returns an unknown field)
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"`
 }
 
-// GetCasesResponse — ответ на get_cases (пагинированный список cases)
+// GetCasesResponse is the response for get_cases (paginated list of cases).
 type GetCasesResponse []Case
 
-// PaginatedCasesResponse — обёрточный формат response TestRail API v2 (6.7+).
-// New версии TestRail возвращают:
+// PaginatedCasesResponse is the wrapper format for TestRail API v2 (6.7+).
+// Newer versions return:
 //
 //	{"offset": 0, "limit": 250, "size": 5000, "_links": {...}, "cases": [...]}
 //
-// Старые версии возвращают плоский массив []Case.
-// Используется для попытки быстрого получения Size (total count) одним API-вызовом.
+// Older versions return a flat []Case array.
+// Used to quickly obtain Size (total count) with a single API call.
 type PaginatedCasesResponse struct {
 	Pagination
 	Cases []Case `json:"cases"`
 }
 
-// GetCaseResponse — ответ на get_case (один кейс напрямую)
+// GetCaseResponse is the response for get_case (a single case).
 type GetCaseResponse Case
 
-// GetHistoryForCaseResponse — ответ на get_history_for_case
+// GetHistoryForCaseResponse is the response for get_history_for_case.
 type GetHistoryForCaseResponse struct {
 	Pagination
 	History []struct {
@@ -66,7 +66,7 @@ type GetHistoryForCaseResponse struct {
 	} `json:"history"`
 }
 
-// Change — изменение в history
+// Change represents a single change entry in case history.
 type Change struct {
 	TypeID   int64  `json:"type_id"`
 	OldText  string `json:"old_text,omitempty"`
@@ -76,73 +76,73 @@ type Change struct {
 	NewValue int64  `json:"new_value,omitempty"`
 }
 
-// Request структуры //
+// Request structs //
 
-// AddCaseRequest — запрос для add_case
+// AddCaseRequest is the request for add_case.
 type AddCaseRequest struct {
-	Title                string `json:"title"`      // обязательно
-	SectionID            int64  `json:"section_id"` // если нужно явно указывать
+	Title                string `json:"title"`      // Required
+	SectionID            int64  `json:"section_id"` // Explicit section assignment
 	TypeID               int64  `json:"type_id"`
 	PriorityID           int64  `json:"priority_id"`
 	Estimate             string `json:"estimate,omitempty"`
 	CustomPreconds       string `json:"custom_preconds,omitempty"`
-	CustomSteps          string `json:"custom_steps,omitempty"`           // Текстовый формат шагов (альтернатива CustomStepsSeparated)
-	CustomExpected       string `json:"custom_expected,omitempty"`        // Ожидаемый результат (текстовый формат)
-	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Структурированные шаги
+	CustomSteps          string `json:"custom_steps,omitempty"`           // Text-format steps (alternative to CustomStepsSeparated)
+	CustomExpected       string `json:"custom_expected,omitempty"`        // Expected result (text format)
+	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Structured steps
 	Refs                 string `json:"refs,omitempty"`
 	MilestoneID          int64  `json:"milestone_id,omitempty"`
 	TemplateID           int64  `json:"template_id,omitempty"`
 }
 
-// UpdateCaseRequest — запрос для update_case (частичные обновления)
-// Используются указатели для различения "не задано" от "пустое значение"
+// UpdateCaseRequest is the request for update_case (partial updates).
+// Pointer fields distinguish "not set" from "empty value".
 type UpdateCaseRequest struct {
 	Title                *string `json:"title,omitempty"`
-	TypeID               *int64  `json:"type_id,omitempty"` // Для изменения типа case
+	TypeID               *int64  `json:"type_id,omitempty"` // Change the case type
 	PriorityID           *int64  `json:"priority_id,omitempty"`
 	Estimate             *string `json:"estimate,omitempty"`
 	CustomPreconds       *string `json:"custom_preconds,omitempty"`
-	CustomSteps          *string `json:"custom_steps,omitempty"`           // Текстовый формат шагов
-	CustomExpected       *string `json:"custom_expected,omitempty"`        // Ожидаемый результат
-	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Step из shared.go
+	CustomSteps          *string `json:"custom_steps,omitempty"`           // Text-format steps
+	CustomExpected       *string `json:"custom_expected,omitempty"`        // Expected result
+	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Step from shared.go
 	Refs                 *string `json:"refs,omitempty"`
 	MilestoneID          *int64  `json:"milestone_id,omitempty"`
-	SuiteID              *int64  `json:"suite_id,omitempty"`    // Для перемещения между сьютами
-	SectionID            *int64  `json:"section_id,omitempty"`  // Для перемещения между секциями
-	TemplateID           *int64  `json:"template_id,omitempty"` // Для изменения шаблона
+	SuiteID              *int64  `json:"suite_id,omitempty"`    // Move between suites
+	SectionID            *int64  `json:"section_id,omitempty"`  // Move between sections
+	TemplateID           *int64  `json:"template_id,omitempty"` // Change the template
 }
 
-// CopyCasesRequest — запрос для copy_cases_to_section
+// CopyCasesRequest is the request for copy_cases_to_section.
 type CopyCasesRequest struct {
 	CaseIDs []int64 `json:"case_ids"` // IDs of cases to copy
 }
 
-// MoveCasesRequest — запрос для move_cases_to_section
+// MoveCasesRequest is the request for move_cases_to_section.
 type MoveCasesRequest struct {
 	CaseIDs []int64 `json:"case_ids"`           // IDs of cases to move
 	SuiteID int64   `json:"suite_id,omitempty"` // Target suite ID (for cross-suite moves)
 }
 
-// UpdateCasesRequest — запрос для bulk update_cases
+// UpdateCasesRequest is the request for bulk update_cases.
 type UpdateCasesRequest struct {
 	CaseIDs    []int64 `json:"case_ids"`
 	PriorityID int64   `json:"priority_id,omitempty"`
 	Estimate   string  `json:"estimate,omitempty"`
 }
 
-// DeleteCasesRequest — запрос для delete_cases
+// DeleteCasesRequest is the request for delete_cases.
 type DeleteCasesRequest struct {
 	CaseIDs []int64 `json:"case_ids"`
 }
 
-// GetCaseTypesResponse — ответ для get_case_types
+// GetCaseTypesResponse is the response for get_case_types.
 type GetCaseTypesResponse []struct {
 	ID        int64  `json:"id"`
 	IsDefault bool   `json:"is_default"`
 	Name      string `json:"name"`
 }
 
-// GetCaseFieldsResponse — ответ для get_case_fields
+// GetCaseFieldsResponse is the response for get_case_fields.
 type GetCaseFieldsResponse []struct {
 	Configs []struct {
 		Context struct {
@@ -166,7 +166,7 @@ type GetCaseFieldsResponse []struct {
 	TypeID       int64  `json:"type_id"`
 }
 
-// AddCaseFieldRequest — запрос для add_case_field
+// AddCaseFieldRequest is the request for add_case_field.
 type AddCaseFieldRequest struct {
 	Type        string `json:"type"`
 	Name        string `json:"name"`
@@ -185,7 +185,7 @@ type AddCaseFieldRequest struct {
 	IncludeAll bool `json:"include_all"`
 }
 
-// AddCaseFieldResponse — ответ для add_case_field
+// AddCaseFieldResponse is the response for add_case_field.
 type AddCaseFieldResponse struct {
 	ID           int64  `json:"id"`
 	Name         string `json:"name"`
@@ -205,13 +205,13 @@ type AddCaseFieldResponse struct {
 	TemplateIDs  []any  `json:"template_ids"`
 }
 
-// DiffCasesResponse — результат сравнения cases двух проектов
+// DiffCasesResponse is the result of comparing cases between two projects.
 type DiffCasesResponse struct {
-	OnlyInFirst  []Case `json:"only_in_first"`  // Есть только в pid1
-	OnlyInSecond []Case `json:"only_in_second"` // Есть только в pid2
+	OnlyInFirst  []Case `json:"only_in_first"`  // Present only in pid1
+	OnlyInSecond []Case `json:"only_in_second"` // Present only in pid2
 	DiffByField  []struct {
 		CaseID int64 `json:"case_id"`
 		First  Case  `json:"first"`
 		Second Case  `json:"second"`
-	} `json:"diff_by_field"` // Отличаются по полю
+	} `json:"diff_by_field"` // Differ by field value
 }

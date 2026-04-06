@@ -76,8 +76,10 @@ func RunWithStatus[T any](ctx context.Context, cfg StatusConfig, fn func(context
 	}
 	if !cfg.Quiet && cfg.Title != "" {
 		stop := make(chan struct{})
+		done := make(chan struct{})
 		start := time.Now()
 		go func() {
+			defer close(done)
 			ticker := time.NewTicker(200 * time.Millisecond)
 			defer ticker.Stop()
 			frames := []string{"|", "/", "-", `\\`}
@@ -95,6 +97,7 @@ func RunWithStatus[T any](ctx context.Context, cfg StatusConfig, fn func(context
 
 		value, err := fn(ctx)
 		close(stop)
+		<-done // wait for spinner goroutine to exit before writing
 		fmt.Fprintf(writer, "\r\033[2K")
 		if err != nil {
 			fmt.Fprintf(writer, "⚠️  %s failed after %s\n", cfg.Title, fmtDuration(time.Since(start)))

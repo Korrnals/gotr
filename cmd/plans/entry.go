@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newEntryCmd создаёт родительскую команду 'plans entry'
-// Родительская команда для управления записями плана
+// newEntryCmd creates the parent 'plans entry' command.
+// Groups subcommands for managing plan entries.
 func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	entryCmd := &cobra.Command{
 		Use:   "entry",
@@ -34,8 +34,8 @@ func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	return entryCmd
 }
 
-// newEntryAddCmd создаёт команду 'plans entry add'
-// Эндпоинт: POST /add_plan_entry/{plan_id}
+// newEntryAddCmd creates the 'plans entry add' command.
+// Endpoint: POST /add_plan_entry/{plan_id}
 func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [plan_id]",
@@ -110,8 +110,8 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// newEntryUpdateCmd создаёт команду 'plans entry update'
-// Эндпоинт: POST /update_plan_entry/{plan_id}/{entry_id}
+// newEntryUpdateCmd creates the 'plans entry update' command.
+// Endpoint: POST /update_plan_entry/{plan_id}/{entry_id}
 func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [plan_id] [entry_id]",
@@ -186,8 +186,8 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// newEntryDeleteCmd создаёт команду 'plans entry delete'
-// Эндпоинт: POST /delete_plan_entry/{plan_id}/{entry_id}
+// newEntryDeleteCmd creates the 'plans entry delete' command.
+// Endpoint: POST /delete_plan_entry/{plan_id}/{entry_id}
 func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [plan_id] [entry_id]",
@@ -256,7 +256,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// parseIntList разбирает список чисел, разделённых запятыми
+// parseIntList splits a comma-separated string into a list of int64 IDs.
 func parseIntList(s string) []int64 {
 	var ids []int64
 	for _, part := range strings.Split(s, ",") {

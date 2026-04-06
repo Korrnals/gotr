@@ -118,7 +118,7 @@ var suitesCmd = &cobra.Command{
 			}
 		}
 
-		// Шаг 3) Подтверждение и импорт
+		// Step 3) Confirmation and import
 		op.Phase("Importing suites")
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d suites...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSuites(ctx, filtered, false)
@@ -127,7 +127,7 @@ var suitesCmd = &cobra.Command{
 			return err
 		}
 
-		// Шаг 4) Сохранение mapping при запросе
+		// Step 4) Save mapping if requested
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {

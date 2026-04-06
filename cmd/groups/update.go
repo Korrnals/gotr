@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду для обновления группы
+// newUpdateCmd creates the 'groups update' command.
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [group_id]",

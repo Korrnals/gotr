@@ -27,10 +27,10 @@ type compareHeavyRuntimeConfig struct {
 func ensureCompareConfigDefaults() {
 	viper.SetDefault("compare.deployment", "auto")
 	viper.SetDefault("compare.cloud_tier", "professional")
-	viper.SetDefault("compare.rate_limit", -1) // -1 = авто: server→0 (без лимита), cloud→по тарифу
+	viper.SetDefault("compare.rate_limit", -1) // -1 = auto: server→0 (unlimited), cloud→by plan tier
 
-	viper.SetDefault("compare.cloud_rate_limit", 300) // enterprise-уровень
-	viper.SetDefault("compare.server_rate_limit", 0)  // server = без лимита
+	viper.SetDefault("compare.cloud_rate_limit", 300) // enterprise tier
+	viper.SetDefault("compare.server_rate_limit", 0)  // server = unlimited
 
 	viper.SetDefault("compare.cases.parallel_suites", 10)
 	viper.SetDefault("compare.cases.parallel_pages", 6)

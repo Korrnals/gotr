@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newProjectsCmd создаёт команду для получения списка проектов
+// newProjectsCmd creates the command for listing all projects.
 func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "projects",
@@ -33,7 +33,7 @@ func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobr
 	}
 }
 
-// newProjectCmd создаёт команду для получения одного проекта
+// newProjectCmd creates the command for retrieving a single project.
 func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "project [project-id]",
@@ -74,12 +74,12 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 	}
 }
 
-// projectsCmd — экспортированная команда для регистрации
+// projectsCmd is the exported command registered with the root.
 var projectsCmd = newProjectsCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// projectCmd — экспортированная команда для регистрации
+// projectCmd is the exported command registered with the root.
 var projectCmd = newProjectCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

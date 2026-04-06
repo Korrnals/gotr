@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду для добавления группы
+// newAddCmd creates the 'groups add' command.
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [project_id]",

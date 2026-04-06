@@ -1,4 +1,4 @@
-// Package roles реализует CLI команды для работы с ролями пользователей TestRail
+// Package roles implements CLI commands for managing TestRail user roles.
 package roles
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с ролями
+// Register adds all role-related subcommands to the root command.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	rolesCmd := &cobra.Command{
 		Use:   "roles",
@@ -27,7 +27,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • get  — информация о конкретной роли по ID`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	rolesCmd.AddCommand(newListCmd(getClient))
 	rolesCmd.AddCommand(newGetCmd(getClient))
 

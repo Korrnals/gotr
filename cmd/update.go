@@ -14,31 +14,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// updateCmd — команда для обновления ресурсов через POST-запросы
+// updateCmd updates resources via POST requests.
 var updateCmd = &cobra.Command{
 	Use:   "update <endpoint> <id>",
-	Short: "Обновить существующий ресурс (POST-запрос)",
-	Long: `Обновляет существующий объект в TestRail через POST API.
+	Short: "Update an existing resource (POST request)",
+	Long: `Updates an existing object in TestRail via the POST API.
 
-Поддерживаемые эндпоинты:
-  project <id>       Обновить проект
-  suite <id>         Обновить сьют
-  section <id>       Обновить секцию
-  case <id>          Обновить тест-кейс
-  run <id>           Обновить тест-ран
-  shared-step <id>   Обновить shared step
-  milestone <id>     Обновить milestone
-  plan <id>          Обновить test plan
-  labels <test_id>   Обновить метки теста (deprecated: use 'gotr labels update')
+Supported endpoints:
+  project <id>       Update a project
+  suite <id>         Update a suite
+  section <id>       Update a section
+  case <id>          Update a test case
+  run <id>           Update a test run
+  shared-step <id>   Update a shared step
+  milestone <id>     Update a milestone
+  plan <id>          Update a test plan
+  labels <test_id>   Update test labels (deprecated: use 'gotr labels update')
 
-Примеры:
+Examples:
   gotr update project 1 --name "Updated Project"
   gotr update suite 100 --name "Updated Suite"
   gotr update case 12345 --title "Updated Title" --priority-id 2
   gotr update run 1000 --name "Updated Run Name"
   gotr update shared-step 50 --title "Updated Step"
 
-Интерактивный режим (wizard):
+Interactive mode (wizard):
   gotr update project 1 -i
   gotr update suite 100 -i
   gotr update case 12345 -i
@@ -49,28 +49,28 @@ Dry-run mode:
 }
 
 func init() {
-	// Общие флаги для обновления
-	updateCmd.Flags().StringP("name", "n", "", "Название ресурса")
-	updateCmd.Flags().String("description", "", "Описание")
-	updateCmd.Flags().String("announcement", "", "Announcement (для проекта)")
-	updateCmd.Flags().Bool("show-announcement", false, "Показывать announcement")
-	updateCmd.Flags().Bool("is-completed", false, "Отметить как завершённый")
-	updateCmd.Flags().String("title", "", "Заголовок (для case)")
-	updateCmd.Flags().Int64("type-id", 0, "ID типа (для case)")
-	updateCmd.Flags().Int64("priority-id", 0, "ID приоритета (для case)")
-	updateCmd.Flags().String("refs", "", "Ссылки (references)")
-	updateCmd.Flags().Int64("suite-id", 0, "ID сьюта")
-	updateCmd.Flags().Int64("milestone-id", 0, "ID milestone")
-	updateCmd.Flags().Int64("assignedto-id", 0, "ID назначенного пользователя")
-	updateCmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
-	updateCmd.Flags().Bool("include-all", false, "Включить все кейсы (для run)")
-	updateCmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
+	// Common flags for updating
+	updateCmd.Flags().StringP("name", "n", "", "Resource name")
+	updateCmd.Flags().String("description", "", "Description")
+	updateCmd.Flags().String("announcement", "", "Announcement (for project)")
+	updateCmd.Flags().Bool("show-announcement", false, "Show announcement")
+	updateCmd.Flags().Bool("is-completed", false, "Mark as completed")
+	updateCmd.Flags().String("title", "", "Title (for case)")
+	updateCmd.Flags().Int64("type-id", 0, "Type ID (for case)")
+	updateCmd.Flags().Int64("priority-id", 0, "Priority ID (for case)")
+	updateCmd.Flags().String("refs", "", "References")
+	updateCmd.Flags().Int64("suite-id", 0, "Suite ID")
+	updateCmd.Flags().Int64("milestone-id", 0, "Milestone ID")
+	updateCmd.Flags().Int64("assignedto-id", 0, "Assigned user ID")
+	updateCmd.Flags().String("case-ids", "", "Comma-separated case IDs (for run)")
+	updateCmd.Flags().Bool("include-all", false, "Include all cases (for run)")
+	updateCmd.Flags().String("json-file", "", "Path to JSON data file")
 	output.AddFlag(updateCmd)
-	updateCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
-	updateCmd.Flags().BoolP("interactive", "i", false, "Интерактивный режим (wizard)")
+	updateCmd.Flags().Bool("dry-run", false, "Show what would be executed without making changes")
+	updateCmd.Flags().BoolP("interactive", "i", false, "Interactive mode (wizard)")
 
-	// Flags для labels
-	updateCmd.Flags().String("labels", "", "Метки для теста (через запятую, для 'update labels')")
+	// Flags for labels
+	updateCmd.Flags().String("labels", "", "Comma-separated labels for test (for 'update labels')")
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
@@ -84,10 +84,10 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Получаем клиент
+	// Get the client
 	cli := GetClientInterface(cmd)
 
-	// Читаем JSON из файла если указан
+	// Read JSON from file if specified
 	jsonFile, _ := cmd.Flags().GetString("json-file")
 	var jsonData []byte
 	if jsonFile != "" {
@@ -97,20 +97,20 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Проверяем dry-run режим
+	// Check dry-run mode
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("update " + endpoint)
 		return runUpdateDryRun(cmd, dr, endpoint, id, jsonData)
 	}
 
-	// Проверяем интерактивный режим
+	// Check interactive mode
 	isInteractive, _ := cmd.Flags().GetBool("interactive")
 	if isInteractive || shouldAutoRunUpdateInteractive(cmd, endpoint, jsonFile != "") {
 		return runUpdateInteractive(cli, cmd, endpoint, id)
 	}
 
-	// Маршрутизация по endpoint
+	// Route by endpoint
 	switch endpoint {
 	case "project":
 		return updateProject(cli, cmd, id, jsonData)
@@ -154,7 +154,7 @@ func shouldAutoRunUpdateInteractive(cmd *cobra.Command, endpoint string, hasJSON
 	}
 }
 
-// runUpdateInteractive запускает интерактивный wizard для обновления ресурса
+// runUpdateInteractive starts an interactive wizard for updating a resource.
 func runUpdateInteractive(cli client.ClientInterface, cmd *cobra.Command, endpoint string, id int64) error {
 	switch endpoint {
 	case "project":
@@ -196,7 +196,7 @@ func updateSectionInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		{Label: "Description", Value: description},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -229,7 +229,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	// Предпросмотр
+	// Preview
 	ui.Preview(os.Stdout, "Update Project", []ui.PreviewField{
 		{Label: "Project ID", Value: id},
 		{Label: "Name", Value: answers.Name},
@@ -238,7 +238,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 		{Label: "Is completed", Value: answers.IsCompleted},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -270,7 +270,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	// Предпросмотр
+	// Preview
 	ui.Preview(os.Stdout, "Update Suite", []ui.PreviewField{
 		{Label: "Suite ID", Value: id},
 		{Label: "Name", Value: answers.Name},
@@ -278,7 +278,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 		{Label: "Is completed", Value: answers.IsCompleted},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -309,7 +309,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		return fmt.Errorf("input error: %w", err)
 	}
 
-	// Предпросмотр
+	// Preview
 	ui.Preview(os.Stdout, "Update Case", []ui.PreviewField{
 		{Label: "Case ID", Value: id},
 		{Label: "Title", Value: answers.Title},
@@ -317,7 +317,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 		{Label: "Priority ID", Value: answers.PriorityID},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -357,7 +357,7 @@ func updateRunInteractive(cli client.ClientInterface, cmd *cobra.Command, id int
 		{Label: "Include all", Value: answers.IncludeAll},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -399,7 +399,7 @@ func updateSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command,
 		{Label: "Title", Value: title},
 	})
 
-	confirmed, err := interactive.AskConfirmWithPrompter(p, "Подтвердить обновление?")
+	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
 		ui.Cancelled(os.Stdout)
 		return nil
@@ -417,9 +417,9 @@ func updateSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command,
 	return outputUpdateResult(cmd, step)
 }
 
-// runUpdateDryRun выполняет dry-run для update команды
+// runUpdateDryRun performs a dry-run for the update command.
 func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string, id int64, jsonData []byte) error {
-	// Читаем флаги
+	// Read flags
 	name, _ := cmd.Flags().GetString("name")
 	title, _ := cmd.Flags().GetString("title")
 	description, _ := cmd.Flags().GetString("description")
@@ -772,7 +772,7 @@ func outputUpdateResult(cmd *cobra.Command, data interface{}) error {
 	return err
 }
 
-// updateLabels обновляет метки теста (DEPRECATED: use 'gotr labels update' instead)
+// updateLabels updates test labels (DEPRECATED: use 'gotr labels update' instead).
 func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) error {
 	ctx := cmd.Context()
 	if quiet, _ := cmd.Flags().GetBool("quiet"); !quiet {
@@ -784,13 +784,13 @@ func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) 
 		return fmt.Errorf("--labels is required")
 	}
 
-	// Парсим метки
+	// Parse labels
 	labels := parseLabels(labelsFlag)
 	if len(labels) == 0 {
 		return fmt.Errorf("labels not specified")
 	}
 
-	// Проверяем dry-run
+	// Check dry-run
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("update labels")
@@ -808,7 +808,7 @@ func updateLabels(cli client.ClientInterface, cmd *cobra.Command, testID int64) 
 	return nil
 }
 
-// parseLabels парсит строку меток через запятую
+// parseLabels parses a comma-separated string of labels.
 func parseLabels(s string) []string {
 	var labels []string
 	for _, part := range splitAndTrim(s, ",") {

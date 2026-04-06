@@ -1,5 +1,5 @@
 // internal/service/result.go
-// Сервис для работы с resultми тестов
+// Service for working with test results.
 package service
 
 import (
@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// resultClientInterface определяет методы клиента, необходимые для ResultService
+// resultClientInterface defines the client methods required by ResultService.
 type resultClientInterface interface {
 	GetResults(ctx context.Context, testID int64) (data.GetResultsResponse, error)
 	GetResultsForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error)
@@ -28,22 +28,22 @@ type resultClientInterface interface {
 	AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
-// ResultService предоставляет методы для работы с resultми тестов
+// ResultService provides methods for working with test results.
 type ResultService struct {
 	client resultClientInterface
 }
 
-// NewResultService создаёт новый сервис для работы с resultми
+// NewResultService creates a new service for working with test results.
 func NewResultService(client *client.HTTPClient) *ResultService {
 	return &ResultService{client: client}
 }
 
-// NewResultServiceFromInterface создаёт сервис из клиента-интерфейса (для тестов)
+// NewResultServiceFromInterface creates a service from a client interface (for testing).
 func NewResultServiceFromInterface(cli client.ClientInterface) *ResultService {
 	return &ResultService{client: cli}
 }
 
-// GetForTest получает результаты для test ID
+// GetForTest retrieves results for a test ID.
 func (s *ResultService) GetForTest(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(testID, "test_id"); err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (s *ResultService) GetForTest(ctx context.Context, testID int64) (data.GetR
 	return s.client.GetResults(ctx, testID)
 }
 
-// GetForCase получает результаты для case в run
+// GetForCase retrieves results for a case in a run.
 func (s *ResultService) GetForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (s *ResultService) GetForCase(ctx context.Context, runID, caseID int64) (da
 	return s.client.GetResultsForCase(ctx, runID, caseID)
 }
 
-// GetForRun получает результаты для run ID
+// GetForRun retrieves results for a run ID.
 func (s *ResultService) GetForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (s *ResultService) GetForRun(ctx context.Context, runID int64) (data.GetRes
 	return s.client.GetResultsForRun(ctx, runID)
 }
 
-// GetRunsForProject получает список runs for project (для интерактивного выбора)
+// GetRunsForProject retrieves the list of runs for a project (for interactive selection).
 func (s *ResultService) GetRunsForProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	if err := s.validateID(projectID, "project_id"); err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (s *ResultService) GetRunsForProject(ctx context.Context, projectID int64) 
 	return s.client.GetRuns(ctx, projectID)
 }
 
-// AddForTest добавляет результат для test с валидацией
+// AddForTest adds a result for a test with validation.
 func (s *ResultService) AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 	var statusID int64
 	if req != nil {
@@ -113,7 +113,7 @@ func (s *ResultService) AddForTest(ctx context.Context, testID int64, req *data.
 	return result, nil
 }
 
-// AddForCase добавляет результат для case в run с валидацией
+// AddForCase adds a result for a case in a run with validation.
 func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 	var statusID int64
 	if req != nil {
@@ -154,7 +154,7 @@ func (s *ResultService) AddForCase(ctx context.Context, runID, caseID int64, req
 	return result, nil
 }
 
-// AddResults добавляет несколько results (bulk) с валидацией
+// AddResults adds multiple results (bulk) with validation.
 func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 	count := 0
 	if req != nil {
@@ -188,7 +188,7 @@ func (s *ResultService) AddResults(ctx context.Context, runID int64, req *data.A
 	return results, nil
 }
 
-// AddResultsForCases добавляет результаты для cases (bulk) с валидацией
+// AddResultsForCases adds results for cases (bulk) with validation.
 func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
@@ -199,17 +199,17 @@ func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req
 	return s.client.AddResultsForCases(ctx, runID, req)
 }
 
-// Output выводит результат в JSON и сохраняет в файл
+// Output renders the result as JSON and saves to a file (if --output is set).
 func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return output.OutputResultWithFlags(cmd, data)
 }
 
-// PrintSuccess выводит сообщение об успехе
+// PrintSuccess prints a success message.
 func (s *ResultService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	output.PrintSuccess(cmd, format, args...)
 }
 
-// ParseID парсит ID из аргументов
+// ParseID parses an ID from command arguments.
 func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
 		return 0, fmt.Errorf("missing ID argument at position %d", index)
@@ -217,7 +217,7 @@ func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (
 	return strconv.ParseInt(args[index], 10, 64)
 }
 
-// validateID проверяет что ID положительный
+// validateID checks that the ID is a positive number.
 func (s *ResultService) validateID(id int64, fieldName string) error {
 	if id <= 0 {
 		return fmt.Errorf("%s must be a positive number, got: %d", fieldName, id)
@@ -225,7 +225,7 @@ func (s *ResultService) validateID(id int64, fieldName string) error {
 	return nil
 }
 
-// validateAddResultRequest валидирует запрос добавления result
+// validateAddResultRequest validates a request to add a result.
 func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) error {
 	if req == nil {
 		return errors.New("запрос не может быть nil")
@@ -236,7 +236,7 @@ func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) err
 	return nil
 }
 
-// validateAddResultsRequest валидирует bulk запрос
+// validateAddResultsRequest validates a bulk results request.
 func (s *ResultService) validateAddResultsRequest(req *data.AddResultsRequest) error {
 	if req == nil {
 		return errors.New("request cannot be nil")

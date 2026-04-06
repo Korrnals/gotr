@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'variables list'
-// Эндпоинт: GET /get_variables/{dataset_id}
+// newListCmd creates the 'variables list' command.
+// Endpoint: GET /get_variables/{dataset_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [dataset_id]",

@@ -17,48 +17,47 @@ import (
 )
 
 var (
-	// Версия утилиты — заполняется при сборке через -ldflags
-	Version = "3.0.0-dev" // значение по умолчанию для локальной разработки
+	// Version is populated at build time via -ldflags.
+	Version = "3.0.0-dev" // default value for local development
 	Commit  = "unknown"
 	Date    = "unknown"
 	userHomeDir = os.UserHomeDir
 )
 
-// rootCmd — главная команда: gotr
+// rootCmd is the top-level command: gotr
 var rootCmd = &cobra.Command{
-	Use:   "gotr",                                 // Название утилиты
-	Short: "CLI-клиент для работы с TestRail API", // Краткое описание
-	Long: `gotr — удобная утилита для работы с TestRail API v2.
-Поддерживает просмотр доступных эндпоинтов, выполнение запросов и многое другое.`,
-	// Запускается клиент перед каждой субкомандой
+	Use:   "gotr",
+	Short: "CLI client for TestRail API",
+	Long: `gotr is a convenient CLI for working with TestRail API v2.
+Supports browsing available endpoints, executing requests, and more.`,
+	// PersistentPreRunE initializes the HTTP client before every subcommand.
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		debug.DebugPrint("{rootCmd} - Running command: %s", cmd.Use)
 		debug.DebugPrint("{rootCmd} - Arguments: %v", args)
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		ui.SetMessageQuiet(quiet)
 
-		// Настройка Viper - поддержка env, флагов, конфигов
-		viper.AutomaticEnv() // автоматически подтягивать переменные из окружения
+		// Set up Viper: env vars, flags, config files
+		viper.AutomaticEnv()
 
-		// Маппим переменные окружения в переменные, которые будут использоваться в клиенте
+		// Read connection settings from Viper (config/env/flags)
 		baseURL := viper.GetString("base_url")
 		username := viper.GetString("username")
 		insecure := viper.GetBool("insecure")
 		debugMode := viper.GetBool("debug")
 
-		// Поддержка password (Basic Auth) и api_key (API Key Auth).
-		// password имеет приоритет — для обратной совместимости с TESTRAIL_PASSWORD.
+		// Support both password (Basic Auth) and api_key (API Key Auth).
+		// password takes priority for backward compatibility with TESTRAIL_PASSWORD.
 		apiKey := viper.GetString("password")
 		if apiKey == "" {
 			apiKey = viper.GetString("api_key")
 		}
 
-		// [DEBUG] при переданном флаге `--debug` или `-d`
 		debug.DebugPrint("{rootCmd} - PersistentPreRunE running for command: %s", cmd.Use)
 		debug.DebugPrint("{rootCmd} - baseURL=%s, username=%s", baseURL, username)
 		debug.DebugPrint("{rootCmd} - insecure=%v", insecure)
 
-		// Проверяем, что конфиг не пустой и не содержит дефолтных placeholder'ов
+		// Ensure config is set and does not contain default placeholders
 		if config.IsDefaultValue(baseURL, config.DefaultBaseURL) ||
 			config.IsDefaultValue(username, config.DefaultUsername) ||
 			config.IsDefaultValue(apiKey, config.DefaultAPIKey) {
@@ -67,13 +66,12 @@ var rootCmd = &cobra.Command{
 				"then edit the file ~/.gotr/config/default.yaml")
 		}
 
-		// [DEBUG] при переданном флаге `--debug` или `-d`
 		debug.DebugPrint("{rootCmd} - Connecting to %s as %s", baseURL, username)
 
-		// Создаём клиент с опциями
+		// Create the HTTP client with options
 		opts := []client.ClientOption{}
 		if insecure {
-			opts = append(opts, client.WithSkipTlsVerify(true)) //По-умолчанию, проверка tls - включена
+			opts = append(opts, client.WithSkipTlsVerify(true)) // TLS verification is enabled by default
 		}
 
 		httpClient, err := client.NewClient(baseURL, username, apiKey, debugMode, opts...)
@@ -81,13 +79,12 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("failed to create client: %w", err)
 		}
 
-		// [DEBUG] при переданном флаге `--debug` или `-d`
 		debug.DebugPrint("{rootCmd} - Client created and stored in context")
 
-		// Сохраняем клиент в контекст — будет доступен во всех субкомандах
+		// Store the client in context so it is available in all subcommands
 		ctx := context.WithValue(cmd.Context(), httpClientKey, httpClient)
 
-		// Инжектируем Prompter в контекст (TerminalPrompter или NonInteractivePrompter)
+		// Inject Prompter into context (TerminalPrompter or NonInteractivePrompter)
 		nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
 		var p interactive.Prompter
 		if nonInteractive {
@@ -101,17 +98,17 @@ var rootCmd = &cobra.Command{
 
 		return nil
 	},
-	// Run: func(cmd *cobra.Command, args []string) { } // Можно оставить пустым — будет показывать help
+	// Run is intentionally omitted — cobra shows help by default.
 }
 
-// Execute — вызывается из main.go с контекстом (поддерживает signal.NotifyContext)
+// Execute is called from main.go with a cancelable context (supports signal.NotifyContext).
 func Execute(ctx context.Context) {
-	rootCmd.SilenceUsage = true  // не печатать usage при ошибке
-	rootCmd.SilenceErrors = true // сами обработаем вывод ошибки
+	rootCmd.SilenceUsage = true  // do not print usage on error
+	rootCmd.SilenceErrors = true // we handle error output ourselves
 	rootCmd.Version = fmt.Sprintf("%s (commit: %s, built: %s)", Version, Commit, Date)
 	if err := rootCmd.ExecuteContext(ctx); err != nil {
 		if ctx.Err() != nil || errors.Is(err, context.Canceled) {
-			fmt.Fprintln(os.Stderr, "\nПрервано.")
+			fmt.Fprintln(os.Stderr, "\nInterrupted.")
 			os.Exit(130)
 		}
 		fmt.Fprintln(os.Stderr, "Error:", err)
@@ -119,7 +116,7 @@ func Execute(ctx context.Context) {
 	}
 }
 
-// GetClient — удобная функция для получения клиента из контекста
+// GetClient retrieves the HTTP client from the command context.
 func GetClient(cmd *cobra.Command) *client.HTTPClient {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
@@ -128,13 +125,13 @@ func GetClient(cmd *cobra.Command) *client.HTTPClient {
 	return val.(*client.HTTPClient)
 }
 
-// GetClientInterface — получает клиент как интерфейс (для тестов с mock)
+// GetClientInterface retrieves the client as an interface (used with mocks in tests).
 func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
 	val := cmd.Context().Value(httpClientKey)
 	if val == nil {
 		panic("gotr: HTTP client not initialized. Check --username, --api-key and --url")
 	}
-	// Поддерживаем как *client.HTTPClient, так и *client.MockClient
+	// Support both *client.HTTPClient and *client.MockClient
 	if cli, ok := val.(client.ClientInterface); ok {
 		return cli
 	}
@@ -142,33 +139,31 @@ func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
 }
 
 func initConfig() {
-	// 1. Добавляем стандартные пути поиска
+	// 1. Add standard config search paths
 	home, err := userHomeDir()
 	if err != nil {
-		// Не паникуем — просто продолжаем без home-пути
+		// Non-fatal: continue without the home directory path
 		ui.Warningf(os.Stderr, "cannot get user home directory: %v", err)
 	} else {
 		configDir := filepath.Join(home, ".gotr", "config")
 		viper.AddConfigPath(configDir) // ~/.gotr/config
 	}
 
-	// Удобно для локального тестирования
-	viper.AddConfigPath(".") // текущая директория
+	// Also search current directory (useful for local testing)
+	viper.AddConfigPath(".")
 
-	// 2. Имя файла без расширения (viper сам попробует .yaml, .json и т.д.)
-	viper.SetConfigName("default") // ищем default.yaml (в ~/.gotr/config/)
-	viper.SetConfigType("yaml")    // явно указываем yaml
+	// 2. Config file name without extension (viper tries .yaml, .json, etc.)
+	viper.SetConfigName("default") // look for default.yaml in ~/.gotr/config/
+	viper.SetConfigType("yaml")
 
-	// 3. Автоматический биндинг env-переменных
-	viper.SetEnvPrefix("testrail") // TESTRAIL_BASE_URL, TESTRAIL_USER и т.д.
+	// 3. Bind environment variables automatically
+	viper.SetEnvPrefix("testrail") // e.g. TESTRAIL_BASE_URL, TESTRAIL_USERNAME
 	viper.AutomaticEnv()
 
-	// 4. Читаем конфиг (если файла нет — просто продолжаем, это не ошибка)
+	// 4. Read config file (missing file is not an error)
 	if err := viper.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			// Если ошибка не "файл не найден" — можно залогировать
 			ui.Warningf(os.Stderr, "Config file error: %v", err)
 		}
-		// Файл не обязателен — используем defaults
 	}
 }

@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"time"
 
+	"context"
+
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
-	"context"
 )
 
-// newCaseHistoryCmd создаёт команду для получения истории кейса
+// newCaseHistoryCmd creates the command for retrieving case change history.
 func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-history [case-id]",
@@ -80,7 +81,7 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 	}
 }
 
-// newSharedStepHistoryCmd создаёт команду для получения истории shared step
+// newSharedStepHistoryCmd creates the command for retrieving shared step change history.
 func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "sharedstep-history [step-id]",
@@ -150,12 +151,12 @@ func selectCaseID(ctx context.Context, cases data.GetCasesResponse) (int64, erro
 	return cases[idx].ID, nil
 }
 
-// caseHistoryCmd — экспортированная команда для регистрации
+// caseHistoryCmd is the exported command registered with the root.
 var caseHistoryCmd = newCaseHistoryCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// sharedStepHistoryCmd — экспортированная команда для регистрации
+// sharedStepHistoryCmd is the exported command registered with the root.
 var sharedStepHistoryCmd = newSharedStepHistoryCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

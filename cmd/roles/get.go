@@ -8,8 +8,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'roles get'
-// Эндпоинт: GET /get_role/{role_id}
+// newGetCmd creates the 'roles get' command.
+// Endpoint: GET /get_role/{role_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [role_id]",

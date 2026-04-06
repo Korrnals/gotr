@@ -360,7 +360,7 @@ func (r *Roles) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_roles", Description: "Get list of available roles"},
 		{Method: "GET", URI: "index.php?/api/v2/get_role/{role_id}", Description: "Get single role"},
-		// Другие методы (add/update/delete) могут быть только для админов и не всегда документированы публично
+		// Other methods (add/update/delete) may be admin-only and are not always publicly documented
 	}
 }
 
@@ -422,10 +422,10 @@ type Labels struct{}
 // Paths returns API endpoints for Labels.
 func (r *Labels) Paths() []APIPath {
 	return []APIPath{
-		// Labels часто обновляются через тесты/результаты, но есть bulk-методы
+		// Labels are typically updated via tests/results; bulk methods are available
 		{Method: "POST", URI: "index.php?/api/v2/update_test_labels/{test_id}", Description: "Update labels for test"},
 		{Method: "POST", URI: "index.php?/api/v2/update_tests_labels/{run_id}", Description: "Bulk update labels for tests in run"},
-		// Если появятся dedicated endpoints — добавим
+		// TODO: add dedicated endpoints here when they become available
 	}
 }
 

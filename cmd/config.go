@@ -17,36 +17,36 @@ var (
 	defaultConfig = "$HOME/.gotr/config/default.yaml"
 )
 
-// configCmd — родительская команда "config"
+// configCmd is the parent "config" command.
 var configCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Управление конфигурацией gotr",
-	Long:  `Команды для работы с конфигурационным файлом утилиты gotr.`,
-	// ОТКЛЮЧАЕМ PersistentPreRunE для всей ветки config
-	// Это предотвращает создание клиента и проверку обязательных флагов
+	Short: "Manage gotr configuration",
+	Long:  `Commands for managing the gotr configuration file.`,
+	// Disable PersistentPreRunE for the entire config branch.
+	// This prevents client creation and mandatory flag checks.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Ничего не делаем — переопределяем родительский PersistentPreRunE
+		// Override parent PersistentPreRunE (no-op)
 	},
 }
 
-// configInitCmd — подкоманда "init" - создает дефолтный файл-конфигурации
+// configInitCmd creates a default configuration file.
 var configInitCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Создать дефолтный файл конфигурации",
-	Long: `Создаёт дефолтный файл конфигурации в ~/.gotr/config/default.yaml.
+	Short: "Create a default configuration file",
+	Long: `Creates a default configuration file at ~/.gotr/config/default.yaml.
 
-Пример:
-	gotr config init			# Создать дефолтный конфиг
+Example:
+	gotr config init
 
-Default (config):
-	$HOME/.gotr/config/default.yaml		# Путь до дефолтного файла конфигурации
+Default config path:
+	$HOME/.gotr/config/default.yaml
 
-Примечание:
-	После создания обязательно отредактируйте файл, указав свои данные TestRail.`,
+Note:
+	After creation, edit the file to fill in your TestRail credentials.`,
 
-	// ОТКЛЮЧАЕМ PersistentPreRunE для всей ветки config
+	// Disable PersistentPreRunE for the config branch.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Ничего не делаем — переопределяем родительский PersistentPreRunE
+		// Override parent PersistentPreRunE (no-op)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Default()
@@ -57,15 +57,15 @@ Default (config):
 	},
 }
 
-// configPathCmd - подкоманда "path" - для получения пути текущего файла-конфигурации
+// configPathCmd shows the current config file path.
 var configPathCmd = &cobra.Command{
 	Use:   "path",
-	Short: "Показать путь к текущему конфиг-файлу",
-	Long:  `Выводит путь к файлу конфигурации, который используется в данный момент.`,
+	Short: "Show the current config file path",
+	Long:  `Prints the path to the currently used configuration file.`,
 
-	// ОТКЛЮЧАЕМ PersistentPreRunE для всей ветки config
+	// Disable PersistentPreRunE for the config branch.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Ничего не делаем — переопределяем родительский PersistentPreRunE
+		// Override parent PersistentPreRunE (no-op)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Default()
@@ -84,15 +84,15 @@ var configPathCmd = &cobra.Command{
 	},
 }
 
-// configViewCmd - подкоманда "view" - для быстрого просмотра содержимого конфига
+// configViewCmd displays the current config file contents.
 var configViewCmd = &cobra.Command{
 	Use:   "view",
-	Short: "Показать содержимое текущего конфиг-файла",
-	Long:  "Выводит содержимое конфигурационного файла в читаемом виде.",
+	Short: "Show the current config file contents",
+	Long:  "Prints the configuration file contents in a readable format.",
 
-	// ОТКЛЮЧАЕМ PersistentPreRunE для всей ветки config
+	// Disable PersistentPreRunE for the config branch.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Ничего не делаем — переопределяем родительский PersistentPreRunE
+		// Override parent PersistentPreRunE (no-op)
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		used := viper.ConfigFileUsed()
@@ -117,24 +117,24 @@ func redactSensitiveConfig(content string) string {
 	return sensitiveConfigLine.ReplaceAllString(content, `${1}"***"`)
 }
 
-// configEditCmd - подкоманда "edit" - для быстрого редактирования содержимого конфига
+// configEditCmd opens the config file in the default editor.
 var configEditCmd = &cobra.Command{
 	Use:   "edit",
-	Short: "Открыть конфиг-файл в редакторе по умолчанию",
-	Long: `Открывает текущий конфигурационный файл в редакторе, указанном в переменной окружения EDITOR.
-Если EDITOR не задан — используется fallback (vi/nano на Linux, notepad на Windows).
+	Short: "Open config file in the default editor",
+	Long: `Opens the current configuration file in the editor specified by the EDITOR environment variable.
+If EDITOR is not set, falls back to vi/nano on Linux, notepad on Windows.
 
-Примеры:
+Examples:
 	export EDITOR=code    # VS Code
 	export EDITOR=nano
-	gotr config edit      # откроет в указанном редакторе`,
+	gotr config edit      # opens in the specified editor`,
 
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Отключаем родительский PreRun (клиент не нужен)
+		// Override parent PreRun (client not needed)
 	},
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		// Определяем путь к конфигу
+		// Determine config file path
 		used := viper.ConfigFileUsed()
 		if used == "" {
 			cfg, err := config.Default()
@@ -146,7 +146,7 @@ var configEditCmd = &cobra.Command{
 			return nil
 		}
 
-		// Запускаем редактор
+		// Launch editor
 		if err := ui.OpenEditor(used); err != nil {
 			return fmt.Errorf("failed to open editor: %w", err)
 		}

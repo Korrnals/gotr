@@ -13,17 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// exportCmd — команда для экспорта данных
+// exportCmd exports data from TestRail.
 var exportCmd = &cobra.Command{
 	Use:   "export <resource> <endpoint> [id]",
-	Short: "Экспорт данных из TestRail в JSON-файл",
-	Long: `Экспортирует данные из TestRail в JSON-файл.
+	Short: "Export data from TestRail to a JSON file",
+	Long: `Exports data from TestRail to a JSON file.
 
-Имя файла для сохранения:
-    • Через флаг --output (-o): gotr export cases get_cases 30 -o my_cases.json
-    • Без флага: сохраняется в директорию .testrail с именем <resource>_[id]_<timestamp>.json
+Output file name:
+    • Via --output (-o) flag: gotr export cases get_cases 30 -o my_cases.json
+    • Without flag: saved to .testrail directory as <resource>_[id]_<timestamp>.json
 
-Пример:
+Examples:
     gotr export projects get_projects
     gotr export cases get_cases 1 --suite-id 5 -o cases_suite5.json`,
 
@@ -38,7 +38,7 @@ var exportCmd = &cobra.Command{
 
 		client := GetClient(cmd)
 
-		// Формируем путь и query-параметры — одна функция делает всё
+		// Build full endpoint path and query parameters
 		fullEndpoint, queryParams, err := buildRequestParams(endpoint, mainID, cmd)
 		if err != nil {
 			return err
@@ -47,7 +47,7 @@ var exportCmd = &cobra.Command{
 		debug.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)
 		debug.DebugPrint("{exportCmd} - Query params: %v", queryParams)
 
-		// Запрос
+		// Request
 		start := time.Now()
 		resp, err := client.Get(ctx, fullEndpoint, queryParams)
 		if err != nil {
@@ -60,12 +60,12 @@ var exportCmd = &cobra.Command{
 			return fmt.Errorf("response reading error: %w", err)
 		}
 
-		// Флаги
+		// Flags
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		saveFlag, _ := cmd.Flags().GetBool("save")
 
 		if saveFlag {
-			// Сохранение через output.Output в ~/.gotr/exports/export/
+			// Save via output.Output to ~/.gotr/exports/export/
 			filepath, err := output.Output(cmd, data, "export", "json")
 			if err != nil {
 				return fmt.Errorf("save error: %w", err)
@@ -74,7 +74,7 @@ var exportCmd = &cobra.Command{
 				ui.Infof(os.Stdout, "Data exported to %s", filepath)
 			}
 		} else {
-			// Сохранение в .testrail/ (legacy behavior)
+			// Save to .testrail/ (legacy behavior)
 			exportDir := ".testrail"
 			if err := os.MkdirAll(exportDir, 0755); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", exportDir, err)

@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateGroupCmd создаёт команду 'configurations update-group'
-// Эндпоинт: POST /update_config_group/{group_id}
+// newUpdateGroupCmd creates the 'configurations update-group' command.
+// Endpoint: POST /update_config_group/{group_id}
 func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-group [group_id]",

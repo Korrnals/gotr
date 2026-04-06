@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'milestones update'
-// Эндпоинт: POST /update_milestone/{milestone_id}
+// newUpdateCmd creates the 'milestones update' command.
+// Endpoint: POST /update_milestone/{milestone_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [milestone_id]",

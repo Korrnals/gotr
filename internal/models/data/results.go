@@ -3,8 +3,8 @@ package data
 
 import "encoding/json"
 
-// Result — результат выполнения test
-// Соответствует документации TestRail API v2
+// Result represents a test execution result.
+// Corresponds to TestRail API v2 documentation.
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results
 type Result struct {
 	ID           int64           `json:"id"`                      // The unique ID of the test result
@@ -20,15 +20,15 @@ type Result struct {
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"` // Custom fields (varies by project configuration)
 }
 
-// GetResultsResponse — ответ на get_results (массив results)
+// GetResultsResponse is the response for get_results (array of results).
 type GetResultsResponse []Result
 
-// GetResultResponse — ответ на get_result (один результат)
+// GetResultResponse is the response for get_result (a single result).
 type GetResultResponse Result
 
-// Request структуры для Results API
+// Request structs for Results API
 
-// AddResultRequest — запрос для add_result
+// AddResultRequest is the request for add_result.
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresult
 type AddResultRequest struct {
 	StatusID   int64  `json:"status_id"`               // The ID of the test status (required)
@@ -40,17 +40,17 @@ type AddResultRequest struct {
 	// Custom fields are added dynamically via json.RawMessage if needed
 }
 
-// AddResultForCaseRequest — запрос для add_result_for_case
-// Использует те же field что и AddResultRequest
+// AddResultForCaseRequest is the request for add_result_for_case.
+// Uses the same fields as AddResultRequest.
 type AddResultForCaseRequest AddResultRequest
 
-// AddResultsRequest — запрос для bulk add_results
+// AddResultsRequest is the request for bulk add_results.
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresults
 type AddResultsRequest struct {
 	Results []ResultEntry `json:"results"` // Array of result entries
 }
 
-// ResultEntry — отдельная запись result для bulk операций
+// ResultEntry represents a single result entry for bulk operations.
 type ResultEntry struct {
 	TestID     int64  `json:"test_id"`                 // The ID of the test
 	StatusID   int64  `json:"status_id"`               // The ID of the test status
@@ -61,13 +61,13 @@ type ResultEntry struct {
 	AssignedTo int64  `json:"assignedto_id,omitempty"` // The ID of the user to assign to
 }
 
-// AddResultsForCasesRequest — запрос для add_results_for_cases
+// AddResultsForCasesRequest is the request for add_results_for_cases.
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresultsforcases
 type AddResultsForCasesRequest struct {
 	Results []ResultForCaseEntry `json:"results"` // Array of result entries with case_id
 }
 
-// ResultForCaseEntry — отдельная запись result для case (используется с run_id)
+// ResultForCaseEntry represents a single result entry for a case (used with run_id).
 type ResultForCaseEntry struct {
 	CaseID     int64  `json:"case_id"`                 // The ID of the test case
 	StatusID   int64  `json:"status_id"`               // The ID of the test status

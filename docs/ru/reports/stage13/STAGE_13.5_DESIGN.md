@@ -1,0 +1,181 @@
+# Stage 13.5 — Full API Coverage & 100% Test Parity
+
+Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESIGN.md)
+
+## Навигация
+
+- [Документация](../../index.md)
+  - [Гайды](../../guides/index.md)
+  - [Архитектура](../../architecture/index.md)
+  - [Эксплуатация](../../operations/index.md)
+  - [Отчёты](../index.md)
+    - [Stage 13](index.md)
+- [Главная](../../../../README_ru.md)
+
+---
+
+## Цель стадии
+
+Довести gotr v3.0 до полного покрытия TestRail API v2 CLI-обёртками и достичь 100% test coverage по всем пакетам. По завершении — обязательный полный повторный аудит по шаблону `.github/prompts/full-project-audit.prompt.md`.
+
+## Предпосылки
+
+По результатам финального аудита Stage 13.0 (2026-04-06):
+
+- **42/42 пакетов PASS** с `-race`, ноль data races
+- **Покрытие**: 36 пакетов @ 100%, 6 пакетов @ 96.8-98.7%
+- **API клиент**: 147 методов реализовано (суперсет TestRail API v2)
+- **CLI exposure**: ~90.5%, 14 клиентских методов без прямой CLI-обёртки
+- **api_paths.go**: ~15% эндпоинтов отсутствуют в реестре
+
+---
+
+## Phase 1 — Полнота api_paths.go (документация эндпоинтов)
+
+### 1.1. Аудит и дополнение api_paths.go
+
+Текущее состояние: 128 эндпоинтов задокументированы. Нужно добавить ~15 отсутствующих:
+
+| Группа | Отсутствующие эндпоинты | Тип |
+|--------|------------------------|-----|
+| Attachments | `get_attachment/{id}`, `get_attachments_for_case/{id}`, `get_attachments_for_plan/{id}`, `get_attachments_for_plan_entry/{id}`, `get_attachments_for_run/{id}`, `get_attachments_for_test/{id}`, `get_attachments_for_project/{id}` | GET |
+| Users | `add_user`, `update_user/{id}`, `get_users/{project_id}` | POST/GET |
+| Reports | `get_cross_project_reports` | GET |
+| Labels | `get_label/{id}`, `get_labels/{project_id}` | GET |
+
+- [ ] Добавить все отсутствующие эндпоинты в `pkg/testrailapi/api_paths.go`
+- [ ] Обновить тесты api_paths_test.go (добавить проверку новых путей)
+- [ ] Commit: `feat(api): complete api_paths.go endpoint registry`
+
+---
+
+## Phase 2 — CLI-обёртки для недостающих операций
+
+### 2.1. User Management CLI (HIGH)
+
+Текущее состояние: клиентские методы `AddUser()`, `UpdateUser()`, `GetUsersByProject()` реализованы, CLI отсутствует.
+
+- [ ] `gotr users add --name --email --role-id` — обёртка над `AddUser()`
+- [ ] `gotr users update <user_id> --name --email --role-id` — обёртка над `UpdateUser()`
+- [ ] `gotr users list --project-id` — поддержка `GetUsersByProject()` через existing list
+- [ ] Добавить интерактивный режим для `users add/update`
+- [ ] Тесты: table-driven для add/update/list-by-project (quiet + JSON + interactive)
+- [ ] Commit: `feat(users): add/update CLI commands with interactive mode`
+
+### 2.2. Reference Data CLI (MEDIUM)
+
+Методы `GetPriorities()`, `GetStatuses()`, `GetResultFields()` реализованы в клиенте, но не имеют удобных CLI-обёрток.
+
+- [ ] `gotr list priorities` — эндпоинт через generic list
+- [ ] `gotr list statuses` — эндпоинт через generic list
+- [ ] `gotr list resultfields` — эндпоинт через generic list
+- [ ] Проверить что generic `list` уже маршрутизирует на эти ресурсы; если нет — добавить
+- [ ] Тесты: table-driven для каждого нового ресурса
+- [ ] Commit: `feat(list): expose priorities/statuses/resultfields via generic list`
+
+### 2.3. Attachments Get/List-by-Context (MEDIUM)
+
+Клиентские методы `GetAttachment()`, `GetAttachmentsFor*()` — 7 методов, ограниченный доступ из CLI.
+
+- [ ] `gotr attachments get <attachment_id>` — download/metadata
+- [ ] `gotr attachments list --for-case <id>` / `--for-run <id>` / `--for-plan <id>` / `--for-test <id>` / `--for-project <id>` — контекстные списки
+- [ ] Тесты: table-driven для каждого контекста
+- [ ] Commit: `feat(attachments): context-aware list and get commands`
+
+### 2.4. Cross-Project Reports (LOW)
+
+Клиентский метод `GetCrossProjectReports()` и `RunCrossProjectReport()` реализованы.
+
+- [ ] Убедиться что `gotr reports list-cross` и `gotr reports run-cross` корректно работают
+- [ ] Добавить тесты если отсутствуют
+- [ ] Commit: `test(reports): cross-project report coverage`
+
+---
+
+## Phase 3 — Покрытие тестами до 100%
+
+### 3.1. Пакеты с покрытием < 100%
+
+| Пакет | Текущее | Цель | Дельта | Стратегия |
+|-------|---------|------|--------|-----------|
+| `cmd/sync` | 96.8% | 100% | +3.2% | Покрыть error-ветки, edge cases в sync_full/sync_cases |
+| `cmd/get` | 96.9% | 100% | +3.1% | Добавить тесты для непокрытых branches в get/* |
+| `cmd/run` | 97.1% | 100% | +2.9% | Error paths в create/update/close |
+| `cmd` (root) | 97.3% | 100% | +2.7% | Непокрытые ветки в commands.go/root.go |
+| `cmd/result` | 97.6% | 100% | +2.4% | service_wrapper.go error paths |
+| `internal/ui` | 98.7% | 100% | +1.3% | Preview edge cases, format edge paths |
+
+- [ ] Для каждого пакета: определить непокрытые строки через `go test -coverprofile`
+- [ ] Написать точечные тесты на каждую непокрытую ветку
+- [ ] Каждый пакет фиксируется отдельным коммитом:
+  - [ ] `test(sync): bring cmd/sync to 100% coverage`
+  - [ ] `test(get): bring cmd/get to 100% coverage`
+  - [ ] `test(run): bring cmd/run to 100% coverage`
+  - [ ] `test(cmd): bring root cmd to 100% coverage`
+  - [ ] `test(result): bring cmd/result to 100% coverage`
+  - [ ] `test(ui): bring internal/ui to 100% coverage`
+
+---
+
+## Phase 4 — Валидация
+
+- [ ] Полный прогон: `go test ./...` — 42/42 PASS
+- [ ] Полный прогон: `go test -race ./...` — 42/42 PASS, 0 races
+- [ ] Полный прогон: `go test -cover ./...` — все пакеты 100.0%
+- [ ] `go vet ./...` — PASS
+- [ ] `go build ./...` — PASS
+- [ ] Coverage total = 100.0%
+
+---
+
+## Phase 5 — Полный повторный аудит
+
+**ОБЯЗАТЕЛЬНЫЙ** финальный аудит по шаблону `.github/prompts/full-project-audit.prompt.md`:
+
+- [ ] Phase 0: Scope & skip list
+- [ ] Phase 1: Architecture & layers
+- [ ] Phase 2: TestRail API compliance
+- [ ] Phase 3: Code quality & patterns
+- [ ] Phase 4: Tests & race detector
+- [ ] Phase 5: Documentation
+- [ ] Phase 6: CI/Build/Security gates
+- [ ] Phase 7: Consolidation report
+
+Вердикт аудита должен быть **UNCONDITIONAL PASS** для закрытия стадии.
+
+---
+
+## Phase 6 — Closure
+
+- [ ] Обновить docs/reports (quality-metrics, audit-report)
+- [ ] Финализировать CHANGELOG
+- [ ] Создать PR: stage-13.5 → release-3.0.0
+- [ ] Создать PR: release-3.0.0 → main
+- [ ] Tag v3.0.0 после мерджа в main
+
+---
+
+## Ожидаемые метрики после Stage 13.5
+
+| Метрика | Текущее (13.0) | Целевое (13.5) |
+|---------|----------------|----------------|
+| Test coverage total | 96.8-100% | **100.0%** |
+| Пакеты @ 100% | 36/42 | **42/42** |
+| API endpoints в api_paths.go | 128 | **~143** |
+| CLI-доступные операции | ~90.5% | **~98%** |
+| Data races | 0 | **0** |
+| go vet warnings | 0 | **0** |
+| Audit verdict | CONDITIONAL PASS | **UNCONDITIONAL PASS** |
+
+---
+
+## Режим работы
+
+- **stepwise**: один шаг → отчёт → подтверждение
+- Каждая фаза фиксируется отдельными коммитами
+- Docs shadow-sync обязателен для каждого change-cluster
+- Checkpoint после каждого завершённого шага
+
+---
+
+← [Stage 13](index.md) · [Отчёты](../index.md) · [Документация](../../index.md)

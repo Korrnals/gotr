@@ -251,9 +251,9 @@ func TestBatchProcessor_EmptySlice(t *testing.T) {
 // WithProgressMonitor and Context (previously 0% coverage)
 // ---------------------------------------------------------------------------
 
-type mockMonitor struct{ count int }
+type mockMonitor struct{ count atomic.Int32 }
 
-func (m *mockMonitor) Increment() { m.count++ }
+func (m *mockMonitor) Increment() { m.count.Add(1) }
 
 func TestWithProgressMonitor(t *testing.T) {
 	mon := &mockMonitor{}
@@ -267,7 +267,7 @@ func TestWithProgressMonitor(t *testing.T) {
 	}
 	err := pool.Wait()
 	assert.NoError(t, err)
-	assert.Equal(t, 3, mon.count)
+	assert.Equal(t, int32(3), mon.count.Load())
 }
 
 func TestWorkerPool_Context(t *testing.T) {

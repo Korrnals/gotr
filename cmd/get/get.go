@@ -11,10 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an HTTP client.
 type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
 
-// Cmd — основная команда для GET-запросов
+// Cmd is the root command for GET requests to the TestRail API.
 var Cmd = &cobra.Command{
 	Use:   "get",
 	Short: "GET-запросы к TestRail API",
@@ -54,7 +54,7 @@ var Cmd = &cobra.Command{
 
 var getClient GetClientFunc
 
-// SetGetClientForTests устанавливает getClient для тестов
+// SetGetClientForTests overrides the getClient accessor for testing.
 func SetGetClientForTests(fn GetClientFunc) {
 	getClient = fn
 }
@@ -73,12 +73,12 @@ func runGetStatus[T any](command *cobra.Command, title string, fn func(context.C
 	}, fn)
 }
 
-// Register регистрирует команду get и все её подкоманды
+// Register adds the get command and all its subcommands to rootCmd.
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	getClient = clientFn
 	rootCmd.AddCommand(Cmd)
 
-	// Добавляем подкоманды
+	// Register subcommands
 	Cmd.AddCommand(casesCmd)
 	Cmd.AddCommand(caseCmd)
 	Cmd.AddCommand(caseTypesCmd)
@@ -92,7 +92,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	Cmd.AddCommand(suitesCmd)
 	Cmd.AddCommand(suiteCmd)
 
-	// Локальные флаги — только для подкоманд get и их детей
+	// Local flags — scoped to get subcommands and their children
 	for _, subCmd := range Cmd.Commands() {
 		subCmd.Flags().StringP("type", "t", "json", "Формат вывода: json, json-full, table")
 		output.AddFlag(subCmd)
@@ -102,5 +102,5 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 		subCmd.Flags().BoolP("body-only", "b", false, "Сохранить только тело ответа (без метаданных)")
 	}
 
-	// Специфичные флаги для cases уже определены в конструкторе newCasesCmd
+	// Cases-specific flags are already defined in the newCasesCmd constructor
 }

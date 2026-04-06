@@ -1,5 +1,5 @@
 // internal/paths/paths.go
-// Централизованное управление путями gotr
+// Package paths provides centralized path management for gotr.
 package paths
 
 import (
@@ -9,19 +9,19 @@ import (
 )
 
 const (
-	// DirName базовая директория gotr
+	// DirName is the base directory name for gotr.
 	DirName = ".gotr"
 
-	// Поддиректории
-	ConfigDir   = "config"   // Конфигурация
-	LogsDir     = "logs"     // Логи работы
-	SelftestDir = "selftest" // Отчёты самотестирования
-	CacheDir    = "cache"    // Кэш API
-	ExportsDir  = "exports"  // Экспорт пользовательских данных
-	TempDir     = "temp"     // Временные файлы
+	// Subdirectories
+	ConfigDir   = "config"   // configuration
+	LogsDir     = "logs"     // runtime logs
+	SelftestDir = "selftest" // self-test reports
+	CacheDir    = "cache"    // API cache
+	ExportsDir  = "exports"  // user data exports
+	TempDir     = "temp"     // temporary files
 )
 
-// BaseDir возвращает путь к ~/.testrail
+// BaseDir returns the path to ~/.gotr.
 func BaseDir() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -30,7 +30,7 @@ func BaseDir() (string, error) {
 	return filepath.Join(home, DirName), nil
 }
 
-// ConfigDirPath возвращает путь к ~/.testrail/config
+// ConfigDirPath returns the path to ~/.gotr/config.
 func ConfigDirPath() (string, error) {
 	base, err := BaseDir()
 	if err != nil {
@@ -39,7 +39,7 @@ func ConfigDirPath() (string, error) {
 	return filepath.Join(base, ConfigDir), nil
 }
 
-// LogsDirPath возвращает путь к ~/.testrail/logs
+// LogsDirPath returns the path to ~/.gotr/logs.
 func LogsDirPath() (string, error) {
 	base, err := BaseDir()
 	if err != nil {
@@ -60,7 +60,7 @@ func EnsureLogsDirPath() (string, error) {
 	return dir, nil
 }
 
-// SelftestDirPath возвращает путь к ~/.testrail/selftest
+// SelftestDirPath returns the path to ~/.gotr/selftest.
 func SelftestDirPath() (string, error) {
 	base, err := BaseDir()
 	if err != nil {
@@ -69,7 +69,7 @@ func SelftestDirPath() (string, error) {
 	return filepath.Join(base, SelftestDir), nil
 }
 
-// CacheDirPath возвращает путь к ~/.testrail/cache
+// CacheDirPath returns the path to ~/.gotr/cache.
 func CacheDirPath() (string, error) {
 	base, err := BaseDir()
 	if err != nil {
@@ -78,7 +78,7 @@ func CacheDirPath() (string, error) {
 	return filepath.Join(base, CacheDir), nil
 }
 
-// ExportsDirPath возвращает путь к ~/.testrail/exports
+// ExportsDirPath returns the path to ~/.gotr/exports.
 func ExportsDirPath() (string, error) {
 	base, err := BaseDir()
 	if err != nil {
@@ -87,7 +87,7 @@ func ExportsDirPath() (string, error) {
 	return filepath.Join(base, ExportsDir), nil
 }
 
-// TempDirPath возвращает путь к ~/.testrail/temp
+// TempDirPath returns the path to ~/.gotr/temp.
 func TempDirPath() (string, error) {
 	base, err := BaseDir()
 	if err != nil {
@@ -96,7 +96,7 @@ func TempDirPath() (string, error) {
 	return filepath.Join(base, TempDir), nil
 }
 
-// ConfigFile возвращает путь к основному конфигу ~/.gotr/config/default.yaml
+// ConfigFile returns the path to the main config file ~/.gotr/config/default.yaml.
 func ConfigFile() (string, error) {
 	dir, err := ConfigDirPath()
 	if err != nil {
@@ -105,7 +105,7 @@ func ConfigFile() (string, error) {
 	return filepath.Join(dir, "default.yaml"), nil
 }
 
-// EnsureAllDirs создаёт все необходимые директории
+// EnsureAllDirs creates all required directories.
 func EnsureAllDirs() error {
 	dirs := []func() (string, error){
 		ConfigDirPath,
@@ -128,7 +128,7 @@ func EnsureAllDirs() error {
 	return nil
 }
 
-// EnsureDir создаёт конкретную директорию
+// EnsureDir creates a specific directory.
 func EnsureDir(dirFunc func() (string, error)) error {
 	dir, err := dirFunc()
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetSuites получает список всех тест-сюит проекта.
+// GetSuites fetches all test suites for a project.
 func (c *HTTPClient) GetSuites(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 	endpoint := fmt.Sprintf("get_suites/%d", projectID)
 	suites, err := fetchAllPages[data.Suite](ctx, c, endpoint, nil, "suites")
@@ -19,7 +19,7 @@ func (c *HTTPClient) GetSuites(ctx context.Context, projectID int64) (data.GetSu
 	return data.GetSuitesResponse(suites), nil
 }
 
-// GetSuite получает одну тест-сюиту по ID.
+// GetSuite fetches a single test suite by ID.
 func (c *HTTPClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, error) {
 	endpoint := fmt.Sprintf("get_suite/%d", suiteID)
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -36,7 +36,7 @@ func (c *HTTPClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, 
 	return &suite, nil
 }
 
-// AddSuite создаёт новую тест-сюиту in project.
+// AddSuite creates a new test suite in a project.
 func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_suite/%d", projectID)
@@ -54,7 +54,7 @@ func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.Ad
 	return &suite, nil
 }
 
-// UpdateSuite обновляет существующую тест-сюиту.
+// UpdateSuite updates an existing test suite.
 func (c *HTTPClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
 	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("update_suite/%d", suiteID)
@@ -72,8 +72,8 @@ func (c *HTTPClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.U
 	return &suite, nil
 }
 
-// DeleteSuite удаляет тест-сюиту по ID.
-// Удаление необратимо — все кейсы в сюите удаляются.
+// DeleteSuite deletes a test suite by ID.
+// This is irreversible — all cases in the suite will be deleted.
 func (c *HTTPClient) DeleteSuite(ctx context.Context, suiteID int64) error {
 	endpoint := fmt.Sprintf("delete_suite/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, nil, nil)

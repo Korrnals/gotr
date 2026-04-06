@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCloseCmd создаёт команду 'plans close'
-// Эндпоинт: POST /close_plan/{plan_id}
+// newCloseCmd creates the 'plans close' command.
+// Endpoint: POST /close_plan/{plan_id}
 func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close [plan_id]",

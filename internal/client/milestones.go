@@ -10,7 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetMilestone получает информацию о milestone по ID
+// GetMilestone fetches milestone info by ID.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#getmilestone
 func (c *HTTPClient) GetMilestone(ctx context.Context, milestoneID int64) (*data.Milestone, error) {
 	endpoint := fmt.Sprintf("get_milestone/%d", milestoneID)
@@ -29,7 +29,7 @@ func (c *HTTPClient) GetMilestone(ctx context.Context, milestoneID int64) (*data
 	return &milestone, nil
 }
 
-// GetMilestones получает список milestone for project (поддерживает пагинацию)
+// GetMilestones fetches the milestone list for a project (with pagination).
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#getmilestones
 func (c *HTTPClient) GetMilestones(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 	endpoint := fmt.Sprintf("get_milestones/%d", projectID)
@@ -40,7 +40,7 @@ func (c *HTTPClient) GetMilestones(ctx context.Context, projectID int64) ([]data
 	return milestones, nil
 }
 
-// AddMilestone создает новый milestone
+// AddMilestone creates a new milestone.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#addmilestone
 func (c *HTTPClient) AddMilestone(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 	if req == nil {
@@ -64,7 +64,7 @@ func (c *HTTPClient) AddMilestone(ctx context.Context, projectID int64, req *dat
 	return &milestone, nil
 }
 
-// UpdateMilestone обновляет milestone
+// UpdateMilestone updates a milestone.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#updatemilestone
 func (c *HTTPClient) UpdateMilestone(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
 	if req == nil {
@@ -88,7 +88,7 @@ func (c *HTTPClient) UpdateMilestone(ctx context.Context, milestoneID int64, req
 	return &milestone, nil
 }
 
-// DeleteMilestone удаляет milestone
+// DeleteMilestone deletes a milestone.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#deletemilestone
 func (c *HTTPClient) DeleteMilestone(ctx context.Context, milestoneID int64) error {
 	endpoint := fmt.Sprintf("delete_milestone/%d", milestoneID)

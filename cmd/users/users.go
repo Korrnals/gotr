@@ -1,4 +1,4 @@
-// Package users реализует CLI команды для работы с пользователями TestRail
+// Package users implements CLI commands for managing TestRail users.
 package users
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is a function type that returns a client instance.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с пользователями
+// Register registers all user-related subcommands on the given root command.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	usersCmd := &cobra.Command{
 		Use:   "users",
@@ -24,7 +24,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • update        — обновить пользователя`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	usersCmd.AddCommand(newListCmd(getClient))
 	usersCmd.AddCommand(newGetCmd(getClient))
 	usersCmd.AddCommand(newGetByEmailCmd(getClient))

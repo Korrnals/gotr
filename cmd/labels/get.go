@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'labels get'
-// Эндпоинт: GET /get_label/{label_id}
+// newGetCmd creates the 'labels get' command.
+// Endpoint: GET /get_label/{label_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [label_id]",

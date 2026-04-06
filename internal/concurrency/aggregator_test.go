@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -738,12 +739,16 @@ func TestAggregator_StatsAccuracy(t *testing.T) {
 	ctx := context.Background()
 	ra := NewResultAggregator(100)
 
+	var mu sync.Mutex
 	statsSnapshots := make([]AggregationStats, 0)
 	go func() {
 		for i := 0; i < 10; i++ {
 			time.Sleep(10 * time.Millisecond)
 			if ra.IsRunning() {
-				statsSnapshots = append(statsSnapshots, ra.Stats())
+				s := ra.Stats()
+				mu.Lock()
+				statsSnapshots = append(statsSnapshots, s)
+				mu.Unlock()
 			}
 		}
 	}()
@@ -774,9 +779,13 @@ func TestAggregator_StatsAccuracy(t *testing.T) {
 	assert.Len(t, errs, 3)
 
 	// Stats should show reasonable progression (monotonically increasing)
-	for i := 1; i < len(statsSnapshots); i++ {
-		prev := statsSnapshots[i-1]
-		curr := statsSnapshots[i]
+	mu.Lock()
+	snaps := make([]AggregationStats, len(statsSnapshots))
+	copy(snaps, statsSnapshots)
+	mu.Unlock()
+	for i := 1; i < len(snaps); i++ {
+		prev := snaps[i-1]
+		curr := snaps[i]
 		assert.True(t, curr.TotalCases >= prev.TotalCases, "Stats regression: TotalCases decreased")
 		assert.True(t, curr.TotalPages >= prev.TotalPages, "Stats regression: TotalPages decreased")
 	}

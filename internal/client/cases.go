@@ -59,15 +59,15 @@ func decodeCasesResponseWithSize(body []byte) ([]data.Case, int64, error) {
 	return nil, -1, nil
 }
 
-// GetCases получает **все** кейсы проекта (с пагинацией).
-// suiteID и sectionID — опционально (0 = не использовать).
-// Возвращает полный список cases.
+// GetCases fetches **all** cases for a project (with pagination).
+// suiteID and sectionID are optional (0 = not used).
+// Returns the full list of cases.
 func (c *HTTPClient) GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 	return c.GetCasesWithProgress(ctx, projectID, suiteID, sectionID, nil)
 }
 
-// GetCasesPage получает одну страницу cases по точным offset/limit.
-// Используется для точечного ретрая сбойных страниц без полного перепрогона.
+// GetCasesPage fetches a single page of cases at the given offset/limit.
+// Useful for targeted retries of failed pages without re-fetching everything.
 func (c *HTTPClient) GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
 	endpoint := fmt.Sprintf("get_cases/%d", projectID)
 	query := map[string]string{
@@ -98,8 +98,8 @@ func (c *HTTPClient) GetCasesPage(ctx context.Context, projectID int64, suiteID 
 	return data.GetCasesResponse(page), nil
 }
 
-// GetCasesWithProgress получает **все** кейсы проекта с отслеживанием прогресса.
-// monitor вызывается после каждой страницы (каждые 250 cases).
+// GetCasesWithProgress fetches **all** cases for a project with progress tracking.
+// monitor is called after each page (every 250 cases).
 func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID int64, suiteID int64, sectionID int64, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	var all data.GetCasesResponse
 	offset := int64(0)
@@ -152,8 +152,7 @@ func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID int64, 
 	return all, nil
 }
 
-// GetCase получает информацию о конкретном кейсе по ID.
-// Возвращает указатель на Case.
+// GetCase fetches a single case by ID.
 func (c *HTTPClient) GetCase(ctx context.Context, caseID int64) (*data.Case, error) {
 	endpoint := fmt.Sprintf("get_case/%d", caseID)
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -170,7 +169,7 @@ func (c *HTTPClient) GetCase(ctx context.Context, caseID int64) (*data.Case, err
 	return &kase, nil
 }
 
-// GetHistoryForCase получает историю изменений case.
+// GetHistoryForCase fetches the change history for a case.
 func (c *HTTPClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data.GetHistoryForCaseResponse, error) {
 	endpoint := fmt.Sprintf("get_history_for_case/%d", caseID)
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -187,8 +186,8 @@ func (c *HTTPClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data
 	return &result, nil
 }
 
-// AddCase создаёт новый кейс in section.
-// Требует sectionID и Title в запросе.
+// AddCase creates a new test case in a section.
+// Requires sectionID and Title in the request.
 func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 	bodyBytes, _ := json.Marshal(req)
 
@@ -207,8 +206,8 @@ func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.Add
 	return &result, nil
 }
 
-// UpdateCase обновляет существующий кейс.
-// Поддерживает частичные обновления.
+// UpdateCase updates an existing test case.
+// Supports partial updates.
 func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 	bodyBytes, _ := json.Marshal(req)
 
@@ -227,7 +226,7 @@ func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.Upd
 	return &result, nil
 }
 
-// UpdateCases — bulk-обновление cases in suite.
+// UpdateCases performs a bulk update of cases in a suite.
 func (c *HTTPClient) UpdateCases(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 	bodyBytes, _ := json.Marshal(req)
 
@@ -246,8 +245,8 @@ func (c *HTTPClient) UpdateCases(ctx context.Context, suiteID int64, req *data.U
 	return &result, nil
 }
 
-// DeleteCase удаляет кейс по ID.
-// Удаление необратимо.
+// DeleteCase deletes a case by ID.
+// This action is irreversible.
 func (c *HTTPClient) DeleteCase(ctx context.Context, caseID int64) error {
 	endpoint := fmt.Sprintf("delete_case/%d", caseID)
 	resp, err := c.Post(ctx, endpoint, nil, nil)
@@ -259,7 +258,7 @@ func (c *HTTPClient) DeleteCase(ctx context.Context, caseID int64) error {
 	return nil
 }
 
-// DeleteCases — bulk-удаление cases in suite.
+// DeleteCases performs a bulk deletion of cases in a suite.
 func (c *HTTPClient) DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
 	bodyBytes, _ := json.Marshal(req)
 
@@ -273,7 +272,7 @@ func (c *HTTPClient) DeleteCases(ctx context.Context, suiteID int64, req *data.D
 	return nil
 }
 
-// GetCaseTypes получает список всех case types.
+// GetCaseTypes fetches all available case types.
 func (c *HTTPClient) GetCaseTypes(ctx context.Context) (data.GetCaseTypesResponse, error) {
 	endpoint := "get_case_types"
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -290,7 +289,7 @@ func (c *HTTPClient) GetCaseTypes(ctx context.Context) (data.GetCaseTypesRespons
 	return result, nil
 }
 
-// GetCaseFields получает список всех case fields.
+// GetCaseFields fetches all available case fields.
 func (c *HTTPClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsResponse, error) {
 	endpoint := "get_case_fields"
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -307,7 +306,7 @@ func (c *HTTPClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsRespo
 	return result, nil
 }
 
-// AddCaseField создаёт новое поле case.
+// AddCaseField creates a new case field.
 func (c *HTTPClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error) {
 	bodyBytes, _ := json.Marshal(req)
 
@@ -326,11 +325,11 @@ func (c *HTTPClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldReq
 	return &result, nil
 }
 
-// DiffCasesData — сравнивает кейсы двух проектов по указанному полю.
-// Возвращает DiffCasesResponse с разницей.
-// Использует параллельную загрузку для ускорения.
+// DiffCasesData compares cases from two projects by the specified field.
+// Returns a DiffCasesResponse with the differences.
+// Uses parallel loading for speed.
 func (c *HTTPClient) DiffCasesData(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
-	// Параллельная загрузка cases из обоих проектов
+	// Parallel loading of cases from both projects
 	type result struct {
 		cases data.GetCasesResponse
 		err   error
@@ -374,21 +373,21 @@ func (c *HTTPClient) DiffCasesData(ctx context.Context, pid1, pid2 int64, field 
 
 	diffResult := &data.DiffCasesResponse{}
 
-	// Только в первом
+	// Only in first project
 	for id, c := range firstCases {
 		if _, ok := secondCases[id]; !ok {
 			diffResult.OnlyInFirst = append(diffResult.OnlyInFirst, c)
 		}
 	}
 
-	// Только во втором
+	// Only in second project
 	for id, c := range secondCases {
 		if _, ok := firstCases[id]; !ok {
 			diffResult.OnlyInSecond = append(diffResult.OnlyInSecond, c)
 		}
 	}
 
-	// Отличаются по полю
+	// Differ by the specified field
 	for id, c1 := range firstCases {
 		if c2, ok := secondCases[id]; ok {
 			if !casesEqualByField(c1, c2, field) {
@@ -404,7 +403,7 @@ func (c *HTTPClient) DiffCasesData(ctx context.Context, pid1, pid2 int64, field 
 	return diffResult, nil
 }
 
-// casesEqualByField — сравнивает два case по указанному полю
+// casesEqualByField compares two cases by the specified field.
 func casesEqualByField(c1, c2 data.Case, field string) bool {
 	switch field {
 	case "title":
@@ -426,7 +425,7 @@ func casesEqualByField(c1, c2 data.Case, field string) bool {
 	}
 }
 
-// CopyCasesToSection копирует кейсы в указанную секцию
+// CopyCasesToSection copies cases to the specified section.
 // POST index.php?/api/v2/copy_cases_to_section/:section_id
 func (c *HTTPClient) CopyCasesToSection(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
 	bodyBytes, _ := json.Marshal(req)
@@ -441,7 +440,7 @@ func (c *HTTPClient) CopyCasesToSection(ctx context.Context, sectionID int64, re
 	return nil
 }
 
-// MoveCasesToSection перемещает кейсы в указанную секцию
+// MoveCasesToSection moves cases to the specified section.
 // POST index.php?/api/v2/move_cases_to_section/:section_id
 func (c *HTTPClient) MoveCasesToSection(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
 	bodyBytes, _ := json.Marshal(req)
@@ -456,9 +455,9 @@ func (c *HTTPClient) MoveCasesToSection(ctx context.Context, sectionID int64, re
 	return nil
 }
 
-// GetCasesParallelCtx получает кейсы из нескольких сьютов параллельно (Stage 6.7).
-// Использует streaming parallelization — без предварительного подсчёта.
-// Для отображения прогресса установите config.Reporter (реализует concurrency.PaginatedProgressReporter).
+// GetCasesParallelCtx fetches cases from multiple suites in parallel (Stage 6.7).
+// Uses streaming parallelization without a pre-count step.
+// For progress display, set config.Reporter (implements concurrency.PaginatedProgressReporter).
 func (c *HTTPClient) GetCasesParallelCtx(
 	ctx context.Context,
 	projectID int64,

@@ -1,5 +1,5 @@
 // internal/client/interfaces.go
-// Полные интерфейсы для HTTP клиента TestRail API
+// Full interfaces for the TestRail API HTTP client.
 package client
 
 import (
@@ -9,13 +9,13 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// ProgressMonitor определяет интерфейс для мониторинга прогресса.
+// ProgressMonitor defines an interface for tracking operation progress.
 type ProgressMonitor interface {
 	Increment()
 	IncrementBy(n int)
 }
 
-// ProjectsAPI — операции с проектами
+// ProjectsAPI — project operations.
 type ProjectsAPI interface {
 	GetProjects(ctx context.Context) (data.GetProjectsResponse, error)
 	GetProject(ctx context.Context, projectID int64) (*data.GetProjectResponse, error)
@@ -24,7 +24,7 @@ type ProjectsAPI interface {
 	DeleteProject(ctx context.Context, projectID int64) error
 }
 
-// CasesAPI — операции с caseми
+// CasesAPI — test case operations.
 type CasesAPI interface {
 	GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error)
 	GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error)
@@ -42,21 +42,21 @@ type CasesAPI interface {
 	GetCaseTypes(ctx context.Context) (data.GetCaseTypesResponse, error)
 	DiffCasesData(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error)
 
-	// Параллельные методы (Stage 6.2, 6.7)
-	// GetCasesParallel получает кейсы из нескольких сьютов параллельно (Legacy, use GetCasesForSuitesParallel)
+	// Parallel methods (Stage 6.2, 6.7)
+	// GetCasesParallel fetches cases from multiple suites in parallel (Legacy, use GetCasesForSuitesParallel).
 	GetCasesParallel(ctx context.Context, projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetCasesResponse, error)
-	// GetSuitesParallel получает сьюты из нескольких проектов параллельно
+	// GetSuitesParallel fetches suites from multiple projects in parallel.
 	GetSuitesParallel(ctx context.Context, projectIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetSuitesResponse, error)
-	// GetCasesForSuitesParallel получает все кейсы для списка сьютов одного проекта
+	// GetCasesForSuitesParallel fetches all cases for a list of suites within one project.
 	// Uses recursive parallelization (Stage 6.7) for maximum performance
 	GetCasesForSuitesParallel(ctx context.Context, projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error)
-	// GetCasesParallelCtx получает кейсы из нескольких сьютов с полным контролем (Stage 6.7)
-	// Использует streaming parallelization через concurrency.Controller
-	// Progress reporting: set config.Reporter (implements concurrency.ProgressReporter)
+	// GetCasesParallelCtx fetches cases from multiple suites with full control (Stage 6.7).
+	// Uses streaming parallelization via concurrency.Controller.
+	// Progress reporting: set config.Reporter (implements concurrency.ProgressReporter).
 	GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error)
 }
 
-// SuitesAPI — операции с сьютами
+// SuitesAPI — test suite operations.
 type SuitesAPI interface {
 	GetSuites(ctx context.Context, projectID int64) (data.GetSuitesResponse, error)
 	GetSuite(ctx context.Context, suiteID int64) (*data.Suite, error)
@@ -65,7 +65,7 @@ type SuitesAPI interface {
 	DeleteSuite(ctx context.Context, suiteID int64) error
 }
 
-// SectionsAPI — операции с секциями
+// SectionsAPI — section operations.
 type SectionsAPI interface {
 	GetSections(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error)
 	// GetSectionsParallelCtx gets sections for multiple suites using shared concurrency runtime controls.
@@ -76,7 +76,7 @@ type SectionsAPI interface {
 	DeleteSection(ctx context.Context, sectionID int64) error
 }
 
-// SharedStepsAPI — операции с shared steps
+// SharedStepsAPI — shared step operations.
 type SharedStepsAPI interface {
 	GetSharedSteps(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error)
 	GetSharedStep(ctx context.Context, stepID int64) (*data.SharedStep, error)
@@ -86,7 +86,7 @@ type SharedStepsAPI interface {
 	GetSharedStepHistory(ctx context.Context, stepID int64) (*data.GetSharedStepHistoryResponse, error)
 }
 
-// RunsAPI — операции с test runs
+// RunsAPI — test run operations.
 type RunsAPI interface {
 	GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error)
 	GetRun(ctx context.Context, runID int64) (*data.Run, error)
@@ -96,7 +96,7 @@ type RunsAPI interface {
 	DeleteRun(ctx context.Context, runID int64) error
 }
 
-// ResultsAPI — операции с resultми тестов
+// ResultsAPI — test result operations.
 type ResultsAPI interface {
 	GetResults(ctx context.Context, testID int64) (data.GetResultsResponse, error)
 	GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error)
@@ -107,14 +107,14 @@ type ResultsAPI interface {
 	AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
 }
 
-// TestsAPI — операции с testми
+// TestsAPI — test operations.
 type TestsAPI interface {
 	GetTest(ctx context.Context, testID int64) (*data.Test, error)
 	GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error)
 	UpdateTest(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error)
 }
 
-// MilestonesAPI — операции с milestones
+// MilestonesAPI — milestone operations.
 type MilestonesAPI interface {
 	GetMilestone(ctx context.Context, milestoneID int64) (*data.Milestone, error)
 	GetMilestones(ctx context.Context, projectID int64) ([]data.Milestone, error)
@@ -123,7 +123,7 @@ type MilestonesAPI interface {
 	DeleteMilestone(ctx context.Context, milestoneID int64) error
 }
 
-// PlansAPI — операции с тест-планами
+// PlansAPI — test plan operations.
 type PlansAPI interface {
 	GetPlan(ctx context.Context, planID int64) (*data.Plan, error)
 	GetPlans(ctx context.Context, projectID int64) (data.GetPlansResponse, error)
@@ -136,7 +136,7 @@ type PlansAPI interface {
 	DeletePlanEntry(ctx context.Context, planID int64, entryID string) error
 }
 
-// AttachmentsAPI — операции с вложениями
+// AttachmentsAPI — attachment operations.
 type AttachmentsAPI interface {
 	AddAttachmentToCase(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToPlan(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error)
@@ -152,7 +152,7 @@ type AttachmentsAPI interface {
 	GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error)
 }
 
-// ConfigurationsAPI — операции с конфигурациями
+// ConfigurationsAPI — configuration operations.
 type ConfigurationsAPI interface {
 	GetConfigs(ctx context.Context, projectID int64) (data.GetConfigsResponse, error)
 	AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error)
@@ -163,7 +163,7 @@ type ConfigurationsAPI interface {
 	DeleteConfig(ctx context.Context, configID int64) error
 }
 
-// UsersAPI — операции с пользователями и справочниками
+// UsersAPI — user and reference data operations.
 type UsersAPI interface {
 	GetUsers(ctx context.Context) (data.GetUsersResponse, error)
 	GetUsersByProject(ctx context.Context, projectID int64) (data.GetUsersResponse, error)
@@ -176,7 +176,7 @@ type UsersAPI interface {
 	GetTemplates(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error)
 }
 
-// ReportsAPI — операции с отчётами
+// ReportsAPI — report operations.
 type ReportsAPI interface {
 	GetReports(ctx context.Context, projectID int64) (data.GetReportsResponse, error)
 	GetCrossProjectReports(ctx context.Context) (data.GetReportsResponse, error)
@@ -184,7 +184,7 @@ type ReportsAPI interface {
 	RunCrossProjectReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error)
 }
 
-// GroupsAPI — операции с группами.
+// GroupsAPI — group operations.
 type GroupsAPI interface {
 	GetGroups(ctx context.Context, projectID int64) (data.GetGroupsResponse, error)
 	GetGroup(ctx context.Context, groupID int64) (*data.Group, error)
@@ -193,18 +193,18 @@ type GroupsAPI interface {
 	DeleteGroup(ctx context.Context, groupID int64) error
 }
 
-// RolesAPI — операции с ролями.
+// RolesAPI — role operations.
 type RolesAPI interface {
 	GetRoles(ctx context.Context) (data.GetRolesResponse, error)
 	GetRole(ctx context.Context, roleID int64) (*data.Role, error)
 }
 
-// ResultFieldsAPI — операции с полями результатов.
+// ResultFieldsAPI — result field operations.
 type ResultFieldsAPI interface {
 	GetResultFields(ctx context.Context) (data.GetResultFieldsResponse, error)
 }
 
-// DatasetsAPI — операции с датасетами.
+// DatasetsAPI — dataset operations.
 type DatasetsAPI interface {
 	GetDatasets(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error)
 	GetDataset(ctx context.Context, datasetID int64) (*data.Dataset, error)
@@ -213,7 +213,7 @@ type DatasetsAPI interface {
 	DeleteDataset(ctx context.Context, datasetID int64) error
 }
 
-// VariablesAPI — операции с переменными.
+// VariablesAPI — variable operations.
 type VariablesAPI interface {
 	GetVariables(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error)
 	AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error)
@@ -221,13 +221,13 @@ type VariablesAPI interface {
 	DeleteVariable(ctx context.Context, variableID int64) error
 }
 
-// BDDsAPI — операции с BDD сценариями.
+// BDDsAPI — BDD scenario operations.
 type BDDsAPI interface {
 	GetBDD(ctx context.Context, caseID int64) (*data.BDD, error)
 	AddBDD(ctx context.Context, caseID int64, content string) (*data.BDD, error)
 }
 
-// LabelsAPI — операции с labels.
+// LabelsAPI — label operations.
 type LabelsAPI interface {
 	GetLabels(ctx context.Context, projectID int64) (data.GetLabelsResponse, error)
 	GetLabel(ctx context.Context, labelID int64) (*data.Label, error)
@@ -236,7 +236,7 @@ type LabelsAPI interface {
 	UpdateTestsLabels(ctx context.Context, runID int64, testIDs []int64, labels []string) error
 }
 
-// ExtendedAPI — расширенные API (Groups, Roles, ResultFields, Datasets, Variables, BDDs, Labels)
+// ExtendedAPI — extended APIs (Groups, Roles, ResultFields, Datasets, Variables, BDDs, Labels).
 type ExtendedAPI interface {
 	GroupsAPI
 	RolesAPI
@@ -247,7 +247,7 @@ type ExtendedAPI interface {
 	LabelsAPI
 }
 
-// ClientInterface — полный интерфейс клиента TestRail API
+// ClientInterface is the complete TestRail API client interface.
 type ClientInterface interface {
 	ProjectsAPI
 	CasesAPI
@@ -266,5 +266,5 @@ type ClientInterface interface {
 	ExtendedAPI
 }
 
-// Проверка, что HTTPClient реализует ClientInterface
+// Compile-time check: HTTPClient must implement ClientInterface.
 var _ ClientInterface = (*HTTPClient)(nil)

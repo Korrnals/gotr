@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 )
 
+// resolveRunIDInteractive prompts the user to select a project, then a run.
 func resolveRunIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 
@@ -27,6 +28,7 @@ func resolveRunIDInteractive(ctx context.Context, cli client.ClientInterface) (i
 	return interactive.SelectRun(ctx, p, runs, "")
 }
 
+// resolveTestIDInteractive prompts the user to select a run, then a test.
 func resolveTestIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 

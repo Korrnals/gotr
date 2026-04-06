@@ -14,7 +14,7 @@ import (
 var exportMarshalIndent = json.MarshalIndent
 var exportWriteFile = os.WriteFile
 
-// ExportSharedSteps — экспортирует shared steps (filtered или все source)
+// ExportSharedSteps exports shared steps (filtered or all from source) to a JSON file.
 func (m *Migration) ExportSharedSteps(steps data.GetSharedStepsResponse, filtered bool, dir string) error {
 	if len(steps) == 0 {
 		m.logger.Info("Нет shared steps для экспорта")
@@ -47,7 +47,7 @@ func (m *Migration) ExportSharedSteps(steps data.GetSharedStepsResponse, filtere
 	return nil
 }
 
-// ExportSuites — экспортирует suites
+// ExportSuites exports suites to a JSON file.
 func (m *Migration) ExportSuites(suites data.GetSuitesResponse, filtered bool, dir string) error {
 	if len(suites) == 0 {
 		m.logger.Info("Нет suites для экспорта")
@@ -80,7 +80,7 @@ func (m *Migration) ExportSuites(suites data.GetSuitesResponse, filtered bool, d
 	return nil
 }
 
-// ExportCases — экспортирует cases
+// ExportCases exports cases to a JSON file.
 func (m *Migration) ExportCases(cases data.GetCasesResponse, filtered bool, dir string) error {
 	if len(cases) == 0 {
 		m.logger.Info("Нет cases для экспорта")
@@ -113,7 +113,7 @@ func (m *Migration) ExportCases(cases data.GetCasesResponse, filtered bool, dir 
 	return nil
 }
 
-// ExportSections — экспортирует sections
+// ExportSections exports sections to a JSON file.
 func (m *Migration) ExportSections(sections data.GetSectionsResponse, filtered bool, dir string) error {
 	if len(sections) == 0 {
 		m.logger.Info("Нет sections для экспорта")
@@ -146,7 +146,7 @@ func (m *Migration) ExportSections(sections data.GetSectionsResponse, filtered b
 	return nil
 }
 
-// ExportMapping — использует метод Save из mapping.go
+// ExportMapping saves the shared step mapping to a JSON file via SharedStepMapping.Save.
 func (m *Migration) ExportMapping(dir string) error {
 	return m.mapping.Save(dir)
 }

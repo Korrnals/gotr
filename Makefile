@@ -25,6 +25,7 @@ DATE = $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 # Флаги для встраивания версии
 PACKAGE_PATH = github.com/Korrnals/gotr/cmd
 LDFLAGS = -ldflags="-s -w -X '$(PACKAGE_PATH).Version=$(VERSION)' -X '$(PACKAGE_PATH).Commit=$(COMMIT)' -X '$(PACKAGE_PATH).Date=$(DATE)'"
+RELEASE_ARTIFACTS = $(BINARY_NAME)-linux-amd64 $(BINARY_NAME)-darwin-amd64 $(BINARY_NAME)-windows-amd64.exe
 
 # Цель по умолчанию
 all: build
@@ -89,17 +90,26 @@ vet:
 	@echo "Запуск go vet..."
 	go vet ./...
 
+# Линтинг
+lint:
+	@echo "Запуск golangci-lint..."
+	@if ! command -v golangci-lint >/dev/null 2>&1; then \
+		echo "golangci-lint не найден. Установите: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8"; \
+		exit 1; \
+	fi
+	golangci-lint run --config .golangci.yml --timeout 5m
+
 # Проверка уязвимостей зависимостей и кода
 vuln:
 	@echo "Запуск govulncheck..."
 	@if ! command -v govulncheck >/dev/null 2>&1; then \
-		echo "govulncheck не найден. Установите: go install golang.org/x/vuln/cmd/govulncheck@latest"; \
+		echo "govulncheck не найден. Установите: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4"; \
 		exit 1; \
 	fi
 	govulncheck ./...
 
 # Единый quality gate для локальной и CI проверки
-verify: test vet build race vuln
+verify: test vet lint build race vuln
 
 # Установка в /usr/local/bin (требует sudo)
 install: build
@@ -120,16 +130,45 @@ build-darwin:
 	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-darwin-amd64
 
 build-windows:
-	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME).exe
+	GOOS=windows GOARCH=amd64 go build $(LDFLAGS) -o $(BINARY_NAME)-windows-amd64.exe
 
 # Полная сборка для всех платформ
-release: build-linux build-darwin build-windows
+release: sync-tag build-linux build-darwin build-windows checksums verify-checksums
 
 # Генерация SHA256 checksums для релизных бинарников
 checksums:
 	@echo "Генерация SHA256 checksums..."
-	@sha256sum $(BINARY_NAME)-* > SHA256SUMS
+	@for f in $(RELEASE_ARTIFACTS); do \
+		if [ ! -f "$$f" ]; then \
+			echo "Артефакт не найден: $$f"; \
+			exit 1; \
+		fi; \
+	done
+	@if command -v sha256sum >/dev/null 2>&1; then \
+		sha256sum $(RELEASE_ARTIFACTS) > SHA256SUMS; \
+	elif command -v shasum >/dev/null 2>&1; then \
+		shasum -a 256 $(RELEASE_ARTIFACTS) > SHA256SUMS; \
+	else \
+		echo "Не найден sha256sum/shasum для генерации checksum"; \
+		exit 1; \
+	fi
 	@echo "Checksums saved to SHA256SUMS"
+
+# Проверка SHA256 checksums для релизных бинарников
+verify-checksums:
+	@echo "Проверка SHA256 checksums..."
+	@if [ ! -f "SHA256SUMS" ]; then \
+		echo "Файл SHA256SUMS не найден"; \
+		exit 1; \
+	fi
+	@if command -v sha256sum >/dev/null 2>&1; then \
+		sha256sum -c SHA256SUMS; \
+	elif command -v shasum >/dev/null 2>&1; then \
+		shasum -a 256 -c SHA256SUMS; \
+	else \
+		echo "Не найден sha256sum/shasum для верификации checksum"; \
+		exit 1; \
+	fi
 
 # Сборка релизных бинарников со сжатием UPX
 release-compressed: clean
@@ -146,6 +185,7 @@ release-compressed: clean
 	@echo "Готово!"
 	@ls -lh $(BINARY_NAME)-*
 	@$(MAKE) checksums
+	@$(MAKE) verify-checksums
 
 # Сборка + сжатие
 build-compressed: build compress
@@ -169,9 +209,10 @@ help:
 	@echo "  install     — установить в /usr/local/bin (требует sudo)"
 	@echo "  test        — запустить тесты"
 	@echo "  vet         — запустить go vet"
+	@echo "  lint        — запустить golangci-lint"
 	@echo "  race        — запустить go test -race"
 	@echo "  vuln        — запустить govulncheck"
-	@echo "  verify      — полный quality gate (test+vet+build+race+vuln)"
+	@echo "  verify      — полный quality gate (test+vet+lint+build+race+vuln)"
 	@echo "  clean       — удалить бинарник"
 	@echo "  release     — собрать для Linux, macOS и Windows"
 	@echo "  checksums   — сгенерировать SHA256SUMS для релизных бинарников"
@@ -182,4 +223,4 @@ help:
 	@echo "  make build VERSION=v2.6.0     # Сборка с явной версией"
 	@echo "  make tag VERSION=v2.6.0       # Создание релизного тега"
 
-.PHONY: all build build-release test-build test race vet vuln verify install clean build-linux build-darwin build-windows release checksums help sync-tag
+.PHONY: all build build-release test-build test race vet lint vuln verify install clean build-linux build-darwin build-windows release checksums verify-checksums help sync-tag

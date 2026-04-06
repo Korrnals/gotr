@@ -133,11 +133,6 @@ type ControllerConfig struct {
 	Timeout time.Duration
 	// PageSize is the number of items per page request (default: 250)
 	PageSize int
-	// PriorityThresholds override default priority thresholds
-	PriorityThresholds *struct {
-		High   int
-		Medium int
-	}
 	// Reporter receives fine-grained progress updates (optional).
 	// Typically a *ui.Task that implements PaginatedProgressReporter.
 	Reporter PaginatedProgressReporter

@@ -15,8 +15,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'attachments list'
-// Поддерживает списки для case, plan, run, test, plan-entry
+// newListCmd creates the 'attachments list' command.
+// Supports listing for case, plan, run, test, and plan-entry resources.
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -39,7 +39,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   gotr attachments list test 789`,
 	}
 
-	// Добавляем подкоманды для каждого типа
+	// Register subcommands for each resource type
 	cmd.AddCommand(newListCaseCmd(getClient))
 	cmd.AddCommand(newListPlanCmd(getClient))
 	cmd.AddCommand(newListPlanEntryCmd(getClient))

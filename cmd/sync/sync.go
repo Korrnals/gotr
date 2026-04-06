@@ -7,10 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining a client.
 type GetClientFunc = client.GetClientFunc
 
-// Cmd — родительская команда для миграции
+// Cmd is the parent command for migration.
 var Cmd = &cobra.Command{
 	Use:   "sync",
 	Short: "Синхронизация данных TestRail между проектами",
@@ -46,7 +46,7 @@ var Cmd = &cobra.Command{
 
 var clientAccessor *client.Accessor
 
-// SetGetClientForTests устанавливает getClient для тестов
+// SetGetClientForTests sets getClient for tests.
 func SetGetClientForTests(fn GetClientFunc) {
 	if clientAccessor == nil {
 		clientAccessor = client.NewAccessor(fn)
@@ -55,10 +55,10 @@ func SetGetClientForTests(fn GetClientFunc) {
 	}
 }
 
-// testClientKey — ключ для mock клиента в тестах
+// testClientKey is the context key for mock client in tests.
 var testClientKey = &struct{}{}
 
-// SetTestClient устанавливает mock клиент для тестов
+// SetTestClient sets the mock client for tests.
 func SetTestClient(cmd *cobra.Command, mockClient client.ClientInterface) {
 	ctx := cmd.Context()
 	if ctx == nil {
@@ -67,15 +67,15 @@ func SetTestClient(cmd *cobra.Command, mockClient client.ClientInterface) {
 	cmd.SetContext(context.WithValue(ctx, testClientKey, mockClient))
 }
 
-// getClientSafe безопасно вызывает getClient с проверкой на nil
-// Fallback: берёт клиент из контекста (для тестов)
+// getClientSafe safely calls getClient with a nil check.
+// Fallback: gets client from context (for tests).
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 	if clientAccessor != nil {
 		if c := clientAccessor.GetClientSafe(cmd); c != nil {
 			return c
 		}
 	}
-	// Fallback для старых тестов - берём из контекста по старому ключу
+	// Fallback for old tests — get from context by old key
 	if ctx := cmd.Context(); ctx != nil {
 		if v := ctx.Value(testHTTPClientKey); v != nil {
 			if c, ok := v.(*client.HTTPClient); ok {
@@ -86,19 +86,19 @@ func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 	return nil
 }
 
-// getClientInterface безопасно возвращает ClientInterface (для тестов с MockClient)
+// getClientInterface safely returns ClientInterface (for tests with MockClient).
 func getClientInterface(cmd *cobra.Command) client.ClientInterface {
-	// Сначала проверяем новый ключ для mock клиентов
+	// First check the new key for mock clients
 	if v := cmd.Context().Value(testClientKey); v != nil {
 		if c, ok := v.(client.ClientInterface); ok {
 			return c
 		}
 	}
-	// Fallback: используем обычный getClientSafe
+	// Fallback: use regular getClientSafe
 	return getClientSafe(cmd)
 }
 
-// Register регистрирует команду sync и все её подкоманды
+// Register registers the sync command and all its subcommands.
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	clientAccessor = client.NewAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
@@ -109,7 +109,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	Cmd.AddCommand(suitesCmd)
 	Cmd.AddCommand(sectionsCmd)
 
-	// Флаги для sync cases
+	// Flags for sync cases
 	casesCmd.Flags().Int64("src-project", 0, "ID source проекта (откуда копировать)")
 	casesCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
 	casesCmd.Flags().Int64("dst-project", 0, "ID destination проекта (куда копировать)")
@@ -119,7 +119,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	casesCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
 	casesCmd.Flags().String("output", "", "Дополнительный JSON файл с результатами")
 
-	// Флаги для sync shared-steps
+	// Flags for sync shared-steps
 	sharedStepsCmd.Flags().Int64("src-project", 0, "ID source проекта")
 	sharedStepsCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
 	sharedStepsCmd.Flags().Int64("dst-project", 0, "ID destination проекта")
@@ -130,7 +130,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	sharedStepsCmd.Flags().String("output", "", "Файл для сохранения mapping")
 	sharedStepsCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
 
-	// Флаги для sync sections
+	// Flags for sync sections
 	sectionsCmd.Flags().Int64("src-project", 0, "ID source проекта")
 	sectionsCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
 	sectionsCmd.Flags().Int64("dst-project", 0, "ID destination проекта")
@@ -140,7 +140,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	sectionsCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
 	sectionsCmd.Flags().Bool("save-mapping", false, "Сохранить mapping автоматически")
 
-	// Флаги для sync full
+	// Flags for sync full
 	fullCmd.Flags().Int64("src-project", 0, "ID source проекта")
 	fullCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
 	fullCmd.Flags().Int64("dst-project", 0, "ID destination проекта")

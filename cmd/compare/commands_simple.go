@@ -10,17 +10,17 @@ package compare
 
 var groupsCmd = newSimpleCompareCmd(
 	"groups", "groups",
-	"Сравнить группы между проектами",
-	`Выполняет сравнение групп пользователей между двумя проектами.
+	"Compare groups between projects",
+	`Compares user groups between two projects.
 
-Примеры:
-  # Сравнить группы
+Examples:
+  # Compare groups
   gotr compare groups --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare groups --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare groups --pid1 30 --pid2 31 --save-to groups_diff.json
 `,
 	fetchGroupItems,
@@ -28,17 +28,17 @@ var groupsCmd = newSimpleCompareCmd(
 
 var labelsCmd = newSimpleCompareCmd(
 	"labels", "labels",
-	"Сравнить метки между проектами",
-	`Выполняет сравнение меток (labels) между двумя проектами.
+	"Compare labels between projects",
+	`Compares labels between two projects.
 
-Примеры:
-  # Сравнить метки
+Examples:
+  # Compare labels
   gotr compare labels --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare labels --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare labels --pid1 30 --pid2 31 --save-to labels_diff.json
 `,
 	fetchLabelItems,
@@ -46,17 +46,17 @@ var labelsCmd = newSimpleCompareCmd(
 
 var milestonesCmd = newSimpleCompareCmd(
 	"milestones", "milestones",
-	"Сравнить milestones между проектами",
-	`Выполняет сравнение milestones между двумя проектами.
+	"Compare milestones between projects",
+	`Compares milestones between two projects.
 
-Примеры:
-  # Сравнить milestones
+Examples:
+  # Compare milestones
   gotr compare milestones --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare milestones --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare milestones --pid1 30 --pid2 31 --save-to milestones_diff.json
 `,
 	fetchMilestoneItems,
@@ -64,17 +64,17 @@ var milestonesCmd = newSimpleCompareCmd(
 
 var plansCmd = newSimpleCompareCmd(
 	"plans", "plans",
-	"Сравнить test plans между проектами",
-	`Выполняет сравнение test plans между двумя проектами.
+	"Compare test plans between projects",
+	`Compares test plans between two projects.
 
-Примеры:
-  # Сравнить test plans
+Examples:
+  # Compare test plans
   gotr compare plans --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare plans --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare plans --pid1 30 --pid2 31 --save-to plans_diff.json
 `,
 	fetchPlanItems,
@@ -82,17 +82,17 @@ var plansCmd = newSimpleCompareCmd(
 
 var runsCmd = newSimpleCompareCmd(
 	"runs", "runs",
-	"Сравнить test runs между проектами",
-	`Выполняет сравнение test runs между двумя проектами.
+	"Compare test runs between projects",
+	`Compares test runs between two projects.
 
-Примеры:
-  # Сравнить test runs
+Examples:
+  # Compare test runs
   gotr compare runs --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare runs --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare runs --pid1 30 --pid2 31 --save-to runs_diff.json
 `,
 	fetchRunItems,
@@ -100,17 +100,17 @@ var runsCmd = newSimpleCompareCmd(
 
 var sharedStepsCmd = newSimpleCompareCmd(
 	"sharedsteps", "sharedsteps",
-	"Сравнить shared steps между проектами",
-	`Выполняет сравнение shared steps (общих шагов) между двумя проектами.
+	"Compare shared steps between projects",
+	`Compares shared steps between two projects.
 
-Примеры:
-  # Сравнить shared steps
+Examples:
+  # Compare shared steps
   gotr compare sharedsteps --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare sharedsteps --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare sharedsteps --pid1 30 --pid2 31 --save-to sharedsteps_diff.json
 `,
 	fetchSharedStepItems,
@@ -118,17 +118,17 @@ var sharedStepsCmd = newSimpleCompareCmd(
 
 var templatesCmd = newSimpleCompareCmd(
 	"templates", "templates",
-	"Сравнить шаблоны между проектами",
-	`Выполняет сравнение шаблонов кейсов между двумя проектами.
+	"Compare templates between projects",
+	`Compares case templates between two projects.
 
-Примеры:
-  # Сравнить шаблоны
+Examples:
+  # Compare templates
   gotr compare templates --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare templates --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare templates --pid1 30 --pid2 31 --save-to templates_diff.json
 `,
 	fetchTemplateItems,
@@ -136,17 +136,17 @@ var templatesCmd = newSimpleCompareCmd(
 
 var configurationsCmd = newSimpleCompareCmd(
 	"configurations", "configurations",
-	"Сравнить конфигурации между проектами",
-	`Выполняет сравнение конфигураций (config groups и configs) между двумя проектами.
+	"Compare configurations between projects",
+	`Compares configurations (config groups and configs) between two projects.
 
-Примеры:
-  # Сравнить конфигурации
+Examples:
+  # Compare configurations
   gotr compare configurations --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare configurations --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare configurations --pid1 30 --pid2 31 --save-to configs_diff.json
 `,
 	fetchConfigurationItems,
@@ -154,17 +154,17 @@ var configurationsCmd = newSimpleCompareCmd(
 
 var datasetsCmd = newSimpleCompareCmd(
 	"datasets", "datasets",
-	"Сравнить datasets между проектами",
-	`Выполняет сравнение datasets между двумя проектами.
+	"Compare datasets between projects",
+	`Compares datasets between two projects.
 
-Примеры:
-  # Сравнить datasets
+Examples:
+  # Compare datasets
   gotr compare datasets --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+  # Save result to the default file
   gotr compare datasets --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+  # Save result to a specific file
   gotr compare datasets --pid1 30 --pid2 31 --save-to datasets_diff.json
 `,
 	fetchDatasetItems,

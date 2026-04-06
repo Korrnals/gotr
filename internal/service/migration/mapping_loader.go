@@ -7,17 +7,17 @@ import (
 	"strconv"
 )
 
-// LoadMappingFromFile загружает mapping из файла и заполняет внутреннюю структуру m.mapping.
-// Поддерживает два формата: полный SharedStepMapping (LoadSharedStepMapping) и простой map JSON.
+// LoadMappingFromFile loads a mapping from a file and populates m.mapping.
+// Supports two formats: full SharedStepMapping (pairs) and simple key-value JSON.
 func (m *Migration) LoadMappingFromFile(file string) error {
-	// Попробуем сначала полный формат mapping (pairs)
+	// Try the full mapping format first (with pairs)
 	sm, err := LoadSharedStepMapping(file)
 	if err == nil && sm != nil && len(sm.Pairs) > 0 {
 		m.mapping = sm
 		return nil
 	}
 
-	// Иначе попробуем простой формат
+	// Otherwise try the simple key-value format
 	simple, err := loadSimpleMapping(file)
 	if err == nil && len(simple) > 0 {
 		for s, t := range simple {

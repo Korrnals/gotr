@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'datasets delete'
-// Эндпоинт: POST /delete_dataset/{dataset_id}
+// newDeleteCmd creates the 'datasets delete' command.
+// Endpoint: POST /delete_dataset/{dataset_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [dataset_id]",

@@ -105,6 +105,32 @@ func TestUpdateCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestUpdateCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--name", "new_name"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "variable_id is required in non-interactive mode")
+}
+
+func TestUpdateCmd_ResolveInteractiveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects boom")
+		},
+	}
+
+	cmd := newUpdateCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{"--name", "new_name"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
 func TestUpdateCmd_NoArgs_Interactive(t *testing.T) {
 	mock := &client.MockClient{
 		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {

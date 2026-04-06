@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -433,4 +434,211 @@ func TestMilestoneModel(t *testing.T) {
 	if decoded.Name != milestone.Name {
 		t.Errorf("Name mismatch: expected %s, got %s", milestone.Name, decoded.Name)
 	}
+}
+
+func TestAddMilestone_DuplicateCheck(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "add_milestone") {
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`{"error":"Milestone with this name already exists"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	_, err := c.AddMilestone(context.Background(), 1, &data.AddMilestoneRequest{Name: "DupMilestone"})
+	if err == nil {
+		t.Fatal("AddMilestone with duplicate should error")
+	}
+}
+
+func TestAddMilestone_ValidationErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "add_milestone") {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"Milestone name is required"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	_, err := c.AddMilestone(context.Background(), 1, &data.AddMilestoneRequest{Name: ""})
+	if err == nil {
+		t.Fatal("AddMilestone with empty name should error")
+	}
+}
+
+func TestAddMilestone_NilRequest(t *testing.T) {
+	c, _ := NewClient("http://unused", "t", "t", false)
+	_, err := c.AddMilestone(context.Background(), 1, nil)
+	if err == nil {
+		t.Fatal("AddMilestone with nil request should error")
+	}
+}
+
+func TestUpdateMilestone_ConflictDetection(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "update_milestone") {
+			w.WriteHeader(http.StatusConflict)
+			_, _ = w.Write([]byte(`{"error":"Milestone has been modified"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	_, err := c.UpdateMilestone(context.Background(), 1, &data.UpdateMilestoneRequest{Name: "New"})
+	if err == nil {
+		t.Fatal("UpdateMilestone with conflict should error")
+	}
+}
+
+func TestUpdateMilestone_PartialUpdate(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "update_milestone/5") {
+			w.WriteHeader(http.StatusOK)
+			_ = json.NewEncoder(w).Encode(data.Milestone{ID: 5, Name: "PartiallyUpdated", ProjectID: 1})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	m, err := c.UpdateMilestone(context.Background(), 5, &data.UpdateMilestoneRequest{Name: "PartiallyUpdated"})
+	if err != nil {
+		t.Fatalf("UpdateMilestone with partial data should succeed: %v", err)
+	}
+	if m.Name != "PartiallyUpdated" {
+		t.Errorf("Expected name 'PartiallyUpdated', got '%s'", m.Name)
+	}
+}
+
+func TestUpdateMilestone_NilRequest(t *testing.T) {
+	c, _ := NewClient("http://unused", "t", "t", false)
+	_, err := c.UpdateMilestone(context.Background(), 1, nil)
+	if err == nil {
+		t.Fatal("UpdateMilestone with nil request should error")
+	}
+}
+
+func TestGetMilestones_Pagination(t *testing.T) {
+	callCount := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_milestones/1") {
+			callCount++
+			w.WriteHeader(http.StatusOK)
+			// Simulate minimal response
+			_ = json.NewEncoder(w).Encode([]data.Milestone{
+				{ID: int64(callCount), Name: fmt.Sprintf("Milestone %d", callCount), ProjectID: 1},
+			})
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	milestones, err := c.GetMilestones(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("GetMilestones should succeed: %v", err)
+	}
+	if len(milestones) == 0 {
+		t.Fatal("GetMilestones should return milestones")
+	}
+}
+
+func TestDeleteMilestone_ErrorCase(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "delete_milestone") {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":"Internal server error"}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	err := c.DeleteMilestone(context.Background(), 999)
+	if err == nil {
+		t.Fatal("DeleteMilestone with server error should error")
+	}
+}
+
+func TestGetMilestone_DecodeError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.String(), "get_milestone") {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{invalid}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	c, _ := NewClient(server.URL, "t", "t", false)
+	_, err := c.GetMilestone(context.Background(), 1)
+	if err == nil {
+		t.Fatal("GetMilestone with invalid JSON should error")
+	}
+}
+
+func TestAddAndUpdateMilestone_HTTPDecodeAndRequestBranches(t *testing.T) {
+	t.Run("add milestone decode error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "add_milestone/7") {
+				t.Fatalf("unexpected URL: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		})
+		defer s.Close()
+
+		_, err := c.AddMilestone(context.Background(), 7, &data.AddMilestoneRequest{Name: "M"})
+		if err == nil {
+			t.Fatal("expected decode error for AddMilestone")
+		}
+	})
+
+	t.Run("add milestone request error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		s.Close()
+
+		_, err := c.AddMilestone(context.Background(), 7, &data.AddMilestoneRequest{Name: "M"})
+		if err == nil {
+			t.Fatal("expected request error for AddMilestone")
+		}
+	})
+
+	t.Run("update milestone decode error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			if !strings.Contains(r.URL.String(), "update_milestone/9") {
+				t.Fatalf("unexpected URL: %s", r.URL.String())
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		})
+		defer s.Close()
+
+		_, err := c.UpdateMilestone(context.Background(), 9, &data.UpdateMilestoneRequest{Name: "U"})
+		if err == nil {
+			t.Fatal("expected decode error for UpdateMilestone")
+		}
+	})
+
+	t.Run("update milestone request error", func(t *testing.T) {
+		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		s.Close()
+
+		_, err := c.UpdateMilestone(context.Background(), 9, &data.UpdateMilestoneRequest{Name: "U"})
+		if err == nil {
+			t.Fatal("expected request error for UpdateMilestone")
+		}
+	})
 }

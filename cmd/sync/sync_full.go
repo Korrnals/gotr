@@ -39,14 +39,14 @@ var fullCmd = &cobra.Command{
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		quiet := isQuiet(cmd)
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
 
-		// Интерактивный выбор source проекта
+		// Interactive source project selection
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
@@ -54,7 +54,7 @@ var fullCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор source сьюта
+		// Interactive source suite selection
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
@@ -62,7 +62,7 @@ var fullCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор destination проекта
+		// Interactive destination project selection
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
@@ -70,7 +70,7 @@ var fullCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор destination сьюта
+		// Interactive destination suite selection
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
@@ -91,12 +91,12 @@ var fullCmd = &cobra.Command{
 		op := newSyncOperation("Full migration", quiet)
 		defer op.Finish()
 
-		// Шаг 1) Миграция shared steps (Fetch → Filter → Import)
+		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
 		_, err = runSyncStatus(ctx, "Migrating shared steps...", quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun || !autoApprove)
 		})
-		if err != nil { // если dry-run — без импорта
+		if err != nil { // if dry-run — no import
 			return err
 		}
 
@@ -105,7 +105,7 @@ var fullCmd = &cobra.Command{
 			return nil
 		}
 
-		// Шаг 2) Миграция cases (Fetch → Filter → Import)
+		// Step 2) Migrate cases (Fetch → Filter → Import)
 		op.Phase("Step 2/2: cases")
 		_, err = runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.MigrateCases(ctx, dryRun)

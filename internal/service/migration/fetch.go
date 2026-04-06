@@ -3,10 +3,11 @@ package migration
 
 import (
 	"context"
+
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// FetchSharedStepsData — получает shared steps из source и target проектов
+// FetchSharedStepsData retrieves shared steps from both source and target projects.
 func (m *Migration) FetchSharedStepsData(ctx context.Context) (source data.GetSharedStepsResponse, target data.GetSharedStepsResponse, err error) {
 	m.logger.Info("Начало получения shared steps из source проекта")
 
@@ -28,7 +29,7 @@ func (m *Migration) FetchSharedStepsData(ctx context.Context) (source data.GetSh
 	return source, target, nil
 }
 
-// FetchCasesData — получает кейсы из source и target сюит
+// FetchCasesData retrieves cases from both source and target suites.
 func (m *Migration) FetchCasesData(ctx context.Context) (source data.GetCasesResponse, target data.GetCasesResponse, err error) {
 	m.logger.Info("Начало получения cases из source suite")
 
@@ -50,7 +51,7 @@ func (m *Migration) FetchCasesData(ctx context.Context) (source data.GetCasesRes
 	return source, target, nil
 }
 
-// FetchSuitesData — получает suites из source и target проектов
+// FetchSuitesData retrieves suites from both source and target projects.
 func (m *Migration) FetchSuitesData(ctx context.Context) (source data.GetSuitesResponse, target data.GetSuitesResponse, err error) {
 	m.logger.Info("Начало получения suites из source проекта")
 	source, err = m.Client.GetSuites(ctx, m.srcProject)
@@ -71,7 +72,7 @@ func (m *Migration) FetchSuitesData(ctx context.Context) (source data.GetSuitesR
 	return source, target, nil
 }
 
-// FetchSectionsData — получает sections из source и target suite
+// FetchSectionsData retrieves sections from both source and target suites.
 func (m *Migration) FetchSectionsData(ctx context.Context) (source data.GetSectionsResponse, target data.GetSectionsResponse, err error) {
 	m.logger.Info("Начало получения sections из source suite")
 

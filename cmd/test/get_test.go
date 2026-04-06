@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -11,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetCmd_Success(t *testing.T) {
@@ -131,6 +133,7 @@ func TestGetCmd_NoArgs_Interactive(t *testing.T) {
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	p := interactive.NewMockPrompter().
 		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
 		WithSelectResponses(interactive.SelectResponse{Index: 0})
 	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
 	cmd.SetArgs([]string{})
@@ -151,6 +154,18 @@ func TestGetCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestGetCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "test_id is required in non-interactive mode")
 }
 
 func TestGetCmd_APIError(t *testing.T) {
@@ -195,6 +210,7 @@ func TestGetCmd_InvalidOutputPath(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown flag")
 }
 
 func TestGetCmd_WithSaveEnabled(t *testing.T) {
@@ -212,4 +228,74 @@ func TestGetCmd_WithSaveEnabled(t *testing.T) {
 	// This tests the save path - we just verify it works
 	err := cmd.Execute()
 	assert.NoError(t, err)
+}
+
+func TestGetCmd_WithSave_SaveError_HomeIsFile(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
+			return &data.Test{ID: testID}, nil
+		},
+	}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"12345", "--save", "--output", "/nonexistent/dir/test.json"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unknown flag")
+}
+
+func TestGetCmd_TooManyArgs(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"1", "2"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "accepts at most 1 arg")
+}
+
+func TestGetCmd_NoArgs_Interactive_ResolveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	p := interactive.NewMockPrompter()
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select project")
+}
+
+func TestGetCmd_WithSave_SaveError(t *testing.T) {
+	homeMarker := t.TempDir()
+	target := homeMarker + "/home-file"
+	require.NoError(t, os.WriteFile(target, []byte("x"), 0o600))
+	t.Setenv("HOME", target)
+
+	mock := &client.MockClient{
+		GetTestFunc: func(ctx context.Context, testID int64) (*data.Test, error) {
+			return &data.Test{ID: testID}, nil
+		},
+	}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"12345", "--save"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "save error")
 }

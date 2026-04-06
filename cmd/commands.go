@@ -17,8 +17,8 @@ import (
 	"github.com/Korrnals/gotr/cmd/roles"
 	"github.com/Korrnals/gotr/cmd/run"
 	"github.com/Korrnals/gotr/cmd/sync"
-	"github.com/Korrnals/gotr/cmd/test"
 	"github.com/Korrnals/gotr/cmd/templates"
+	"github.com/Korrnals/gotr/cmd/test"
 	"github.com/Korrnals/gotr/cmd/tests"
 	"github.com/Korrnals/gotr/cmd/users"
 	"github.com/Korrnals/gotr/cmd/variables"
@@ -26,15 +26,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-// init регистрирует все команды при старте
+// init registers all commands at startup.
 func init() {
-	// Сначала инициализируем конфиг
+	// Initialize config first
 	initConfig()
 
-	// Глобальные флаги root команды
+	// Global flags for the root command
 	initGlobalFlags()
 
-	// Регистрация всех команд
+	// Register top-level commands
 	registerConfigCmd()
 	registerListCmd()
 	registerAddCmd()
@@ -43,7 +43,7 @@ func init() {
 	registerExportCmd()
 	registerCompletionCmd()
 
-	// Регистрация команд из подпакетов (передаем GetClient)
+	// Register subpackage commands (pass GetClient* accessor)
 	attachments.Register(rootCmd, GetClientInterface)
 	bdds.Register(rootCmd, GetClientInterface)
 	cases.Register(rootCmd, GetClientInterface)
@@ -67,29 +67,29 @@ func init() {
 	variables.Register(rootCmd, GetClientInterface)
 }
 
-// initGlobalFlags инициализирует глобальные флаги для rootCmd
+// initGlobalFlags registers persistent flags shared by all subcommands.
 func initGlobalFlags() {
-	// Глобальные флаги — ТОЛЬКО подключение и базовая настройка
-	rootCmd.PersistentFlags().String("url", "", "Базовый URL TestRail")
-	rootCmd.PersistentFlags().StringP("username", "u", "", "Email пользователя TestRail")
-	rootCmd.PersistentFlags().StringP("api-key", "k", "", "API ключ TestRail")
-	rootCmd.PersistentFlags().Bool("insecure", false, "Пропустить проверку TLS сертификата")
-	rootCmd.PersistentFlags().BoolP("config", "c", false, "Создать дефолтный файл конфигурации")
+	// Global flags — connection and basic settings only
+	rootCmd.PersistentFlags().String("url", "", "TestRail base URL")
+	rootCmd.PersistentFlags().StringP("username", "u", "", "TestRail user email")
+	rootCmd.PersistentFlags().StringP("api-key", "k", "", "TestRail API key")
+	rootCmd.PersistentFlags().Bool("insecure", false, "Skip TLS certificate verification")
+	rootCmd.PersistentFlags().BoolP("config", "c", false, "Create default config file")
 
-	// Скрытый debug
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Включить отладочный вывод")
+	// Hidden debug flag
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug output")
 	rootCmd.PersistentFlags().MarkHidden("debug")
 
-	// Quiet mode (тихий режим для CI/CD)
-	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Подавить служебный вывод (прогресс, статистику, сообщения о сохранении)")
+	// Quiet mode (suppress informational output for CI/CD)
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Suppress progress, stats, and save messages")
 
 	// Non-interactive mode (CI/CD, scripting)
-	rootCmd.PersistentFlags().Bool("non-interactive", false, "Отключить интерактивные подсказки; завершить с ошибкой если требуется ввод")
+	rootCmd.PersistentFlags().Bool("non-interactive", false, "Disable interactive prompts; fail if input required")
 
-	// Формат вывода (глобальный)
-	rootCmd.PersistentFlags().StringP("format", "f", "table", "Формат вывода: table, json, csv, md, html")
+	// Global output format
+	rootCmd.PersistentFlags().StringP("format", "f", "table", "Output format: table, json, csv, md, html")
 
-	// Биндим к Viper
+	// Bind flags to Viper
 	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
 	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))
 	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
@@ -98,19 +98,19 @@ func initGlobalFlags() {
 }
 
 // ============================================
-// Конфигурация
+// Config
 // ============================================
 
 func registerConfigCmd() {
 	rootCmd.AddCommand(configCmd)
 
-	// Подкоманды config
+	// Config subcommands
 	configCmd.AddCommand(configInitCmd)
 	configCmd.AddCommand(configPathCmd)
 	configCmd.AddCommand(configViewCmd)
 	configCmd.AddCommand(configEditCmd)
 
-	// Автодополнение для "gotr config "
+	// Shell completion for "gotr config "
 	configCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
 			return []string{"init", "path", "view", "edit"}, cobra.ShellCompDirectiveNoFileComp
@@ -126,11 +126,11 @@ func registerConfigCmd() {
 func registerListCmd() {
 	rootCmd.AddCommand(listCmd)
 
-	// Флаги только для list
-	listCmd.Flags().Bool("json", false, "Вывести в формате JSON")
-	listCmd.Flags().Bool("short", false, "Краткий вывод (только URI)")
+	// Flags specific to list
+	listCmd.Flags().Bool("json", false, "Output as JSON")
+	listCmd.Flags().Bool("short", false, "Short output (URI only)")
 
-	// Автодополнение для первого аргумента (ресурса)
+	// Shell completion for the first argument (resource name)
 	listCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
 			return ValidResources, cobra.ShellCompDirectiveNoFileComp
@@ -170,16 +170,16 @@ func registerUpdateCmd() {
 func registerExportCmd() {
 	rootCmd.AddCommand(exportCmd)
 
-	// Специфичные флаги для export
-	exportCmd.Flags().StringP("project-id", "p", "", "ID проекта (для эндпоинтов с {project_id})")
-	exportCmd.Flags().StringP("suite-id", "s", "", "ID тест-сюиты (для get_cases)")
-	exportCmd.Flags().String("section-id", "", "ID секции (для get_cases)")
-	exportCmd.Flags().String("milestone-id", "", "ID milestone (для get_runs)")
+	// Export-specific flags
+	exportCmd.Flags().StringP("project-id", "p", "", "Project ID (for endpoints with {project_id})")
+	exportCmd.Flags().StringP("suite-id", "s", "", "Suite ID (for get_cases)")
+	exportCmd.Flags().String("section-id", "", "Section ID (for get_cases)")
+	exportCmd.Flags().String("milestone-id", "", "Milestone ID (for get_runs)")
 
-	// Флаг --save для сохранения в ~/.gotr/exports/
-	exportCmd.Flags().Bool("save", false, "Сохранить ответ в ~/.gotr/exports/export/")
+	// Save response to ~/.gotr/exports/
+	exportCmd.Flags().Bool("save", false, "Save response to ~/.gotr/exports/export/")
 
-	// Автодополнение
+	// Shell completion
 	exportCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
 			return ValidResources, cobra.ShellCompDirectiveNoFileComp

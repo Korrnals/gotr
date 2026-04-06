@@ -356,3 +356,151 @@ func TestInlineEmojiStripped(t *testing.T) {
 		t.Errorf("✅ should be replaced with (OK), got:\n%s", out)
 	}
 }
+// ---------------------------------------------------------------------------
+// Color helpers and BannerWarn/BannerError (previously 0% coverage)
+// ---------------------------------------------------------------------------
+
+func TestGreen(t *testing.T) {
+	s := Green("success")
+	if !strings.Contains(s, "success") {
+		t.Errorf("Green() should contain the input string, got %q", s)
+	}
+	// Should contain ANSI escape sequences for green color
+	if !strings.Contains(s, "\x1b[32m") {
+		t.Errorf("Green() should contain green ANSI code (\\x1b[32m), got %q", s)
+	}
+	if !strings.Contains(s, "\x1b[0m") {
+		t.Errorf("Green() should contain ANSI reset code, got %q", s)
+	}
+}
+
+func TestYellow(t *testing.T) {
+	s := Yellow("warning")
+	if !strings.Contains(s, "warning") {
+		t.Errorf("Yellow() should contain the input string, got %q", s)
+	}
+	// Should contain ANSI escape sequences for yellow color
+	if !strings.Contains(s, "\x1b[33m") {
+		t.Errorf("Yellow() should contain yellow ANSI code (\\x1b[33m), got %q", s)
+	}
+	if !strings.Contains(s, "\x1b[0m") {
+		t.Errorf("Yellow() should contain ANSI reset code, got %q", s)
+	}
+}
+
+func TestBold(t *testing.T) {
+	s := Bold("important")
+	if !strings.Contains(s, "important") {
+		t.Errorf("Bold() should contain the input string, got %q", s)
+	}
+	// Should contain ANSI escape sequences for bold style
+	if !strings.Contains(s, "\x1b[1m") {
+		t.Errorf("Bold() should contain bold ANSI code (\\x1b[1m), got %q", s)
+	}
+	if !strings.Contains(s, "\x1b[0m") {
+		t.Errorf("Bold() should contain ANSI reset code, got %q", s)
+	}
+}
+
+func TestRed(t *testing.T) {
+	s := Red("error text")
+	if !strings.Contains(s, "error text") {
+		t.Errorf("Red() should contain the input string, got %q", s)
+	}
+	// Should contain ANSI escape sequences for red color
+	if !strings.Contains(s, "\x1b[31m") {
+		t.Errorf("Red() should contain red ANSI code (\\x1b[31m), got %q", s)
+	}
+	if !strings.Contains(s, "\x1b[0m") {
+		t.Errorf("Red() should contain ANSI reset code, got %q", s)
+	}
+}
+
+func TestReporterStyling_AllColors(t *testing.T) {
+	var buf bytes.Buffer
+	New("colors").
+		Writer(&buf).
+		Section("Color examples").
+		Stat("✅", "Green text", Green("OK")).
+		Stat("⚠️", "Yellow text", Yellow("WARNING")).
+		Stat("❌", "Red text", Red("FAILED")).
+		Section("Style examples").
+		Stat("📝", "Bold text", Bold("IMPORTANT")).
+		Print()
+
+	out := buf.String()
+	// All text should be present (with stripped emoji)
+	if !strings.Contains(out, "OK") {
+		t.Error("Green('OK') output not found")
+	}
+	if !strings.Contains(out, "WARNING") {
+		t.Error("Yellow('WARNING') output not found")
+	}
+	if !strings.Contains(out, "FAILED") {
+		t.Error("Red('FAILED') output not found")
+	}
+	if !strings.Contains(out, "IMPORTANT") {
+		t.Error("Bold('IMPORTANT') output not found")
+	}
+}
+
+func TestReporterStyling_BannerOK(t *testing.T) {
+	var buf bytes.Buffer
+	New("ok_banner").
+		Writer(&buf).
+		Section("Status").
+		Stat("📊", "Results", "all passed").
+		BannerOK("All tests completed successfully").
+		Print()
+
+	out := buf.String()
+	if !strings.Contains(out, "All tests completed successfully") {
+		t.Errorf("BannerOK text not found in output:\n%s", out)
+	}
+	// Banner should be a full-width element
+	if !strings.Contains(out, "╭") || !strings.Contains(out, "╰") {
+		t.Error("Banner should have box borders")
+	}
+}
+
+func TestReporterStyling_BoldFormatting(t *testing.T) {
+	var buf bytes.Buffer
+	New("bold_test").
+		Writer(&buf).
+		Section("Important").
+		Stat("📌", "Key metric", Bold("42")).
+		Stat("📌", "Key metric", Bold("HIGH")).
+		Print()
+
+	out := buf.String()
+	if !strings.Contains(out, "42") {
+		t.Error("Bold numeric value not rendered")
+	}
+	if !strings.Contains(out, "HIGH") {
+		t.Error("Bold text value not rendered")
+	}
+}
+
+func TestBannerWarn(t *testing.T) {
+	var buf bytes.Buffer
+	New("warn test").
+		Writer(&buf).
+		BannerWarn("partial results").
+		Print()
+	out := buf.String()
+	if !strings.Contains(out, "partial results") {
+		t.Errorf("BannerWarn text not found in output:\n%s", out)
+	}
+}
+
+func TestBannerError(t *testing.T) {
+	var buf bytes.Buffer
+	New("error test").
+		Writer(&buf).
+		BannerError("critical failure").
+		Print()
+	out := buf.String()
+	if !strings.Contains(out, "critical failure") {
+		t.Errorf("BannerError text not found in output:\n%s", out)
+	}
+}

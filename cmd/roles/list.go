@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'roles list'
-// Эндпоинт: GET /get_roles
+// newListCmd creates the 'roles list' command.
+// Endpoint: GET /get_roles
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",

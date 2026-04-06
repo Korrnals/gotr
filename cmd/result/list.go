@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'result list'
-// Эндпоинт: GET /get_results_for_run/{run_id}
+// newListCmd creates the 'result list' command.
+// Endpoint: GET /get_results_for_run/{run_id}
 func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list [run-id]",
@@ -44,20 +44,20 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 			var err error
 
 			if len(args) > 0 {
-				// Явно указан run-id
+				// Explicit run-id provided
 				runID, err = flags.ValidateRequiredID(args, 0, "run")
 				if err != nil {
 					return err
 				}
 			} else {
-				// Интерактивный выбор: проект → run
+				// Interactive selection: project -> run
 				p := interactive.PrompterFromContext(ctx)
 				projectID, err := interactive.SelectProject(ctx, p, cli, "")
 				if err != nil {
 					return err
 				}
 
-				// Получаем список runs проекта
+				// Fetch project runs
 				runs, err := svc.GetRunsForProject(ctx, projectID)
 				if err != nil {
 					return fmt.Errorf("failed to get runs list: %w", err)
@@ -67,7 +67,7 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 					return fmt.Errorf("no test runs found in project %d", projectID)
 				}
 
-				// Выбираем run интерактивно
+				// Select run interactively
 				runID, err = interactive.SelectRun(ctx, p, runs, "")
 				if err != nil {
 					return err
@@ -84,5 +84,5 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 	}
 }
 
-// Обратная совместимость: глобальная переменная для использования в result.go
+// Backward compatibility: exported var for registration in result.go
 var listCmd = newListCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })

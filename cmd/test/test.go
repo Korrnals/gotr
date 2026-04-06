@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining a client.
 type GetClientFunc = client.GetClientFunc
 
-// Cmd — родительская команда для управления тестами
+// Cmd is the parent command for managing tests.
 var Cmd = &cobra.Command{
 	Use:   "test",
 	Short: "Управление тестами в TestRail",
@@ -41,10 +41,10 @@ Test — это конкретный экземпляр тест-кейса в �
 	},
 }
 
-// clientAccessor — глобальный accessor для получения клиента
+// clientAccessor is the global accessor for obtaining a client.
 var clientAccessor *client.Accessor
 
-// getClientInterface возвращает клиент как ClientInterface
+// getClientInterface returns the client as ClientInterface.
 func getClientInterface(cmd *cobra.Command) client.ClientInterface {
 	if clientAccessor == nil {
 		return nil
@@ -52,7 +52,7 @@ func getClientInterface(cmd *cobra.Command) client.ClientInterface {
 	return clientAccessor.GetClientSafe(cmd)
 }
 
-// SetGetClientForTests устанавливает getClient для тестов
+// SetGetClientForTests sets the getClient function for testing.
 func SetGetClientForTests(fn GetClientFunc) {
 	if clientAccessor == nil {
 		clientAccessor = client.NewAccessor(fn)
@@ -61,13 +61,13 @@ func SetGetClientForTests(fn GetClientFunc) {
 	}
 }
 
-// Register регистрирует команду test и все её подкоманды
+// Register registers the test command and all its subcommands.
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	clientAccessor = client.NewAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
-	// Создаём и добавляем подкоманды используя конструкторы
-	// Флаги определяются внутри конструкторов
+	// Create and register subcommands using constructors.
+	// Flags are defined inside the constructors.
 	getCmd := newGetCmd(getClientInterface)
 	listCmd := newListCmd(getClientInterface)
 

@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду для получения информации о тесте
+// newGetCmd creates the command for retrieving test information.
 func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [test-id]",
@@ -46,7 +46,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr test get [test_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr test get [test_id]")
 				}
 				testID, err = resolveTestIDInteractive(ctx, httpClient)
@@ -60,7 +60,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 				return fmt.Errorf("failed to get test: %w", err)
 			}
 
-			// Проверяем нужно ли сохранить в файл
+			// Check if output should be saved to file
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
 				filepath, err := output.Output(cmd, test, "test", "json")
@@ -78,7 +78,6 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 	}
 
 	output.AddFlag(cmd)
-	cmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 
 	return cmd
 }

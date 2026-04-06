@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'tests update'
-// Эндпоинт: POST /update_test/{test_id}
+// newUpdateCmd creates the 'tests update' command.
+// Endpoint: POST /update_test/{test_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [test_id]",
@@ -47,7 +47,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr tests update [test_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr tests update [test_id]")
 				}
 				testID, err = resolveTestIDInteractive(ctx, cli)

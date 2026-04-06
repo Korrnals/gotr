@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'variables add'
-// Эндпоинт: POST /add_variable/{dataset_id}
+// newAddCmd creates the 'variables add' command.
+// Endpoint: POST /add_variable/{dataset_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [dataset_id]",

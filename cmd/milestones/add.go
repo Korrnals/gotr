@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'milestones add'
-// Эндпоинт: POST /add_milestone/{project_id}
+// newAddCmd creates the 'milestones add' command.
+// Endpoint: POST /add_milestone/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [project_id]",

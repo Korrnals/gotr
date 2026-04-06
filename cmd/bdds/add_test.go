@@ -158,3 +158,43 @@ func TestAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
+
+// ============= LAYER 2: !HasPrompterInContext branch =============
+
+func TestAddCmd_NoArgs_NoPrompterInContext_Error(t *testing.T) {
+tmpDir := t.TempDir()
+bddFile := filepath.Join(tmpDir, "scenario.feature")
+err := os.WriteFile(bddFile, []byte("Feature: Login"), 0644)
+assert.NoError(t, err)
+
+mock := &client.MockClient{}
+cmd := newAddCmd(getClientForTests)
+// No interactive.WithPrompter → HasPrompterInContext = false
+cmd.SetContext(setupTestCmd(t, mock).Context())
+cmd.SetArgs([]string{"--file", bddFile})
+
+err = cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestAddCmd_NoArgs_Interactive_GetProjectsError(t *testing.T) {
+tmpDir := t.TempDir()
+bddFile := filepath.Join(tmpDir, "scenario.feature")
+err := os.WriteFile(bddFile, []byte("Feature: Error Test"), 0644)
+assert.NoError(t, err)
+
+mock := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return nil, fmt.Errorf("projects unavailable")
+},
+}
+p := interactive.NewMockPrompter()
+cmd := newAddCmd(getClientForTests)
+cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+cmd.SetArgs([]string{"--file", bddFile})
+
+err = cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "projects unavailable")
+}

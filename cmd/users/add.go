@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'users add'
-// Эндпоинт: POST /add_user
+// newAddCmd creates the 'users add' command.
+// Endpoint: POST /add_user
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add",

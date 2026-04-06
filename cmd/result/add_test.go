@@ -3,13 +3,17 @@ package result
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // ==================== Тесты для result add ====================
@@ -74,6 +78,22 @@ func TestAddCmd_MissingStatusID(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "status-id")
+}
+
+func TestAddCmd_MissingStatusID_RunEBranch(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newAddCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"12345"})
+
+	if flag := cmd.Flags().Lookup("status-id"); flag != nil {
+		delete(flag.Annotations, cobra.BashCompOneRequiredFlag)
+	}
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--status-id is required")
 }
 
 func TestAddCmd_InvalidTestID(t *testing.T) {
@@ -146,6 +166,30 @@ func TestAddCmd_NoArgs_NonInteractive(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestAddCmd_NoArgs_NoPrompter(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newAddCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--status-id", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "test_id required in non-interactive mode")
+}
+
+func TestAddCmd_NilClient(t *testing.T) {
+	nilClientFunc := func(*cobra.Command) client.ClientInterface {
+		return nil
+	}
+
+	cmd := newAddCmd(nilClientFunc)
+	cmd.SetArgs([]string{"12345", "--status-id", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
 // ==================== Тесты для result add-case ====================
 
 func TestAddCaseCmd_Success(t *testing.T) {
@@ -175,4 +219,81 @@ func TestAddCaseCmd_MissingCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestAddCaseCmd_MissingStatusID_RunEBranch(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newAddCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"100", "--case-id", "200"})
+
+	if flag := cmd.Flags().Lookup("status-id"); flag != nil {
+		delete(flag.Annotations, cobra.BashCompOneRequiredFlag)
+	}
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "--status-id is required")
+}
+
+func TestBuildAddResultRequest_AllFields(t *testing.T) {
+	cmd := newAddCmd(testhelper.GetClientForTests)
+	require.NoError(t, cmd.Flags().Set("status-id", "5"))
+	require.NoError(t, cmd.Flags().Set("comment", "failed"))
+	require.NoError(t, cmd.Flags().Set("version", "v2.1.0"))
+	require.NoError(t, cmd.Flags().Set("elapsed", "3m"))
+	require.NoError(t, cmd.Flags().Set("defects", "BUG-1"))
+	require.NoError(t, cmd.Flags().Set("assigned-to", "42"))
+
+	req, err := buildAddResultRequest(cmd)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(5), req.StatusID)
+	assert.Equal(t, "failed", req.Comment)
+	assert.Equal(t, "v2.1.0", req.Version)
+	assert.Equal(t, "3m", req.Elapsed)
+	assert.Equal(t, "BUG-1", req.Defects)
+	assert.Equal(t, int64(42), req.AssignedTo)
+}
+
+func TestBuildAddResultRequest_RequiresStatusID(t *testing.T) {
+	cmd := newAddCmd(testhelper.GetClientForTests)
+
+	req, err := buildAddResultRequest(cmd)
+	assert.Error(t, err)
+	assert.Nil(t, req)
+	assert.Contains(t, err.Error(), "--status-id is required")
+}
+
+func TestAddBulkCmd_FileReadError(t *testing.T) {
+	cmd := newAddBulkCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+	cmd.SetArgs([]string{"123", "--results-file", filepath.Join(t.TempDir(), "missing.json")})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "file read error")
+}
+
+func TestAddBulkCmd_DryRun_FromAddTest(t *testing.T) {
+	tmpDir := t.TempDir()
+	resultsFile := filepath.Join(tmpDir, "results.json")
+	require.NoError(t, os.WriteFile(resultsFile, []byte(`[{"test_id":1,"status_id":1}]`), 0o600))
+
+	cmd := newAddBulkCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+	cmd.SetArgs([]string{"123", "--results-file", resultsFile, "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAddBulkCmd_InvalidRunID_FromAddTest(t *testing.T) {
+	cmd := newAddBulkCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+	cmd.SetArgs([]string{"invalid", "--results-file", filepath.Join(t.TempDir(), "any.json")})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid run ID")
 }

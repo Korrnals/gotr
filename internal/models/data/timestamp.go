@@ -15,6 +15,12 @@ type Timestamp struct {
 // UnmarshalJSON implements custom JSON unmarshaling for Unix timestamps
 // It handles both numeric timestamps (int/float) and RFC3339 strings
 func (t *Timestamp) UnmarshalJSON(data []byte) error {
+	// Handle null value first so it remains a true zero time.
+	if string(data) == "null" {
+		t.Time = time.Time{}
+		return nil
+	}
+
 	// Try to unmarshal as integer (Unix timestamp)
 	var unixTimestamp int64
 	if err := json.Unmarshal(data, &unixTimestamp); err == nil {
@@ -41,12 +47,6 @@ func (t *Timestamp) UnmarshalJSON(data []byte) error {
 			}
 		}
 		t.Time = parsed
-		return nil
-	}
-
-	// Handle null value
-	if string(data) == "null" {
-		t.Time = time.Time{}
 		return nil
 	}
 

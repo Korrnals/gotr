@@ -6,14 +6,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strconv"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetTest получает информацию о тесте по ID
+// GetTest fetches test info by ID.
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#gettest
 func (c *HTTPClient) GetTest(ctx context.Context, testID int64) (*data.Test, error) {
 	endpoint := fmt.Sprintf("get_test/%d", testID)
@@ -24,12 +22,6 @@ func (c *HTTPClient) GetTest(ctx context.Context, testID int64) (*data.Test, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s getting test %d: %s",
-			resp.Status, testID, string(body))
-	}
-
 	var test data.Test
 	if err := json.NewDecoder(resp.Body).Decode(&test); err != nil {
 		return nil, fmt.Errorf("decode error test: %w", err)
@@ -38,9 +30,8 @@ func (c *HTTPClient) GetTest(ctx context.Context, testID int64) (*data.Test, err
 	return &test, nil
 }
 
-// GetTests получает список тестов для тест-run (поддерживает пагинацию)
-// https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#gettests
-// Поддерживает фильтры: status_id, assignedto_id
+// GetTests fetches the test list for a run (with pagination).
+// Supports filters: status_id, assignedto_id.
 func (c *HTTPClient) GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 	endpoint := fmt.Sprintf("get_tests/%d", runID)
 	tests, err := fetchAllPages[data.Test](ctx, c, endpoint, filters, "tests")
@@ -50,18 +41,14 @@ func (c *HTTPClient) GetTests(ctx context.Context, runID int64, filters map[stri
 	return tests, nil
 }
 
-// UpdateTest обновляет тест (статус, назначение)
+// UpdateTest updates a test (status, assignment).
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#updatetest
 func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 	if req == nil {
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateTestRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("update_test/%d", testID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -69,12 +56,6 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 		return nil, fmt.Errorf("request error UpdateTest for test %d: %w", testID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s updating test %d: %s",
-			resp.Status, testID, string(body))
-	}
 
 	var test data.Test
 	if err := json.NewDecoder(resp.Body).Decode(&test); err != nil {
@@ -84,9 +65,9 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 	return &test, nil
 }
 
-// Helper методы для удобства
+// Helper methods for convenience
 
-// GetTestsByStatus получает тесты с определенным статусом
+// GetTestsByStatus fetches tests with a specific status.
 func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID int64, statusID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"status_id": strconv.FormatInt(statusID, 10),
@@ -94,7 +75,7 @@ func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID int64, statusID
 	return c.GetTests(ctx, runID, filters)
 }
 
-// GetTestsAssignedTo получает тесты, назначенные на пользователя
+// GetTestsAssignedTo fetches tests assigned to a user.
 func (c *HTTPClient) GetTestsAssignedTo(ctx context.Context, runID int64, userID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"assignedto_id": strconv.FormatInt(userID, 10),

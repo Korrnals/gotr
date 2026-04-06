@@ -14,22 +14,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Глобальная инициализация TestRailAPI структур (Инициализируем один раз)
+// Global initialization of TestRailAPI structures (initialized once).
 var api = testrailapi.New()
 
-// Определяем свой собственный тип ключа (unexported — только внутри пакета cmd)
+// contextKey is an unexported key type, scoped to the cmd package.
 type contextKey string
 
-// Константа — наш ключ.
+// httpClientKey is used to store/retrieve the HTTP client from context.
 const httpClientKey contextKey = "httpClient"
 
-// ValidResources — динамически генерируемый список всех ресурсов
+// ValidResources is a dynamically generated list of all resource names.
 var ValidResources []string
 
 func init() {
-	// Собираем уникальные ресурсы из всех групп
+	// Collect unique resources from all API groups
 	seen := make(map[string]bool)
-	resources := []string{"all"} // "all" — специальный ресурс
+	resources := []string{"all"} // "all" is a special resource
 
 	groups := []struct {
 		name  string
@@ -76,37 +76,37 @@ func init() {
 	ValidResources = resources
 }
 
-// extractGetEndpointName — надёжно извлекает имя после "/get_"
+// extractGetEndpointName reliably extracts the name after "/get_".
 func extractGetEndpointName(uri string) string {
-	// Находим позицию "/get_"
+	// Find the position of "/get_"
 	idx := strings.LastIndex(uri, "/get_")
 	if idx == -1 {
-		return "" // не стандартный GET-эндпоинт TestRail
+		return "" // not a standard TestRail GET endpoint
 	}
 
-	name := uri[idx+1:] // всё после "/get_"
+	name := uri[idx+1:] // everything after "/get_"
 
-	// Отрезаем query-параметры начиная с "&"
+	// Trim query parameters starting with "&"
 	if qIdx := strings.Index(name, "&"); qIdx != -1 {
 		name = name[:qIdx]
 	}
 
-	// Отрезаем плейсхолдеры начиная с "{"
+	// Trim placeholders starting with "{"
 	if phIdx := strings.Index(name, "{"); phIdx != -1 {
 		name = name[:phIdx]
 	}
 
-	// Чистим trailing слеши и пробелы
+	// Clean trailing slashes and spaces
 	name = strings.Trim(name, "/ ")
 
-	if name == "" {
+	if name == "" || name == "get_" {
 		return ""
 	}
 
 	return name
 }
 
-// getValidGetEndpoints — все чистые имена для автодополнения
+// getValidGetEndpoints returns all clean GET endpoint names for shell completion.
 func getValidGetEndpoints() []string {
 	var names []string
 	seen := make(map[string]bool)
@@ -122,22 +122,22 @@ func getValidGetEndpoints() []string {
 		}
 	}
 
-	// Сортируем для красоты
+	// Sort for consistent output
 	sort.Strings(names)
 	return names
 }
 
-// extractGetEndpointName — извлекает чистый эндпоинт с плейсхолдерами (без query и trailing слешей)
+// extractAllEndpointName extracts a clean endpoint with placeholders (no query or trailing slashes).
 func extractAllEndpointName(uri string) string {
-	// Убираем префикс "index.php?/api/v2/"
+	// Strip "index.php?/api/v2/" prefix
 	uri = strings.TrimPrefix(uri, "index.php?/api/v2/")
 
-	// Отрезаем query-параметры начиная с "&"
+	// Remove query parameters starting with "&"
 	if qIdx := strings.Index(uri, "&"); qIdx != -1 {
 		uri = uri[:qIdx]
 	}
 
-	// Чистим trailing слеши и пробелы
+	// Clean trailing slashes and spaces
 	uri = strings.Trim(uri, "/ ")
 
 	if uri == "" {
@@ -147,7 +147,7 @@ func extractAllEndpointName(uri string) string {
 	return uri
 }
 
-// Вспомогательня функция 'getResourceEndpoints' - получения списка 'endpoints' соответствующего ресурса
+// getResourceEndpoints returns a list of endpoints for the given resource.
 func getResourceEndpoints(resource string, outputType string) ([]string, error) {
 	var paths []testrailapi.APIPath
 	switch resource {
@@ -215,28 +215,25 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 		return nil, nil
 	}
 
-	// Сортируем для красоты
+	// Sort for consistent output
 	sort.Slice(paths, func(i, j int) bool {
 		return paths[i].URI < paths[j].URI
 	})
 
 	var endpoints []string
 	switch outputType {
-	// Вывод в JSON — красиво и удобно для скриптов
+	// JSON output — for scripts and automation
 	case "json":
-		data, err := json.MarshalIndent(paths, "", "  ")
-		if err != nil {
-			return nil, fmt.Errorf("JSON formatting error: %w", err)
-		}
+		data, _ := json.MarshalIndent(paths, "", "  ")
 		fmt.Println(string(data))
-		return nil, err
-	// Вывод 'Method + Endpoints'
+		return nil, nil
+	// Method + Endpoint output
 	case "short":
 		for _, p := range paths {
 			fmt.Printf("%s %s\n", p.Method, p.URI)
 		}
 		return nil, fmt.Errorf("failed to format short resource list")
-	// Краткий вывод — только URI
+	// Short output — URI only
 	case "list":
 		for _, p := range paths {
 			name := extractGetEndpointName(p.URI)
@@ -260,7 +257,7 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 	return endpoints, nil
 }
 
-// getAllShortEndpoints — возвращает список всех коротких эндпоинтов для ресурса (GET, POST, DELETE)
+// getAllShortEndpoints returns all short endpoint names for a resource (GET, POST, DELETE).
 func getAllShortEndpoints(resource string) []string {
 	var paths []testrailapi.APIPath
 	paths = getResourcePaths(resource)
@@ -282,10 +279,10 @@ func getAllShortEndpoints(resource string) []string {
 	return endpoints
 }
 
-// Внешняя функция-обертка, которая возвращает ВСЕ ендпоинты конкретного ресурса
+// Wrapper function that returns ALL endpoints for a specific resource (with caching).
 var endpointsCache = make(map[string][]string)
 
-// GetEndpoints — возвращает все короткие эндпоинты для ресурса (с кэшированием)
+// GetEndpoints returns all short endpoint names for a resource (with caching).
 func GetEndpoints(resource string) []string {
 	if cached, ok := endpointsCache[resource]; ok {
 		return cached
@@ -298,7 +295,7 @@ func GetEndpoints(resource string) []string {
 			if r == "all" {
 				continue
 			}
-			resEndpoints := GetEndpoints(r) // рекурсия, но кэш спасает
+			resEndpoints := GetEndpoints(r) // recursive, but cache prevents re-computation
 			for _, e := range resEndpoints {
 				if !seen[e] {
 					seen[e] = true
@@ -310,7 +307,6 @@ func GetEndpoints(resource string) []string {
 	} else {
 		endpoints = getAllShortEndpoints(resource)
 		if endpoints == nil {
-			// Можно залогировать, но не возвращать ошибку — просто пустой срез
 			return nil
 		}
 	}
@@ -319,7 +315,7 @@ func GetEndpoints(resource string) []string {
 	return endpoints
 }
 
-// Вспомогательная приватная функция 'replaceAllPlaceholders' - которая выполняет замену плейсхолдеров на соответствующие `_id“
+// replaceAllPlaceholders substitutes all known TestRail path placeholders with the given id.
 func replaceAllPlaceholders(uri, id string) string {
 	placeholders := []string{
 		"{project_id}", "{case_id}", "{run_id}", "{test_id}", "{section_id}",
@@ -333,13 +329,12 @@ func replaceAllPlaceholders(uri, id string) string {
 	return uri
 }
 
-// buildRequestParams — собирает полный эндпоинт и query-параметры из флагов и позиционного ID
-// Приватная функция (маленькая буква) — используется только внутри пакета cmd
+// buildRequestParams assembles the full endpoint path and query parameters from flags and positional ID.
 func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (string, map[string]string, error) {
 	fullEndpoint := endpoint
 	queryParams := make(map[string]string)
 
-	// Подставляем основной ID (project_id, run_id и т.д.)
+	// Substitute the main ID (project_id, run_id, etc.)
 	if mainID != "" {
 		fullEndpoint = replaceAllPlaceholders(fullEndpoint, mainID)
 		if !strings.Contains(fullEndpoint, mainID) {
@@ -348,10 +343,10 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 		debug.DebugPrint("{resources} - fullEndpoint after ID: %s", fullEndpoint)
 	}
 
-	// Query params — только если значение не пустое
+	// Query params — only if value is non-empty
 	flags := []struct {
-		flagName string // имя флага в Cobra
-		queryKey string // имя в TestRail API
+		flagName string // Cobra flag name
+		queryKey string // TestRail API parameter name
 	}{
 		{"suite-id", "suite_id"},
 		{"section-id", "section_id"},
@@ -362,7 +357,7 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 		{"type-id", "type_id"},
 		{"created-by", "created_by"},
 		{"updated-by", "updated_by"},
-		// Добавляй новые по мере надобности
+		// Add more as needed
 	}
 
 	for _, f := range flags {
@@ -375,8 +370,7 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 	return fullEndpoint, queryParams, nil
 }
 
-// getResourcePaths — возвращает пути для указанного ресурса
-// resource — имя ресурса ("projects", "cases" и т.д.)
+// getResourcePaths returns API paths for the given resource name.
 func getResourcePaths(resource string) []testrailapi.APIPath {
 	switch resource {
 	case "all":
@@ -434,6 +428,6 @@ func getResourcePaths(resource string) []testrailapi.APIPath {
 	case "bdds":
 		return api.BDDs.Paths()
 	default:
-		return nil // или return []APIPath{} — пустой срез
+		return nil
 	}
 }

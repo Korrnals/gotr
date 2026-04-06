@@ -1,4 +1,4 @@
-// Package configurations реализует CLI команды для работы с конфигурациями TestRail
+// Package configurations implements CLI commands for managing TestRail configurations.
 package configurations
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is a function type for obtaining the API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с конфигурациями
+// Register registers all configuration management subcommands.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	configsCmd := &cobra.Command{
 		Use:   "configurations",
@@ -35,7 +35,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • delete-config — удалить конфигурацию`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	configsCmd.AddCommand(newListCmd(getClient))
 	configsCmd.AddCommand(newAddGroupCmd(getClient))
 	configsCmd.AddCommand(newAddConfigCmd(getClient))

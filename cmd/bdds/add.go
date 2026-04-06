@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'bdds add'
-// Эндпоинт: POST /add_bdd/{test_case_id}
+// newAddCmd creates the 'bdds add' command.
+// Endpoint: POST /add_bdd/{test_case_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [case_id]",
@@ -42,7 +42,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
 				}
 				caseID, err = resolveCaseIDInteractive(ctx, cli)
@@ -51,7 +51,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			// Читаем содержимое BDD
+			// Read the BDD content
 			content, err := readBDDContent(cmd)
 			if err != nil {
 				return err
@@ -83,7 +83,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// readBDDContent читает содержимое BDD из файла или stdin
+// readBDDContent reads BDD content from a file or stdin.
 func readBDDContent(cmd *cobra.Command) (string, error) {
 	filePath, _ := cmd.Flags().GetString("file")
 	if filePath != "" {
@@ -94,7 +94,7 @@ func readBDDContent(cmd *cobra.Command) (string, error) {
 		return string(data), nil
 	}
 
-	// TODO: Чтение из stdin если файл не указан
-	// Пока возвращаем пустую строку, будет ошибка валидации
+	// TODO: Read from stdin when no file is specified.
+	// For now, return empty string; validation will report the error.
 	return "", nil
 }

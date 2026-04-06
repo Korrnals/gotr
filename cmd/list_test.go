@@ -48,3 +48,38 @@ func TestList_NonInteractive_NoArgs_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
+
+func TestList_WithArg_JSONOutput_Success(t *testing.T) {
+	cmd := setupListTest()
+	cmd.SetArgs([]string{"projects", "--json"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestList_WithArg_ShortOutput_Success(t *testing.T) {
+	cmd := setupListTest()
+	cmd.SetArgs([]string{"projects", "--short"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestList_TooManyArgs_Error(t *testing.T) {
+	cmd := setupListTest()
+	cmd.SetArgs([]string{"projects", "extra"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+func TestList_AutoSelectResource_SelectError(t *testing.T) {
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: -1})
+	cmd := setupListTest()
+	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select resource")
+}

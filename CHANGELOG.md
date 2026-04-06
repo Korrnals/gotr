@@ -19,6 +19,7 @@
   - `error_summary_count` / `error_resources` for real failures
   - `unsupported_summary_count` / `unsupported_resources` for server-unsupported methods
 - Legacy `internal/progress` package removed; progress/status flow is unified via `internal/ui` runtime.
+- Stage 13: finalized coverage audit completed; hotspots and repository total reached `100.0%` statement coverage (see `docs/reports/stage13/final-coverage-audit-2026-04-05.md`).
 
 ### Fixed
 
@@ -162,7 +163,7 @@
   - Real-time updates via buffered channels
   - Thread-safe, non-blocking implementation
   - Works with any long-running operation
-  - See [docs/progress.md](docs/progress.md) for details
+  - See [docs/guides/progress.md](docs/guides/progress.md) for details
 
 - **Multi-Progress-Bars (mpb)**: Visual feedback for long-running operations
   - `github.com/vbauerster/mpb/v8` integration (multi-progress-bar library)
@@ -252,7 +253,7 @@
   - `--save` is now a boolean flag (no value required)
   - Saves to `~/.gotr/exports/{resource}/{resource}_YYYY-MM-DD_HH-MM-SS.{format}`
   - Supports JSON, YAML, and CSV formats via `--format` flag (where applicable)
-  - Affected commands: `get`, `export`, `users list`, `labels list`, `reports list-cross-project`, 
+  - Affected commands: `get`, `export`, `users list`, `labels list`, `reports list-cross-project`,
     `test get/list`, `tests list`, `groups add/update`, and all `compare` subcommands
 - **Field-based comparison** for cases: `--field title`, `--field priority_id`, etc.
 - **Formatted table output** for `compare all`:
@@ -451,7 +452,7 @@
   - Таблицы разделения ответственности
   - Полный перечень компонентов (22 команды, 3 сервиса, 40+ API методов)
   - Примеры рефакторинга
-- **Пользовательская документация** `docs/architecture.md` (243 строки):
+- **Пользовательская документация** `docs/architecture/overview.md` (243 строки):
   - Упрощённое описание архитектуры
   - Примеры потоков данных
   - Полный список команд
@@ -522,12 +523,12 @@
 #### Документация
 
 - Создана директория `docs/` с подробной документацией:
-  - `installation.md` — установка
-  - `configuration.md` — конфигурация
-  - `get-commands.md` — команды получения данных
-  - `sync-commands.md` — команды синхронизации
-  - `interactive-mode.md` — интерактивный режим
-  - `other-commands.md` — другие команды
+  - `guides/installation.md` — установка
+  - `guides/configuration.md` — конфигурация
+  - `guides/commands/get.md` — команды получения данных
+  - `guides/commands/sync.md` — команды синхронизации
+  - `guides/interactive-mode.md` — интерактивный режим
+  - `guides/commands/other.md` — другие команды
 
 ### Changed
 

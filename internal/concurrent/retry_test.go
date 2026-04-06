@@ -124,6 +124,56 @@ func TestRetryWithContext_Cancelled(t *testing.T) {
 	assert.Contains(t, err.Error(), "context cancelled")
 }
 
+func TestRetryWithContext_NonRetryableError(t *testing.T) {
+	ctx := context.Background()
+	retryableErr := errors.New("retryable")
+	nonRetryableErr := errors.New("not-retryable")
+
+	config := &RetryConfig{
+		MaxRetries:      3,
+		InitialDelay:    1 * time.Millisecond,
+		RetryableErrors: []error{retryableErr},
+	}
+
+	callCount := 0
+	err := RetryWithContext(ctx, config, func() error {
+		callCount++
+		return nonRetryableErr
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-retryable error")
+	assert.Equal(t, 1, callCount)
+}
+
+func TestRetryWithContext_MaxRetriesExceeded(t *testing.T) {
+	ctx := context.Background()
+	config := &RetryConfig{
+		MaxRetries:   2,
+		InitialDelay: 1 * time.Millisecond,
+		MaxDelay:     2 * time.Millisecond,
+		Multiplier:   2.0,
+	}
+
+	callCount := 0
+	err := RetryWithContext(ctx, config, func() error {
+		callCount++
+		return errors.New("still failing")
+	})
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed after 3 attempts")
+	assert.Equal(t, 3, callCount)
+}
+
+func TestRetryWithContext_NilConfigUsesDefaultOnImmediateSuccess(t *testing.T) {
+	err := RetryWithContext(context.Background(), nil, func() error {
+		return nil
+	})
+
+	assert.NoError(t, err)
+}
+
 func TestIsRetryableError(t *testing.T) {
 	// No specific retryable errors configured - all are retryable
 	config := &RetryConfig{}
@@ -250,4 +300,37 @@ func TestCircuitBreaker_Execute_Nil(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.True(t, executed)
+}
+
+func TestCircuitBreaker_CanExecute_OpenWithoutTimeout(t *testing.T) {
+	cb := NewCircuitBreaker(1, time.Minute)
+
+	cb.mu.Lock()
+	cb.state = CircuitOpen
+	cb.lastFailure = time.Now()
+	cb.mu.Unlock()
+
+	assert.False(t, cb.canExecute())
+	assert.Equal(t, CircuitOpen, cb.State())
+}
+
+func TestCircuitBreaker_CanExecute_HalfOpen(t *testing.T) {
+	cb := NewCircuitBreaker(1, time.Minute)
+
+	cb.mu.Lock()
+	cb.state = CircuitHalfOpen
+	cb.mu.Unlock()
+
+	assert.True(t, cb.canExecute())
+	assert.Equal(t, CircuitHalfOpen, cb.State())
+}
+
+func TestCircuitBreaker_CanExecute_DefaultStateFallback(t *testing.T) {
+	cb := NewCircuitBreaker(1, time.Minute)
+
+	cb.mu.Lock()
+	cb.state = CircuitState(999)
+	cb.mu.Unlock()
+
+	assert.True(t, cb.canExecute())
 }

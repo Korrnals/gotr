@@ -3,7 +3,7 @@ package data
 
 import "encoding/json"
 
-// Project — основная структура одного проекта (используется в get_project и get_projects)
+// Project is the primary structure for a single project (used in get_project and get_projects).
 type Project struct {
 	ID               int64  `json:"id"`
 	Name             string `json:"name,omitempty"`
@@ -18,7 +18,7 @@ type Project struct {
 	CreatedOn        int64  `json:"created_on,omitempty"`
 	UpdatedBy        int64  `json:"updated_by,omitempty"`
 	UpdatedOn        int64  `json:"updated_on,omitempty"`
-	// Дополнительные field, которые часто встречаются:
+	// Additional fields commonly present in the response:
 	Users []struct {
 		ID            int64 `json:"id"`
 		GlobalRoleID  int64 `json:"global_role_id,omitempty"`
@@ -31,21 +31,21 @@ type Project struct {
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"`
 }
 
-// GetProjectsResponse — ответ на get_projects (прямой массив проектов)
+// GetProjectsResponse is the response for get_projects (direct array of projects).
 type GetProjectsResponse []Project
 
-// GetProjectResponse — ответ на get_project (один проект)
+// GetProjectResponse is the response for get_project (a single project).
 type GetProjectResponse Project
 
-// AddProjectRequest — запрос для add_project
+// AddProjectRequest is the request for add_project.
 type AddProjectRequest struct {
-	Name             string `json:"name"` // обязательно
+	Name             string `json:"name"` // Required
 	Announcement     string `json:"announcement,omitempty"`
 	ShowAnnouncement bool   `json:"show_announcement,omitempty"`
 	SuiteMode        int    `json:"suite_mode,omitempty"` // 1,2,3
 }
 
-// UpdateProjectRequest — запрос для update_project
+// UpdateProjectRequest is the request for update_project.
 type UpdateProjectRequest struct {
 	Name             string `json:"name,omitempty"`
 	Announcement     string `json:"announcement,omitempty"`

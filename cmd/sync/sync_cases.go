@@ -54,14 +54,14 @@ var casesCmd = &cobra.Command{
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		quiet := isQuiet(cmd)
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
 
-		// Интерактивный выбор source проекта
+		// Interactive source project selection
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy from):")
 			if err != nil {
@@ -69,7 +69,7 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор source сьюта
+		// Interactive source suite selection
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
@@ -77,7 +77,7 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор destination проекта
+		// Interactive destination project selection
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy to):")
 			if err != nil {
@@ -85,7 +85,7 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор destination сьюта
+		// Interactive destination suite selection
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
@@ -93,19 +93,19 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		// Директория для логов
+		// Log directory
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
 			return err
 		}
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		logFile := filepath.Join(logDir, fmt.Sprintf("sync_cases_%s.json", timestamp))
-		// Если указан дополнительный файл вывода, используем его
+		// Use the additional output file if specified
 		if outputFile != "" {
 			logFile = outputFile
 		}
 
-		// Создаём объект миграции
+		// Create migration object
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
 			return err
@@ -115,7 +115,7 @@ var casesCmd = &cobra.Command{
 		op := newSyncOperation("Sync cases", quiet)
 		defer op.Finish()
 
-		// Если указан mapping-файл — загрузим в m.mapping
+		// If a mapping file is specified, load it into m.mapping
 		if mappingFile != "" {
 			op.Phase("Loading mapping")
 			_, err := runSyncStatus(ctx, "Loading mapping...", quiet, func(context.Context) (struct{}, error) {
@@ -157,7 +157,7 @@ var casesCmd = &cobra.Command{
 			return err
 		}
 
-		// Считаем совпадения (matches)
+		// Count matches
 		var matches data.GetCasesResponse
 		filteredIDs := make(map[int64]struct{})
 		for _, f := range filtered {
@@ -170,9 +170,11 @@ var casesCmd = &cobra.Command{
 		}
 
 		if !quiet {
-			fmt.Printf("\nAnalysis result:\n")
-			fmt.Printf("  Matches: %d\n", len(matches))
-			fmt.Printf("  New: %d\n", len(filtered))
+			if !quiet {
+				fmt.Printf("\nAnalysis result:\n")
+				fmt.Printf("  Matches: %d\n", len(matches))
+				fmt.Printf("  New: %d\n", len(filtered))
+			}
 		}
 
 		if dryRun {
@@ -225,7 +227,7 @@ var casesCmd = &cobra.Command{
 			}
 		}
 
-		// Сохраняем лог и mapping
+		// Save log and mapping
 		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)
 
 		return nil

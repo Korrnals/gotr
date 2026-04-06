@@ -13,17 +13,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'cases update'
-// Эндпоинт: POST /update_case/{case_id}
+// newUpdateCmd creates the 'cases update' command.
+// Endpoint: POST /update_case/{case_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [case_id]",
-		Short: "Обновить тест-кейс",
-		Long:  `Обновляет существующий тест-кейс.`,
-		Example: `  # Обновить название и приоритет
-  gotr cases update 12345 --title="Новое название" --priority-id=2
+		Short: "Update a test case",
+		Long:  `Updates an existing test case.`,
+		Example: `  # Update title and priority
+  gotr cases update 12345 --title="New title" --priority-id=2
 
-  # Обновить из JSON-файла
+  # Update from a JSON file
   gotr cases update 12345 --json-file=update.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -92,13 +92,13 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Preview the action without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными для обновления")
-	cmd.Flags().String("title", "", "Новое название")
-	cmd.Flags().Int64("type-id", 0, "Новый ID типа")
-	cmd.Flags().Int64("priority-id", 0, "Новый ID приоритета")
-	cmd.Flags().String("refs", "", "New ссылки")
+	cmd.Flags().String("json-file", "", "Path to a JSON file with update data")
+	cmd.Flags().String("title", "", "New title")
+	cmd.Flags().Int64("type-id", 0, "New type ID")
+	cmd.Flags().Int64("priority-id", 0, "New priority ID")
+	cmd.Flags().String("refs", "", "New references")
 
 	return cmd
 }

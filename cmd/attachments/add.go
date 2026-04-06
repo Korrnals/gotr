@@ -22,8 +22,8 @@ func runAttachmentUpload(cmd *cobra.Command, upload attachmentUploadFunc) (*data
 	}, upload)
 }
 
-// newAddCaseCmd создаёт команду 'attachments add case'
-// Эндпоинт: POST /add_attachment_to_case/{case_id}
+// newAddCaseCmd creates the 'attachments add case' command.
+// Endpoint: POST /add_attachment_to_case/{case_id}
 func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "case [case_id] <file_path>",
@@ -86,8 +86,8 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// newAddPlanCmd создаёт команду 'attachments add plan'
-// Эндпоинт: POST /add_attachment_to_plan/{plan_id}
+// newAddPlanCmd creates the 'attachments add plan' command.
+// Endpoint: POST /add_attachment_to_plan/{plan_id}
 func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan [plan_id] <file_path>",
@@ -148,8 +148,8 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// newAddPlanEntryCmd создаёт команду 'attachments add plan-entry'
-// Эндпоинт: POST /add_attachment_to_plan_entry/{plan_id}/{entry_id}
+// newAddPlanEntryCmd creates the 'attachments add plan-entry' command.
+// Endpoint: POST /add_attachment_to_plan_entry/{plan_id}/{entry_id}
 func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan-entry [plan_id] [entry_id] <file_path>",
@@ -227,8 +227,8 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// newAddResultCmd создаёт команду 'attachments add result'
-// Эндпоинт: POST /add_attachment_to_result/{result_id}
+// newAddResultCmd creates the 'attachments add result' command.
+// Endpoint: POST /add_attachment_to_result/{result_id}
 func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "result [result_id] <file_path>",
@@ -289,8 +289,8 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// newAddRunCmd создаёт команду 'attachments add run'
-// Эндпоинт: POST /add_attachment_to_run/{run_id}
+// newAddRunCmd creates the 'attachments add run' command.
+// Endpoint: POST /add_attachment_to_run/{run_id}
 func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [run_id] <file_path>",
@@ -351,7 +351,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// validateFileExists проверяет существование файла
+// validateFileExists checks that the file exists at the given path.
 func validateFileExists(filePath string) error {
 	if _, err := os.Stat(filePath); os.IsNotExist(err) {
 		return fmt.Errorf("file not found: %s", filePath)

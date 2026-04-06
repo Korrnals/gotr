@@ -1,41 +1,41 @@
 // internal/models/data/configs.go
 package data
 
-// ConfigGroup — группа конфигураций (например, "OS", "Browser")
+// ConfigGroup represents a configuration group (e.g., "OS", "Browser").
 type ConfigGroup struct {
-	ID        int64    `json:"id"`         // Уникальный ID группы
-	Name      string   `json:"name"`       // Название группы
-	ProjectID int64    `json:"project_id"` // ID проекта
-	Configs   []Config `json:"configs"`    // Список конфигураций в группе
+	ID        int64    `json:"id"`         // Unique group ID
+	Name      string   `json:"name"`       // Group name
+	ProjectID int64    `json:"project_id"` // Project ID
+	Configs   []Config `json:"configs"`    // List of configurations in the group
 }
 
-// Config — конкретная конфигурация (например, "Windows", "Chrome")
+// Config represents a specific configuration (e.g., "Windows", "Chrome").
 type Config struct {
-	ID        int64  `json:"id"`         // Уникальный ID конфигурации
-	Name      string `json:"name"`       // Название конфигурации
-	GroupID   int64  `json:"group_id"`   // ID группы
-	ProjectID int64  `json:"project_id"` // ID проекта (опционально)
+	ID        int64  `json:"id"`         // Unique configuration ID
+	Name      string `json:"name"`       // Configuration name
+	GroupID   int64  `json:"group_id"`   // Group ID
+	ProjectID int64  `json:"project_id"` // Project ID (optional)
 }
 
-// GetConfigsResponse — ответ на get_configs (список групп с конфигурациями)
+// GetConfigsResponse is the response for get_configs (list of groups with configurations).
 type GetConfigsResponse []ConfigGroup
 
-// AddConfigGroupRequest — запрос на создание группы конфигураций
+// AddConfigGroupRequest is the request to create a configuration group.
 type AddConfigGroupRequest struct {
-	Name string `json:"name"` // Название группы (обязательное)
+	Name string `json:"name"` // Group name (required)
 }
 
-// AddConfigRequest — запрос на создание конфигурации
+// AddConfigRequest is the request to create a configuration.
 type AddConfigRequest struct {
-	Name string `json:"name"` // Название конфигурации (обязательное)
+	Name string `json:"name"` // Configuration name (required)
 }
 
-// UpdateConfigGroupRequest — запрос на обновление группы
+// UpdateConfigGroupRequest is the request to update a group.
 type UpdateConfigGroupRequest struct {
-	Name string `json:"name,omitempty"` // Новое название группы
+	Name string `json:"name,omitempty"` // New group name
 }
 
-// UpdateConfigRequest — запрос на обновление конфигурации
+// UpdateConfigRequest is the request to update a configuration.
 type UpdateConfigRequest struct {
-	Name string `json:"name,omitempty"` // Новое название конфигурации
+	Name string `json:"name,omitempty"` // New configuration name
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newSharedStepsCmd создаёт команду для получения shared steps проекта
+// newSharedStepsCmd creates the command for retrieving project shared steps.
 func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sharedsteps [project-id]",
@@ -37,7 +37,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			// Получаем ID проекта
+			// Resolve project ID
 			projectIDStr := ""
 			if len(args) > 0 {
 				projectIDStr = args[0]
@@ -50,7 +50,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 			var err error
 
 			if projectIDStr == "" {
-				// Интерактивный выбор проекта
+				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
@@ -78,7 +78,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 	return cmd
 }
 
-// newSharedStepCmd создаёт команду для получения одного shared step
+// newSharedStepCmd creates the command for retrieving a single shared step.
 func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "sharedstep [step-id]",
@@ -149,12 +149,12 @@ func selectSharedStepID(ctx context.Context, steps data.GetSharedStepsResponse) 
 	return steps[idx].ID, nil
 }
 
-// sharedStepsCmd — экспортированная команда для регистрации
+// sharedStepsCmd is the exported command registered with the root.
 var sharedStepsCmd = newSharedStepsCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// sharedStepCmd — экспортированная команда для регистрации
+// sharedStepCmd is the exported command registered with the root.
 var sharedStepCmd = newSharedStepCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

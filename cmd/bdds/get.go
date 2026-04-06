@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'bdds get'
-// Эндпоинт: GET /get_bdd/{test_case_id}
+// newGetCmd creates the 'bdds get' command.
+// Endpoint: GET /get_bdd/{test_case_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [case_id]",
@@ -40,7 +40,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds get [case_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds get [case_id]")
 				}
 				caseID, err = resolveCaseIDInteractive(ctx, cli)

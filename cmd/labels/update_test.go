@@ -282,6 +282,17 @@ func TestNewUpdateTestCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestNewUpdateTestCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateTestCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--labels", "smoke"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "test_id is required in non-interactive mode")
+}
+
 // TestNewUpdateTestCmd_TooManyArgs tests too many arguments
 func TestNewUpdateTestCmd_TooManyArgs(t *testing.T) {
 	mock := &client.MockClient{}

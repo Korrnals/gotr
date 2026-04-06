@@ -11,17 +11,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'cases delete'
-// Эндпоинт: POST /delete_case/{case_id}
+// newDeleteCmd creates the 'cases delete' command.
+// Endpoint: POST /delete_case/{case_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [case_id]",
-		Short: "Удалить тест-кейс",
-		Long:  `Удаляет тест-кейс по его ID.`,
-		Example: `  # Удалить тест-кейс
+		Short: "Delete a test case",
+		Long:  `Deletes a test case by its ID.`,
+		Example: `  # Delete a test case
   gotr cases delete 12345
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr cases delete 12345 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,7 +62,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Preview what will be deleted without actually deleting")
 
 	return cmd
 }

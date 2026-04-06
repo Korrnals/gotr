@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateGroupCmd создаёт команду 'configurations update-group'
-// Эндпоинт: POST /update_config_group/{group_id}
+// newUpdateGroupCmd creates the 'configurations update-group' command.
+// Endpoint: POST /update_config_group/{group_id}
 func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-group [group_id]",
@@ -40,7 +40,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations update-group [group_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations update-group [group_id]")
 				}
 

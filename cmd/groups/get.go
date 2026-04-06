@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'groups get'
-// Эндпоинт: GET /get_group/{group_id}
+// newGetCmd creates the 'groups get' command.
+// Endpoint: GET /get_group/{group_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [group_id]",

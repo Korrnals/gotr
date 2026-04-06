@@ -12,23 +12,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// deleteCmd — команда для удаления ресурсов
+// deleteCmd deletes resources via DELETE/POST requests.
 var deleteCmd = &cobra.Command{
 	Use:   "delete <endpoint> <id>",
-	Short: "Удалить ресурс (DELETE/POST-запрос)",
-	Long: `Удаляет существующий объект в TestRail.
+	Short: "Delete a resource (DELETE/POST request)",
+	Long: `Deletes an existing object in TestRail.
 
-Поддерживаемые эндпоинты:
-  project <id>       Удалить проект
-  suite <id>         Удалить сьют
-  section <id>       Удалить секцию
-  case <id>          Удалить тест-кейс
-  run <id>           Удалить тест-ран
-  shared-step <id>   Удалить shared step
-  milestone <id>     Удалить milestone
-  plan <id>          Удалить test plan
+Supported endpoints:
+  project <id>       Delete a project
+  suite <id>         Delete a suite
+  section <id>       Delete a section
+  case <id>          Delete a test case
+  run <id>           Delete a test run
+  shared-step <id>   Delete a shared step
+  milestone <id>     Delete a milestone
+  plan <id>          Delete a test plan
 
-Примеры:
+Examples:
   gotr delete project 1
   gotr delete case 12345
   gotr delete run 1000
@@ -39,8 +39,8 @@ Dry-run mode:
 }
 
 func init() {
-	deleteCmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
-	deleteCmd.Flags().Bool("soft", false, "Мягкое удаление (где поддерживается)")
+	deleteCmd.Flags().Bool("dry-run", false, "Show what would be executed without making changes")
+	deleteCmd.Flags().Bool("soft", false, "Soft delete (where supported)")
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
@@ -74,14 +74,14 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Проверяем dry-run режим
+	// Check dry-run mode
 	isDryRun, _ := cmd.Flags().GetBool("dry-run")
 	if isDryRun {
 		dr := output.NewDryRunPrinter("delete " + endpoint)
 		return runDeleteDryRun(dr, endpoint, id)
 	}
 
-	// Маршрутизация по endpoint
+	// Route by endpoint
 	switch endpoint {
 	case "project":
 		return cli.DeleteProject(ctx, id)
@@ -94,7 +94,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	case "run":
 		return cli.DeleteRun(ctx, id)
 	case "shared-step":
-		// Для shared step есть специальный флаг keep_in_cases
+		// Shared step has a special keep_in_cases flag
 		return cli.DeleteSharedStep(ctx, id, 0)
 	default:
 		return fmt.Errorf("unsupported endpoint: %s", endpoint)
@@ -228,7 +228,7 @@ func selectSharedStepID(p interactive.Prompter, steps data.GetSharedStepsRespons
 	return steps[idx].ID, nil
 }
 
-// runDeleteDryRun выполняет dry-run для delete команды
+// runDeleteDryRun performs a dry-run for the delete command.
 func runDeleteDryRun(dr *output.DryRunPrinter, endpoint string, id int64) error {
 	var method, url string
 

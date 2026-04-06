@@ -2,13 +2,164 @@ package interactive
 
 import (
 	"context"
+	"errors"
 	"testing"
 
+	"github.com/AlecAivazis/survey/v2"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTerminalPrompter_Input(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "typed"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	got, err := tp.Input("msg", "default")
+	require.NoError(t, err)
+	assert.Equal(t, "typed", got)
+}
+
+func TestTerminalPrompter_Confirm(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*bool)
+		require.True(t, ok)
+		*out = true
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	got, err := tp.Confirm("confirm?", false)
+	require.NoError(t, err)
+	assert.True(t, got)
+}
+
+func TestTerminalPrompter_MultilineInput(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "line1\nline2"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	got, err := tp.MultilineInput("body", "")
+	require.NoError(t, err)
+	assert.Equal(t, "line1\nline2", got)
+}
+
+func TestTerminalPrompter_InputError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, err := tp.Input("msg", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get input")
+}
+
+func TestTerminalPrompter_Select_EmptyOptions(t *testing.T) {
+	tp := &TerminalPrompter{}
+	_, _, err := tp.Select("pick", []string{})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "select options list is empty")
+}
+
+func TestTerminalPrompter_Select_AskError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, _, err := tp.Select("pick", []string{"a", "b"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select option")
+}
+
+func TestTerminalPrompter_Select_Success(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "b"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	idx, value, err := tp.Select("pick", []string{"a", "b", "c"})
+	require.NoError(t, err)
+	assert.Equal(t, 1, idx)
+	assert.Equal(t, "b", value)
+}
+
+func TestTerminalPrompter_Select_SelectedNotInList(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		out, ok := response.(*string)
+		require.True(t, ok)
+		*out = "c"
+		return nil
+	}
+
+	tp := &TerminalPrompter{}
+	_, _, err := tp.Select("pick", []string{"a", "b"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "selected option is not in list")
+}
+
+func TestTerminalPrompter_ConfirmError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, err := tp.Confirm("confirm?", true)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get confirmation")
+}
+
+func TestTerminalPrompter_MultilineInputError(t *testing.T) {
+	original := surveyAskOne
+	defer func() { surveyAskOne = original }()
+
+	surveyAskOne = func(p survey.Prompt, response interface{}, opts ...survey.AskOpt) error {
+		return errors.New("ask failed")
+	}
+
+	tp := &TerminalPrompter{}
+	_, err := tp.MultilineInput("body", "")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get multiline input")
+}
 
 func TestPrompterFromContext_Default(t *testing.T) {
 	p := PrompterFromContext(context.Background())
@@ -40,6 +191,17 @@ func TestHasPrompterInContext(t *testing.T) {
 	assert.True(t, HasPrompterInContext(ctx))
 }
 
+func TestIsNonInteractive(t *testing.T) {
+	assert.False(t, IsNonInteractive(nil))
+	assert.False(t, IsNonInteractive(context.Background()))
+
+	ctxInteractive := WithPrompter(context.Background(), NewMockPrompter())
+	assert.False(t, IsNonInteractive(ctxInteractive))
+
+	ctxNonInteractive := WithPrompter(context.Background(), NewNonInteractivePrompter())
+	assert.True(t, IsNonInteractive(ctxNonInteractive))
+}
+
 func TestNonInteractivePrompter_AllMethods(t *testing.T) {
 	p := NewNonInteractivePrompter()
 
@@ -54,6 +216,11 @@ func TestNonInteractivePrompter_AllMethods(t *testing.T) {
 
 	_, _, err = p.Select("select", []string{"a", "b"})
 	assert.ErrorIs(t, err, ErrNonInteractive)
+}
+
+func TestPrompterConstructors(t *testing.T) {
+	assert.IsType(t, &TerminalPrompter{}, NewTerminalPrompter())
+	assert.IsType(t, &NonInteractivePrompter{}, NewNonInteractivePrompter())
 }
 
 func TestMockPrompter_Queues(t *testing.T) {
@@ -84,6 +251,37 @@ func TestMockPrompter_ExhaustedQueue(t *testing.T) {
 	m := NewMockPrompter()
 	_, err := m.Input("msg", "")
 	assert.Error(t, err)
+}
+
+func TestMockPrompter_Select_Branches(t *testing.T) {
+	t.Run("explicit value", func(t *testing.T) {
+		m := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Value: "manual"})
+		idx, value, err := m.Select("select", []string{"x", "y"})
+		require.NoError(t, err)
+		assert.Equal(t, 0, idx)
+		assert.Equal(t, "manual", value)
+	})
+
+	t.Run("empty options", func(t *testing.T) {
+		m := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		_, _, err := m.Select("select", []string{})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "select options list is empty")
+	})
+
+	t.Run("index out of range", func(t *testing.T) {
+		m := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 5})
+		_, _, err := m.Select("select", []string{"x"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "mock select index out of range")
+	})
+
+	t.Run("select queue exhausted", func(t *testing.T) {
+		m := NewMockPrompter()
+		_, _, err := m.Select("select", []string{"x"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "mock select queue exhausted")
+	})
 }
 
 func TestSelectProject_WithMockPrompter(t *testing.T) {

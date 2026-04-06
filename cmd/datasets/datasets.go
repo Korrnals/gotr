@@ -1,4 +1,4 @@
-// Package datasets реализует CLI команды для работы с датасетами TestRail
+// Package datasets implements CLI commands for managing TestRail datasets.
 package datasets
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is a function type for obtaining the API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с датасетами
+// Register registers all dataset management subcommands.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	datasetsCmd := &cobra.Command{
 		Use:   "datasets",
@@ -32,7 +32,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • delete — удалить датасет`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	datasetsCmd.AddCommand(newListCmd(getClient))
 	datasetsCmd.AddCommand(newGetCmd(getClient))
 	datasetsCmd.AddCommand(newAddCmd(getClient))

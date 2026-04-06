@@ -9,8 +9,8 @@
 // Usage:
 //
 //	d := ui.New()
-//	d.SetHeader("Параллельная загрузка данных")
-//	t := d.AddTask("Проект 30 (10 сьютов)", 10)
+//	d.SetHeader("Parallel data loading")
+//	t := d.AddTask("Project 30 (10 suites)", 10)
 //	// t implements parallel.ProgressReporter — pass as config.Reporter
 //	t.OnCasesReceived(250)  // cases from page
 //	t.OnPageFetched()       // page done
@@ -19,8 +19,8 @@
 //
 // Static helpers for one-time messages:
 //
-//	ui.Info(os.Stderr, "Загрузка структуры проектов...")
-//	ui.Success(os.Stderr, "Готово")
+//	ui.Info(os.Stderr, "Loading project structure...")
+//	ui.Success(os.Stderr, "Done")
 package ui
 
 import (

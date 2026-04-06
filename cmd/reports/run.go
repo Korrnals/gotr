@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newRunCmd создаёт команду 'reports run'
-// Эндпоинт: GET /run_report/{template_id}
+// newRunCmd creates the 'reports run' command.
+// Endpoint: GET /run_report/{template_id}
 func newRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [template_id]",
@@ -43,7 +43,7 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run [template_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run [template_id]")
 				}
 

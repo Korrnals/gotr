@@ -20,16 +20,12 @@ const (
 	PriorityMedium Priority = 2
 	// PriorityHigh for large suites (> 1000 cases)
 	PriorityHigh Priority = 3
-)
 
-// PriorityThresholds define suite size thresholds for priority assignment
-var PriorityThresholds = struct {
-	High   int // Suites larger than this get High priority
-	Medium int // Suites larger than this get Medium priority
-}{
-	High:   1000,
-	Medium: 100,
-}
+	// priorityThresholdHigh is a read-only threshold for high-priority suites.
+	priorityThresholdHigh = 1000
+	// priorityThresholdMedium is a read-only threshold for medium-priority suites.
+	priorityThresholdMedium = 100
+)
 
 // SuiteTask represents a unit of work for fetching cases from a suite
 type SuiteTask struct {
@@ -41,9 +37,9 @@ type SuiteTask struct {
 // GetPriority returns the priority based on estimated size
 func (st SuiteTask) GetPriority() Priority {
 	switch {
-	case st.EstimatedSize >= PriorityThresholds.High:
+	case st.EstimatedSize >= priorityThresholdHigh:
 		return PriorityHigh
-	case st.EstimatedSize >= PriorityThresholds.Medium:
+	case st.EstimatedSize >= priorityThresholdMedium:
 		return PriorityMedium
 	default:
 		return PriorityLow
@@ -137,11 +133,6 @@ type ControllerConfig struct {
 	Timeout time.Duration
 	// PageSize is the number of items per page request (default: 250)
 	PageSize int
-	// PriorityThresholds override default priority thresholds
-	PriorityThresholds *struct {
-		High   int
-		Medium int
-	}
 	// Reporter receives fine-grained progress updates (optional).
 	// Typically a *ui.Task that implements PaginatedProgressReporter.
 	Reporter PaginatedProgressReporter

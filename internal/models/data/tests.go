@@ -3,8 +3,8 @@ package data
 
 import "encoding/json"
 
-// Test — тест (конкретный тест-кейс в рамках тест-run)
-// Соответствует документации TestRail API v2
+// Test represents a test (a specific test case within a test run).
+// Corresponds to TestRail API v2 documentation.
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests
 type Test struct {
 	ID               int64           `json:"id"`                          // The unique ID of the test
@@ -22,17 +22,17 @@ type Test struct {
 	CustomFields     json.RawMessage `json:"custom_fields,omitempty"`     // Custom fields from the test case
 }
 
-// GetTestsResponse — ответ на get_tests (массив тестов)
+// GetTestsResponse is the response for get_tests (array of tests).
 type GetTestsResponse []Test
 
-// GetTestResponse — ответ на get_test (один тест)
+// GetTestResponse is the response for get_test (a single test).
 type GetTestResponse Test
 
-// Request структуры для Tests API
+// Request structs for Tests API
 
-// UpdateTestRequest — запрос для update_test
+// UpdateTestRequest is the request for update_test.
 // https://support.testrail.com/hc/en-us/articles/7077723946004-Tests#updatetest
-// Позволяет изменить статус и назначение test
+// Allows changing the test status and assignee.
 type UpdateTestRequest struct {
 	StatusID   int64 `json:"status_id,omitempty"`     // The ID of the test status
 	AssignedTo int64 `json:"assignedto_id,omitempty"` // The ID of the user to assign the test to

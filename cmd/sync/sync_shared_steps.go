@@ -44,14 +44,14 @@ var sharedStepsCmd = &cobra.Command{
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
-		quiet := isQuiet(cmd)
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
 
-		// Интерактивный выбор source проекта
+		// Interactive source project selection
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy shared steps from):")
 			if err != nil {
@@ -59,9 +59,9 @@ var sharedStepsCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор source сьюта (опционально, можно 0)
+		// Interactive source suite selection (optional, can be 0)
 		if srcSuite == 0 {
-			// Спрашиваем нужен ли suite
+			// Ask if suite is needed
 			specifySuite, err := p.Confirm("Specify source suite?", false)
 			if err != nil {
 				return err
@@ -74,7 +74,7 @@ var sharedStepsCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор destination проекта
+		// Interactive destination project selection
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy shared steps to):")
 			if err != nil {
@@ -82,12 +82,12 @@ var sharedStepsCmd = &cobra.Command{
 			}
 		}
 
-		// Директория для логов и инициализация миграции
+		// Log directory and migration initialization
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
 			return err
 		}
-		// Шаг 1) Инициализация объекта миграции (логирование, client, параметры)
+		// Step 1) Initialize migration object (logging, client, parameters)
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, 0, compareField, logDir)
 		if err != nil {
 			return err
@@ -120,7 +120,7 @@ var sharedStepsCmd = &cobra.Command{
 		sourceSteps := loadedSteps.Source
 		targetSteps := loadedSteps.Target
 
-		// Шаг 2) Получение кейсов source для определения использования shared steps
+		// Step 2) Fetch source cases to determine shared steps usage
 		op.Phase("Loading source cases")
 		sourceCases, err := runSyncStatus(ctx, "Loading source cases...", quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
 			return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
@@ -133,7 +133,7 @@ var sharedStepsCmd = &cobra.Command{
 			caseIDsSet[c.ID] = struct{}{}
 		}
 
-		// Шаг 3) Фильтрация кандидатов (исключаем используемые и дубликаты)
+		// Step 3) Filter candidates (exclude used and duplicates)
 		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
 		if err != nil {
 			return err
@@ -151,7 +151,7 @@ var sharedStepsCmd = &cobra.Command{
 			return nil
 		}
 
-		// Шаг 4) Confirm import of
+		// Step 4) Confirm import
 		op.Phase("Awaiting confirmation")
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d shared steps...", len(filtered))
@@ -165,7 +165,7 @@ var sharedStepsCmd = &cobra.Command{
 			}
 		}
 
-		// Шаг 5) Импорт
+		// Step 5) Import
 		op.Phase("Importing shared steps")
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSharedSteps(ctx, filtered, false)
@@ -174,7 +174,7 @@ var sharedStepsCmd = &cobra.Command{
 			return err
 		}
 
-		// Шаг 6) Сохранение mapping/filtered при запросе
+		// Step 6) Save mapping/filtered if requested
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
@@ -185,11 +185,11 @@ var sharedStepsCmd = &cobra.Command{
 		}
 
 		if autoSaveFiltered {
-			// Сохранение filtered
+			// Save filtered list
 		} else if len(filtered) > 0 {
 			ok, err := p.Confirm("Save filtered shared steps?", false)
 			if err == nil && ok {
-				// Сохранение
+				// Save
 			}
 		}
 

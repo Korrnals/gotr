@@ -81,6 +81,49 @@ func TestParallelMap_EmptySlice(t *testing.T) {
 	assert.Nil(t, results)
 }
 
+func TestParallelMap_PreservesItemErrors(t *testing.T) {
+	items := []int{1, 2, 3}
+
+	results, err := ParallelMap(items, 2, func(item, index int) (int, error) {
+		if item == 2 {
+			return 0, errors.New("item error")
+		}
+		return item * 10, nil
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, results, 3)
+	assert.NoError(t, results[0].Error)
+	assert.Error(t, results[1].Error)
+	assert.Equal(t, 0, results[1].Data)
+	assert.NoError(t, results[2].Error)
+}
+
+func TestParallelMap_DefaultMaxWorkers(t *testing.T) {
+	items := []int{1, 2, 3, 4}
+	results, err := ParallelMap(items, 0, func(item, index int) (int, error) {
+		return item + index, nil
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, results, len(items))
+}
+
+func TestParallelMap_NegativeMaxWorkers(t *testing.T) {
+	items := []int{1, 2, 3, 4}
+	results, err := ParallelMap(items, -3, func(item, index int) (int, error) {
+		return item * 3, nil
+	})
+
+	assert.NoError(t, err)
+	assert.Len(t, results, len(items))
+	for i, result := range results {
+		assert.NoError(t, result.Error)
+		assert.Equal(t, i, result.Index)
+		assert.Equal(t, items[i]*3, result.Data)
+	}
+}
+
 func TestParallelForEach(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
 	var counter int32
@@ -107,6 +150,30 @@ func TestParallelForEach_WithError(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "test error")
+}
+
+func TestParallelForEach_EmptySlice(t *testing.T) {
+	called := false
+	err := ParallelForEach([]int{}, 3, func(item, index int) error {
+		called = true
+		return nil
+	})
+
+	assert.NoError(t, err)
+	assert.False(t, called)
+}
+
+func TestParallelForEach_DefaultMaxWorkers(t *testing.T) {
+	items := []int{1, 2, 3, 4, 5}
+	var counter int32
+
+	err := ParallelForEach(items, 0, func(item, index int) error {
+		atomic.AddInt32(&counter, 1)
+		return nil
+	})
+
+	assert.NoError(t, err)
+	assert.Equal(t, int32(len(items)), counter)
 }
 
 func TestBatchProcessor_Process(t *testing.T) {
@@ -178,4 +245,39 @@ func TestBatchProcessor_EmptySlice(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.False(t, called)
+}
+
+// ---------------------------------------------------------------------------
+// WithProgressMonitor and Context (previously 0% coverage)
+// ---------------------------------------------------------------------------
+
+type mockMonitor struct{ count atomic.Int32 }
+
+func (m *mockMonitor) Increment() { m.count.Add(1) }
+
+func TestWithProgressMonitor(t *testing.T) {
+	mon := &mockMonitor{}
+	pool := NewWorkerPool(
+		WithMaxWorkers(2),
+		WithProgressMonitor(mon),
+	)
+	// Submit two tasks; monitor.Increment() is called after each
+	for i := 0; i < 3; i++ {
+		pool.Submit(func() error { return nil })
+	}
+	err := pool.Wait()
+	assert.NoError(t, err)
+	assert.Equal(t, int32(3), mon.count.Load())
+}
+
+func TestWorkerPool_Context(t *testing.T) {
+	pool := NewWorkerPool(WithMaxWorkers(1))
+	ctx := pool.Context()
+	// Should be a non-nil, non-cancelled context at this point
+	assert.NotNil(t, ctx)
+	select {
+	case <-ctx.Done():
+		t.Error("context should not be done yet")
+	default:
+	}
 }

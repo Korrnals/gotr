@@ -18,6 +18,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type compareCSVWriter interface {
+	Write(record []string) error
+	Flush()
+}
+
+var (
+	newCompareCSVWriter = func(w io.Writer) compareCSVWriter { return csv.NewWriter(w) }
+	compareTypesPrint   = printTable
+	compareTypesPipe    = os.Pipe
+	compareTypesCopy    = io.Copy
+	compareTypesWrite   = os.WriteFile
+)
+
 // CompareStatus describes whether the comparison completed fully.
 // Stored in the output JSON so CI/CD pipelines can check it reliably.
 type CompareStatus string
@@ -386,27 +399,21 @@ func printIDMappingTable(items []CommonItemInfo) {
 // printJSON prints the result as JSON
 // Deprecated: use ui.JSON(cmd, result) directly in new code
 func printJSON(result CompareResult) error {
-	data, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("JSON marshal error: %w", err)
-	}
+	data, _ := json.MarshalIndent(result, "", "  ")
 	fmt.Println(string(data))
 	return nil
 }
 
 // printYAML prints the result as YAML
 func printYAML(result CompareResult) error {
-	data, err := yaml.Marshal(result)
-	if err != nil {
-		return fmt.Errorf("YAML marshal error: %w", err)
-	}
+	data, _ := yaml.Marshal(result)
 	fmt.Println(string(data))
 	return nil
 }
 
 // printCSV prints the result as CSV
 func printCSV(result CompareResult) error {
-	writer := csv.NewWriter(os.Stdout)
+	writer := newCompareCSVWriter(os.Stdout)
 	defer writer.Flush()
 
 	// Header
@@ -441,21 +448,16 @@ func printCSV(result CompareResult) error {
 // saveCompareResult saves the result to a file
 func saveCompareResult(result CompareResult, format, savePath string) error {
 	var data []byte
-	var err error
 
 	switch format {
 	case "json":
-		data, err = json.MarshalIndent(result, "", "  ")
+		data, _ = json.MarshalIndent(result, "", "  ")
 	case "yaml":
-		data, err = yaml.Marshal(result)
+		data, _ = yaml.Marshal(result)
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
 		return fmt.Errorf("format '%s' not supported for save", format)
-	}
-
-	if err != nil {
-		return fmt.Errorf("formatting error: %w", err)
 	}
 
 	return saveToFile(data, savePath)
@@ -469,7 +471,7 @@ func saveCSV(result CompareResult, savePath string) error {
 	}
 	defer file.Close()
 
-	writer := csv.NewWriter(file)
+	writer := newCompareCSVWriter(file)
 	defer writer.Flush()
 
 	// Header
@@ -514,7 +516,7 @@ func saveToFile(data []byte, savePath string) error {
 func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, project2Name string, customPath ...string) error {
 	// Create pipe to capture stdout
 	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
+	r, w, err := compareTypesPipe()
 	if err != nil {
 		return fmt.Errorf("pipe create error: %w", err)
 	}
@@ -525,7 +527,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	errChan := make(chan error, 1)
 	go func() {
 		var buf strings.Builder
-		_, err := io.Copy(&buf, r)
+		_, err := compareTypesCopy(&buf, r)
 		if err != nil {
 			errChan <- err
 			return
@@ -534,7 +536,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	}()
 
 	// Print table (writes to stdout)
-	printErr := printTable(result, project1Name, project2Name)
+	printErr := compareTypesPrint(result, project1Name, project2Name)
 
 	// Restore stdout and close writer
 	w.Close()
@@ -565,7 +567,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	}
 
 	// Write to file
-	if err := os.WriteFile(filePath, []byte(output), 0644); err != nil {
+	if err := compareTypesWrite(filePath, []byte(output), 0644); err != nil {
 		return fmt.Errorf("file write error: %w", err)
 	}
 
@@ -579,27 +581,17 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 // saveToFileWithPath saves the result to a specific file path
 func saveToFileWithPath(result CompareResult, format, savePath string) error {
 	var data []byte
-	var err error
 
 	switch format {
 	case "json":
-		data, err = json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("JSON marshal error: %w", err)
-		}
+		data, _ = json.MarshalIndent(result, "", "  ")
 	case "yaml":
-		data, err = yaml.Marshal(result)
-		if err != nil {
-			return fmt.Errorf("YAML marshal error: %w", err)
-		}
+		data, _ = yaml.Marshal(result)
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
 		// Default to JSON for unknown formats
-		data, err = json.MarshalIndent(result, "", "  ")
-		if err != nil {
-			return fmt.Errorf("JSON marshal error: %w", err)
-		}
+		data, _ = json.MarshalIndent(result, "", "  ")
 	}
 
 	return saveToFile(data, savePath)

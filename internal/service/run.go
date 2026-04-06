@@ -1,5 +1,5 @@
 // internal/service/run.go
-// Сервис для работы с test runs
+// Service for working with test runs.
 package service
 
 import (
@@ -16,7 +16,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// runClientInterface определяет методы клиента, необходимые для RunService
+// runClientInterface defines the client methods required by RunService.
 type runClientInterface interface {
 	GetRun(ctx context.Context, runID int64) (*data.Run, error)
 	GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error)
@@ -26,22 +26,22 @@ type runClientInterface interface {
 	DeleteRun(ctx context.Context, runID int64) error
 }
 
-// RunService предоставляет методы для работы с test runs
+// RunService provides methods for working with test runs.
 type RunService struct {
 	client runClientInterface
 }
 
-// NewRunService создаёт новый сервис для работы с runs
+// NewRunService creates a new service for working with test runs.
 func NewRunService(client *client.HTTPClient) *RunService {
 	return &RunService{client: client}
 }
 
-// NewRunServiceFromInterface создаёт сервис из клиента-интерфейса (для тестов)
+// NewRunServiceFromInterface creates a service from a client interface (for testing).
 func NewRunServiceFromInterface(cli client.ClientInterface) *RunService {
 	return &RunService{client: cli}
 }
 
-// Get получает информацию о test run по ID
+// Get retrieves information about a test run by ID.
 func (s *RunService) Get(ctx context.Context, runID int64) (*data.Run, error) {
 	if err := s.validateID(runID, "run_id"); err != nil {
 		return nil, err
@@ -49,7 +49,7 @@ func (s *RunService) Get(ctx context.Context, runID int64) (*data.Run, error) {
 	return s.client.GetRun(ctx, runID)
 }
 
-// GetByProject получает список runs for project
+// GetByProject retrieves the list of runs for a project.
 func (s *RunService) GetByProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	if err := s.validateID(projectID, "project_id"); err != nil {
 		return nil, err
@@ -57,12 +57,19 @@ func (s *RunService) GetByProject(ctx context.Context, projectID int64) (data.Ge
 	return s.client.GetRuns(ctx, projectID)
 }
 
-// Create создаёт новый test run с валидацией параметров
+// Create creates a new test run with parameter validation.
 func (s *RunService) Create(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+	var name string
+	var suiteID int64
+	if req != nil {
+		name = req.Name
+		suiteID = req.SuiteID
+	}
+
 	log.L().Info("creating test run",
 		zap.Int64("project_id", projectID),
-		zap.String("name", req.Name),
-		zap.Int64("suite_id", req.SuiteID),
+		zap.String("name", name),
+		zap.Int64("suite_id", suiteID),
 	)
 
 	if err := s.validateID(projectID, "project_id"); err != nil {
@@ -88,7 +95,7 @@ func (s *RunService) Create(ctx context.Context, projectID int64, req *data.AddR
 	return run, nil
 }
 
-// Update обновляет существующий test run с валидацией
+// Update updates an existing test run with validation.
 func (s *RunService) Update(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 	log.L().Info("updating test run", zap.Int64("run_id", runID))
 
@@ -110,7 +117,7 @@ func (s *RunService) Update(ctx context.Context, runID int64, req *data.UpdateRu
 	return run, nil
 }
 
-// Close закрывает test run с валидацией ID
+// Close closes a test run with ID validation.
 func (s *RunService) Close(ctx context.Context, runID int64) (*data.Run, error) {
 	log.L().Info("closing test run", zap.Int64("run_id", runID))
 
@@ -132,7 +139,7 @@ func (s *RunService) Close(ctx context.Context, runID int64) (*data.Run, error) 
 	return run, nil
 }
 
-// Delete удаляет test run с валидацией ID
+// Delete deletes a test run with ID validation.
 func (s *RunService) Delete(ctx context.Context, runID int64) error {
 	log.L().Warn("deleting test run", zap.Int64("run_id", runID))
 
@@ -150,17 +157,17 @@ func (s *RunService) Delete(ctx context.Context, runID int64) error {
 	return nil
 }
 
-// Output выводит результат в JSON и сохраняет в файл (если указан --output)
+// Output renders the result as JSON and saves to a file (if --output is set).
 func (s *RunService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return output.OutputResultWithFlags(cmd, data)
 }
 
-// PrintSuccess выводит сообщение об успехе
+// PrintSuccess prints a success message.
 func (s *RunService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	output.PrintSuccess(cmd, format, args...)
 }
 
-// ParseID парсит ID из аргументов команды
+// ParseID parses an ID from command arguments.
 func (s *RunService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
 		return 0, fmt.Errorf("missing ID argument at position %d", index)
@@ -168,7 +175,7 @@ func (s *RunService) ParseID(ctx context.Context, args []string, index int) (int
 	return strconv.ParseInt(args[index], 10, 64)
 }
 
-// validateID проверяет что ID положительный
+// validateID checks that the ID is a positive number.
 func (s *RunService) validateID(id int64, fieldName string) error {
 	if id <= 0 {
 		return fmt.Errorf("%s must be a positive number, got: %d", fieldName, id)
@@ -176,7 +183,7 @@ func (s *RunService) validateID(id int64, fieldName string) error {
 	return nil
 }
 
-// validateCreateRequest валидирует параметры создания run
+// validateCreateRequest validates the parameters for creating a run.
 func (s *RunService) validateCreateRequest(req *data.AddRunRequest) error {
 	if req == nil {
 		return errors.New("запрос не может быть nil")

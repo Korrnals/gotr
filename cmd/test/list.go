@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду для получения списка тестов
+// newListCmd creates the command for listing tests.
 func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [run-id]",
@@ -57,7 +57,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
 				}
 				runID, err = resolveRunIDInteractive(ctx, httpClient)
@@ -66,7 +66,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				}
 			}
 
-			// Собираем фильтры
+			// Collect filters
 			filters := make(map[string]string)
 
 			if cmd.Flags().Changed("status-id") {
@@ -84,7 +84,7 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				return fmt.Errorf("failed to get test list: %w", err)
 			}
 
-			// Проверяем нужно ли сохранить в файл
+			// Check if output should be saved to file
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
 				filepath, err := output.Output(cmd, tests, "test", "json")
@@ -102,7 +102,6 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 	}
 
 	output.AddFlag(cmd)
-	cmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
 	cmd.Flags().Int64("status-id", 0, "Фильтр по ID статуса")
 	cmd.Flags().Int64("assigned-to", 0, "Фильтр по ID назначенного пользователя")
 

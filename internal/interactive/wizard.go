@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-// ProjectAnswers содержит ответы для создания/обновления проекта
+// ProjectAnswers holds answers for creating/updating a project.
 type ProjectAnswers struct {
 	Name             string
 	Announcement     string
@@ -13,14 +13,14 @@ type ProjectAnswers struct {
 	IsCompleted      bool
 }
 
-// SuiteAnswers содержит ответы для создания/обновления сьюта
+// SuiteAnswers holds answers for creating/updating a suite.
 type SuiteAnswers struct {
 	Name        string
 	Description string
 	IsCompleted bool
 }
 
-// CaseAnswers содержит ответы для создания/обновления case
+// CaseAnswers holds answers for creating/updating a test case.
 type CaseAnswers struct {
 	Title      string
 	SectionID  int64
@@ -29,7 +29,7 @@ type CaseAnswers struct {
 	Refs       string
 }
 
-// RunAnswers содержит ответы для создания/обновления run
+// RunAnswers holds answers for creating/updating a test run.
 type RunAnswers struct {
 	Name        string
 	Description string
@@ -120,7 +120,7 @@ func AskCaseWithPrompter(p Prompter, isUpdate bool) (*CaseAnswers, error) {
 	}
 	answers.Title = title
 
-	// Тип case
+	// Case type selection
 	typeIDs := []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 	typeOptions := []string{
 		"1 - Acceptance",
@@ -142,7 +142,7 @@ func AskCaseWithPrompter(p Prompter, isUpdate bool) (*CaseAnswers, error) {
 	}
 	answers.TypeID = typeIDs[typeIdx]
 
-	// Приоритет
+	// Priority selection
 	priorityIDs := []int64{1, 2, 3, 4}
 	priorityOptions := []string{
 		"1 - Critical",

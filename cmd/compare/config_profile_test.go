@@ -8,6 +8,50 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDeriveRateLimitByProfile(t *testing.T) {
+	t.Run("server without explicit setting returns zero", func(t *testing.T) {
+		viper.Reset()
+		t.Cleanup(viper.Reset)
+
+		rate := deriveRateLimitByProfile("server", "professional")
+		assert.Equal(t, 0, rate)
+	})
+
+	t.Run("server with explicit setting returns configured value", func(t *testing.T) {
+		viper.Reset()
+		t.Cleanup(viper.Reset)
+
+		viper.Set("compare.server_rate_limit", 77)
+		rate := deriveRateLimitByProfile("server", "professional")
+		assert.Equal(t, 77, rate)
+	})
+
+	t.Run("cloud with explicit cloud rate returns configured value", func(t *testing.T) {
+		viper.Reset()
+		t.Cleanup(viper.Reset)
+
+		viper.Set("compare.cloud_rate_limit", 245)
+		rate := deriveRateLimitByProfile("cloud", "enterprise")
+		assert.Equal(t, 245, rate)
+	})
+
+	t.Run("cloud enterprise without explicit cloud rate uses default 300", func(t *testing.T) {
+		viper.Reset()
+		t.Cleanup(viper.Reset)
+
+		rate := deriveRateLimitByProfile("cloud", "enterprise")
+		assert.Equal(t, 300, rate)
+	})
+
+	t.Run("cloud non-enterprise without explicit cloud rate uses default 180", func(t *testing.T) {
+		viper.Reset()
+		t.Cleanup(viper.Reset)
+
+		rate := deriveRateLimitByProfile("cloud", "professional")
+		assert.Equal(t, 180, rate)
+	})
+}
+
 func TestResolveCompareCasesRuntimeConfig_ConfigOnly(t *testing.T) {
 	viper.Reset()
 	t.Cleanup(viper.Reset)
@@ -99,3 +143,5 @@ func TestResolveCompareCasesRuntimeConfig_InvalidDurations(t *testing.T) {
 	_, err = resolveCompareCasesRuntimeConfig(nil, "https://team.testrail.io")
 	assert.Error(t, err)
 }
+
+

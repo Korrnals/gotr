@@ -17,7 +17,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// Эндпоинты: GET /get_users, GET /get_users/{project_id}
+// newListCmd creates the 'users list' command.
+// Endpoints: GET /get_users, GET /get_users/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",

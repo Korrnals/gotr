@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'datasets add'
-// Эндпоинт: POST /add_dataset/{project_id}
+// newAddCmd creates the 'datasets add' command.
+// Endpoint: POST /add_dataset/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [project_id]",

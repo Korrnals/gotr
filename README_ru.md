@@ -1,4 +1,6 @@
-```
+# gotr — CLI-клиент для TestRail API
+
+```text
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
 ║     ██████╗  ██████╗ ████████╗██████╗                    ║
@@ -13,17 +15,15 @@
 ╚══════════════════════════════════════════════════════════╝
 ```
 
-# gotr — CLI-клиент для TestRail API
-
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.8.0-blue.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Профессиональный инструмент командной строки для работы с TestRail API v2. Разработан для QA-инженеров и специалистов по автоматизации тестирования, которым требуется эффективное управление данными, возможности миграции и бесшовная интеграция с CI/CD.
 
-> **Актуальная версия: v2.8.0** — Stage 6.8 завершён: унификация concurrency, generic compare-подкоманды, пакет `internal/concurrency/`. См. [CHANGELOG](CHANGELOG.md)
+> **Актуальная версия: v3.0.0** — Stage 13 завершён: финальный рефакторинг, полное покрытие API, архитектурная чистка. См. [CHANGELOG](CHANGELOG.md)
 
 ## Обзор
 
@@ -36,6 +36,21 @@
 - **Встроенная обработка** — Фильтрация JSON через встроенный `jq`, отслеживание прогресса и структурированное логирование
 - **Прогресс в реальном времени** — Визуальные прогресс-бары с обновлением через каналы для параллельных операций
 - **Гибкая конфигурация** — Поддержка флагов, переменных окружения и конфигурационных файлов
+
+## Навигация
+
+- [Документация](docs/index.md)
+  - [Гайды](docs/ru/guides/index.md)
+    - [Установка](docs/ru/guides/installation.md)
+    - [Конфигурация](docs/ru/guides/configuration.md)
+    - [Интерактивный режим](docs/ru/guides/interactive-mode.md)
+    - [Прогресс](docs/ru/guides/progress.md)
+    - [Каталог команд](docs/ru/guides/commands/index.md)
+      - [Группы команд](docs/ru/guides/commands/index.md#группы-команд-и-подгруппы)
+  - [Архитектура](docs/ru/architecture/index.md)
+  - [Эксплуатация](docs/ru/operations/index.md)
+  - [Отчёты](docs/ru/reports/index.md)
+- [Главная](README_ru.md)
 
 ## Быстрый старт
 
@@ -175,18 +190,9 @@ gotr config init
 gotr config view
 ```
 
-## Документация
-
-- [Руководство по установке](docs/installation.md)
-- [Конфигурация](docs/configuration.md)
-- [Команды GET](docs/get-commands.md)
-- [Команды SYNC](docs/sync-commands.md)
-- [Интерактивный режим](docs/interactive-mode.md)
-- [Мониторинг прогресса](docs/progress.md) — Универсальная система прогресса для длительных операций (EN)
-
 ## Структура проекта
 
-```
+```text
 gotr/
 ├── cmd/              # CLI команды (get, sync, run, result)
 ├── docs/             # Документация
@@ -198,37 +204,11 @@ gotr/
 └── main.go           # Точка входа
 ```
 
-## Что нового в v2.7.0 (Этап 4 завершён)
-
-### Полное покрытие API
-
-Реализованы все 106 endpoint'ов TestRail API v2:
-
-- **Tests API** (3 endpoint'а) — GetTest, GetTests, UpdateTest
-- **Milestones API** (5 endpoint'ов) — Полный CRUD для майлстоунов
-- **Plans API** (9 endpoint'ов) — Полный CRUD + управление plan entries
-- **Attachments API** (5 endpoint'ов) — Загрузка файлов к кейсам/планам/результатам/ранам
-- **Configurations API** (7 endpoint'ов) — Управление конфигурациями тестов
-- **Users & Reference** (7 endpoint'ов) — Пользователи, приоритеты, статусы, шаблоны
-- **Reports API** (3 endpoint'а) — Генерация и получение отчётов
-- **Extended APIs** (21 endpoint) — Группы, роли, датасеты, переменные, BDD, лейблы
-
-## Что нового в v2.5.0
-
-### Архитектурные улучшения
-- **Унифицированный клиентский интерфейс** — Единый `ClientInterface` во всех пакетах устраняет дублирование кода
-- **Расширенное покрытие тестами** — Все sync-тесты теперь используют мокирование на основе интерфейсов (10 новых тестов, 0 пропущенных)
-- **Рефакторинг общего пакета** — Устранено дублирование `getClientSafe` в пакетах команд
-
-### Интерактивные возможности
-- **Интерактивный выбор** — Визуальные пикеры для проектов и сьютов в `run list` и `result list`
-- **Упрощенный workflow** — Снижение трения для частых операций
-
 Подробная история изменений: [CHANGELOG](CHANGELOG.md)
 
 ## Установка
 
-Детальные инструкции по установке: [docs/installation.md](docs/installation.md)
+Детальные инструкции по установке: [docs/ru/guides/installation.md](docs/ru/guides/installation.md)
 
 ## Участие в проекте
 

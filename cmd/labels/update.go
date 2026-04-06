@@ -10,8 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateTestCmd создаёт команду 'labels update test'
-// Эндпоинт: POST /update_test/{test_id}
+// newUpdateTestCmd creates the 'labels update test' command.
+// Endpoint: POST /update_test/{test_id}
 func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test [test_id]",
@@ -73,8 +73,8 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// newUpdateTestsCmd создаёт команду 'labels update tests'
-// Эндпоинт: POST /update_tests/{run_id}
+// newUpdateTestsCmd creates the 'labels update tests' command.
+// Endpoint: POST /update_tests/{run_id}
 func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tests",
@@ -135,7 +135,7 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
-// parseLabels разбирает метки, разделённые запятыми
+// parseLabels splits a comma-separated string into a list of label names.
 func parseLabels(s string) []string {
 	var labels []string
 	for _, part := range strings.Split(s, ",") {
@@ -147,7 +147,7 @@ func parseLabels(s string) []string {
 	return labels
 }
 
-// parseIntList разбирает список чисел, разделённых запятыми
+// parseIntList splits a comma-separated string into a list of int64 IDs.
 func parseIntList(s string) []int64 {
 	var ids []int64
 	for _, part := range strings.Split(s, ",") {

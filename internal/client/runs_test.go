@@ -324,3 +324,181 @@ func TestDeleteRun(t *testing.T) {
 		})
 	}
 }
+
+func TestGetRun(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_run/12345", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.Run{ID: 12345, Name: "Smoke"})
+		})
+		defer server.Close()
+
+		run, err := client.GetRun(context.Background(), 12345)
+		assert.NoError(t, err)
+		assert.NotNil(t, run)
+		assert.Equal(t, int64(12345), run.ID)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		})
+		defer server.Close()
+
+		_, err := client.GetRun(context.Background(), 12345)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+}
+
+func TestGetRuns(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_runs/10")
+			assert.Equal(t, "0", r.URL.Query().Get("offset"))
+			assert.Equal(t, "250", r.URL.Query().Get("limit"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.GetRunsResponse{{ID: 1, Name: "run-1"}})
+		})
+		defer server.Close()
+
+		runs, err := client.GetRuns(context.Background(), 10)
+		assert.NoError(t, err)
+		assert.Len(t, runs, 1)
+		assert.Equal(t, int64(1), runs[0].ID)
+	})
+
+	t.Run("request error from API status", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Contains(t, r.URL.String(), "get_runs/10")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("boom"))
+		})
+		defer server.Close()
+
+		_, err := client.GetRuns(context.Background(), 10)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetRuns")
+	})
+}
+
+func TestRunsDecodeErrors(t *testing.T) {
+	t.Run("GetRun decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_run/101", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.GetRun(context.Background(), 101)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error run")
+	})
+
+	t.Run("AddRun decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_run/5", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.AddRun(context.Background(), 5, &data.AddRunRequest{Name: "run", SuiteID: 1})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error created run")
+	})
+
+	t.Run("UpdateRun decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/update_run/7", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.UpdateRun(context.Background(), 7, &data.UpdateRunRequest{Name: ptr("x")})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error updated run")
+	})
+
+	t.Run("CloseRun decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/close_run/7", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.CloseRun(context.Background(), 7)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error closed run")
+	})
+}
+
+func TestRuns_RequestErrors(t *testing.T) {
+	t.Run("GetRun request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.GetRun(context.Background(), 77)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetRun")
+	})
+
+	t.Run("AddRun request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.AddRun(context.Background(), 8, &data.AddRunRequest{Name: "n", SuiteID: 1})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error AddRun")
+	})
+
+	t.Run("UpdateRun request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.UpdateRun(context.Background(), 9, &data.UpdateRunRequest{Name: ptr("n")})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error UpdateRun")
+	})
+
+	t.Run("CloseRun request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.CloseRun(context.Background(), 10)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error CloseRun")
+	})
+
+	t.Run("DeleteRun request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		err := client.DeleteRun(context.Background(), 11)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error DeleteRun")
+	})
+}

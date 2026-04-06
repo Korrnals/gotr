@@ -65,6 +65,18 @@ func TestListCmd_DryRun(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestListCmd_DryRun_WithStatusFilter(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"100", "--status-id", "5", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
 func TestListCmd_InvalidRunID(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -132,6 +144,18 @@ func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestListCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "run_id is required in non-interactive mode")
+}
+
 func TestListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
 		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
@@ -181,4 +205,20 @@ func TestListCmd_EmptyList(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
+}
+
+func TestListCmd_ResolveInteractiveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects boom")
+		},
+	}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
 }

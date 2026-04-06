@@ -196,7 +196,10 @@ func fetchSectionsForProject(ctx context.Context, cli client.ClientInterface, pr
 	sections, err := cli.GetSectionsParallelCtx(ctx, projectID, suiteIDs, controllerConfig)
 	if err != nil {
 		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || ctx.Err() != nil {
-			return nil, ctx.Err()
+			if ctxErr := ctx.Err(); ctxErr != nil {
+				return nil, ctxErr
+			}
+			return nil, err
 		}
 		return nil, err
 	}

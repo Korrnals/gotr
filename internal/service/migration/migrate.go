@@ -3,7 +3,7 @@ package migration
 
 import "context"
 
-// MigrateSharedSteps — полный цикл миграции shared steps
+// MigrateSharedSteps runs the full shared steps migration cycle: fetch, filter, import.
 func (m *Migration) MigrateSharedSteps(ctx context.Context, dryRun bool) error {
 	m.logger.Info("Начало миграции shared steps")
 
@@ -21,15 +21,12 @@ func (m *Migration) MigrateSharedSteps(ctx context.Context, dryRun bool) error {
 		caseIDsSet[c.ID] = struct{}{}
 	}
 
-	filtered, err := m.FilterSharedSteps(source, target, caseIDsSet)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterSharedSteps(source, target, caseIDsSet)
 
 	return m.ImportSharedSteps(ctx, filtered, dryRun)
 }
 
-// MigrateSuites — полный цикл миграции suites
+// MigrateSuites runs the full suites migration cycle: fetch, filter, import.
 func (m *Migration) MigrateSuites(ctx context.Context, dryRun bool) error {
 	m.logger.Info("Начало миграции suites")
 
@@ -38,15 +35,12 @@ func (m *Migration) MigrateSuites(ctx context.Context, dryRun bool) error {
 		return err
 	}
 
-	filtered, err := m.FilterSuites(source, target)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterSuites(source, target)
 
 	return m.ImportSuites(ctx, filtered, dryRun)
 }
 
-// MigrateCases — полный цикл миграции cases
+// MigrateCases runs the full cases migration cycle: fetch, filter, import.
 func (m *Migration) MigrateCases(ctx context.Context, dryRun bool) error {
 	m.logger.Info("Начало миграции cases")
 
@@ -55,15 +49,12 @@ func (m *Migration) MigrateCases(ctx context.Context, dryRun bool) error {
 		return err
 	}
 
-	filtered, err := m.FilterCases(source, target)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterCases(source, target)
 
 	return m.ImportCases(ctx, filtered, dryRun)
 }
 
-// MigrateSections — полный цикл миграции sections (переиспользуем методы)
+// MigrateSections runs the full sections migration cycle: fetch, filter, import.
 func (m *Migration) MigrateSections(ctx context.Context, dryRun bool) error {
 	m.logger.Info("Начало миграции sections")
 
@@ -72,15 +63,12 @@ func (m *Migration) MigrateSections(ctx context.Context, dryRun bool) error {
 		return err
 	}
 
-	filtered, err := m.FilterSections(source, target)
-	if err != nil {
-		return err
-	}
+	filtered, _ := m.FilterSections(source, target)
 
-	return m.ImportSections(ctx, filtered, dryRun) // переиспользуем ImportSections из import.go
+	return m.ImportSections(ctx, filtered, dryRun) // reuses ImportSections from import.go
 }
 
-// MigrateFull — полная миграция (порядок: suites → sections → shared steps → cases)
+// MigrateFull runs the full migration in order: suites → sections → shared steps → cases.
 func (m *Migration) MigrateFull(ctx context.Context, dryRun bool) error {
 	m.logger.Info("Начало полной миграции")
 

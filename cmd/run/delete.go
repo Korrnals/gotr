@@ -11,59 +11,68 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// runServiceWrapper оборачивает сервис для работы с runs
+// runServiceWrapper wraps the service for working with runs.
 type runServiceWrapper struct {
 	svc *service.RunService
 }
 
+// Delete delegates run deletion to the underlying run service.
 func (w *runServiceWrapper) Delete(ctx context.Context, runID int64) error {
 	return w.svc.Delete(ctx, runID)
 }
 
+// ParseID delegates run ID parsing to the underlying run service.
 func (w *runServiceWrapper) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	return w.svc.ParseID(ctx, args, index)
 }
 
+// PrintSuccess delegates success message formatting to the underlying run service.
 func (w *runServiceWrapper) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	w.svc.PrintSuccess(ctx, cmd, format, args...)
 }
 
+// Create delegates run creation to the underlying run service.
 func (w *runServiceWrapper) Create(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 	return w.svc.Create(ctx, projectID, req)
 }
 
+// Output delegates command output formatting to the underlying run service.
 func (w *runServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return w.svc.Output(ctx, cmd, data)
 }
 
+// Close delegates run closing to the underlying run service.
 func (w *runServiceWrapper) Close(ctx context.Context, runID int64) (*data.Run, error) {
 	return w.svc.Close(ctx, runID)
 }
 
+// Update delegates run updates to the underlying run service.
 func (w *runServiceWrapper) Update(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 	return w.svc.Update(ctx, runID, req)
 }
 
+// Get delegates run retrieval by ID to the underlying run service.
 func (w *runServiceWrapper) Get(ctx context.Context, runID int64) (*data.Run, error) {
 	return w.svc.Get(ctx, runID)
 }
 
+// GetByProject delegates project run listing to the underlying run service.
 func (w *runServiceWrapper) GetByProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	return w.svc.GetByProject(ctx, projectID)
 }
 
-// newRunServiceFromInterface создаёт сервис из клиента-интерфейса
+// newRunServiceFromInterface creates a service from a client interface.
 func newRunServiceFromInterface(cli client.ClientInterface) *runServiceWrapper {
-	// Пытаемся привести к *HTTPClient, если это не mock
+	// Try to cast to *HTTPClient if not a mock
 	if httpClient, ok := cli.(*client.HTTPClient); ok {
 		return &runServiceWrapper{svc: service.NewRunService(httpClient)}
 	}
-	// Для тестов с mock - используем специальный конструктор
+	// For tests with mock — use a special constructor
 	return &runServiceWrapper{svc: service.NewRunServiceFromInterface(cli)}
 }
 
-// newDeleteCmd создаёт команду 'run delete'
-// Эндпоинт: POST /delete_run/{run_id}
+// newDeleteCmd creates the 'run delete' command.
+// Endpoint: POST /delete_run/{run_id}
 func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [run-id]",
@@ -104,7 +113,7 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 			svc := newRunServiceFromInterface(cli)
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run delete")
@@ -131,7 +140,7 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 	return cmd
 }
 
-// deleteCmd используется для регистрации в Register
+// deleteCmd is used for registration in Register.
 var deleteCmd = newDeleteCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

@@ -41,7 +41,7 @@ var sectionsCmd = &cobra.Command{
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
-		quiet := isQuiet(cmd)
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 
 		var err error
@@ -49,7 +49,7 @@ var sectionsCmd = &cobra.Command{
 
 		p := interactive.PrompterFromContext(ctx)
 
-		// Интерактивный выбор source проекта
+		// Interactive source project selection
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
@@ -57,7 +57,7 @@ var sectionsCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор source сьюта
+		// Interactive source suite selection
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
@@ -65,7 +65,7 @@ var sectionsCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор destination проекта
+		// Interactive destination project selection
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
@@ -73,7 +73,7 @@ var sectionsCmd = &cobra.Command{
 			}
 		}
 
-		// Интерактивный выбор destination сьюта
+		// Interactive destination suite selection
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
@@ -94,7 +94,7 @@ var sectionsCmd = &cobra.Command{
 		op := newSyncOperation("Sync sections", quiet)
 		defer op.Finish()
 
-		// Шаг 1) Получение sections из source и target
+		// Step 1) Fetch sections from source and target
 		op.Phase("Loading sections")
 		loaded, err := runSyncStatus(ctx, "Loading sections...", quiet, func(ctx context.Context) (struct {
 			Source data.GetSectionsResponse
@@ -118,7 +118,7 @@ var sectionsCmd = &cobra.Command{
 		sourceSections := loaded.Source
 		targetSections := loaded.Target
 
-		// Шаг 2) Фильтрация дубликатов
+		// Step 2) Filter duplicates
 		filtered, err := m.FilterSections(sourceSections, targetSections)
 		if err != nil {
 			return err
@@ -126,7 +126,7 @@ var sectionsCmd = &cobra.Command{
 
 		ui.Infof(os.Stdout, "Ready to import: %d new sections", len(filtered))
 
-		// Шаг 3) Обработка dry-run
+		// Step 3) Handle dry-run
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import skipped")
 			return nil
@@ -137,7 +137,7 @@ var sectionsCmd = &cobra.Command{
 			return nil
 		}
 
-		// Шаг 4) Подтверждение и импорт
+		// Step 4) Confirmation and import
 		op.Phase("Awaiting confirmation")
 		if !autoApprove {
 			ui.Infof(os.Stdout, "Confirm import of %d sections...", len(filtered))
@@ -159,7 +159,7 @@ var sectionsCmd = &cobra.Command{
 			return err
 		}
 
-		// Шаг 5) Сохранение mapping при запросе
+		// Step 5) Save mapping if requested
 		if autoSaveMapping {
 			m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {

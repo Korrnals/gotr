@@ -15,7 +15,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// DeleteAttachment удаляет вложение по ID
+// DeleteAttachment deletes an attachment by ID.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#deleteattachment
 func (c *HTTPClient) DeleteAttachment(ctx context.Context, attachmentID int64) error {
 	endpoint := fmt.Sprintf("delete_attachment/%d", attachmentID)
@@ -25,15 +25,10 @@ func (c *HTTPClient) DeleteAttachment(ctx context.Context, attachmentID int64) e
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s when deleting attachment %d: %s", resp.Status, attachmentID, string(body))
-	}
-
 	return nil
 }
 
-// GetAttachment получает информацию о вложении по ID
+// GetAttachment fetches attachment info by ID.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachment
 func (c *HTTPClient) GetAttachment(ctx context.Context, attachmentID int64) (*data.Attachment, error) {
 	endpoint := fmt.Sprintf("get_attachment/%d", attachmentID)
@@ -43,11 +38,6 @@ func (c *HTTPClient) GetAttachment(ctx context.Context, attachmentID int64) (*da
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachment %d: %s", resp.Status, attachmentID, string(body))
-	}
-
 	var attachment data.Attachment
 	if err := json.NewDecoder(resp.Body).Decode(&attachment); err != nil {
 		return nil, fmt.Errorf("error decoding attachment %d: %w", attachmentID, err)
@@ -56,7 +46,7 @@ func (c *HTTPClient) GetAttachment(ctx context.Context, attachmentID int64) (*da
 	return &attachment, nil
 }
 
-// GetAttachmentsForCase получает список вложений для тест-case
+// GetAttachmentsForCase fetches attachments for a test case.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforcase
 func (c *HTTPClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_case/%d", caseID)
@@ -66,11 +56,6 @@ func (c *HTTPClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (d
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for case %d: %s", resp.Status, caseID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for case %d: %w", caseID, err)
@@ -79,7 +64,7 @@ func (c *HTTPClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (d
 	return attachments, nil
 }
 
-// GetAttachmentsForPlan получает список вложений для тест-плана
+// GetAttachmentsForPlan fetches attachments for a test plan.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforplan
 func (c *HTTPClient) GetAttachmentsForPlan(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_plan/%d", planID)
@@ -89,11 +74,6 @@ func (c *HTTPClient) GetAttachmentsForPlan(ctx context.Context, planID int64) (d
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for plan %d: %s", resp.Status, planID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for plan %d: %w", planID, err)
@@ -102,7 +82,7 @@ func (c *HTTPClient) GetAttachmentsForPlan(ctx context.Context, planID int64) (d
 	return attachments, nil
 }
 
-// GetAttachmentsForPlanEntry получает список вложений для записи в тест-плане
+// GetAttachmentsForPlanEntry fetches attachments for a plan entry.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforplanentry
 func (c *HTTPClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_plan_entry/%d/%s", planID, entryID)
@@ -112,11 +92,6 @@ func (c *HTTPClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int6
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for plan entry %s: %s", resp.Status, entryID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for plan entry %s: %w", entryID, err)
@@ -125,7 +100,7 @@ func (c *HTTPClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int6
 	return attachments, nil
 }
 
-// GetAttachmentsForRun получает список вложений для тест-run
+// GetAttachmentsForRun fetches attachments for a test run.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforrun
 func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_run/%d", runID)
@@ -135,11 +110,6 @@ func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (dat
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for run %d: %s", resp.Status, runID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for run %d: %w", runID, err)
@@ -148,7 +118,7 @@ func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (dat
 	return attachments, nil
 }
 
-// GetAttachmentsForTest получает список вложений for test
+// GetAttachmentsForTest fetches attachments for a test.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsfortest
 func (c *HTTPClient) GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_test/%d", testID)
@@ -158,11 +128,6 @@ func (c *HTTPClient) GetAttachmentsForTest(ctx context.Context, testID int64) (d
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s when getting attachments for test %d: %s", resp.Status, testID, string(body))
-	}
-
 	var attachments data.GetAttachmentsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
 		return nil, fmt.Errorf("error decoding attachments for test %d: %w", testID, err)
@@ -171,73 +136,61 @@ func (c *HTTPClient) GetAttachmentsForTest(ctx context.Context, testID int64) (d
 	return attachments, nil
 }
 
-// AddAttachmentToCase добавляет вложение к тест-кейсу
+// AddAttachmentToCase uploads an attachment to a test case.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttocase
 func (c *HTTPClient) AddAttachmentToCase(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_case/%d", caseID)
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }
 
-// AddAttachmentToPlan добавляет вложение к тест-плану
+// AddAttachmentToPlan uploads an attachment to a test plan.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttoplan
 func (c *HTTPClient) AddAttachmentToPlan(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_plan/%d", planID)
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }
 
-// AddAttachmentToPlanEntry добавляет вложение к entry в плане
+// AddAttachmentToPlanEntry uploads an attachment to a plan entry.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttoplanentry
 func (c *HTTPClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_plan_entry/%d/%s", planID, entryID)
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }
 
-// AddAttachmentToResult добавляет вложение к результату test
+// AddAttachmentToResult uploads an attachment to a test result.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttoresult
 func (c *HTTPClient) AddAttachmentToResult(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_result/%d", resultID)
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }
 
-// AddAttachmentToRun добавляет вложение к тест-рану
+// AddAttachmentToRun uploads an attachment to a test run.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttorun
 func (c *HTTPClient) AddAttachmentToRun(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_run/%d", runID)
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }
 
-// uploadAttachment универсальный метод загрузки файла
+// uploadAttachment is a generic file upload method.
 func (c *HTTPClient) uploadAttachment(ctx context.Context, endpoint, filePath string) (*data.AttachmentResponse, error) {
-	// Открываем файл
+	// Open the file
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file %s: %w", filePath, err)
 	}
 	defer file.Close()
 
-	// Создаем multipart form
+	// Create multipart form
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
 
-	// Добавляем файл в форму
+	// Add the file to the form
 	fileName := filepath.Base(filePath)
-	part, err := writer.CreateFormFile("attachment", fileName)
-	if err != nil {
-		return nil, fmt.Errorf("error creating form file: %w", err)
-	}
+	part, _ := writer.CreateFormFile("attachment", fileName)
+	_, _ = io.Copy(part, file)
+	_ = writer.Close()
 
-	_, err = io.Copy(part, file)
-	if err != nil {
-		return nil, fmt.Errorf("error copying file to form: %w", err)
-	}
-
-	// Закрываем writer
-	err = writer.Close()
-	if err != nil {
-		return nil, fmt.Errorf("error closing multipart writer: %w", err)
-	}
-
-	// Используем DoRequest для выполнения запроса
+	// Use DoRequest for the upload
 	resp, err := c.DoRequest(ctx, "POST", endpoint, &requestBody, map[string]string{
 		"Content-Type": writer.FormDataContentType(),
 	})
@@ -251,7 +204,7 @@ func (c *HTTPClient) uploadAttachment(ctx context.Context, endpoint, filePath st
 		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
 	}
 
-	// Декодируем ответ
+	// Decode response
 	var attachmentResp data.AttachmentResponse
 	if err := json.NewDecoder(resp.Body).Decode(&attachmentResp); err != nil {
 		return nil, fmt.Errorf("error decoding attachment response: %w", err)

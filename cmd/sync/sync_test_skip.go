@@ -3,8 +3,6 @@
 
 package sync
 
-import "testing"
-
 func init() {
-	// Пропускаем все тесты в этом пакете
+	// Skip all tests in this package
 }

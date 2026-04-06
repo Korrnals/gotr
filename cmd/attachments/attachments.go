@@ -1,4 +1,4 @@
-// Package attachments реализует CLI команды для работы с вложениями TestRail
+// Package attachments implements CLI commands for managing TestRail attachments.
 package attachments
 
 import (
@@ -7,10 +7,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining a client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с вложениями
+// Register registers all attachment-related commands.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	attachmentsCmd := &cobra.Command{
 		Use:   "attachments",
@@ -25,7 +25,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • run        — вложение к тестовому прогону`,
 	}
 
-	// Создание родительской команды 'add'
+	// Create the parent 'add' command
 	addCmd := &cobra.Command{
 		Use:   "add",
 		Short: "Добавить вложение к ресурсу",
@@ -35,18 +35,18 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
 результат теста или тестовый прогон.`,
 	}
 
-	// Общие флаги для всех подкоманд add
+	// Shared flags for all 'add' subcommands
 	addCmd.PersistentFlags().Bool("dry-run", false, "Показать, что будет сделано без загрузки файла")
 	output.AddFlag(addCmd)
 
-	// Добавление подкоманд к 'add'
+	// Register subcommands under 'add'
 	addCmd.AddCommand(newAddCaseCmd(getClient))
 	addCmd.AddCommand(newAddPlanCmd(getClient))
 	addCmd.AddCommand(newAddPlanEntryCmd(getClient))
 	addCmd.AddCommand(newAddResultCmd(getClient))
 	addCmd.AddCommand(newAddRunCmd(getClient))
 
-	// Добавление 'add' в attachments
+	// Add 'add' to the attachments command
 	attachmentsCmd.AddCommand(addCmd)
 
 	root.AddCommand(attachmentsCmd)

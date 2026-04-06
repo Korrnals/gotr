@@ -1,4 +1,4 @@
-// cmd/completion.go (или в root.go)
+// cmd/completion.go
 
 package cmd
 
@@ -8,15 +8,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// completionCmd — служебная команда для генерации автодополнения
+// completionCmd generates shell completion scripts.
 var completionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish|powershell]",
 	Short: "Generate completion script",
-	Long: `Генерирует скрипт автодополнения для указанной оболочки.
+	Long: `Generates a shell completion script for the specified shell.
 
-Примеры:
-	source <(gotr completion bash)                  # временно для текущей сессии
-	gotr completion bash > /usr/local/etc/bash_completion.d/gotr  # навсегда (macOS/Linux)
+Examples:
+	source <(gotr completion bash)                  # temporary for current session
+	gotr completion bash > /usr/local/etc/bash_completion.d/gotr  # persistent (macOS/Linux)
 
 Zsh:
 	gotr completion zsh > "${fpath[1]}/_gotr"
@@ -27,12 +27,11 @@ Fish:
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 	Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-	// ОТКЛЮЧАЕМ PersistentPreRunE — клиент не нужен!
+	// Disable PersistentPreRunE — client not needed.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Ничего не делаем — переопределяем родительский
+		// Override parent PersistentPreRunE (no-op)
 	},
-	// Полностью отключаем всё, что делает rootCmd (клиент + вывод Viper)
-	PersistentPreRunE: nil, // или PersistentPreRun: func() {}
+	PersistentPreRunE: nil,
 	Run: func(cmd *cobra.Command, args []string) {
 		switch args[0] {
 		case "bash":

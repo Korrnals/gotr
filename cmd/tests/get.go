@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду для получения информации о тесте
+// newGetCmd creates the 'tests get' command for retrieving test details.
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [test_id]",
@@ -34,7 +34,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr tests get [test_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr tests get [test_id]")
 				}
 				testID, err = resolveTestIDInteractive(ctx, client)
@@ -43,7 +43,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("tests get")
 				dr.PrintSimple("Получить информацию о тесте", fmt.Sprintf("Test ID: %d", testID))

@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'datasets update'
-// Эндпоинт: POST /update_dataset/{dataset_id}
+// newUpdateCmd creates the 'datasets update' command.
+// Endpoint: POST /update_dataset/{dataset_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [dataset_id]",

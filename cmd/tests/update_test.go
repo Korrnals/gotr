@@ -145,6 +145,34 @@ func TestUpdateCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestUpdateCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "test_id is required in non-interactive mode")
+}
+
+func TestUpdateCmd_ResolveInteractiveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects boom")
+		},
+	}
+
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{"--status-id", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {

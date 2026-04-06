@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteGroupCmd создаёт команду 'configurations delete-group'
-// Эндпоинт: POST /delete_config_group/{group_id}
+// newDeleteGroupCmd creates the 'configurations delete-group' command.
+// Endpoint: POST /delete_config_group/{group_id}
 func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-group [group_id]",
@@ -43,7 +43,7 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations delete-group [group_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations delete-group [group_id]")
 				}
 

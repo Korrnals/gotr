@@ -1,4 +1,4 @@
-// Package groups реализует CLI команды для работы с группами пользователей TestRail
+// Package groups implements CLI commands for managing TestRail user groups.
 package groups
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is a function type for obtaining the API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с группами
+// Register registers all group management subcommands.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	groupsCmd := &cobra.Command{
 		Use:   "groups",
@@ -28,7 +28,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • get  — информация о конкретной группе по ID`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	groupsCmd.AddCommand(newListCmd(getClient))
 	groupsCmd.AddCommand(newGetCmd(getClient))
 	groupsCmd.AddCommand(newAddCmd(getClient))

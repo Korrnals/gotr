@@ -1,4 +1,4 @@
-// Package bdds реализует CLI команды для работы с BDD сценариями TestRail
+// Package bdds implements CLI commands for managing TestRail BDD scenarios.
 package bdds
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining a client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с BDD
+// Register registers all BDD-related commands.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	bddsCmd := &cobra.Command{
 		Use:   "bdds",

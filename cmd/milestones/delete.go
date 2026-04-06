@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'milestones delete'
-// Эндпоинт: POST /delete_milestone/{milestone_id}
+// newDeleteCmd creates the 'milestones delete' command.
+// Endpoint: POST /delete_milestone/{milestone_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [milestone_id]",

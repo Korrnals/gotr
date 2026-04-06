@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newSuitesCmd создаёт команду для получения списка сьют проекта
+// newSuitesCmd creates the command for listing project test suites.
 func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suites [project-id]",
@@ -36,7 +36,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			// Получаем ID проекта
+			// Resolve project ID
 			projectIDStr := ""
 			if len(args) > 0 {
 				projectIDStr = args[0]
@@ -49,7 +49,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 			var err error
 
 			if projectIDStr == "" {
-				// Интерактивный выбор проекта
+				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
@@ -77,7 +77,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 	return cmd
 }
 
-// newSuiteCmd создаёт команду для получения одной сьюты
+// newSuiteCmd creates the command for retrieving a single test suite.
 func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "suite [suite-id]",
@@ -137,12 +137,12 @@ func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 	}
 }
 
-// suitesCmd — экспортированная команда для регистрации
+// suitesCmd is the exported command registered with the root.
 var suitesCmd = newSuitesCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// suiteCmd — экспортированная команда для регистрации
+// suiteCmd is the exported command registered with the root.
 var suiteCmd = newSuiteCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

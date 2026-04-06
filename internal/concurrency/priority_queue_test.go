@@ -254,3 +254,34 @@ func TestPriorityQueue_PushWithPriority(t *testing.T) {
 	task, _ = pq.Pop()
 	assert.Equal(t, int64(2), task.SuiteID) // Low priority despite large size
 }
+
+func TestPriorityQueue_PushWithPriority_ClosedQueueNoop(t *testing.T) {
+	pq := NewPriorityQueue()
+	pq.Close()
+
+	pq.PushWithPriority(SuiteTask{SuiteID: 99, EstimatedSize: 1000}, PriorityHigh)
+
+	assert.Equal(t, 0, pq.Len())
+	_, ok := pq.TryPop()
+	assert.False(t, ok)
+}
+
+func TestPriorityQueue_GetAll(t *testing.T) {
+	pq := NewPriorityQueue()
+	pq.Push(SuiteTask{SuiteID: 10, EstimatedSize: 100})
+	pq.Push(SuiteTask{SuiteID: 20, EstimatedSize: 200})
+
+	all := pq.GetAll()
+	assert.Len(t, all, 2)
+
+	ids := make(map[int64]bool)
+	for _, t := range all {
+		ids[t.SuiteID] = true
+	}
+	assert.True(t, ids[10])
+	assert.True(t, ids[20])
+
+	// GetAll does not remove items
+	_, ok := pq.Pop()
+	assert.True(t, ok)
+}

@@ -1,4 +1,6 @@
-```
+# gotr — CLI Client for TestRail API
+
+```text
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
 ║     ██████╗  ██████╗ ████████╗██████╗                    ║
@@ -13,17 +15,15 @@
 ╚══════════════════════════════════════════════════════════╝
 ```
 
-# gotr — CLI Client for TestRail API
-
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.8.0-blue.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v2.8.0** — Stage 6.8 Complete: Concurrency unification, generic compare commands, `internal/concurrency/` package. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v3.0.0** — Stage 13 Complete: Final refactoring, full API coverage, architecture cleanup. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 
@@ -36,6 +36,21 @@ A professional command-line interface for TestRail API v2. Designed for QA engin
 - **Real-time Progress** — Visual progress bars with channel-based updates for all long-running operations
 - **Built-in Processing** — JSON filtering with embedded `jq`, progress tracking, and structured logging
 - **Flexible Configuration** — Support for flags, environment variables, and configuration files
+
+## Navigation
+
+- [Documentation](docs/index.md)
+  - [Guides](docs/en/guides/index.md)
+    - [Installation](docs/en/guides/installation.md)
+    - [Configuration](docs/en/guides/configuration.md)
+    - [Interactive Mode](docs/en/guides/interactive-mode.md)
+    - [Progress](docs/en/guides/progress.md)
+    - [Commands Index](docs/en/guides/commands/index.md)
+      - [Command groups](docs/en/guides/commands/index.md#command-groups-and-subgroups)
+  - [Architecture](docs/en/architecture/index.md)
+  - [Operations](docs/en/operations/index.md)
+  - [Reports](docs/en/reports/index.md)
+- [Home](README.md)
 
 ## Quick Start
 
@@ -218,18 +233,9 @@ gotr config init
 gotr config view
 ```
 
-## Documentation
-
-- [Installation Guide](docs/installation.md)
-- [Configuration](docs/configuration.md)
-- [GET Commands](docs/get-commands.md)
-- [SYNC Commands](docs/sync-commands.md)
-- [Interactive Mode](docs/interactive-mode.md)
-- [Progress Monitoring](docs/progress.md) — Universal progress system for long-running operations
-
 ## Project Structure
 
-```
+```text
 gotr/
 ├── cmd/                          # CLI commands
 │   ├── common/                   #   Shared components
@@ -240,10 +246,11 @@ gotr/
 │   ├── result/                  #   Test results management
 │   └── sync/                    #   Data migration commands
 ├── docs/                         # Documentation
-│   ├── architecture.md          #   Detailed architecture
-│   ├── get-commands.md          #   GET command reference
-│   ├── sync-commands.md         #   SYNC command reference
-│   └── ...
+│   ├── index.md                 #   Documentation hub
+│   ├── guides/                  #   User guides and command reference
+│   ├── architecture/            #   Layered architecture and standards
+│   ├── operations/              #   Release and operational flow
+│   └── reports/                 #   Stage audits and quality artifacts
 ├── internal/
 │   ├── client/                  #   TestRail API client
 │   │   ├── interfaces.go       #     ClientInterface (106 endpoints, 14 APIs)
@@ -267,7 +274,7 @@ gotr/
 └── main.go                       # Entry point
 ```
 
-See [docs/architecture.md](docs/architecture.md) for complete structure.
+See [docs/en/architecture/overview.md](docs/en/architecture/overview.md) for complete structure.
 
 ## What's New in v2.8.0 (Stage 6.8 Complete)
 
@@ -285,35 +292,11 @@ See [docs/architecture.md](docs/architecture.md) for complete structure.
 - **`compare all`** — uses `reporter` for consistent output, partial results on API errors
 - **Stable defaults**: `parallel-suites=10`, `parallel-pages=6` (optimized for TestRail Server)
 
-## What's New in v2.7.0 (Stage 4 + Stage 6)
-
-### Complete API Coverage
-
-All 106 TestRail API v2 endpoints are now implemented:
-- **Milestones API** (5 endpoints) — Full CRUD for milestones
-- **Plans API** (9 endpoints) — Full CRUD + plan entries management
-- **Attachments API** (5 endpoints) — File uploads to cases/plans/results/runs
-- **Configurations API** (7 endpoints) — Test configurations management
-- **Users & Reference** (7 endpoints) — Users, Priorities, Statuses, Templates
-- **Reports API** (3 endpoints) — Report generation and retrieval
-- **Extended APIs** (21 endpoints) — Groups, Roles, Datasets, Variables, BDDs, Labels
-
-## What's New in v2.5.0
-
-### Architecture Improvements
-- **Unified Client Interface** — Single `ClientInterface` across all packages eliminates code duplication
-- **Enhanced Test Coverage** — All sync tests now use interface-based mocking (10 new tests, 0 skipped)
-- **Refactored Common Package** — Eliminated `getClientSafe` duplication across command packages
-
-### Interactive Features
-- **Interactive Selection** — Visual pickers for projects and suites in `run list` and `result list`
-- **Streamlined Workflow** — Reduced friction for common operations
-
-See [CHANGELOG](CHANGELOG.md) for complete history.
+See [CHANGELOG](CHANGELOG.md) for full release history.
 
 ## Installation
 
-Detailed installation instructions: [docs/installation.md](docs/installation.md)
+Detailed installation instructions: [docs/en/guides/installation.md](docs/en/guides/installation.md)
 
 ## Contributing
 

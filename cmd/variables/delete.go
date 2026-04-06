@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'variables delete'
-// Эндпоинт: POST /delete_variable/{variable_id}
+// newDeleteCmd creates the 'variables delete' command.
+// Endpoint: POST /delete_variable/{variable_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [variable_id]",

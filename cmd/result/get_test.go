@@ -265,3 +265,197 @@ func TestGetCaseCmd_MissingCaseID_NonInteractive_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
+
+func TestGetCaseCmd_NoArgs_Interactive_Success(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetRunsResponse{{ID: 100, Name: "Run 100", ProjectID: 30}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(100), runID)
+			return []data.Test{{ID: 12345, CaseID: 200, RunID: runID, Title: "Case 200"}}, nil
+		},
+		GetResultsForCaseFunc: func(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
+			assert.Equal(t, int64(100), runID)
+			assert.Equal(t, int64(200), caseID)
+			return data.GetResultsResponse{{ID: 1, TestID: 12345, StatusID: 1}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}). // project
+		WithSelectResponses(interactive.SelectResponse{Index: 0}). // run
+		WithSelectResponses(interactive.SelectResponse{Index: 0})  // case
+
+	cmd := newGetCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestResolveResultRunID_GetRunsError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return nil, fmt.Errorf("runs unavailable")
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	ctx := interactive.WithPrompter(context.Background(), p)
+
+	runID, err := resolveResultRunID(ctx, mock)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), runID)
+	assert.Contains(t, err.Error(), "failed to get runs list")
+}
+
+func TestResolveResultRunID_NoRuns(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return data.GetRunsResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	ctx := interactive.WithPrompter(context.Background(), p)
+
+	runID, err := resolveResultRunID(ctx, mock)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), runID)
+	assert.Contains(t, err.Error(), "no test runs found")
+}
+
+func TestResolveResultRunID_SelectRunError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			return data.GetRunsResponse{{ID: 100, Name: "Run 100", ProjectID: 30}}, nil
+		},
+	}
+
+	// One selection is consumed by SelectProject, second SelectRun fails.
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	ctx := interactive.WithPrompter(context.Background(), p)
+
+	runID, err := resolveResultRunID(ctx, mock)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), runID)
+	assert.Contains(t, err.Error(), "select")
+}
+
+func TestSelectTestIDForRun_GetTestsError(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return nil, fmt.Errorf("tests unavailable")
+		},
+	}
+
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+	testID, err := selectTestIDForRun(ctx, mock, 100)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), testID)
+	assert.Contains(t, err.Error(), "failed to get tests")
+}
+
+func TestSelectTestIDForRun_NoTests(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{}, nil
+		},
+	}
+
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+	testID, err := selectTestIDForRun(ctx, mock, 100)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), testID)
+	assert.Contains(t, err.Error(), "no tests found")
+}
+
+func TestSelectTestIDForRun_SelectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{{ID: 12345, CaseID: 200, RunID: runID, Title: "Test 12345"}}, nil
+		},
+	}
+
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+	testID, err := selectTestIDForRun(ctx, mock, 100)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), testID)
+	assert.Contains(t, err.Error(), "failed to select test")
+}
+
+func TestSelectCaseIDForRun_SelectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{{ID: 12345, CaseID: 200, RunID: runID, Title: "Case 200"}}, nil
+		},
+	}
+
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+	caseID, err := selectCaseIDForRun(ctx, mock, 100)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), caseID)
+	assert.Contains(t, err.Error(), "failed to select case")
+}
+
+func TestSelectCaseIDForRun_GetTestsError(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return nil, fmt.Errorf("tests unavailable")
+		},
+	}
+
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+	caseID, err := selectCaseIDForRun(ctx, mock, 100)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), caseID)
+	assert.Contains(t, err.Error(), "failed to get tests")
+}
+
+func TestSelectCaseIDForRun_NoTests(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{}, nil
+		},
+	}
+
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+	caseID, err := selectCaseIDForRun(ctx, mock, 100)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), caseID)
+	assert.Contains(t, err.Error(), "no tests found")
+}
+
+func TestSelectCaseIDForRun_SuccessDedupAndSorted(t *testing.T) {
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{
+				{ID: 3001, CaseID: 300, RunID: runID, Title: "Third"},
+				{ID: 1001, CaseID: 100, RunID: runID, Title: "First"},
+				{ID: 1002, CaseID: 100, RunID: runID, Title: "First duplicate"},
+				{ID: 2001, CaseID: 200, RunID: runID, Title: "Second"},
+			}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 1})
+	ctx := interactive.WithPrompter(context.Background(), p)
+	caseID, err := selectCaseIDForRun(ctx, mock, 100)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(200), caseID)
+}

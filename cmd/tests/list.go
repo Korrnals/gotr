@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду для списка тестов
+// newListCmd creates the 'tests list' command for listing tests in a run.
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [run_id]",
@@ -33,7 +33,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr tests list [run_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("run_id is required in non-interactive mode: gotr tests list [run_id]")
 				}
 				runID, err = resolveRunIDInteractive(ctx, client)
@@ -49,7 +49,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				filters["status_id"] = fmt.Sprintf("%d", statusID)
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("tests list")
 				details := fmt.Sprintf("Run ID: %d", runID)

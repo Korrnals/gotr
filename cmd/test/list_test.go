@@ -3,6 +3,7 @@ package test
 import (
 	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -11,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListCmd_Success(t *testing.T) {
@@ -185,6 +187,18 @@ func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestListCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "run_id is required in non-interactive mode")
+}
+
 func TestListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
 		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
@@ -227,4 +241,57 @@ func TestListCmd_NilClient(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not initialized")
+}
+
+func TestListCmd_TooManyArgs(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"100", "200"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "accepts at most 1 arg")
+}
+
+func TestListCmd_NoArgs_Interactive_ResolveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	p := interactive.NewMockPrompter()
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select project")
+}
+
+func TestListCmd_WithSave_SaveError_HomeIsFile(t *testing.T) {
+	homeMarker := t.TempDir()
+	target := homeMarker + "/home-file"
+	require.NoError(t, os.WriteFile(target, []byte("x"), 0o600))
+	t.Setenv("HOME", target)
+
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{{ID: 1, RunID: runID}}, nil
+		},
+	}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"100", "--save"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "save error")
 }

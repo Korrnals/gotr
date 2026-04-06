@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCrossProjectCmd создаёт команду 'reports list-cross-project'
-// Эндпоинт: GET /get_cross_project_reports
+// newListCrossProjectCmd creates the 'reports list-cross-project' command.
+// Endpoint: GET /get_cross_project_reports
 func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-cross-project",

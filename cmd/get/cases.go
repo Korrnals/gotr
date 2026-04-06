@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCasesCmd создаёт команду для получения кейсов проекта
+// newCasesCmd creates the command for retrieving project test cases.
 func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cases [project-id]",
@@ -64,7 +64,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			var err error
 
 			if projectIDStr == "" {
-				// Интерактивный выбор проекта
+				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
@@ -80,12 +80,12 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			allSuites, _ := command.Flags().GetBool("all-suites")
 			suiteID, _ := command.Flags().GetInt64("suite-id")
 
-			// Если указан конкретный suite-id — используем его
+			// Use the explicit suite-id if provided
 			if suiteID != 0 {
 				return fetchAndOutputCases(ctx, command, cli, projectID, suiteID, sectionID, start)
 			}
 
-			// Получаем список сьютов проекта
+			// Fetch suites for the project
 			suites, err := cli.GetSuites(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
@@ -95,18 +95,18 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 				return fmt.Errorf("no suites found in project %d", projectID)
 			}
 
-			// Если --all-suites — собираем кейсы из всех сьютов
+			// If --all-suites, collect cases from every suite
 			if allSuites {
 				return fetchCasesFromAllSuites(ctx, command, cli, projectID, suites, sectionID, start)
 			}
 
-			// Если только один сьют — используем его автоматически
+			// Single suite — use it automatically
 			if len(suites) == 1 {
 				ui.Infof(os.Stdout, "Project has one suite (ID: %d), using automatically...", suites[0].ID)
 				return fetchAndOutputCases(ctx, command, cli, projectID, suites[0].ID, sectionID, start)
 			}
 
-			// Несколько сьютов — интерактивный выбор
+			// Multiple suites — interactive selection
 			selectedSuiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 			if err != nil {
 				return err
@@ -124,7 +124,7 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 	return cmd
 }
 
-// newCaseCmd создаёт команду для получения одного кейса
+// newCaseCmd creates the command for retrieving a single test case.
 func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case [case-id]",
@@ -193,7 +193,7 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 	}
 }
 
-// fetchAndOutputCases получает кейсы и выводит результат
+// fetchAndOutputCases retrieves cases and outputs the result.
 func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, client client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
 	cases, err := client.GetCases(ctx, projectID, suiteID, sectionID)
 	if err != nil {
@@ -203,7 +203,7 @@ func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, client client.
 	return handleOutput(cmd, cases, start)
 }
 
-// fetchCasesFromAllSuites получает кейсы из всех сьютов проекта
+// fetchCasesFromAllSuites retrieves cases from all suites in the project.
 func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	op := ui.NewOperation(ui.StatusConfig{
@@ -230,12 +230,12 @@ func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, client cli
 	return handleOutput(cmd, allCases, start)
 }
 
-// casesCmd — экспортированная команда для регистрации
+// casesCmd is the exported command registered with the root.
 var casesCmd = newCasesCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// caseCmd — экспортированная команда для регистрации
+// caseCmd is the exported command registered with the root.
 var caseCmd = newCaseCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

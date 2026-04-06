@@ -114,6 +114,25 @@ func TestRegister_Help(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestRegister_NoLocalQuietFlags(t *testing.T) {
+	root := &cobra.Command{}
+
+	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+		return nil
+	})
+
+	testCmd, _, err := root.Find([]string{"test"})
+	assert.NoError(t, err)
+	assert.NotNil(t, testCmd)
+
+	// Verify that quiet flag is not declared locally on subcommands.
+	// Global quiet should be inherited from root persistent flags.
+	for _, sub := range testCmd.Commands() {
+		quietFlag := sub.Flags().Lookup("quiet")
+		assert.Nil(t, quietFlag, "quiet should not be declared locally on subcommand %s", sub.Name())
+	}
+}
+
 // ==================== Тесты для Cmd ====================
 
 func TestCmd_Help(t *testing.T) {

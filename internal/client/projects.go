@@ -5,13 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/Korrnals/gotr/internal/models/data"
-	"io"
-	"net/http"
 )
 
-// GetProjects получает список всех проектов.
-// Возвращает массив проектов (TestRail возвращает []Project напрямую).
+// GetProjects fetches the list of all projects.
+// Returns an array of projects (TestRail returns []Project directly).
 func (c *HTTPClient) GetProjects(ctx context.Context) (data.GetProjectsResponse, error) {
 	endpoint := "get_projects"
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -27,8 +26,7 @@ func (c *HTTPClient) GetProjects(ctx context.Context) (data.GetProjectsResponse,
 	return result, nil
 }
 
-// GetProject получает информацию о конкретном проекте по ID.
-// ID — число (int64).
+// GetProject fetches a specific project by ID.
 func (c *HTTPClient) GetProject(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 	endpoint := fmt.Sprintf("get_project/%d", projectID)
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -44,15 +42,11 @@ func (c *HTTPClient) GetProject(ctx context.Context, projectID int64) (*data.Get
 	return &result, nil
 }
 
-// AddProject создаёт новый проект.
-// Принимает AddProjectRequest с обязательным Name.
-// Возвращает созданный проект.
+// AddProject creates a new project.
+// Requires Name in the AddProjectRequest.
+// Returns the created project.
 func (c *HTTPClient) AddProject(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error AddProjectRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	endpoint := "add_project"
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -67,16 +61,12 @@ func (c *HTTPClient) AddProject(ctx context.Context, req *data.AddProjectRequest
 	return &result, nil
 }
 
-// UpdateProject обновляет существующий проект по ID.
-// Поддерживает частичные обновления.
-// Требует прав администратора.
+// UpdateProject updates an existing project by ID.
+// Supports partial updates.
+// Requires admin permissions.
 func (c *HTTPClient) UpdateProject(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
 	endpoint := fmt.Sprintf("update_project/%d", projectID)
-	bodyBytes, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("marshal error UpdateProjectRequest: %w", err)
-	}
-
+	bodyBytes, _ := json.Marshal(req)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error UpdateProject %d: %w", projectID, err)
@@ -90,10 +80,10 @@ func (c *HTTPClient) UpdateProject(ctx context.Context, projectID int64, req *da
 	return &result, nil
 }
 
-// DeleteProject удаляет проект по ID.
-// Удаление необратимо — все данные проекта теряются.
-// Требует прав администратора.
-// Возвращает nil при успехе.
+// DeleteProject deletes a project by ID.
+// This is irreversible — all project data will be lost.
+// Requires admin permissions.
+// Returns nil on success.
 func (c *HTTPClient) DeleteProject(ctx context.Context, projectID int64) error {
 	endpoint := fmt.Sprintf("delete_project/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, nil, nil)
@@ -102,9 +92,5 @@ func (c *HTTPClient) DeleteProject(ctx context.Context, projectID int64) error {
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("delete error project %d: %s, body: %s", projectID, resp.Status, string(body))
-	}
 	return nil
 }

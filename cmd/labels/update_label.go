@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateLabelCmd создаёт команду 'labels update-label'
-// Эндпоинт: POST /update_label/{label_id}
+// newUpdateLabelCmd creates the 'labels update-label' command.
+// Endpoint: POST /update_label/{label_id}
 func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-label [label_id]",

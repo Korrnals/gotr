@@ -11,13 +11,13 @@ import (
 func resolveRunIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 
-	// Выбираем проект
+	// Select project
 	projectID, err := interactive.SelectProject(ctx, p, cli, "")
 	if err != nil {
 		return 0, err
 	}
 
-	// Выбираем ран
+	// Select run
 	runs, err := cli.GetRuns(ctx, projectID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get runs for project %d: %w", projectID, err)
@@ -37,13 +37,13 @@ func resolveRunIDInteractive(ctx context.Context, cli client.ClientInterface) (i
 func resolveTestIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 
-	// Выбираем проект
+	// Select project
 	projectID, err := interactive.SelectProject(ctx, p, cli, "")
 	if err != nil {
 		return 0, err
 	}
 
-	// Выбираем ран
+	// Select run
 	runs, err := cli.GetRuns(ctx, projectID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get runs for project %d: %w", projectID, err)
@@ -57,7 +57,7 @@ func resolveTestIDInteractive(ctx context.Context, cli client.ClientInterface) (
 		return 0, err
 	}
 
-	// Получаем тесты для рана
+	// Get tests for the run
 	tests, err := cli.GetTests(ctx, runID, map[string]string{})
 	if err != nil {
 		return 0, fmt.Errorf("failed to get tests for run %d: %w", runID, err)
@@ -66,6 +66,15 @@ func resolveTestIDInteractive(ctx context.Context, cli client.ClientInterface) (
 		return 0, fmt.Errorf("no tests found for run %d", runID)
 	}
 
-	// Возвращаем ID первого теста (при нескольких тестах можно расширить)
-	return tests[0].ID, nil
+	options := make([]string, 0, len(tests))
+	for i, test := range tests {
+		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, test.ID, test.Title))
+	}
+
+	idx, _, err := p.Select("Select test:", options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select test: %w", err)
+	}
+
+	return tests[idx].ID, nil
 }

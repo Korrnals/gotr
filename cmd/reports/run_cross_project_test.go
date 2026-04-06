@@ -112,6 +112,17 @@ func TestRunCrossProjectCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
+func TestRunCrossProjectCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newRunCrossProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "template_id is required in non-interactive mode")
+}
+
 func TestRunCrossProjectCmd_ZeroTemplateID(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newRunCrossProjectCmd(testhelper.GetClientForTests)

@@ -1,5 +1,5 @@
 // internal/selftest/types.go
-// Типы и интерфейсы для self-test команды
+// Types and interfaces for the self-test command.
 package selftest
 
 import (
@@ -7,17 +7,17 @@ import (
 	"time"
 )
 
-// Result статус result проверки
+// Result represents the status of a check.
 type Result string
 
 const (
-	ResultPass Result = "PASS" // Успешно
-	ResultFail Result = "FAIL" // Ошибка
-	ResultWarn Result = "WARN" // Предупреждение
-	ResultSkip Result = "SKIP" // Пропущено
+	ResultPass Result = "PASS" // passed
+	ResultFail Result = "FAIL" // failed
+	ResultWarn Result = "WARN" // warning
+	ResultSkip Result = "SKIP" // skipped
 )
 
-// String возвращает emoji представление result
+// String returns the emoji representation of the result.
 func (r Result) String() string {
 	switch r {
 	case ResultPass:
@@ -33,57 +33,57 @@ func (r Result) String() string {
 	}
 }
 
-// Color возвращает ANSI цвет для result
+// Color returns the ANSI color code for the result.
 func (r Result) Color() string {
 	switch r {
 	case ResultPass:
-		return "\033[32m" // Зелёный
+		return "\033[32m" // green
 	case ResultFail:
-		return "\033[31m" // Красный
+		return "\033[31m" // red
 	case ResultWarn:
-		return "\033[33m" // Жёлтый
+		return "\033[33m" // yellow
 	case ResultSkip:
-		return "\033[90m" // Серый
+		return "\033[90m" // gray
 	default:
 		return "\033[0m"
 	}
 }
 
-// ResetColor сбрасывает цвет
+// ResetColor returns the ANSI reset sequence.
 func (r Result) ResetColor() string {
 	return "\033[0m"
 }
 
-// CheckResult результат одной проверки
+// CheckResult represents the result of a single check.
 type CheckResult struct {
-	Name       string        `json:"name"`        // Название проверки
-	Category   string        `json:"category"`    // Категория (config, api, tests, etc)
-	Result     Result        `json:"result"`      // Статус
-	Message    string        `json:"message"`     // Человекочитаемое сообщение
-	Details    string        `json:"details"`     // Детали (опционально)
-	Duration   time.Duration `json:"duration"`    // Время выполнения
-	Error      error         `json:"-"`           // Ошибка (не сериализуется)
-	CanFix     bool          `json:"can_fix"`     // Можно ли автоматически исправить
-	FixCommand string        `json:"fix_command"` // Команда для исправления
+	Name       string        `json:"name"`        // check name
+	Category   string        `json:"category"`    // category (config, api, tests, etc.)
+	Result     Result        `json:"result"`      // status
+	Message    string        `json:"message"`     // human-readable message
+	Details    string        `json:"details"`     // details (optional)
+	Duration   time.Duration `json:"duration"`    // execution time
+	Error      error         `json:"-"`           // error (not serialized)
+	CanFix     bool          `json:"can_fix"`     // whether auto-fix is possible
+	FixCommand string        `json:"fix_command"` // command to fix the issue
 }
 
-// Report полный отчёт о self-test
+// Report represents a complete self-test report.
 type Report struct {
-	Timestamp   time.Time     `json:"timestamp"`  // Время запуска
-	Version     string        `json:"version"`    // Версия gotr
-	Commit      string        `json:"commit"`     // Git commit
-	GoVersion   string        `json:"go_version"` // Версия Go
+	Timestamp   time.Time     `json:"timestamp"`  // run time
+	Version     string        `json:"version"`    // gotr version
+	Commit      string        `json:"commit"`     // git commit
+	GoVersion   string        `json:"go_version"` // Go version
 	Platform    string        `json:"platform"`   // OS/Arch
-	Checks      []CheckResult `json:"checks"`     // Все проверки
-	Duration    time.Duration `json:"duration"`   // Общее время
-	Health      Result        `json:"health"`     // Общий статус
+	Checks      []CheckResult `json:"checks"`     // all checks
+	Duration    time.Duration `json:"duration"`   // total duration
+	Health      Result        `json:"health"`     // overall status
 	TotalPassed int           `json:"total_passed"`
 	TotalFailed int           `json:"total_failed"`
 	TotalWarn   int           `json:"total_warn"`
 	TotalSkip   int           `json:"total_skip"`
 }
 
-// CalculateHealth вычисляет общий статус здоровья
+// CalculateHealth computes the overall health status.
 func (r *Report) CalculateHealth() {
 	hasFail := false
 	hasWarn := false
@@ -112,7 +112,7 @@ func (r *Report) CalculateHealth() {
 	}
 }
 
-// OverallStatus строка статуса
+// OverallStatus returns the health status as a human-readable string.
 func (r *Report) OverallStatus() string {
 	switch r.Health {
 	case ResultPass:
@@ -126,31 +126,31 @@ func (r *Report) OverallStatus() string {
 	}
 }
 
-// Checker интерфейс для проверок
+// Checker is the interface for self-test checks.
 type Checker interface {
 	Name() string
 	Category() string
 	Check() CheckResult
 }
 
-// Runner запускает все проверки
+// Runner executes all registered checks.
 type Runner struct {
 	checkers []Checker
 }
 
-// NewRunner создаёт новый Runner
+// NewRunner creates a new Runner.
 func NewRunner() *Runner {
 	return &Runner{
 		checkers: make([]Checker, 0),
 	}
 }
 
-// Register добавляет проверку
+// Register adds a check to the runner.
 func (r *Runner) Register(c Checker) {
 	r.checkers = append(r.checkers, c)
 }
 
-// Run выполняет все проверки
+// Run executes all registered checks and returns a report.
 func (r *Runner) Run() *Report {
 	report := &Report{
 		Timestamp: time.Now(),
@@ -174,7 +174,7 @@ func (r *Runner) Run() *Report {
 	return report
 }
 
-// PrintHuman выводит отчёт в человекочитаемом формате
+// PrintHuman prints the report in human-readable format.
 func (r *Report) PrintHuman() {
 	fmt.Println()
 	fmt.Println("╔══════════════════════════════════════════════════════════════╗")

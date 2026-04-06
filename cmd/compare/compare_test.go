@@ -3,6 +3,7 @@ package compare
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -56,6 +57,34 @@ func TestParseFlags_InvalidPid1(t *testing.T) {
 	assert.Contains(t, err.Error(), "pid1")
 }
 
+func TestParseFlags_InvalidPid2(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("pid1", "", "")
+	cmd.Flags().String("pid2", "", "")
+	cmd.Flags().String("field", "title", "")
+	cmd.ParseFlags([]string{"--pid1=30", "--pid2=invalid"})
+
+	_, _, _, err := parseFlags(cmd)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "pid2")
+}
+
+func TestParseFlags_EmptyFieldDefaultsToTitle(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("pid1", "", "")
+	cmd.Flags().String("pid2", "", "")
+	cmd.Flags().String("field", "", "")
+	cmd.ParseFlags([]string{"--pid1=30", "--pid2=31"})
+
+	pid1, pid2, field, err := parseFlags(cmd)
+
+	assert.NoError(t, err)
+	assert.Equal(t, int64(30), pid1)
+	assert.Equal(t, int64(31), pid2)
+	assert.Equal(t, "title", field)
+}
+
 // ==================== Тесты для collectNames ====================
 
 func TestCollectNames(t *testing.T) {
@@ -97,6 +126,41 @@ func TestGetProjectNames_Success(t *testing.T) {
 	assert.Equal(t, "Test Project 2", name2)
 }
 
+func TestGetProjectNames_FirstProjectError(t *testing.T) {
+	ctx := context.Background()
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, errors.New("project lookup failed")
+		},
+	}
+
+	name1, name2, err := GetProjectNames(ctx, mock, 1, 2)
+	assert.Error(t, err)
+	assert.Empty(t, name1)
+	assert.Empty(t, name2)
+	assert.Contains(t, err.Error(), "failed to get project 1")
+}
+
+func TestGetProjectNames_SecondProjectError(t *testing.T) {
+	ctx := context.Background()
+	call := 0
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			call++
+			if call == 1 {
+				return &data.GetProjectResponse{ID: projectID, Name: "Project One"}, nil
+			}
+			return nil, errors.New("second lookup failed")
+		},
+	}
+
+	name1, name2, err := GetProjectNames(ctx, mock, 1, 2)
+	assert.Error(t, err)
+	assert.Empty(t, name1)
+	assert.Empty(t, name2)
+	assert.Contains(t, err.Error(), "failed to get project 2")
+}
+
 func TestGetProjectName_Success(t *testing.T) {
 	mock := &client.MockClient{
 		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
@@ -110,6 +174,31 @@ func TestGetProjectName_Success(t *testing.T) {
 	name, err := GetProjectName(mock, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Project", name)
+}
+
+func TestGetProjectName_ProjectIsNilFallback(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, nil
+		},
+	}
+
+	name, err := GetProjectName(mock, 42)
+	assert.NoError(t, err)
+	assert.Equal(t, "Project 42", name)
+}
+
+func TestGetProjectName_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, errors.New("boom")
+		},
+	}
+
+	name, err := GetProjectName(mock, 77)
+	assert.Error(t, err)
+	assert.Empty(t, name)
+	assert.Contains(t, err.Error(), "failed to get project 77")
 }
 
 // ==================== Тесты для CompareResult ====================

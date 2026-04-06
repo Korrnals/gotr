@@ -234,6 +234,45 @@ func TestCreateCmd_MissingSuiteID_NonInteractive(t *testing.T) {
 	assert.Contains(t, err.Error(), "suite-id is required in non-interactive mode")
 }
 
+func TestCreateCmd_NoArgs_NoPrompter(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newCreateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--name", "Smoke Tests"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id is required in non-interactive mode")
+}
+
+func TestCreateCmd_MissingSuiteID_NoPrompter(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newCreateCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"30", "--name", "Smoke Tests"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "suite-id is required in non-interactive mode")
+}
+
+func TestCreateCmd_MissingSuiteID_Interactive_SelectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return nil, fmt.Errorf("suites unavailable")
+		},
+	}
+
+	cmd := newCreateCmd(testhelper.GetClientForTests)
+	p := interactive.NewMockPrompter()
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"30", "--name", "Smoke Tests"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get suites")
+}
+
 func TestRegister_CreateCmd_AllowsInteractiveSuiteSelection(t *testing.T) {
 	mock := &client.MockClient{
 		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {

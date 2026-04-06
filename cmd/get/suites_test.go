@@ -106,6 +106,23 @@ func TestSuitesCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
+func TestSuitesCmd_NoArgs_Interactive_SelectProjectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("project lookup failed")
+		},
+	}
+
+	p := interactive.NewMockPrompter()
+	cmd := newSuitesCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project lookup failed")
+}
+
 // ==================== Тесты для get suite ====================
 
 func TestSuiteCmd_Success(t *testing.T) {
@@ -194,6 +211,93 @@ func TestSuiteCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestSuitesCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newSuitesCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no projects found")
+}
+
+func TestSuiteCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newSuiteCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "suite_id required")
+}
+
+func TestSuiteCmd_NoArgs_Interactive_EmptySuites(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSuitesResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newSuiteCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no suites found")
+}
+
+func TestSuiteCmd_NoArgs_Interactive_GetSuitesError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return nil, fmt.Errorf("suites unavailable")
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSuiteCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get suites")
+}
+
+func TestSuiteCmd_NoArgs_Interactive_SelectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite", ProjectID: 30}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSuiteCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select")
 }
 
 func TestSuiteCmd_APIError(t *testing.T) {

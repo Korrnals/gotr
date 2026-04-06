@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newRunCrossProjectCmd создаёт команду 'reports run-cross-project'
-// Эндпоинт: GET /run_cross_project_report/{template_id}
+// newRunCrossProjectCmd creates the 'reports run-cross-project' command.
+// Endpoint: GET /run_cross_project_report/{template_id}
 func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run-cross-project [template_id]",
@@ -43,7 +43,7 @@ func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run-cross-project [template_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run-cross-project [template_id]")
 				}
 

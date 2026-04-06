@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "execution_status": "complete",
+    "interrupted": false,
+    "elapsed": "0s",
+    "elapsed_ms": 0,
+    "error_summary_count": 0,
+    "generated_at": "2026-04-04T19:44:02Z"
+  },
+  "cases": {
+    "resource": "cases",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "suites": {
+    "resource": "suites",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "sections": {
+    "resource": "sections",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "shared_steps": {
+    "resource": "sharedsteps",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "runs": {
+    "resource": "runs",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "plans": {
+    "resource": "plans",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "milestones": {
+    "resource": "milestones",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "datasets": {
+    "resource": "datasets",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "groups": {
+    "resource": "groups",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "labels": {
+    "resource": "labels",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "templates": {
+    "resource": "templates",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  },
+  "configurations": {
+    "resource": "configurations",
+    "project1_id": 1,
+    "project2_id": 2,
+    "status": "complete",
+    "only_in_first": null,
+    "only_in_second": null,
+    "common": null
+  }
+}

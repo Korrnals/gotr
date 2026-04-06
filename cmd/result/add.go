@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'result add'
-// Эндпоинт: POST /add_result/{test_id}
+// newAddCmd creates the 'result add' command.
+// Endpoint: POST /add_result/{test_id}
 func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [test-id]",
@@ -65,7 +65,7 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("test_id required in non-interactive mode: gotr result add [test-id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("test_id required in non-interactive mode: gotr result add [test-id]")
 				}
 				runID, err := resolveResultRunID(ctx, cli)
@@ -83,7 +83,7 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 				return err
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("result add")
@@ -118,8 +118,8 @@ func newAddCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Com
 	return cmd
 }
 
-// newAddCaseCmd создаёт команду 'result add-case'
-// Эндпоинт: POST /add_result_for_case/{run_id}/{case_id}
+// newAddCaseCmd creates the 'result add-case' command.
+// Endpoint: POST /add_result_for_case/{run_id}/{case_id}
 func newAddCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add-case [run-id]",
@@ -160,7 +160,7 @@ TestRail сам находит соответствующий test в run.
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("run_id required in non-interactive mode: gotr result add-case [run-id] --case-id <case_id>")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("run_id required in non-interactive mode: gotr result add-case [run-id] --case-id <case_id>")
 				}
 				runID, err = resolveResultRunID(ctx, cli)
@@ -175,7 +175,7 @@ TestRail сам находит соответствующий test в run.
 				return err
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("result add-case")
@@ -212,8 +212,8 @@ TestRail сам находит соответствующий test в run.
 	return cmd
 }
 
-// newAddBulkCmd создаёт команду 'result add-bulk'
-// Эндпоинт: POST /add_results/{run_id}
+// newAddBulkCmd creates the 'result add-bulk' command.
+// Endpoint: POST /add_results/{run_id}
 func newAddBulkCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add-bulk [run-id]",
@@ -261,7 +261,7 @@ JSON файл должен содержать массив результато�
 				return fmt.Errorf("file read error: %w", err)
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("result add-bulk")
@@ -274,7 +274,7 @@ JSON файл должен содержать массив результато�
 				return nil
 			}
 
-			// Пытаемся распарсить и отправить
+			// Parse and submit results
 			results, err := svc.AddBulkResults(ctx, runID, fileData)
 			if err != nil {
 				return err
@@ -292,9 +292,9 @@ JSON файл должен содержать массив результато�
 	return cmd
 }
 
-// buildAddResultRequest собирает запрос из флагов
+// buildAddResultRequest builds the request payload from command flags.
 func buildAddResultRequest(cmd *cobra.Command) (*data.AddResultRequest, error) {
-	// Проверяем что status-id указан (обязательный параметр)
+	// Ensure status-id is provided (required parameter)
 	if !cmd.Flags().Changed("status-id") {
 		return nil, fmt.Errorf("--status-id is required (use: 1=Passed, 2=Blocked, 3=Untested, 4=Retest, 5=Failed)")
 	}
@@ -316,7 +316,7 @@ func buildAddResultRequest(cmd *cobra.Command) (*data.AddResultRequest, error) {
 	}, nil
 }
 
-// Обратная совместимость: глобальные переменные для использования в result.go
+// Backward compatibility: exported vars for registration in result.go
 var (
 	addCmd     = newAddCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
 	addCaseCmd = newAddCaseCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })

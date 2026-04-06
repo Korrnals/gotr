@@ -3,8 +3,8 @@ package data
 
 import "encoding/json"
 
-// Run — тест-ран (набор тестов для выполнения)
-// Соответствует документации TestRail API v2
+// Run represents a test run (a set of tests for execution).
+// Corresponds to TestRail API v2 documentation.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs
 type Run struct {
 	ID                int64           `json:"id"`                            // The unique ID of the test run
@@ -35,15 +35,15 @@ type Run struct {
 	CustomFields      json.RawMessage `json:"custom_fields,omitempty"`       // Custom fields (varies by project configuration)
 }
 
-// GetRunsResponse — ответ на get_runs (массив ранов)
+// GetRunsResponse is the response for get_runs (array of runs).
 type GetRunsResponse []Run
 
-// GetRunResponse — ответ на get_run (один ран)
+// GetRunResponse is the response for get_run (a single run).
 type GetRunResponse Run
 
-// Request структуры для Runs API
+// Request structs for Runs API
 
-// AddRunRequest — запрос для add_run
+// AddRunRequest is the request for add_run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#addrun
 type AddRunRequest struct {
 	Name        string  `json:"name"`                    // The name of the test run (required)
@@ -57,7 +57,7 @@ type AddRunRequest struct {
 	Refs        string  `json:"refs,omitempty"`          // A string of references/requirements
 }
 
-// UpdateRunRequest — запрос для update_run
+// UpdateRunRequest is the request for update_run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#updaterun
 type UpdateRunRequest struct {
 	Name        *string `json:"name,omitempty"`          // The name of the test run
@@ -69,9 +69,7 @@ type UpdateRunRequest struct {
 	Refs        *string `json:"refs,omitempty"`          // A string of references/requirements
 }
 
-// CloseRunRequest — запрос для close_run
+// CloseRunRequest is the request for close_run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#closerun
-// Этот endpoint не требует тела запроса (POST с пустым телом)
-type CloseRunRequest struct {
-	// Пустая структура — close_run не требует параметров в body
-}
+// This endpoint requires no request body (POST with empty body).
+type CloseRunRequest struct{}

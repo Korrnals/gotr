@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteConfigCmd создаёт команду 'configurations delete-config'
-// Эндпоинт: POST /delete_config/{config_id}
+// newDeleteConfigCmd creates the 'configurations delete-config' command.
+// Endpoint: POST /delete_config/{config_id}
 func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-config [config_id]",
@@ -42,7 +42,7 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations delete-config [config_id]")
 				}
-				if _, ok := interactive.PrompterFromContext(ctx).(*interactive.NonInteractivePrompter); ok {
+				if interactive.IsNonInteractive(ctx) {
 					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations delete-config [config_id]")
 				}
 

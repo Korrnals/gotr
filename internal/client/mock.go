@@ -1,5 +1,5 @@
 // internal/client/mock.go
-// Универсальный mock-клиент для тестирования
+// Universal mock client for testing.
 package client
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// MockClient реализует ClientInterface для тестирования
+// MockClient implements ClientInterface for testing.
 type MockClient struct {
 	// ProjectsAPI
 	GetProjectsFunc   func(ctx context.Context) (data.GetProjectsResponse, error)
@@ -185,12 +185,13 @@ type MockClient struct {
 	UpdateTestsLabelsFunc func(ctx context.Context, runID int64, testIDs []int64, labels []string) error
 }
 
-// Проверка, что MockClient реализует ClientInterface
+// Compile-time check: MockClient must implement ClientInterface.
 var _ ClientInterface = (*MockClient)(nil)
 
 // ---------------------------------------------------------------------------
 // ProjectsAPI
 // ---------------------------------------------------------------------------
+// GetProjects calls the configured mock implementation when it is set.
 func (m *MockClient) GetProjects(ctx context.Context) (data.GetProjectsResponse, error) {
 	if m.GetProjectsFunc != nil {
 		return m.GetProjectsFunc(ctx)
@@ -198,6 +199,7 @@ func (m *MockClient) GetProjects(ctx context.Context) (data.GetProjectsResponse,
 	return nil, nil
 }
 
+// GetProject calls the configured mock implementation when it is set.
 func (m *MockClient) GetProject(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 	if m.GetProjectFunc != nil {
 		return m.GetProjectFunc(ctx, projectID)
@@ -205,6 +207,7 @@ func (m *MockClient) GetProject(ctx context.Context, projectID int64) (*data.Get
 	return nil, nil
 }
 
+// AddProject calls the configured mock implementation when it is set.
 func (m *MockClient) AddProject(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
 	if m.AddProjectFunc != nil {
 		return m.AddProjectFunc(ctx, req)
@@ -212,6 +215,7 @@ func (m *MockClient) AddProject(ctx context.Context, req *data.AddProjectRequest
 	return nil, nil
 }
 
+// UpdateProject calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateProject(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
 	if m.UpdateProjectFunc != nil {
 		return m.UpdateProjectFunc(ctx, projectID, req)
@@ -219,6 +223,7 @@ func (m *MockClient) UpdateProject(ctx context.Context, projectID int64, req *da
 	return nil, nil
 }
 
+// DeleteProject calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteProject(ctx context.Context, projectID int64) error {
 	if m.DeleteProjectFunc != nil {
 		return m.DeleteProjectFunc(ctx, projectID)
@@ -229,6 +234,7 @@ func (m *MockClient) DeleteProject(ctx context.Context, projectID int64) error {
 // ---------------------------------------------------------------------------
 // CasesAPI
 // ---------------------------------------------------------------------------
+// GetCases calls the configured mock implementation when it is set.
 func (m *MockClient) GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 	if m.GetCasesFunc != nil {
 		return m.GetCasesFunc(ctx, projectID, suiteID, sectionID)
@@ -236,6 +242,7 @@ func (m *MockClient) GetCases(ctx context.Context, projectID int64, suiteID int6
 	return nil, nil
 }
 
+// GetCasesPage calls the configured mock implementation when it is set.
 func (m *MockClient) GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
 	if m.GetCasesPageFunc != nil {
 		return m.GetCasesPageFunc(ctx, projectID, suiteID, offset, limit)
@@ -243,6 +250,7 @@ func (m *MockClient) GetCasesPage(ctx context.Context, projectID int64, suiteID 
 	return nil, nil
 }
 
+// GetCase calls the configured mock implementation when it is set.
 func (m *MockClient) GetCase(ctx context.Context, caseID int64) (*data.Case, error) {
 	if m.GetCaseFunc != nil {
 		return m.GetCaseFunc(ctx, caseID)
@@ -250,6 +258,7 @@ func (m *MockClient) GetCase(ctx context.Context, caseID int64) (*data.Case, err
 	return nil, nil
 }
 
+// AddCase calls the configured mock implementation when it is set.
 func (m *MockClient) AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 	if m.AddCaseFunc != nil {
 		return m.AddCaseFunc(ctx, sectionID, req)
@@ -257,6 +266,7 @@ func (m *MockClient) AddCase(ctx context.Context, sectionID int64, req *data.Add
 	return &data.Case{ID: 999}, nil
 }
 
+// UpdateCase calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 	if m.UpdateCaseFunc != nil {
 		return m.UpdateCaseFunc(ctx, caseID, req)
@@ -264,6 +274,7 @@ func (m *MockClient) UpdateCase(ctx context.Context, caseID int64, req *data.Upd
 	return nil, nil
 }
 
+// DeleteCase calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteCase(ctx context.Context, caseID int64) error {
 	if m.DeleteCaseFunc != nil {
 		return m.DeleteCaseFunc(ctx, caseID)
@@ -271,6 +282,7 @@ func (m *MockClient) DeleteCase(ctx context.Context, caseID int64) error {
 	return nil
 }
 
+// UpdateCases calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateCases(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 	if m.UpdateCasesFunc != nil {
 		return m.UpdateCasesFunc(ctx, suiteID, req)
@@ -278,6 +290,7 @@ func (m *MockClient) UpdateCases(ctx context.Context, suiteID int64, req *data.U
 	return nil, nil
 }
 
+// DeleteCases calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
 	if m.DeleteCasesFunc != nil {
 		return m.DeleteCasesFunc(ctx, suiteID, req)
@@ -285,6 +298,7 @@ func (m *MockClient) DeleteCases(ctx context.Context, suiteID int64, req *data.D
 	return nil
 }
 
+// CopyCasesToSection calls the configured mock implementation when it is set.
 func (m *MockClient) CopyCasesToSection(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
 	if m.CopyCasesToSectionFunc != nil {
 		return m.CopyCasesToSectionFunc(ctx, sectionID, req)
@@ -292,6 +306,7 @@ func (m *MockClient) CopyCasesToSection(ctx context.Context, sectionID int64, re
 	return nil
 }
 
+// MoveCasesToSection calls the configured mock implementation when it is set.
 func (m *MockClient) MoveCasesToSection(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
 	if m.MoveCasesToSectionFunc != nil {
 		return m.MoveCasesToSectionFunc(ctx, sectionID, req)
@@ -299,6 +314,7 @@ func (m *MockClient) MoveCasesToSection(ctx context.Context, sectionID int64, re
 	return nil
 }
 
+// GetHistoryForCase calls the configured mock implementation when it is set.
 func (m *MockClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data.GetHistoryForCaseResponse, error) {
 	if m.GetHistoryForCaseFunc != nil {
 		return m.GetHistoryForCaseFunc(ctx, caseID)
@@ -306,6 +322,7 @@ func (m *MockClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data
 	return nil, nil
 }
 
+// GetCaseFields calls the configured mock implementation when it is set.
 func (m *MockClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsResponse, error) {
 	if m.GetCaseFieldsFunc != nil {
 		return m.GetCaseFieldsFunc(ctx)
@@ -313,6 +330,7 @@ func (m *MockClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsRespo
 	return nil, nil
 }
 
+// AddCaseField calls the configured mock implementation when it is set.
 func (m *MockClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error) {
 	if m.AddCaseFieldFunc != nil {
 		return m.AddCaseFieldFunc(ctx, req)
@@ -320,6 +338,7 @@ func (m *MockClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldReq
 	return nil, nil
 }
 
+// GetCaseTypes calls the configured mock implementation when it is set.
 func (m *MockClient) GetCaseTypes(ctx context.Context) (data.GetCaseTypesResponse, error) {
 	if m.GetCaseTypesFunc != nil {
 		return m.GetCaseTypesFunc(ctx)
@@ -327,6 +346,7 @@ func (m *MockClient) GetCaseTypes(ctx context.Context) (data.GetCaseTypesRespons
 	return nil, nil
 }
 
+// DiffCasesData calls the configured mock implementation when it is set.
 func (m *MockClient) DiffCasesData(ctx context.Context, pid1, pid2 int64, field string) (*data.DiffCasesResponse, error) {
 	if m.DiffCasesDataFunc != nil {
 		return m.DiffCasesDataFunc(ctx, pid1, pid2, field)
@@ -334,7 +354,7 @@ func (m *MockClient) DiffCasesData(ctx context.Context, pid1, pid2 int64, field 
 	return nil, nil
 }
 
-// GetCasesParallel — mock implementation
+// GetCasesParallel calls the configured mock implementation when it is set.
 func (m *MockClient) GetCasesParallel(ctx context.Context, projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetCasesResponse, error) {
 	if m.GetCasesParallelFunc != nil {
 		return m.GetCasesParallelFunc(ctx, projectID, suiteIDs, workers)
@@ -354,7 +374,7 @@ func (m *MockClient) GetCasesParallel(ctx context.Context, projectID int64, suit
 	return results, nil
 }
 
-// GetSuitesParallel — mock implementation
+// GetSuitesParallel calls the configured mock implementation when it is set.
 func (m *MockClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetSuitesResponse, error) {
 	results := make(map[int64]data.GetSuitesResponse)
 	for _, pid := range projectIDs {
@@ -370,7 +390,7 @@ func (m *MockClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 	return results, nil
 }
 
-// GetCasesForSuitesParallel — mock implementation
+// GetCasesForSuitesParallel calls the configured mock implementation when it is set.
 func (m *MockClient) GetCasesForSuitesParallel(ctx context.Context, projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	if m.GetCasesForSuitesParallelFunc != nil {
 		return m.GetCasesForSuitesParallelFunc(ctx, projectID, suiteIDs, workers)
@@ -390,6 +410,7 @@ func (m *MockClient) GetCasesForSuitesParallel(ctx context.Context, projectID in
 // ---------------------------------------------------------------------------
 // SuitesAPI
 // ---------------------------------------------------------------------------
+// GetSuites calls the configured mock implementation when it is set.
 func (m *MockClient) GetSuites(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 	if m.GetSuitesFunc != nil {
 		return m.GetSuitesFunc(ctx, projectID)
@@ -397,6 +418,7 @@ func (m *MockClient) GetSuites(ctx context.Context, projectID int64) (data.GetSu
 	return nil, nil
 }
 
+// GetSuite calls the configured mock implementation when it is set.
 func (m *MockClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, error) {
 	if m.GetSuiteFunc != nil {
 		return m.GetSuiteFunc(ctx, suiteID)
@@ -404,6 +426,7 @@ func (m *MockClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, 
 	return nil, nil
 }
 
+// AddSuite calls the configured mock implementation when it is set.
 func (m *MockClient) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 	if m.AddSuiteFunc != nil {
 		return m.AddSuiteFunc(ctx, projectID, req)
@@ -411,6 +434,7 @@ func (m *MockClient) AddSuite(ctx context.Context, projectID int64, req *data.Ad
 	return &data.Suite{ID: 999}, nil
 }
 
+// UpdateSuite calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
 	if m.UpdateSuiteFunc != nil {
 		return m.UpdateSuiteFunc(ctx, suiteID, req)
@@ -418,6 +442,7 @@ func (m *MockClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.U
 	return nil, nil
 }
 
+// DeleteSuite calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteSuite(ctx context.Context, suiteID int64) error {
 	if m.DeleteSuiteFunc != nil {
 		return m.DeleteSuiteFunc(ctx, suiteID)
@@ -428,6 +453,7 @@ func (m *MockClient) DeleteSuite(ctx context.Context, suiteID int64) error {
 // ---------------------------------------------------------------------------
 // SectionsAPI
 // ---------------------------------------------------------------------------
+// GetSections calls the configured mock implementation when it is set.
 func (m *MockClient) GetSections(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 	if m.GetSectionsFunc != nil {
 		return m.GetSectionsFunc(ctx, projectID, suiteID)
@@ -435,6 +461,7 @@ func (m *MockClient) GetSections(ctx context.Context, projectID, suiteID int64) 
 	return nil, nil
 }
 
+// GetSectionsParallelCtx calls the configured mock implementation when it is set.
 func (m *MockClient) GetSectionsParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetSectionsResponse, error) {
 	if m.GetSectionsParallelCtxFunc != nil {
 		return m.GetSectionsParallelCtxFunc(ctx, projectID, suiteIDs, config)
@@ -456,6 +483,7 @@ func (m *MockClient) GetSectionsParallelCtx(ctx context.Context, projectID int64
 	return all, nil
 }
 
+// GetSection calls the configured mock implementation when it is set.
 func (m *MockClient) GetSection(ctx context.Context, sectionID int64) (*data.Section, error) {
 	if m.GetSectionFunc != nil {
 		return m.GetSectionFunc(ctx, sectionID)
@@ -463,6 +491,7 @@ func (m *MockClient) GetSection(ctx context.Context, sectionID int64) (*data.Sec
 	return nil, nil
 }
 
+// AddSection calls the configured mock implementation when it is set.
 func (m *MockClient) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 	if m.AddSectionFunc != nil {
 		return m.AddSectionFunc(ctx, projectID, req)
@@ -470,6 +499,7 @@ func (m *MockClient) AddSection(ctx context.Context, projectID int64, req *data.
 	return &data.Section{ID: 999}, nil
 }
 
+// UpdateSection calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
 	if m.UpdateSectionFunc != nil {
 		return m.UpdateSectionFunc(ctx, sectionID, req)
@@ -477,6 +507,7 @@ func (m *MockClient) UpdateSection(ctx context.Context, sectionID int64, req *da
 	return nil, nil
 }
 
+// DeleteSection calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteSection(ctx context.Context, sectionID int64) error {
 	if m.DeleteSectionFunc != nil {
 		return m.DeleteSectionFunc(ctx, sectionID)
@@ -487,6 +518,7 @@ func (m *MockClient) DeleteSection(ctx context.Context, sectionID int64) error {
 // ---------------------------------------------------------------------------
 // SharedStepsAPI
 // ---------------------------------------------------------------------------
+// GetSharedSteps calls the configured mock implementation when it is set.
 func (m *MockClient) GetSharedSteps(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
 	if m.GetSharedStepsFunc != nil {
 		return m.GetSharedStepsFunc(ctx, projectID)
@@ -494,6 +526,7 @@ func (m *MockClient) GetSharedSteps(ctx context.Context, projectID int64) (data.
 	return nil, nil
 }
 
+// GetSharedStep calls the configured mock implementation when it is set.
 func (m *MockClient) GetSharedStep(ctx context.Context, stepID int64) (*data.SharedStep, error) {
 	if m.GetSharedStepFunc != nil {
 		return m.GetSharedStepFunc(ctx, stepID)
@@ -501,6 +534,7 @@ func (m *MockClient) GetSharedStep(ctx context.Context, stepID int64) (*data.Sha
 	return nil, nil
 }
 
+// AddSharedStep calls the configured mock implementation when it is set.
 func (m *MockClient) AddSharedStep(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 	if m.AddSharedStepFunc != nil {
 		return m.AddSharedStepFunc(ctx, projectID, req)
@@ -508,6 +542,7 @@ func (m *MockClient) AddSharedStep(ctx context.Context, projectID int64, req *da
 	return &data.SharedStep{ID: 999}, nil
 }
 
+// UpdateSharedStep calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateSharedStep(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
 	if m.UpdateSharedStepFunc != nil {
 		return m.UpdateSharedStepFunc(ctx, stepID, req)
@@ -515,6 +550,7 @@ func (m *MockClient) UpdateSharedStep(ctx context.Context, stepID int64, req *da
 	return nil, nil
 }
 
+// DeleteSharedStep calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteSharedStep(ctx context.Context, stepID int64, keepInCases int) error {
 	if m.DeleteSharedStepFunc != nil {
 		return m.DeleteSharedStepFunc(ctx, stepID, keepInCases)
@@ -522,6 +558,7 @@ func (m *MockClient) DeleteSharedStep(ctx context.Context, stepID int64, keepInC
 	return nil
 }
 
+// GetSharedStepHistory calls the configured mock implementation when it is set.
 func (m *MockClient) GetSharedStepHistory(ctx context.Context, stepID int64) (*data.GetSharedStepHistoryResponse, error) {
 	if m.GetSharedStepHistoryFunc != nil {
 		return m.GetSharedStepHistoryFunc(ctx, stepID)
@@ -532,6 +569,7 @@ func (m *MockClient) GetSharedStepHistory(ctx context.Context, stepID int64) (*d
 // ---------------------------------------------------------------------------
 // RunsAPI
 // ---------------------------------------------------------------------------
+// GetRuns calls the configured mock implementation when it is set.
 func (m *MockClient) GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	if m.GetRunsFunc != nil {
 		return m.GetRunsFunc(ctx, projectID)
@@ -539,6 +577,7 @@ func (m *MockClient) GetRuns(ctx context.Context, projectID int64) (data.GetRuns
 	return nil, nil
 }
 
+// GetRun calls the configured mock implementation when it is set.
 func (m *MockClient) GetRun(ctx context.Context, runID int64) (*data.Run, error) {
 	if m.GetRunFunc != nil {
 		return m.GetRunFunc(ctx, runID)
@@ -546,6 +585,7 @@ func (m *MockClient) GetRun(ctx context.Context, runID int64) (*data.Run, error)
 	return nil, nil
 }
 
+// AddRun calls the configured mock implementation when it is set.
 func (m *MockClient) AddRun(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 	if m.AddRunFunc != nil {
 		return m.AddRunFunc(ctx, projectID, req)
@@ -553,6 +593,7 @@ func (m *MockClient) AddRun(ctx context.Context, projectID int64, req *data.AddR
 	return nil, nil
 }
 
+// UpdateRun calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateRun(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 	if m.UpdateRunFunc != nil {
 		return m.UpdateRunFunc(ctx, runID, req)
@@ -560,6 +601,7 @@ func (m *MockClient) UpdateRun(ctx context.Context, runID int64, req *data.Updat
 	return nil, nil
 }
 
+// CloseRun calls the configured mock implementation when it is set.
 func (m *MockClient) CloseRun(ctx context.Context, runID int64) (*data.Run, error) {
 	if m.CloseRunFunc != nil {
 		return m.CloseRunFunc(ctx, runID)
@@ -567,6 +609,7 @@ func (m *MockClient) CloseRun(ctx context.Context, runID int64) (*data.Run, erro
 	return nil, nil
 }
 
+// DeleteRun calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteRun(ctx context.Context, runID int64) error {
 	if m.DeleteRunFunc != nil {
 		return m.DeleteRunFunc(ctx, runID)
@@ -577,6 +620,7 @@ func (m *MockClient) DeleteRun(ctx context.Context, runID int64) error {
 // ---------------------------------------------------------------------------
 // ResultsAPI
 // ---------------------------------------------------------------------------
+// GetResults calls the configured mock implementation when it is set.
 func (m *MockClient) GetResults(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 	if m.GetResultsFunc != nil {
 		return m.GetResultsFunc(ctx, testID)
@@ -584,6 +628,7 @@ func (m *MockClient) GetResults(ctx context.Context, testID int64) (data.GetResu
 	return nil, nil
 }
 
+// GetResultsForRun calls the configured mock implementation when it is set.
 func (m *MockClient) GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 	if m.GetResultsForRunFunc != nil {
 		return m.GetResultsForRunFunc(ctx, runID)
@@ -591,6 +636,7 @@ func (m *MockClient) GetResultsForRun(ctx context.Context, runID int64) (data.Ge
 	return nil, nil
 }
 
+// GetResultsForCase calls the configured mock implementation when it is set.
 func (m *MockClient) GetResultsForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 	if m.GetResultsForCaseFunc != nil {
 		return m.GetResultsForCaseFunc(ctx, runID, caseID)
@@ -598,6 +644,7 @@ func (m *MockClient) GetResultsForCase(ctx context.Context, runID, caseID int64)
 	return nil, nil
 }
 
+// AddResult calls the configured mock implementation when it is set.
 func (m *MockClient) AddResult(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
 	if m.AddResultFunc != nil {
 		return m.AddResultFunc(ctx, testID, req)
@@ -605,6 +652,7 @@ func (m *MockClient) AddResult(ctx context.Context, testID int64, req *data.AddR
 	return nil, nil
 }
 
+// AddResultForCase calls the configured mock implementation when it is set.
 func (m *MockClient) AddResultForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
 	if m.AddResultForCaseFunc != nil {
 		return m.AddResultForCaseFunc(ctx, runID, caseID, req)
@@ -612,6 +660,7 @@ func (m *MockClient) AddResultForCase(ctx context.Context, runID, caseID int64, 
 	return nil, nil
 }
 
+// AddResults calls the configured mock implementation when it is set.
 func (m *MockClient) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 	if m.AddResultsFunc != nil {
 		return m.AddResultsFunc(ctx, runID, req)
@@ -619,6 +668,7 @@ func (m *MockClient) AddResults(ctx context.Context, runID int64, req *data.AddR
 	return nil, nil
 }
 
+// AddResultsForCases calls the configured mock implementation when it is set.
 func (m *MockClient) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 	if m.AddResultsForCasesFunc != nil {
 		return m.AddResultsForCasesFunc(ctx, runID, req)
@@ -629,6 +679,7 @@ func (m *MockClient) AddResultsForCases(ctx context.Context, runID int64, req *d
 // ---------------------------------------------------------------------------
 // TestsAPI
 // ---------------------------------------------------------------------------
+// GetTest calls the configured mock implementation when it is set.
 func (m *MockClient) GetTest(ctx context.Context, testID int64) (*data.Test, error) {
 	if m.GetTestFunc != nil {
 		return m.GetTestFunc(ctx, testID)
@@ -636,6 +687,7 @@ func (m *MockClient) GetTest(ctx context.Context, testID int64) (*data.Test, err
 	return nil, nil
 }
 
+// GetTests calls the configured mock implementation when it is set.
 func (m *MockClient) GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 	if m.GetTestsFunc != nil {
 		return m.GetTestsFunc(ctx, runID, filters)
@@ -643,6 +695,7 @@ func (m *MockClient) GetTests(ctx context.Context, runID int64, filters map[stri
 	return nil, nil
 }
 
+// UpdateTest calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateTest(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 	if m.UpdateTestFunc != nil {
 		return m.UpdateTestFunc(ctx, testID, req)
@@ -653,6 +706,7 @@ func (m *MockClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 // ---------------------------------------------------------------------------
 // MilestonesAPI
 // ---------------------------------------------------------------------------
+// GetMilestone calls the configured mock implementation when it is set.
 func (m *MockClient) GetMilestone(ctx context.Context, milestoneID int64) (*data.Milestone, error) {
 	if m.GetMilestoneFunc != nil {
 		return m.GetMilestoneFunc(ctx, milestoneID)
@@ -660,6 +714,7 @@ func (m *MockClient) GetMilestone(ctx context.Context, milestoneID int64) (*data
 	return nil, nil
 }
 
+// GetMilestones calls the configured mock implementation when it is set.
 func (m *MockClient) GetMilestones(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 	if m.GetMilestonesFunc != nil {
 		return m.GetMilestonesFunc(ctx, projectID)
@@ -667,6 +722,7 @@ func (m *MockClient) GetMilestones(ctx context.Context, projectID int64) ([]data
 	return nil, nil
 }
 
+// AddMilestone calls the configured mock implementation when it is set.
 func (m *MockClient) AddMilestone(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 	if m.AddMilestoneFunc != nil {
 		return m.AddMilestoneFunc(ctx, projectID, req)
@@ -674,6 +730,7 @@ func (m *MockClient) AddMilestone(ctx context.Context, projectID int64, req *dat
 	return nil, nil
 }
 
+// UpdateMilestone calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateMilestone(ctx context.Context, milestoneID int64, req *data.UpdateMilestoneRequest) (*data.Milestone, error) {
 	if m.UpdateMilestoneFunc != nil {
 		return m.UpdateMilestoneFunc(ctx, milestoneID, req)
@@ -681,6 +738,7 @@ func (m *MockClient) UpdateMilestone(ctx context.Context, milestoneID int64, req
 	return nil, nil
 }
 
+// DeleteMilestone calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteMilestone(ctx context.Context, milestoneID int64) error {
 	if m.DeleteMilestoneFunc != nil {
 		return m.DeleteMilestoneFunc(ctx, milestoneID)
@@ -691,6 +749,7 @@ func (m *MockClient) DeleteMilestone(ctx context.Context, milestoneID int64) err
 // ---------------------------------------------------------------------------
 // PlansAPI
 // ---------------------------------------------------------------------------
+// GetPlan calls the configured mock implementation when it is set.
 func (m *MockClient) GetPlan(ctx context.Context, planID int64) (*data.Plan, error) {
 	if m.GetPlanFunc != nil {
 		return m.GetPlanFunc(ctx, planID)
@@ -698,6 +757,7 @@ func (m *MockClient) GetPlan(ctx context.Context, planID int64) (*data.Plan, err
 	return nil, nil
 }
 
+// GetPlans calls the configured mock implementation when it is set.
 func (m *MockClient) GetPlans(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 	if m.GetPlansFunc != nil {
 		return m.GetPlansFunc(ctx, projectID)
@@ -705,6 +765,7 @@ func (m *MockClient) GetPlans(ctx context.Context, projectID int64) (data.GetPla
 	return nil, nil
 }
 
+// AddPlan calls the configured mock implementation when it is set.
 func (m *MockClient) AddPlan(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 	if m.AddPlanFunc != nil {
 		return m.AddPlanFunc(ctx, projectID, req)
@@ -712,6 +773,7 @@ func (m *MockClient) AddPlan(ctx context.Context, projectID int64, req *data.Add
 	return nil, nil
 }
 
+// UpdatePlan calls the configured mock implementation when it is set.
 func (m *MockClient) UpdatePlan(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 	if m.UpdatePlanFunc != nil {
 		return m.UpdatePlanFunc(ctx, planID, req)
@@ -719,6 +781,7 @@ func (m *MockClient) UpdatePlan(ctx context.Context, planID int64, req *data.Upd
 	return nil, nil
 }
 
+// ClosePlan calls the configured mock implementation when it is set.
 func (m *MockClient) ClosePlan(ctx context.Context, planID int64) (*data.Plan, error) {
 	if m.ClosePlanFunc != nil {
 		return m.ClosePlanFunc(ctx, planID)
@@ -726,6 +789,7 @@ func (m *MockClient) ClosePlan(ctx context.Context, planID int64) (*data.Plan, e
 	return nil, nil
 }
 
+// DeletePlan calls the configured mock implementation when it is set.
 func (m *MockClient) DeletePlan(ctx context.Context, planID int64) error {
 	if m.DeletePlanFunc != nil {
 		return m.DeletePlanFunc(ctx, planID)
@@ -733,6 +797,7 @@ func (m *MockClient) DeletePlan(ctx context.Context, planID int64) error {
 	return nil
 }
 
+// AddPlanEntry calls the configured mock implementation when it is set.
 func (m *MockClient) AddPlanEntry(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 	if m.AddPlanEntryFunc != nil {
 		return m.AddPlanEntryFunc(ctx, planID, req)
@@ -740,6 +805,7 @@ func (m *MockClient) AddPlanEntry(ctx context.Context, planID int64, req *data.A
 	return nil, nil
 }
 
+// UpdatePlanEntry calls the configured mock implementation when it is set.
 func (m *MockClient) UpdatePlanEntry(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 	if m.UpdatePlanEntryFunc != nil {
 		return m.UpdatePlanEntryFunc(ctx, planID, entryID, req)
@@ -747,6 +813,7 @@ func (m *MockClient) UpdatePlanEntry(ctx context.Context, planID int64, entryID 
 	return nil, nil
 }
 
+// DeletePlanEntry calls the configured mock implementation when it is set.
 func (m *MockClient) DeletePlanEntry(ctx context.Context, planID int64, entryID string) error {
 	if m.DeletePlanEntryFunc != nil {
 		return m.DeletePlanEntryFunc(ctx, planID, entryID)
@@ -757,6 +824,7 @@ func (m *MockClient) DeletePlanEntry(ctx context.Context, planID int64, entryID 
 // ---------------------------------------------------------------------------
 // AttachmentsAPI
 // ---------------------------------------------------------------------------
+// AddAttachmentToCase calls the configured mock implementation when it is set.
 func (m *MockClient) AddAttachmentToCase(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 	if m.AddAttachmentToCaseFunc != nil {
 		return m.AddAttachmentToCaseFunc(ctx, caseID, filePath)
@@ -764,6 +832,7 @@ func (m *MockClient) AddAttachmentToCase(ctx context.Context, caseID int64, file
 	return nil, nil
 }
 
+// AddAttachmentToPlan calls the configured mock implementation when it is set.
 func (m *MockClient) AddAttachmentToPlan(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error) {
 	if m.AddAttachmentToPlanFunc != nil {
 		return m.AddAttachmentToPlanFunc(ctx, planID, filePath)
@@ -771,6 +840,7 @@ func (m *MockClient) AddAttachmentToPlan(ctx context.Context, planID int64, file
 	return nil, nil
 }
 
+// AddAttachmentToPlanEntry calls the configured mock implementation when it is set.
 func (m *MockClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
 	if m.AddAttachmentToPlanEntryFunc != nil {
 		return m.AddAttachmentToPlanEntryFunc(ctx, planID, entryID, filePath)
@@ -778,6 +848,7 @@ func (m *MockClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64,
 	return nil, nil
 }
 
+// AddAttachmentToResult calls the configured mock implementation when it is set.
 func (m *MockClient) AddAttachmentToResult(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error) {
 	if m.AddAttachmentToResultFunc != nil {
 		return m.AddAttachmentToResultFunc(ctx, resultID, filePath)
@@ -785,6 +856,7 @@ func (m *MockClient) AddAttachmentToResult(ctx context.Context, resultID int64, 
 	return nil, nil
 }
 
+// AddAttachmentToRun calls the configured mock implementation when it is set.
 func (m *MockClient) AddAttachmentToRun(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error) {
 	if m.AddAttachmentToRunFunc != nil {
 		return m.AddAttachmentToRunFunc(ctx, runID, filePath)
@@ -792,6 +864,7 @@ func (m *MockClient) AddAttachmentToRun(ctx context.Context, runID int64, filePa
 	return nil, nil
 }
 
+// DeleteAttachment calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteAttachment(ctx context.Context, attachmentID int64) error {
 	if m.DeleteAttachmentFunc != nil {
 		return m.DeleteAttachmentFunc(ctx, attachmentID)
@@ -799,6 +872,7 @@ func (m *MockClient) DeleteAttachment(ctx context.Context, attachmentID int64) e
 	return nil
 }
 
+// GetAttachment calls the configured mock implementation when it is set.
 func (m *MockClient) GetAttachment(ctx context.Context, attachmentID int64) (*data.Attachment, error) {
 	if m.GetAttachmentFunc != nil {
 		return m.GetAttachmentFunc(ctx, attachmentID)
@@ -806,6 +880,7 @@ func (m *MockClient) GetAttachment(ctx context.Context, attachmentID int64) (*da
 	return nil, nil
 }
 
+// GetAttachmentsForCase calls the configured mock implementation when it is set.
 func (m *MockClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 	if m.GetAttachmentsForCaseFunc != nil {
 		return m.GetAttachmentsForCaseFunc(ctx, caseID)
@@ -813,6 +888,7 @@ func (m *MockClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (d
 	return nil, nil
 }
 
+// GetAttachmentsForPlan calls the configured mock implementation when it is set.
 func (m *MockClient) GetAttachmentsForPlan(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
 	if m.GetAttachmentsForPlanFunc != nil {
 		return m.GetAttachmentsForPlanFunc(ctx, planID)
@@ -820,6 +896,7 @@ func (m *MockClient) GetAttachmentsForPlan(ctx context.Context, planID int64) (d
 	return nil, nil
 }
 
+// GetAttachmentsForPlanEntry calls the configured mock implementation when it is set.
 func (m *MockClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
 	if m.GetAttachmentsForPlanEntryFunc != nil {
 		return m.GetAttachmentsForPlanEntryFunc(ctx, planID, entryID)
@@ -827,6 +904,7 @@ func (m *MockClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int6
 	return nil, nil
 }
 
+// GetAttachmentsForRun calls the configured mock implementation when it is set.
 func (m *MockClient) GetAttachmentsForRun(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 	if m.GetAttachmentsForRunFunc != nil {
 		return m.GetAttachmentsForRunFunc(ctx, runID)
@@ -834,6 +912,7 @@ func (m *MockClient) GetAttachmentsForRun(ctx context.Context, runID int64) (dat
 	return nil, nil
 }
 
+// GetAttachmentsForTest calls the configured mock implementation when it is set.
 func (m *MockClient) GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 	if m.GetAttachmentsForTestFunc != nil {
 		return m.GetAttachmentsForTestFunc(ctx, testID)
@@ -844,6 +923,7 @@ func (m *MockClient) GetAttachmentsForTest(ctx context.Context, testID int64) (d
 // ---------------------------------------------------------------------------
 // ConfigurationsAPI
 // ---------------------------------------------------------------------------
+// GetConfigs calls the configured mock implementation when it is set.
 func (m *MockClient) GetConfigs(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 	if m.GetConfigsFunc != nil {
 		return m.GetConfigsFunc(ctx, projectID)
@@ -851,6 +931,7 @@ func (m *MockClient) GetConfigs(ctx context.Context, projectID int64) (data.GetC
 	return nil, nil
 }
 
+// AddConfigGroup calls the configured mock implementation when it is set.
 func (m *MockClient) AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 	if m.AddConfigGroupFunc != nil {
 		return m.AddConfigGroupFunc(ctx, projectID, req)
@@ -858,6 +939,7 @@ func (m *MockClient) AddConfigGroup(ctx context.Context, projectID int64, req *d
 	return nil, nil
 }
 
+// AddConfig calls the configured mock implementation when it is set.
 func (m *MockClient) AddConfig(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
 	if m.AddConfigFunc != nil {
 		return m.AddConfigFunc(ctx, groupID, req)
@@ -865,6 +947,7 @@ func (m *MockClient) AddConfig(ctx context.Context, groupID int64, req *data.Add
 	return nil, nil
 }
 
+// UpdateConfigGroup calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
 	if m.UpdateConfigGroupFunc != nil {
 		return m.UpdateConfigGroupFunc(ctx, groupID, req)
@@ -872,6 +955,7 @@ func (m *MockClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *
 	return nil, nil
 }
 
+// UpdateConfig calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateConfig(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
 	if m.UpdateConfigFunc != nil {
 		return m.UpdateConfigFunc(ctx, configID, req)
@@ -879,6 +963,7 @@ func (m *MockClient) UpdateConfig(ctx context.Context, configID int64, req *data
 	return nil, nil
 }
 
+// DeleteConfigGroup calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteConfigGroup(ctx context.Context, groupID int64) error {
 	if m.DeleteConfigGroupFunc != nil {
 		return m.DeleteConfigGroupFunc(ctx, groupID)
@@ -886,6 +971,7 @@ func (m *MockClient) DeleteConfigGroup(ctx context.Context, groupID int64) error
 	return nil
 }
 
+// DeleteConfig calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteConfig(ctx context.Context, configID int64) error {
 	if m.DeleteConfigFunc != nil {
 		return m.DeleteConfigFunc(ctx, configID)
@@ -896,6 +982,7 @@ func (m *MockClient) DeleteConfig(ctx context.Context, configID int64) error {
 // ---------------------------------------------------------------------------
 // UsersAPI
 // ---------------------------------------------------------------------------
+// GetUsers calls the configured mock implementation when it is set.
 func (m *MockClient) GetUsers(ctx context.Context) (data.GetUsersResponse, error) {
 	if m.GetUsersFunc != nil {
 		return m.GetUsersFunc(ctx)
@@ -903,6 +990,7 @@ func (m *MockClient) GetUsers(ctx context.Context) (data.GetUsersResponse, error
 	return nil, nil
 }
 
+// GetUsersByProject calls the configured mock implementation when it is set.
 func (m *MockClient) GetUsersByProject(ctx context.Context, projectID int64) (data.GetUsersResponse, error) {
 	if m.GetUsersByProjectFunc != nil {
 		return m.GetUsersByProjectFunc(ctx, projectID)
@@ -910,6 +998,7 @@ func (m *MockClient) GetUsersByProject(ctx context.Context, projectID int64) (da
 	return nil, nil
 }
 
+// GetUser calls the configured mock implementation when it is set.
 func (m *MockClient) GetUser(ctx context.Context, userID int64) (*data.User, error) {
 	if m.GetUserFunc != nil {
 		return m.GetUserFunc(ctx, userID)
@@ -917,6 +1006,7 @@ func (m *MockClient) GetUser(ctx context.Context, userID int64) (*data.User, err
 	return nil, nil
 }
 
+// GetUserByEmail calls the configured mock implementation when it is set.
 func (m *MockClient) GetUserByEmail(ctx context.Context, email string) (*data.User, error) {
 	if m.GetUserByEmailFunc != nil {
 		return m.GetUserByEmailFunc(ctx, email)
@@ -924,6 +1014,7 @@ func (m *MockClient) GetUserByEmail(ctx context.Context, email string) (*data.Us
 	return nil, nil
 }
 
+// AddUser calls the configured mock implementation when it is set.
 func (m *MockClient) AddUser(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
 	if m.AddUserFunc != nil {
 		return m.AddUserFunc(ctx, req)
@@ -931,6 +1022,7 @@ func (m *MockClient) AddUser(ctx context.Context, req data.AddUserRequest) (*dat
 	return &data.User{ID: 999}, nil
 }
 
+// UpdateUser calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateUser(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 	if m.UpdateUserFunc != nil {
 		return m.UpdateUserFunc(ctx, userID, req)
@@ -938,6 +1030,7 @@ func (m *MockClient) UpdateUser(ctx context.Context, userID int64, req data.Upda
 	return nil, nil
 }
 
+// GetPriorities calls the configured mock implementation when it is set.
 func (m *MockClient) GetPriorities(ctx context.Context) (data.GetPrioritiesResponse, error) {
 	if m.GetPrioritiesFunc != nil {
 		return m.GetPrioritiesFunc(ctx)
@@ -945,6 +1038,7 @@ func (m *MockClient) GetPriorities(ctx context.Context) (data.GetPrioritiesRespo
 	return nil, nil
 }
 
+// GetStatuses calls the configured mock implementation when it is set.
 func (m *MockClient) GetStatuses(ctx context.Context) (data.GetStatusesResponse, error) {
 	if m.GetStatusesFunc != nil {
 		return m.GetStatusesFunc(ctx)
@@ -952,6 +1046,7 @@ func (m *MockClient) GetStatuses(ctx context.Context) (data.GetStatusesResponse,
 	return nil, nil
 }
 
+// GetTemplates calls the configured mock implementation when it is set.
 func (m *MockClient) GetTemplates(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 	if m.GetTemplatesFunc != nil {
 		return m.GetTemplatesFunc(ctx, projectID)
@@ -962,6 +1057,7 @@ func (m *MockClient) GetTemplates(ctx context.Context, projectID int64) (data.Ge
 // ---------------------------------------------------------------------------
 // ReportsAPI
 // ---------------------------------------------------------------------------
+// GetReports calls the configured mock implementation when it is set.
 func (m *MockClient) GetReports(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 	if m.GetReportsFunc != nil {
 		return m.GetReportsFunc(ctx, projectID)
@@ -969,6 +1065,7 @@ func (m *MockClient) GetReports(ctx context.Context, projectID int64) (data.GetR
 	return nil, nil
 }
 
+// GetCrossProjectReports calls the configured mock implementation when it is set.
 func (m *MockClient) GetCrossProjectReports(ctx context.Context) (data.GetReportsResponse, error) {
 	if m.GetCrossProjectReportsFunc != nil {
 		return m.GetCrossProjectReportsFunc(ctx)
@@ -976,6 +1073,7 @@ func (m *MockClient) GetCrossProjectReports(ctx context.Context) (data.GetReport
 	return nil, nil
 }
 
+// RunReport calls the configured mock implementation when it is set.
 func (m *MockClient) RunReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 	if m.RunReportFunc != nil {
 		return m.RunReportFunc(ctx, templateID)
@@ -983,6 +1081,7 @@ func (m *MockClient) RunReport(ctx context.Context, templateID int64) (*data.Run
 	return nil, nil
 }
 
+// RunCrossProjectReport calls the configured mock implementation when it is set.
 func (m *MockClient) RunCrossProjectReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 	if m.RunCrossProjectReportFunc != nil {
 		return m.RunCrossProjectReportFunc(ctx, templateID)
@@ -993,6 +1092,7 @@ func (m *MockClient) RunCrossProjectReport(ctx context.Context, templateID int64
 // ---------------------------------------------------------------------------
 // ExtendedAPI - Groups
 // ---------------------------------------------------------------------------
+// GetGroups calls the configured mock implementation when it is set.
 func (m *MockClient) GetGroups(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
 	if m.GetGroupsFunc != nil {
 		return m.GetGroupsFunc(ctx, projectID)
@@ -1000,6 +1100,7 @@ func (m *MockClient) GetGroups(ctx context.Context, projectID int64) (data.GetGr
 	return nil, nil
 }
 
+// GetGroup calls the configured mock implementation when it is set.
 func (m *MockClient) GetGroup(ctx context.Context, groupID int64) (*data.Group, error) {
 	if m.GetGroupFunc != nil {
 		return m.GetGroupFunc(ctx, groupID)
@@ -1007,6 +1108,7 @@ func (m *MockClient) GetGroup(ctx context.Context, groupID int64) (*data.Group, 
 	return nil, nil
 }
 
+// AddGroup calls the configured mock implementation when it is set.
 func (m *MockClient) AddGroup(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error) {
 	if m.AddGroupFunc != nil {
 		return m.AddGroupFunc(ctx, projectID, name, userIDs)
@@ -1014,6 +1116,7 @@ func (m *MockClient) AddGroup(ctx context.Context, projectID int64, name string,
 	return nil, nil
 }
 
+// UpdateGroup calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateGroup(ctx context.Context, groupID int64, name string, userIDs []int64) (*data.Group, error) {
 	if m.UpdateGroupFunc != nil {
 		return m.UpdateGroupFunc(ctx, groupID, name, userIDs)
@@ -1021,6 +1124,7 @@ func (m *MockClient) UpdateGroup(ctx context.Context, groupID int64, name string
 	return nil, nil
 }
 
+// DeleteGroup calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteGroup(ctx context.Context, groupID int64) error {
 	if m.DeleteGroupFunc != nil {
 		return m.DeleteGroupFunc(ctx, groupID)
@@ -1031,6 +1135,7 @@ func (m *MockClient) DeleteGroup(ctx context.Context, groupID int64) error {
 // ---------------------------------------------------------------------------
 // ExtendedAPI - Roles
 // ---------------------------------------------------------------------------
+// GetRoles calls the configured mock implementation when it is set.
 func (m *MockClient) GetRoles(ctx context.Context) (data.GetRolesResponse, error) {
 	if m.GetRolesFunc != nil {
 		return m.GetRolesFunc(ctx)
@@ -1038,6 +1143,7 @@ func (m *MockClient) GetRoles(ctx context.Context) (data.GetRolesResponse, error
 	return nil, nil
 }
 
+// GetRole calls the configured mock implementation when it is set.
 func (m *MockClient) GetRole(ctx context.Context, roleID int64) (*data.Role, error) {
 	if m.GetRoleFunc != nil {
 		return m.GetRoleFunc(ctx, roleID)
@@ -1048,6 +1154,7 @@ func (m *MockClient) GetRole(ctx context.Context, roleID int64) (*data.Role, err
 // ---------------------------------------------------------------------------
 // ExtendedAPI - ResultFields
 // ---------------------------------------------------------------------------
+// GetResultFields calls the configured mock implementation when it is set.
 func (m *MockClient) GetResultFields(ctx context.Context) (data.GetResultFieldsResponse, error) {
 	if m.GetResultFieldsFunc != nil {
 		return m.GetResultFieldsFunc(ctx)
@@ -1058,6 +1165,7 @@ func (m *MockClient) GetResultFields(ctx context.Context) (data.GetResultFieldsR
 // ---------------------------------------------------------------------------
 // ExtendedAPI - Datasets
 // ---------------------------------------------------------------------------
+// GetDatasets calls the configured mock implementation when it is set.
 func (m *MockClient) GetDatasets(ctx context.Context, projectID int64) (data.GetDatasetsResponse, error) {
 	if m.GetDatasetsFunc != nil {
 		return m.GetDatasetsFunc(ctx, projectID)
@@ -1065,6 +1173,7 @@ func (m *MockClient) GetDatasets(ctx context.Context, projectID int64) (data.Get
 	return nil, nil
 }
 
+// GetDataset calls the configured mock implementation when it is set.
 func (m *MockClient) GetDataset(ctx context.Context, datasetID int64) (*data.Dataset, error) {
 	if m.GetDatasetFunc != nil {
 		return m.GetDatasetFunc(ctx, datasetID)
@@ -1072,6 +1181,7 @@ func (m *MockClient) GetDataset(ctx context.Context, datasetID int64) (*data.Dat
 	return nil, nil
 }
 
+// AddDataset calls the configured mock implementation when it is set.
 func (m *MockClient) AddDataset(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 	if m.AddDatasetFunc != nil {
 		return m.AddDatasetFunc(ctx, projectID, name)
@@ -1079,6 +1189,7 @@ func (m *MockClient) AddDataset(ctx context.Context, projectID int64, name strin
 	return nil, nil
 }
 
+// UpdateDataset calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateDataset(ctx context.Context, datasetID int64, name string) (*data.Dataset, error) {
 	if m.UpdateDatasetFunc != nil {
 		return m.UpdateDatasetFunc(ctx, datasetID, name)
@@ -1086,6 +1197,7 @@ func (m *MockClient) UpdateDataset(ctx context.Context, datasetID int64, name st
 	return nil, nil
 }
 
+// DeleteDataset calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteDataset(ctx context.Context, datasetID int64) error {
 	if m.DeleteDatasetFunc != nil {
 		return m.DeleteDatasetFunc(ctx, datasetID)
@@ -1096,6 +1208,7 @@ func (m *MockClient) DeleteDataset(ctx context.Context, datasetID int64) error {
 // ---------------------------------------------------------------------------
 // ExtendedAPI - Variables
 // ---------------------------------------------------------------------------
+// GetVariables calls the configured mock implementation when it is set.
 func (m *MockClient) GetVariables(ctx context.Context, datasetID int64) (data.GetVariablesResponse, error) {
 	if m.GetVariablesFunc != nil {
 		return m.GetVariablesFunc(ctx, datasetID)
@@ -1103,6 +1216,7 @@ func (m *MockClient) GetVariables(ctx context.Context, datasetID int64) (data.Ge
 	return nil, nil
 }
 
+// AddVariable calls the configured mock implementation when it is set.
 func (m *MockClient) AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
 	if m.AddVariableFunc != nil {
 		return m.AddVariableFunc(ctx, datasetID, name)
@@ -1110,6 +1224,7 @@ func (m *MockClient) AddVariable(ctx context.Context, datasetID int64, name stri
 	return nil, nil
 }
 
+// UpdateVariable calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateVariable(ctx context.Context, variableID int64, name string) (*data.Variable, error) {
 	if m.UpdateVariableFunc != nil {
 		return m.UpdateVariableFunc(ctx, variableID, name)
@@ -1117,6 +1232,7 @@ func (m *MockClient) UpdateVariable(ctx context.Context, variableID int64, name 
 	return nil, nil
 }
 
+// DeleteVariable calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteVariable(ctx context.Context, variableID int64) error {
 	if m.DeleteVariableFunc != nil {
 		return m.DeleteVariableFunc(ctx, variableID)
@@ -1127,6 +1243,7 @@ func (m *MockClient) DeleteVariable(ctx context.Context, variableID int64) error
 // ---------------------------------------------------------------------------
 // ExtendedAPI - BDDs
 // ---------------------------------------------------------------------------
+// GetBDD calls the configured mock implementation when it is set.
 func (m *MockClient) GetBDD(ctx context.Context, caseID int64) (*data.BDD, error) {
 	if m.GetBDDFunc != nil {
 		return m.GetBDDFunc(ctx, caseID)
@@ -1134,6 +1251,7 @@ func (m *MockClient) GetBDD(ctx context.Context, caseID int64) (*data.BDD, error
 	return nil, nil
 }
 
+// AddBDD calls the configured mock implementation when it is set.
 func (m *MockClient) AddBDD(ctx context.Context, caseID int64, content string) (*data.BDD, error) {
 	if m.AddBDDFunc != nil {
 		return m.AddBDDFunc(ctx, caseID, content)
@@ -1144,6 +1262,7 @@ func (m *MockClient) AddBDD(ctx context.Context, caseID int64, content string) (
 // ---------------------------------------------------------------------------
 // ExtendedAPI - Labels
 // ---------------------------------------------------------------------------
+// GetLabels calls the configured mock implementation when it is set.
 func (m *MockClient) GetLabels(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
 	if m.GetLabelsFunc != nil {
 		return m.GetLabelsFunc(ctx, projectID)
@@ -1151,6 +1270,7 @@ func (m *MockClient) GetLabels(ctx context.Context, projectID int64) (data.GetLa
 	return nil, nil
 }
 
+// GetLabel calls the configured mock implementation when it is set.
 func (m *MockClient) GetLabel(ctx context.Context, labelID int64) (*data.Label, error) {
 	if m.GetLabelFunc != nil {
 		return m.GetLabelFunc(ctx, labelID)
@@ -1158,6 +1278,7 @@ func (m *MockClient) GetLabel(ctx context.Context, labelID int64) (*data.Label, 
 	return nil, nil
 }
 
+// UpdateLabel calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateLabel(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 	if m.UpdateLabelFunc != nil {
 		return m.UpdateLabelFunc(ctx, labelID, req)
@@ -1165,6 +1286,7 @@ func (m *MockClient) UpdateLabel(ctx context.Context, labelID int64, req data.Up
 	return nil, nil
 }
 
+// UpdateTestLabels calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateTestLabels(ctx context.Context, testID int64, labels []string) error {
 	if m.UpdateTestLabelsFunc != nil {
 		return m.UpdateTestLabelsFunc(ctx, testID, labels)
@@ -1172,6 +1294,7 @@ func (m *MockClient) UpdateTestLabels(ctx context.Context, testID int64, labels 
 	return nil
 }
 
+// UpdateTestsLabels calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateTestsLabels(ctx context.Context, runID int64, testIDs []int64, labels []string) error {
 	if m.UpdateTestsLabelsFunc != nil {
 		return m.UpdateTestsLabelsFunc(ctx, runID, testIDs, labels)
@@ -1180,6 +1303,7 @@ func (m *MockClient) UpdateTestsLabels(ctx context.Context, runID int64, testIDs
 }
 
 // GetCasesParallelCtx — mock implementation for Stage 6.7
+// GetCasesParallelCtx calls the configured mock implementation when it is set.
 func (m *MockClient) GetCasesParallelCtx(ctx context.Context, projectID int64, suiteIDs []int64, config *concurrency.ControllerConfig) (data.GetCasesResponse, *concurrency.ExecutionResult, error) {
 	if m.GetCasesParallelCtxFunc != nil {
 		return m.GetCasesParallelCtxFunc(ctx, projectID, suiteIDs, config)

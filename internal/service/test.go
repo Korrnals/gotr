@@ -12,17 +12,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// TestService предоставляет бизнес-логику для работы с testми
+// TestService provides business logic for working with tests.
 type TestService struct {
 	client client.ClientInterface
 }
 
-// NewTestService создаёт новый сервис для работы с testми
+// NewTestService creates a new service for working with tests.
 func NewTestService(client client.ClientInterface) *TestService {
 	return &TestService{client: client}
 }
 
-// Get получает тест по ID
+// Get retrieves a test by ID.
 func (s *TestService) Get(ctx context.Context, testID int64) (*data.Test, error) {
 	if testID <= 0 {
 		return nil, fmt.Errorf("test ID must be a positive number")
@@ -36,7 +36,7 @@ func (s *TestService) Get(ctx context.Context, testID int64) (*data.Test, error)
 	return test, nil
 }
 
-// GetForRun получает список тестов for run
+// GetForRun retrieves the list of tests for a run.
 func (s *TestService) GetForRun(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 	if runID <= 0 {
 		return nil, fmt.Errorf("run ID must be a positive number")
@@ -50,7 +50,7 @@ func (s *TestService) GetForRun(ctx context.Context, runID int64, filters map[st
 	return tests, nil
 }
 
-// Update обновляет тест
+// Update updates a test.
 func (s *TestService) Update(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 	if testID <= 0 {
 		return nil, fmt.Errorf("test ID must be a positive number")
@@ -60,7 +60,7 @@ func (s *TestService) Update(ctx context.Context, testID int64, req *data.Update
 		return nil, fmt.Errorf("request cannot be empty")
 	}
 
-	// Валидация
+	// Validation
 	if req.StatusID < 0 {
 		return nil, fmt.Errorf("status_id cannot be negative")
 	}
@@ -73,7 +73,7 @@ func (s *TestService) Update(ctx context.Context, testID int64, req *data.Update
 	return test, nil
 }
 
-// ParseID парсит ID из аргументов командной строки
+// ParseID parses an ID from command-line arguments.
 func (s *TestService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if len(args) <= index {
 		return 0, fmt.Errorf("ID is required")
@@ -91,12 +91,12 @@ func (s *TestService) ParseID(ctx context.Context, args []string, index int) (in
 	return id, nil
 }
 
-// PrintSuccess выводит сообщение об успехе
+// PrintSuccess prints a success message.
 func (s *TestService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
 	output.PrintSuccess(cmd, format, args...)
 }
 
-// Output выводит результат в JSON
+// Output renders the result as JSON.
 func (s *TestService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
 	return output.OutputResultWithFlags(cmd, data)
 }

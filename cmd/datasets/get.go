@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'datasets get'
-// Эндпоинт: GET /get_dataset/{dataset_id}
+// newGetCmd creates the 'datasets get' command.
+// Endpoint: GET /get_dataset/{dataset_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [dataset_id]",

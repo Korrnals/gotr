@@ -1,5 +1,5 @@
 // cmd/selftest.go
-// Команда gotr self-test для самодиагностики
+// Self-diagnostic command: gotr self-test
 package cmd
 
 import (
@@ -50,32 +50,45 @@ func init() {
 	selfTestCmd.Flags().Bool("include-skipped", false, "Include skipped checks in output")
 }
 
-func runSelfTest(cmd *cobra.Command, args []string) error {
-	// Создаём runner
+var buildSelfTestReport = func() *selftest.Report {
 	runner := selftest.NewRunner()
 
-	// Регистрируем проверки (порядок важен для отчета)
-	runner.Register(selftest.BinaryInfoChecker{
-		Version:   Version,
-		Commit:    Commit,
-		BuildTime: Date,
-	})
-	runner.Register(selftest.GoEnvChecker{})
-	runner.Register(selftest.BaseDirChecker{})
-	runner.Register(selftest.ConfigChecker{})
-	runner.Register(selftest.AllTestsChecker{})
-	runner.Register(selftest.CoverageChecker{})
+	// Register checks (order matters for the report)
+	for _, checker := range selfTestCheckers() {
+		runner.Register(checker)
+	}
 
-	// Запускаем проверки
+	// Run checks
 	report := runner.Run()
 
-	// Заполняем мета-информацию
+	// Fill meta information
 	report.Version = Version
 	report.Commit = Commit
 	report.GoVersion = runtime.Version()
 	report.Platform = fmt.Sprintf("%s/%s", runtime.GOOS, runtime.GOARCH)
 
-	// Выводим результаты
+	return report
+}
+
+var selfTestCheckers = func() []selftest.Checker {
+	return []selftest.Checker{
+		selftest.BinaryInfoChecker{
+			Version:   Version,
+			Commit:    Commit,
+			BuildTime: Date,
+		},
+		selftest.GoEnvChecker{},
+		selftest.BaseDirChecker{},
+		selftest.ConfigChecker{},
+		selftest.AllTestsChecker{},
+		selftest.CoverageChecker{},
+	}
+}
+
+func runSelfTest(cmd *cobra.Command, args []string) error {
+	report := buildSelfTestReport()
+
+	// Output results
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	if jsonOutput {
 		return outputJSON(report)
@@ -92,12 +105,12 @@ func outputJSON(report *selftest.Report) error {
 }
 
 func outputHuman(report *selftest.Report, failuresOnly bool) error {
-	// Показываем путь к последнему отчёту
+	// Show path to the latest report
 	if selftestDir, err := paths.SelftestDirPath(); err == nil {
 		fmt.Fprintf(os.Stderr, "Detailed reports saved to: %s/latest.log\n\n", selftestDir)
 	}
 
-	// Фильтруем если нужно
+	// Filter if needed
 	checks := report.Checks
 	if failuresOnly {
 		filtered := make([]selftest.CheckResult, 0)
@@ -112,7 +125,7 @@ func outputHuman(report *selftest.Report, failuresOnly bool) error {
 
 	report.PrintHuman()
 
-	// Выходим с ошибкой если есть failures
+	// Exit with error if there are failures
 	if report.TotalFailed > 0 {
 		return fmt.Errorf("%d check(s) failed", report.TotalFailed)
 	}

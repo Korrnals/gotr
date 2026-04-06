@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
+// resolveDatasetIDInteractive prompts the user to select a project, then a dataset.
 func resolveDatasetIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 	projectID, err := interactive.SelectProject(ctx, p, cli, "")
@@ -27,6 +28,7 @@ func resolveDatasetIDInteractive(ctx context.Context, cli client.ClientInterface
 	return selectDatasetID(ctx, datasets)
 }
 
+// resolveVariableIDInteractive prompts the user to select a dataset, then a variable.
 func resolveVariableIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	datasetID, err := resolveDatasetIDInteractive(ctx, cli)
 	if err != nil {
@@ -44,6 +46,7 @@ func resolveVariableIDInteractive(ctx context.Context, cli client.ClientInterfac
 	return selectVariableID(ctx, variables)
 }
 
+// selectDatasetID presents a selection prompt for datasets.
 func selectDatasetID(ctx context.Context, datasets data.GetDatasetsResponse) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 	options := make([]string, 0, len(datasets))
@@ -59,6 +62,7 @@ func selectDatasetID(ctx context.Context, datasets data.GetDatasetsResponse) (in
 	return datasets[idx].ID, nil
 }
 
+// selectVariableID presents a selection prompt for variables.
 func selectVariableID(ctx context.Context, variables data.GetVariablesResponse) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 	options := make([]string, 0, len(variables))

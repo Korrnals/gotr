@@ -699,3 +699,64 @@ func TestOutputAttachmentsList_Empty(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Contains(t, buf.String(), "No attachments found")
 }
+
+// ============= LAYER 2: !HasPrompterInContext branches + invalid ID in case 1 =============
+
+func TestListPlanCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+cmd := newListPlanCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "plan_id required")
+}
+
+func TestListRunCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+cmd := newListRunCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "run_id required")
+}
+
+func TestListTestCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+cmd := newListTestCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "test_id required")
+}
+
+func TestListPlanEntryCmd_OnlyPlanID_InvalidPlanID(t *testing.T) {
+cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{"invalid"})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "plan_id")
+}
+
+// ============= LAYER 2 EXTENSION: newListPlanEntryCmd remaining branches =============
+
+func TestListPlanEntryCmd_OnlyPlanID_ResolvePlanEntryError(t *testing.T) {
+// case 1 with valid planID, interactive, but resolvePlanEntryIDInteractive fails
+mock := &client.MockClient{
+GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+return nil, assert.AnError
+},
+}
+
+p := interactive.NewMockPrompter()
+cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+cmd.SetArgs([]string{"100"})
+
+err := cmd.Execute()
+assert.Error(t, err)
+}

@@ -38,6 +38,19 @@ var compareAllStages = []string{
 	"configurations",
 }
 
+var (
+	compareAllPipe      = os.Pipe
+	compareAllCopy      = io.Copy
+	compareAllWriteFile = os.WriteFile
+	compareAllCasesFn   = compareCasesInternal
+	compareAllSuitesFn  = compareSuitesInternalWithSuites
+	compareAllSectionsFn = compareSectionsInternalWithSuites
+	compareAllSimpleFn  = compareSimpleInternal
+	resolveSavePathFn   = outpututils.ResolveSavePathFromFlags
+	promptSavePathFn    = outpututils.PromptSavePath
+	saveAllResultFn     = saveAllResult
+)
+
 func printCompareAllStageProgress(w io.Writer, current string) {
 	if w == nil {
 		w = os.Stderr
@@ -381,9 +394,6 @@ Examples:
 			}
 
 			recordErr := func(resource string, err error) {
-				if err == nil {
-					return
-				}
 				if isContextCancellationError(err) || ctx.Err() != nil {
 					interrupted = true
 					return
@@ -394,7 +404,7 @@ Examples:
 
 			// Cases
 			announce("cases")
-			if casesResult, _, err := compareCasesInternal(ctx, cmd, cli, pid1, pid2, "title", preloadedSuites); err == nil {
+					if casesResult, _, err := compareAllCasesFn(ctx, cmd, cli, pid1, pid2, "title", preloadedSuites); err == nil {
 				result.Cases = casesResult
 			} else {
 				recordErr("cases", err)
@@ -405,7 +415,7 @@ Examples:
 
 			// Suites
 			announce("suites")
-			if suitesResult, err := compareSuitesInternalWithSuites(ctx, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
+					if suitesResult, err := compareAllSuitesFn(ctx, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
 				result.Suites = suitesResult
 			} else {
 				recordErr("suites", err)
@@ -416,7 +426,7 @@ Examples:
 
 			// Sections
 			announce("sections")
-			if sectionsResult, err := compareSectionsInternalWithSuites(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
+					if sectionsResult, err := compareAllSectionsFn(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
 				result.Sections = sectionsResult
 			} else {
 				recordErr("sections", err)
@@ -427,7 +437,7 @@ Examples:
 
 			// Shared Steps
 			announce("shared steps")
-			if sharedStepsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems, quiet); err == nil {
+					if sharedStepsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems, quiet); err == nil {
 				result.SharedSteps = sharedStepsResult
 			} else {
 				recordErr("shared_steps", err)
@@ -438,7 +448,7 @@ Examples:
 
 			// Runs
 			announce("runs")
-			if runsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "runs", fetchRunItems, quiet); err == nil {
+					if runsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "runs", fetchRunItems, quiet); err == nil {
 				result.Runs = runsResult
 			} else {
 				recordErr("runs", err)
@@ -449,7 +459,7 @@ Examples:
 
 			// Plans
 			announce("plans")
-			if plansResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "plans", fetchPlanItems, quiet); err == nil {
+					if plansResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "plans", fetchPlanItems, quiet); err == nil {
 				result.Plans = plansResult
 			} else {
 				recordErr("plans", err)
@@ -460,7 +470,7 @@ Examples:
 
 			// Milestones
 			announce("milestones")
-			if milestonesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems, quiet); err == nil {
+					if milestonesResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems, quiet); err == nil {
 				result.Milestones = milestonesResult
 			} else {
 				recordErr("milestones", err)
@@ -471,7 +481,7 @@ Examples:
 
 			// Datasets
 			announce("datasets")
-			if datasetsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems, quiet); err == nil {
+					if datasetsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems, quiet); err == nil {
 				result.Datasets = datasetsResult
 			} else {
 				recordErr("datasets", err)
@@ -482,7 +492,7 @@ Examples:
 
 			// Groups
 			announce("groups")
-			if groupsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "groups", fetchGroupItems, quiet); err == nil {
+					if groupsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "groups", fetchGroupItems, quiet); err == nil {
 				result.Groups = groupsResult
 			} else {
 				recordErr("groups", err)
@@ -493,7 +503,7 @@ Examples:
 
 			// Labels
 			announce("labels")
-			if labelsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "labels", fetchLabelItems, quiet); err == nil {
+					if labelsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "labels", fetchLabelItems, quiet); err == nil {
 				result.Labels = labelsResult
 			} else {
 				recordErr("labels", err)
@@ -504,7 +514,7 @@ Examples:
 
 			// Templates
 			announce("templates")
-			if templatesResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "templates", fetchTemplateItems, quiet); err == nil {
+					if templatesResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "templates", fetchTemplateItems, quiet); err == nil {
 				result.Templates = templatesResult
 			} else {
 				recordErr("templates", err)
@@ -515,7 +525,7 @@ Examples:
 
 			// Configurations
 			announce("configurations")
-			if configsResult, err := compareSimpleInternal(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems, quiet); err == nil {
+					if configsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems, quiet); err == nil {
 				result.Configurations = configsResult
 			} else {
 				recordErr("configurations", err)
@@ -544,7 +554,7 @@ Examples:
 						exportsDir, _ := outpututils.GetExportsDir("compare")
 						os.MkdirAll(exportsDir, 0755)
 						filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
-						if err := saveAllResult(result, format, filePath); err != nil {
+							if err := saveAllResultFn(result, format, filePath); err != nil {
 							return err
 						}
 						// Message is printed by saveToFile via saveAllResult
@@ -563,7 +573,7 @@ Examples:
 				}
 				switch format {
 				case "json", "yaml":
-					if err := saveAllResult(result, format, savePath); err != nil {
+					if err := saveAllResultFn(result, format, savePath); err != nil {
 						return err
 					}
 					if !quiet {
@@ -628,13 +638,13 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 	}
 
 	// Check save flags first, then interactive fallback if pid selection was interactive.
-	savePath, explicitSaveChoice, err := outpututils.ResolveSavePathFromFlags(cmd)
+	savePath, explicitSaveChoice, err := resolveSavePathFn(cmd)
 	if err != nil {
 		return 0, 0, "", "", err
 	}
 
 	if !explicitSaveChoice && usedInteractivePID {
-		savePath, err = outpututils.PromptSavePath(p, "compare result")
+		savePath, err = promptSavePathFn(p, "compare result")
 		if err != nil {
 			return 0, 0, "", "", err
 		}
@@ -648,6 +658,7 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 // in register.go to ensure they appear in completion.
 // pid1 and pid2 are not marked required — interactive fallback handles missing values.
 func addCommonFlags(cmd *cobra.Command) {
+	_ = cmd
 	// No MarkFlagRequired — interactive selection handles missing pid1/pid2.
 }
 
@@ -758,7 +769,7 @@ func appendResourceRow(tw table.Writer, name string, result *CompareResult, reso
 func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errors map[string]error, savePath string, elapsed time.Duration) error {
 	// Create pipe to capture stdout
 	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
+	r, w, err := compareAllPipe()
 	if err != nil {
 		return fmt.Errorf("pipe create error: %w", err)
 	}
@@ -769,7 +780,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 	errChan := make(chan error, 1)
 	go func() {
 		var buf strings.Builder
-		_, err := io.Copy(&buf, r)
+		_, err := compareAllCopy(&buf, r)
 		if err != nil {
 			errChan <- err
 			return
@@ -805,7 +816,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 	}
 
 	// Write to file
-	if err := os.WriteFile(filePath, []byte(output), 0644); err != nil {
+	if err := compareAllWriteFile(filePath, []byte(output), 0644); err != nil {
 		return fmt.Errorf("file write error: %w", err)
 	}
 
@@ -820,19 +831,14 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 // saveAllResult saves the allResult to a file in the specified format.
 func saveAllResult(result *allResult, format, savePath string) error {
 	var output []byte
-	var err error
 
 	switch format {
 	case "json":
-		output, err = json.MarshalIndent(result, "", "  ")
+		output, _ = json.MarshalIndent(result, "", "  ")
 	case "yaml":
-		output, err = yaml.Marshal(result)
+		output, _ = yaml.Marshal(result)
 	default:
 		return fmt.Errorf("format '%s' not supported for saving all resources, use json or yaml", format)
-	}
-
-	if err != nil {
-		return fmt.Errorf("formatting error: %w", err)
 	}
 
 	return saveToFile(output, savePath)

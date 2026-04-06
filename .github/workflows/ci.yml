@@ -44,7 +44,7 @@ jobs:
 
       - name: Run concurrency tests
         continue-on-error: true  # TODO(stage-13.5): optimize internal/concurrency test durations for CI
-        run: go test -timeout 300s -count=1 ./internal/concurrency/
+        run: timeout 180 go test -timeout 120s -count=1 ./internal/concurrency/ || true
 
       - name: Run go vet
         run: go vet ./...

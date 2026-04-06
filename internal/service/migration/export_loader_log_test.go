@@ -31,6 +31,13 @@ func countFilesByPrefix(t *testing.T, dir, prefix string) int {
 func TestMigrationExportFunctions(t *testing.T) {
 	m := setupTestMigration(t, &MockClient{})
 
+	origMarshal := exportMarshalIndent
+	origWriteFile := exportWriteFile
+	t.Cleanup(func() {
+		exportMarshalIndent = origMarshal
+		exportWriteFile = origWriteFile
+	})
+
 	t.Run("empty inputs", func(t *testing.T) {
 		dir := t.TempDir()
 
@@ -128,6 +135,70 @@ func TestMigrationExportFunctions(t *testing.T) {
 		if err == nil {
 			t.Fatalf("expected error when export dir points to a file")
 		}
+
+		err = m.ExportSections(data.GetSectionsResponse{{ID: 24, Name: "ErrSection"}}, false, badPath)
+		if err == nil {
+			t.Fatalf("expected error when export dir points to a file for sections")
+		}
+	})
+
+	t.Run("suites and sections write errors in read-only dir", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("permission model differs on windows")
+		}
+
+		dir := t.TempDir()
+		if err := os.Chmod(dir, 0o555); err != nil {
+			t.Fatalf("Chmod(%s) error = %v", dir, err)
+		}
+		t.Cleanup(func() {
+			_ = os.Chmod(dir, 0o755)
+		})
+
+		err := m.ExportSuites(data.GetSuitesResponse{{ID: 31, Name: "ReadOnlySuite"}}, false, dir)
+		if err == nil {
+			t.Fatalf("expected suites export write error in read-only dir")
+		}
+
+		err = m.ExportSections(data.GetSectionsResponse{{ID: 32, Name: "ReadOnlySection"}}, false, dir)
+		if err == nil {
+			t.Fatalf("expected sections export write error in read-only dir")
+		}
+	})
+
+	t.Run("suites and sections marshal and write failures", func(t *testing.T) {
+		dir := t.TempDir()
+
+		exportMarshalIndent = func(_ any, _, _ string) ([]byte, error) {
+			return nil, errors.New("marshal_error")
+		}
+
+		err := m.ExportSuites(data.GetSuitesResponse{{ID: 41, Name: "MarshalSuite"}}, false, dir)
+		if err == nil || !strings.Contains(err.Error(), "marshal_error") {
+			t.Fatalf("expected marshal error from ExportSuites, got: %v", err)
+		}
+
+		err = m.ExportSections(data.GetSectionsResponse{{ID: 42, Name: "MarshalSection"}}, false, dir)
+		if err == nil || !strings.Contains(err.Error(), "marshal_error") {
+			t.Fatalf("expected marshal error from ExportSections, got: %v", err)
+		}
+
+		exportMarshalIndent = origMarshal
+		exportWriteFile = func(_ string, _ []byte, _ os.FileMode) error {
+			return errors.New("write_error")
+		}
+
+		err = m.ExportSuites(data.GetSuitesResponse{{ID: 43, Name: "WriteSuite"}}, false, dir)
+		if err == nil || !strings.Contains(err.Error(), "write_error") {
+			t.Fatalf("expected write error from ExportSuites, got: %v", err)
+		}
+
+		err = m.ExportSections(data.GetSectionsResponse{{ID: 44, Name: "WriteSection"}}, false, dir)
+		if err == nil || !strings.Contains(err.Error(), "write_error") {
+			t.Fatalf("expected write error from ExportSections, got: %v", err)
+		}
+
+		exportWriteFile = origWriteFile
 	})
 
 	t.Run("export mapping", func(t *testing.T) {

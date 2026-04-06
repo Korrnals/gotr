@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -884,4 +885,22 @@ func TestSaveTableToFile_CustomPathWriteError(t *testing.T) {
 	err := saveTableToFile(cmd, result, "P1", "P2", "/nonexistent/path/table.txt")
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "file write error")
+}
+
+func TestSaveTableToFile_DefaultPath_NotQuiet(t *testing.T) {
+	tmpHome := t.TempDir()
+	t.Setenv("HOME", tmpHome)
+
+	result := CompareResult{Resource: "cases", Project1ID: 1, Project2ID: 2}
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Bool("quiet", false, "")
+
+	err := saveTableToFile(cmd, result, "Project One", "Project Two")
+	require.NoError(t, err)
+
+	exportsDir, dirErr := outpututils.GetExportsDir("compare")
+	require.NoError(t, dirErr)
+	entries, readErr := os.ReadDir(exportsDir)
+	require.NoError(t, readErr)
+	assert.NotEmpty(t, entries)
 }

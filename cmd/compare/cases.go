@@ -20,6 +20,11 @@ import (
 	"github.com/spf13/viper"
 )
 
+var (
+	compareCasesMarshalIndent = json.MarshalIndent
+	compareCasesWriteFile     = os.WriteFile
+)
+
 // casesCmd is the exported command.
 var casesCmd = newCasesCmd()
 
@@ -548,12 +553,12 @@ func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath s
 		FailedPages: failedPages,
 	}
 
-	data, err := json.MarshalIndent(payload, "", "  ")
+	data, err := compareCasesMarshalIndent(payload, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("marshal failed pages: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := compareCasesWriteFile(path, data, 0644); err != nil {
 		return "", fmt.Errorf("writing report %s: %w", path, err)
 	}
 

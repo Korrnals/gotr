@@ -18,23 +18,31 @@ var jqMac []byte
 //go:embed jq-windows-i386.exe
 var jqWindows []byte
 
+var selectEmbeddedJQBinaryFunc = selectEmbeddedJQBinary
+var writeEmbeddedBinaryFile = os.WriteFile
+
+func selectEmbeddedJQBinary(goos string) ([]byte, error) {
+	switch goos {
+	case "linux":
+		return jqLinux, nil
+	case "darwin":
+		return jqMac, nil
+	case "windows":
+		return jqWindows, nil
+	default:
+		return nil, fmt.Errorf("{jq_embed} - платформа %s не поддерживается встроенным jq", goos)
+	}
+}
+
 // RunEmbeddedJQ — запускает встроенный jq с фильтром
 func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	if filterStr == "" {
 		filterStr = "."
 	}
 
-	// Выбираем бинарник
-	var jqBin []byte
-	switch runtime.GOOS {
-	case "linux":
-		jqBin = jqLinux
-	case "darwin":
-		jqBin = jqMac
-	case "windows":
-		jqBin = jqWindows
-	default:
-		return fmt.Errorf("{jq_embed} - платформа %s не поддерживается встроенным jq", runtime.GOOS)
+	jqBin, err := selectEmbeddedJQBinaryFunc(runtime.GOOS)
+	if err != nil {
+		return err
 	}
 
 	// Создаём временный файл в текущей директории
@@ -51,7 +59,7 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	tmpFile.Close() // закрываем, чтобы избежать "text file busy"
 
 	// Записываем бинарник
-	if err := os.WriteFile(tmpPath, jqBin, 0644); err != nil {
+	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0644); err != nil {
 		os.Remove(tmpPath)
 		return err
 	}

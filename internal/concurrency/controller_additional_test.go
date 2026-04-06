@@ -200,6 +200,31 @@ func (f *transientPageErrorFetcher) FetchPageCtx(_ context.Context, req PageRequ
 	return f.cases[req.Offset:end], int64(len(f.cases)), nil
 }
 
+type recoveryEmptyPageFetcher struct {
+	mu            sync.Mutex
+	failOnceByOff map[int]bool
+	cases         []data.Case
+}
+
+func (f *recoveryEmptyPageFetcher) FetchPageCtx(_ context.Context, req PageRequest) ([]data.Case, int64, error) {
+	f.mu.Lock()
+	if f.failOnceByOff[req.Offset] {
+		delete(f.failOnceByOff, req.Offset)
+		f.mu.Unlock()
+		return nil, -1, errors.New("transient offset failure")
+	}
+	f.mu.Unlock()
+
+	if req.Offset >= len(f.cases) {
+		return []data.Case{}, -1, nil
+	}
+	end := req.Offset + req.Limit
+	if end > len(f.cases) {
+		end = len(f.cases)
+	}
+	return f.cases[req.Offset:end], -1, nil
+}
+
 type probeFailsThenKnownTotalFetcher struct {
 	mu             sync.Mutex
 	probeFailed    bool
@@ -212,6 +237,30 @@ type emptyKnownTotalFetcher struct{}
 
 func (f *emptyKnownTotalFetcher) FetchPageCtx(_ context.Context, _ PageRequest) ([]data.Case, int64, error) {
 	return []data.Case{}, 0, nil
+}
+
+type paginatedReporterMock struct {
+	itemCount  atomic.Int32
+	batchCount atomic.Int32
+	errorCount atomic.Int32
+	pageCount  atomic.Int32
+}
+
+func (r *paginatedReporterMock) OnItemComplete()       { r.itemCount.Add(1) }
+func (r *paginatedReporterMock) OnBatchReceived(n int) { r.batchCount.Add(int32(n)) }
+func (r *paginatedReporterMock) OnError()              { r.errorCount.Add(1) }
+func (r *paginatedReporterMock) OnPageFetched()        { r.pageCount.Add(1) }
+
+type cancelOnProbeFetcher struct {
+	cancel context.CancelFunc
+}
+
+func (f *cancelOnProbeFetcher) FetchPageCtx(_ context.Context, req PageRequest) ([]data.Case, int64, error) {
+	if req.Offset == 0 {
+		f.cancel()
+		return nil, -1, errors.New("probe failed with cancellation")
+	}
+	return nil, -1, context.Canceled
 }
 
 func (f *probeFailsThenKnownTotalFetcher) FetchPageCtx(_ context.Context, req PageRequest) ([]data.Case, int64, error) {
@@ -672,6 +721,45 @@ func TestFetchSuiteStreaming_PartialRetryRecoveredInPhase3(t *testing.T) {
 	assert.Empty(t, failedPages)
 }
 
+func TestFetchSuiteStreaming_RecoveryRetryReturnsEmptyPage(t *testing.T) {
+	pc := NewController(&ControllerConfig{
+		MaxConcurrentPages:       1,
+		PageSize:                 10,
+		Timeout:                  5 * time.Second,
+		RequestsPerMinute:        180,
+		MaxRetries:               0,
+		MaxConsecutiveErrorWaves: 2,
+	})
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(pc.config.RequestsPerMinute)
+
+	fetcher := &recoveryEmptyPageFetcher{
+		failOnceByOff: map[int]bool{20: true},
+		cases:         makeCases(12, 1),
+	}
+
+	agg := NewResultAggregator(40)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	fetched, expected, verified, err := pc.fetchSuiteStreaming(
+		context.Background(),
+		SuiteTask{SuiteID: 1, ProjectID: 10, EstimatedSize: 12},
+		fetcher,
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 12, fetched)
+	assert.Equal(t, int64(-1), expected)
+	assert.True(t, verified)
+	assert.Empty(t, failedPages)
+}
+
 func TestFetchSuiteStreaming_ProbeFailThenParallelDiscoversKnownTotal(t *testing.T) {
 	pc := NewController(&ControllerConfig{
 		MaxConcurrentPages:       2,
@@ -710,4 +798,405 @@ func TestFetchSuiteStreaming_ProbeFailThenParallelDiscoversKnownTotal(t *testing
 	assert.True(t, verified)
 	assert.Empty(t, failedPages)
 	assert.Contains(t, fetcher.Offsets(), 0)
+}
+
+func TestFetchSuiteStreaming_ReporterProgressAndRecoveryError(t *testing.T) {
+	reporter := &paginatedReporterMock{}
+	pc := NewController(&ControllerConfig{
+		MaxConcurrentPages:       2,
+		PageSize:                 10,
+		Timeout:                  5 * time.Second,
+		RequestsPerMinute:        180,
+		MaxRetries:               0,
+		MaxConsecutiveErrorWaves: 1,
+		Reporter:                 reporter,
+	})
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(pc.config.RequestsPerMinute)
+
+	fetcher := &permanentPageErrorFetcher{
+		failOffset: 20,
+		cases:      makeCases(25, 1),
+	}
+
+	agg := NewResultAggregator(50)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	fetched, expected, verified, err := pc.fetchSuiteStreaming(
+		context.Background(),
+		SuiteTask{SuiteID: 1, ProjectID: 10, EstimatedSize: 25},
+		fetcher,
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 20, fetched)
+	assert.Equal(t, int64(25), expected)
+	assert.False(t, verified)
+	assert.Len(t, failedPages, 1)
+	assert.Equal(t, int32(1), reporter.errorCount.Load())
+	assert.True(t, reporter.batchCount.Load() >= 20)
+	assert.True(t, reporter.pageCount.Load() >= 2)
+}
+
+func TestFetchSuiteStreaming_DefaultWorkerAndErrorWaveFallback(t *testing.T) {
+	pc := NewController(DefaultControllerConfig())
+	pc.config.MaxConcurrentPages = 0
+	pc.config.MaxConsecutiveErrorWaves = 0
+	pc.config.PageSize = 10
+	pc.config.MaxRetries = 0
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(pc.config.RequestsPerMinute)
+
+	agg := NewResultAggregator(20)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	fetched, expected, verified, err := pc.fetchSuiteStreaming(
+		context.Background(),
+		SuiteTask{SuiteID: 1, ProjectID: 10},
+		&alwaysFailFetcher{},
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 0, fetched)
+	assert.Equal(t, int64(-1), expected)
+	assert.False(t, verified)
+	assert.NotEmpty(t, failedPages)
+}
+
+func TestSuiteWorker_SubmitsStreamingErrorAndReportsCompletion(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	reporter := &paginatedReporterMock{}
+	pc := NewController(DefaultControllerConfig())
+	pc.config.MaxRetries = 0
+	pc.config.Reporter = reporter
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(pc.config.RequestsPerMinute)
+
+	pq := NewPriorityQueue()
+	pq.Push(SuiteTask{SuiteID: 1, ProjectID: 10, EstimatedSize: 1})
+	pq.Close()
+
+	agg := NewResultAggregator(10)
+	agg.StartCtx(context.Background())
+
+	var completed int32
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+	var expectedCasesTotal int64
+	var suitesWithTotal int32
+	var suitesVerified int32
+	var suiteResultsMu sync.Mutex
+	suiteResults := make([]SuiteResultInfo, 0)
+
+	err := pc.suiteWorker(
+		ctx,
+		pq,
+		&cancelOnProbeFetcher{cancel: cancel},
+		agg,
+		&completed,
+		1,
+		&failedPagesMu,
+		&failedPages,
+		&expectedCasesTotal,
+		&suitesWithTotal,
+		&suitesVerified,
+		&suiteResultsMu,
+		&suiteResults,
+	)
+
+	assert.ErrorIs(t, err, context.Canceled)
+	_, errs := agg.Stop()
+	assert.NotEmpty(t, errs)
+	assert.Equal(t, int32(1), reporter.itemCount.Load())
+}
+
+// ── New fetcher helpers for coverage of remaining branches ─────────────────
+
+// infiniteSequentialFetcher returns exactly 1 case per page with unknown total (-1),
+// so the controller never exhausts naturally and will hit the 40 K page safety cap.
+type infiniteSequentialFetcher struct{}
+
+func (f *infiniteSequentialFetcher) FetchPageCtx(_ context.Context, req PageRequest) ([]data.Case, int64, error) {
+	return []data.Case{{ID: int64(req.Offset + 1)}}, -1, nil
+}
+
+// probeFailThenEmptyFetcher fails the very first call (simulating a probe error) and
+// then returns an empty page with a configurable totalSize for every subsequent call.
+type probeFailThenEmptyFetcher struct {
+	mu        sync.Mutex
+	firstDone bool
+	totalSize int64
+}
+
+func (f *probeFailThenEmptyFetcher) FetchPageCtx(_ context.Context, _ PageRequest) ([]data.Case, int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.firstDone {
+		f.firstDone = true
+		return nil, -1, errors.New("probe failure")
+	}
+	return []data.Case{}, f.totalSize, nil
+}
+
+// cancelOnCallNFetcher counts FetchPageCtx invocations and cancels a context when the
+// configured call number is reached.  Offsets listed in failOffsets always return error.
+type cancelOnCallNFetcher struct {
+	mu          sync.Mutex
+	callNum     int
+	cancelOnN   int
+	cancel      context.CancelFunc
+	cases       []data.Case
+	failOffsets map[int]bool
+}
+
+func (f *cancelOnCallNFetcher) FetchPageCtx(_ context.Context, req PageRequest) ([]data.Case, int64, error) {
+	f.mu.Lock()
+	f.callNum++
+	n := f.callNum
+	if n == f.cancelOnN && f.cancel != nil {
+		f.cancel()
+	}
+	f.mu.Unlock()
+
+	if f.failOffsets[req.Offset] {
+		return nil, -1, errors.New("permanent failure")
+	}
+
+	total := int64(len(f.cases))
+	if req.Offset >= len(f.cases) {
+		return []data.Case{}, total, nil
+	}
+	end := req.Offset + req.Limit
+	if end > len(f.cases) {
+		end = len(f.cases)
+	}
+	return f.cases[req.Offset:end], total, nil
+}
+
+// ── Tests ───────────────────────────────────────────────────────────────────
+
+// TestFetchSuiteStreaming_40KPageSafetyCap exercises the "offset/pageSize > 40 000" safety
+// guard inside the Phase-2 worker loop.  With pageSize=1 and an infinite data source the
+// single worker claims offsets 1 … 40 001.  At offset 40 001 the guard fires, sets
+// exhausted and exits; the function returns normally without error.
+func TestFetchSuiteStreaming_40KPageSafetyCap(t *testing.T) {
+	pc := NewController(&ControllerConfig{
+		MaxConcurrentPages:       1,
+		PageSize:                 1,
+		MaxRetries:               0,
+		MaxConsecutiveErrorWaves: 1,
+		RequestsPerMinute:        0, // unlimited — no rate-limiter delay
+		Timeout:                  30 * time.Second,
+	})
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(0)
+
+	agg := NewResultAggregator(50000)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	fetched, expected, verified, err := pc.fetchSuiteStreaming(
+		context.Background(),
+		SuiteTask{SuiteID: 1, ProjectID: 10},
+		&infiniteSequentialFetcher{},
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	// probe=1 case + workers at offsets 1..40 000 = 40 001 total
+	assert.Greater(t, fetched, 40000)
+	assert.Equal(t, int64(-1), expected)
+	assert.True(t, verified)
+	assert.Empty(t, failedPages)
+}
+
+// TestFetchSuiteStreaming_CASRecheckExhaustedOnEmptySuite covers the re-check block
+// inside the "if result.TotalSize >= 0" branch (lines ~383-386).
+// When the probe fails and the worker's retry at offset 0 discovers TotalSize=0,
+// the CAS sets knownTotal=0 and the re-check finds offset(0) >= knownTotal(0) → exhausted.
+func TestFetchSuiteStreaming_CASRecheckExhaustedOnEmptySuite(t *testing.T) {
+	pc := NewController(&ControllerConfig{
+		MaxConcurrentPages:       1,
+		PageSize:                 10,
+		MaxRetries:               0,
+		MaxConsecutiveErrorWaves: 1,
+		RequestsPerMinute:        0,
+	})
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(0)
+
+	agg := NewResultAggregator(10)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	// totalSize=0 → CAS(-1→0), re-check: 0 >= 0 → sets exhausted, returns nil
+	fetched, expected, verified, err := pc.fetchSuiteStreaming(
+		context.Background(),
+		SuiteTask{SuiteID: 1, ProjectID: 10},
+		&probeFailThenEmptyFetcher{totalSize: 0},
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 0, fetched)
+	assert.Equal(t, int64(0), expected)
+	assert.True(t, verified)
+	assert.Empty(t, failedPages)
+}
+
+// TestFetchSuiteStreaming_EmptyPageKnownTotalExhausts covers the
+// "empty page + knownTotal >= 0" exhaustion branch (lines ~400-403).
+// The probe fails; the Phase-2 worker at offset 0 gets an empty page with TotalSize=25.
+// Because offset(0) < knownTotal(25) the CAS re-check does NOT fire; instead the
+// "len(cases)==0 with known total" branch sets exhausted and returns nil.
+func TestFetchSuiteStreaming_EmptyPageKnownTotalExhausts(t *testing.T) {
+	pc := NewController(&ControllerConfig{
+		MaxConcurrentPages:       1,
+		PageSize:                 10,
+		MaxRetries:               0,
+		MaxConsecutiveErrorWaves: 1,
+		RequestsPerMinute:        0,
+	})
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(0)
+
+	agg := NewResultAggregator(10)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	// totalSize=25 → CAS(-1→25), re-check: 0 >= 25 = false (passes);
+	// then len(cases)==0 && knownTotal>=0 → exhausted
+	fetched, expected, verified, err := pc.fetchSuiteStreaming(
+		context.Background(),
+		SuiteTask{SuiteID: 1, ProjectID: 10},
+		&probeFailThenEmptyFetcher{totalSize: 25},
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 0, fetched)
+	assert.Equal(t, int64(25), expected)
+	assert.True(t, verified)
+	assert.Empty(t, failedPages)
+}
+
+// TestFetchSuiteStreaming_RecoveryCancellationBreaks covers the
+// "if ctx.Err() != nil { break }" guard at the top of the Phase-3 recovery loop.
+// Setup: probe succeeds (10 cases, total=30); Phase-2 workers permanently fail offsets
+// 10 and 20; Phase-3 iteration 1 cancels the context via cancelOnCallNFetcher so that
+// iteration 2 finds ctx.Err() != nil and breaks.
+func TestFetchSuiteStreaming_RecoveryCancellationBreaks(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+
+	pc := NewController(&ControllerConfig{
+		MaxConcurrentPages:       2,
+		PageSize:                 10,
+		MaxRetries:               0,
+		MaxConsecutiveErrorWaves: 2,
+		RequestsPerMinute:        0,
+	})
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(0)
+
+	// Call 1 = probe (offset 0, succeeds), calls 2–3 = Phase-2 workers (both fail),
+	// call 4 = Phase-3 iteration 1 (cancels ctx then returns error permanently).
+	fetcher := &cancelOnCallNFetcher{
+		cancelOnN:   4,
+		cancel:      cancel,
+		cases:       makeCases(30, 1),
+		failOffsets: map[int]bool{10: true, 20: true},
+	}
+
+	agg := NewResultAggregator(50)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	fetched, expected, _, err := pc.fetchSuiteStreaming(
+		ctx,
+		SuiteTask{SuiteID: 1, ProjectID: 10},
+		fetcher,
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 10, fetched) // only probe's 10 cases
+	assert.Equal(t, int64(30), expected)
+	assert.NotEmpty(t, failedPages) // Phase-3 iter 1 produced a permanent failure
+}
+
+// TestFetchSuiteStreaming_RecoveryReporterCallbacks covers the reporter callback lines
+// inside the Phase-3 "recovered page with cases" branch (lines ~475-478).
+// A transient failure on offset 20 causes Phase-2 to skip it; Phase-3 recovers it
+// successfully.  With a reporter set, OnBatchReceived+OnPageFetched are invoked.
+func TestFetchSuiteStreaming_RecoveryReporterCallbacks(t *testing.T) {
+	reporter := &paginatedReporterMock{}
+	pc := NewController(&ControllerConfig{
+		MaxConcurrentPages:       2,
+		PageSize:                 10,
+		MaxRetries:               0,
+		MaxConsecutiveErrorWaves: 2,
+		RequestsPerMinute:        0,
+		Reporter:                 reporter,
+	})
+	pc.limiter = concurrent.NewAdaptiveRateLimiter(0)
+
+	// Offset 20 fails once in Phase 2; Phase-3 recovers it (5 cases).
+	fetcher := &transientPageErrorFetcher{
+		failOnceByOff: map[int]bool{20: true},
+		cases:         makeCases(25, 1),
+	}
+
+	agg := NewResultAggregator(40)
+	agg.StartCtx(context.Background())
+	defer agg.Stop()
+
+	failedPages := make([]FailedPage, 0)
+	var failedPagesMu sync.Mutex
+
+	fetched, expected, verified, err := pc.fetchSuiteStreaming(
+		context.Background(),
+		SuiteTask{SuiteID: 1, ProjectID: 10},
+		fetcher,
+		agg,
+		&failedPagesMu,
+		&failedPages,
+	)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 25, fetched)
+	assert.Equal(t, int64(25), expected)
+	assert.True(t, verified)
+	assert.Empty(t, failedPages)
+	// Phase-3 recovery invoked reporter callbacks for the 5 recovered cases
+	assert.GreaterOrEqual(t, reporter.batchCount.Load(), int32(25))
+	assert.GreaterOrEqual(t, reporter.pageCount.Load(), int32(1))
 }

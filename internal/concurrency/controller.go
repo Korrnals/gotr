@@ -300,9 +300,6 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	if knownTotal >= 0 {
 		totalPages := int((knownTotal + int64(pageSize) - 1) / int64(pageSize))
 		remainingPages := totalPages - 1 // page 0 already fetched
-		if remainingPages <= 0 {
-			return len(probeResult.Cases), knownTotal, true, nil // known total, single page — verified
-		}
 		if numWorkers > remainingPages {
 			numWorkers = remainingPages
 		}
@@ -428,7 +425,9 @@ func (pc *ParallelController) fetchSuiteStreaming(
 		})
 	}
 
-	g.Wait()
+	if err := g.Wait(); err != nil {
+		return int(atomic.LoadInt32(&totalCases)), knownTotal, false, err
+	}
 
 	// ── Phase 3: Recovery pass — re-fetch failed pages sequentially ──
 	if len(failedOffsets) > 0 {

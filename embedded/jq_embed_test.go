@@ -1,6 +1,7 @@
 package embed
 
 import (
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -635,4 +636,85 @@ func TestRunEmbeddedJQ_WriteFileError_ReadOnlyBinary(t *testing.T) {
 	}
 
 	t.Skipf("WriteFile error branch not triggered in %d attempts (race window too tight on this system)", maxAttempts)
+}
+
+func TestSelectEmbeddedJQBinary(t *testing.T) {
+	tests := []struct {
+		name    string
+		goos    string
+		wantErr bool
+	}{
+		{name: "linux", goos: "linux", wantErr: false},
+		{name: "darwin", goos: "darwin", wantErr: false},
+		{name: "windows", goos: "windows", wantErr: false},
+		{name: "unsupported", goos: "plan9", wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			bin, err := selectEmbeddedJQBinary(tc.goos)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatalf("expected error for platform %s", tc.goos)
+				}
+				if !strings.Contains(err.Error(), tc.goos) {
+					t.Fatalf("expected platform name in error, got: %v", err)
+				}
+				if len(bin) != 0 {
+					t.Fatalf("expected empty binary on error, got len=%d", len(bin))
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error for platform %s: %v", tc.goos, err)
+			}
+			if len(bin) == 0 {
+				t.Fatalf("expected embedded binary bytes for %s", tc.goos)
+			}
+		})
+	}
+}
+
+func TestRunEmbeddedJQ_SelectBinaryError(t *testing.T) {
+	origSelect := selectEmbeddedJQBinaryFunc
+	selectEmbeddedJQBinaryFunc = func(goos string) ([]byte, error) {
+		return nil, errors.New("select failure")
+	}
+	t.Cleanup(func() {
+		selectEmbeddedJQBinaryFunc = origSelect
+	})
+
+	err := RunEmbeddedJQ([]byte(`{"x":1}`), ".")
+	if err == nil {
+		t.Fatal("expected selector error")
+	}
+	if !strings.Contains(err.Error(), "select failure") {
+		t.Fatalf("expected selector error text, got: %v", err)
+	}
+}
+
+func TestRunEmbeddedJQ_WriteBinaryError_Injected(t *testing.T) {
+	requireSupportedEmbeddedJQPlatform(t)
+	tmpDir := chdirToTempDir(t)
+	restore := withDevNullStdIO(t)
+	defer restore()
+
+	origWrite := writeEmbeddedBinaryFile
+	writeEmbeddedBinaryFile = func(_ string, _ []byte, _ os.FileMode) error {
+		return errors.New("injected write failure")
+	}
+	t.Cleanup(func() {
+		writeEmbeddedBinaryFile = origWrite
+	})
+
+	err := RunEmbeddedJQ([]byte(`{"x":1}`), ".")
+	if err == nil {
+		t.Fatal("expected write error")
+	}
+	if !strings.Contains(err.Error(), "injected write failure") {
+		t.Fatalf("expected injected write error text, got: %v", err)
+	}
+
+	assertNoJQTempArtifacts(t, tmpDir)
 }

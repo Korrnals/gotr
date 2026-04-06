@@ -116,6 +116,7 @@ func TestResolveTestIDInteractive_TableDriven(t *testing.T) {
 				interactive.NewMockPrompter().WithSelectResponses(
 					interactive.SelectResponse{Index: 0},
 					interactive.SelectResponse{Index: 0},
+					interactive.SelectResponse{Index: 0},
 				)),
 			cli: &client.MockClient{
 				GetProjectsFunc: baseClient.GetProjectsFunc,
@@ -129,7 +130,7 @@ func TestResolveTestIDInteractive_TableDriven(t *testing.T) {
 			wantID: 9001,
 		},
 		{
-			name: "invalid input",
+			name: "invalid run input",
 			ctx: interactive.WithPrompter(context.Background(),
 				interactive.NewMockPrompter().WithSelectResponses(
 					interactive.SelectResponse{Index: 0},
@@ -147,11 +148,12 @@ func TestResolveTestIDInteractive_TableDriven(t *testing.T) {
 			wantErrPart: "failed to select run",
 		},
 		{
-			name: "empty input",
+			name: "invalid test input",
 			ctx: interactive.WithPrompter(context.Background(),
 				interactive.NewMockPrompter().WithSelectResponses(
 					interactive.SelectResponse{Index: 0},
 					interactive.SelectResponse{Index: 0},
+					interactive.SelectResponse{Index: 9},
 				)),
 			cli: &client.MockClient{
 				GetProjectsFunc: baseClient.GetProjectsFunc,
@@ -159,11 +161,12 @@ func TestResolveTestIDInteractive_TableDriven(t *testing.T) {
 					return data.GetRunsResponse{{ID: 101, Name: "R101"}}, nil
 				},
 				GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
-					return nil, nil
+					return []data.Test{{ID: 9001, Title: "T1"}}, nil
 				},
 			},
-			wantErrPart: "no tests found for run",
+			wantErrPart: "failed to select test",
 		},
+
 	}
 
 	for _, tt := range tests {
@@ -257,4 +260,52 @@ func TestResolveTestIDInteractive_NoRuns(t *testing.T) {
 	_, err := resolveTestIDInteractive(ctx, cli)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no runs found for project 1")
+}
+func TestResolveTestIDInteractive_NoTests(t *testing.T) {
+ctx := interactive.WithPrompter(context.Background(),
+interactive.NewMockPrompter().WithSelectResponses(
+interactive.SelectResponse{Index: 0},
+interactive.SelectResponse{Index: 0},
+))
+
+cli := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+return data.GetRunsResponse{{ID: 101, Name: "R101"}}, nil
+},
+GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+return nil, nil
+},
+}
+
+_, err := resolveTestIDInteractive(ctx, cli)
+require.Error(t, err)
+assert.Contains(t, err.Error(), "no tests found for run 101")
+}
+
+func TestResolveTestIDInteractive_SelectsChosenTest(t *testing.T) {
+ctx := interactive.WithPrompter(context.Background(),
+interactive.NewMockPrompter().WithSelectResponses(
+interactive.SelectResponse{Index: 0},
+interactive.SelectResponse{Index: 0},
+interactive.SelectResponse{Index: 1},
+))
+
+cli := &client.MockClient{
+GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+return data.GetProjectsResponse{{ID: 1, Name: "P1"}}, nil
+},
+GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+return data.GetRunsResponse{{ID: 101, Name: "R101"}}, nil
+},
+GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+return []data.Test{{ID: 9001, Title: "T1"}, {ID: 9002, Title: "T2"}}, nil
+},
+}
+
+got, err := resolveTestIDInteractive(ctx, cli)
+require.NoError(t, err)
+assert.Equal(t, int64(9002), got)
 }

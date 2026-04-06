@@ -65,6 +65,13 @@ func TestRegister(t *testing.T) {
 	assert.True(t, subCmdNames["update"], "update subcommand should exist")
 	assert.True(t, subCmdNames["close"], "close subcommand should exist")
 	assert.True(t, subCmdNames["delete"], "delete subcommand should exist")
+
+	// Verify that quiet flag is not declared locally on subcommands.
+	// Global quiet should be inherited from root persistent flags.
+	for _, sub := range runCmd.Commands() {
+		quietFlag := sub.Flags().Lookup("quiet")
+		assert.Nil(t, quietFlag, "quiet should not be declared locally on subcommand %s", sub.Name())
+	}
 }
 
 // TestRegister_OnceOnly tests that Register can only be called once per process

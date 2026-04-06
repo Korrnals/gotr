@@ -50,10 +50,20 @@ func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, dura
 
 // ReadJSONResponse — универсальный метод для чтения response в любую структуру (не в interface{})
 func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, target any) error {
+	if resp == nil {
+		return fmt.Errorf("nil response")
+	}
+	if resp.Body == nil {
+		return fmt.Errorf("nil response body")
+	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("API error: %s, failed to read error body: %w", resp.Status, err)
+		}
 		return fmt.Errorf("API error: %s, body: %s", resp.Status, string(body))
 	}
 

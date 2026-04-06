@@ -59,6 +59,25 @@ func TestLoadFailedPages_NilFailedPagesField(t *testing.T) {
 	assert.Len(t, pages, 0)
 }
 
+func TestFailedPageRecord_ToFailedPage(t *testing.T) {
+	rec := failedPageRecord{
+		ProjectID: 30,
+		SuiteID:   1001,
+		Offset:    250,
+		Limit:     250,
+		PageNum:   2,
+		Error:     "timeout",
+	}
+
+	got := rec.toFailedPage()
+	assert.Equal(t, int64(30), got.ProjectID)
+	assert.Equal(t, int64(1001), got.SuiteID)
+	assert.Equal(t, 250, got.Offset)
+	assert.Equal(t, 250, got.Limit)
+	assert.Equal(t, 2, got.PageNum)
+	assert.Equal(t, "timeout", got.Error)
+}
+
 func TestDedupeFailedPages_RemovesDuplicates(t *testing.T) {
 	in := []concurrency.FailedPage{
 		{ProjectID: 30, SuiteID: 1001, Offset: 0, Limit: 250, PageNum: 1},

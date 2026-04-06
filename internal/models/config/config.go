@@ -74,7 +74,7 @@ func (c *Config) Create() error {
 
 	content := []byte(c.renderTemplate())
 
-	if err := os.WriteFile(c.Path, content, 0644); err != nil {
+	if err := os.WriteFile(c.Path, content, 0600); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", c.Path, err)
 	}
 

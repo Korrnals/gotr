@@ -117,18 +117,52 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 ---
 
-## Phase 4 — Валидация
+## Phase 4 — Устранение lint-замечаний (golangci-lint v2)
+
+### Контекст
+
+При миграции CI на golangci-lint v2.11.4 (Go 1.25-совместимый) выявлено ~290 pre-existing замечаний. Линтер v1.64.8 (Go 1.24) никогда не мог запуститься с Go 1.25, поэтому эти проблемы не были видны ранее. Lint step в CI работает с `continue-on-error: true` до завершения этой фазы.
+
+### 4.1. Статистика замечаний (baseline 2026-04-06)
+
+| Линтер | Кол-во | Приоритет |
+|--------|--------|-----------|
+| gocritic | ~90 | HIGH — стиль и performance hints |
+| errcheck | ~52 | HIGH — непроверенные ошибки |
+| staticcheck | ~47 | HIGH — потенциальные баги |
+| misspell | ~45 | LOW — опечатки в комментариях |
+| gocyclo | ~16 | MEDIUM — сложность функций |
+| unused | ~15 | MEDIUM — неиспользуемый код |
+| nolintlint | ~9 | LOW — невалидные nolint-директивы |
+| ineffassign | ~2 | HIGH — присваивания без использования |
+
+### 4.2. План исправления
+
+- [ ] **Batch 1 — errcheck + ineffassign** (HIGH): добавить обработку/игнорирование возвращаемых ошибок
+- [ ] **Batch 2 — staticcheck** (HIGH): исправить потенциальные баги и deprecated вызовы
+- [ ] **Batch 3 — gocritic** (HIGH): рефакторинг по style/performance рекомендациям
+- [ ] **Batch 4 — unused** (MEDIUM): удалить неиспользуемый код
+- [ ] **Batch 5 — gocyclo** (MEDIUM): упростить сложные функции или обосновать `//nolint`
+- [ ] **Batch 6 — misspell + nolintlint** (LOW): typo-фиксы, очистка директив
+- [ ] Финальный прогон: `golangci-lint run` EXIT 0
+- [ ] Убрать `continue-on-error: true` из CI workflow
+- [ ] Commit: `fix(lint): resolve all golangci-lint v2 findings`
+
+---
+
+## Phase 5 — Валидация
 
 - [ ] Полный прогон: `go test ./...` — 42/42 PASS
 - [ ] Полный прогон: `go test -race ./...` — 42/42 PASS, 0 races
 - [ ] Полный прогон: `go test -cover ./...` — все пакеты 100.0%
 - [ ] `go vet ./...` — PASS
 - [ ] `go build ./...` — PASS
+- [ ] `golangci-lint run` — EXIT 0, ноль замечаний
 - [ ] Coverage total = 100.0%
 
 ---
 
-## Phase 5 — Полный повторный аудит
+## Phase 6 — Полный повторный аудит
 
 **ОБЯЗАТЕЛЬНЫЙ** финальный аудит по шаблону `.github/prompts/full-project-audit.prompt.md`:
 
@@ -145,7 +179,7 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 ---
 
-## Phase 6 — Closure
+## Phase 7 — Closure
 
 - [ ] Обновить docs/reports (quality-metrics, audit-report)
 - [ ] Финализировать CHANGELOG
@@ -165,6 +199,7 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 | CLI-доступные операции | ~90.5% | **~98%** |
 | Data races | 0 | **0** |
 | go vet warnings | 0 | **0** |
+| golangci-lint findings | ~290 (non-blocking) | **0** |
 | Audit verdict | CONDITIONAL PASS | **UNCONDITIONAL PASS** |
 
 ---

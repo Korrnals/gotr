@@ -295,6 +295,25 @@ func TestResultAggregator_NilError(t *testing.T) {
 	assert.Empty(t, errs)
 }
 
+func TestResultAggregator_StartCtx_Idempotent(t *testing.T) {
+	ra := NewResultAggregator(10)
+	ctx := context.Background()
+
+	ra.StartCtx(ctx)
+	firstResultCh := ra.resultCh
+	firstErrCh := ra.errCh
+	firstDoneCh := ra.doneCh
+
+	// Second start must be a no-op and keep existing channels.
+	ra.StartCtx(ctx)
+
+	assert.Equal(t, firstResultCh, ra.resultCh)
+	assert.Equal(t, firstErrCh, ra.errCh)
+	assert.Equal(t, firstDoneCh, ra.doneCh)
+
+	ra.Stop()
+}
+
 func TestResultAggregator_SubmitErrorBranches(t *testing.T) {
 	t.Run("ignored when not started", func(t *testing.T) {
 		ra := NewResultAggregator(1)

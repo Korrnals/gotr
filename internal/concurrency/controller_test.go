@@ -323,6 +323,20 @@ func TestParallelController_ValidateConfig(t *testing.T) {
 	assert.Equal(t, 250, config.PageSize)
 }
 
+func TestParallelController_ValidateConfig_NegativeRPM(t *testing.T) {
+	config := &ControllerConfig{
+		MaxConcurrentSuites:      1,
+		MaxConcurrentPages:       1,
+		RequestsPerMinute:        -10,
+		Timeout:                  time.Second,
+		PageSize:                 10,
+		MaxConsecutiveErrorWaves: 1,
+	}
+
+	config.Validate()
+	assert.Equal(t, 180, config.RequestsPerMinute)
+}
+
 func TestControllerConfig_WithMethods(t *testing.T) {
 	config := DefaultControllerConfig().
 		WithMaxConcurrentSuites(10).

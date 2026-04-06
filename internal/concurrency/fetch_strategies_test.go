@@ -320,6 +320,55 @@ func TestFetchParallelBySuite_WithReporter(t *testing.T) {
 	}
 }
 
+func TestFetchParallelBySuite_MaxConcurrency(t *testing.T) {
+	ctx := context.Background()
+	var active atomic.Int32
+	var maxActive atomic.Int32
+
+	_, err := FetchParallelBySuite(ctx, []int64{1, 2, 3, 4},
+		func(suiteID int64) ([]testItem, error) {
+			cur := active.Add(1)
+			for {
+				old := maxActive.Load()
+				if cur <= old || maxActive.CompareAndSwap(old, cur) {
+					break
+				}
+			}
+			time.Sleep(20 * time.Millisecond)
+			active.Add(-1)
+			return []testItem{{ID: suiteID}}, nil
+		},
+		WithMaxConcurrency(1),
+	)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if maxActive.Load() > 1 {
+		t.Fatalf("expected max concurrency 1, got %d", maxActive.Load())
+	}
+}
+
+func TestFetchParallelBySuite_CancellationErrorPassthrough(t *testing.T) {
+	ctx := context.Background()
+
+	_, err := FetchParallelBySuite(ctx, []int64{1, 2},
+		func(suiteID int64) ([]testItem, error) {
+			if suiteID == 1 {
+				return nil, fmt.Errorf("wrapped cancel: %w", context.Canceled)
+			}
+			return []testItem{{ID: suiteID}}, nil
+		},
+	)
+
+	if err == nil {
+		t.Fatal("expected cancellation error")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context canceled, got: %v", err)
+	}
+}
+
 func TestIsCancellationError(t *testing.T) {
 	t.Run("nil error", func(t *testing.T) {
 		if isCancellationError(nil) {

@@ -994,4 +994,102 @@ func TestAllCmd_InterruptedFlowWithCanceledContext(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+func TestAllCmd_ClientNotInitialized(t *testing.T) {
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	})
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestParseCommonFlags_EmptyFormatDefaultsToTable(t *testing.T) {
+	cmd := &cobra.Command{}
+	addPersistentFlagsForTests(cmd)
+
+	require.NoError(t, cmd.Flags().Set("pid1", "10"))
+	require.NoError(t, cmd.Flags().Set("pid2", "20"))
+	require.NoError(t, cmd.Flags().Set("format", ""))
+
+	pid1, pid2, format, savePath, err := parseCommonFlags(cmd, &client.MockClient{})
+	require.NoError(t, err)
+	assert.Equal(t, int64(10), pid1)
+	assert.Equal(t, int64(20), pid2)
+	assert.Equal(t, "table", format)
+	assert.Empty(t, savePath)
+}
+
+// ==================== Coverage gap tests for newAllCmd (remaining 3 branches) ====================
+
+// TestAllCmd_ParseCommonFlagsError covers the `if err != nil { return err }` branch
+// after parseCommonFlags (line 367-369) by injecting resolveSavePathFn to return an error.
+func TestAllCmd_ParseCommonFlagsError(t *testing.T) {
+	mock := newAllCmdHappyPathMock()
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface { return mock })
+	t.Cleanup(func() { SetGetClientForTests(nil) })
+
+	old := resolveSavePathFn
+	resolveSavePathFn = func(_ *cobra.Command) (string, bool, error) {
+		return "", false, errors.New("forced-resolve-error")
+	}
+	t.Cleanup(func() { resolveSavePathFn = old })
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forced-resolve-error")
+}
+
+// TestAllCmd_SaveDefault_JSON_SaveError covers the `return err` branch (line 556-558)
+// when saveAllResult fails during --save with json/yaml format (auto-generated path).
+func TestAllCmd_SaveDefault_JSON_SaveError(t *testing.T) {
+	mock := newAllCmdHappyPathMock()
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface { return mock })
+	t.Cleanup(func() { SetGetClientForTests(nil) })
+
+	old := saveAllResultFn
+	saveAllResultFn = func(_ *allResult, _, _ string) error {
+		return errors.New("forced-save-result-error")
+	}
+	t.Cleanup(func() { saveAllResultFn = old })
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--save", "--format=json", "--quiet"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forced-save-result-error")
+}
+
+// TestAllCmd_SaveTo_JSON_WriteError covers the `return err` branch (line 575-577)
+// when saveAllResultFn fails during --save-to with json/yaml format (custom path).
+func TestAllCmd_SaveTo_JSON_WriteError(t *testing.T) {
+	mock := newAllCmdHappyPathMock()
+	SetGetClientForTests(func(cmd *cobra.Command) client.ClientInterface { return mock })
+	t.Cleanup(func() { SetGetClientForTests(nil) })
+
+	old := saveAllResultFn
+	saveAllResultFn = func(_ *allResult, _, _ string) error {
+		return errors.New("forced-saveto-result-error")
+	}
+	t.Cleanup(func() { saveAllResultFn = old })
+
+	cmd := newAllCmd()
+	addPersistentFlagsForTests(cmd)
+	cmd.SetArgs([]string{"--pid1=1", "--pid2=2", "--format=json", "--save-to=/tmp/gotr_test_result.json", "--quiet"})
+
+	err := cmd.Execute()
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forced-saveto-result-error")
+}
+
 

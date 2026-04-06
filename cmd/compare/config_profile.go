@@ -83,9 +83,6 @@ func resolveCompareCasesRuntimeConfig(
 	}
 
 	autoRetry := viper.GetBool("compare.cases.auto_retry_failed_pages")
-	if !viper.IsSet("compare.cases.auto_retry_failed_pages") {
-		autoRetry = true
-	}
 
 	return compareCasesRuntimeConfig{
 		compareHeavyRuntimeConfig: heavyCfg,

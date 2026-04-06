@@ -5,11 +5,12 @@ go 1.25.0
 require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/fatih/color v1.19.0
-	github.com/jedib0t/go-pretty/v6 v6.7.8
+	github.com/jedib0t/go-pretty/v6 v6.7.9
 	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/sync v0.19.0
-	golang.org/x/time v0.14.0
+	golang.org/x/sync v0.20.0
+	golang.org/x/time v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -31,7 +32,6 @@ require (
 	github.com/sourcegraph/conc v0.3.1-0.20240121214520-5f936abd7ae8 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect

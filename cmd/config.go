@@ -3,12 +3,15 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/Korrnals/gotr/internal/models/config"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
+
+var sensitiveConfigLine = regexp.MustCompile(`(?mi)^(\s*(api_key|password|token|authorization)\s*:\s*)([^\n\r]*)$`)
 
 var (
 	defaultConfig = "$HOME/.gotr/config/default.yaml"
@@ -105,9 +108,13 @@ var configViewCmd = &cobra.Command{
 			return fmt.Errorf("failed to read config: %w", err)
 		}
 
-		ui.Infof(os.Stdout, "Config file contents %s:\n\n%s", used, string(data))
+		ui.Infof(os.Stdout, "Config file contents %s:\n\n%s", used, redactSensitiveConfig(string(data)))
 		return nil
 	},
+}
+
+func redactSensitiveConfig(content string) string {
+	return sensitiveConfigLine.ReplaceAllString(content, `${1}"***"`)
 }
 
 // configEditCmd - подкоманда "edit" - для быстрого редактирования содержимого конфига

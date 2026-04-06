@@ -133,6 +133,7 @@ func TestGetCmd_NoArgs_Interactive(t *testing.T) {
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	p := interactive.NewMockPrompter().
 		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
 		WithSelectResponses(interactive.SelectResponse{Index: 0})
 	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
 	cmd.SetArgs([]string{})

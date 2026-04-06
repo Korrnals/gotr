@@ -3,6 +3,7 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -68,4 +69,28 @@ func TestConfigEditCmd_NoConfigUsed(t *testing.T) {
 	viper.Reset()
 	err := configEditCmd.RunE(configEditCmd, nil)
 	assert.NoError(t, err)
+}
+
+func TestRedactSensitiveConfig(t *testing.T) {
+	input := strings.Join([]string{
+		"base_url: \"https://example.testrail.io\"",
+		"api_key: \"super-secret\"",
+		"password: plain-password",
+		"token: abc123",
+		"authorization: Bearer token-value",
+		"username: \"qa@example.com\"",
+	}, "\n")
+
+	out := redactSensitiveConfig(input)
+
+	assert.NotContains(t, out, "super-secret")
+	assert.NotContains(t, out, "plain-password")
+	assert.NotContains(t, out, "abc123")
+	assert.NotContains(t, out, "token-value")
+	assert.Contains(t, out, "api_key: \"***\"")
+	assert.Contains(t, out, "password: \"***\"")
+	assert.Contains(t, out, "token: \"***\"")
+	assert.Contains(t, out, "authorization: \"***\"")
+	assert.Contains(t, out, "base_url: \"https://example.testrail.io\"")
+	assert.Contains(t, out, "username: \"qa@example.com\"")
 }

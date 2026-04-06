@@ -21,9 +21,30 @@ var retryFailedPagesCmd = newRetryFailedPagesCmd()
 
 // failedPagesFile describes the persisted failed-pages retry report format.
 type failedPagesFile struct {
-	GeneratedAt string                   `json:"generated_at"`
-	Total       int                      `json:"total"`
-	FailedPages []concurrency.FailedPage `json:"failed_pages"`
+	GeneratedAt string             `json:"generated_at"`
+	Total       int                `json:"total"`
+	FailedPages []failedPageRecord `json:"failed_pages"`
+}
+
+// failedPageRecord is a command-level DTO used for report persistence.
+type failedPageRecord struct {
+	ProjectID int64  `json:"project_id"`
+	SuiteID   int64  `json:"suite_id"`
+	Offset    int    `json:"offset"`
+	Limit     int    `json:"limit"`
+	PageNum   int    `json:"page_num"`
+	Error     string `json:"error,omitempty"`
+}
+
+func (r failedPageRecord) toFailedPage() concurrency.FailedPage {
+	return concurrency.FailedPage{
+		ProjectID: r.ProjectID,
+		SuiteID:   r.SuiteID,
+		Offset:    r.Offset,
+		Limit:     r.Limit,
+		PageNum:   r.PageNum,
+		Error:     r.Error,
+	}
 }
 
 // retryFailedPagesOptions contains runtime retry knobs for a targeted retry run.
@@ -280,7 +301,13 @@ func loadFailedPages(path string) ([]concurrency.FailedPage, error) {
 	if report.FailedPages == nil {
 		return []concurrency.FailedPage{}, nil
 	}
-	return report.FailedPages, nil
+
+	pages := make([]concurrency.FailedPage, 0, len(report.FailedPages))
+	for _, rec := range report.FailedPages {
+		pages = append(pages, rec.toFailedPage())
+	}
+
+	return pages, nil
 }
 
 // dedupeFailedPages removes duplicate page descriptors while preserving order.

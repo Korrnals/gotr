@@ -123,6 +123,15 @@ func TestCreateAndRenderTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile error: %v", err)
 	}
+
+	st, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat error: %v", err)
+	}
+	if got := st.Mode().Perm(); got != 0o600 {
+		t.Fatalf("file mode = %o, want %o", got, 0o600)
+	}
+
 	content := string(b)
 
 	checks := []string{
@@ -161,6 +170,15 @@ func TestCreate_WithCustomInputValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile error: %v", err)
 	}
+
+	st, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat error: %v", err)
+	}
+	if got := st.Mode().Perm(); got != 0o600 {
+		t.Fatalf("file mode = %o, want %o", got, 0o600)
+	}
+
 	content := string(b)
 
 	checks := []string{

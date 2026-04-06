@@ -46,6 +46,33 @@ func TestReadJSONResponse_ClosesBodyOnErrorStatus(t *testing.T) {
 	}
 }
 
+func TestReadJSONResponse_NilResponse(t *testing.T) {
+	client := &HTTPClient{}
+	var target map[string]any
+
+	err := client.ReadJSONResponse(context.Background(), nil, &target)
+	if err == nil {
+		t.Fatal("expected nil response error")
+	}
+	if !strings.Contains(err.Error(), "nil response") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestReadJSONResponse_NilBody(t *testing.T) {
+	client := &HTTPClient{}
+	resp := &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Body: nil}
+	var target map[string]any
+
+	err := client.ReadJSONResponse(context.Background(), resp, &target)
+	if err == nil {
+		t.Fatal("expected nil response body error")
+	}
+	if !strings.Contains(err.Error(), "nil response body") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestReadJSONResponse_ClosesBodyOnSuccessStatus(t *testing.T) {
 	closed := false
 	resp := &http.Response{
@@ -66,6 +93,25 @@ func TestReadJSONResponse_ClosesBodyOnSuccessStatus(t *testing.T) {
 	}
 	if !closed {
 		t.Fatal("expected response body to be closed on success status")
+	}
+}
+
+func TestReadJSONResponse_NonOKReadError(t *testing.T) {
+	resp := &http.Response{
+		StatusCode: http.StatusInternalServerError,
+		Status:     "500 Internal Server Error",
+		Body:       requestReadErrorCloser{},
+	}
+
+	client := &HTTPClient{}
+	var target map[string]any
+
+	err := client.ReadJSONResponse(context.Background(), resp, &target)
+	if err == nil {
+		t.Fatal("expected API error when reading error body fails")
+	}
+	if !strings.Contains(err.Error(), "failed to read error body") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

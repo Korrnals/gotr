@@ -221,6 +221,33 @@ Language: Русский | [English](../../../en/reports/stage13/audit-report.md
 - R13 (MEDIUM): разделить `build` и `sync-tag` в Makefile (tagging только явной release целью).
 - R14 (MEDIUM): добавить release checksum + verification шаг (например `sha256sum` для каждого артефакта).
 
+## Stage 13.3 Delta (2026-04-06)
+
+Реализованные изменения:
+- Security hardening конфигурации:
+- `config init` теперь создает файл с правами `0600`.
+- `config view` редактирует чувствительные ключи (`api_key`, `password`, `token`, `authorization`) как `"***"`.
+- CI/CD hardening:
+- в workflow добавлен lint gate (`golangci-lint`), версия зафиксирована на `v1.64.8`.
+- установка `govulncheck` зафиксирована на `v1.1.4`.
+- локальный quality gate обновлен: `make verify` теперь включает `lint`.
+
+Статус remediation:
+- R5 (MEDIUM): закрыт для request-layer guard-веток (`nil response`, `nil response body`, корректная обработка read-error для non-OK body) с тестами.
+- Compare seam (micro): в `retry-failed-pages` persistence DTO отвязан от прямого JSON-связывания с `internal/concurrency.FailedPage` через локальный record + converter, внешний контракт сохранен.
+- R8 (LOW): закрыт (убран мутабельный `PriorityThresholds` из `internal/concurrency/types.go`).
+- R10 (LOW): закрыт (применены безопасные patch/minor dependency updates).
+- R11 (MEDIUM): закрыт (vuln tool зафиксирован в CI и доступен локально).
+- R12 (HIGH): закрыт (workflow содержит test/vet/lint/build/race/vuln).
+- R13 (MEDIUM): закрыт (`build` и `sync-tag` разделены; release путь синхронизируется явно).
+- R14 (MEDIUM): закрыт (добавлены release checksum + verify шаги).
+
+## Stage 13.3 Closure Snapshot (2026-04-06)
+
+- Финальные quality gates: PASS (`go test ./...`, `go test -race ./...`, `go vet ./...`, `golangci-lint`, `govulncheck`, `go build ./...`).
+- Документация синхронизирована по security/CI/request/compare/closure delta.
+- Решение по scope: coverage workstream COV-3..COV-6 вынесен в post-stage backlog, чтобы не блокировать закрытие remediation-среза 13.3.
+
 ---
 
 ← [Stage 13](index.md) · [Отчёты](../index.md) · [Документация](../../index.md)

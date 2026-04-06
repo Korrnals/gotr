@@ -122,6 +122,30 @@ Interpretation:
 - CI/CD findings: F15(HIGH), F16(MEDIUM), F17(MEDIUM)
 - Remediation added: R12(HIGH), R13(MEDIUM), R14(MEDIUM)
 
+## Stage 13.3 delta snapshot (2026-04-06)
+
+- Security config hardening: `internal/models/config` сохраняет конфиг с правами `0600`.
+- `cmd/config view`: чувствительные ключи (`api_key`, `password`, `token`, `authorization`) редактируются как `"***"`.
+- CI hardening:
+- `Makefile`: добавлен target `lint`, `verify` обновлен до `test+vet+lint+build+race+vuln`.
+- `.github/workflows/ci-stage13.yml`: добавлен шаг `golangci-lint` (`v1.64.8`), `govulncheck` зафиксирован на `v1.1.4`.
+- Targeted tests (config/test interactive helpers): PASS.
+- request-layer hardening: `internal/client/request.go` (guard for nil response/body + explicit non-OK read-error wrapping).
+- Targeted tests (request): PASS (`internal/client/request_test.go`).
+- compare seam micro-slice: `cmd/compare/retry_failed_pages.go` использует command-level DTO (`failedPageRecord`) для report JSON и конвертацию в runtime type.
+- Targeted tests (compare retry): PASS (`cmd/compare/retry_failed_pages_test.go`).
+
+## Stage 13.3 closure snapshot (2026-04-06)
+
+- R8/R10/R13/R14: закрыты.
+- Build gate: PASS (`go build ./...`).
+- Test gate: PASS (`go test ./...`).
+- Race gate: PASS (`go test -race ./...`).
+- Vet gate: PASS (`go vet ./...`).
+- Lint gate: PASS (`golangci-lint run --config .golangci.yml --timeout 5m`).
+- Vulnerability gate: PASS (`govulncheck ./...`, tool installed: `govulncheck@v1.1.4`).
+- Решение по scope closure: coverage 100% target вынесен в post-stage backlog.
+
 ## Coverage baseline snapshot (Phase 3.1 COV-1)
 
 - Full coverage command: `go test -vet=off -coverpkg=./... -coverprofile=/tmp/stage13_full.cover ./...`

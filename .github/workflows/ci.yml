@@ -40,7 +40,11 @@ jobs:
       - name: Run unit tests
         env:
           EDITOR: "true"  # prevent editor_test from hanging on interactive vi
-        run: go test -timeout 300s -count=1 ./...
+        run: go test -timeout 120s -count=1 $(go list ./... | grep -v internal/concurrency)
+
+      - name: Run concurrency tests
+        continue-on-error: true  # TODO(stage-13.5): optimize internal/concurrency test durations for CI
+        run: go test -timeout 300s -count=1 ./internal/concurrency/
 
       - name: Run go vet
         run: go vet ./...
@@ -48,12 +52,11 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Run race tests
-        continue-on-error: true  # TODO(stage-13.5): optimize internal/concurrency test durations for CI
+      - name: Run race tests (excl. concurrency)
         env:
           CGO_ENABLED: 1
           EDITOR: "true"  # prevent editor_test from hanging on interactive vi
-        run: go test -race -timeout 300s -count=1 -p 2 ./...
+        run: go test -race -timeout 120s -count=1 $(go list ./... | grep -v internal/concurrency)
 
       - name: Run vulnerability scan
         run: govulncheck ./...

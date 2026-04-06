@@ -34,6 +34,8 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
 
       - name: Run unit tests
+        env:
+          EDITOR: "true"  # prevent editor_test from hanging on interactive vi
         run: go test -timeout 300s ./...
 
       - name: Run go vet
@@ -45,6 +47,7 @@ jobs:
       - name: Run race tests
         env:
           CGO_ENABLED: 1
+          EDITOR: "true"  # prevent editor_test from hanging on interactive vi
         run: go test -race -timeout 300s ./...
 
       - name: Run vulnerability scan

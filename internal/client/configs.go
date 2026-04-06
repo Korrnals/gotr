@@ -10,7 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetConfigs получает список конфигураций проекта
+// GetConfigs fetches the configuration list for a project.
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#getconfigs
 func (c *HTTPClient) GetConfigs(ctx context.Context, projectID int64) (data.GetConfigsResponse, error) {
 	endpoint := fmt.Sprintf("get_configs/%d", projectID)
@@ -27,7 +27,7 @@ func (c *HTTPClient) GetConfigs(ctx context.Context, projectID int64) (data.GetC
 	return configs, nil
 }
 
-// AddConfigGroup создает новую группу конфигураций
+// AddConfigGroup creates a new configuration group.
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#addconfiggroup
 func (c *HTTPClient) AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("add_config_group/%d", projectID)
@@ -47,7 +47,7 @@ func (c *HTTPClient) AddConfigGroup(ctx context.Context, projectID int64, req *d
 	return &group, nil
 }
 
-// AddConfig создает новую конфигурацию в группе
+// AddConfig creates a new configuration in a group.
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#addconfig
 func (c *HTTPClient) AddConfig(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("add_config/%d", groupID)
@@ -67,7 +67,7 @@ func (c *HTTPClient) AddConfig(ctx context.Context, groupID int64, req *data.Add
 	return &config, nil
 }
 
-// UpdateConfigGroup обновляет группу конфигураций
+// UpdateConfigGroup updates a configuration group.
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#updateconfiggroup
 func (c *HTTPClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("update_config_group/%d", groupID)
@@ -87,7 +87,7 @@ func (c *HTTPClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *
 	return &group, nil
 }
 
-// UpdateConfig обновляет конфигурацию
+// UpdateConfig updates a configuration.
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#updateconfig
 func (c *HTTPClient) UpdateConfig(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("update_config/%d", configID)
@@ -107,7 +107,7 @@ func (c *HTTPClient) UpdateConfig(ctx context.Context, configID int64, req *data
 	return &config, nil
 }
 
-// DeleteConfigGroup удаляет группу конфигураций
+// DeleteConfigGroup deletes a configuration group.
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#deleteconfiggroup
 func (c *HTTPClient) DeleteConfigGroup(ctx context.Context, groupID int64) error {
 	endpoint := fmt.Sprintf("delete_config_group/%d", groupID)
@@ -121,7 +121,7 @@ func (c *HTTPClient) DeleteConfigGroup(ctx context.Context, groupID int64) error
 	return nil
 }
 
-// DeleteConfig удаляет конфигурацию
+// DeleteConfig deletes a configuration.
 // https://support.testrail.com/hc/en-us/articles/7077719410580-Configurations#deleteconfig
 func (c *HTTPClient) DeleteConfig(ctx context.Context, configID int64) error {
 	endpoint := fmt.Sprintf("delete_config/%d", configID)

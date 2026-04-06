@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду для получения информации о тесте
+// newGetCmd creates the command for retrieving test information.
 func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [test-id]",
@@ -60,7 +60,7 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 				return fmt.Errorf("failed to get test: %w", err)
 			}
 
-			// Проверяем нужно ли сохранить в файл
+			// Check if output should be saved to file
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
 				filepath, err := output.Output(cmd, test, "test", "json")

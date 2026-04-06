@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newAddGroupCmd создаёт команду 'configurations add-group'
-// Эндпоинт: POST /add_config_group/{project_id}
+// newAddGroupCmd creates the 'configurations add-group' command.
+// Endpoint: POST /add_config_group/{project_id}
 func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add-group [project_id]",

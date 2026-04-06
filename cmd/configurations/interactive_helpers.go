@@ -9,11 +9,13 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
+// resolveProjectIDInteractive prompts the user to select a project interactively.
 func resolveProjectIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 	return interactive.SelectProject(ctx, p, cli, "")
 }
 
+// resolveGroupIDInteractive prompts the user to select a configuration group interactively.
 func resolveGroupIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	projectID, err := resolveProjectIDInteractive(ctx, cli)
 	if err != nil {
@@ -31,6 +33,7 @@ func resolveGroupIDInteractive(ctx context.Context, cli client.ClientInterface) 
 	return selectGroupID(ctx, groups)
 }
 
+// resolveConfigIDInteractive prompts the user to select a configuration interactively.
 func resolveConfigIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
 	projectID, err := resolveProjectIDInteractive(ctx, cli)
 	if err != nil {
@@ -58,6 +61,7 @@ func resolveConfigIDInteractive(ctx context.Context, cli client.ClientInterface)
 	return selectConfigID(ctx, configs)
 }
 
+// selectGroupID prompts for group selection and returns the chosen group ID.
 func selectGroupID(ctx context.Context, groups data.GetConfigsResponse) (int64, error) {
 	idx, err := selectGroupIndex(ctx, groups)
 	if err != nil {
@@ -66,6 +70,7 @@ func selectGroupID(ctx context.Context, groups data.GetConfigsResponse) (int64, 
 	return groups[idx].ID, nil
 }
 
+// selectGroupIndex prompts for group selection and returns the chosen index.
 func selectGroupIndex(ctx context.Context, groups data.GetConfigsResponse) (int, error) {
 	p := interactive.PrompterFromContext(ctx)
 	options := make([]string, 0, len(groups))
@@ -81,6 +86,7 @@ func selectGroupIndex(ctx context.Context, groups data.GetConfigsResponse) (int,
 	return idx, nil
 }
 
+// selectConfigID prompts for configuration selection and returns the chosen config ID.
 func selectConfigID(ctx context.Context, configs []data.Config) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
 	options := make([]string, 0, len(configs))

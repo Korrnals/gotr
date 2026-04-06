@@ -1,4 +1,4 @@
-// Package variables реализует CLI команды для работы с переменными TestRail
+// Package variables implements CLI commands for managing TestRail variables.
 package variables
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is a function type that returns a client instance.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с переменными
+// Register registers all variable-related subcommands on the given root command.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	variablesCmd := &cobra.Command{
 		Use:   "variables",
@@ -28,7 +28,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • delete — удалить переменную`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	variablesCmd.AddCommand(newListCmd(getClient))
 	variablesCmd.AddCommand(newAddCmd(getClient))
 	variablesCmd.AddCommand(newUpdateCmd(getClient))

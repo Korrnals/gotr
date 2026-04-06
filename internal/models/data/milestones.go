@@ -1,7 +1,7 @@
 // internal/models/data/milestones.go
 package data
 
-// Milestone — майлстоун (версия релиза) в TestRail
+// Milestone represents a milestone (release version) in TestRail.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones
 type Milestone struct {
 	ID          int64     `json:"id"`                     // The unique ID of the milestone
@@ -17,13 +17,13 @@ type Milestone struct {
 	URL         string    `json:"url,omitempty"`          // The address/URL of the milestone
 }
 
-// GetMilestonesResponse — ответ на get_milestones
+// GetMilestonesResponse is the response for get_milestones.
 type GetMilestonesResponse []Milestone
 
-// GetMilestoneResponse — ответ на get_milestone
+// GetMilestoneResponse is the response for get_milestone.
 type GetMilestoneResponse Milestone
 
-// AddMilestoneRequest — запрос на создание milestone
+// AddMilestoneRequest is the request to create a milestone.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#addmilestone
 type AddMilestoneRequest struct {
 	Name        string `json:"name"`                  // The name of the milestone (required)
@@ -32,7 +32,7 @@ type AddMilestoneRequest struct {
 	StartOn     string `json:"start_on,omitempty"`    // The start date of the milestone (timestamp)
 }
 
-// UpdateMilestoneRequest — запрос на обновление milestone
+// UpdateMilestoneRequest is the request to update a milestone.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Milestones#updatemilestone
 type UpdateMilestoneRequest struct {
 	Name        string `json:"name,omitempty"`        // The name of the milestone

@@ -1,5 +1,5 @@
 // cmd/selftest.go
-// Команда gotr self-test для самодиагностики
+// Self-diagnostic command: gotr self-test
 package cmd
 
 import (
@@ -53,15 +53,15 @@ func init() {
 var buildSelfTestReport = func() *selftest.Report {
 	runner := selftest.NewRunner()
 
-	// Регистрируем проверки (порядок важен для отчета)
+	// Register checks (order matters for the report)
 	for _, checker := range selfTestCheckers() {
 		runner.Register(checker)
 	}
 
-	// Запускаем проверки
+	// Run checks
 	report := runner.Run()
 
-	// Заполняем мета-информацию
+	// Fill meta information
 	report.Version = Version
 	report.Commit = Commit
 	report.GoVersion = runtime.Version()
@@ -88,7 +88,7 @@ var selfTestCheckers = func() []selftest.Checker {
 func runSelfTest(cmd *cobra.Command, args []string) error {
 	report := buildSelfTestReport()
 
-	// Выводим результаты
+	// Output results
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	if jsonOutput {
 		return outputJSON(report)
@@ -105,12 +105,12 @@ func outputJSON(report *selftest.Report) error {
 }
 
 func outputHuman(report *selftest.Report, failuresOnly bool) error {
-	// Показываем путь к последнему отчёту
+	// Show path to the latest report
 	if selftestDir, err := paths.SelftestDirPath(); err == nil {
 		fmt.Fprintf(os.Stderr, "Detailed reports saved to: %s/latest.log\n\n", selftestDir)
 	}
 
-	// Фильтруем если нужно
+	// Filter if needed
 	checks := report.Checks
 	if failuresOnly {
 		filtered := make([]selftest.CheckResult, 0)
@@ -125,7 +125,7 @@ func outputHuman(report *selftest.Report, failuresOnly bool) error {
 
 	report.PrintHuman()
 
-	// Выходим с ошибкой если есть failures
+	// Exit with error if there are failures
 	if report.TotalFailed > 0 {
 		return fmt.Errorf("%d check(s) failed", report.TotalFailed)
 	}

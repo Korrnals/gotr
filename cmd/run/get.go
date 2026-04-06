@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'run get'
+// newGetCmd creates the 'run get' command.
 func newGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [run-id]",
@@ -44,7 +44,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 
 			svc := newRunServiceFromInterface(cli)
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run get")
@@ -71,7 +71,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 	return cmd
 }
 
-// getCmd — экспортированная команда
+// getCmd is the exported command.
 var getCmd = newGetCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

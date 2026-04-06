@@ -10,31 +10,30 @@ import (
 	"time"
 )
 
-// ResponseData — для универсальных запросов (когда структура неизвестна).
+// ResponseData holds a generic response for requests where the structure is unknown.
 type ResponseData struct {
 	Status     string              `json:"status"`
 	StatusCode int                 `json:"status_code"`
 	Headers    map[string][]string `json:"headers"`
-	Body       interface{}         `json:"body"`               // распарсенный JSON
-	RawBody    []byte              `json:"raw_body,omitempty"` // сырые байты (опционально в JSON)
+	Body       interface{}         `json:"body"`               // parsed JSON
+	RawBody    []byte              `json:"raw_body,omitempty"` // raw bytes (optional in JSON output)
 	Timestamp  time.Time           `json:"timestamp"`
 	Duration   time.Duration       `json:"duration"`
 }
 
-// PrintResponse — красивый вывод универсального (с типом interface{}) response
-// Чтение ЛЮБОГО response
+// ReadResponse reads any HTTP response into a generic ResponseData struct.
 func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
-	// Считываем поток response (сырые данные) в переменную
+	// Read the raw response body
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return ResponseData{}, err
 	}
-	// Преобразуем сырые данные в формат JSON, для дальнейшей записи в структуру 'ResponseData'
+	// Parse raw bytes as JSON for storage in ResponseData
 	var bodyData interface{}
 	if err := json.Unmarshal(bodyBytes, &bodyData); err != nil {
 		bodyData = string(bodyBytes)
 	}
-	// Записываем (маппим) полученные данные в структуру
+	// Map response data into the ResponseData struct
 	data := ResponseData{
 		Status:     resp.Status,
 		StatusCode: resp.StatusCode,
@@ -44,11 +43,11 @@ func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, dura
 		Timestamp:  time.Now(),
 		Duration:   duration,
 	}
-	// Возвращаем целиком заполненную  данными структуру 'ResponseData'
+	// Return the fully populated ResponseData
 	return data, nil
 }
 
-// ReadJSONResponse — универсальный метод для чтения response в любую структуру (не в interface{})
+// ReadJSONResponse decodes an HTTP response body into the given typed target.
 func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, target any) error {
 	if resp == nil {
 		return fmt.Errorf("nil response")
@@ -73,7 +72,7 @@ func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, 
 	return nil
 }
 
-// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body), с нетипизированным телом response
+// PrintResponseFromData prints a pre-built ResponseData (without re-reading resp.Body).
 func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseData, outputFormat string) {
 	switch outputFormat {
 	case "json":
@@ -87,7 +86,7 @@ func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseDat
 	}
 }
 
-// SaveResponseToFile — сохранение не типизированного response
+// SaveResponseToFile saves a generic ResponseData to a file.
 func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, filename string, outputFormat string) error {
 	var toSave []byte
 	switch outputFormat {
@@ -96,7 +95,7 @@ func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, 
 	case "json-full":
 		toSave, _ = json.MarshalIndent(data, "", "  ")
 	default: // table
-		// Для table сохраняем как json-full (или можно сделать отдельный формат)
+		// For table format, fall back to json-full
 		toSave, _ = json.MarshalIndent(data, "", "  ")
 	}
 
@@ -108,8 +107,8 @@ func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, 
 	return nil
 }
 
-// Вспомогательные приватные функции //
-// 'printTable' - формирует таблицу response
+// Private helpers //
+// printTable formats a response as a human-readable table.
 func printTable(data ResponseData) {
 	fmt.Printf("Status: %s (%d)\n", data.Status, data.StatusCode)
 	fmt.Printf("Duration: %v\n", data.Duration)

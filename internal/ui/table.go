@@ -1,20 +1,20 @@
-// Package ui — см. display.go.
-// Файл table.go — статический вывод финальных results (таблицы + JSON).
+// Package ui — see display.go.
+// File table.go — static output of final results (tables + JSON).
 //
-// Концепция:
+// Concept:
 //
 //	display.go — live progress (ANSI, refresh loop, Task reporter)
-//	table.go   — статический вывод: Table(), JSON(), NewTable()
+//	table.go   — static output: Table(), JSON(), NewTable()
 //
-// Использование:
+// Usage:
 //
-//	// Создать и заполнить таблицу:
+//	// Create and populate a table:
 //	t := ui.NewTable(cmd)
-//	t.AppendHeader(table.Row{"ID", "Имя"})
+//	t.AppendHeader(table.Row{"ID", "Name"})
 //	t.AppendRow(table.Row{1, "foo"})
-//	ui.Table(cmd, t)    // вывод в формате --format (table/json/csv/md)
+//	ui.Table(cmd, t)    // render in --format (table/json/csv/md)
 //
-//	// Вывод произвольного значения как JSON:
+//	// Output an arbitrary value as JSON:
 //	if err := ui.JSON(cmd, myStruct); err != nil { return err }
 package ui
 
@@ -26,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// OutputFormat — допустимые значения флага --format.
+// OutputFormat represents allowed values for the --format flag.
 type OutputFormat string
 
 // Supported output formats for table rendering and command output selection.
@@ -38,11 +38,11 @@ const (
 	FormatHTML     OutputFormat = "html"
 )
 
-// NewTable создаёт go-pretty table.Writer с базовой конфигурацией:
-//   - вывод направлен в cmd.OutOrStdout()
-//   - стиль: StyleRounded (рамки с закруглёнными углами)
+// NewTable creates a go-pretty table.Writer with base configuration:
+//   - output goes to cmd.OutOrStdout()
+//   - style: StyleRounded (rounded frame borders)
 //
-// Вызов Table(cmd, t) затем выводит таблицу в нужном формате.
+// Call Table(cmd, t) to render the table in the requested format.
 func NewTable(cmd *cobra.Command) table.Writer {
 	t := table.NewWriter()
 	t.SetOutputMirror(cmd.OutOrStdout())
@@ -50,11 +50,11 @@ func NewTable(cmd *cobra.Command) table.Writer {
 	return t
 }
 
-// Table выводит таблицу в формате, указанном флагом --format команды.
-// Если флага нет или значение неизвестно — выводит как таблицу (StyleRounded).
+// Table renders a table in the format specified by the command's --format flag.
+// If the flag is absent or has an unknown value, renders as a table (StyleRounded).
 //
-// Поддерживаемые форматы: table (умолч.), csv, md, html.
-// Для вывода в JSON — используй ui.JSON(cmd, yourSlice).
+// Supported formats: table (default), csv, md, html.
+// For JSON output, use ui.JSON(cmd, yourSlice).
 func Table(cmd *cobra.Command, t table.Writer) {
 	t.SetOutputMirror(cmd.OutOrStdout())
 
@@ -67,13 +67,13 @@ func Table(cmd *cobra.Command, t table.Writer) {
 	case FormatHTML:
 		fmt.Fprintln(cmd.OutOrStdout(), t.RenderHTML())
 	default:
-		// table, json или неизвестный формат — выводим как таблицу
+		// table, json, or unknown format — render as table
 		fmt.Fprintln(cmd.OutOrStdout(), t.Render())
 	}
 }
 
-// JSON сериализует v в JSON с отступами и печатает в cmd.OutOrStdout().
-// Используется для не-табличных данных (объекты, массивы, raw API-ответы).
+// JSON serializes v as indented JSON and prints it to cmd.OutOrStdout().
+// Used for non-tabular data (objects, arrays, raw API responses).
 func JSON(cmd *cobra.Command, v any) error {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
@@ -83,22 +83,22 @@ func JSON(cmd *cobra.Command, v any) error {
 	return nil
 }
 
-// IsJSON возвращает true если команда запрошена с --format json.
-// Удобно для условной логики в команде:
+// IsJSON returns true if the command was invoked with --format json.
+// Useful for conditional logic:
 //
-//	if ui.IsJSON(cmd) { /* вывод raw */ } else { /* таблица */ }
+//	if ui.IsJSON(cmd) { /* raw output */ } else { /* table */ }
 func IsJSON(cmd *cobra.Command) bool {
 	return getFormat(cmd) == FormatJSON
 }
 
-// IsQuiet возвращает true если установлен флаг --quiet.
+// IsQuiet returns true if the --quiet flag is set.
 func IsQuiet(cmd *cobra.Command) bool {
 	q, _ := cmd.Flags().GetBool("quiet")
 	return q
 }
 
-// getFormat читает --format из флагов команды.
-// Ищет сначала в локальных флагах, затем в inherited (PersistentFlags родителей).
+// getFormat reads --format from the command's flags.
+// Looks first in local flags, then in inherited flags (parent PersistentFlags).
 func getFormat(cmd *cobra.Command) OutputFormat {
 	if f := cmd.Flags().Lookup("format"); f != nil {
 		return OutputFormat(f.Value.String())

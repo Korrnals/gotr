@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteConfigCmd создаёт команду 'configurations delete-config'
-// Эндпоинт: POST /delete_config/{config_id}
+// newDeleteConfigCmd creates the 'configurations delete-config' command.
+// Endpoint: POST /delete_config/{config_id}
 func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-config [config_id]",

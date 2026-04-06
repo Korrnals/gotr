@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'run list'
+// newListCmd creates the 'run list' command.
 func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project-id]",
@@ -48,20 +48,20 @@ ID, название, описание, статистика тестов (passe
 			var err error
 
 			if len(args) > 0 {
-				// Явно указан project-id
+				// project-id explicitly provided
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
 					return err
 				}
 			} else {
-				// Интерактивный выбор проекта
+				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run list")
@@ -88,7 +88,7 @@ ID, название, описание, статистика тестов (passe
 	return cmd
 }
 
-// listCmd — экспортированная команда
+// listCmd is the exported command.
 var listCmd = newListCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

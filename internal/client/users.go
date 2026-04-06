@@ -10,7 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetUsers получает список всех пользователей
+// GetUsers fetches the list of all users.
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#getusers
 func (c *HTTPClient) GetUsers(ctx context.Context) (data.GetUsersResponse, error) {
 	resp, err := c.Get(ctx, "get_users", nil)
@@ -26,7 +26,7 @@ func (c *HTTPClient) GetUsers(ctx context.Context) (data.GetUsersResponse, error
 	return users, nil
 }
 
-// GetUsersByProject получает список пользователей проекта
+// GetUsersByProject fetches the user list for a project.
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#getusers
 func (c *HTTPClient) GetUsersByProject(ctx context.Context, projectID int64) (data.GetUsersResponse, error) {
 	endpoint := fmt.Sprintf("get_users/%d", projectID)
@@ -43,7 +43,7 @@ func (c *HTTPClient) GetUsersByProject(ctx context.Context, projectID int64) (da
 	return users, nil
 }
 
-// GetUser получает пользователя по ID
+// GetUser fetches a user by ID.
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#getuser
 func (c *HTTPClient) GetUser(ctx context.Context, userID int64) (*data.User, error) {
 	endpoint := fmt.Sprintf("get_user/%d", userID)
@@ -60,7 +60,7 @@ func (c *HTTPClient) GetUser(ctx context.Context, userID int64) (*data.User, err
 	return &user, nil
 }
 
-// GetUserByEmail получает пользователя по email
+// GetUserByEmail fetches a user by email.
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#getuserbyemail
 func (c *HTTPClient) GetUserByEmail(ctx context.Context, email string) (*data.User, error) {
 	resp, err := c.Get(ctx, "get_user_by_email", map[string]string{"email": email})
@@ -76,7 +76,7 @@ func (c *HTTPClient) GetUserByEmail(ctx context.Context, email string) (*data.Us
 	return &user, nil
 }
 
-// AddUser создаёт нового пользователя
+// AddUser creates a new user.
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#adduser
 func (c *HTTPClient) AddUser(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
 	bodyBytes, _ := json.Marshal(req)
@@ -93,7 +93,7 @@ func (c *HTTPClient) AddUser(ctx context.Context, req data.AddUserRequest) (*dat
 	return &user, nil
 }
 
-// UpdateUser обновляет существующего пользователя
+// UpdateUser updates an existing user.
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#updateuser
 func (c *HTTPClient) UpdateUser(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 	endpoint := fmt.Sprintf("update_user/%d", userID)
@@ -111,7 +111,7 @@ func (c *HTTPClient) UpdateUser(ctx context.Context, userID int64, req data.Upda
 	return &user, nil
 }
 
-// GetPriorities получает список приоритетов
+// GetPriorities fetches the list of priorities.
 // https://support.testrail.com/hc/en-us/articles/7077701636116-Priorities#getpriorities
 func (c *HTTPClient) GetPriorities(ctx context.Context) (data.GetPrioritiesResponse, error) {
 	resp, err := c.Get(ctx, "get_priorities", nil)
@@ -127,7 +127,7 @@ func (c *HTTPClient) GetPriorities(ctx context.Context) (data.GetPrioritiesRespo
 	return priorities, nil
 }
 
-// GetStatuses получает список статусов
+// GetStatuses fetches the list of statuses.
 // https://support.testrail.com/hc/en-us/articles/7077812750372-Statuses#getstatuses
 func (c *HTTPClient) GetStatuses(ctx context.Context) (data.GetStatusesResponse, error) {
 	resp, err := c.Get(ctx, "get_statuses", nil)
@@ -143,7 +143,7 @@ func (c *HTTPClient) GetStatuses(ctx context.Context) (data.GetStatusesResponse,
 	return statuses, nil
 }
 
-// GetTemplates получает список шаблонов for project
+// GetTemplates fetches the template list for a project.
 // https://support.testrail.com/hc/en-us/articles/7077792420884-Templates#gettemplates
 func (c *HTTPClient) GetTemplates(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 	endpoint := fmt.Sprintf("get_templates/%d", projectID)

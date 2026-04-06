@@ -30,21 +30,21 @@ var casesCmd = newCasesCmd()
 
 // projectDataStats contains structural statistics about a single project.
 type projectDataStats struct {
-	Suites            int           // количество сьюитов  (из GetSuites API)
-	Sections          int           // уникальных секций   (из SectionID в кейсах)
-	CasesRaw          int           // всего raw-кейсов до дедупликации
-	CasesUnique       int           // уникальных кейсов   (после ID-dedup)
-	CasesExpected     int           // ожидаемых кейсов по данным API (сумма totalSize по всем сьютам; -1 если неизвестно)
-	SuitesWithTotal   int           // сколько сьютов сообщили totalSize
-	SuitesVerified    int           // сьютов с подтверждённой полнотой (все страницы загружены, exhaustion чистый)
-	SuiteDetailsSum   int           // сумма кейсов по всем сьютам (для проверки целостности)
-	SuiteDetailsEmpty int           // количество пустых сьютов (0 кейсов)
-	SuiteDetailsCount int           // количество сьютов с трекингом
-	TotalPages        int           // общее количество запрошенных страниц
-	FailedPages       int           // страниц с ошибками
-	UniqueTitles      int           // уникальных заголовков (для контроля)
-	EmptyTitles       int           // кейсов без заголовка
-	Elapsed           time.Duration // время загрузки этого проекта
+	Suites            int           // number of suites (from GetSuites API)
+	Sections          int           // unique sections (from SectionID in cases)
+	CasesRaw          int           // total raw cases before deduplication
+	CasesUnique       int           // unique cases (after ID-dedup)
+	CasesExpected     int           // expected cases per API (sum of totalSize across all suites; -1 if unknown)
+	SuitesWithTotal   int           // suites that reported totalSize
+	SuitesVerified    int           // suites with confirmed completeness (all pages loaded, clean exhaustion)
+	SuiteDetailsSum   int           // sum of cases across all suites (for integrity check)
+	SuiteDetailsEmpty int           // number of empty suites (0 cases)
+	SuiteDetailsCount int           // number of tracked suites
+	TotalPages        int           // total number of requested pages
+	FailedPages       int           // pages with errors
+	UniqueTitles      int           // unique titles (for verification)
+	EmptyTitles       int           // cases without a title
+	Elapsed           time.Duration // loading time for this project
 }
 
 type casesExecutionStats struct {

@@ -17,13 +17,13 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.8.0-blue.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.24.1-blue.svg)](go.mod)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v2.8.0** — Stage 6.8 Complete: Concurrency unification, generic compare commands, `internal/concurrency/` package. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v3.0.0** — Stage 13 Complete: Final refactoring, full API coverage, architecture cleanup. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 

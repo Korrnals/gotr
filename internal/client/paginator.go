@@ -7,23 +7,23 @@ import (
 	"io"
 )
 
-// paginationLimit — стандартный размер страницы TestRail API.
+// paginationLimit is the default page size for TestRail API.
 const paginationLimit = 250
 
-// decodeListResponse декодирует ответ list-endpoint'а TestRail API, который может быть:
+// decodeListResponse decodes a TestRail list-endpoint response, which can be:
 //   - Paginated wrapper (TestRail 6.7+): {"offset":0,"limit":250,"size":N,"_links":{...},"<itemsField>":[...]}
-//   - Flat array (старые версии TestRail Server):  [item1, item2, ...]
+//   - Flat array (older TestRail Server):  [item1, item2, ...]
 //
-// Параметр itemsField — имя JSON-ключа для массива элементов в paginated-объекте
-// (например, "runs", "plans", "sections", "milestones", "shared_steps", "tests", "results").
+// itemsField is the JSON key for the items array in the paginated object
+// (e.g. "runs", "plans", "sections", "milestones", "shared_steps", "tests", "results").
 //
-// Возвращает (items, pageLen, error), где pageLen — количество элементов на этой странице.
+// Returns (items, pageLen, error), where pageLen is the number of items on this page.
 func decodeListResponse[T any](body []byte, itemsField string) (items []T, pageLen int, err error) {
 	if len(body) == 0 {
 		return nil, 0, nil
 	}
 
-	// Определяем формат по первому не-пробельному байту.
+	// Detect format by first non-whitespace byte.
 	for _, b := range body {
 		switch b {
 		case ' ', '\t', '\n', '\r':
@@ -36,7 +36,7 @@ func decodeListResponse[T any](body []byte, itemsField string) (items []T, pageL
 			}
 			raw, ok := wrapper[itemsField]
 			if !ok {
-				// Ключ не найден — возможно другой формат; возвращаем пустой срез
+				// Key not found — possibly a different format; return empty slice
 				return nil, 0, nil
 			}
 			if err := json.Unmarshal(raw, &items); err != nil {
@@ -57,19 +57,19 @@ func decodeListResponse[T any](body []byte, itemsField string) (items []T, pageL
 	return nil, 0, nil
 }
 
-// fetchAllPages загружает ВСЕ страницы из paginated list-endpoint'а TestRail API.
-// Прозрачно обрабатывает оба формата response: paginated wrapper и flat array.
+// fetchAllPages loads ALL pages from a paginated TestRail list-endpoint.
+// Transparently handles both response formats: paginated wrapper and flat array.
 //
-//   - c:          HTTP-клиент TestRail
-//   - endpoint:   путь API, например "get_runs/30"
-//   - baseQuery:  базовые query-параметры, к которым добавятся offset/limit; может быть nil
-//   - itemsField: имя JSON-ключа элементов в paginated-ответе, например "runs", "plans"
+//   - c:          TestRail HTTP client
+//   - endpoint:   API path, e.g. "get_runs/30"
+//   - baseQuery:  base query parameters; offset/limit will be appended; may be nil
+//   - itemsField: JSON key for items in the paginated response, e.g. "runs", "plans"
 func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, baseQuery map[string]string, itemsField string) ([]T, error) {
 	var all []T
 	offset := 0
 
 	for {
-		// Строим query с добавлением offset/limit к базовым параметрам
+		// Build query by appending offset/limit to base parameters
 		query := make(map[string]string, len(baseQuery)+2)
 		for k, v := range baseQuery {
 			query[k] = v
@@ -82,7 +82,7 @@ func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, b
 			return nil, fmt.Errorf("fetchAllPages %s (offset=%d): %w", endpoint, offset, err)
 		}
 
-		// Явное закрытие в теле цикла — избегаем defer-накопление
+		// Explicit close inside loop body — avoids defer accumulation
 		body, readErr := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if readErr != nil {
@@ -103,7 +103,7 @@ func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, b
 			break
 		}
 
-		// Если получили меньше limit — больше страниц нет
+		// Fewer items than limit means no more pages
 		if pageLen < paginationLimit {
 			break
 		}

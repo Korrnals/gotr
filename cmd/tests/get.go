@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду для получения информации о тесте
+// newGetCmd creates the 'tests get' command for retrieving test details.
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [test_id]",
@@ -43,7 +43,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("tests get")
 				dr.PrintSimple("Получить информацию о тесте", fmt.Sprintf("Test ID: %d", testID))

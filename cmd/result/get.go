@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'result get'
-// Эндпоинт: GET /get_results/{test_id}
+// newGetCmd creates the 'result get' command.
+// Endpoint: GET /get_results/{test_id}
 func newGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get [test-id]",
@@ -71,8 +71,8 @@ Test — это экземпляр тест-кейса в конкретном t
 	}
 }
 
-// newGetCaseCmd создаёт команду 'result get-case'
-// Эндпоинт: GET /get_results_for_case/{run_id}/{case_id}
+// newGetCaseCmd creates the 'result get-case' command.
+// Endpoint: GET /get_results_for_case/{run_id}/{case_id}
 func newGetCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get-case [run-id] [case-id]",
@@ -222,7 +222,7 @@ func selectCaseIDForRun(ctx context.Context, cli client.ClientInterface, runID i
 	return caseIDs[idx], nil
 }
 
-// Обратная совместимость: глобальные переменные для использования в result.go
+// Backward compatibility: exported vars for registration in result.go
 var (
 	getCmd     = newGetCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
 	getCaseCmd = newGetCaseCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })

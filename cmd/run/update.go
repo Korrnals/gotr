@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'run update'
+// newUpdateCmd creates the 'run update' command.
 func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [run-id]",
@@ -46,7 +46,7 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 			svc := newRunServiceFromInterface(cli)
 
-			// Собираем параметры из флагов (только изменённые)
+			// Collect parameters from flags (changed only)
 			req := &data.UpdateRunRequest{}
 
 			if cmd.Flags().Changed("name") {
@@ -74,7 +74,7 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				req.IncludeAll = &includeAll
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run update")
@@ -108,7 +108,7 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 	return cmd
 }
 
-// updateCmd — экспортированная команда
+// updateCmd is the exported command.
 var updateCmd = newUpdateCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

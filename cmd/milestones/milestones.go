@@ -1,4 +1,4 @@
-// Package milestones реализует CLI команды для работы с майлстонами TestRail
+// Package milestones implements CLI commands for managing TestRail milestones.
 package milestones
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с майлстонами
+// Register registers all milestone management commands on the given root.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	milestonesCmd := &cobra.Command{
 		Use:   "milestones",
@@ -27,7 +27,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • delete — удалить майлстон`,
 	}
 
-	// Добавление подкоманд
+	// Add subcommands
 	milestonesCmd.AddCommand(newAddCmd(getClient))
 	milestonesCmd.AddCommand(newGetCmd(getClient))
 	milestonesCmd.AddCommand(newListCmd(getClient))

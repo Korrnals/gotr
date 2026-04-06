@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newSectionsCmd создаёт родительскую команду для sections
+// newSectionsCmd creates the parent command for section operations.
 func newSectionsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sections",
@@ -29,7 +29,7 @@ func newSectionsCmd() *cobra.Command {
 	}
 }
 
-// newSectionGetCmd создаёт команду для получения одной секции
+// newSectionGetCmd creates the command for retrieving a single section.
 func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "section [section_id]",
@@ -102,7 +102,7 @@ func selectSectionID(ctx context.Context, sections data.GetSectionsResponse) (in
 	return sections[idx].ID, nil
 }
 
-// newSectionsListCmd создаёт команду для получения списка секций
+// newSectionsListCmd creates the command for listing project sections.
 func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
@@ -157,28 +157,28 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 		},
 	}
 
-	// Флаг для фильтрации по suite_id
+	// Filter by suite_id
 	cmd.Flags().Int64P("suite-id", "s", 0, "ID сюиты для фильтрации")
 	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
 
 	return cmd
 }
 
-// sectionsCmd — экспортированная родительская команда
+// sectionsCmd is the exported parent command.
 var sectionsCmd = newSectionsCmd()
 
-// sectionGetCmd — экспортированная команда для регистрации
+// sectionGetCmd is the exported command registered with the root.
 var sectionGetCmd = newSectionGetCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// sectionsListCmd — экспортированная команда для регистрации
+// sectionsListCmd is the exported command registered with the root.
 var sectionsListCmd = newSectionsListCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
 func init() {
-	// Добавляем подкоманды к родительской
+	// Register subcommands under the parent
 	sectionsCmd.AddCommand(sectionGetCmd)
 	sectionsCmd.AddCommand(sectionsListCmd)
 }

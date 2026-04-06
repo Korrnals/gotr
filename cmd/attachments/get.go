@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'attachments get'
-// Эндпоинт: GET /get_attachment/{attachment_id}
+// newGetCmd creates the 'attachments get' command.
+// Endpoint: GET /get_attachment/{attachment_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [attachment_id]",

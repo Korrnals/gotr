@@ -1,5 +1,5 @@
 // internal/client/mock.go
-// Универсальный mock-клиент для тестирования
+// Universal mock client for testing.
 package client
 
 import (
@@ -9,7 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// MockClient реализует ClientInterface для тестирования
+// MockClient implements ClientInterface for testing.
 type MockClient struct {
 	// ProjectsAPI
 	GetProjectsFunc   func(ctx context.Context) (data.GetProjectsResponse, error)
@@ -185,7 +185,7 @@ type MockClient struct {
 	UpdateTestsLabelsFunc func(ctx context.Context, runID int64, testIDs []int64, labels []string) error
 }
 
-// Проверка, что MockClient реализует ClientInterface
+// Compile-time check: MockClient must implement ClientInterface.
 var _ ClientInterface = (*MockClient)(nil)
 
 // ---------------------------------------------------------------------------
@@ -354,7 +354,6 @@ func (m *MockClient) DiffCasesData(ctx context.Context, pid1, pid2 int64, field 
 	return nil, nil
 }
 
-// GetCasesParallel — mock implementation
 // GetCasesParallel calls the configured mock implementation when it is set.
 func (m *MockClient) GetCasesParallel(ctx context.Context, projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetCasesResponse, error) {
 	if m.GetCasesParallelFunc != nil {
@@ -375,7 +374,6 @@ func (m *MockClient) GetCasesParallel(ctx context.Context, projectID int64, suit
 	return results, nil
 }
 
-// GetSuitesParallel — mock implementation
 // GetSuitesParallel calls the configured mock implementation when it is set.
 func (m *MockClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, workers int, monitor ProgressMonitor) (map[int64]data.GetSuitesResponse, error) {
 	results := make(map[int64]data.GetSuitesResponse)
@@ -392,7 +390,6 @@ func (m *MockClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 	return results, nil
 }
 
-// GetCasesForSuitesParallel — mock implementation
 // GetCasesForSuitesParallel calls the configured mock implementation when it is set.
 func (m *MockClient) GetCasesForSuitesParallel(ctx context.Context, projectID int64, suiteIDs []int64, workers int, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	if m.GetCasesForSuitesParallelFunc != nil {

@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining a client.
 type GetClientFunc = client.GetClientFunc
 
-// Cmd — родительская команда для управления test runs
+// Cmd is the parent command for managing test runs.
 var Cmd = &cobra.Command{
 	Use:   "run",
 	Short: "Управление test runs в TestRail",
@@ -45,7 +45,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 
 var clientAccessor *client.Accessor
 
-// SetGetClientForTests устанавливает getClient для тестов
+// SetGetClientForTests sets getClient for tests.
 func SetGetClientForTests(fn GetClientFunc) {
 	if clientAccessor == nil {
 		clientAccessor = client.NewAccessor(fn)
@@ -54,7 +54,7 @@ func SetGetClientForTests(fn GetClientFunc) {
 	}
 }
 
-// getClientSafe безопасно вызывает getClient с проверкой на nil
+// getClientSafe safely calls getClient with a nil check.
 func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 	if clientAccessor == nil {
 		return nil
@@ -62,12 +62,12 @@ func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
 	return clientAccessor.GetClientSafe(cmd)
 }
 
-// Register регистрирует команду run и все её подкоманды
+// Register registers the run command and all its subcommands.
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	clientAccessor = client.NewAccessor(clientFn)
 	rootCmd.AddCommand(Cmd)
 
-	// Добавляем подкоманды
+	// Add subcommands
 	Cmd.AddCommand(getCmd)
 	Cmd.AddCommand(listCmd)
 	Cmd.AddCommand(createCmd)
@@ -75,7 +75,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	Cmd.AddCommand(closeCmd)
 	Cmd.AddCommand(deleteCmd)
 
-	// Общие флаги для всех подкоманд
+	// Common flags for all subcommands
 	for _, subCmd := range Cmd.Commands() {
 		output.AddFlag(subCmd)
 	}

@@ -1,32 +1,32 @@
 // internal/models/data/sections.go
 package data
 
-// Section — структура section TestRail
+// Section represents a TestRail section.
 type Section struct {
-	Depth        int64  `json:"depth,omitempty"`         // Глубина вложенности
-	Description  string `json:"description,omitempty"`   // Описание section
-	DisplayOrder int64  `json:"display_order,omitempty"` // Порядок отображения
-	ID           int64  `json:"id"`                      // Уникальный ID (обязательное)
-	Name         string `json:"name"`                    // Название section (обязательное)
-	ParentID     int64  `json:"parent_id,omitempty"`     // ID родительской section (0 если нет)
-	SuiteID      int64  `json:"suite_id,omitempty"`      // ID сьюты (может быть 0 для базовых)
+	Depth        int64  `json:"depth,omitempty"`         // Nesting depth
+	Description  string `json:"description,omitempty"`   // Section description
+	DisplayOrder int64  `json:"display_order,omitempty"` // Display order
+	ID           int64  `json:"id"`                      // Unique ID (required)
+	Name         string `json:"name"`                    // Section name (required)
+	ParentID     int64  `json:"parent_id,omitempty"`     // Parent section ID (0 if none)
+	SuiteID      int64  `json:"suite_id,omitempty"`      // Suite ID (may be 0 for baseline)
 }
 
-// GetSectionsResponse — ответ get_sections (массив секций)
+// GetSectionsResponse is the response for get_sections (array of sections).
 type GetSectionsResponse []Section
 
-// GetSectionResponse — ответ get_section (одна секция)
+// GetSectionResponse is the response for get_section (a single section).
 type GetSectionResponse Section
 
-// AddSectionRequest — запрос add_section (suite_id обязательно)
+// AddSectionRequest is the request for add_section (suite_id is required).
 type AddSectionRequest struct {
-	Name        string `json:"name"` // обязательно
+	Name        string `json:"name"` // Required
 	Description string `json:"description,omitempty"`
-	SuiteID     int64  `json:"suite_id"` // обязательно
+	SuiteID     int64  `json:"suite_id"` // Required
 	ParentID    int64  `json:"parent_id,omitempty"`
 }
 
-// UpdateSectionRequest — запрос update_section (для изменения/перемещения)
+// UpdateSectionRequest is the request for update_section (for modifying/moving).
 type UpdateSectionRequest struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`

@@ -9,17 +9,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'cases list'
-// Эндпоинт: GET /get_cases/{project_id}
+// newListCmd creates the 'cases list' command.
+// Endpoint: GET /get_cases/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Список тест-кейсов",
-		Long:  `Выводит список тест-кейсов проекта с возможностью фильтрации.`,
-		Example: `  # Список всех кейсов проекта
+		Short: "List test cases",
+		Long:  `Lists test cases for a project with optional filtering.`,
+		Example: `  # List all cases in a project
   gotr cases list 1
 
-  # Фильтрация по сьюте и секции
+  # Filter by suite and section
   gotr cases list 1 --suite-id=100 --section-id=50`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,8 +56,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64("suite-id", 0, "Фильтр по ID сьюты")
-	cmd.Flags().Int64("section-id", 0, "Фильтр по ID секции")
+	cmd.Flags().Int64("suite-id", 0, "Filter by suite ID")
+	cmd.Flags().Int64("section-id", 0, "Filter by section ID")
 
 	return cmd
 }

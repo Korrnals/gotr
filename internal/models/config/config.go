@@ -9,8 +9,8 @@ import (
 	"github.com/Korrnals/gotr/internal/ui"
 )
 
-// DefaultConfigValues — дефолтные placeholder'ы в шаблоне конфигурации.
-// Эти значения используются как creating конфига, так и для проверки валидности.
+// DefaultConfigValues are default placeholders used in the configuration template.
+// These values are used both when creating config and for validity checks.
 const (
 	DefaultBaseURL  = "https://yourcompany.testrail.io/"
 	DefaultUsername = "your-email@example.com"
@@ -27,23 +27,22 @@ type ConfigData struct {
 	Debug    bool   `yaml:"debug"`
 }
 
-// Config — представляет один конфиг-файл
+// Config represents a single configuration file.
 type Config struct {
-	Path string      // полный путь к файлу
-	Data *ConfigData // данные (можно расширять)
+	Path string      // Full path to the file
+	Data *ConfigData // Configuration data
 }
 
-// New создаёт экземпляр конфига по произвольному пути
+// New creates a Config instance at the given path.
 func New(path string) *Config {
 	return &Config{
 		Path: path,
-		Data: &ConfigData{}, // пустой или с дефолтами
+		Data: &ConfigData{},
 	}
 }
 
-// Default возвращает конфиг по стандартному пути (~/.gotr/config/default.yaml)
+// Default returns a Config at the standard path (~/.gotr/config/default.yaml).
 func Default() (*Config, error) {
-	// Используем centralized paths
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -52,7 +51,7 @@ func Default() (*Config, error) {
 	return New(path), nil
 }
 
-// WithDefaults заполняет дефолтными значениями
+// WithDefaults populates the config with default placeholder values.
 func (c *Config) WithDefaults() *Config {
 	c.Data = &ConfigData{
 		BaseURL:  DefaultBaseURL,
@@ -65,7 +64,7 @@ func (c *Config) WithDefaults() *Config {
 	return c
 }
 
-// Create создаёт файл на диске
+// Create writes the configuration file to disk.
 func (c *Config) Create() error {
 	dir := filepath.Dir(c.Path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -90,90 +89,90 @@ func (c *Config) renderTemplate() string {
 
 	return fmt.Sprintf(`# gotr configuration file
 #
-# Приоритет источников:
+# Configuration source priority:
 #   1) CLI flags
 #   2) Environment variables (TESTRAIL_*)
-#   3) Этот файл
+#   3) This file
 
-# Базовый URL TestRail.
-# Пример cloud:  https://yourcompany.testrail.io
-# Пример server: https://testrail.example.local
+# TestRail base URL.
+# Cloud example:  https://yourcompany.testrail.io
+# Server example: https://testrail.example.local
 base_url: %q
 
-# Логин (обычно email пользователя TestRail).
+# Login (usually the TestRail user's email).
 username: %q
 
-# API key пользователя TestRail.
+# TestRail user API key.
 api_key: %q
 
-# true  -> пропустить проверку TLS сертификата (небезопасно, только для внутренних стендов)
-# false -> стандартная безопасная проверка TLS
+# true  -> skip TLS certificate verification (insecure, use only for internal environments)
+# false -> standard secure TLS verification
 insecure: %v
 
-# Включить jq-форматирование вывода (если встроенный jq доступен в системе).
+# Enable jq-formatted output (if the embedded jq binary is available).
 jq_format: %v
 
-# Включить отладочный вывод gotr.
+# Enable gotr debug output.
 debug: %v
 
 compare:
-  # Режим окружения для compare-запросов:
-  #   auto   - попытка определить по URL (cloud/server)
-  #   cloud  - принудительно cloud-профиль
-  #   server - принудительно server-профиль
+  # Deployment mode for compare requests:
+  #   auto   - attempt to detect from URL (cloud/server)
+  #   cloud  - force cloud profile
+  #   server - force server profile
   deployment: "auto"
 
-  # Для cloud-профиля: professional|enterprise
+  # For cloud profile: professional|enterprise
   cloud_tier: "professional"
 
-  # Глобальный лимит запросов в минуту для compare.
-  #   -1 -> автоматически по профилю (cloud/server)
-  #    0 -> лимит выключен
-  #   >0 -> фиксированное значение req/min
+  # Global rate limit (requests per minute) for compare.
+  #   -1 -> automatic based on profile (cloud/server)
+  #    0 -> rate limiting disabled
+  #   >0 -> fixed value in req/min
   rate_limit: -1
 
-  # Дефолт для cloud, если rate_limit=-1.
+  # Default for cloud when rate_limit=-1.
   # professional: 180, enterprise: 300
   cloud_rate_limit: 300
 
-  # Дефолт для server, если rate_limit=-1.
-  # Обычно 0 (без лимита).
+  # Default for server when rate_limit=-1.
+  # Typically 0 (no limit).
   server_rate_limit: 0
 
   cases:
-    # Параллельность по сьютам (между сьютами).
+    # Parallelism across suites (between suites).
     parallel_suites: 10
 
-    # Параллельность страниц внутри одного сьюта.
+    # Parallelism for pages within a single suite.
     parallel_pages: 6
 
-    # Количество retry для каждой страницы в основном этапе загрузки compare cases.
+    # Number of retries per page during the main compare cases fetch stage.
     page_retries: 5
 
-    # Таймаут полной операции compare cases.
+    # Timeout for the entire compare cases operation.
     timeout: "30m"
 
     retry:
-      # Попытки дозабора одной failed-страницы.
+      # Retry attempts for a single failed page.
       attempts: 5
 
-      # Количество параллельных воркеров дозабора.
+      # Number of parallel retry workers.
       workers: 12
 
-      # Пауза между попытками дозабора одной страницы.
+      # Delay between retry attempts for a single page.
       delay: "200ms"
 
-    # Всегда пытаться автоматически дозабирать failed pages после основного compare cases.
+    # Always attempt to automatically retry failed pages after the main compare cases stage.
     auto_retry_failed_pages: true
 `, data.BaseURL, data.Username, data.APIKey, data.Insecure, data.JqFormat, data.Debug)
 }
 
-// Path возвращает путь (для подкоманды path)
+// PathString returns the config file path.
 func (c *Config) PathString() string {
 	return c.Path
 }
 
-// IsValid проверяет, что конфиг содержит реальные данные, а не дефолтные placeholder'ы
+// IsValid checks that the config contains real data, not default placeholders.
 func (c *Config) IsValid() bool {
 	if c.Data == nil {
 		return false
@@ -183,7 +182,7 @@ func (c *Config) IsValid() bool {
 		c.Data.APIKey != "" && c.Data.APIKey != DefaultAPIKey
 }
 
-// IsDefaultValue проверяет, является ли значение дефолтным placeholder'ом
+// IsDefaultValue checks whether the given value matches a default placeholder.
 func IsDefaultValue(value, defaultValue string) bool {
 	return value == "" || value == defaultValue
 }

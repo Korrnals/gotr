@@ -57,6 +57,12 @@ Language: Русский | [English](../../../en/reports/stage13/index.md)
 
 - [Reliability Audit](reliability-audit.md) — аудит надёжности и отказоустойчивости
 - [Layer 2 Coverage Wave](layer2-coverage-wave.md) — волна покрытия для второго слоя
+- [Final Release Audit](final-release-audit.md) — финальный pre-release аудит (PASS)
+
+### Планирование
+
+- [TODO](todo.md) — трекинг задач Stage 13
+- [Stage 13.5 Design Plan](STAGE_13.5_DESIGN.md) — план дополнительной стадии (тесты + API до 100%)
 
 ---
 

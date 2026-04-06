@@ -9,7 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetReports получает список шаблонов отчётов for project
+// GetReports fetches the report template list for a project.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#getreports
 func (c *HTTPClient) GetReports(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 	endpoint := fmt.Sprintf("get_reports/%d", projectID)
@@ -26,7 +26,7 @@ func (c *HTTPClient) GetReports(ctx context.Context, projectID int64) (data.GetR
 	return reports, nil
 }
 
-// RunReport запускает генерацию отчёта по шаблону
+// RunReport triggers report generation from a template.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#runreport
 func (c *HTTPClient) RunReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 	endpoint := fmt.Sprintf("run_report/%d", templateID)
@@ -43,7 +43,7 @@ func (c *HTTPClient) RunReport(ctx context.Context, templateID int64) (*data.Run
 	return &reportResp, nil
 }
 
-// RunCrossProjectReport запускает кросс-проектный отчёт
+// RunCrossProjectReport triggers a cross-project report.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#runcrossprojectreport
 func (c *HTTPClient) RunCrossProjectReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 	endpoint := fmt.Sprintf("run_cross_project_report/%d", templateID)
@@ -60,7 +60,7 @@ func (c *HTTPClient) RunCrossProjectReport(ctx context.Context, templateID int64
 	return &reportResp, nil
 }
 
-// GetCrossProjectReports получает список кросс-проектных шаблонов отчётов
+// GetCrossProjectReports fetches the cross-project report template list.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#getcrossprojectreports
 func (c *HTTPClient) GetCrossProjectReports(ctx context.Context) (data.GetReportsResponse, error) {
 	endpoint := "get_cross_project_reports"

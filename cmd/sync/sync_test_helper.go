@@ -1,4 +1,4 @@
 package sync
 
-// testHTTPClientKey — ключ для контекста в тестах (должен совпадать с cmd.httpClientKey)
+// testHTTPClientKey is the context key for tests (must match cmd.httpClientKey).
 const testHTTPClientKey = "httpClient"

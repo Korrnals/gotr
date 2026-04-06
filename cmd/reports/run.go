@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newRunCmd создаёт команду 'reports run'
-// Эндпоинт: GET /run_report/{template_id}
+// newRunCmd creates the 'reports run' command.
+// Endpoint: GET /run_report/{template_id}
 func newRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [template_id]",

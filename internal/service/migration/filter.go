@@ -9,10 +9,10 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// FilterSharedSteps — фильтрация shared steps по использованию in suite и дубликатам в target
-// Кандидаты — shared steps, не используемые в source suite (по CaseIDs)
-// Дубликаты — добавляются в mapping (status "existing")
-// New — возвращаются для импорта
+// FilterSharedSteps filters shared steps by usage in suite and duplicates in target.
+// Candidates are shared steps NOT used in the source suite (by CaseIDs).
+// Duplicates are added to the mapping with status "existing".
+// New (non-duplicate) steps are returned for import.
 func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse, sourceCaseIDs map[int64]struct{}) (filtered data.GetSharedStepsResponse, err error) {
 	m.logger.Info("Начало фильтрации shared steps по использованию in suite")
 
@@ -54,9 +54,9 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 	return filtered, nil
 }
 
-// FilterSuites — фильтрация suites по дубликатам (по name)
-// Дубликаты — добавляются в mapping (status "existing")
-// New — возвращаются для импорта
+// FilterSuites filters suites by duplicate detection (by name).
+// Duplicates are added to the mapping with status "existing".
+// New (non-duplicate) suites are returned for import.
 func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtered data.GetSuitesResponse, err error) {
 	m.logger.Info("Начало фильтрации suites по дубликатам (по name)")
 
@@ -80,7 +80,7 @@ func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtere
 	return filtered, nil
 }
 
-// FilterCases — фильтрация cases по дубликатам (по compareField)
+// FilterCases filters cases by duplicate detection (using compareField).
 func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered data.GetCasesResponse, err error) {
 	m.logger.Info("Начало фильтрации cases по дубликатам")
 
@@ -133,7 +133,7 @@ func fieldValue(obj interface{}, field string) string {
 	return ""
 }
 
-// FilterSections — фильтрация sections по дубликатам в target suite (по name)
+// FilterSections filters sections by duplicate detection in the target suite (by name).
 func (m *Migration) FilterSections(source, target data.GetSectionsResponse) (filtered data.GetSectionsResponse, err error) {
 	m.logger.Info("Начало фильтрации sections по дубликатам (по name in suite)")
 

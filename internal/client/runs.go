@@ -10,7 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetRun получает информацию о тест-ране
+// GetRun fetches test run info by ID.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#getrun
 func (c *HTTPClient) GetRun(ctx context.Context, runID int64) (*data.Run, error) {
 	endpoint := fmt.Sprintf("get_run/%d", runID)
@@ -28,7 +28,7 @@ func (c *HTTPClient) GetRun(ctx context.Context, runID int64) (*data.Run, error)
 	return &run, nil
 }
 
-// GetRuns получает список тест-ранов проекта (поддерживает пагинацию)
+// GetRuns fetches the test run list for a project (with pagination).
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#getruns
 func (c *HTTPClient) GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 	endpoint := fmt.Sprintf("get_runs/%d", projectID)
@@ -39,7 +39,7 @@ func (c *HTTPClient) GetRuns(ctx context.Context, projectID int64) (data.GetRuns
 	return data.GetRunsResponse(runs), nil
 }
 
-// AddRun создаёт новый тест-ран
+// AddRun creates a new test run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#addrun
 func (c *HTTPClient) AddRun(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 	bodyBytes, _ := json.Marshal(req)
@@ -58,7 +58,7 @@ func (c *HTTPClient) AddRun(ctx context.Context, projectID int64, req *data.AddR
 	return &run, nil
 }
 
-// UpdateRun обновляет существующий тест-ран
+// UpdateRun updates an existing test run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#updaterun
 func (c *HTTPClient) UpdateRun(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 	bodyBytes, _ := json.Marshal(req)
@@ -77,7 +77,7 @@ func (c *HTTPClient) UpdateRun(ctx context.Context, runID int64, req *data.Updat
 	return &run, nil
 }
 
-// CloseRun закрывает тест-ран
+// CloseRun closes a test run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#closerun
 func (c *HTTPClient) CloseRun(ctx context.Context, runID int64) (*data.Run, error) {
 	endpoint := fmt.Sprintf("close_run/%d", runID)
@@ -95,7 +95,7 @@ func (c *HTTPClient) CloseRun(ctx context.Context, runID int64) (*data.Run, erro
 	return &run, nil
 }
 
-// DeleteRun удаляет тест-ран
+// DeleteRun deletes a test run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#deleterun
 func (c *HTTPClient) DeleteRun(ctx context.Context, runID int64) error {
 	endpoint := fmt.Sprintf("delete_run/%d", runID)

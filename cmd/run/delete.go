@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// runServiceWrapper оборачивает сервис для работы с runs
+// runServiceWrapper wraps the service for working with runs.
 type runServiceWrapper struct {
 	svc *service.RunService
 }
@@ -61,18 +61,18 @@ func (w *runServiceWrapper) GetByProject(ctx context.Context, projectID int64) (
 	return w.svc.GetByProject(ctx, projectID)
 }
 
-// newRunServiceFromInterface создаёт сервис из клиента-интерфейса
+// newRunServiceFromInterface creates a service from a client interface.
 func newRunServiceFromInterface(cli client.ClientInterface) *runServiceWrapper {
-	// Пытаемся привести к *HTTPClient, если это не mock
+	// Try to cast to *HTTPClient if not a mock
 	if httpClient, ok := cli.(*client.HTTPClient); ok {
 		return &runServiceWrapper{svc: service.NewRunService(httpClient)}
 	}
-	// Для тестов с mock - используем специальный конструктор
+	// For tests with mock — use a special constructor
 	return &runServiceWrapper{svc: service.NewRunServiceFromInterface(cli)}
 }
 
-// newDeleteCmd создаёт команду 'run delete'
-// Эндпоинт: POST /delete_run/{run_id}
+// newDeleteCmd creates the 'run delete' command.
+// Endpoint: POST /delete_run/{run_id}
 func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [run-id]",
@@ -113,7 +113,7 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 
 			svc := newRunServiceFromInterface(cli)
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run delete")
@@ -140,7 +140,7 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 	return cmd
 }
 
-// deleteCmd используется для регистрации в Register
+// deleteCmd is used for registration in Register.
 var deleteCmd = newDeleteCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

@@ -78,27 +78,27 @@ Language: Русский | [English](../../../en/reports/stage13/todo.md)
 - [x] Проверить cancel/timeout propagation и bounded retry behavior.
 - [x] Выделить performance hot paths для compare/sync.
 - [x] Обновить quality-metrics и audit-report.
-- [ ] Commit шага Reliability Audit.
+- [x] Commit шага Reliability Audit.
 
 - [x] Security & Supply Chain (devops-engineer + backend-engineer):
 - [x] Провести dependency audit.
 - [x] Проверить утечки чувствительных данных в logs/errors.
 - [x] Проверить input/filepath validation критичных путей.
 - [x] Обновить audit-report (security findings).
-- [ ] Commit шага Security Audit.
+- [x] Commit шага Security Audit.
 
 - [x] CI/CD Hardening (devops-engineer + release-manager):
 - [x] Формализовать обязательные quality gates.
 - [x] Синхронизировать Makefile verify path и CI path.
 - [x] Проверить reproducibility для release-артефактов.
 - [x] Обновить docs/operations/release-workflow.md при необходимости.
-- [ ] Commit шага CI/CD Hardening.
+- [x] Commit шага CI/CD Hardening.
 
 ## Добавленные дельты плана (2026-03-27)
 
 - [x] Добавить подпоток "Interactive helper consolidation" как отдельную remediation-зону Stage 13.
 - [x] Добавить подпоток "Compare runtime seam hardening" для снижения прямой связки cmd/compare и internal/concurrency.
-- [ ] Зафиксировать реализацию этих двух подпотоков в Phase 3 с отдельными коммитами.
+- [x] Зафиксировать реализацию этих двух подпотоков в Phase 3 с отдельными коммитами.
 
 ## Новые remediation задачи из CLI Contract Audit
 
@@ -171,7 +171,7 @@ Language: Русский | [English](../../../en/reports/stage13/todo.md)
 - [x] Полный прогон: go vet ./... .
 - [x] Линтерный прогон по согласованному gate.
 - [x] Финальное обновление metrics и evidence артефактов.
-- [ ] Commit шага Final Validation.
+- [x] Commit шага Final Validation.
 
 ## Phase 5 - Closure
 
@@ -180,7 +180,7 @@ Language: Русский | [English](../../../en/reports/stage13/todo.md)
 - [x] Финализировать docs/reports/stage13/api-compliance-matrix.md.
 - [x] Финализировать docs/reports/stage13/cli-contract-matrix.md.
 - [x] Подготовить release readiness summary.
-- [ ] Commit шага Stage 13 Closure.
+- [x] Commit шага Stage 13 Closure.
 
 ## Gate Checklist (Blockers)
 
@@ -194,8 +194,15 @@ Language: Русский | [English](../../../en/reports/stage13/todo.md)
 
 ## Stage Closure Decision (2026-04-06)
 
-- Stage 13.3 закрыт по результатам remediation, quality gates и docs sync.
-- Coverage workstream COV-3..COV-6 и target 100% coverage перенесены в post-stage backlog (вне текущего closure scope).
+- Stage 13.0 закрыт по результатам remediation, quality gates, финального аудита и docs sync.
+- Все блокеры из финального аудита исправлены: 3 data race, 1 тест-вис (660s), бейджи README.
+- 42/42 пакетов PASS с `-race`, покрытие 96.8-100%.
+- Coverage workstream COV-3..COV-6 и target 100% coverage перенесены в Stage 13.5.
+- Полный API coverage и CLI-обёртки запланированы в Stage 13.5.
+
+## Следующая стадия
+
+→ [Stage 13.5 Design Plan](STAGE_13.5_DESIGN.md) — Full API Coverage & 100% Test Parity
 
 ---
 

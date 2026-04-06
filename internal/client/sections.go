@@ -13,8 +13,8 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetSections — получает section для suite in project (поддерживает пагинацию)
-// suite_id обязательно для multi-suite проектов
+// GetSections fetches sections for a suite in a project (with pagination).
+// suite_id is required for multi-suite projects.
 func (c *HTTPClient) GetSections(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 	endpoint := fmt.Sprintf("get_sections/%d", projectID)
 	var baseQuery map[string]string
@@ -113,7 +113,7 @@ func (c *HTTPClient) GetSectionsParallelCtx(
 	return data.GetSectionsResponse(sections), err
 }
 
-// GetSection — получает одну секцию по ID
+// GetSection fetches a single section by ID.
 func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Section, error) {
 	endpoint := fmt.Sprintf("get_section/%d", sectionID)
 	resp, err := c.Get(ctx, endpoint, nil)
@@ -130,7 +130,7 @@ func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Sec
 	return &section, nil
 }
 
-// AddSection — создаёт новую секцию in suite проекта
+// AddSection creates a new section in a project's suite.
 func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("add_section/%d", projectID)
@@ -148,7 +148,7 @@ func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.
 	return &section, nil
 }
 
-// UpdateSection — обновляет секцию (name, description, parent_id для перемещения)
+// UpdateSection updates a section (name, description, parent_id for moving).
 func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
 	bodyBytes, _ := json.Marshal(req)
 	endpoint := fmt.Sprintf("update_section/%d", sectionID)
@@ -166,7 +166,7 @@ func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *da
 	return &section, nil
 }
 
-// DeleteSection — удаляет секцию (необратимо, удаляет cases/results)
+// DeleteSection deletes a section (irreversible, deletes cases/results).
 func (c *HTTPClient) DeleteSection(ctx context.Context, sectionID int64) error {
 	endpoint := fmt.Sprintf("delete_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, nil, nil)

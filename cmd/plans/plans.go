@@ -1,4 +1,4 @@
-// Package plans реализует CLI команды для работы с тест-планами TestRail
+// Package plans implements CLI commands for managing TestRail test plans.
 package plans
 
 import (
@@ -6,10 +6,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с тест-планами
+// Register registers all test plan management commands on the given root.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	plansCmd := &cobra.Command{
 		Use:   "plans",
@@ -28,7 +28,7 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
   • entry  — управление записями плана (add/update/delete)`,
 	}
 
-	// Добавление подкоманд
+	// Add subcommands
 	plansCmd.AddCommand(newAddCmd(getClient))
 	plansCmd.AddCommand(newGetCmd(getClient))
 	plansCmd.AddCommand(newListCmd(getClient))

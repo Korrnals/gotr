@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteGroupCmd создаёт команду 'configurations delete-group'
-// Эндпоинт: POST /delete_config_group/{group_id}
+// newDeleteGroupCmd creates the 'configurations delete-group' command.
+// Endpoint: POST /delete_config_group/{group_id}
 func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-group [group_id]",

@@ -12,35 +12,35 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// Migration — контекст миграции (клиент, параметры, mapping, логгер)
+// Migration holds the migration context: client, parameters, mapping, and logger.
 type Migration struct {
-	Client        client.ClientInterface // интерфейс клиента
+	Client        client.ClientInterface // API client interface
 	srcProject    int64
 	srcSuite      int64
 	dstProject    int64
 	dstSuite      int64
 	compareField  string
-	importedCases int // количество успешно импортированных cases
+	importedCases int // number of successfully imported cases
 
-	mapping *SharedStepMapping // mapping shared steps (из mapping.go)
+	mapping *SharedStepMapping // shared step ID mapping (see mapping.go)
 	logger  *zap.SugaredLogger
 }
 
-// NewMigration — конструктор с zap-логгером
+// NewMigration creates a new Migration instance with a zap logger.
 func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, dstSuite int64, compareField, logDir string) (*Migration, error) {
-	// Создаём директорию для логов
+	// Create directory for log files
 	if err := os.MkdirAll(logDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create log directory %s: %w", logDir, err)
 	}
 
-	// Файл для JSON-лога
+	// JSON log file path
 	logFile := filepath.Join(logDir, fmt.Sprintf("migration_%s.json", time.Now().Format("2006-01-02_15-04-05")))
 	fileWriter, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		return nil, err
 	}
 
-	// Энкодеры
+	// Encoders
 	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
 	jsonEncoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
 
@@ -59,7 +59,7 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 		dstSuite:      dstSuite,
 		compareField:  compareField,
 		importedCases: 0,
-		mapping:       NewSharedStepMapping(srcProject, dstProject), // из mapping.go
+		mapping:       NewSharedStepMapping(srcProject, dstProject), // from mapping.go
 		logger:        logger,
 	}
 
@@ -67,10 +67,10 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 	return m, nil
 }
 
-// Close — завершает работу миграции, сбрасывая логи на диск
+// Close shuts down the migration, flushing log buffers to disk.
 func (m *Migration) Close() error {
 	if m.logger != nil {
-		_ = m.logger.Sync() // Сброс буфера zap
+		_ = m.logger.Sync() // flush zap buffer
 	}
 	return nil
 }

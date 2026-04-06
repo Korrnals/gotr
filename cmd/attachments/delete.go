@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'attachments delete'
-// Эндпоинт: POST /delete_attachment/{attachment_id}
+// newDeleteCmd creates the 'attachments delete' command.
+// Endpoint: POST /delete_attachment/{attachment_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [attachment_id]",

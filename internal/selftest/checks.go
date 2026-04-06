@@ -1,5 +1,5 @@
 // internal/selftest/checks.go
-// Конкретные проверки для self-test
+// Concrete checks for the self-test command.
 package selftest
 
 import (
@@ -16,7 +16,7 @@ import (
 
 var execCommand = exec.Command
 
-// ConfigChecker проверяет конфигурацию в ~/.gotr/config/
+// ConfigChecker verifies configuration in ~/.gotr/config/.
 type ConfigChecker struct{}
 
 // Name returns the display name of the configuration check.
@@ -27,7 +27,7 @@ func (c ConfigChecker) Category() string { return "Configuration" }
 
 // Check verifies that the default configuration file exists.
 func (c ConfigChecker) Check() CheckResult {
-	// Проверяем путь ~/.gotr/config/default.yaml
+	// Check path ~/.gotr/config/default.yaml
 	configPath, err := paths.ConfigFile()
 	if err != nil {
 		return CheckResult{
@@ -37,7 +37,7 @@ func (c ConfigChecker) Check() CheckResult {
 		}
 	}
 
-	// Проверяем существование
+	// Check existence
 	if _, err := os.Stat(configPath); err == nil {
 		return CheckResult{
 			Result:  ResultPass,
@@ -46,7 +46,7 @@ func (c ConfigChecker) Check() CheckResult {
 		}
 	}
 
-	// Конфиг не найден
+	// Config not found
 	return CheckResult{
 		Result:     ResultFail,
 		Message:    "Config file not found",
@@ -56,7 +56,7 @@ func (c ConfigChecker) Check() CheckResult {
 	}
 }
 
-// BaseDirChecker проверяет структуру ~/.testrail/
+// BaseDirChecker verifies the ~/.gotr/ directory structure.
 type BaseDirChecker struct{}
 
 // Name returns the display name of the base-directory check.
@@ -69,7 +69,7 @@ func (c BaseDirChecker) Category() string { return "Configuration" }
 func (c BaseDirChecker) Check() CheckResult {
 	missing := []string{}
 
-	// Проверяем все директории
+	// Check all directories
 	dirChecks := []struct {
 		name string
 		fn   func() (string, error)
@@ -94,7 +94,7 @@ func (c BaseDirChecker) Check() CheckResult {
 
 		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 			missing = append(missing, check.name)
-			// Автоматически создаём
+			// Auto-create missing directory
 			os.MkdirAll(dir, 0755)
 		}
 	}
@@ -113,7 +113,7 @@ func (c BaseDirChecker) Check() CheckResult {
 	}
 }
 
-// BinaryInfoChecker проверяет информацию о бинарнике
+// BinaryInfoChecker reports binary build information.
 type BinaryInfoChecker struct {
 	Version   string
 	Commit    string
@@ -135,7 +135,7 @@ func (c BinaryInfoChecker) Check() CheckResult {
 	}
 }
 
-// GoEnvChecker проверяет окружение Go
+// GoEnvChecker verifies the Go runtime environment.
 type GoEnvChecker struct{}
 
 // Name returns the display name of the Go environment check.
@@ -158,7 +158,7 @@ func (c GoEnvChecker) Check() CheckResult {
 	}
 }
 
-// AllTestsChecker запускает все тесты проекта
+// AllTestsChecker runs all project unit tests.
 type AllTestsChecker struct{}
 
 // Name returns the display name of the full test-suite check.
@@ -169,19 +169,19 @@ func (c AllTestsChecker) Category() string { return "Tests" }
 
 // Check runs the project test suite and summarizes pass/fail statistics.
 func (c AllTestsChecker) Check() CheckResult {
-	// Запускаем все тесты во всех пакетах
+	// Run all tests in all packages
 	cmd := execCommand("go", "test", "./...", "-v")
 	cmd.Dir = getProjectRoot()
 	output, err := cmd.CombinedOutput()
 
 	outStr := string(output)
 
-	// Считаем результаты
+	// Count results
 	passed := countMatches(outStr, "--- PASS:")
 	failed := countMatches(outStr, "--- FAIL:")
 	skipped := countMatches(outStr, "--- SKIP:")
 
-	// Парсим сводку по пакетам
+	// Parse per-package summary
 	pkgResults := parsePackageResults(outStr)
 
 	result := CheckResult{
@@ -199,13 +199,13 @@ func (c AllTestsChecker) Check() CheckResult {
 		}
 	}
 
-	// Сохраняем полный отчёт в ~/.testrail/selftest/
+	// Save full report to ~/.gotr/selftest/
 	if reportDir, pathErr := paths.SelftestDirPath(); pathErr == nil {
 		os.MkdirAll(reportDir, 0755)
 		timestamp := time.Now().Format("2006-01-02_150405")
 		reportPath := filepath.Join(reportDir, fmt.Sprintf("test-report-%s.log", timestamp))
 
-		// Добавляем мета-информацию
+		// Add meta-information
 		reportContent := fmt.Sprintf("Test Report generated: %s\n", time.Now().Format(time.RFC3339))
 		reportContent += fmt.Sprintf("Results: %d passed, %d failed, %d skipped\n\n", passed, failed, skipped)
 		reportContent += outStr
@@ -213,9 +213,9 @@ func (c AllTestsChecker) Check() CheckResult {
 		if writeErr := os.WriteFile(reportPath, []byte(reportContent), 0644); writeErr == nil {
 			result.Details += fmt.Sprintf(" | Report: %s", reportPath)
 
-			// Обновляем симлинк latest
+			// Update "latest" symlink
 			latestLink := filepath.Join(reportDir, "latest.log")
-			os.Remove(latestLink) // Игнорируем ошибку если не существует
+			os.Remove(latestLink) // Ignore error if not exists
 			os.Symlink(reportPath, latestLink)
 		}
 	}
@@ -223,7 +223,7 @@ func (c AllTestsChecker) Check() CheckResult {
 	return result
 }
 
-// CoverageChecker проверяет покрытие кода
+// CoverageChecker checks code coverage.
 type CoverageChecker struct{}
 
 // Name returns the display name of the coverage check.
@@ -234,7 +234,7 @@ func (c CoverageChecker) Category() string { return "Coverage" }
 
 // Check runs coverage collection and reports overall coverage health.
 func (c CoverageChecker) Check() CheckResult {
-	// Запускаем тесты с coverage для всех пакетов
+	// Run tests with coverage for all packages
 	cmd := execCommand("go", "test", "./...", "-coverprofile=/tmp/gotr-coverage.out")
 	cmd.Dir = getProjectRoot()
 	output, err := cmd.CombinedOutput()
@@ -247,7 +247,7 @@ func (c CoverageChecker) Check() CheckResult {
 		}
 	}
 
-	// Парсим общее покрытие
+	// Parse overall coverage
 	outStr := string(output)
 	coverage := extractOverallCoverage(outStr)
 
@@ -257,7 +257,7 @@ func (c CoverageChecker) Check() CheckResult {
 		Details: "Target: 80%",
 	}
 
-	// Если покрытие ниже 50% — предупреждение
+	// Warn if coverage is below 50%
 	if strings.Contains(coverage, "%") {
 		var percent float64
 		fmt.Sscanf(coverage, "%f%%", &percent)
@@ -270,7 +270,7 @@ func (c CoverageChecker) Check() CheckResult {
 	return result
 }
 
-// Вспомогательные функции
+// Helper functions
 
 func countMatches(s, substr string) int {
 	count := 0
@@ -286,13 +286,13 @@ func countMatches(s, substr string) int {
 }
 
 func getProjectRoot() string {
-	// Пытаемся найти корень проекта
+	// Try to find project root
 	if _, err := os.Stat("go.mod"); err == nil {
 		wd, _ := os.Getwd()
 		return wd
 	}
 
-	// Ищем вверх по дереву
+	// Walk up the directory tree
 	wd, _ := os.Getwd()
 	for wd != "/" {
 		parent := filepath.Dir(wd)
@@ -310,9 +310,9 @@ func parsePackageResults(output string) string {
 	lines := strings.Split(output, "\n")
 
 	for _, line := range lines {
-		// Ищем строки вида "ok   	pkg/path	0.123s  coverage: 45.0%"
+		// Find lines like "ok   \tpkg/path\t0.123s  coverage: 45.0%"
 		if strings.HasPrefix(line, "ok  ") || strings.HasPrefix(line, "FAIL") {
-			// Сокращаем путь
+			// Abbreviate path
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				pkg := filepath.Base(parts[1])
@@ -332,11 +332,11 @@ func parsePackageResults(output string) string {
 }
 
 func extractOverallCoverage(output string) string {
-	// Ищем строку с общим покрытием
+	// Find the line with overall coverage
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
 		if strings.Contains(line, "coverage:") {
-			// Извлекаем процент
+			// Extract percentage
 			if start := strings.Index(line, "coverage:"); start != -1 {
 				rest := line[start+9:]
 				if end := strings.Index(rest, "%"); end != -1 {

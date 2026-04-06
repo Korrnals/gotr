@@ -80,6 +80,9 @@ func TestDisplayOperation_Phase(t *testing.T) {
 	buf := &bytes.Buffer{}
 	op := NewOperation(StatusConfig{Title: "Test", Writer: buf, Quiet: false})
 	dop := op.(*displayOperation)
+	// Stop the background refresh loop to avoid racing on the shared buffer.
+	dop.display.Finish()
+	buf.Reset()
 
 	dop.Phase("Starting")
 	if buf.Len() == 0 {
@@ -92,6 +95,9 @@ func TestDisplayOperation_Info(t *testing.T) {
 	buf := &bytes.Buffer{}
 	op := NewOperation(StatusConfig{Title: "Test", Writer: buf, Quiet: false})
 	dop := op.(*displayOperation)
+	// Stop the background refresh loop to avoid racing on the shared buffer.
+	dop.display.Finish()
+	buf.Reset()
 
 	dop.Info("Progress: %d", 50)
 	if buf.Len() == 0 {

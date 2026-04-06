@@ -8,18 +8,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// listCmd — основная субкоманда: gotr list <resource>
+// listCmd is the main subcommand: gotr list <resource>
 var listCmd = &cobra.Command{
 	Use:   "list <resource>",
-	Short: "Вывод списка доступных эндпоинтов TestRail API по ресурсу",
-	Long: `Выводит список доступных эндпоинтов TestRail API v2 для указанного ресурса.
+	Short: "List available TestRail API endpoints for a resource",
+	Long: `Lists available TestRail API v2 endpoints for a given resource.
 
-Примеры:
-	gotr list projects          # эндпоинты для проектов
-	gotr list cases             # эндпоинты для кейсов
-	gotr list all               # все эндпоинты
-	gotr list cases --json      # в формате JSON
-	gotr list cases --short     # краткий вывод (Method URI)`,
+Examples:
+	gotr list projects          # endpoints for projects
+	gotr list cases             # endpoints for cases
+	gotr list all               # all endpoints
+	gotr list cases --json      # as JSON
+	gotr list cases --short     # short output (Method URI)`,
 
 	Args: cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -38,21 +38,21 @@ var listCmd = &cobra.Command{
 			resource = strings.ToLower(ValidResources[idx])
 		}
 
-		// Читаем флаги, которые объявили ниже в init()
-		jsonOutput, _ := cmd.Flags().GetBool("json")   // true, если --json
-		shortOutput, _ := cmd.Flags().GetBool("short") // true, если --short
+		// Read flags declared below in init()
+		jsonOutput, _ := cmd.Flags().GetBool("json")
+		shortOutput, _ := cmd.Flags().GetBool("short")
 
-		// Красивый вывод в JSON
+		// JSON output
 		if jsonOutput {
 			getResourceEndpoints(resource, "json")
 			return nil
 		}
-		// Короткий вывод (Method + URI)
+		// Short output (Method + URI)
 		if shortOutput {
 			getResourceEndpoints(resource, "short")
 			return nil
 		}
-		// Полный, красивый вывод
+		// Full, formatted output
 		getResourceEndpoints(resource, "")
 		return nil
 	},

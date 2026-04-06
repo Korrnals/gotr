@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newFieldsCmd создаёт команду 'result fields'
+// newFieldsCmd creates the 'result fields' command.
 func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fields",
@@ -26,7 +26,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("result fields")
@@ -53,7 +53,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 	return cmd
 }
 
-// saveToFile сохраняет данные в файл
+// saveToFile writes data to a file as formatted JSON.
 func saveToFile(data interface{}, filename string) error {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -62,7 +62,7 @@ func saveToFile(data interface{}, filename string) error {
 	return os.WriteFile(filename, jsonBytes, 0644)
 }
 
-// printJSON выводит данные в JSON в stdout
+// printJSON prints data as formatted JSON to stdout.
 func printJSON(data interface{}) error {
 	jsonBytes, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
@@ -72,7 +72,7 @@ func printJSON(data interface{}) error {
 	return nil
 }
 
-// fieldsCmd — экспортированная команда
+// fieldsCmd is the exported command.
 var fieldsCmd = newFieldsCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClientSafe(cmd)
 })

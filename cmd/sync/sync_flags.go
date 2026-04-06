@@ -2,7 +2,7 @@ package sync
 
 import "github.com/spf13/cobra"
 
-// addSyncFlags — общий набор флагов для команд sync/*
+// addSyncFlags defines a common set of flags for sync/* commands.
 func addSyncFlags(c *cobra.Command) {
 	c.Flags().Int64("src-project", 0, "Source project ID")
 	c.Flags().Int64("src-suite", 0, "Source suite ID")

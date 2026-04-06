@@ -11,8 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'variables update'
-// Эндпоинт: POST /update_variable/{variable_id}
+// newUpdateCmd creates the 'variables update' command.
+// Endpoint: POST /update_variable/{variable_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [variable_id]",

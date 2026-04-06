@@ -9,8 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'templates list'
-// Эндпоинт: GET /get_templates/{project_id}
+// newListCmd creates the 'templates list' command.
+// Endpoint: GET /get_templates/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",

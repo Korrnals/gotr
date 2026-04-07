@@ -441,7 +441,9 @@ func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint stri
 	case "project":
 		if len(jsonData) > 0 {
 			var req data.UpdateProjectRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			req := data.UpdateProjectRequest{
@@ -463,7 +465,9 @@ func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint stri
 	case "suite":
 		if len(jsonData) > 0 {
 			var req data.UpdateSuiteRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			req := data.UpdateSuiteRequest{
@@ -484,7 +488,9 @@ func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint stri
 	case "section":
 		if len(jsonData) > 0 {
 			var req data.UpdateSectionRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			req := data.UpdateSectionRequest{}
@@ -503,7 +509,9 @@ func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint stri
 	case "case":
 		if len(jsonData) > 0 {
 			var req data.UpdateCaseRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			req := data.UpdateCaseRequest{}
@@ -528,7 +536,9 @@ func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint stri
 	case "run":
 		if len(jsonData) > 0 {
 			var req data.UpdateRunRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			req := data.UpdateRunRequest{
@@ -559,7 +569,9 @@ func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint stri
 	case "shared-step":
 		if len(jsonData) > 0 {
 			var req data.UpdateSharedStepRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			req := data.UpdateSharedStepRequest{}

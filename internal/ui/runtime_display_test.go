@@ -109,9 +109,7 @@ func TestRunWithStatusAndOperation(t *testing.T) {
 	if h.Elapsed() < 0 {
 		t.Fatalf("elapsed should be non-negative")
 	}
-	if err := do.Finish(); err != nil {
-		t.Fatalf("operation Finish() error: %v", err)
-	}
+	do.Finish()
 }
 
 func TestRunWithStatus_NonQuietSuccess(t *testing.T) {

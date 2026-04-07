@@ -67,6 +67,14 @@ func init() {
 	variables.Register(rootCmd, GetClientInterface)
 }
 
+// must panics if err is non-nil. Used for init-time bindings that
+// indicate a programming error (e.g. binding a non-existent flag).
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 // initGlobalFlags registers persistent flags shared by all subcommands.
 func initGlobalFlags() {
 	// Global flags — connection and basic settings only
@@ -78,7 +86,7 @@ func initGlobalFlags() {
 
 	// Hidden debug flag
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug output")
-	rootCmd.PersistentFlags().MarkHidden("debug")
+	must(rootCmd.PersistentFlags().MarkHidden("debug"))
 
 	// Quiet mode (suppress informational output for CI/CD)
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Suppress progress, stats, and save messages")
@@ -90,11 +98,11 @@ func initGlobalFlags() {
 	rootCmd.PersistentFlags().StringP("format", "f", "table", "Output format: table, json, csv, md, html")
 
 	// Bind flags to Viper
-	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
-	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))
-	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
-	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure"))
-	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+	must(viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url")))
+	must(viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username")))
+	must(viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")))
+	must(viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")))
+	must(viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")))
 }
 
 // ============================================

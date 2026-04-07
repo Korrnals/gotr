@@ -224,7 +224,10 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 	switch outputType {
 	// JSON output — for scripts and automation
 	case "json":
-		data, _ := json.MarshalIndent(paths, "", "  ")
+		data, err := json.MarshalIndent(paths, "", "  ")
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal endpoints: %w", err)
+		}
 		fmt.Println(string(data))
 		return nil, nil
 	// Method + Endpoint output
@@ -232,14 +235,14 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 		for _, p := range paths {
 			fmt.Printf("%s %s\n", p.Method, p.URI)
 		}
-		return nil, fmt.Errorf("failed to format short resource list")
+		return nil, nil
 	// Short output — URI only
 	case "list":
 		for _, p := range paths {
 			name := extractGetEndpointName(p.URI)
 			endpoints = append(endpoints, name)
 		}
-		return endpoints, fmt.Errorf("failed to format resource list")
+		return endpoints, nil
 	default:
 		fmt.Printf("Endpoints for %s (%d):\n\n", resource, len(paths))
 		for _, p := range paths {

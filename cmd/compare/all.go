@@ -552,7 +552,9 @@ Examples:
 					case "json", "yaml":
 						// Save in structured format with auto-generated filename
 						exportsDir, _ := outpututils.GetExportsDir("compare")
-						os.MkdirAll(exportsDir, 0755)
+						if err := os.MkdirAll(exportsDir, 0755); err != nil {
+							return fmt.Errorf("failed to create exports directory: %w", err)
+						}
 						filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
 							if err := saveAllResultFn(result, format, filePath); err != nil {
 							return err
@@ -811,7 +813,9 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 		// Use default path with .txt extension
 		filePath = outpututils.GenerateFilename("compare", "txt")
 		exportsDir, _ := outpututils.GetExportsDir("compare")
-		os.MkdirAll(exportsDir, 0755)
+		if err := os.MkdirAll(exportsDir, 0755); err != nil {
+			return fmt.Errorf("failed to create exports directory: %w", err)
+		}
 		filePath = exportsDir + "/" + filePath
 	}
 

@@ -120,7 +120,10 @@ func resolveExportInputs(cmd *cobra.Command, args []string) (string, string, str
 		if !interactive.HasPrompterInContext(ctx) {
 			return "", "", "", fmt.Errorf("endpoint required: gotr export <resource> <endpoint> [id]")
 		}
-		endpointOptions, _ := getResourceEndpoints(resource, "list")
+		endpointOptions, endpointsErr := getResourceEndpoints(resource, "list")
+		if endpointsErr != nil {
+			return "", "", "", fmt.Errorf("failed to get endpoints for %s: %w", resource, endpointsErr)
+		}
 		endpointOptions = filterEmpty(endpointOptions)
 		if len(endpointOptions) == 0 {
 			return "", "", "", fmt.Errorf("no export endpoints found for resource: %s", resource)

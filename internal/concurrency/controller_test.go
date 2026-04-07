@@ -312,7 +312,7 @@ func TestParallelController_ValidateConfig(t *testing.T) {
 		PageSize:            0,  // Invalid → default 250
 	}
 
-	config.Validate()
+	config.Normalize()
 
 	// Should be set to defaults (except RequestsPerMinute: 0 is valid)
 	assert.Equal(t, 5, config.MaxConcurrentSuites)
@@ -332,7 +332,7 @@ func TestParallelController_ValidateConfig_NegativeRPM(t *testing.T) {
 		MaxConsecutiveErrorWaves: 1,
 	}
 
-	config.Validate()
+	config.Normalize()
 	assert.Equal(t, 180, config.RequestsPerMinute)
 }
 

@@ -25,7 +25,7 @@ func NewController(config *ControllerConfig) *ParallelController {
 	if config == nil {
 		config = DefaultControllerConfig()
 	}
-	config.Validate()
+	config.Normalize()
 
 	return &ParallelController{
 		config: config,

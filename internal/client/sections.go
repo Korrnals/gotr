@@ -39,7 +39,7 @@ func (c *HTTPClient) GetSectionsParallelCtx(
 	if config == nil {
 		config = concurrency.DefaultControllerConfig()
 	} else {
-		config.Validate()
+		config.Normalize()
 	}
 
 	if config.Timeout > 0 {

@@ -38,9 +38,6 @@ Test run — это экземпляр тест-сюиты, запущенный
 	# Закрыть test run
 	gotr run close 12345
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
 }
 
 var clientAccessor *client.Accessor

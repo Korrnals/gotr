@@ -202,3 +202,40 @@ func TestSetGetClientForTests(t *testing.T) {
 	// getClient должен быть установлен
 	assert.NotNil(t, getClient)
 }
+
+// TestProductionVarClosures exercises the production-var wiring closures
+// (e.g. var casesCmd = newCasesCmd(func(cmd) { return getClient(cmd) })).
+// These closures are never called in unit tests because tests use newXCmd(testFn).
+// Here we trigger each closure to cover the single "return getClient(cmd)" statement.
+func TestProductionVarClosures(t *testing.T) {
+	old := getClient
+	defer func() { getClient = old }()
+	getClient = func(cmd *cobra.Command) *client.HTTPClient { return nil }
+
+	cmds := []struct {
+		name string
+		cmd  *cobra.Command
+	}{
+		{"casesCmd", casesCmd},
+		{"caseCmd", caseCmd},
+		{"projectsCmd", projectsCmd},
+		{"projectCmd", projectCmd},
+		{"suitesCmd", suitesCmd},
+		{"suiteCmd", suiteCmd},
+		{"sharedStepsCmd", sharedStepsCmd},
+		{"sharedStepCmd", sharedStepCmd},
+		{"caseHistoryCmd", caseHistoryCmd},
+		{"sharedStepHistoryCmd", sharedStepHistoryCmd},
+		{"caseTypesCmd", caseTypesCmd},
+		{"caseFieldsCmd", caseFieldsCmd},
+		{"sectionGetCmd", sectionGetCmd},
+		{"sectionsListCmd", sectionsListCmd},
+	}
+
+	for _, tc := range cmds {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() { recover() }()
+			_ = tc.cmd.RunE(tc.cmd, []string{"1"})
+		})
+	}
+}

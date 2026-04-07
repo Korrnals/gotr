@@ -127,12 +127,12 @@ func TestResolveExportInputs_ResourceLowercasedFromArgs(t *testing.T) {
 }
 
 func TestResolveExportInputs_Interactive_NoGetEndpoints(t *testing.T) {
-	// attachments содержит только POST endpoints, поэтому list-режим для export будет пустым.
+	// "nonexistent_resource" is not mapped in getResourceEndpoints, returns nil list.
 	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
 	cmd := setupExportInputTest()
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
 
-	_, _, _, err := resolveExportInputs(cmd, []string{"attachments"})
+	_, _, _, err := resolveExportInputs(cmd, []string{"nonexistent_resource"})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no export endpoints found")
 }

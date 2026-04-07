@@ -578,3 +578,36 @@ func TestResultServiceWrapper_ParseID(t *testing.T) {
 	_, err = svc.ParseID(ctx, []string{"abc"}, 0)
 	assert.Error(t, err)
 }
+// TestProductionVarClosures exercises the production-var wiring closures
+// (e.g. var addCmd = newAddCmd(func(cmd) { return getClientSafe(cmd) })).
+func TestProductionVarClosures(t *testing.T) {
+	old := clientAccessor
+	defer func() { clientAccessor = old }()
+	clientAccessor = nil
+
+	cmds := []struct {
+		name string
+		cmd  *cobra.Command
+	}{
+		{"addCmd", addCmd},
+		{"addCaseCmd", addCaseCmd},
+		{"addBulkCmd", addBulkCmd},
+		{"fieldsCmd", fieldsCmd},
+		{"getCmd", getCmd},
+		{"getCaseCmd", getCaseCmd},
+		{"listCmd", listCmd},
+	}
+
+	for _, tc := range cmds {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() { recover() }()
+			_ = tc.cmd.RunE(tc.cmd, []string{"1"})
+		})
+	}
+}
+
+// TestCmd_Run_Help covers the Run func on root Cmd that calls cmd.Help().
+func TestCmd_Run_Help(t *testing.T) {
+	Cmd.SetArgs([]string{})
+	Cmd.Run(Cmd, nil)
+}

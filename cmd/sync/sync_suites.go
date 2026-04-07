@@ -63,7 +63,7 @@ var suitesCmd = &cobra.Command{
 		defer m.Close()
 
 		op := newSyncOperation("Sync suites", quiet)
-		defer op.Finish()
+defer op.Finish()
 
 		op.Phase("Loading suites")
 		loaded, err := runSyncStatus(ctx, "Loading suites...", quiet, func(ctx context.Context) (struct {
@@ -129,11 +129,11 @@ var suitesCmd = &cobra.Command{
 
 		// Step 4) Save mapping if requested
 		if autoSaveMapping {
-			m.ExportMapping(logDir)
+			_ = m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
 			ok, err := p.Confirm("Save mapping?", false)
 			if err == nil && ok {
-				m.ExportMapping(logDir)
+				_ = m.ExportMapping(logDir)
 			}
 		}
 

@@ -243,7 +243,10 @@ func saveLog(file string, matches, filtered data.GetCasesResponse, errors []stri
 		"mapping":   mapping,
 	}
 	jsonData, _ := json.MarshalIndent(result, "", "  ")
-	os.WriteFile(file, jsonData, 0644)
+	if err := os.WriteFile(file, jsonData, 0644); err != nil {
+		ui.Warningf(os.Stderr, "Failed to save log %s: %v", file, err)
+		return
+	}
 	if !quiet {
 		ui.Infof(os.Stdout, "Log saved: %s", file)
 	}

@@ -68,6 +68,7 @@ func (c BaseDirChecker) Category() string { return "Configuration" }
 // Check validates and creates required gotr runtime directories.
 func (c BaseDirChecker) Check() CheckResult {
 	missing := []string{}
+	failedDirs := []string{}
 
 	// Check all directories
 	dirChecks := []struct {
@@ -95,11 +96,20 @@ func (c BaseDirChecker) Check() CheckResult {
 		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 			missing = append(missing, check.name)
 			// Auto-create missing directory
-			os.MkdirAll(dir, 0755)
+			if mkErr := os.MkdirAll(dir, 0755); mkErr != nil {
+				failedDirs = append(failedDirs, check.name)
+			}
 		}
 	}
 
 	if len(missing) > 0 {
+		if len(failedDirs) > 0 {
+			return CheckResult{
+				Result:  ResultWarn,
+				Message: "Some directories could not be created",
+				Details: fmt.Sprintf("Failed: %s", strings.Join(failedDirs, ", ")),
+			}
+		}
 		return CheckResult{
 			Result:  ResultPass,
 			Message: "Directories created",
@@ -201,22 +211,23 @@ func (c AllTestsChecker) Check() CheckResult {
 
 	// Save full report to ~/.gotr/selftest/
 	if reportDir, pathErr := paths.SelftestDirPath(); pathErr == nil {
-		os.MkdirAll(reportDir, 0755)
-		timestamp := time.Now().Format("2006-01-02_150405")
-		reportPath := filepath.Join(reportDir, fmt.Sprintf("test-report-%s.log", timestamp))
+		if mkErr := os.MkdirAll(reportDir, 0755); mkErr == nil {
+			timestamp := time.Now().Format("2006-01-02_150405")
+			reportPath := filepath.Join(reportDir, fmt.Sprintf("test-report-%s.log", timestamp))
 
-		// Add meta-information
-		reportContent := fmt.Sprintf("Test Report generated: %s\n", time.Now().Format(time.RFC3339))
-		reportContent += fmt.Sprintf("Results: %d passed, %d failed, %d skipped\n\n", passed, failed, skipped)
-		reportContent += outStr
+			// Add meta-information
+			reportContent := fmt.Sprintf("Test Report generated: %s\n", time.Now().Format(time.RFC3339))
+			reportContent += fmt.Sprintf("Results: %d passed, %d failed, %d skipped\n\n", passed, failed, skipped)
+			reportContent += outStr
 
-		if writeErr := os.WriteFile(reportPath, []byte(reportContent), 0644); writeErr == nil {
-			result.Details += fmt.Sprintf(" | Report: %s", reportPath)
+			if writeErr := os.WriteFile(reportPath, []byte(reportContent), 0644); writeErr == nil {
+				result.Details += fmt.Sprintf(" | Report: %s", reportPath)
 
-			// Update "latest" symlink
-			latestLink := filepath.Join(reportDir, "latest.log")
-			os.Remove(latestLink) // Ignore error if not exists
-			os.Symlink(reportPath, latestLink)
+				// Update "latest" symlink
+				latestLink := filepath.Join(reportDir, "latest.log")
+				os.Remove(latestLink) // Ignore error if not exists
+				_ = os.Symlink(reportPath, latestLink)
+			}
 		}
 	}
 
@@ -260,8 +271,7 @@ func (c CoverageChecker) Check() CheckResult {
 	// Warn if coverage is below 50%
 	if strings.Contains(coverage, "%") {
 		var percent float64
-		fmt.Sscanf(coverage, "%f%%", &percent)
-		if percent < 50 {
+		if _, err := fmt.Sscanf(coverage, "%f%%", &percent); err == nil && percent < 50 {
 			result.Result = ResultWarn
 			result.Details = fmt.Sprintf("Current: %s, Target: 80%%", coverage)
 		}

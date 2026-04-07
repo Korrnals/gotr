@@ -44,16 +44,22 @@ Examples:
 
 		// JSON output
 		if jsonOutput {
-			getResourceEndpoints(resource, "json")
+			if _, err := getResourceEndpoints(resource, "json"); err != nil {
+				return err
+			}
 			return nil
 		}
 		// Short output (Method + URI)
 		if shortOutput {
-			getResourceEndpoints(resource, "short")
+			if _, err := getResourceEndpoints(resource, "short"); err != nil {
+				return err
+			}
 			return nil
 		}
 		// Full, formatted output
-		getResourceEndpoints(resource, "")
+		if _, err := getResourceEndpoints(resource, ""); err != nil {
+			return err
+		}
 		return nil
 	},
 }

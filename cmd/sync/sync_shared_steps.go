@@ -95,7 +95,7 @@ var sharedStepsCmd = &cobra.Command{
 		defer m.Close()
 
 		op := newSyncOperation("Sync shared steps", quiet)
-		defer op.Finish()
+defer op.Finish()
 
 		op.Phase("Loading shared steps")
 		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", quiet, func(ctx context.Context) (struct {
@@ -176,11 +176,11 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Step 6) Save mapping/filtered if requested
 		if autoSaveMapping {
-			m.ExportMapping(logDir)
+			_ = m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
 			ok, err := p.Confirm("Save mapping?", false)
 			if err == nil && ok {
-				m.ExportMapping(logDir)
+				_ = m.ExportMapping(logDir)
 			}
 		}
 

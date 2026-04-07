@@ -610,7 +610,9 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 	case "project":
 		if len(jsonData) > 0 {
 			var req data.AddProjectRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			body = data.AddProjectRequest{
@@ -629,7 +631,9 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 		}
 		if len(jsonData) > 0 {
 			var req data.AddSuiteRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			body = data.AddSuiteRequest{
@@ -647,7 +651,9 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 		}
 		if len(jsonData) > 0 {
 			var req data.AddSectionRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			body = data.AddSectionRequest{
@@ -667,7 +673,9 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 		}
 		if len(jsonData) > 0 {
 			var req data.AddCaseRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			body = data.AddCaseRequest{
@@ -688,7 +696,9 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 		}
 		if len(jsonData) > 0 {
 			var req data.AddRunRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			caseIDs := parseCaseIDs(caseIDsStr)
@@ -712,7 +722,9 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 		}
 		if len(jsonData) > 0 {
 			var req data.AddResultRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			body = data.AddResultRequest{
@@ -733,7 +745,9 @@ func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string,
 		}
 		if len(jsonData) > 0 {
 			var req data.AddSharedStepRequest
-			json.Unmarshal(jsonData, &req)
+			if err := json.Unmarshal(jsonData, &req); err != nil {
+				return fmt.Errorf("invalid JSON data: %w", err)
+			}
 			body = req
 		} else {
 			body = data.AddSharedStepRequest{

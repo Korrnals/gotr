@@ -118,7 +118,9 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 			case "json", "yaml", "csv":
 				// Save in structured format with auto-generated filename
 				exportsDir, _ := outpututils.GetExportsDir("compare")
-				os.MkdirAll(exportsDir, 0755)
+				if err := os.MkdirAll(exportsDir, 0755); err != nil {
+					return fmt.Errorf("failed to create exports directory: %w", err)
+				}
 				filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
 				if err := saveToFileWithPath(result, format, filePath); err != nil {
 					return err
@@ -556,7 +558,9 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		// Use default path with .txt extension for table
 		filePath = outpututils.GenerateFilename("compare", "txt")
 		exportsDir, _ := outpututils.GetExportsDir("compare")
-		os.MkdirAll(exportsDir, 0755)
+		if err := os.MkdirAll(exportsDir, 0755); err != nil {
+			return fmt.Errorf("failed to create exports directory: %w", err)
+		}
 		filePath = exportsDir + "/" + filePath
 	}
 

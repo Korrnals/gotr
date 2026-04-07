@@ -89,7 +89,7 @@ var fullCmd = &cobra.Command{
 		defer m.Close()
 
 		op := newSyncOperation("Full migration", quiet)
-		defer op.Finish()
+defer op.Finish()
 
 		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
@@ -115,7 +115,7 @@ var fullCmd = &cobra.Command{
 		}
 
 		if autoSaveMapping {
-			m.ExportMapping(logDir)
+			_ = m.ExportMapping(logDir)
 		}
 
 		ui.Success(os.Stdout, "Full migration complete!")

@@ -117,11 +117,19 @@ type Attachments struct{}
 // Paths returns API endpoints for Attachments.
 func (r *Attachments) Paths() []APIPath {
 	return []APIPath{
+		{Method: "GET", URI: "index.php?/api/v2/get_attachment/{attachment_id}", Description: "Get single attachment", Params: map[string]string{"attachment_id": "Required"}},
+		{Method: "GET", URI: "index.php?/api/v2/get_attachments_for_case/{case_id}", Description: "Get attachments for case", Params: map[string]string{"case_id": "Required"}},
+		{Method: "GET", URI: "index.php?/api/v2/get_attachments_for_plan/{plan_id}", Description: "Get attachments for plan", Params: map[string]string{"plan_id": "Required"}},
+		{Method: "GET", URI: "index.php?/api/v2/get_attachments_for_plan_entry/{plan_id}/{entry_id}", Description: "Get attachments for plan entry"},
+		{Method: "GET", URI: "index.php?/api/v2/get_attachments_for_run/{run_id}", Description: "Get attachments for run", Params: map[string]string{"run_id": "Required"}},
+		{Method: "GET", URI: "index.php?/api/v2/get_attachments_for_test/{test_id}", Description: "Get attachments for test", Params: map[string]string{"test_id": "Required"}},
+		{Method: "GET", URI: "index.php?/api/v2/get_attachments_for_project/{project_id}", Description: "Get attachments for project", Params: map[string]string{"project_id": "Required"}},
 		{Method: "POST", URI: "index.php?/api/v2/add_attachment_to_case/{case_id}", Description: "Add attachment to case"},
 		{Method: "POST", URI: "index.php?/api/v2/add_attachment_to_plan/{plan_id}", Description: "Add attachment to plan"},
 		{Method: "POST", URI: "index.php?/api/v2/add_attachment_to_plan_entry/{plan_id}/{entry_id}", Description: "Add attachment to plan entry"},
 		{Method: "POST", URI: "index.php?/api/v2/add_attachment_to_result/{result_id}", Description: "Add attachment to result"},
 		{Method: "POST", URI: "index.php?/api/v2/add_attachment_to_run/{run_id}", Description: "Add attachment to run"},
+		{Method: "POST", URI: "index.php?/api/v2/delete_attachment/{attachment_id}", Description: "Delete attachment", Params: map[string]string{"attachment_id": "Required"}},
 	}
 }
 
@@ -337,6 +345,9 @@ func (r *Users) Paths() []APIPath {
 		{Method: "GET", URI: "index.php?/api/v2/get_user/{user_id}", Description: "Get user by ID"},
 		{Method: "GET", URI: "index.php?/api/v2/get_user_by_email&email={email}", Description: "Get user by email"},
 		{Method: "GET", URI: "index.php?/api/v2/get_users", Description: "Get all users"},
+		{Method: "GET", URI: "index.php?/api/v2/get_users/{project_id}", Description: "Get users for project", Params: map[string]string{"project_id": "Required"}},
+		{Method: "POST", URI: "index.php?/api/v2/add_user", Description: "Add new user"},
+		{Method: "POST", URI: "index.php?/api/v2/update_user/{user_id}", Description: "Update user", Params: map[string]string{"user_id": "Required"}},
 	}
 }
 
@@ -347,6 +358,7 @@ type Reports struct{}
 func (r *Reports) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_reports/{project_id}", Description: "Get available reports for project"},
+		{Method: "GET", URI: "index.php?/api/v2/get_cross_project_reports", Description: "Get cross-project reports"},
 		{Method: "GET", URI: "index.php?/api/v2/run_report/{report_template_id}", Description: "Run single-project report"},
 		{Method: "GET", URI: "index.php?/api/v2/run_cross_project_report/{report_template_id}", Description: "Run cross-project report"},
 	}
@@ -422,10 +434,10 @@ type Labels struct{}
 // Paths returns API endpoints for Labels.
 func (r *Labels) Paths() []APIPath {
 	return []APIPath{
-		// Labels are typically updated via tests/results; bulk methods are available
+		{Method: "GET", URI: "index.php?/api/v2/get_label/{label_id}", Description: "Get single label", Params: map[string]string{"label_id": "Required"}},
+		{Method: "GET", URI: "index.php?/api/v2/get_labels/{project_id}", Description: "Get labels for project", Params: map[string]string{"project_id": "Required"}},
 		{Method: "POST", URI: "index.php?/api/v2/update_test_labels/{test_id}", Description: "Update labels for test"},
 		{Method: "POST", URI: "index.php?/api/v2/update_tests_labels/{run_id}", Description: "Bulk update labels for tests in run"},
-		// TODO: add dedicated endpoints here when they become available
 	}
 }
 

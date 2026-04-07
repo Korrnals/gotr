@@ -11,9 +11,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// testContextKey is an unexported key type for context values in tests.
+type testContextKey string
+
 // httpClientKey — ключ для хранения HTTP clientа в контексте тестов.
 // Должен совпадать с ключом, используемым в основном коде.
-const httpClientKey = "httpClient"
+const httpClientKey testContextKey = "httpClient"
 
 // setupTestCmd создаёт тестовую команду с mock clientом в контексте.
 // Используется в тестах для инжекции mock clientа.

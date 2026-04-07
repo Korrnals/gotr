@@ -1042,8 +1042,11 @@ func TestHTTPExtended_EdgeCases(t *testing.T) {
 
 	// Empty responses should still work
 	groups, err := c.GetGroups(ctx, 999)
-	if err == nil && len(groups) == 0 {
-		// This is acceptable
+	if err != nil {
+		t.Fatalf("GetGroups returned unexpected error: %v", err)
+	}
+	if len(groups) != 0 {
+		t.Fatalf("expected empty groups, got %d", len(groups))
 	}
 }
 

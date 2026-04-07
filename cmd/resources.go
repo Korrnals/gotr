@@ -262,8 +262,7 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 
 // getAllShortEndpoints returns all short endpoint names for a resource (GET, POST, DELETE).
 func getAllShortEndpoints(resource string) []string {
-	var paths []testrailapi.APIPath
-	paths = getResourcePaths(resource)
+	paths := getResourcePaths(resource)
 	if paths == nil {
 		return nil
 	}

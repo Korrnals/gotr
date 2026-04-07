@@ -473,7 +473,7 @@ func TestRunUpdate_LabelsRouting_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateProjectInteractive_Cancelled(t *testing.T) {
+func TestUpdateProjectInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupUpdateTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -485,7 +485,7 @@ func TestUpdateProjectInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateSuiteInteractive_Cancelled(t *testing.T) {
+func TestUpdateSuiteInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupUpdateTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -497,7 +497,7 @@ func TestUpdateSuiteInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateCaseInteractive_Cancelled(t *testing.T) {
+func TestUpdateCaseInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupUpdateTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -653,7 +653,7 @@ func TestUpdateInteractive_ClientErrorBranches(t *testing.T) {
 	})
 }
 
-func TestUpdateRunInteractive_Cancelled(t *testing.T) {
+func TestUpdateRunInteractive_Canceled(t *testing.T) {
 	called := false
 	mock := &client.MockClient{
 		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
@@ -991,7 +991,7 @@ func TestUpdateSectionInteractive_ErrorBranches(t *testing.T) {
 		assert.ErrorContains(t, err, "at least one field is required")
 	})
 
-	t.Run("cancelled", func(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
@@ -1043,8 +1043,8 @@ func TestUpdateRunInteractive_ClientError(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to update run")
 }
 
-func TestUpdateSharedStepInteractive_CancelledAndClientError(t *testing.T) {
-	t.Run("cancelled", func(t *testing.T) {
+func TestUpdateSharedStepInteractive_CanceledAndClientError(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			UpdateSharedStepFunc: func(ctx context.Context, sharedStepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {

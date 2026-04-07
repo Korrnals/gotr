@@ -273,7 +273,7 @@ func TestWithProgressMonitor(t *testing.T) {
 func TestWorkerPool_Context(t *testing.T) {
 	pool := NewWorkerPool(WithMaxWorkers(1))
 	ctx := pool.Context()
-	// Should be a non-nil, non-cancelled context at this point
+	// Should be a non-nil, non-canceled context at this point
 	assert.NotNil(t, ctx)
 	select {
 	case <-ctx.Done():

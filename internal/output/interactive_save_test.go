@@ -24,7 +24,7 @@ func TestResolveSavePathFromFlags_SaveTo(t *testing.T) {
 	cmd.Flags().String("save-to", "", "")
 	cmd.Flags().Bool("save", false, "")
 	cmd.SetArgs([]string{"--save-to=out.json"})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	savePath, explicit, err := ResolveSavePathFromFlags(cmd)
 	require.NoError(t, err)
@@ -37,7 +37,7 @@ func TestResolveSavePathFromFlags_SaveDefault(t *testing.T) {
 	cmd.Flags().String("save-to", "", "")
 	cmd.Flags().Bool("save", false, "")
 	cmd.SetArgs([]string{"--save"})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	savePath, explicit, err := ResolveSavePathFromFlags(cmd)
 	require.NoError(t, err)

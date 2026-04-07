@@ -35,8 +35,8 @@ func TestGetRuns_Cancellation(t *testing.T) {
 	}
 }
 
-// TestHTTPClient_CancelledContext проверяет что DoRequest уважает отменённый контекст.
-func TestHTTPClient_CancelledContext(t *testing.T) {
+// TestHTTPClient_CanceledContext проверяет что DoRequest уважает отменённый контекст.
+func TestHTTPClient_CanceledContext(t *testing.T) {
 	server := newMockServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

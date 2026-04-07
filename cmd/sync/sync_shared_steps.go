@@ -160,7 +160,7 @@ var sharedStepsCmd = &cobra.Command{
 				return err
 			}
 			if !ok {
-				ui.Cancelled(os.Stdout)
+				ui.Canceled(os.Stdout)
 				return nil
 			}
 		}

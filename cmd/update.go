@@ -198,7 +198,7 @@ func updateSectionInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -240,7 +240,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -280,7 +280,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -319,7 +319,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -359,7 +359,7 @@ func updateRunInteractive(cli client.ClientInterface, cmd *cobra.Command, id int
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -401,7 +401,7 @@ func updateSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command,
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 

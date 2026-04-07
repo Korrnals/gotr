@@ -190,7 +190,7 @@ var casesCmd = &cobra.Command{
 			return err
 		}
 		if !ok {
-			ui.Cancelled(os.Stdout)
+			ui.Canceled(os.Stdout)
 			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
 			return nil
 		}

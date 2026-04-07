@@ -14,40 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockRunClient — мок clientа для тестирования RunService
-type mockRunClient struct {
-	getRun    func(int64) (*data.Run, error)
-	getRuns   func(int64) (data.GetRunsResponse, error)
-	addRun    func(int64, *data.AddRunRequest) (*data.Run, error)
-	updateRun func(int64, *data.UpdateRunRequest) (*data.Run, error)
-	closeRun  func(int64) (*data.Run, error)
-	deleteRun func(int64) error
-}
-
-func (m *mockRunClient) GetRun(id int64) (*data.Run, error) {
-	return m.getRun(id)
-}
-
-func (m *mockRunClient) GetRuns(projectID int64) (data.GetRunsResponse, error) {
-	return m.getRuns(projectID)
-}
-
-func (m *mockRunClient) AddRun(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
-	return m.addRun(projectID, req)
-}
-
-func (m *mockRunClient) UpdateRun(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
-	return m.updateRun(runID, req)
-}
-
-func (m *mockRunClient) CloseRun(runID int64) (*data.Run, error) {
-	return m.closeRun(runID)
-}
-
-func (m *mockRunClient) DeleteRun(runID int64) error {
-	return m.deleteRun(runID)
-}
-
 func TestRunService_validateID(t *testing.T) {
 	svc := &RunService{}
 

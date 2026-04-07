@@ -1099,7 +1099,7 @@ func TestNewListCmd_Creation(t *testing.T) {
 	assert.Equal(t, "list", cmd.Use)
 	// newListCmd has no RunE, it's a parent command for subcommands
 	// Verify all subcommands are added
-	assert.Equal(t, 5, len(cmd.Commands()))
+	assert.Equal(t, 6, len(cmd.Commands()))
 }
 
 // TestOutputResult_MarshalError tests outputResult when JSON marshaling fails

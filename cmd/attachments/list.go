@@ -27,6 +27,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
   • case       — вложения тест-кейса
   • plan       — вложения тест-плана
   • plan-entry — вложения записи плана
+  • project    — вложения проекта
   • run        — вложения тест-рана
   • test       — вложения теста`,
 		Example: `  # Список вложений кейса
@@ -34,6 +35,9 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
   # Список вложений плана
   gotr attachments list plan 456
+
+  # Список вложений проекта
+  gotr attachments list project 1
 
   # Список вложений теста
   gotr attachments list test 789`,
@@ -43,6 +47,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.AddCommand(newListCaseCmd(getClient))
 	cmd.AddCommand(newListPlanCmd(getClient))
 	cmd.AddCommand(newListPlanEntryCmd(getClient))
+	cmd.AddCommand(newListProjectCmd(getClient))
 	cmd.AddCommand(newListRunCmd(getClient))
 	cmd.AddCommand(newListTestCmd(getClient))
 
@@ -170,6 +175,46 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			attachments, err := client.GetAttachmentsForPlanEntry(ctx, planID, entryID)
+			if err != nil {
+				return fmt.Errorf("failed to list attachments: %w", err)
+			}
+
+			return outputAttachmentsList(cmd, attachments)
+		},
+	}
+	output.AddFlag(cmd)
+	return cmd
+}
+
+func newListProjectCmd(getClient GetClientFunc) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "project [project_id]",
+		Short: "Список вложений проекта",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id required: gotr attachments list project [project_id]")
+				}
+
+				p := interactive.PrompterFromContext(ctx)
+				projectID, err = interactive.SelectProject(ctx, p, client, "")
+				if err != nil {
+					return err
+				}
+			}
+
+			attachments, err := client.GetAttachmentsForProject(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}

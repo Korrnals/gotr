@@ -269,24 +269,24 @@ func (d *Display) render() {
 
 		// Pages
 		if pages > 0 {
-			sb.WriteString(fmt.Sprintf(" (%d pages)", pages))
+			fmt.Fprintf(&sb, " (%d pages)", pages)
 		}
 
 		// Suites progress
-		sb.WriteString(fmt.Sprintf(" | %d/%d suites", suitesCompleted, suitesTotal))
+		fmt.Fprintf(&sb, " | %d/%d suites", suitesCompleted, suitesTotal)
 
 		// Speed (cases/sec) — show after 1s to avoid jitter
 		if secs := elapsed.Seconds(); secs > 1.0 && cases > 0 {
 			speed := float64(cases) / secs
-			sb.WriteString(fmt.Sprintf(" | %s/s", fmtCount(int64(speed))))
+			fmt.Fprintf(&sb, " | %s/s", fmtCount(int64(speed)))
 		}
 
 		// Elapsed
-		sb.WriteString(fmt.Sprintf(" | %s", fmtDuration(elapsed)))
+		fmt.Fprintf(&sb, " | %s", fmtDuration(elapsed))
 
 		// Errors (at end — conditional, so main fields always align)
 		if errs > 0 {
-			sb.WriteString(fmt.Sprintf(" | ⚠ %d err", errs))
+			fmt.Fprintf(&sb, " | ⚠ %d err", errs)
 		}
 
 		fmt.Fprintln(&buf, sb.String())

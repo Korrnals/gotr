@@ -150,7 +150,9 @@ func TestGetClientSafe_WithContext(t *testing.T) {
 	SetGetClientForTests(mockFn)
 
 	// Create command with mock in context using the same key as testhelper
-	const httpClientKey = "httpClient"
+	type testContextKey string
+
+	const httpClientKey testContextKey = "httpClient"
 	testCmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	testCmd.SetContext(ctx)

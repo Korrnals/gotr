@@ -1207,9 +1207,7 @@ func TestSaveToFile_YAMLMarshalError(t *testing.T) {
 	// YAML library panics on invalid types, so we use a function that can't be marshaled
 	// which will cause yaml.Marshal to panic
 	defer func() {
-		if r := recover(); r != nil {
-			// Expected - YAML library panics on unmarshalable types
-		}
+		recover() // Expected - YAML library panics on unmarshalable types
 	}()
 
 	data := make(chan int)

@@ -8,8 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// testContextKey is an unexported key type for context values in tests.
+type testContextKey string
+
 // testHTTPClientKey is the context key for tests (must match cmd.httpClientKey).
-const testHTTPClientKey = "httpClient"
+const testHTTPClientKey testContextKey = "httpClient"
 
 // setupTestCmd creates a command with a mock client in the context.
 func setupTestCmd(t *testing.T, mock *client.MockClient) *cobra.Command {

@@ -8,7 +8,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const testHTTPClientKey = "httpClient"
+type testContextKey string
+
+const testHTTPClientKey testContextKey = "httpClient"
 
 func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 	if cmd == nil || cmd.Context() == nil {

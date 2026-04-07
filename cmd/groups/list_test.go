@@ -169,7 +169,7 @@ func TestGetClientForTests_NilContext(t *testing.T) {
 
 func TestGetClientForTests_NoMockInContext(t *testing.T) {
 	cmd := &cobra.Command{}
-	ctx := context.WithValue(context.Background(), "other_key", "value")
+	ctx := context.WithValue(context.Background(), testContextKey("other_key"), "value")
 	cmd.SetContext(ctx)
 
 	result := getClientForTests(cmd)

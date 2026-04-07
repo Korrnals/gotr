@@ -46,7 +46,8 @@ var sharedStepsCmd = &cobra.Command{
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
-		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
+		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered") // TODO: use when save-filtered is implemented
+		_ = autoSaveFiltered
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
@@ -184,14 +185,7 @@ defer op.Finish()
 			}
 		}
 
-		if autoSaveFiltered {
-			// Save filtered list
-		} else if len(filtered) > 0 {
-			ok, err := p.Confirm("Save filtered shared steps?", false)
-			if err == nil && ok {
-				// Save
-			}
-		}
+		// TODO: implement saving filtered shared steps list (autoSaveFiltered / interactive confirm)
 
 		return nil
 	},

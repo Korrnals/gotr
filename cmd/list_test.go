@@ -83,3 +83,14 @@ func TestList_AutoSelectResource_SelectError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to select resource")
 }
+
+// TestList_NoArgs_NoPrompterInContext_Error covers the branch where
+// no args are provided and no prompter is in the context at all.
+func TestList_NoArgs_NoPrompterInContext_Error(t *testing.T) {
+	cmd := setupListTest()
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "resource required")
+}

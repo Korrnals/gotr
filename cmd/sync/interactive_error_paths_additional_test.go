@@ -7,6 +7,8 @@ package sync
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -939,5 +941,104 @@ func TestWave6G_Full_MigrateCasesError(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "cases_step2_error")
+}
+
+// ─────────────────────────────────────────────────────────────────
+// EnsureLogsDirPath error paths — covers the if-err-return-err
+// block after paths.EnsureLogsDirPath() in each sync subcommand.
+// Trigger: set HOME to a regular file so os.MkdirAll fails.
+// ─────────────────────────────────────────────────────────────────
+
+// blockHomeDir sets HOME to a regular file so paths.EnsureLogsDirPath fails.
+func blockHomeDir(t *testing.T) {
+	t.Helper()
+	tmp := t.TempDir()
+	blocker := filepath.Join(tmp, "blocker")
+	if err := os.WriteFile(blocker, []byte{}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("HOME", blocker)
+}
+
+// TestWave6G_Cases_EnsureLogsDirPath_Error covers sync_cases.go ~line 97.
+func TestWave6G_Cases_EnsureLogsDirPath_Error(t *testing.T) {
+	blockHomeDir(t)
+	mock := &client.MockClient{}
+	resetCasesFlags()
+	cmd := casesCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("dst-suite", "20")
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "logs directory")
+}
+
+// TestWave6G_Full_EnsureLogsDirPath_Error covers sync_full.go ~line 81.
+func TestWave6G_Full_EnsureLogsDirPath_Error(t *testing.T) {
+	blockHomeDir(t)
+	mock := &client.MockClient{}
+	resetFullFlags()
+	cmd := fullCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("dst-suite", "20")
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "logs directory")
+}
+
+// TestWave6G_Sections_EnsureLogsDirPath_Error covers sync_sections.go ~line 84.
+func TestWave6G_Sections_EnsureLogsDirPath_Error(t *testing.T) {
+	blockHomeDir(t)
+	mock := &client.MockClient{}
+	resetSectionsFlags()
+	cmd := sectionsCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("dst-suite", "20")
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "logs directory")
+}
+
+// TestWave6G_SharedSteps_EnsureLogsDirPath_Error covers sync_shared_steps.go ~line 86.
+func TestWave6G_SharedSteps_EnsureLogsDirPath_Error(t *testing.T) {
+	blockHomeDir(t)
+	mock := &client.MockClient{}
+	resetSharedStepsFlags()
+	cmd := sharedStepsCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "logs directory")
+}
+
+// TestWave6G_Suites_EnsureLogsDirPath_Error covers sync_suites.go ~line 55.
+func TestWave6G_Suites_EnsureLogsDirPath_Error(t *testing.T) {
+	blockHomeDir(t)
+	mock := &client.MockClient{}
+	resetSuitesFlags()
+	cmd := suitesCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("dst-project", "2")
+
+	err := cmd.RunE(cmd, []string{})
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "logs directory")
 }
 

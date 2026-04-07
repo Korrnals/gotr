@@ -69,3 +69,14 @@ func TestJSON(t *testing.T) {
 		t.Fatalf("unexpected JSON output: %s", got)
 	}
 }
+
+func TestJSON_MarshalError(t *testing.T) {
+	cmd, _ := newTableCmd()
+	err := JSON(cmd, make(chan int))
+	if err == nil {
+		t.Fatal("expected error for unmarshalable type")
+	}
+	if !strings.Contains(err.Error(), "ui.JSON") {
+		t.Fatalf("unexpected error message: %v", err)
+	}
+}

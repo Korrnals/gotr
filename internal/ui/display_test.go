@@ -457,3 +457,15 @@ func TestFmtCount_EdgeCases(t *testing.T) {
 	assert.Equal(t, "1.0M", fmtCount(1000000))
 	assert.Equal(t, "10.0M", fmtCount(10000000))
 }
+
+// TestDisplay_QuietRender verifies render() returns early in quiet mode.
+// Covers: display.go render() quiet branch.
+func TestDisplay_QuietRender(t *testing.T) {
+	var buf bytes.Buffer
+	d := New(WithWriter(&buf), WithQuiet(true))
+	d.SetHeader("hidden header")
+	_ = d.AddTask("hidden task", 5)
+	// Directly invoke render to cover the quiet early-return.
+	d.render()
+	assert.Equal(t, "", buf.String())
+}

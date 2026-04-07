@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
@@ -16,11 +15,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
-
-// containsStr проверяет содержит ли строка substr
-func containsStr(s, substr string) bool {
-	return strings.Contains(s, substr)
-}
 
 // ==================== Тесты для saveToFile ====================
 

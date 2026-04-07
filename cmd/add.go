@@ -338,7 +338,7 @@ func addProjectInteractive(cli client.ClientInterface, cmd *cobra.Command) error
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -376,7 +376,7 @@ func addSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, project
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -414,7 +414,7 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -456,7 +456,7 @@ func addRunInteractive(cli client.ClientInterface, cmd *cobra.Command, projectID
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -523,7 +523,7 @@ func addSectionInteractive(cli client.ClientInterface, cmd *cobra.Command, proje
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -564,7 +564,7 @@ func addSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command, pr
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm creation?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 

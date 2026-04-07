@@ -873,7 +873,7 @@ func TestGetHeaders_Map(t *testing.T) {
 
 type StructWithUnexported struct {
 	Exported   string
-	unexported string //nolint:unused
+	unexported string
 }
 
 func TestGetHeaders_UnexportedFields(t *testing.T) {

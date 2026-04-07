@@ -16,7 +16,6 @@ import (
 type mockSuiteFetcher struct {
 	cases           map[int64][]data.Case // suiteID -> cases
 	latency         time.Duration
-	failAfter       int
 	callCount       int32
 	failSuiteIDs    map[int64]bool
 	failPageOffsets map[int64]map[int]bool // suiteID -> offset -> shouldFail
@@ -576,7 +575,7 @@ func TestSuiteWorker_ContextCancellation(t *testing.T) {
 
 	result, err := controller.Execute(ctx, tasks, fetcher, nil)
 
-	// Should return with reduced cases (cancelled early)
+	// Should return with reduced cases (canceled early)
 	assert.True(t, len(result.Cases) < 1000 || err != nil, "Expected early termination due to cancellation")
 }
 

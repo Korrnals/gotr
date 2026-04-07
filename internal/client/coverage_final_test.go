@@ -118,7 +118,7 @@ func TestGetCasesParallelCtx_AllFail_ReturnsError(t *testing.T) {
 	}
 	_, result, err := client.GetCasesParallelCtx(ctx, 1, []int64{10}, cfg)
 	if err == nil {
-		t.Fatal("expected error with cancelled context")
+		t.Fatal("expected error with canceled context")
 	}
 	if result == nil {
 		t.Fatal("expected non-nil ExecutionResult even on error")
@@ -183,9 +183,9 @@ t.Fatalf("unexpected error: %v", err)
 _ = sections
 }
 
-// ---------- GetSectionsParallelCtx: rate limiter WaitCtx cancelled ----------
+// ---------- GetSectionsParallelCtx: rate limiter WaitCtx canceled ----------
 
-func TestGetSectionsParallelCtx_RateLimiterCancelledCtx(t *testing.T) {
+func TestGetSectionsParallelCtx_RateLimiterCanceledCtx(t *testing.T) {
 handler := func(w http.ResponseWriter, r *http.Request) {
 w.Header().Set("Content-Type", "application/json")
 json.NewEncoder(w).Encode(map[string]interface{}{

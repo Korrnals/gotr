@@ -90,7 +90,7 @@ func TestParseOptionalID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAddProjectInteractive_Cancelled(t *testing.T) {
+func TestAddProjectInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -102,7 +102,7 @@ func TestAddProjectInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAddSuiteInteractive_Cancelled(t *testing.T) {
+func TestAddSuiteInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -114,7 +114,7 @@ func TestAddSuiteInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAddCaseInteractive_Cancelled(t *testing.T) {
+func TestAddCaseInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -127,7 +127,7 @@ func TestAddCaseInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAddRunInteractive_Cancelled(t *testing.T) {
+func TestAddRunInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -234,7 +234,7 @@ func TestAddSectionInteractive_ErrorBranches(t *testing.T) {
 		assert.ErrorContains(t, err, "invalid parent section id")
 	})
 
-	t.Run("cancelled", func(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
@@ -280,7 +280,7 @@ func TestAddSharedStepInteractive_ErrorBranches(t *testing.T) {
 		assert.ErrorContains(t, err, "shared step title is required")
 	})
 
-	t.Run("cancelled", func(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {

@@ -84,7 +84,7 @@ func RetryWithContext(ctx context.Context, config *RetryConfig, fn RetryableFunc
 		if attempt > 0 {
 			select {
 			case <-ctx.Done():
-				return fmt.Errorf("context cancelled during retry: %w", ctx.Err())
+				return fmt.Errorf("context canceled during retry: %w", ctx.Err())
 			case <-time.After(delay):
 				// Continue with retry
 			}

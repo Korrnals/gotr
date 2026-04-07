@@ -746,7 +746,7 @@ func appendResourceRow(tw table.Writer, name string, result *CompareResult, reso
 	onlyP2 := len(result.OnlyInSecond)
 	common := len(result.Common)
 
-	status := "COMPLETE"
+	var status string
 	switch result.Status {
 	case CompareStatusInterrupted:
 		status = reporter.Red("INTERRUPTED")

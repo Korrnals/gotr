@@ -33,7 +33,7 @@ func TestParseCommonFlags_InteractivePid1(t *testing.T) {
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid2=20"})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	ctx := interactive.WithPrompter(context.Background(), mp)
 	cmd.SetContext(ctx)
@@ -63,7 +63,7 @@ func TestParseCommonFlags_InteractivePid2(t *testing.T) {
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=10"})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	ctx := interactive.WithPrompter(context.Background(), mp)
 	cmd.SetContext(ctx)
@@ -96,7 +96,7 @@ func TestParseCommonFlags_InteractiveBothPids(t *testing.T) {
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	ctx := interactive.WithPrompter(context.Background(), mp)
 	cmd.SetContext(ctx)
@@ -113,7 +113,7 @@ func TestParseCommonFlags_FlagsProvidedSkipsInteractive(t *testing.T) {
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=5", "--pid2=7"})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
 	cmd.SetContext(ctx)
@@ -137,7 +137,7 @@ func TestParseCommonFlags_NonInteractiveFailsWithoutPids(t *testing.T) {
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	// NonInteractivePrompter rejects all prompts
 	ctx := interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter())
@@ -161,7 +161,7 @@ func TestParseCommonFlags_NonInteractivePid2Missing(t *testing.T) {
 	cmd := &cobra.Command{}
 	addPersistentFlagsForTests(cmd)
 	cmd.SetArgs([]string{"--pid1=10"})
-	cmd.Execute() //nolint: errcheck
+	_ = cmd.Execute()
 
 	ctx := interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter())
 	cmd.SetContext(ctx)

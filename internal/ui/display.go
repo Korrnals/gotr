@@ -399,12 +399,12 @@ func Section(w io.Writer, msg string) {
 	fmt.Fprintf(w, "\n📊 %s\n", msg)
 }
 
-// Cancelled prints a cancellation message.
-func Cancelled(w io.Writer) {
+// Canceled prints a cancellation message.
+func Canceled(w io.Writer) {
 	if isMessageQuiet() {
 		return
 	}
-	fmt.Fprintln(w, "\n❌ Cancelled")
+	fmt.Fprintln(w, "\n❌ Canceled")
 }
 
 // PreviewField is a label–value pair for Preview output.

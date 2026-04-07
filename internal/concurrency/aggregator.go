@@ -93,7 +93,7 @@ func (ra *ResultAggregator) aggregateCtx(ctx context.Context) {
 
 		select {
 		case <-ctxDone:
-			log.Debug("ResultAggregator: context cancelled, draining channels")
+			log.Debug("ResultAggregator: context canceled, draining channels")
 			ctxDone = nil
 
 		case result, ok := <-resultCh:

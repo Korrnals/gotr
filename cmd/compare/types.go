@@ -168,12 +168,6 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 	}
 }
 
-// tableCell represents a cell in the table with content and width
-type tableCell struct {
-	content string
-	width   int
-}
-
 // truncateString truncates a string to maxWidth with ellipsis if needed
 func truncateString(s string, maxWidth int) string {
 	if maxWidth <= 3 {

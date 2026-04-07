@@ -148,6 +148,7 @@ type AttachmentsAPI interface {
 	GetAttachmentsForCase(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForPlan(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForProject(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForRun(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error)
 }

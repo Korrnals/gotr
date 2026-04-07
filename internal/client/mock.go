@@ -117,6 +117,7 @@ type MockClient struct {
 	GetAttachmentsForCaseFunc      func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForPlanFunc      func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForPlanEntryFunc func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForProjectFunc    func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForRunFunc       func(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForTestFunc      func(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error)
 
@@ -908,6 +909,14 @@ func (m *MockClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int6
 func (m *MockClient) GetAttachmentsForRun(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 	if m.GetAttachmentsForRunFunc != nil {
 		return m.GetAttachmentsForRunFunc(ctx, runID)
+	}
+	return nil, nil
+}
+
+// GetAttachmentsForProject calls the configured mock implementation when it is set.
+func (m *MockClient) GetAttachmentsForProject(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+	if m.GetAttachmentsForProjectFunc != nil {
+		return m.GetAttachmentsForProjectFunc(ctx, projectID)
 	}
 	return nil, nil
 }

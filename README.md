@@ -237,60 +237,59 @@ gotr config view
 
 ```text
 gotr/
-├── cmd/                          # CLI commands
-│   ├── common/                   #   Shared components
-│   │   ├── client.go            #     Unified client access
-│   │   └── flags.go             #     Common flag parsing
+├── cmd/                          # CLI commands (29 subcommands)
+│   ├── internal/testhelper/     #   Shared test utilities
 │   ├── get/                     #   GET commands (cases, suites, projects)
 │   ├── run/                     #   Test run management
 │   ├── result/                  #   Test results management
-│   └── sync/                    #   Data migration commands
-├── docs/                         # Documentation
-│   ├── index.md                 #   Documentation hub
-│   ├── guides/                  #   User guides and command reference
-│   ├── architecture/            #   Layered architecture and standards
-│   ├── operations/              #   Release and operational flow
-│   └── reports/                 #   Stage audits and quality artifacts
+│   ├── compare/                 #   Cross-project comparison
+│   ├── sync/                    #   Data migration commands
+│   └── ...                      #   Other resource subcommands
+├── docs/                         # Documentation (EN + RU)
+│   ├── en/                      #   English docs
+│   └── ru/                      #   Russian docs
+├── embedded/                     # Embedded binaries (jq)
 ├── internal/
 │   ├── client/                  #   TestRail API client
-│   │   ├── interfaces.go       #     ClientInterface (106 endpoints, 14 APIs)
+│   │   ├── interfaces.go       #     ClientInterface (130+ methods, 16 APIs)
 │   │   ├── mock.go             #     MockClient for testing
 │   │   └── *.go                #     API implementations
-│   ├── concurrency/            #   Parallel pipeline (Stage 6.8, ex-parallel/)
-│   │   ├── controller.go       #     ParallelController — suite/page orchestration
-│   │   ├── simple.go           #     FetchParallel[T], FetchParallelBySuite[T]
-│   │   └── *.go
-│   ├── interactive/            #   Interactive selection
+│   ├── concurrency/            #   Domain-level parallel orchestration
+│   │   ├── controller.go       #     ParallelController — suite/page streaming
+│   │   └── simple.go           #     FetchParallel[T], FetchParallelBySuite[T]
+│   ├── concurrent/             #   Low-level concurrency primitives
+│   │   ├── pool.go             #     WorkerPool
+│   │   ├── limiter.go          #     AdaptiveRateLimiter (180 req/min)
+│   │   └── retry.go            #     Exponential backoff retry
+│   ├── interactive/            #   Interactive prompts (survey)
 │   ├── service/                #   Business logic
 │   │   ├── run.go              #     RunService
 │   │   ├── result.go           #     ResultService
 │   │   └── migration/          #     Data migration engine
 │   ├── models/                 #   Data models
-│   │   └── data/              #     API DTOs
-│   └── utils/                  #   Utilities
+│   │   ├── data/              #     API DTOs
+│   │   └── config/            #     Configuration model
+│   ├── output/                 #   Output formatting (JSON/YAML/table)
+│   ├── ui/                     #   Terminal UI (progress, preview)
+│   ├── flags/                  #   Common flag parsing
+│   ├── log/                    #   Structured logging (zap)
+│   └── paths/                  #   Path utilities
 ├── pkg/                          # Public packages
-│   ├── testrailapi/            #   API endpoint definitions
-│   └── reporter/               #   Unified statistics reporter (Stage 6.8)
+│   ├── testrailapi/            #   API endpoint definitions (135 endpoints)
+│   └── reporter/               #   Unified statistics reporter
 └── main.go                       # Entry point
 ```
 
 See [docs/en/architecture/overview.md](docs/en/architecture/overview.md) for complete structure.
 
-## What's New in v2.8.0 (Stage 6.8 Complete)
+## What's New in v3.0.0
 
-### Concurrency Unification
-
-- **`internal/concurrency/`** — unified concurrency package (renamed from `internal/parallel/`)
-  - Three strategy levels: `FetchParallel[T]` / `FetchParallelBySuite[T]` / `FetchParallelPaginated`
-  - Generic API: works with any resource type via Go generics `[T any]`
-- **Generic `newSimpleCompareCmd`** — ~1200 lines of copy-paste replaced by one generic factory
-  - 9 identical command files eliminated
-  - Parallel loading of P1 and P2 simultaneously for all simple compare subcommands
-- **`pkg/reporter/`** — unified statistics reporter (moved from `internal/ui/reporter/`)
-  - Consistent boxed output across all 13 compare subcommands
-- **`compare sections`** — now uses `FetchParallelBySuite[T]` for parallel per-suite loading
-- **`compare all`** — uses `reporter` for consistent output, partial results on API errors
-- **Stable defaults**: `parallel-suites=10`, `parallel-pages=6` (optimized for TestRail Server)
+- **135 TestRail API endpoints** defined, 98% implemented in client
+- **29 CLI commands** covering all major TestRail resources
+- **Streaming parallel pagination** with adaptive rate limiting (180 req/min)
+- **100% test coverage** in 35/42 packages, min 97.4% across all packages
+- **Zero golangci-lint issues** with gocyclo ≤15 threshold
+- **Full EN/RU documentation** with 125 doc pages
 
 See [CHANGELOG](CHANGELOG.md) for full release history.
 
@@ -310,10 +309,19 @@ This project is built with the following open-source libraries:
 |---------|---------|
 | [spf13/cobra](https://github.com/spf13/cobra) | CLI framework |
 | [spf13/viper](https://github.com/spf13/viper) | Configuration management |
-| [cheggaaa/pb/v3](https://github.com/cheggaaa/pb) | Progress bars |
 | [go.uber.org/zap](https://github.com/uber-go/zap) | Structured logging |
 | [stretchr/testify](https://github.com/stretchr/testify) | Testing toolkit |
-| [itchyny/gojq](https://github.com/itchyny/gojq) | Embedded JSON processor |
+| [AlecAivazis/survey/v2](https://github.com/AlecAivazis/survey) | Interactive prompts |
+| [jedib0t/go-pretty/v6](https://github.com/jedib0t/go-pretty) | Table output formatting |
+| [fatih/color](https://github.com/fatih/color) | Colored terminal output |
+| [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) | Concurrency utilities |
+| [golang.org/x/time](https://pkg.go.dev/golang.org/x/time) | Rate limiting |
+
+### Embedded Tools
+
+| Tool | Purpose |
+|------|----------|
+| [jq](https://github.com/jqlang/jq) | Lightweight JSON processor, embedded as a static binary for `--jq` / `--jq-filter` support |
 
 ## License
 

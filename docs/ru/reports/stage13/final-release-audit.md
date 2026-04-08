@@ -52,14 +52,14 @@ Language: Русский | [English](../../../en/reports/stage13/final-release-a
 | **TestRail API покрытие** | Phase 2 | **PASS** | 135 endpoints, 98% impl | Нет |
 | **Качество кода** | Phase 3 | **CONDITIONAL PASS** | 0C / 0H / 4M / 4L | Нет |
 | **Тестовое покрытие** | Phase 4 | **PASS** | 42/42 ≥97.4%, 0 races | Нет |
-| **Документация** | Phase 5 | **CONDITIONAL PASS** | 0C / 2H / 3M / 3L | Да (README) |
+| **Документация** | Phase 5 | **PASS** | 0C / 0H / 0M / 3L (fixed) | Нет |
 | **CI/Build/Security** | Phase 6 | **PASS** | 6 stdlib vulns, 0 dep vulns | Нет |
 
-### Решение: **CONDITIONAL PASS — 2 HIGH в README требуют фикса**
+### Решение: **PASS — все блокеры исправлены (2026-04-08)**
 
-> Phase 5 обнаружила 2 HIGH: фантомные `cmd/common/` и `internal/utils/` в README Project Structure.
-> Также 3 MEDIUM: устаревшие библиотеки в таблице Acknowledgements, устаревшая секция "What's New v2.8.0".
-> Все остальные фазы — PASS или CONDITIONAL PASS без HIGH.
+> 2 HIGH в README исправлены: фантомные директории удалены, таблицы библиотек актуализированы,
+> секция "What's New" обновлена до v3.0.0. Оставшиеся MEDIUM — architectural smells,
+> не блокируют релиз.
 
 ---
 
@@ -455,20 +455,16 @@ Findings: 0 CRITICAL, 2 HIGH, 3 MEDIUM, 3 LOW.
 | Severity | Count | Источник |
 | --- | --- | --- |
 | CRITICAL | 0 | — |
-| HIGH | 2 | README: фантомные `cmd/common/`, `internal/utils/` (Phase 5) |
-| MEDIUM | 10 | Architecture (3) + Code Quality (4) + Documentation (3) |
+| HIGH | 0 | ~~2 README~~ — исправлено 2026-04-08 |
+| MEDIUM | 7 | Architecture (3) + Code Quality (4) |
 | LOW | 9 | Architecture (2) + Code Quality (4) + Documentation (3) |
 
-### Вердикт: **CONDITIONAL PASS**
+### Вердикт: **PASS**
 
-**Блокеры перед PR (2 HIGH):**
+**Блокеры: 0** (исправлены 2026-04-08)
 
-1. Удалить `cmd/common/` и `internal/utils/` из README Project Structure
-2. Удалить `cheggaaa/pb/v3` и `itchyny/gojq` из README Acknowledgements
+**Рекомендовано (MEDIUM, non-blocking, backlog):**
 
-**Рекомендовано (MEDIUM, non-blocking):**
-
-- Обновить секцию "What's New" в README (v2.8.0 → v3.0.0)
 - `context.Background()` → parent ctx в `compare/types.go`, `sync/sync.go`, `concurrent/pool.go`
 - `internal/client → cobra` decoupling
 - `internal/service → output` decoupling

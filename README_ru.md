@@ -151,6 +151,30 @@ gotr compare all --pid1 30 --pid2 34 --save-to comparison.yaml
 
 **Поддерживаемые ресурсы:** `cases`, `suites`, `sections`, `sharedsteps`, `runs`, `plans`, `milestones`, `datasets`, `groups`, `labels`, `templates`, `configurations`, `all`
 
+#### Тюнинг производительности
+
+```bash
+# Server (без rate-limit, максимальная скорость)
+gotr compare cases --pid1 30 --pid2 34 --rate-limit 0
+
+# Cloud Enterprise (повышенный лимит)
+gotr compare cases --pid1 30 --pid2 34 --rate-limit 300
+
+# Больше параллелизма
+gotr compare cases --pid1 30 --pid2 34 --parallel-suites 10 --parallel-pages 6
+```
+
+Автоматическое определение деплоймента: gotr определяет `cloud/server` по URL и подбирает rate-limit автоматически. Настраивается в конфиге (`compare.deployment`, `compare.cloud_tier`).
+
+#### Точечный дозабор failed pages
+
+```bash
+# Если часть страниц не загрузилась — дозабрать только их
+gotr compare retry-failed-pages --from ~/.gotr/exports/compare/failed_pages_2026-03-03_10-15-00.json
+```
+
+По умолчанию compare cases автоматически пытается дозабрать проблемные страницы.
+
 ### Тест-раны и результаты
 
 ```bash
@@ -174,6 +198,25 @@ gotr get projects --jq --jq-filter '.[] | {id: .id, name: .name}'
 gotr get case 12345 --jq
 ```
 
+## Отладка
+
+Для диагностики и получения детальной информации о выполнении используйте флаг `--debug` (или `-d`):
+
+```bash
+# Показать debug-вывод для любой команды
+gotr compare cases --pid1 30 --pid2 34 --debug
+gotr sync cases --src-project 30 --dst-project 31 --debug
+gotr get cases --project-id 30 --debug
+
+# Debug-вывод включает:
+# - Детали API-запросов
+# - Информацию о прогрессе
+# - Тайминг каждой фазы операции
+# - Детали обработки сьютов/кейсов
+```
+
+> **Примечание:** Флаг `--debug` скрыт из автодополнения, но доступен во всех командах.
+
 ## Конфигурация
 
 Приоритет конфигурации (от высшего к низшему):
@@ -194,17 +237,61 @@ gotr config view
 
 ```text
 gotr/
-├── cmd/              # CLI команды (get, sync, run, result)
-├── docs/             # Документация
+├── cmd/                          # CLI команды (29 подкоманд)
+│   ├── internal/testhelper/     #   Общие тест-утилиты
+│   ├── get/                     #   GET-команды (cases, suites, projects)
+│   ├── run/                     #   Управление тест-ранами
+│   ├── result/                  #   Управление результатами
+│   ├── compare/                 #   Кросс-проектное сравнение
+│   ├── sync/                    #   Миграция данных
+│   └── ...                      #   Прочие ресурсные подкоманды
+├── docs/                         # Документация (EN + RU)
+│   ├── en/                      #   Английская документация
+│   └── ru/                      #   Русская документация
+├── embedded/                     # Встроенные бинарники (jq)
 ├── internal/
-│   ├── client/       # Клиент TestRail API
-│   ├── service/      # Бизнес-логика (миграция и др.)
-│   └── utils/        # Утилиты
-├── pkg/              # Публичные пакеты
-└── main.go           # Точка входа
+│   ├── client/                  #   Клиент TestRail API
+│   │   ├── interfaces.go       #     ClientInterface (130+ методов, 16 API)
+│   │   ├── mock.go             #     MockClient для тестирования
+│   │   └── *.go                #     Реализации API
+│   ├── concurrency/            #   Доменная параллельная оркестрация
+│   │   ├── controller.go       #     ParallelController — стриминг suite/page
+│   │   └── simple.go           #     FetchParallel[T], FetchParallelBySuite[T]
+│   ├── concurrent/             #   Низкоуровневые примитивы параллелизма
+│   │   ├── pool.go             #     WorkerPool
+│   │   ├── limiter.go          #     AdaptiveRateLimiter (180 req/min)
+│   │   └── retry.go            #     Экспоненциальный backoff retry
+│   ├── interactive/            #   Интерактивные промпты (survey)
+│   ├── service/                #   Бизнес-логика
+│   │   ├── run.go              #     RunService
+│   │   ├── result.go           #     ResultService
+│   │   └── migration/          #     Движок миграции данных
+│   ├── models/                 #   Модели данных
+│   │   ├── data/              #     API DTO
+│   │   └── config/            #     Модель конфигурации
+│   ├── output/                 #   Форматирование вывода (JSON/YAML/table)
+│   ├── ui/                     #   Терминальный UI (прогресс, превью)
+│   ├── flags/                  #   Парсинг общих флагов
+│   ├── log/                    #   Структурированное логирование (zap)
+│   └── paths/                  #   Утилиты путей
+├── pkg/                          # Публичные пакеты
+│   ├── testrailapi/            #   Определения API endpoint'ов (135 endpoints)
+│   └── reporter/               #   Унифицированный репортер статистики
+└── main.go                       # Точка входа
 ```
 
-Подробная история изменений: [CHANGELOG](CHANGELOG.md)
+См. [docs/ru/architecture/overview.md](docs/ru/architecture/overview.md) для полной структуры.
+
+## Что нового в v3.0.0
+
+- **135 endpoint'ов TestRail API** определены, 98% реализованы в клиенте
+- **29 CLI-команд** для всех основных ресурсов TestRail
+- **Потоковая параллельная пагинация** с адаптивным rate limiting (180 req/min)
+- **100% покрытие тестами** в 35/42 пакетах, минимум 97.4% во всех
+- **Ноль замечаний golangci-lint** с порогом gocyclo ≤15
+- **Полная документация EN/RU** — 125 doc-страниц
+
+См. [CHANGELOG](CHANGELOG.md) для полной истории изменений.
 
 ## Установка
 
@@ -220,10 +307,19 @@ gotr/
 |------------|------------|
 | [spf13/cobra](https://github.com/spf13/cobra) | CLI-фреймворк |
 | [spf13/viper](https://github.com/spf13/viper) | Управление конфигурацией |
-| [cheggaaa/pb/v3](https://github.com/cheggaaa/pb) | Прогресс-бары |
 | [go.uber.org/zap](https://github.com/uber-go/zap) | Структурированное логирование |
 | [stretchr/testify](https://github.com/stretchr/testify) | Тестирование |
-| [itchyny/gojq](https://github.com/itchyny/gojq) | Встроенный JSON-процессор |
+| [AlecAivazis/survey/v2](https://github.com/AlecAivazis/survey) | Интерактивные промпты |
+| [jedib0t/go-pretty/v6](https://github.com/jedib0t/go-pretty) | Табличный вывод |
+| [fatih/color](https://github.com/fatih/color) | Цветной вывод в терминале |
+| [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) | Утилиты параллелизма |
+| [golang.org/x/time](https://pkg.go.dev/golang.org/x/time) | Rate limiting |
+
+### Встроенные инструменты
+
+| Инструмент | Назначение |
+|------------|------------|
+| [jq](https://github.com/jqlang/jq) | Легковесный JSON-процессор, встроен как статический бинарник для поддержки `--jq` / `--jq-filter` |
 
 ## Лицензия
 

@@ -86,7 +86,7 @@ func (c *HTTPClient) GetSectionsParallelCtx(
 // Extracted from GetSectionsParallelCtx to keep cyclomatic complexity manageable.
 func (c *HTTPClient) sectionsFetcher(ctx context.Context, projectID int64, limiter *concurrent.AdaptiveRateLimiter, maxRetries int) func(int64) ([]data.Section, error) {
 	return func(suiteID int64) ([]data.Section, error) {
-		// Honour the global rate limiter before the first attempt.
+		// Honor the global rate limiter before the first attempt.
 		if limiter != nil {
 			if waitErr := limiter.WaitCtx(ctx); waitErr != nil {
 				return nil, waitErr

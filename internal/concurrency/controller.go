@@ -237,7 +237,7 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	aggregator *ResultAggregator,
 	failedPagesMu *sync.Mutex,
 	failedPages *[]FailedPage,
-) (int, int64, bool, error) {
+) (casesFetched int, expectedTotal int64, verified bool, err error) {
 	pageSize := pc.config.PageSize
 	numWorkers := pc.config.MaxConcurrentPages
 	if numWorkers <= 0 {
@@ -413,7 +413,7 @@ func (pc *ParallelController) fetchRemainingPages(
 	for w := 0; w < numWorkers; w++ {
 		g.Go(func() error {
 			// Each worker loops, atomically claiming offsets until data is exhausted,
-			// the context is cancelled, or too many consecutive errors occur.
+			// the context is canceled, or too many consecutive errors occur.
 			return pc.pageWorkerLoop(gctx, state, fetcher,
 				&nextOffset, &exhausted, &consecutiveEmptyPages, &consecutiveErrors,
 				maxConsecutiveErrors, numWorkers,

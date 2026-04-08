@@ -13,18 +13,18 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	rolesCmd := &cobra.Command{
 		Use:   "roles",
-		Short: "Управление ролями пользователей",
-		Long: `Управление ролями (roles) пользователей TestRail.
+		Short: "Manage user roles",
+		Long: `Manage TestRail user roles.
 
-Роли определяют набор прав доступа пользователей в системе TestRail.
-Каждая роль имеет уникальный ID и название (например, Administrator, Tester, Guest).
+Roles define the set of access rights for users in the TestRail system.
+Each role has a unique ID and name (e.g., Administrator, Tester, Guest).
 
-Роли используются для контроля доступа к проектам, тест-кейсам,
-тест-ранам и другим сущностям системы.
+Roles are used to control access to projects, test cases,
+test runs, and other system entities.
 
-Доступные операции:
-  • list — список всех ролей в системе
-  • get  — информация о конкретной роли по ID`,
+Available operations:
+  • list — list all roles in the system
+  • get  — information about a specific role by ID`,
 	}
 
 	// Register subcommands

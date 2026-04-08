@@ -18,15 +18,15 @@ import (
 func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-label [label_id]",
-		Short: "Обновить метку",
-		Long: `Обновляет существующую метку.
+		Short: "Update a label",
+		Long: `Updates an existing label.
 
-Требуются права на редактирование меток in project.
-Максимальная длина названия метки — 20 символов.`,
-		Example: `  # Обновить название метки
+Requires label editing permissions in the project.
+Maximum label name length is 20 characters.`,
+		Example: `  # Update label name
   gotr labels update-label 123 --project 1 --title "New Label Name"
 
-  # Вывод в JSON
+  # Output as JSON
   gotr labels update-label 123 --project 1 --title "Bug" -o json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -81,9 +81,9 @@ func newUpdateLabelCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64P("project", "p", 0, "ID проекта (обязательно)")
-	cmd.Flags().StringP("title", "t", "", "Новое название метки (обязательно, max 20 символов)")
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без обновления")
+	cmd.Flags().Int64P("project", "p", 0, "Project ID (required)")
+	cmd.Flags().StringP("title", "t", "", "New label name (required, max 20 characters)")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without updating")
 	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("project")

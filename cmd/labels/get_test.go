@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты успешных сценариев ====================
+// ==================== Success scenario tests ====================
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -65,7 +65,7 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты ошибок API ====================
+// ==================== API error tests ====================
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
@@ -99,7 +99,7 @@ func TestGetCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "connection refused")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestGetCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}

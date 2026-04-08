@@ -13,15 +13,15 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [role_id]",
-		Short: "Получить роль по ID",
-		Long: `Получает информацию о роли пользователя по её ID.
+		Short: "Get a role by ID",
+		Long: `Retrieves user role information by its ID.
 
-Возвращает ID и название роли, которая используется для управления
-правами доступа в системе TestRail.`,
-		Example: `  # Получить информацию о роли
+Returns the ID and name of the role used for managing
+access rights in the TestRail system.`,
+		Example: `  # Get role information
   gotr roles get 1
 
-  # Сохранить в файл
+  # Save to a file
   gotr roles get 3 -o role.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

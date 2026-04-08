@@ -12,21 +12,21 @@ import (
 func newGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [run-id]",
-		Short: "Получить информацию о test run",
-		Long: `Получает детальную информацию о test run по его ID.
+		Short: "Get test run information",
+		Long: `Gets detailed information about a test run by its ID.
 
-Test run — это экземпляр тест-сюиты, запущенный для выполнения тестов.
-В ответе содержится: название, описание, статистика прохождения,
-даты создания/обновления, assignedto_id и другие поля.
+A test run is an instance of a test suite launched for test execution.
+The response contains: name, description, execution statistics,
+creation/update dates, assignedto_id, and other fields.
 
-Примеры:
-	# Получить информацию о run
+Examples:
+	# Get run information
 	gotr run get 12345
 
-	# Сохранить результат в файл
+	# Save the result to a file
 	gotr run get 12345 -o run_info.json
 
-	# Dry-run режим
+	# Dry-run mode
 	gotr run get 12345 --dry-run
 `,
 		Args: cobra.MaximumNArgs(1),
@@ -66,7 +66,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }

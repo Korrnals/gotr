@@ -16,16 +16,16 @@ import (
 func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-group [group_id]",
-		Short: "Удалить группу конфигураций",
-		Long: `Удаляет группу конфигураций и все её конфигурации.
+		Short: "Delete a configuration group",
+		Long: `Deletes a configuration group and all its configurations.
 
-⚠️ Внимание: удаление нельзя отменить! Все конфигурации в группе
-будут также удалены. Убедитесь, что группа не используется
-в активных тест-планах.`,
-		Example: `  # Удалить группу
+⚠️ Warning: deletion cannot be undone! All configurations in the group
+will also be deleted. Make sure the group is not used
+in active test plans.`,
+		Example: `  # Delete a group
   gotr configurations delete-group 5
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr configurations delete-group 5 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -55,7 +55,7 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations delete-group")
-				dr.PrintSimple("Удалить группу", fmt.Sprintf("Group ID: %d", groupID))
+				dr.PrintSimple("Delete group", fmt.Sprintf("Group ID: %d", groupID))
 				return nil
 			}
 
@@ -68,7 +68,7 @@ func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be deleted without actually deleting")
 
 	return cmd
 }

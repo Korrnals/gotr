@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для getClientSafe ====================
+// ==================== Tests for getClientSafe ====================
 
 func TestGetClientSafe_WithClient(t *testing.T) {
 	mock := &client.MockClient{}
@@ -37,7 +37,7 @@ func TestGetClientSafe_NilClient(t *testing.T) {
 	assert.Nil(t, cli)
 }
 
-// ==================== Тесты для suitesCmd ====================
+// ==================== Tests for suitesCmd ====================
 
 func TestSuitesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -110,7 +110,7 @@ func TestSuitesCmd_ProjectError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для casesCmd ====================
+// ==================== Tests for casesCmd ====================
 
 func TestCasesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -256,7 +256,7 @@ func TestCasesCmd_PrintCompareResultError(t *testing.T) {
 	assert.Contains(t, err.Error(), "unsupported format")
 }
 
-// ==================== Тесты для plansCmd ====================
+// ==================== Tests for plansCmd ====================
 
 func TestPlansCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -279,7 +279,7 @@ func TestPlansCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для runsCmd ====================
+// ==================== Tests for runsCmd ====================
 
 func TestRunsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -302,7 +302,7 @@ func TestRunsCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для sectionsCmd ====================
+// ==================== Tests for sectionsCmd ====================
 
 func TestSectionsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -411,7 +411,7 @@ func TestSectionsCmd_PrintCompareResultError(t *testing.T) {
 	assert.Contains(t, err.Error(), "unsupported format")
 }
 
-// ==================== Тесты для milestonesCmd ====================
+// ==================== Tests for milestonesCmd ====================
 
 func TestMilestonesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -434,7 +434,7 @@ func TestMilestonesCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для datasetsCmd ====================
+// ==================== Tests for datasetsCmd ====================
 
 func TestDatasetsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -457,7 +457,7 @@ func TestDatasetsCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для groupsCmd ====================
+// ==================== Tests for groupsCmd ====================
 
 func TestGroupsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -480,7 +480,7 @@ func TestGroupsCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для labelsCmd ====================
+// ==================== Tests for labelsCmd ====================
 
 func TestLabelsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -503,7 +503,7 @@ func TestLabelsCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для templatesCmd ====================
+// ==================== Tests for templatesCmd ====================
 
 func TestTemplatesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -526,7 +526,7 @@ func TestTemplatesCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для configurationsCmd ====================
+// ==================== Tests for configurationsCmd ====================
 
 func TestConfigurationsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -549,7 +549,7 @@ func TestConfigurationsCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для sharedStepsCmd ====================
+// ==================== Tests for sharedStepsCmd ====================
 
 func TestSharedStepsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -572,7 +572,7 @@ func TestSharedStepsCmd_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для allCmd ====================
+// ==================== Tests for allCmd ====================
 
 func TestAllCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -688,7 +688,7 @@ func TestAllCmd_WithSave(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для printCasesFieldDiff ====================
+// ==================== Tests for printCasesFieldDiff ====================
 
 func TestPrintCasesFieldDiff_WithDiff(t *testing.T) {
 	ctx := context.Background()
@@ -753,7 +753,7 @@ func TestPrintCasesFieldDiff_Error(t *testing.T) {
 	printCasesFieldDiff(ctx, mock, 1, 2, "priority_id")
 }
 
-// Helper functions для перехвата stdout
+// Helper functions for capturing stdout
 func captureStdout(buf *bytes.Buffer) *bytes.Buffer {
 	return buf
 }

@@ -75,7 +75,7 @@ func TestWave6F_AddBulkResults_CaseEntries_FallbackSuccess(t *testing.T) {
 	}
 
 	svc := newResultServiceFromInterface(mock)
-	// test_id как объект ломает парсинг []ResultEntry, но остаётся валидным для []ResultForCaseEntry.
+	// test_id as an object breaks parsing of []ResultEntry, but remains valid for []ResultForCaseEntry.
 	payload := []byte(`[{"test_id":{},"case_id":555,"status_id":1}]`)
 
 	result, err := svc.AddBulkResults(context.Background(), 77, payload)

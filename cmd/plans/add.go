@@ -17,13 +17,13 @@ import (
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [project_id]",
-		Short: "Создать новый тест-план",
-		Long:  `Создаёт новый тест-план в указанном проекте.`,
-		Example: `  # Создать план для спринта
-  gotr plans add 1 --name="План спринта 1"
+		Short: "Create a new test plan",
+		Long:  `Creates a new test plan in the specified project.`,
+		Example: `  # Create a sprint plan
+  gotr plans add 1 --name="Sprint 1 Plan"
 
-  # Создать план регрессии с описанием
-  gotr plans add 1 --name="Регрессия" --description="Полный набор регрессионных тестов"`,
+  # Create a regression plan with description
+  gotr plans add 1 --name="Regression" --description="Full regression test suite"`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var projectID int64
@@ -79,11 +79,11 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название плана (обязательно)")
-	cmd.Flags().String("description", "", "Описание плана")
-	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
+	cmd.Flags().String("name", "", "Plan name (required)")
+	cmd.Flags().String("description", "", "Plan description")
+	cmd.Flags().Int64("milestone-id", 0, "Milestone ID")
 
 	return cmd
 }

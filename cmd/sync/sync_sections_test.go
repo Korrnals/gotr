@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// resetSectionsFlags сбрасывает и пересоздаёт флаги для sectionsCmd
+// resetSectionsFlags resets and recreates flags for sectionsCmd
 func resetSectionsFlags() {
 	sectionsCmd.ResetFlags()
 	sectionsCmd.Flags().Int64("src-project", 0, "")
@@ -25,10 +25,10 @@ func resetSectionsFlags() {
 	sectionsCmd.Flags().Bool("save-mapping", false, "")
 }
 
-// TestSyncSections_DryRun_NoAddSection проверяет, что при режиме dry-run
-// реальные HTTP-вызовы к AddSection не выполняются.
+// TestSyncSections_DryRun_NoAddSection verifies that in dry-run mode
+// no real HTTP calls to AddSection are made.
 func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
-	// Подготавливаем мок-client, который сигнализирует о существовании секции
+	// Prepare a mock client that signals the existence of a section
 	addCalled := false
 	mock := &client.MockClient{
 		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
@@ -43,12 +43,12 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 		},
 	}
 
-	// Переопределяем фабрику миграции, чтобы она использовала наш мок-client
+	// Override migration factory to use our mock client
 	old := newMigration
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Подготавливаем команду с флагами и mock clientом
+	// Prepare the command with flags and mock client
 	resetSectionsFlags()
 	cmd := sectionsCmd
 	SetTestClient(cmd, mock)
@@ -58,16 +58,16 @@ func TestSyncSections_DryRun_NoAddSection(t *testing.T) {
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("dry-run", "true")
 
-	// Выполняем команду и убеждаемся, что AddSection не вызван
+	// Execute the command and verify that AddSection was not called
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addCalled, "AddSection не должен вызываться в режиме dry-run")
+	assert.False(t, addCalled, "AddSection should not be called in dry-run mode")
 }
 
-// TestSyncSections_Confirm_TriggersAddSection проверяет, что после интерактивного подтверждения
-// выполняется вызов AddSection для создания отсутствующих секций
+// TestSyncSections_Confirm_TriggersAddSection verifies that after interactive confirmation
+// AddSection is called to create missing sections
 func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
-	// Подготавливаем мок-client и отслеживаем вызов AddSection
+	// Prepare mock client and track AddSection call
 	addCalled := false
 	mock := &client.MockClient{
 		GetSectionsFunc: func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
@@ -82,7 +82,7 @@ func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 		},
 	}
 
-	// Переопределяем фабрику миграции на мок, чтобы избежать реальных сетевых вызовов
+	// Override migration factory with mock to avoid real network calls
 	old := newMigration
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
@@ -99,10 +99,10 @@ func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
 
-	// Выполняем команду и проверяем, что AddSection был вызван
+	// Execute the command and verify that AddSection was called
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.True(t, addCalled, "AddSection должен вызываться после подтверждения")
+	assert.True(t, addCalled, "AddSection should be called after confirmation")
 }
 
 func TestSyncSections_NoFlags_NonInteractive_Error(t *testing.T) {
@@ -129,7 +129,7 @@ func TestSyncSections_NoFlags_NonInteractive_Error(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
-	assert.False(t, addCalled, "AddSection не должен вызываться в non-interactive")
+	assert.False(t, addCalled, "AddSection should not be called in non-interactive")
 }
 
 func TestSyncSections_ConfirmDeclined_SkipsImport(t *testing.T) {
@@ -164,7 +164,7 @@ func TestSyncSections_ConfirmDeclined_SkipsImport(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addCalled, "AddSection не должен вызываться при отказе подтверждения")
+	assert.False(t, addCalled, "AddSection should not be called when confirmation is declined")
 }
 
 func TestSyncSections_SaveMappingFlag_WritesMappingFile(t *testing.T) {
@@ -206,7 +206,7 @@ func TestSyncSections_SaveMappingFlag_WritesMappingFile(t *testing.T) {
 	logsDir := filepath.Join(homeDir, ".gotr", "logs")
 	files, globErr := filepath.Glob(filepath.Join(logsDir, "mapping_*.json"))
 	assert.NoError(t, globErr)
-	assert.NotEmpty(t, files, "ожидается сохраненный mapping файл")
+	assert.NotEmpty(t, files, "expected a saved mapping file")
 }
 
 func TestSyncSections_SaveMappingPromptAccepted_WritesMappingFile(t *testing.T) {
@@ -250,7 +250,7 @@ func TestSyncSections_SaveMappingPromptAccepted_WritesMappingFile(t *testing.T) 
 	logsDir := filepath.Join(homeDir, ".gotr", "logs")
 	files, globErr := filepath.Glob(filepath.Join(logsDir, "mapping_*.json"))
 	assert.NoError(t, globErr)
-	assert.NotEmpty(t, files, "ожидается сохраненный mapping файл после подтверждения")
+	assert.NotEmpty(t, files, "expected a saved mapping file after confirmation")
 }
 
 func TestSyncSections_SaveMappingPromptErrorIgnored_NoMappingFile(t *testing.T) {
@@ -292,7 +292,7 @@ func TestSyncSections_SaveMappingPromptErrorIgnored_NoMappingFile(t *testing.T) 
 	logsDir := filepath.Join(homeDir, ".gotr", "logs")
 	files, globErr := filepath.Glob(filepath.Join(logsDir, "mapping_*.json"))
 	assert.NoError(t, globErr)
-	assert.Empty(t, files, "mapping файл не должен сохраняться при ошибке confirm")
+	assert.Empty(t, files, "mapping file should not be saved on confirm error")
 }
 
 func TestSyncSections_NoFlags_InteractiveSuccess(t *testing.T) {
@@ -337,5 +337,5 @@ func TestSyncSections_NoFlags_InteractiveSuccess(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.True(t, addCalled, "AddSection должен вызываться после интерактивного выбора")
+	assert.True(t, addCalled, "AddSection should be called after interactive selection")
 }

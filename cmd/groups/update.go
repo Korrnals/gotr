@@ -15,8 +15,8 @@ import (
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [group_id]",
-		Short: "Обновить группу",
-		Long:  `Обновить существующую группу пользователей.`,
+		Short: "Update a group",
+		Long:  `Update an existing user group.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -59,8 +59,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringP("name", "n", "", "Новое название группы (обязательно)")
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано, без выполнения")
+	cmd.Flags().StringP("name", "n", "", "New group name (required)")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without executing")
 	output.AddFlag(cmd)
 
 	return cmd

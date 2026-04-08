@@ -1,5 +1,5 @@
 // internal/client/common_test.go
-// Общая инфраструктура для тестов HTTP clientа
+// Common infrastructure for HTTP client tests
 package client
 
 import (
@@ -8,19 +8,19 @@ import (
 	"testing"
 )
 
-// mockServer создаёт тестовый HTTP сервер
+// mockServer creates a test HTTP server
 type mockServer struct {
 	*httptest.Server
 }
 
-// newMockServer создаёт сервер с заданным handler
+// newMockServer creates a server with the given handler
 func newMockServer(handler http.HandlerFunc) *mockServer {
 	return &mockServer{
 		Server: httptest.NewServer(handler),
 	}
 }
 
-// mockClient создаёт client с тестовым сервером
+// mockClient creates a client with a test server
 func mockClient(t *testing.T, handler http.HandlerFunc) (*HTTPClient, *mockServer) {
 	server := newMockServer(handler)
 	client, err := NewClient(server.URL, "test@test.com", "testpass", false)
@@ -30,7 +30,7 @@ func mockClient(t *testing.T, handler http.HandlerFunc) (*HTTPClient, *mockServe
 	return client, server
 }
 
-// ptr возвращает указатель на значение (хелпер для тестов)
+// ptr returns a pointer to the value (test helper)
 func ptr[T any](v T) *T {
 	return &v
 }

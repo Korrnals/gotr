@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestGetByEmailCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -69,7 +69,7 @@ func TestGetByEmailCmd_InvalidEmail(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestGetByEmailCmd_NoArgs_Interactive(t *testing.T) {
 	mock := &client.MockClient{

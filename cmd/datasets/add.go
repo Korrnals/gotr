@@ -16,16 +16,16 @@ import (
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [project_id]",
-		Short: "Создать новый датасет",
-		Long: `Создаёт новый датасет (набор тестовых данных) в указанном проекте.
+		Short: "Create a new dataset",
+		Long: `Creates a new dataset (test data set) in the specified project.
 
-Датасет создаётся с указанным названием. После создания можно
-добавлять колонки (параметры) и строки (значения) через веб-интерфейс
-или другие API методы.`,
-		Example: `  # Создать датасет с названием
+The dataset is created with the given name. After creation, you can
+add columns (parameters) and rows (values) via the web interface
+or other API methods.`,
+		Example: `  # Create a dataset with a name
   gotr datasets add 1 --name="Login Test Data"
 
-  # Проверить перед созданием
+  # Preview before creating
   gotr datasets add 1 --name="Test Data" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,7 +57,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("datasets add")
-				dr.PrintSimple("Создать датасет", fmt.Sprintf("Project ID: %d, Name: %s", projectID, name))
+				dr.PrintSimple("Create dataset", fmt.Sprintf("Project ID: %d, Name: %s", projectID, name))
 				return nil
 			}
 
@@ -71,9 +71,9 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название датасета (обязательно)")
+	cmd.Flags().String("name", "", "Dataset name (required)")
 
 	return cmd
 }

@@ -14,16 +14,16 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Список групп проекта",
-		Long: `Выводит список групп пользователей, доступных в указанном проекте.
+		Short: "List project groups",
+		Long: `List user groups available in the specified project.
 
-Каждая группа содержит ID, название и информацию о пользователях,
-входящих в группу. Используется для просмотра структуры команд
-и управления правами доступа в рамках проекта.`,
-		Example: `  # Получить список групп проекта
+Each group contains an ID, name, and information about users
+belonging to the group. Used for viewing team structure
+and managing access rights within a project.`,
+		Example: `  # List project groups
   gotr groups list 1
 
-  # Сохранить в файл
+  # Save to file
   gotr groups list 5 -o groups.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

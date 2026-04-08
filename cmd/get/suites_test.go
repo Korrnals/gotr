@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get suites ====================
+// ==================== Tests for get suites ====================
 
 func TestSuitesCmd_WithProjectID(t *testing.T) {
 	mock := &client.MockClient{
@@ -123,7 +123,7 @@ func TestSuitesCmd_NoArgs_Interactive_SelectProjectError(t *testing.T) {
 	assert.Contains(t, err.Error(), "project lookup failed")
 }
 
-// ==================== Тесты для get suite ====================
+// ==================== Tests for get suite ====================
 
 func TestSuiteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

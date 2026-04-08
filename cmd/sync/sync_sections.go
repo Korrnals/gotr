@@ -15,19 +15,19 @@ import (
 
 var sectionsCmd = &cobra.Command{
 	Use:   "sections",
-	Short: "Миграция sections между сюитами",
-	Long: `Миграция секций между сюитами в пределах проектов.
+	Short: "Migrate sections between suites",
+	Long: `Migrate sections between suites within projects.
 
-Особенности:
-• Автоматический интерактивный выбор проектов и сьютов
-• Фильтрация дубликатов по названию
-• Подтверждение перед импортом
+Features:
+• Automatic interactive selection of projects and suites
+• Duplicate filtering by name
+• Confirmation before import
 
-Примеры:
-	# Полностью интерактивный режим
+Examples:
+	# Fully interactive mode
 	gotr sync sections
 
-	# Через флаги
+	# Using flags
 	gotr sync sections --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve
 `,
 

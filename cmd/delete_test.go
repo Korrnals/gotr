@@ -22,8 +22,8 @@ func setupDeleteTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 		RunE:  runDelete,
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
-	cmd.Flags().Bool("soft", false, "Мягкое удаление (где поддерживается)")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making real changes")
+	cmd.Flags().Bool("soft", false, "Soft delete (where supported)")
 
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)

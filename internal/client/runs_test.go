@@ -1,5 +1,5 @@
 // internal/client/runs_test.go
-// Тесты для Runs API POST-методов
+// Tests for Runs API POST methods
 package client
 
 import (
@@ -247,7 +247,7 @@ func TestCloseRun(t *testing.T) {
 				assert.Equal(t, "POST", r.Method)
 				expectedPath := fmt.Sprintf("/index.php?/api/v2/close_run/%d", tt.runID)
 				assert.Equal(t, expectedPath, r.URL.String())
-				// CloseRun не имеет тела запроса
+				// CloseRun has no request body
 				assert.Equal(t, int64(0), r.ContentLength)
 
 				w.WriteHeader(tt.mockStatus)

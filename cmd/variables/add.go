@@ -16,18 +16,18 @@ import (
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [dataset_id]",
-		Short: "Создать переменную в датасете",
-		Long: `Создаёт новую переменную (колонку) в указанном датасете.
+		Short: "Create a variable in a dataset",
+		Long: `Creates a new variable (column) in the specified dataset.
 
-Переменная представляет собой параметр, который будет использоваться
-в тест-кейсах для параметризованного тестирования.
+A variable represents a parameter that will be used
+in test cases for parameterized testing.
 
-После создания переменной можно добавлять значения через
-веб-интерфейс TestRail.`,
-		Example: `  # Создать переменную "username"
+After creating a variable, you can add values through
+the TestRail web interface.`,
+		Example: `  # Create a variable "username"
   gotr variables add 123 --name="username"
 
-  # Проверить перед созданием
+  # Preview before creating
   gotr variables add 123 --name="password" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,7 +56,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("variables add")
-				dr.PrintSimple("Создать переменную", fmt.Sprintf("Dataset ID: %d, Name: %s", datasetID, name))
+				dr.PrintSimple("Create Variable", fmt.Sprintf("Dataset ID: %d, Name: %s", datasetID, name))
 				return nil
 			}
 
@@ -72,9 +72,9 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название переменной (обязательно)")
+	cmd.Flags().String("name", "", "Variable name (required)")
 
 	return cmd
 }

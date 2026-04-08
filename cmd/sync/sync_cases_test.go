@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// resetCasesFlags сбрасывает и пересоздаёт флаги для casesCmd
+// resetCasesFlags resets and recreates flags for casesCmd
 func resetCasesFlags() {
 	casesCmd.ResetFlags()
 	casesCmd.Flags().Int64("src-project", 0, "")
@@ -28,11 +28,11 @@ func resetCasesFlags() {
 	casesCmd.Flags().String("mapping-file", "", "")
 }
 
-// TestSyncCases_DryRun_NoAddCase проверяет, что в режиме dry-run не вызывается AddCase
+// TestSyncCases_DryRun_NoAddCase verifies that AddCase is not called in dry-run mode
 func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 	addCalled := false
 
-	// Создаём mock client который реализует оба интерфейса (client.ClientInterface и migration.ClientInterface)
+	// Create a mock client that implements both interfaces (client.ClientInterface and migration.ClientInterface)
 	mock := &client.MockClient{
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 {
@@ -46,12 +46,12 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 		},
 	}
 
-	// Подменяем newMigration для теста
+	// Override newMigration for test
 	old := newMigration
 	defer func() { newMigration = old }()
 	newMigration = newMigrationFactoryFromMock(t, mock)
 
-	// Устанавливаем mock client через SetTestClient
+	// Set mock client via SetTestClient
 	resetCasesFlags()
 	cmd := casesCmd
 	SetTestClient(cmd, mock)
@@ -63,10 +63,10 @@ func TestSyncCases_DryRun_NoAddCase(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addCalled, "AddCase не должен вызываться в dry-run")
+	assert.False(t, addCalled, "AddCase should not be called in dry-run")
 }
 
-// TestSyncCases_Confirm_TriggersAddCase проверяет, что подтверждение запускает импорт кейсов
+// TestSyncCases_Confirm_TriggersAddCase verifies that confirmation triggers case import
 func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	addCalled := false
 
@@ -101,7 +101,7 @@ func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.True(t, addCalled, "AddCase должен вызываться после подтверждения")
+	assert.True(t, addCalled, "AddCase should be called after confirmation")
 }
 
 func TestSyncCases_NoFlags_NonInteractive_Error(t *testing.T) {
@@ -129,7 +129,7 @@ func TestSyncCases_NoFlags_NonInteractive_Error(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
-	assert.False(t, addCalled, "AddCase не должен вызываться в non-interactive")
+	assert.False(t, addCalled, "AddCase should not be called in non-interactive")
 }
 
 func TestSyncCases_InvalidMappingFile_ReturnsError(t *testing.T) {
@@ -160,7 +160,7 @@ func TestSyncCases_InvalidMappingFile_ReturnsError(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load mapping")
-	assert.False(t, addCalled, "AddCase не должен вызываться при ошибке mapping")
+	assert.False(t, addCalled, "AddCase should not be called on mapping error")
 }
 
 func TestSyncCases_ConfirmDeclined_SkipsImportAndWritesLog(t *testing.T) {
@@ -198,7 +198,7 @@ func TestSyncCases_ConfirmDeclined_SkipsImportAndWritesLog(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addCalled, "AddCase не должен вызываться при отказе подтверждения")
+	assert.False(t, addCalled, "AddCase should not be called when confirmation is declined")
 
 	data, readErr := os.ReadFile(outputFile)
 	assert.NoError(t, readErr)
@@ -236,7 +236,7 @@ func TestSyncCases_ConfirmInNonInteractiveMode_ReturnsError(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
-	assert.False(t, addCalled, "AddCase не должен вызываться при ошибке подтверждения")
+	assert.False(t, addCalled, "AddCase should not be called on confirmation error")
 }
 
 func TestSaveLog_WritesStructuredPayload(t *testing.T) {
@@ -308,7 +308,7 @@ func TestSyncCases_DryRun_WithMappingFile_WritesLogWithLoadedMapping(t *testing.
 
 	err = cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addCalled, "AddCase не должен вызываться в dry-run")
+	assert.False(t, addCalled, "AddCase should not be called in dry-run")
 
 	raw, readErr := os.ReadFile(outputFile)
 	assert.NoError(t, readErr)
@@ -356,7 +356,7 @@ func TestSyncCases_InvalidMappingJSON_ReturnsError(t *testing.T) {
 	err = cmd.RunE(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to load mapping")
-	assert.False(t, addCalled, "AddCase не должен вызываться при невалидном mapping")
+	assert.False(t, addCalled, "AddCase should not be called on invalid mapping")
 }
 
 func TestSyncCases_NewMigrationFactoryError_ReturnsError(t *testing.T) {
@@ -450,12 +450,12 @@ func TestSyncCases_DryRun_DefaultOutputPath_WritesLogFile(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addCalled, "AddCase не должен вызываться в dry-run")
+	assert.False(t, addCalled, "AddCase should not be called in dry-run")
 
 	logsDir := filepath.Join(homeDir, ".gotr", "logs")
 	files, globErr := filepath.Glob(filepath.Join(logsDir, "sync_cases_*.json"))
 	assert.NoError(t, globErr)
-	assert.NotEmpty(t, files, "ожидается лог-файл по умолчанию")
+	assert.NotEmpty(t, files, "expected a default log file")
 }
 
 func TestSyncCases_NoFlags_InteractiveSelection_DeclineConfirm(t *testing.T) {
@@ -497,5 +497,5 @@ func TestSyncCases_NoFlags_InteractiveSelection_DeclineConfirm(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addCalled, "AddCase не должен вызываться при отказе подтверждения")
+	assert.False(t, addCalled, "AddCase should not be called when confirmation is declined")
 }

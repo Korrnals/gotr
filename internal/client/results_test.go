@@ -1,5 +1,5 @@
 // internal/client/results_test.go
-// Тесты для Results API POST-методов
+// Tests for Results API POST methods
 package client
 
 import (
@@ -78,17 +78,17 @@ func TestAddResult(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Arrange
 			handler := func(w http.ResponseWriter, r *http.Request) {
-				// Проверяем метод и путь
+				// Verify method and path
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "/index.php?/api/v2/add_result/12345", r.URL.String())
 				assert.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
-				// Проверяем тело запроса
+				// Verify request body
 				var req data.AddResultRequest
 				json.NewDecoder(r.Body).Decode(&req)
 				assert.Equal(t, tt.request.StatusID, req.StatusID)
 
-				// Отправляем ответ
+				// Send response
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockResponse != nil {
 					json.NewEncoder(w).Encode(tt.mockResponse)
@@ -226,7 +226,7 @@ func TestAddResults(t *testing.T) {
 				assert.Equal(t, "POST", r.Method)
 				assert.Equal(t, "/index.php?/api/v2/add_results/100", r.URL.String())
 
-				// Проверяем тело запроса
+				// Verify request body
 				var req data.AddResultsRequest
 				json.NewDecoder(r.Body).Decode(&req)
 				assert.Len(t, req.Results, len(tt.request.Results))

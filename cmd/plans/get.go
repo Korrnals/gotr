@@ -14,12 +14,12 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [plan_id]",
-		Short: "Получить тест-план по ID",
-		Long:  `Получает детальную информацию о тест-плане, включая записи (entries).`,
-		Example: `  # Получить информацию о плане
+		Short: "Get a test plan by ID",
+		Long:  `Retrieves detailed information about a test plan, including its entries.`,
+		Example: `  # Get plan information
   gotr plans get 12345
 
-  # Сохранить в файл
+  # Save to file
   gotr plans get 12345 --save`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

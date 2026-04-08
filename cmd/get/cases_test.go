@@ -561,7 +561,7 @@ func TestCasesCmd_AllSuites_WithSectionID(t *testing.T) {
 }
 
 func TestCasesCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда client not initialized
+	// Test case when client is not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
@@ -575,7 +575,7 @@ func TestCasesCmd_NilClient(t *testing.T) {
 }
 
 func TestCaseCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда client not initialized
+	// Test case when client is not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}

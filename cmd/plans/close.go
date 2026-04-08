@@ -16,12 +16,12 @@ import (
 func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close [plan_id]",
-		Short: "Закрыть тест-план",
-		Long:  `Закрывает открытый тест-план (отмечает как завершённый).`,
-		Example: `  # Закрыть план
+		Short: "Close a test plan",
+		Long:  `Closes an open test plan (marks it as completed).`,
+		Example: `  # Close a plan
   gotr plans close 12345
 
-  # Проверить перед закрытием
+  # Preview before closing
   gotr plans close 12345 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,7 +62,7 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без реального закрытия")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without actually closing")
 	output.AddFlag(cmd)
 
 	return cmd

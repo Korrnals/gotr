@@ -16,8 +16,8 @@ func setupListTest() *cobra.Command {
 		Args:  listCmd.Args,
 		RunE:  listCmd.RunE,
 	}
-	cmd.Flags().Bool("json", false, "Вывести в формате JSON")
-	cmd.Flags().Bool("short", false, "Краткий вывод (только URI)")
+	cmd.Flags().Bool("json", false, "Output in JSON format")
+	cmd.Flags().Bool("short", false, "Short output (URI only)")
 	return cmd
 }
 

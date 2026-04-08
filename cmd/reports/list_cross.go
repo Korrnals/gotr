@@ -17,12 +17,12 @@ import (
 func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list-cross-project",
-		Short: "Получить список кросс-проектных отчётов",
-		Long:  `Получает список всех доступных кросс-проектных шаблонов отчётов.`,
-		Example: `  # Список кросс-проектных отчётов
+		Short: "List cross-project reports",
+		Long:  `Lists all available cross-project report templates.`,
+		Example: `  # List cross-project reports
   gotr reports list-cross-project
 
-  # Вывод в JSON
+  # Output as JSON
   gotr reports list-cross-project -o json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)

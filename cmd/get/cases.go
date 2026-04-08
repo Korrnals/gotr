@@ -18,31 +18,31 @@ import (
 func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cases [project-id]",
-		Short: "Получить кейсы проекта",
-		Long: `Получить кейсы проекта.
+		Short: "Get project test cases",
+		Long: `Get project test cases.
 
-Если проект содержит несколько сьютов и --suite-id не указан, 
-будет предложено выбрать сьют из списка.
+If the project contains multiple suites and --suite-id is not specified,
+you will be prompted to select a suite from the list.
 
-Обязательные параметры:
-	ID проекта — позиционный аргумент или флаг --project-id
+Required parameters:
+	Project ID — positional argument or --project-id flag
 
-Опциональные параметры:
-	ID сюиты — флаг --suite-id (обязателен для проектов с multiple suites)
-	ID секции — флаг --section-id
-	Все сьюты — флаг --all-suites (получить кейсы из всех сьютов проекта)
+Optional parameters:
+	Suite ID — --suite-id flag (required for projects with multiple suites)
+	Section ID — --section-id flag
+	All suites — --all-suites flag (get cases from all project suites)
 
-Примеры:
-	# Автоматический выбор сьюта (если один) или интерактивный выбор
+Examples:
+	# Automatic suite selection (if single) or interactive selection
 	gotr get cases 30
 
-	# Явное указание сьюта
+	# Explicit suite specification
 	gotr get cases 30 --suite-id 20069
 
-	# Получить кейсы из всех сьютов проекта
+	# Get cases from all project suites
 	gotr get cases 30 --all-suites
 
-	# С фильтрацией по секции
+	# Filter by section
 	gotr get cases 30 --suite-id 20069 --section-id 100
 `,
 		RunE: func(command *cobra.Command, args []string) error {
@@ -116,10 +116,10 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 		},
 	}
 
-	cmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (если не указан — будет предложен выбор)")
-	cmd.Flags().Int64("section-id", 0, "ID секции (опционально)")
-	cmd.Flags().Bool("all-suites", false, "Получить кейсы из всех сьютов проекта")
-	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	cmd.Flags().Int64P("suite-id", "s", 0, "Test suite ID (if not specified, interactive selection will be offered)")
+	cmd.Flags().Int64("section-id", 0, "Section ID (optional)")
+	cmd.Flags().Bool("all-suites", false, "Get cases from all project suites")
+	cmd.Flags().String("project-id", "", "Project ID (alternative to positional argument)")
 
 	return cmd
 }
@@ -128,8 +128,8 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case [case-id]",
-		Short: "Получить один кейс по ID кейса",
-		Long:  "Получает детальную информацию о конкретном тест-кейсе по его ID.",
+		Short: "Get a single case by case ID",
+		Long:  "Retrieves detailed information about a specific test case by its ID.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()

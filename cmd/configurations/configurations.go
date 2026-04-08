@@ -13,26 +13,26 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	configsCmd := &cobra.Command{
 		Use:   "configurations",
-		Short: "Управление конфигурациями тестовых сред",
-		Long: `Управление конфигурациями (configurations) — тестовыми средами для прогонов.
+		Short: "Manage test environment configurations",
+		Long: `Manage configurations — test environments for test runs.
 
-Конфигурации представляют собой различные среды для тестирования:
-  • Браузеры (Chrome, Firefox, Safari)
-  • Операционные системы (Windows, macOS, Linux)
-  • Мобильные устройства (iOS, Android)
-  • Версии ПО и другие параметры
+Configurations represent different testing environments:
+  • Browsers (Chrome, Firefox, Safari)
+  • Operating systems (Windows, macOS, Linux)
+  • Mobile devices (iOS, Android)
+  • Software versions and other parameters
 
-Конфигурации организованы в группы (например: "Browsers", "OS").
-Каждая группа содержит отдельные конфигурации (например: "Chrome", "Firefox").
+Configurations are organized into groups (e.g., "Browsers", "OS").
+Each group contains individual configurations (e.g., "Chrome", "Firefox").
 
-Доступные операции:
-  • list          — список конфигураций проекта
-  • add-group     — создать группу конфигураций
-  • add-config    — добавить конфигурацию в группу
-  • update-group  — обновить группу
-  • update-config — обновить конфигурацию
-  • delete-group  — удалить группу
-  • delete-config — удалить конфигурацию`,
+Available operations:
+  • list          — list project configurations
+  • add-group     — create a configuration group
+  • add-config    — add a configuration to a group
+  • update-group  — update a group
+  • update-config — update a configuration
+  • delete-group  — delete a group
+  • delete-config — delete a configuration`,
 	}
 
 	// Register subcommands

@@ -15,21 +15,21 @@ import (
 func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "list [run-id]",
-		Short: "Получить результаты для test run",
-		Long: `Получает список результатов для указанного test run.
+		Short: "Get results for a test run",
+		Long: `Gets the list of results for the specified test run.
 
-Если run-id не указан, будет предложен интерактивный выбор:
-1. Выбор проекта из списка
-2. Выбор test run из проекта
+If run-id is not specified, an interactive selection will be offered:
+1. Select a project from the list
+2. Select a test run from the project
 
-Примеры:
-	# Получить результаты с интерактивным выбором run
+Examples:
+	# Get results with interactive run selection
 	gotr result list
 
-	# Получить результаты для конкретного run
+	# Get results for a specific run
 	gotr result list 12345
 
-	# Сохранить в файл
+	# Save to file
 	gotr result list 12345 -o results.json
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {

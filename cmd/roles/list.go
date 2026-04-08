@@ -12,15 +12,15 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Список ролей системы",
-		Long: `Выводит список всех ролей пользователей, доступных в системе TestRail.
+		Short: "List system roles",
+		Long: `Displays a list of all user roles available in the TestRail system.
 
-Каждая роль содержит ID и название. Роли используются для управления
-правами доступа пользователей к различным функциям системы.`,
-		Example: `  # Получить список всех ролей
+Each role contains an ID and a name. Roles are used to manage
+user access rights to various system features.`,
+		Example: `  # Get list of all roles
   gotr roles list
 
-  # Сохранить в файл
+  # Save to a file
   gotr roles list -o roles.json`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {

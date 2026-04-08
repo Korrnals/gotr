@@ -14,15 +14,15 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Список шаблонов проекта",
-		Long: `Выводит список всех шаблонов указанного проекта.
+		Short: "List project templates",
+		Long: `Displays a list of all templates for the specified project.
 
-Показывает ID, название и признак шаблона по умолчанию.
-Поддерживает вывод в JSON для автоматизации.`,
-		Example: `  # Список шаблонов проекта
+Shows ID, name, and the default template indicator.
+Supports JSON output for automation.`,
+		Example: `  # List project templates
   gotr templates list 1
 
-  # Сохранить список в файл
+  # Save list to a file
   gotr templates list 1 -o templates.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

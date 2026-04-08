@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCrossProjectCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

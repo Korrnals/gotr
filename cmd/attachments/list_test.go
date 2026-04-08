@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для attachments list case ====================
+// ==================== Tests for attachments list case ====================
 
 func TestListCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -209,7 +209,7 @@ func TestListCaseCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list plan ====================
+// ==================== Tests for attachments list plan ====================
 
 func TestListPlanCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -308,7 +308,7 @@ func TestListPlanCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list plan-entry ====================
+// ==================== Tests for attachments list plan-entry ====================
 
 func TestListPlanEntryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -464,7 +464,7 @@ func TestListPlanEntryCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list run ====================
+// ==================== Tests for attachments list run ====================
 
 func TestListRunCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -563,7 +563,7 @@ func TestListRunCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list test ====================
+// ==================== Tests for attachments list test ====================
 
 func TestListTestCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -679,7 +679,7 @@ func TestListTestCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для outputAttachmentsList ====================
+// ==================== Tests for outputAttachmentsList ====================
 
 func TestOutputAttachmentsList_Empty(t *testing.T) {
 	mock := &client.MockClient{
@@ -761,7 +761,7 @@ err := cmd.Execute()
 assert.Error(t, err)
 }
 
-// ==================== Тесты для attachments list project ====================
+// ==================== Tests for attachments list project ====================
 
 func TestListProjectCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

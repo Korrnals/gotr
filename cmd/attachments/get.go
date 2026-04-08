@@ -17,14 +17,14 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [attachment_id]",
-		Short: "Получить информацию о вложении",
-		Long: `Получает детальную информацию о вложении по его ID.
+		Short: "Get attachment details",
+		Long: `Retrieves detailed information about an attachment by its ID.
 
-Выводит: ID, имя файла, размер, MIME-тип, дату создания и привязку к ресурсам.`,
-		Example: `  # Получить информацию о вложении
+Displays: ID, filename, size, MIME type, creation date, and resource bindings.`,
+		Example: `  # Get attachment details
   gotr attachments get 12345
 
-  # Вывод в JSON
+  # Output as JSON
   gotr attachments get 12345 -o json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

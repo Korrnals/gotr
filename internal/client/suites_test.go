@@ -1,5 +1,5 @@
 // internal/client/suites_test.go
-// Тесты для Suites API POST-методов
+// Tests for Suites API POST methods
 package client
 
 import (

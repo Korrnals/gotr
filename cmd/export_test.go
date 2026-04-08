@@ -18,7 +18,7 @@ import (
 
 func setupExportInputTest() *cobra.Command {
 	cmd := &cobra.Command{}
-	cmd.Flags().StringP("project-id", "p", "", "ID проекта (для эндпоинтов с {project_id})")
+	cmd.Flags().StringP("project-id", "p", "", "Project ID (for endpoints with {project_id})")
 	return cmd
 }
 
@@ -156,7 +156,7 @@ func TestResolveExportInputs_Interactive_ResourceSelectError(t *testing.T) {
 }
 
 func TestResolveExportInputs_Interactive_EndpointSelectError(t *testing.T) {
-	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0}) // только выбор ресурса
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0}) // resource selection only
 	cmd := setupExportInputTest()
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
 

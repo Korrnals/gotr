@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для result get ====================
+// ==================== Tests for result get ====================
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -97,7 +97,7 @@ func TestGetCmd_NilClient(t *testing.T) {
 	assert.Contains(t, err.Error(), "client")
 }
 
-// ==================== Тесты для result get-case ====================
+// ==================== Tests for result get-case ====================
 
 func TestGetCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

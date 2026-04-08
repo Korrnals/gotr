@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для result add ====================
+// ==================== Tests for result add ====================
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -73,7 +73,7 @@ func TestAddCmd_MissingStatusID(t *testing.T) {
 
 	cmd := newAddCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"12345"}) // Без --status-id
+	cmd.SetArgs([]string{"12345"}) // Without --status-id
 
 	err := cmd.Execute()
 	assert.Error(t, err)
@@ -190,7 +190,7 @@ func TestAddCmd_NilClient(t *testing.T) {
 	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
-// ==================== Тесты для result add-case ====================
+// ==================== Tests for result add-case ====================
 
 func TestAddCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -215,7 +215,7 @@ func TestAddCaseCmd_MissingCaseID(t *testing.T) {
 
 	cmd := newAddCaseCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"100", "--status-id", "1"}) // Без --case-id
+	cmd.SetArgs([]string{"100", "--status-id", "1"}) // Without --case-id
 
 	err := cmd.Execute()
 	assert.Error(t, err)

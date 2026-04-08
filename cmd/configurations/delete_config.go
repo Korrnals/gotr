@@ -16,15 +16,15 @@ import (
 func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete-config [config_id]",
-		Short: "Удалить конфигурацию",
-		Long: `Удаляет конфигурацию из группы.
+		Short: "Delete a configuration",
+		Long: `Deletes a configuration from a group.
 
-⚠️ Внимание: удаление нельзя отменить! Убедитесь, что конфигурация
-не используется в активных тест-планах.`,
-		Example: `  # Удалить конфигурацию
+⚠️ Warning: deletion cannot be undone! Make sure the configuration
+is not used in active test plans.`,
+		Example: `  # Delete a configuration
   gotr configurations delete-config 10
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr configurations delete-config 10 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,7 +54,7 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations delete-config")
-				dr.PrintSimple("Удалить конфигурацию", fmt.Sprintf("Config ID: %d", configID))
+				dr.PrintSimple("Delete configuration", fmt.Sprintf("Config ID: %d", configID))
 				return nil
 			}
 
@@ -67,7 +67,7 @@ func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be deleted without actually deleting")
 
 	return cmd
 }

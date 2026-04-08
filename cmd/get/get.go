@@ -12,7 +12,7 @@ import (
 )
 
 // GetClientFunc is the function type for obtaining an HTTP client.
-type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
+type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
 // Cmd is the root command for GET requests to the TestRail API.
 var Cmd = &cobra.Command{

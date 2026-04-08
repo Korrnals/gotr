@@ -68,7 +68,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
-	cmd.MarkFlagRequired("labels")
+	_ = cmd.MarkFlagRequired("labels")
 
 	return cmd
 }
@@ -128,9 +128,9 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().String("test-ids", "", "Список ID тестов через запятую (обязательно)")
 	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
 
-	cmd.MarkFlagRequired("run-id")
-	cmd.MarkFlagRequired("test-ids")
-	cmd.MarkFlagRequired("labels")
+	_ = cmd.MarkFlagRequired("run-id")
+	_ = cmd.MarkFlagRequired("test-ids")
+	_ = cmd.MarkFlagRequired("labels")
 
 	return cmd
 }

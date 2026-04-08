@@ -17,7 +17,7 @@ var (
 
 // Test helper to provide mock client
 func mockGetClient(mock *client.MockClient) GetClientFunc {
-	return func(cmd *cobra.Command) *client.HTTPClient {
+	return func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 }
@@ -143,7 +143,7 @@ func TestGetClientSafe_WithContext(t *testing.T) {
 	mock := &client.MockClient{}
 
 	// Create a mock function that returns the mock client
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 

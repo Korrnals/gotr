@@ -6,6 +6,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -79,10 +80,10 @@ func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 				return fmt.Errorf("failed to get results: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, results)
+			return output.OutputResultWithFlags(cmd, results)
 		},
 	}
 }
 
 // Backward compatibility: exported var for registration in result.go
-var listCmd = newListCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
+var listCmd = newListCmd(getClientSafe)

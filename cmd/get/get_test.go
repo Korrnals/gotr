@@ -159,7 +159,7 @@ func TestRegister(t *testing.T) {
 	rootCmd := &cobra.Command{Use: "test"}
 
 	// Создаем mock функцию для получения clientа
-	mockClientFn := func(cmd *cobra.Command) *client.HTTPClient {
+	mockClientFn := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
 
@@ -193,7 +193,7 @@ func TestRegister(t *testing.T) {
 
 func TestSetGetClientForTests(t *testing.T) {
 	// Проверяем что функция устанавливает getClient
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	mockFn := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
 
@@ -210,7 +210,7 @@ func TestSetGetClientForTests(t *testing.T) {
 func TestProductionVarClosures(t *testing.T) {
 	old := getClient
 	defer func() { getClient = old }()
-	getClient = func(cmd *cobra.Command) *client.HTTPClient { return nil }
+	getClient = func(cmd *cobra.Command) client.ClientInterface { return nil }
 
 	cmds := []struct {
 		name string

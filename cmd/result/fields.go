@@ -73,6 +73,4 @@ func printJSON(data interface{}) error {
 }
 
 // fieldsCmd is the exported command.
-var fieldsCmd = newFieldsCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+var fieldsCmd = newFieldsCmd(getClientSafe)

@@ -68,12 +68,12 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
-					svc.PrintSuccess(ctx, cmd, "Тест сохранён в %s", filepath)
+					output.PrintSuccess(cmd, "Тест сохранён в %s", filepath)
 				}
 				return nil
 			}
 
-			return svc.Output(ctx, cmd, test)
+			return output.OutputResultWithFlags(cmd, test)
 		},
 	}
 

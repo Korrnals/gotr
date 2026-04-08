@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +67,7 @@ Test — это экземпляр тест-кейса в конкретном t
 				return fmt.Errorf("failed to get results: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, results)
+			return output.OutputResultWithFlags(cmd, results)
 		},
 	}
 }
@@ -138,7 +139,7 @@ func newGetCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 				return fmt.Errorf("failed to get results: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, results)
+			return output.OutputResultWithFlags(cmd, results)
 		},
 	}
 }
@@ -224,6 +225,6 @@ func selectCaseIDForRun(ctx context.Context, cli client.ClientInterface, runID i
 
 // Backward compatibility: exported vars for registration in result.go
 var (
-	getCmd     = newGetCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
-	getCaseCmd = newGetCaseCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
+	getCmd     = newGetCmd(getClientSafe)
+	getCaseCmd = newGetCaseCmd(getClientSafe)
 )

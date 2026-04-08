@@ -1,4 +1,3 @@
-// Package test provides CLI commands for managing tests in TestRail
 package test
 
 import (
@@ -46,7 +45,7 @@ func getClientInterface(cmd *cobra.Command) client.ClientInterface {
 	if clientAccessor == nil {
 		return nil
 	}
-	return clientAccessor.GetClientSafe(cmd)
+	return clientAccessor.GetClientSafe(cmd.Context())
 }
 
 // SetGetClientForTests sets the getClient function for testing.

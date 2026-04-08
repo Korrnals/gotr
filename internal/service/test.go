@@ -8,8 +8,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/spf13/cobra"
 )
 
 // TestService provides business logic for working with tests.
@@ -91,12 +89,4 @@ func (s *TestService) ParseID(ctx context.Context, args []string, index int) (in
 	return id, nil
 }
 
-// PrintSuccess prints a success message.
-func (s *TestService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	output.PrintSuccess(cmd, format, args...)
-}
 
-// Output renders the result as JSON.
-func (s *TestService) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
-	return output.OutputResultWithFlags(cmd, v)
-}

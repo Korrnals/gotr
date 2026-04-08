@@ -85,7 +85,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the client
-	cli := GetClientInterface(cmd)
+	cli := GetClient(cmd)
 
 	// Read JSON from file if specified
 	jsonFile, _ := cmd.Flags().GetString("json-file")

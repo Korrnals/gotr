@@ -214,7 +214,7 @@ func TestSetGetClientForTests(t *testing.T) {
 	clientAccessor = nil
 
 	// Устанавливаем тестовую функцию
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
@@ -250,7 +250,7 @@ func TestGetClientSafe_WithAccessor(t *testing.T) {
 	}()
 
 	// Создаем accessor с тестовой функцией
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 	clientAccessor = client.NewAccessor(mockFn)
@@ -277,7 +277,7 @@ func TestRegister(t *testing.T) {
 	rootCmd := &cobra.Command{Use: "gotr"}
 
 	// Mock функция получения clientа
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 

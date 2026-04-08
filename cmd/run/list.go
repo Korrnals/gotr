@@ -79,7 +79,7 @@ ID, название, описание, статистика тестов (passe
 				return fmt.Errorf("failed to get test runs list: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, runs)
+			return output.OutputResultWithFlags(cmd, runs)
 		},
 	}
 
@@ -89,6 +89,4 @@ ID, название, описание, статистика тестов (passe
 }
 
 // listCmd is the exported command.
-var listCmd = newListCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+var listCmd = newListCmd(getClientSafe)

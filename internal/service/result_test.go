@@ -8,7 +8,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,14 +17,14 @@ func TestResultService_Constructors(t *testing.T) {
 	assert.NotNil(t, svc)
 
 	mock := &client.MockClient{}
-	svc2 := NewResultServiceFromInterface(mock)
+	svc2 := NewResultService(mock)
 	assert.NotNil(t, svc2)
 }
 
 func TestResultService_Getters(t *testing.T) {
 	ctx := context.Background()
 	mock := &client.MockClient{}
-	svc := NewResultServiceFromInterface(mock)
+	svc := NewResultService(mock)
 
 	t.Run("GetForTest invalid id", func(t *testing.T) {
 		_, err := svc.GetForTest(ctx, 0)
@@ -95,7 +94,7 @@ func TestResultService_Getters(t *testing.T) {
 func TestResultService_AddMethods(t *testing.T) {
 	ctx := context.Background()
 	mock := &client.MockClient{}
-	svc := NewResultServiceFromInterface(mock)
+	svc := NewResultService(mock)
 
 	t.Run("AddForTest validation error", func(t *testing.T) {
 		_, err := svc.AddForTest(ctx, 0, &data.AddResultRequest{StatusID: 1})
@@ -213,7 +212,7 @@ func TestResultService_AddMethods(t *testing.T) {
 func TestResultService_AddMethods_NilRequest_DoesNotPanic(t *testing.T) {
 	ctx := context.Background()
 	mock := &client.MockClient{}
-	svc := NewResultServiceFromInterface(mock)
+	svc := NewResultService(mock)
 
 	assert.NotPanics(t, func() {
 		res, err := svc.AddForTest(ctx, 1, nil)
@@ -234,45 +233,6 @@ func TestResultService_AddMethods_NilRequest_DoesNotPanic(t *testing.T) {
 		assert.Nil(t, res)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "request validation")
-	})
-}
-
-func TestResultService_OutputAndPrintSuccess(t *testing.T) {
-	svc := NewResultServiceFromInterface(&client.MockClient{})
-
-	t.Run("Output writes JSON", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "result-test"}
-		cmd.Flags().Bool("quiet", false, "")
-		cmd.Flags().String("output", "", "")
-
-		out := captureStdout(t, func() {
-			err := svc.Output(context.Background(), cmd, map[string]any{"result": "ok"})
-			assert.NoError(t, err)
-		})
-
-		assert.Contains(t, out, "\"result\": \"ok\"")
-	})
-
-	t.Run("PrintSuccess prints when not quiet", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "result-test"}
-		cmd.Flags().Bool("quiet", false, "")
-
-		out := captureStdout(t, func() {
-			svc.PrintSuccess(context.Background(), cmd, "result %d added", 5)
-		})
-
-		assert.Contains(t, out, "result 5 added")
-	})
-
-	t.Run("PrintSuccess silent in quiet mode", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "result-test"}
-		cmd.Flags().Bool("quiet", true, "")
-
-		out := captureStdout(t, func() {
-			svc.PrintSuccess(context.Background(), cmd, "should not print")
-		})
-
-		assert.Equal(t, "", out)
 	})
 }
 

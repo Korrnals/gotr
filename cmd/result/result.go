@@ -55,11 +55,11 @@ func SetGetClientForTests(fn GetClientFunc) {
 }
 
 // getClientSafe safely calls getClient with a nil guard.
-func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
+func getClientSafe(cmd *cobra.Command) client.ClientInterface {
 	if clientAccessor == nil {
 		return nil
 	}
-	return clientAccessor.GetClientSafe(cmd)
+	return clientAccessor.GetClientSafe(cmd.Context())
 }
 
 // Register adds the result command and all its subcommands to rootCmd.
@@ -82,8 +82,8 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	}
 
 	// Mark required flags (already defined in constructors)
-	addCmd.MarkFlagRequired("status-id")
-	addCaseCmd.MarkFlagRequired("case-id")
-	addCaseCmd.MarkFlagRequired("status-id")
-	addBulkCmd.MarkFlagRequired("results-file")
+	_ = addCmd.MarkFlagRequired("status-id")
+	_ = addCaseCmd.MarkFlagRequired("case-id")
+	_ = addCaseCmd.MarkFlagRequired("status-id")
+	_ = addBulkCmd.MarkFlagRequired("results-file")
 }

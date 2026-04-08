@@ -7,7 +7,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -170,44 +169,5 @@ func TestTestServiceParseID(t *testing.T) {
 		_, err := svc.ParseID(context.Background(), []string{"100"}, 2)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "ID is required")
-	})
-}
-
-func TestTestService_OutputAndPrintSuccess(t *testing.T) {
-	svc := NewTestService(&client.MockClient{})
-
-	t.Run("Output writes JSON", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "test-service"}
-		cmd.Flags().Bool("quiet", false, "")
-		cmd.Flags().String("output", "", "")
-
-		out := captureStdout(t, func() {
-			err := svc.Output(context.Background(), cmd, map[string]any{"kind": "test"})
-			assert.NoError(t, err)
-		})
-
-		assert.Contains(t, out, "\"kind\": \"test\"")
-	})
-
-	t.Run("PrintSuccess prints when not quiet", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "test-service"}
-		cmd.Flags().Bool("quiet", false, "")
-
-		out := captureStdout(t, func() {
-			svc.PrintSuccess(context.Background(), cmd, "test %d updated", 9)
-		})
-
-		assert.Contains(t, out, "test 9 updated")
-	})
-
-	t.Run("PrintSuccess silent in quiet mode", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "test-service"}
-		cmd.Flags().Bool("quiet", true, "")
-
-		out := captureStdout(t, func() {
-			svc.PrintSuccess(context.Background(), cmd, "hidden")
-		})
-
-		assert.Equal(t, "", out)
 	})
 }

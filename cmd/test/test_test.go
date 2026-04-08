@@ -34,7 +34,7 @@ func TestGetClientInterface_WithAccessor(t *testing.T) {
 	cmd := &cobra.Command{}
 
 	// Сначала устанавливаем accessor
-	SetGetClientForTests(func(cmd *cobra.Command) *client.HTTPClient {
+	SetGetClientForTests(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -51,7 +51,7 @@ func TestSetGetClientForTests_WithNilAccessor(t *testing.T) {
 	clientAccessor = nil
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
@@ -63,10 +63,10 @@ func TestSetGetClientForTests_WithNilAccessor(t *testing.T) {
 func TestSetGetClientForTests_WithExistingAccessor(t *testing.T) {
 	// Сначала инициализируем accessor
 	oldAccessor := clientAccessor
-	SetGetClientForTests(func(cmd *cobra.Command) *client.HTTPClient { return nil })
+	SetGetClientForTests(func(ctx context.Context) client.ClientInterface { return nil })
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
@@ -80,7 +80,7 @@ func TestSetGetClientForTests_WithExistingAccessor(t *testing.T) {
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -100,7 +100,7 @@ func TestRegister(t *testing.T) {
 func TestRegister_Help(t *testing.T) {
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -117,7 +117,7 @@ func TestRegister_Help(t *testing.T) {
 func TestRegister_NoLocalQuietFlags(t *testing.T) {
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 

@@ -4,13 +4,10 @@ package service
 import (
 	"context"
 	"errors"
-	"io"
-	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -169,7 +166,7 @@ func TestRunService_ParseID(t *testing.T) {
 func TestRunService_Methods(t *testing.T) {
 	ctx := context.Background()
 	mock := &client.MockClient{}
-	svc := NewRunServiceFromInterface(mock)
+	svc := NewRunService(mock)
 
 	t.Run("Get invalid id", func(t *testing.T) {
 		_, err := svc.Get(ctx, 0)
@@ -295,7 +292,7 @@ func TestRunService_Methods(t *testing.T) {
 
 func TestRunService_Create_NilRequest_DoesNotPanic(t *testing.T) {
 	mock := &client.MockClient{}
-	svc := NewRunServiceFromInterface(mock)
+	svc := NewRunService(mock)
 
 	assert.NotPanics(t, func() {
 		run, err := svc.Create(context.Background(), 100, nil)
@@ -309,61 +306,4 @@ func TestRunService_ConstructorsAndWrappers(t *testing.T) {
 	httpClient := &client.HTTPClient{}
 	runSvc := NewRunService(httpClient)
 	assert.NotNil(t, runSvc)
-
-	t.Run("Output writes JSON", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "run-test"}
-		cmd.Flags().Bool("quiet", false, "")
-		cmd.Flags().String("output", "", "")
-
-		out := captureStdout(t, func() {
-			err := runSvc.Output(context.Background(), cmd, map[string]any{"ok": true})
-			assert.NoError(t, err)
-		})
-
-		assert.Contains(t, out, "\"ok\": true")
-	})
-
-	t.Run("PrintSuccess prints when not quiet", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "run-test"}
-		cmd.Flags().Bool("quiet", false, "")
-
-		out := captureStdout(t, func() {
-			runSvc.PrintSuccess(context.Background(), cmd, "run %d created", 7)
-		})
-
-		assert.Contains(t, out, "run 7 created")
-	})
-
-	t.Run("PrintSuccess silent in quiet mode", func(t *testing.T) {
-		cmd := &cobra.Command{Use: "run-test"}
-		cmd.Flags().Bool("quiet", true, "")
-
-		out := captureStdout(t, func() {
-			runSvc.PrintSuccess(context.Background(), cmd, "hidden")
-		})
-
-		assert.Equal(t, "", out)
-	})
-}
-
-func captureStdout(t *testing.T, fn func()) string {
-	t.Helper()
-
-	old := os.Stdout
-	r, w, err := os.Pipe()
-	assert.NoError(t, err)
-
-	os.Stdout = w
-	defer func() {
-		os.Stdout = old
-	}()
-
-	fn()
-	assert.NoError(t, w.Close())
-
-	b, err := io.ReadAll(r)
-	assert.NoError(t, err)
-	assert.NoError(t, r.Close())
-
-	return string(b)
 }

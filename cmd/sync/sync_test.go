@@ -22,7 +22,7 @@ func TestRegister(t *testing.T) {
 
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -58,7 +58,7 @@ func TestRegister_Help(t *testing.T) {
 
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -93,7 +93,7 @@ func TestGetClientSafe_WithAccessorReturnsClient(t *testing.T) {
 	mockClient := &client.HTTPClient{}
 
 	// Создаём accessor, который возвращает client
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return mockClient
 	})
 
@@ -112,7 +112,7 @@ func TestGetClientSafe_WithAccessorReturnsNil_UsesContextFallback(t *testing.T) 
 	defer func() { clientAccessor = oldAccessor }()
 
 	// Создаём accessor, который возвращает nil
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -135,7 +135,7 @@ func TestGetClientSafe_WithInvalidTypeInContext(t *testing.T) {
 	defer func() { clientAccessor = oldAccessor }()
 
 	// Создаём accessor, который возвращает nil
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -155,7 +155,7 @@ func TestGetClientSafe_WithNilContext(t *testing.T) {
 	defer func() { clientAccessor = oldAccessor }()
 
 	// Создаём accessor, который возвращает nil
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -214,7 +214,7 @@ func TestSetGetClientForTests_WithNilAccessor(t *testing.T) {
 	clientAccessor = nil
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
@@ -226,10 +226,10 @@ func TestSetGetClientForTests_WithNilAccessor(t *testing.T) {
 func TestSetGetClientForTests_WithExistingAccessor(t *testing.T) {
 	// Сначала инициализируем accessor
 	oldAccessor := clientAccessor
-	SetGetClientForTests(func(cmd *cobra.Command) *client.HTTPClient { return nil })
+	SetGetClientForTests(func(ctx context.Context) client.ClientInterface { return nil })
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
@@ -285,7 +285,7 @@ func TestGetClientSafe_Context(t *testing.T) {
 	oldAccessor := clientAccessor
 	defer func() { clientAccessor = oldAccessor }()
 
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -333,7 +333,7 @@ func TestSetGetClientForTests_NilAccessorInitially(t *testing.T) {
 
 	clientAccessor = nil
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 

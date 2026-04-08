@@ -1,16 +1,16 @@
 package sync
 
 import (
+	"context"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/service/migration"
-	"github.com/spf13/cobra"
 )
 
 // init устанавливает getClient для тестов
 func init() {
-	SetGetClientForTests(func(cmd *cobra.Command) *client.HTTPClient {
+	SetGetClientForTests(func(ctx context.Context) client.ClientInterface {
 		// В тестах используется mockClient через newMigration
 		return nil
 	})

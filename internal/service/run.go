@@ -11,8 +11,6 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
@@ -32,13 +30,8 @@ type RunService struct {
 }
 
 // NewRunService creates a new service for working with test runs.
-func NewRunService(c *client.HTTPClient) *RunService {
+func NewRunService(c client.ClientInterface) *RunService {
 	return &RunService{client: c}
-}
-
-// NewRunServiceFromInterface creates a service from a client interface (for testing).
-func NewRunServiceFromInterface(cli client.ClientInterface) *RunService {
-	return &RunService{client: cli}
 }
 
 // Get retrieves information about a test run by ID.
@@ -155,16 +148,6 @@ func (s *RunService) Delete(ctx context.Context, runID int64) error {
 
 	log.L().Warn("test run deleted", zap.Int64("run_id", runID))
 	return nil
-}
-
-// Output renders the result as JSON and saves to a file (if --output is set).
-func (s *RunService) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
-	return output.OutputResultWithFlags(cmd, v)
-}
-
-// PrintSuccess prints a success message.
-func (s *RunService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	output.PrintSuccess(cmd, format, args...)
 }
 
 // ParseID parses an ID from command arguments.

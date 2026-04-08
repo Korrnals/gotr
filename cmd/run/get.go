@@ -62,7 +62,7 @@ Test run — это экземпляр тест-сюиты, запущенный
 				return fmt.Errorf("failed to get test run: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, run)
+			return output.OutputResultWithFlags(cmd, run)
 		},
 	}
 
@@ -72,6 +72,4 @@ Test run — это экземпляр тест-сюиты, запущенный
 }
 
 // getCmd is the exported command.
-var getCmd = newGetCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+var getCmd = newGetCmd(getClientSafe)

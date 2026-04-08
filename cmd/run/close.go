@@ -65,8 +65,8 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 				return fmt.Errorf("failed to close test run: %w", err)
 			}
 
-			svc.PrintSuccess(ctx, cmd, "Test run закрыт успешно:")
-			return svc.Output(ctx, cmd, run)
+			output.PrintSuccess(cmd, "Test run закрыт успешно:")
+			return output.OutputResultWithFlags(cmd, run)
 		},
 	}
 
@@ -76,6 +76,4 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 }
 
 // closeCmd is the exported command.
-var closeCmd = newCloseCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+var closeCmd = newCloseCmd(getClientSafe)

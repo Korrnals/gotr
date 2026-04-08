@@ -95,7 +95,7 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 
 	// Get the client
-	cli := GetClientInterface(cmd)
+	cli := GetClient(cmd)
 
 	// Parse ID from args (attachment has its own argument structure)
 	var id int64

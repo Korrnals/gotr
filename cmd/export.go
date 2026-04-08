@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
@@ -36,7 +37,10 @@ Examples:
 			return err
 		}
 
-		client := GetClient(cmd)
+		httpClient, ok := GetClient(cmd).(*client.HTTPClient)
+		if !ok {
+			return fmt.Errorf("export requires full HTTP client (not available with mock)")
+		}
 
 		// Build full endpoint path and query parameters
 		fullEndpoint, queryParams, err := buildRequestParams(endpoint, mainID, cmd)
@@ -49,13 +53,13 @@ Examples:
 
 		// Request
 		start := time.Now()
-		resp, err := client.Get(ctx, fullEndpoint, queryParams)
+		resp, err := httpClient.Get(ctx, fullEndpoint, queryParams)
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
 
-		data, err := client.ReadResponse(ctx, resp, time.Since(start), "json")
+		data, err := httpClient.ReadResponse(ctx, resp, time.Since(start), "json")
 		if err != nil {
 			return fmt.Errorf("response reading error: %w", err)
 		}
@@ -83,7 +87,7 @@ Examples:
 			if mainID != "" {
 				filename = fmt.Sprintf("%s/%s_%s_%s.json", exportDir, resource, mainID, time.Now().Format("20060102_150405"))
 			}
-			if err := client.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
+			if err := httpClient.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
 				return fmt.Errorf("file export error %s: %w", filename, err)
 			}
 			if !quiet {

@@ -174,19 +174,11 @@ func TestRunServiceWrapper_Methods(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(123), id)
 
-	// Test PrintSuccess - just verify it doesn't panic
-	cmd := &cobra.Command{}
-	wrapper.PrintSuccess(ctx, cmd, "Test message")
-
 	// Test Create
 	req := &data.AddRunRequest{Name: "Test Run", SuiteID: 100}
 	run, err := wrapper.Create(ctx, 30, req)
 	assert.NoError(t, err)
 	assert.NotNil(t, run)
-
-	// Test Output
-	err = wrapper.Output(ctx, cmd, run)
-	assert.NoError(t, err)
 
 	// Test Close
 	closedRun, err := wrapper.Close(ctx, 12345)

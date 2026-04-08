@@ -11,8 +11,6 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
@@ -34,13 +32,8 @@ type ResultService struct {
 }
 
 // NewResultService creates a new service for working with test results.
-func NewResultService(c *client.HTTPClient) *ResultService {
+func NewResultService(c client.ClientInterface) *ResultService {
 	return &ResultService{client: c}
-}
-
-// NewResultServiceFromInterface creates a service from a client interface (for testing).
-func NewResultServiceFromInterface(cli client.ClientInterface) *ResultService {
-	return &ResultService{client: cli}
 }
 
 // GetForTest retrieves results for a test ID.
@@ -197,16 +190,6 @@ func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req
 		return nil, fmt.Errorf("request validation: %w", err)
 	}
 	return s.client.AddResultsForCases(ctx, runID, req)
-}
-
-// Output renders the result as JSON and saves to a file (if --output is set).
-func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
-	return output.OutputResultWithFlags(cmd, v)
-}
-
-// PrintSuccess prints a success message.
-func (s *ResultService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	output.PrintSuccess(cmd, format, args...)
 }
 
 // ParseID parses an ID from command arguments.

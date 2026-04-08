@@ -26,20 +26,11 @@ func (w *runServiceWrapper) ParseID(ctx context.Context, args []string, index in
 	return w.svc.ParseID(ctx, args, index)
 }
 
-// PrintSuccess delegates success message formatting to the underlying run service.
-func (w *runServiceWrapper) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	w.svc.PrintSuccess(ctx, cmd, format, args...)
-}
-
 // Create delegates run creation to the underlying run service.
 func (w *runServiceWrapper) Create(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
 	return w.svc.Create(ctx, projectID, req)
 }
 
-// Output delegates command output formatting to the underlying run service.
-func (w *runServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
-	return w.svc.Output(ctx, cmd, v)
-}
 
 // Close delegates run closing to the underlying run service.
 func (w *runServiceWrapper) Close(ctx context.Context, runID int64) (*data.Run, error) {
@@ -63,12 +54,7 @@ func (w *runServiceWrapper) GetByProject(ctx context.Context, projectID int64) (
 
 // newRunServiceFromInterface creates a service from a client interface.
 func newRunServiceFromInterface(cli client.ClientInterface) *runServiceWrapper {
-	// Try to cast to *HTTPClient if not a mock
-	if httpClient, ok := cli.(*client.HTTPClient); ok {
-		return &runServiceWrapper{svc: service.NewRunService(httpClient)}
-	}
-	// For tests with mock — use a special constructor
-	return &runServiceWrapper{svc: service.NewRunServiceFromInterface(cli)}
+	return &runServiceWrapper{svc: service.NewRunService(cli)}
 }
 
 // newDeleteCmd creates the 'run delete' command.
@@ -130,7 +116,7 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return fmt.Errorf("failed to delete test run: %w", err)
 			}
 
-			svc.PrintSuccess(ctx, cmd, "Test run %d удалён успешно", runID)
+			output.PrintSuccess(cmd, "Test run %d удалён успешно", runID)
 			return nil
 		},
 	}
@@ -141,6 +127,4 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 }
 
 // deleteCmd is used for registration in Register.
-var deleteCmd = newDeleteCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+var deleteCmd = newDeleteCmd(getClientSafe)

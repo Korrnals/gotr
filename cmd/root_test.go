@@ -40,12 +40,12 @@ func TestGetClient_NotNilContext(t *testing.T) {
 	assert.NotNil(t, GetClient)
 }
 
-// TestGetClientInterface_NotNilContext проверяет что GetClientInterface требует контекст
+// TestGetClientInterface_NotNilContext проверяет что GetClient требует контекст
 func TestGetClientInterface_NotNilContext(t *testing.T) {
-	// GetClientInterface требует контекст с clientом
+	// GetClient требует контекст с clientом
 	// Если контекст пустой, функция вызывает panic
 	// Проверяем только что функция существует
-	assert.NotNil(t, GetClientInterface)
+	assert.NotNil(t, GetClient)
 }
 
 // TestRootCmd_NonInteractiveFlagRegistered проверяет наличие флага --non-interactive
@@ -82,13 +82,14 @@ func TestGetClient_PanicOnUnexpectedType(t *testing.T) {
 	})
 }
 
-func TestGetClientInterface_WithMock(t *testing.T) {
+// TestGetClient_WithMock проверяет что GetClient работает с mock клиентом
+func TestGetClient_WithMock(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
 
-	got := GetClientInterface(cmd)
+	got := GetClient(cmd)
 	assert.Equal(t, mock, got)
 }
 
@@ -97,7 +98,7 @@ func TestGetClientInterface_PanicWithoutClient(t *testing.T) {
 	cmd.SetContext(context.Background())
 
 	assert.Panics(t, func() {
-		_ = GetClientInterface(cmd)
+		_ = GetClient(cmd)
 	})
 }
 
@@ -106,7 +107,7 @@ func TestGetClientInterface_PanicOnUnexpectedType(t *testing.T) {
 	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, struct{}{}))
 
 	assert.Panics(t, func() {
-		_ = GetClientInterface(cmd)
+		_ = GetClient(cmd)
 	})
 }
 

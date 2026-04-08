@@ -92,8 +92,8 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return fmt.Errorf("failed to update test run: %w", err)
 			}
 
-			svc.PrintSuccess(ctx, cmd, "Test run обновлён успешно:")
-			return svc.Output(ctx, cmd, run)
+			output.PrintSuccess(cmd, "Test run обновлён успешно:")
+			return output.OutputResultWithFlags(cmd, run)
 		},
 	}
 
@@ -109,6 +109,4 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 }
 
 // updateCmd is the exported command.
-var updateCmd = newUpdateCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+var updateCmd = newUpdateCmd(getClientSafe)

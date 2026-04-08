@@ -49,7 +49,7 @@ func runDelete(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("endpoint and id required: gotr delete <endpoint> <id>")
 	}
 
-	cli := GetClientInterface(cmd)
+	cli := GetClient(cmd)
 	p := interactive.PrompterFromContext(ctx)
 
 	endpoint := ""

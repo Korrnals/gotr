@@ -92,12 +92,12 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
-					svc.PrintSuccess(ctx, cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)
+					output.PrintSuccess(cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)
 				}
 				return nil
 			}
 
-			return svc.Output(ctx, cmd, tests)
+			return output.OutputResultWithFlags(cmd, tests)
 		},
 	}
 

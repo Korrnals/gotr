@@ -30,6 +30,42 @@ func OutputResult(cmd *cobra.Command, data interface{}, resource string) error {
 	return err
 }
 
+// resolveSavePath determines the save path from flags and interactive prompts.
+func resolveSavePath(cmd *cobra.Command, saveFlag bool) (string, error) {
+	if saveFlag {
+		return defaultSavePathMarker, nil
+	}
+	if ShouldPromptForInteractiveSave(cmd) {
+		p := interactive.PrompterFromContext(cmd.Context())
+		promptedPath, err := PromptSavePathWithOptions(p, "response", false)
+		if err != nil {
+			if !isSkippableInteractiveSavePromptError(err) {
+				return "", err
+			}
+			return "", nil
+		}
+		return promptedPath, nil
+	}
+	return "", nil
+}
+
+// wrapWithMeta wraps data with metadata (status, duration, timestamp).
+func wrapWithMeta(data any, start time.Time) any {
+	return struct {
+		Status     string        `json:"status"`
+		StatusCode int           `json:"status_code"`
+		Duration   time.Duration `json:"duration"`
+		Timestamp  time.Time     `json:"timestamp"`
+		Data       any           `json:"data"`
+	}{
+		Status:     "200 OK",
+		StatusCode: 200,
+		Duration:   time.Since(start),
+		Timestamp:  time.Now(),
+		Data:       data,
+	}
+}
+
 // OutputGetResult handles get-command output, including save/json-full/jq modes.
 func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
@@ -43,37 +79,15 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 		jqEnabled = viper.GetBool("jq_format")
 	}
 
-	savePath := ""
-	if saveFlag {
-		savePath = defaultSavePathMarker
-	} else if ShouldPromptForInteractiveSave(cmd) {
-		p := interactive.PrompterFromContext(cmd.Context())
-		promptedPath, err := PromptSavePathWithOptions(p, "response", false)
-		if err != nil {
-			if !isSkippableInteractiveSavePromptError(err) {
-				return err
-			}
-			promptedPath = ""
-		}
-		savePath = promptedPath
+	savePath, err := resolveSavePath(cmd, saveFlag)
+	if err != nil {
+		return err
 	}
 
 	if savePath != "" {
 		toSave := data
 		if !bodyOnly {
-			toSave = struct {
-				Status     string        `json:"status"`
-				StatusCode int           `json:"status_code"`
-				Duration   time.Duration `json:"duration"`
-				Timestamp  time.Time     `json:"timestamp"`
-				Data       any           `json:"data"`
-			}{
-				Status:     "200 OK",
-				StatusCode: 200,
-				Duration:   time.Since(start),
-				Timestamp:  time.Now(),
-				Data:       data,
-			}
+			toSave = wrapWithMeta(data, start)
 		}
 
 		fpath, err := outputBySavePath(toSave, "get", "json", savePath)
@@ -91,10 +105,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 		if err != nil {
 			return fmt.Errorf("jq marshal error: %w", err)
 		}
-		if err := embed.RunEmbeddedJQ(payload, jqFilter); err != nil {
-			return err
-		}
-		return nil
+		return embed.RunEmbeddedJQ(payload, jqFilter)
 	}
 
 	if quiet {
@@ -105,20 +116,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 	case "json":
 		return ui.JSON(cmd, data)
 	case "json-full":
-		full := struct {
-			Status     string        `json:"status"`
-			StatusCode int           `json:"status_code"`
-			Duration   time.Duration `json:"duration"`
-			Timestamp  time.Time     `json:"timestamp"`
-			Data       any           `json:"data"`
-		}{
-			Status:     "200 OK",
-			StatusCode: 200,
-			Duration:   time.Since(start),
-			Timestamp:  time.Now(),
-			Data:       data,
-		}
-		return ui.JSON(cmd, full)
+		return ui.JSON(cmd, wrapWithMeta(data, start))
 	default:
 		ui.Warning(os.Stdout, "Table output not implemented yet")
 		return nil

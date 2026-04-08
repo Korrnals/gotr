@@ -367,7 +367,7 @@ func handleFailedPages(ctx context.Context, cli client.ClientInterface, allFaile
 
 // fetchCasesForProject loads all cases for a single project.
 // task is a *ui.Task implementing concurrency.PaginatedProgressReporter — gets live updates.
-func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task ui.TaskHandle, parallelSuites, parallelPages int, timeout time.Duration, rateLimit int, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
+func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, task ui.TaskHandle, parallelSuites, parallelPages int, timeout time.Duration, rateLimit, pageRetries int) ([]ItemInfo, []concurrency.FailedPage, projectDataStats, error) {
 	fetchStart := time.Now()
 	pds := projectDataStats{Suites: len(suites)}
 

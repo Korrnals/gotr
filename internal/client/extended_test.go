@@ -785,7 +785,7 @@ func TestHTTPExtended_ErrorBranches(t *testing.T) {
 	})
 }
 
-// TestHTTPExtended_SuccessCases тестирует успешные сценарии для всех методов
+// TestHTTPExtended_SuccessCases tests success scenarios for all methods
 func TestHTTPExtended_SuccessCases(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1012,7 +1012,7 @@ func TestHTTPExtended_SuccessCases(t *testing.T) {
 	}
 }
 
-// TestHTTPExtended_EdgeCases тестирует edge cases и граничные условия
+// TestHTTPExtended_EdgeCases tests edge cases and boundary conditions
 func TestHTTPExtended_EdgeCases(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		url := r.URL.String()

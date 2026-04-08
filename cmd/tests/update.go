@@ -18,18 +18,18 @@ import (
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [test_id]",
-		Short: "Обновить тест",
-		Long: `Обновляет тест (результат выполнения тест-кейса).
+		Short: "Update a test",
+		Long: `Updates a test (result of a test case execution).
 
-Можно изменить статус теста (passed, failed, blocked, etc.) и
-назначить исполнителя.`,
-		Example: `  # Обновить статус теста
+You can change the test status (passed, failed, blocked, etc.) and
+assign an executor.`,
+		Example: `  # Update test status
   gotr tests update 12345 --status-id=1
 
-  # Назначить исполнителя
+  # Assign an executor
   gotr tests update 12345 --assigned-to=5
 
-  # Проверить перед обновлением
+  # Verify before updating
   gotr tests update 12345 --status-id=5 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,7 +67,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("tests update")
-				dr.PrintSimple("Обновить тест", fmt.Sprintf("Test ID: %d", testID))
+				dr.PrintSimple("Update test", fmt.Sprintf("Test ID: %d", testID))
 				return nil
 			}
 
@@ -81,10 +81,10 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().Int64("status-id", 0, "ID статуса теста (1=passed, 5=failed, etc.)")
-	cmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
+	cmd.Flags().Int64("status-id", 0, "Test status ID (1=passed, 5=failed, etc.)")
+	cmd.Flags().Int64("assigned-to", 0, "User ID to assign")
 
 	return cmd
 }

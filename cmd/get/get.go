@@ -17,27 +17,27 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 // Cmd is the root command for GET requests to the TestRail API.
 var Cmd = &cobra.Command{
 	Use:   "get",
-	Short: "GET-запросы к TestRail API",
-	Long: `Выполняет GET-запросы к TestRail API.
+	Short: "GET requests to TestRail API",
+	Long: `Performs GET requests to TestRail API.
 
-Подкоманды:
-	case               - получить один кейс по ID кейса
-	cases              - получить кейсы проекта (требует ID проекта и ID сюиты)
-	case-types         - получить список типов кейсов
-	case-fields        - получить список полей кейсов
-	case-history       - получить историю изменений кейса по ID кейса
+Subcommands:
+	case               - get a single case by case ID
+	cases              - get project cases (requires project ID and suite ID)
+	case-types         - get list of case types
+	case-fields        - get list of case fields
+	case-history       - get case change history by case ID
 
-	project            - получить один проект по ID проекта
-	projects           - получить все projects
+	project            - get a single project by project ID
+	projects           - get all projects
 
-	sharedstep         - получить один shared step по ID шага
-	sharedsteps        - получить shared steps проекта (требует ID проекта)
-	sharedstep-history - получить историю изменений shared step по ID шага
+	sharedstep         - get a single shared step by step ID
+	sharedsteps        - get project shared steps (requires project ID)
+	sharedstep-history - get shared step change history by step ID
 
-	suite              - получить одну тест-сюиту по ID сюиты
-	suites             - получить тест-сюиты проекта (требует ID проекта)
+	suite              - get a single test suite by suite ID
+	suites             - get project test suites (requires project ID)
 
-Примеры:
+Examples:
 	gotr get project 30
 	gotr get projects
 
@@ -94,12 +94,12 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 
 	// Local flags — scoped to get subcommands and their children
 	for _, subCmd := range Cmd.Commands() {
-		subCmd.Flags().StringP("type", "t", "json", "Формат вывода: json, json-full, table")
+		subCmd.Flags().StringP("type", "t", "json", "Output format: json, json-full, table")
 		output.AddFlag(subCmd)
-		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
-		subCmd.Flags().BoolP("jq", "j", false, "Включить jq-форматирование (переопределяет конфиг jq_format)")
-		subCmd.Flags().String("jq-filter", "", "jq-фильтр")
-		subCmd.Flags().BoolP("body-only", "b", false, "Сохранить только тело ответа (без метаданных)")
+		subCmd.Flags().BoolP("quiet", "q", false, "Quiet mode")
+		subCmd.Flags().BoolP("jq", "j", false, "Enable jq formatting (overrides config jq_format)")
+		subCmd.Flags().String("jq-filter", "", "jq filter")
+		subCmd.Flags().BoolP("body-only", "b", false, "Save response body only (without metadata)")
 	}
 
 	// Cases-specific flags are already defined in the newCasesCmd constructor

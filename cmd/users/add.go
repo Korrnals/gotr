@@ -16,14 +16,14 @@ import (
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add",
-		Short: "Создать нового пользователя",
-		Long: `Создает нового пользователя в системе TestRail.
+		Short: "Create a new user",
+		Long: `Creates a new user in the TestRail system.
 
-Требуются административные права для создания пользователей.`,
-		Example: `  # Создать обычного пользователя
+Administrative privileges are required to create users.`,
+		Example: `  # Create a regular user
   gotr users add --name "John Doe" --email "john@example.com"
 
-  # Создать администратора
+  # Create an administrator
   gotr users add --name "Admin User" --email "admin@example.com" --admin --role 1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name, _ := cmd.Flags().GetString("name")
@@ -66,12 +66,12 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("name", "", "Имя пользователя (обязательно)")
-	cmd.Flags().String("email", "", "Email пользователя (обязательно)")
-	cmd.Flags().Int64("role", 0, "ID роли пользователя")
-	cmd.Flags().Bool("admin", false, "Сделать пользователя администратором")
-	cmd.Flags().String("password", "", "Пароль пользователя")
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания пользователя")
+	cmd.Flags().String("name", "", "User name (required)")
+	cmd.Flags().String("email", "", "User email (required)")
+	cmd.Flags().Int64("role", 0, "User role ID")
+	cmd.Flags().Bool("admin", false, "Make the user an administrator")
+	cmd.Flags().String("password", "", "User password")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating the user")
 	output.AddFlag(cmd)
 
 	_ = cmd.MarkFlagRequired("name")

@@ -169,13 +169,13 @@ func (s *RunService) validateID(id int64, fieldName string) error {
 // validateCreateRequest validates the parameters for creating a run.
 func (s *RunService) validateCreateRequest(req *data.AddRunRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if req.Name == "" {
-		return errors.New("название run (name) обязательно")
+		return errors.New("run name is required")
 	}
 	if req.SuiteID <= 0 {
-		return errors.New("suite_id должен быть положительным числом")
+		return errors.New("suite_id must be a positive number")
 	}
 	return nil
 }

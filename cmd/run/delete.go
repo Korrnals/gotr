@@ -62,27 +62,27 @@ func newRunServiceFromInterface(cli client.ClientInterface) *runServiceWrapper {
 func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [run-id]",
-		Short: "Удалить test run",
-		Long: `Удаляет test run по его ID.
+		Short: "Delete a test run",
+		Long: `Deletes a test run by its ID.
 
-⚠️ ВНИМАНИЕ: Это действие необратимо!
+WARNING: This action is irreversible!
 
-При удалении run:
-- Все результаты тестов будут удалены
-- Все тесты (tests) будут удалены
-- Сама структура run будет удалена
-- Кейсы в сьюте останутся нетронутыми
+When a run is deleted:
+- All test results will be deleted
+- All tests will be deleted
+- The run structure itself will be deleted
+- Cases in the suite will remain untouched
 
-Рекомендуется сначала закрыть run (gotr run close), а не удалять.
+It is recommended to close a run (gotr run close) rather than delete it.
 
-Примеры:
-	# Удалить run (без подтверждения — осторожно!)
+Examples:
+	# Delete a run (no confirmation — use with caution!)
 	gotr run delete 12345
 
-	# Удалить в тихом режиме (для скриптов)
+	# Delete in quiet mode (for scripts)
 	gotr run delete 12345 -q
 
-	# Dry-run режим
+	# Dry-run mode
 	gotr run delete 12345 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -116,12 +116,12 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return fmt.Errorf("failed to delete test run: %w", err)
 			}
 
-			output.PrintSuccess(cmd, "Test run %d удалён успешно", runID)
+			output.PrintSuccess(cmd, "Test run %d deleted successfully", runID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }

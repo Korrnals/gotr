@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для attachments delete ====================
+// ==================== Tests for attachments delete ====================
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

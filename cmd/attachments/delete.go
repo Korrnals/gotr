@@ -17,11 +17,11 @@ import (
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [attachment_id]",
-		Short: "Удалить вложение",
-		Long: `Удаляет вложение по его ID.
+		Short: "Delete an attachment",
+		Long: `Deletes an attachment by its ID.
 
-⚠️ Внимание: удаление необратимо.`,
-		Example: `  # Удалить вложение
+⚠️ Warning: deletion is irreversible.`,
+		Example: `  # Delete an attachment
   gotr attachments delete 12345`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -66,7 +66,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

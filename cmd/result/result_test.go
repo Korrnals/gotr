@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для saveToFile ====================
+// ==================== Tests for saveToFile ====================
 
 func TestSaveToFile_Success(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -30,7 +30,7 @@ func TestSaveToFile_Success(t *testing.T) {
 	err := saveToFile(data, filename)
 	assert.NoError(t, err)
 
-	// Проверяем что файл создан
+	// Verify that the file was created
 	content, err := os.ReadFile(filename)
 	assert.NoError(t, err)
 	assert.Contains(t, string(content), "123")
@@ -41,7 +41,7 @@ func TestSaveToFile_InvalidData(t *testing.T) {
 	tmpDir := t.TempDir()
 	filename := filepath.Join(tmpDir, "test_output.json")
 
-	// Канал нельзя сериализовать в JSON
+	// Channels cannot be serialized to JSON
 	invalidData := make(chan int)
 
 	err := saveToFile(invalidData, filename)
@@ -50,7 +50,7 @@ func TestSaveToFile_InvalidData(t *testing.T) {
 }
 
 func TestSaveToFile_InvalidPath(t *testing.T) {
-	// Путь к несуществующей директории без прав на создание
+	// Path to a non-existent directory without write permissions
 	invalidPath := "/nonexistent_dir_xyz/test.json"
 
 	data := map[string]string{"key": "value"}
@@ -59,7 +59,7 @@ func TestSaveToFile_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для service_wrapper ====================
+// ==================== Tests for service_wrapper ====================
 
 func TestResultServiceWrapper_AddResults(t *testing.T) {
 	mock := &client.MockClient{
@@ -74,10 +74,10 @@ func TestResultServiceWrapper_AddResults(t *testing.T) {
 	}
 
 	wrapper := &resultServiceWrapper{svc: nil}
-	// Проверяем что wrapper реализует интерфейс
+	// Verify that wrapper implements the interface
 	var _ ResultServiceInterface = wrapper
 
-	// Создадим сервис через конструктор
+	// Create a service via constructor
 	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 	results, err := svc.AddResults(ctx, 12345, &data.AddResultsRequest{
@@ -185,7 +185,7 @@ func TestResultServiceWrapper_GetRunsForProject_Error(t *testing.T) {
 	assert.Nil(t, runs)
 }
 
-// ==================== Тесты для newResultServiceFromInterface ====================
+// ==================== Tests for newResultServiceFromInterface ====================
 
 func TestNewResultServiceFromInterface_WithHTTPClient(t *testing.T) {
 	httpClient := &client.HTTPClient{}
@@ -201,19 +201,19 @@ func TestNewResultServiceFromInterface_WithMockClient(t *testing.T) {
 	assert.NotNil(t, svc)
 }
 
-// ==================== Тесты для SetGetClientForTests и getClientSafe ====================
+// ==================== Tests for SetGetClientForTests and getClientSafe ====================
 
 func TestSetGetClientForTests(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Сбрасываем accessor
+	// Reset accessor
 	clientAccessor = nil
 
-	// Устанавливаем тестовую функцию
+	// Set test function
 	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
@@ -221,95 +221,95 @@ func TestSetGetClientForTests(t *testing.T) {
 	SetGetClientForTests(mockFn)
 	assert.NotNil(t, clientAccessor)
 
-	// Повторный вызов должен обновить функцию
+	// Repeated call should update the function
 	SetGetClientForTests(mockFn)
 	assert.NotNil(t, clientAccessor)
 }
 
 func TestGetClientSafe_WithNilAccessor(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Сбрасываем accessor
+	// Reset accessor
 	clientAccessor = nil
 
-	// Должен вернуть nil когда accessor nil
+	// Should return nil when accessor is nil
 	cmd := &cobra.Command{}
 	cli := getClientSafe(cmd)
 	assert.Nil(t, cli)
 }
 
 func TestGetClientSafe_WithAccessor(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Создаем accessor с тестовой функцией
+	// Create accessor with test function
 	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 	clientAccessor = client.NewAccessor(mockFn)
 
-	// Должен вернуть nil (так как mockFn возвращает nil)
+	// Should return nil (since mockFn returns nil)
 	cmd := &cobra.Command{}
 	cli := getClientSafe(cmd)
 	assert.Nil(t, cli)
 }
 
-// ==================== Тесты для Register ====================
+// ==================== Tests for Register ====================
 
 func TestRegister(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Сбрасываем accessor
+	// Reset accessor
 	clientAccessor = nil
 
-	// Создаем корневую команду
+	// Create root command
 	rootCmd := &cobra.Command{Use: "gotr"}
 
-	// Mock функция получения clientа
+	// Mock client getter function
 	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
-	// Регистрируем result команду
+	// Register result command
 	Register(rootCmd, mockFn)
 
-	// Проверяем что команда добавлена
+	// Verify that command was added
 	assert.NotNil(t, clientAccessor)
 
-	// Проверяем что result команда есть в root
+	// Verify that result command exists in root
 	resultCmd, _, err := rootCmd.Find([]string{"result"})
 	assert.NoError(t, err)
 	assert.NotNil(t, resultCmd)
 
-	// Проверяем что подкоманды добавлены
+	// Verify that subcommands were added
 	subcommands := []string{"list", "get", "get-case", "add", "add-case", "add-bulk", "fields"}
 	for _, sub := range subcommands {
 		cmd, _, err := rootCmd.Find([]string{"result", sub})
 		assert.NoError(t, err, "subcommand %s should exist", sub)
 		assert.NotNil(t, cmd, "subcommand %s should not be nil", sub)
 
-		// Проверяем что флаги save и quiet добавлены
+		// Verify that save and quiet flags were added
 		saveFlag := cmd.Flags().Lookup("save")
 		assert.NotNil(t, saveFlag, "save flag should exist on %s", sub)
 
-		// Локальный quiet override не должен объявляться на подкомандах.
-		// Глобальный quiet может приходить от root persistent flags в runtime.
+		// Local quiet override should not be declared on subcommands.
+		// Global quiet may come from root persistent flags at runtime.
 		assert.Nil(t, cmd.Flags().Lookup("quiet"), "quiet should not be declared locally on %s", sub)
 	}
 }
 
-// ==================== Тесты для list command (интерактивный режим) ====================
+// ==================== Tests for list command (interactive mode) ====================
 
 func TestListCmd_Interactive_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -331,13 +331,13 @@ func TestListCmd_Interactive_Success(t *testing.T) {
 	}
 
 	p := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0}). // выбор проекта
-		WithSelectResponses(interactive.SelectResponse{Index: 0})  // выбор run
+		WithSelectResponses(interactive.SelectResponse{Index: 0}). // select project
+		WithSelectResponses(interactive.SelectResponse{Index: 0})  // select run
 
 	cmd := newListCmd(testhelper.GetClientForTests)
 	ctx := testhelper.SetupTestCmd(t, mock).Context()
 	cmd.SetContext(interactive.WithPrompter(ctx, p))
-	// Без аргументов - должен включиться интерактивный режим
+	// Without arguments - should enable interactive mode
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -353,7 +353,7 @@ func TestListCmd_Interactive_SelectProjectError(t *testing.T) {
 		},
 	}
 
-	// Пустой MockPrompter — очередь исчерпана, SelectProject вернёт ошибку
+	// Empty MockPrompter — queue is exhausted, SelectProject will return an error
 	p := interactive.NewMockPrompter()
 
 	cmd := newListCmd(testhelper.GetClientForTests)
@@ -378,7 +378,7 @@ func TestListCmd_Interactive_GetRunsError(t *testing.T) {
 	}
 
 	p := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0}) // выбор проекта
+		WithSelectResponses(interactive.SelectResponse{Index: 0}) // select project
 
 	cmd := newListCmd(testhelper.GetClientForTests)
 	ctx := testhelper.SetupTestCmd(t, mock).Context()
@@ -403,7 +403,7 @@ func TestListCmd_Interactive_EmptyRuns(t *testing.T) {
 	}
 
 	p := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0}) // выбор проекта
+		WithSelectResponses(interactive.SelectResponse{Index: 0}) // select project
 
 	cmd := newListCmd(testhelper.GetClientForTests)
 	ctx := testhelper.SetupTestCmd(t, mock).Context()
@@ -429,7 +429,7 @@ func TestListCmd_Interactive_SelectRunError(t *testing.T) {
 		},
 	}
 
-	// MockPrompter: 1 SelectResponse для проекта, ничего для run — очередь исчерпана
+	// MockPrompter: 1 SelectResponse for project, none for run — queue is exhausted
 	p := interactive.NewMockPrompter().
 		WithSelectResponses(interactive.SelectResponse{Index: 0})
 
@@ -442,7 +442,7 @@ func TestListCmd_Interactive_SelectRunError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для outputResult (через команду с флагом output) ====================
+// ==================== Tests for outputResult (via command with output flag) ====================
 
 func TestOutputResult_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
@@ -451,10 +451,10 @@ func TestOutputResult_WithSaveFlag(t *testing.T) {
 		},
 	}
 
-	// Пересоздаем команду с нашим getClient чтобы использовать mock
+	// Recreate the command with our getClient to use the mock
 	cmd := newListCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	// Добавляем флаг save (как это делает Register)
+	// Add save flag (as Register does)
 	output.AddFlag(cmd)
 	cmd.SetArgs([]string{"12345", "--save"})
 
@@ -462,16 +462,16 @@ func TestOutputResult_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Дополнительные тесты для покрытия ====================
+// ==================== Additional tests for coverage ====================
 
 func TestAddBulkResults_ParseError(t *testing.T) {
-	// Тест для покрытия ветки ошибки парсинга JSON в AddBulkResults
+	// Test for covering the JSON parse error branch in AddBulkResults
 	mock := &client.MockClient{}
 
 	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
-	// Передаем invalid JSON который не парсится ни в один формат
+	// Pass invalid JSON that cannot be parsed into any format
 	invalidJSON := []byte(`{"invalid": "json"}`)
 
 	result, err := svc.AddBulkResults(ctx, 12345, invalidJSON)
@@ -482,8 +482,8 @@ func TestAddBulkResults_ParseError(t *testing.T) {
 }
 
 func TestPrintJSON_Error(t *testing.T) {
-	// Тестируем ошибку в printJSON с несериализуемыми данными
-	invalidData := make(chan int) // Канал нельзя сериализовать
+	// Test printJSON error with non-serializable data
+	invalidData := make(chan int) // Channels cannot be serialized
 
 	err := printJSON(invalidData)
 
@@ -491,16 +491,16 @@ func TestPrintJSON_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "serialization")
 }
 
-// ==================== Дополнительные тесты для service_wrapper ====================
+// ==================== Additional tests for service_wrapper ====================
 
 func TestResultServiceWrapper_AddBulkResults_EmptyArray(t *testing.T) {
-	// Тест для покрытия ветки с empty массивом в JSON
+	// Test for covering the empty array branch in JSON
 	mock := &client.MockClient{}
 
 	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
-	// Пустой массив
+	// Empty array
 	emptyJSON := []byte(`[]`)
 
 	result, err := svc.AddBulkResults(ctx, 12345, emptyJSON)
@@ -511,13 +511,13 @@ func TestResultServiceWrapper_AddBulkResults_EmptyArray(t *testing.T) {
 }
 
 func TestResultServiceWrapper_AddBulkResults_InvalidJSON(t *testing.T) {
-	// Тест для покрытия ветки с невалидным JSON
+	// Test for covering the invalid JSON branch
 	mock := &client.MockClient{}
 
 	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
-	// Невалидный JSON
+	// Invalid JSON
 	invalidJSON := []byte(`{invalid json`)
 
 	result, err := svc.AddBulkResults(ctx, 12345, invalidJSON)

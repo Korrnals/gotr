@@ -96,7 +96,7 @@ func TestSaveToFileWithPath_UnknownFormatWriteError(t *testing.T) {
 	assert.Contains(t, err.Error(), "file write error")
 }
 
-// ==================== Тесты для saveToFile ====================
+// ==================== Tests for saveToFile ====================
 
 func TestSaveToFile_Success(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -118,7 +118,7 @@ func TestSaveToFile_InvalidPath(t *testing.T) {
 	assert.Contains(t, err.Error(), "file write error")
 }
 
-// ==================== Тесты для saveCompareResult ====================
+// ==================== Tests for saveCompareResult ====================
 
 func TestSaveCompareResult_JSON(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -203,7 +203,7 @@ func TestSaveCompareResult_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для saveCSV ====================
+// ==================== Tests for saveCSV ====================
 
 func TestSaveCSV_Success(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -302,7 +302,7 @@ func TestSaveCSV_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для printJSON ====================
+// ==================== Tests for printJSON ====================
 
 func TestPrintJSON(t *testing.T) {
 	result := CompareResult{
@@ -339,7 +339,7 @@ func TestPrintJSON(t *testing.T) {
 	assert.Equal(t, result.Resource, decoded.Resource)
 }
 
-// ==================== Тесты для printYAML ====================
+// ==================== Tests for printYAML ====================
 
 func TestPrintYAML(t *testing.T) {
 	result := CompareResult{
@@ -367,7 +367,7 @@ func TestPrintYAML(t *testing.T) {
 	assert.Contains(t, output, "resource: cases")
 }
 
-// ==================== Тесты для printCSV ====================
+// ==================== Tests for printCSV ====================
 
 func TestPrintCSV(t *testing.T) {
 	result := CompareResult{
@@ -481,7 +481,7 @@ func TestPrintCSV_ItemWriteErrors_DevFull(t *testing.T) {
 	}
 }
 
-// ==================== Тесты для printTable ====================
+// ==================== Tests for printTable ====================
 
 func TestPrintTable_OnlyFirst(t *testing.T) {
 	result := CompareResult{
@@ -557,8 +557,8 @@ func TestPrintTable_WithIDsMatch(t *testing.T) {
 	assert.NoError(t, err)
 	output := buf.String()
 	assert.Contains(t, output, "Case C")
-	// IDsMatch true, поэтому не должно быть сообщения о разных ID
-	assert.NotContains(t, output, "разные ID")
+	// IDsMatch true, so there should be no message about different IDs
+	assert.NotContains(t, output, "different IDs")
 }
 
 func TestPrintTable_WithIDsMismatch(t *testing.T) {
@@ -588,7 +588,7 @@ func TestPrintTable_WithIDsMismatch(t *testing.T) {
 	assert.Contains(t, output, "Differ")
 }
 
-// ==================== Тесты для PrintCompareResult с --save и --format ====================
+// ==================== Tests for PrintCompareResult with --save and --format ====================
 
 func TestPrintCompareResult_SaveWithFormat_JSON(t *testing.T) {
 	// Create a mock command with flags

@@ -1051,9 +1051,9 @@ func TestHTTPExtended_EdgeCases(t *testing.T) {
 	}
 }
 
-// TestParallel_ExtendedAPI_AllMethods - параллельное тестирование всех extended API методов
+// TestParallel_ExtendedAPI_AllMethods - parallel testing of all extended API methods
 func TestParallel_ExtendedAPI_AllMethods(t *testing.T) {
-	// Группы методов для параллельного тестирования
+	// Method groups for parallel testing
 	t.Run("Parallel_Groups", func(t *testing.T) {
 		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

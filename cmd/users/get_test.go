@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -54,7 +54,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "user not found")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestGetCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}

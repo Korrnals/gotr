@@ -63,7 +63,7 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 		logger:        logger,
 	}
 
-	m.logger.Info("Создан объект миграции", "log_file", logFile)
+	m.logger.Info("Migration object created", "log_file", logFile)
 	return m, nil
 }
 
@@ -75,7 +75,7 @@ func (m *Migration) Close() error {
 	return nil
 }
 
-// Mapping возвращает простую map[sourceID]=targetID для внешнего использования
+// Mapping returns a simple map[sourceID]=targetID for external use
 func (m *Migration) Mapping() map[int64]int64 {
 	res := make(map[int64]int64)
 	if m.mapping == nil {

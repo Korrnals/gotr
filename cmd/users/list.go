@@ -22,18 +22,18 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Получить список пользователей",
-		Long: `Получить список пользователей.
+		Short: "Get user list",
+		Long: `Get user list.
 
-Если project_id не указан — возвращает всех пользователей системы.
-Если project_id указан — возвращает только пользователей проекта.`,
-		Example: `  # Список всех пользователей
+If project_id is not specified — returns all system users.
+If project_id is specified — returns only project users.`,
+		Example: `  # List all users
   gotr users list
 
-  # Список пользователей проекта
+  # List project users
   gotr users list 123
 
-  # Вывод в JSON
+  # Output as JSON
   gotr users list -s output.json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)

@@ -18,13 +18,13 @@ import (
 func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	entryCmd := &cobra.Command{
 		Use:   "entry",
-		Short: "Управление записями плана",
-		Long: `Управление записями (entries) тест-плана — тестовыми прогонами внутри плана.
+		Short: "Manage plan entries",
+		Long: `Manage test plan entries — test runs within a plan.
 
-Подкоманды:
-  • add    — добавить запись (тестовый прогон) в план
-  • update — обновить существующую запись
-  • delete — удалить запись из плана`,
+Subcommands:
+  • add    — add an entry (test run) to a plan
+  • update — update an existing entry
+  • delete — delete an entry from a plan`,
 	}
 
 	entryCmd.AddCommand(newEntryAddCmd(getClient))
@@ -39,12 +39,12 @@ func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [plan_id]",
-		Short: "Добавить запись в план",
-		Long:  `Добавляет новую запись (тестовый прогон) в существующий план.`,
-		Example: `  # Добавить прогон с названием
-  gotr plans entry add 100 --suite-id=50 --name="Прогон 1"
+		Short: "Add an entry to a plan",
+		Long:  `Adds a new entry (test run) to an existing plan.`,
+		Example: `  # Add a run with a name
+  gotr plans entry add 100 --suite-id=50 --name="Run 1"
 
-  # Добавить с конфигурациями
+  # Add with configurations
   gotr plans entry add 100 --suite-id=50 --config-ids="1,2,3"`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -101,11 +101,11 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without adding")
 	output.AddFlag(cmd)
-	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
-	cmd.Flags().String("name", "", "Название записи")
-	cmd.Flags().String("config-ids", "", "ID конфигураций через запятую")
+	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
+	cmd.Flags().String("name", "", "Entry name")
+	cmd.Flags().String("config-ids", "", "Comma-separated configuration IDs")
 
 	return cmd
 }
@@ -115,10 +115,10 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [plan_id] [entry_id]",
-		Short: "Обновить запись плана",
-		Long:  `Обновляет существующую запись в тест-плане.`,
-		Example: `  # Изменить название записи
-  gotr plans entry update 100 abc123 --name="Обновлённая запись"`,
+		Short: "Update a plan entry",
+		Long:  `Updates an existing entry in a test plan.`,
+		Example: `  # Change entry name
+  gotr plans entry update 100 abc123 --name="Updated entry"`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var planID int64
@@ -179,9 +179,9 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название записи")
+	cmd.Flags().String("name", "", "New entry name")
 
 	return cmd
 }
@@ -191,12 +191,12 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [plan_id] [entry_id]",
-		Short: "Удалить запись плана",
-		Long:  `Удаляет запись из тест-плана.`,
-		Example: `  # Удалить запись из плана
+		Short: "Delete a plan entry",
+		Long:  `Deletes an entry from a test plan.`,
+		Example: `  # Delete an entry from a plan
   gotr plans entry delete 100 abc123
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr plans entry delete 100 abc123 --dry-run`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -251,7 +251,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted")
 
 	return cmd
 }

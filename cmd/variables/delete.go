@@ -16,18 +16,18 @@ import (
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [variable_id]",
-		Short: "Удалить переменную",
-		Long: `Удаляет переменную из датасета.
+		Short: "Delete a variable",
+		Long: `Deletes a variable from a dataset.
 
-⚠️ Внимание: удаление нельзя отменить! Все значения этой переменной
-будут безвозвратно удалены. Убедитесь, что переменная не используется
-в активных тест-кейсах.
+⚠️ Warning: deletion cannot be undone! All values of this variable
+will be permanently deleted. Make sure the variable is not used
+in active test cases.
 
-Используйте --dry-run для проверки перед удалением.`,
-		Example: `  # Удалить переменную
+Use --dry-run to preview before deleting.`,
+		Example: `  # Delete a variable
   gotr variables delete 789
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr variables delete 789 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -51,7 +51,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("variables delete")
-				dr.PrintSimple("Удалить переменную", fmt.Sprintf("Variable ID: %d", variableID))
+				dr.PrintSimple("Delete Variable", fmt.Sprintf("Variable ID: %d", variableID))
 				return nil
 			}
 
@@ -66,7 +66,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

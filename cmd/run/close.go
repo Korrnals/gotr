@@ -12,25 +12,25 @@ import (
 func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "close [run-id]",
-		Short: "Закрыть test run",
-		Long: `Закрывает test run (отмечает как завершённый).
+		Short: "Close a test run",
+		Long: `Closes a test run (marks it as completed).
 
-Закрытый test run:
-- Нельзя изменять (update вернёт ошибку)
-- Нельзя добавлять результаты тестов
-- Сохраняется в системе для истории и отчётности
-- Поле is_completed становится true
+A closed test run:
+- Cannot be modified (update will return an error)
+- Cannot have new test results added
+- Is preserved in the system for history and reporting
+- The is_completed field becomes true
 
-Это действие обратимо — можно открыть run заново через веб-интерфейс TestRail.
+This action is reversible — the run can be reopened via the TestRail web interface.
 
-Примеры:
-	# Закрыть run после завершения тестирования
+Examples:
+	# Close a run after testing is complete
 	gotr run close 12345
 
-	# Закрыть и сохранить информацию о закрытом run
+	# Close and save the closed run information
 	gotr run close 12345 -o closed_run.json
 
-	# Dry-run режим
+	# Dry-run mode
 	gotr run close 12345 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -65,12 +65,12 @@ func newCloseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 				return fmt.Errorf("failed to close test run: %w", err)
 			}
 
-			output.PrintSuccess(cmd, "Test run закрыт успешно:")
+			output.PrintSuccess(cmd, "Test run closed successfully:")
 			return output.OutputResultWithFlags(cmd, run)
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для interactive.SelectProject ====================
+// ==================== Tests for interactive.SelectProject ====================
 
 func TestSelectProject_Success_FirstProject(t *testing.T) {
 	ctx := context.Background()
@@ -96,7 +96,7 @@ func TestSelectProject_SelectQueueExhausted(t *testing.T) {
 	assert.Equal(t, int64(0), id)
 }
 
-// ==================== Тесты для interactive.SelectSuiteForProject ====================
+// ==================== Tests for interactive.SelectSuiteForProject ====================
 
 func TestSelectSuiteForProject_Success(t *testing.T) {
 	ctx := context.Background()

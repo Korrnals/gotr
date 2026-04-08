@@ -476,7 +476,7 @@ func TestRunEmbeddedJQ_WriteAndChmodFailureBranches(t *testing.T) {
 	}{
 		{
 			name:             "Chmod path removed after binary write",
-			wantErrSubstring: "не удалось установить права на исполнение",
+			wantErrSubstring: "failed to set executable permissions",
 			prepareSabotage: func(dir string) (start func(), stop func()) {
 				stopCh := make(chan struct{})
 				doneCh := make(chan struct{})

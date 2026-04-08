@@ -15,22 +15,22 @@ import (
 
 var sharedStepsCmd = &cobra.Command{
 	Use:   "shared-steps",
-	Short: "Миграция общих шагов (shared steps)",
-	Long: `Перенос общих шагов (shared steps) из source проекта в destination проект.
+	Short: "Migrate shared steps",
+	Long: `Transfer shared steps from source project to destination project.
 
-Особенности:
-• Автоматический интерактивный выбор проектов и сьютов (если не указаны флаги)
-• Генерация mapping для замены shared_step_id при миграции кейсов
-• Подтверждение перед импортом
+Features:
+• Automatic interactive selection of projects and suites (if flags are not specified)
+• Generates mapping for shared_step_id replacement during case migration
+• Confirmation before import
 
-Примеры:
-	# Полностью интерактивный режим
+Examples:
+	# Fully interactive mode
 	gotr sync shared-steps
 
-	# Частично интерактивный
+	# Partially interactive
 	gotr sync shared-steps --src-project 30
 
-	# Полностью через флаги
+	# Fully via flags
 	gotr sync shared-steps --src-project 30 --src-suite 20069 --dst-project 31 --approve --save-mapping
 `,
 

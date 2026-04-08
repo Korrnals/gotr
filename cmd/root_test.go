@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRootCmd_Properties проверяет базовые свойства root команды
+// TestRootCmd_Properties verifies basic properties of the root command
 func TestRootCmd_Properties(t *testing.T) {
 	assert.Equal(t, "gotr", rootCmd.Use)
 	assert.NotEmpty(t, rootCmd.Short)
@@ -25,30 +25,30 @@ func TestRootCmd_Properties(t *testing.T) {
 	assert.NotEmpty(t, Version)
 }
 
-// TestVersion_Properties проверяет версию
+// TestVersion_Properties verifies version
 func TestVersion_Properties(t *testing.T) {
 	assert.NotEmpty(t, Version)
 	assert.NotEmpty(t, Commit)
 	assert.NotEmpty(t, Date)
 }
 
-// TestGetClient_NotNilContext проверяет что GetClient требует контекст
+// TestGetClient_NotNilContext verifies that GetClient requires a context
 func TestGetClient_NotNilContext(t *testing.T) {
-	// GetClient требует контекст с clientом
-	// Если контекст пустой, функция вызывает panic
-	// Проверяем только что функция существует
+	// GetClient requires a context with a client
+	// If the context is empty, the function panics
+	// We only verify that the function exists
 	assert.NotNil(t, GetClient)
 }
 
-// TestGetClientInterface_NotNilContext проверяет что GetClient требует контекст
+// TestGetClientInterface_NotNilContext verifies that GetClient requires a context
 func TestGetClientInterface_NotNilContext(t *testing.T) {
-	// GetClient требует контекст с clientом
-	// Если контекст пустой, функция вызывает panic
-	// Проверяем только что функция существует
+	// GetClient requires a context with a client
+	// If the context is empty, the function panics
+	// We only verify that the function exists
 	assert.NotNil(t, GetClient)
 }
 
-// TestRootCmd_NonInteractiveFlagRegistered проверяет наличие флага --non-interactive
+// TestRootCmd_NonInteractiveFlagRegistered verifies --non-interactive flag is registered
 func TestRootCmd_NonInteractiveFlagRegistered(t *testing.T) {
 	flag := rootCmd.PersistentFlags().Lookup("non-interactive")
 	assert.NotNil(t, flag, "--non-interactive flag must be registered")
@@ -82,7 +82,7 @@ func TestGetClient_PanicOnUnexpectedType(t *testing.T) {
 	})
 }
 
-// TestGetClient_WithMock проверяет что GetClient работает с mock клиентом
+// TestGetClient_WithMock verifies that GetClient works with a mock client
 func TestGetClient_WithMock(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := &cobra.Command{}

@@ -17,12 +17,12 @@ import (
 func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-config [config_id]",
-		Short: "Обновить конфигурацию",
-		Long:  `Обновляет название существующей конфигурации.`,
-		Example: `  # Изменить название конфигурации
+		Short: "Update a configuration",
+		Long:  `Updates the name of an existing configuration.`,
+		Example: `  # Change configuration name
   gotr configurations update-config 10 --name="Chrome 120"
 
-  # Проверить перед обновлением
+  # Preview before updating
   gotr configurations update-config 10 --name="Chrome 120" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -57,7 +57,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations update-config")
-				dr.PrintSimple("Обновить конфигурацию", fmt.Sprintf("Config ID: %d, New Name: %s", configID, name))
+				dr.PrintSimple("Update configuration", fmt.Sprintf("Config ID: %d, New Name: %s", configID, name))
 				return nil
 			}
 
@@ -72,9 +72,9 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be done without applying changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название конфигурации (обязательно)")
+	cmd.Flags().String("name", "", "New configuration name (required)")
 
 	return cmd
 }

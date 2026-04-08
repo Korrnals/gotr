@@ -1,5 +1,5 @@
 // internal/client/sections_test.go
-// Тесты для Sections API POST-методов
+// Tests for Sections API POST methods
 package client
 
 import (

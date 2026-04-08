@@ -14,15 +14,15 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [milestone_id]",
-		Short: "Получить информацию о майлстоне по ID",
-		Long: `Получает детальную информацию о майлстоне по его идентификатору.
+		Short: "Get milestone information by ID",
+		Long: `Gets detailed information about a milestone by its identifier.
 
-Выводит полную информацию: название, описание, даты, статус завершения,
-количество связанных тестовых прогонов и т.д.`,
-		Example: `  # Получить информацию о майлстоне
+Displays full information: name, description, dates, completion status,
+number of associated test runs, etc.`,
+		Example: `  # Get milestone information
   gotr milestones get 12345
 
-  # Сохранить результат в файл
+  # Save result to file
   gotr milestones get 12345 -o milestone.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

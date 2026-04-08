@@ -17,12 +17,12 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [label_id]",
-		Short: "Получить информацию о метке",
-		Long:  `Получает информацию о метке по её ID.`,
-		Example: `  # Получить метку
+		Short: "Get label information",
+		Long:  `Retrieves label information by its ID.`,
+		Example: `  # Get a label
   gotr labels get 123
 
-  # Вывод в JSON
+  # Output as JSON
   gotr labels get 123 -o json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

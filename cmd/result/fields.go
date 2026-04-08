@@ -14,11 +14,11 @@ import (
 func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "fields",
-		Short: "Получить список полей результатов",
-		Long: `Получает список доступных полей для результатов тестов.
+		Short: "Get list of result fields",
+		Long: `Gets the list of available fields for test results.
 
-Эта команда полезна для понимания структуры данных результатов
-и доступных полей для заполнения.`,
+This command is useful for understanding the result data structure
+and the available fields to fill in.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
 			ctx := cmd.Context()
@@ -48,7 +48,7 @@ func newFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }

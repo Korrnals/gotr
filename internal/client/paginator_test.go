@@ -59,7 +59,7 @@ func TestDecodeListResponse_EmptyBody(t *testing.T) {
 
 func TestDecodeListResponse_MissingItemsField(t *testing.T) {
 	type item struct{ ID int }
-	// Поле "runs" есть, но мы запрашиваем "plans" — должен вернуть (nil, 0, nil)
+	// Field "runs" exists, but we request "plans" — should return (nil, 0, nil)
 	body := `{"offset":0,"limit":250,"size":1,"runs":[{"ID":1}]}`
 
 	items, pageLen, err := decodeListResponse[item]([]byte(body), "plans")
@@ -82,7 +82,7 @@ func TestDecodeListResponse_InvalidJSON(t *testing.T) {
 
 func TestDecodeListResponse_UnexpectedFormat(t *testing.T) {
 	type item struct{ ID int }
-	body := `42` // ни { ни [
+	body := `42` // neither { nor [
 	_, _, err := decodeListResponse[item]([]byte(body), "items")
 	if err == nil {
 		t.Fatal("expected error for unexpected format, got nil")
@@ -91,7 +91,7 @@ func TestDecodeListResponse_UnexpectedFormat(t *testing.T) {
 
 // ── fetchAllPages ──────────────────────────────────────────────────────────────
 
-// testItem — тестовый тип для fetchAllPages
+// testItem — test type for fetchAllPages
 type testItem struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
@@ -149,7 +149,7 @@ func TestFetchAllPages_FlatArray_AtOrAboveLimit_StopsAfterFirstRequest(t *testin
 }
 
 func TestFetchAllPages_SinglePage_PaginatedWrapper(t *testing.T) {
-	// 3 элемента < 250 → только одна страница
+	// 3 elements < 250 → only one page
 	items := []testItem{{ID: 1}, {ID: 2}, {ID: 3}}
 	body, _ := json.Marshal(map[string]interface{}{
 		"offset":  0,
@@ -178,8 +178,8 @@ func TestFetchAllPages_SinglePage_PaginatedWrapper(t *testing.T) {
 }
 
 func TestFetchAllPages_MultiPage(t *testing.T) {
-	// Страница 1: 250 элементов (offset=0) → триггерит страницу 2
-	// Страница 2: 1 элемент (offset=250) → конец
+	// Page 1: 250 elements (offset=0) → triggers page 2
+	// Page 2: 1 element (offset=250) → end
 	requestCount := 0
 
 	page1 := make([]testItem, 250)
@@ -241,7 +241,7 @@ func TestFetchAllPages_ServerError(t *testing.T) {
 }
 
 func TestFetchAllPages_BaseQueryPreserved(t *testing.T) {
-	// baseQuery должен сохраняться на всех страницах
+	// baseQuery must be preserved across all pages
 	receivedParams := map[string]string{}
 
 	c, srv := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
@@ -249,7 +249,7 @@ func TestFetchAllPages_BaseQueryPreserved(t *testing.T) {
 		receivedParams["offset"] = r.URL.Query().Get("offset")
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		fmt.Fprint(w, `[]`) // flat empty — один запрос, конец
+		fmt.Fprint(w, `[]`) // flat empty — one request, done
 	})
 	defer srv.Close()
 

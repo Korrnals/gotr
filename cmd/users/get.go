@@ -14,15 +14,15 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [user_id]",
-		Short: "Получить информацию о пользователе по ID",
-		Long: `Получает детальную информацию о пользователе по его идентификатору.
+		Short: "Get user information by ID",
+		Long: `Retrieves detailed information about a user by their identifier.
 
-Выводит полную информацию: ID, имя, email, статус активности, 
-роль, ID роли, MFA статус и признак администратора.`,
-		Example: `  # Получить информацию о пользователе
+Displays full information: ID, name, email, activity status,
+role, role ID, MFA status, and administrator flag.`,
+		Example: `  # Get user information
   gotr users get 12345
 
-  # Сохранить результат в файл
+  # Save result to a file
   gotr users get 12345 -o user.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

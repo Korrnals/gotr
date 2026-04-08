@@ -17,13 +17,13 @@ import (
 func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update-group [group_id]",
-		Short: "Обновить группу конфигураций",
-		Long:  `Обновляет название существующей группы конфигураций.`,
-		Example: `  # Изменить название группы
-  gotr configurations update-group 5 --name="Новое название"
+		Short: "Update a configuration group",
+		Long:  `Updates the name of an existing configuration group.`,
+		Example: `  # Change group name
+  gotr configurations update-group 5 --name="New Name"
 
-  # Проверить перед обновлением
-  gotr configurations update-group 5 --name="Новое название" --dry-run`,
+  # Preview before updating
+  gotr configurations update-group 5 --name="New Name" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
@@ -57,7 +57,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations update-group")
-				dr.PrintSimple("Обновить группу", fmt.Sprintf("Group ID: %d, New Name: %s", groupID, name))
+				dr.PrintSimple("Update group", fmt.Sprintf("Group ID: %d, New Name: %s", groupID, name))
 				return nil
 			}
 
@@ -72,9 +72,9 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be done without applying changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название группы (обязательно)")
+	cmd.Flags().String("name", "", "New group name (required)")
 
 	return cmd
 }

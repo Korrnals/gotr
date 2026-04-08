@@ -14,7 +14,7 @@ import (
 func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "projects",
-		Short: "Получить все projects",
+		Short: "Get all projects",
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
@@ -37,7 +37,7 @@ func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobr
 func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "project [project-id]",
-		Short: "Получить один проект по ID проекта",
+		Short: "Get a single project by project ID",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()

@@ -22,12 +22,12 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Получить список меток проекта",
-		Long:  `Получает список всех меток для указанного проекта.`,
-		Example: `  # Список меток проекта
+		Short: "List project labels",
+		Long:  `Retrieves a list of all labels for the specified project.`,
+		Example: `  # List project labels
   gotr labels list 123
 
-  # Вывод в JSON
+  # Output as JSON
   gotr labels list 123 -o json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

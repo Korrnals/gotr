@@ -14,7 +14,7 @@ import (
 )
 
 func TestAddBulkCmd_Success(t *testing.T) {
-	// Создаём временный JSON файл с результатами
+	// Create a temporary JSON file with results
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `[
@@ -45,7 +45,7 @@ func TestAddBulkCmd_Success(t *testing.T) {
 }
 
 func TestAddBulkCmd_WithCases(t *testing.T) {
-	// Создаём временный JSON файл с case-based результатами
+	// Create a temporary JSON file with case-based results
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `[

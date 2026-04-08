@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -45,7 +45,7 @@ func TestDeleteCmd_ClientError(t *testing.T) {
 	assert.Contains(t, err.Error(), "dataset not found")
 }
 
-// ==================== Dry-run тесты ====================
+// ==================== Dry-run tests ====================
 
 func TestDeleteCmd_DryRun(t *testing.T) {
 	mock := &client.MockClient{}
@@ -57,7 +57,7 @@ func TestDeleteCmd_DryRun(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestDeleteCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}

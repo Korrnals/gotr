@@ -16,15 +16,15 @@ import (
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [variable_id]",
-		Short: "Обновить переменную",
-		Long: `Обновляет название существующей переменной.
+		Short: "Update a variable",
+		Long: `Updates the name of an existing variable.
 
-⚠️ Обратите внимание: через API можно обновить только название переменной.
-Для изменения значений используйте веб-интерфейс TestRail.`,
-		Example: `  # Изменить название переменной
+⚠️ Note: only the variable name can be updated via the API.
+To modify values, use the TestRail web interface.`,
+		Example: `  # Change a variable name
   gotr variables update 789 --name="new_name"
 
-  # Проверить перед обновлением
+  # Preview before updating
   gotr variables update 789 --name="new_name" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -53,7 +53,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("variables update")
-				dr.PrintSimple("Обновить переменную", fmt.Sprintf("Variable ID: %d, New Name: %s", variableID, name))
+				dr.PrintSimple("Update Variable", fmt.Sprintf("Variable ID: %d, New Name: %s", variableID, name))
 				return nil
 			}
 
@@ -69,9 +69,9 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название переменной (обязательно)")
+	cmd.Flags().String("name", "", "New variable name (required)")
 
 	return cmd
 }

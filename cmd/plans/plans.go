@@ -13,19 +13,19 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	plansCmd := &cobra.Command{
 		Use:   "plans",
-		Short: "Управление тест-планами",
-		Long: `Управление тест-планами: создание, обновление, закрытие, удаление и управление записями.
+		Short: "Manage test plans",
+		Long: `Manage test plans: create, update, close, delete, and manage entries.
 
-Тест-план — это набор тестовых прогонов (entries), объединённых общей целью.
+A test plan is a collection of test runs (entries) grouped by a common goal.
 
-Основные операции:
-  • add    — создать тест-план
-  • get    — получить информацию о плане
-  • list   — список планов проекта
-  • update — обновить план
-  • close  — закрыть план (завершить)
-  • delete — удалить план
-  • entry  — управление записями плана (add/update/delete)`,
+Main operations:
+  • add    — create a test plan
+  • get    — get plan information
+  • list   — list project plans
+  • update — update a plan
+  • close  — close a plan (complete)
+  • delete — delete a plan
+  • entry  — manage plan entries (add/update/delete)`,
 	}
 
 	// Add subcommands

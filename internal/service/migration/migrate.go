@@ -5,7 +5,7 @@ import "context"
 
 // MigrateSharedSteps runs the full shared steps migration cycle: fetch, filter, import.
 func (m *Migration) MigrateSharedSteps(ctx context.Context, dryRun bool) error {
-	m.logger.Info("Начало миграции shared steps")
+	m.logger.Info("Starting shared steps migration")
 
 	source, target, err := m.FetchSharedStepsData(ctx)
 	if err != nil {
@@ -28,7 +28,7 @@ func (m *Migration) MigrateSharedSteps(ctx context.Context, dryRun bool) error {
 
 // MigrateSuites runs the full suites migration cycle: fetch, filter, import.
 func (m *Migration) MigrateSuites(ctx context.Context, dryRun bool) error {
-	m.logger.Info("Начало миграции suites")
+	m.logger.Info("Starting suites migration")
 
 	source, target, err := m.FetchSuitesData(ctx)
 	if err != nil {
@@ -42,7 +42,7 @@ func (m *Migration) MigrateSuites(ctx context.Context, dryRun bool) error {
 
 // MigrateCases runs the full cases migration cycle: fetch, filter, import.
 func (m *Migration) MigrateCases(ctx context.Context, dryRun bool) error {
-	m.logger.Info("Начало миграции cases")
+	m.logger.Info("Starting cases migration")
 
 	source, target, err := m.FetchCasesData(ctx)
 	if err != nil {
@@ -56,7 +56,7 @@ func (m *Migration) MigrateCases(ctx context.Context, dryRun bool) error {
 
 // MigrateSections runs the full sections migration cycle: fetch, filter, import.
 func (m *Migration) MigrateSections(ctx context.Context, dryRun bool) error {
-	m.logger.Info("Начало миграции sections")
+	m.logger.Info("Starting sections migration")
 
 	source, target, err := m.FetchSectionsData(ctx)
 	if err != nil {
@@ -70,28 +70,28 @@ func (m *Migration) MigrateSections(ctx context.Context, dryRun bool) error {
 
 // MigrateFull runs the full migration in order: suites → sections → shared steps → cases.
 func (m *Migration) MigrateFull(ctx context.Context, dryRun bool) error {
-	m.logger.Info("Начало полной миграции")
+	m.logger.Info("Starting full migration")
 
 	if err := m.MigrateSuites(ctx, dryRun); err != nil {
-		m.logger.Errorw("Ошибка миграции suites — полная миграция прервана", "error", err)
+		m.logger.Errorw("Suites migration error — full migration aborted", "error", err)
 		return err
 	}
 
 	if err := m.MigrateSections(ctx, dryRun); err != nil {
-		m.logger.Errorw("Ошибка миграции sections — полная миграция прервана", "error", err)
+		m.logger.Errorw("Sections migration error — full migration aborted", "error", err)
 		return err
 	}
 
 	if err := m.MigrateSharedSteps(ctx, dryRun); err != nil {
-		m.logger.Errorw("Ошибка миграции shared steps — полная миграция прервана", "error", err)
+		m.logger.Errorw("Shared steps migration error — full migration aborted", "error", err)
 		return err
 	}
 
 	if err := m.MigrateCases(ctx, dryRun); err != nil {
-		m.logger.Errorw("Ошибка миграции cases — полная миграция прервана", "error", err)
+		m.logger.Errorw("Cases migration error — full migration aborted", "error", err)
 		return err
 	}
 
-	m.logger.Info("Полная миграция завершена успешно")
+	m.logger.Info("Full migration completed successfully")
 	return nil
 }

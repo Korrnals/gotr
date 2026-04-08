@@ -8,15 +8,15 @@ import (
 	"github.com/Korrnals/gotr/internal/service/migration"
 )
 
-// init устанавливает getClient для тестов
+// init sets getClient for tests
 func init() {
 	SetGetClientForTests(func(ctx context.Context) client.ClientInterface {
-		// В тестах используется mockClient через newMigration
+		// In tests, mockClient is used via newMigration
 		return nil
 	})
 }
 
-// newMigrationFactoryFromMock создаёт factory для migration с mock clientом
+// newMigrationFactoryFromMock creates a migration factory with a mock client
 func newMigrationFactoryFromMock(t *testing.T, mock client.ClientInterface) func(client.ClientInterface, int64, int64, int64, int64, string, string) (*migration.Migration, error) {
 	return func(cli client.ClientInterface, srcProject, srcSuite, dstProject, dstSuite int64, compareField, logDir string) (*migration.Migration, error) {
 		tmp := t.TempDir()

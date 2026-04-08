@@ -12,30 +12,30 @@ type GetClientFunc = client.GetClientFunc
 // Cmd is the parent command for managing test runs.
 var Cmd = &cobra.Command{
 	Use:   "run",
-	Short: "Управление test runs в TestRail",
-	Long: `Команды для управления test runs (тестовыми прогонами) в TestRail.
+	Short: "Manage test runs in TestRail",
+	Long: `Commands for managing test runs in TestRail.
 
-Test run — это экземпляр тест-сюиты, запущенный для выполнения тестов.
+A test run is an instance of a test suite launched for test execution.
 
-Подкоманды:
-	get     — получить информацию о test run по ID
-	list    — получить список test runs проекта
-	create  — создать новый test run
-	update  — обновить существующий test run
-	close   — закрыть test run (завершить)
-	delete  — удалить test run
+Subcommands:
+	get     — get test run information by ID
+	list    — get list of project test runs
+	create  — create a new test run
+	update  — update an existing test run
+	close   — close a test run (complete)
+	delete  — delete a test run
 
-Примеры:
-	# Получить информацию о test run
+Examples:
+	# Get test run information
 	gotr run get 12345
 
-	# Получить список runs проекта
+	# Get project runs list
 	gotr run list 30
 
-	# Создать новый test run
+	# Create a new test run
 	gotr run create 30 --name "Smoke Tests v2.0" --suite-id 20069
 
-	# Закрыть test run
+	# Close a test run
 	gotr run close 12345
 `,
 }

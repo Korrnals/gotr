@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -80,7 +80,7 @@ func TestListCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestListCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -151,7 +151,7 @@ func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты вспомогательных функций ====================
+// ==================== Helper function tests ====================
 
 func TestGetClientForTests_NilCmd(t *testing.T) {
 	result := getClientForTests(nil)
@@ -173,7 +173,7 @@ func TestGetClientForTests_NoMockInContext(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты outputResult ====================
+// ==================== outputResult tests ====================
 
 func TestOutputResult_JSONError(t *testing.T) {
 	badData := make(chan int)
@@ -185,7 +185,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты регистрации ====================
+// ==================== Registration tests ====================
 
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{}
@@ -198,7 +198,7 @@ func TestRegister(t *testing.T) {
 	assert.NotNil(t, datasetsCmd)
 	assert.Equal(t, "datasets", datasetsCmd.Name())
 
-	// Проверяем все подкоманды
+	// Verify all subcommands
 	listCmd, _, _ := root.Find([]string{"datasets", "list"})
 	assert.NotNil(t, listCmd)
 

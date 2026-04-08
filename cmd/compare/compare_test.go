@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для parseFlags ====================
+// ==================== Tests for parseFlags ====================
 
 func TestParseFlags_Success(t *testing.T) {
 	cmd := &cobra.Command{}
@@ -85,7 +85,7 @@ func TestParseFlags_EmptyFieldDefaultsToTitle(t *testing.T) {
 	assert.Equal(t, "title", field)
 }
 
-// ==================== Тесты для collectNames ====================
+// ==================== Tests for collectNames ====================
 
 func TestCollectNames(t *testing.T) {
 	names := collectNames(3, func(i int) string {
@@ -107,7 +107,7 @@ func TestCollectNames_ZeroSize(t *testing.T) {
 	assert.Nil(t, names)
 }
 
-// ==================== Тесты для GetProjectNames ====================
+// ==================== Tests for GetProjectNames ====================
 
 func TestGetProjectNames_Success(t *testing.T) {
 	ctx := context.Background()
@@ -201,7 +201,7 @@ func TestGetProjectName_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get project 77")
 }
 
-// ==================== Тесты для CompareResult ====================
+// ==================== Tests for CompareResult ====================
 
 func TestCompareResult_Struct(t *testing.T) {
 	result := &CompareResult{

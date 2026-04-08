@@ -16,15 +16,15 @@ import (
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [case_id]",
-		Short: "Добавить BDD сценарий к тест-кейсу",
-		Long: `Добавляет BDD сценарий в формате Gherkin к указанному тест-кейсу.
+		Short: "Add a BDD scenario to a test case",
+		Long: `Add a Gherkin-format BDD scenario to the specified test case.
 
-Сценарий должен быть в формате Given-When-Then (Дано-Когда-Тогда).
-Можно передать содержимое через файл или напрямую.`,
-		Example: `  # Добавить BDD из файла
+The scenario must follow the Given-When-Then format.
+Content can be provided via a file or directly.`,
+		Example: `  # Add BDD from a file
   gotr bdds add 12345 --file=scenario.feature
 
-  # Добавить BDD из stdin
+  # Add BDD from stdin
   cat scenario.feature | gotr bdds add 12345`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,7 +62,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("bdds add")
-				dr.PrintSimple("Добавить BDD", fmt.Sprintf("Case ID: %d", caseID))
+				dr.PrintSimple("Add BDD", fmt.Sprintf("Case ID: %d", caseID))
 				return nil
 			}
 
@@ -76,9 +76,9 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("file", "", "Путь к файлу с Gherkin сценарием")
+	cmd.Flags().String("file", "", "Path to a Gherkin scenario file")
 
 	return cmd
 }

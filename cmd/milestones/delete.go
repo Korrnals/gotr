@@ -16,16 +16,16 @@ import (
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [milestone_id]",
-		Short: "Удалить майлстон",
-		Long: `Удаляет майлстон по его идентификатору.
+		Short: "Delete a milestone",
+		Long: `Deletes a milestone by its identifier.
 
-⚠️ Внимание: удаление нельзя отменить!
-Удалённый майлстон нельзя восстановить, придётся создавать заново.
-Используйте --dry-run для проверки перед удалением.`,
-		Example: `  # Удалить майлстон (с подтверждением опасности)
+⚠️ Warning: deletion cannot be undone!
+A deleted milestone cannot be restored; you will need to create a new one.
+Use --dry-run to verify before deleting.`,
+		Example: `  # Delete a milestone (with danger confirmation)
   gotr milestones delete 12345
 
-  # Проверить что будет удалено (без реального удаления)
+  # Check what would be deleted (without actually deleting)
   gotr milestones delete 12345 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,7 +67,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

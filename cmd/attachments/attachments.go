@@ -14,29 +14,29 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	attachmentsCmd := &cobra.Command{
 		Use:   "attachments",
-		Short: "Управление файловыми вложениями",
-		Long: `Управление файловыми вложениями к тест-кейсам, планам, результатам и прогонам.
+		Short: "Manage file attachments",
+		Long: `Manage file attachments for test cases, plans, results, and runs.
 
-Поддерживаемые типы ресурсов для прикрепления файлов:
-  • case       — вложение к тест-кейсу
-  • plan       — вложение к тест-плану
-  • plan-entry — вложение к записи плана
-  • result     — вложение к результату теста
-  • run        — вложение к тестовому прогону`,
+Supported resource types for attaching files:
+  • case       — attachment to a test case
+  • plan       — attachment to a test plan
+  • plan-entry — attachment to a plan entry
+  • result     — attachment to a test result
+  • run        — attachment to a test run`,
 	}
 
 	// Create the parent 'add' command
 	addCmd := &cobra.Command{
 		Use:   "add",
-		Short: "Добавить вложение к ресурсу",
-		Long: `Загружает файл и прикрепляет его к указанному ресурсу.
+		Short: "Add attachment to a resource",
+		Long: `Uploads a file and attaches it to the specified resource.
 
-Поддерживаются различные типы ресурсов: тест-кейс, план, запись плана,
-результат теста или тестовый прогон.`,
+Supported resource types: test case, plan, plan entry,
+test result, or test run.`,
 	}
 
 	// Shared flags for all 'add' subcommands
-	addCmd.PersistentFlags().Bool("dry-run", false, "Показать, что будет сделано без загрузки файла")
+	addCmd.PersistentFlags().Bool("dry-run", false, "Show what would be done without uploading the file")
 	output.AddFlag(addCmd)
 
 	// Register subcommands under 'add'

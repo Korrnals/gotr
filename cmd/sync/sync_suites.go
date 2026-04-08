@@ -15,24 +15,24 @@ import (
 
 var suitesCmd = &cobra.Command{
 	Use:   "suites",
-	Short: "Миграция suites между проектами",
-	Long: `Перенос suites между проектами.
+	Short: "Migrate suites between projects",
+	Long: `Transfer suites between projects.
 
-Процесс:
-	1) Получение suites (source/target)
-	2) Фильтрация дубликатов (по --compare-field)
-	3) Подтверждение и импорт
-	4) Сохранение mapping (опционально)
+Process:
+	1) Fetch suites (source/target)
+	2) Filter duplicates (by --compare-field)
+	3) Confirmation and import
+	4) Save mapping (optional)
 
-Пример:
+Example:
 	gotr sync suites --src-project 30 --dst-project 31 --approve --save-mapping
 
-Флаги:
-	--src-project    ID source проекта (обязательный)
-	--dst-project    ID destination проекта (обязательный)
-	--compare-field  Поле для поиска дубликатов (по умолчанию: title)
-	--approve        Автоматическое подтверждение
-	--save-mapping   Сохранить mapping
+Flags:
+	--src-project    Source project ID (required)
+	--dst-project    Destination project ID (required)
+	--compare-field  Field for duplicate detection (default: title)
+	--approve        Auto-approve confirmation
+	--save-mapping   Save mapping
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)

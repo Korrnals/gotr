@@ -14,9 +14,9 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Список тест-планов",
-		Long:  `Выводит список всех тест-планов проекта.`,
-		Example: `  # Список планов проекта
+		Short: "List test plans",
+		Long:  `Lists all test plans for a project.`,
+		Example: `  # List project plans
   gotr plans list 1`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

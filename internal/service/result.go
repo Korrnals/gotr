@@ -211,10 +211,10 @@ func (s *ResultService) validateID(id int64, fieldName string) error {
 // validateAddResultRequest validates a request to add a result.
 func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if req.StatusID <= 0 {
-		return errors.New("status_id обязателен и должен быть положительным числом")
+		return errors.New("status_id is required and must be a positive number")
 	}
 	return nil
 }

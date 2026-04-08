@@ -17,15 +17,15 @@ import (
 func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run-cross-project [template_id]",
-		Short: "Запустить кросс-проектный отчёт",
-		Long: `Запускает генерацию кросс-проектного отчёта по указанному шаблону.
+		Short: "Run a cross-project report",
+		Long: `Runs cross-project report generation using the specified template.
 
-Кросс-проектные отчёты охватывают несколько проектов TestRail.
-Возвращает ID отчёта, URL для скачивания и статус генерации.`,
-		Example: `  # Запустить кросс-проектный отчёт
+Cross-project reports span multiple TestRail projects.
+Returns the report ID, download URL, and generation status.`,
+		Example: `  # Run a cross-project report
   gotr reports run-cross-project 42
 
-  # Сохранить результат в файл
+  # Save result to file
   gotr reports run-cross-project 42 -o cross_project_report.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,7 +79,7 @@ func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без запуска генерации")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without running generation")
 	output.AddFlag(cmd)
 
 	return cmd

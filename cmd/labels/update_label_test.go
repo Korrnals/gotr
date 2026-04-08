@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты успешных сценариев ====================
+// ==================== Success scenario tests ====================
 
 func TestUpdateLabelCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -88,7 +88,7 @@ func TestUpdateLabelCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты ошибок API ====================
+// ==================== API error tests ====================
 
 func TestUpdateLabelCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
@@ -138,7 +138,7 @@ func TestUpdateLabelCmd_ProjectNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "project not found")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestUpdateLabelCmd_InvalidLabelID(t *testing.T) {
 	mock := &client.MockClient{}

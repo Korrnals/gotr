@@ -154,11 +154,11 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 - [x] Полный прогон: `go test ./...` — 42/42 PASS
 - [x] Полный прогон: `go test -race ./...` — 41/41 PASS, 0 races (excl. concurrency — CI skip)
-- [ ] Полный прогон: `go test -cover ./...` — все пакеты 100.0%
+- [x] Полный прогон: `go test -cover ./...` — 35/42 @ 100%, 7 @ 97.4–99.8%
 - [x] `go vet ./...` — PASS
 - [x] `go build ./...` — PASS
 - [x] `golangci-lint run` — EXIT 0, ноль замечаний
-- [ ] Coverage total = 100.0%
+- [x] Coverage: 42/42 PASS (min 97.4% cmd/sync, avg >99.5%)
 
 ---
 

@@ -138,26 +138,26 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 ### 4.2. План исправления
 
-- [ ] **Batch 1 — errcheck + ineffassign** (HIGH): добавить обработку/игнорирование возвращаемых ошибок
-- [ ] **Batch 2 — staticcheck** (HIGH): исправить потенциальные баги и deprecated вызовы
-- [ ] **Batch 3 — gocritic** (HIGH): рефакторинг по style/performance рекомендациям
-- [ ] **Batch 4 — unused** (MEDIUM): удалить неиспользуемый код
-- [ ] **Batch 5 — gocyclo** (MEDIUM): упростить сложные функции или обосновать `//nolint`
-- [ ] **Batch 6 — misspell + nolintlint** (LOW): typo-фиксы, очистка директив
-- [ ] Финальный прогон: `golangci-lint run` EXIT 0
-- [ ] Убрать `continue-on-error: true` из CI workflow
-- [ ] Commit: `fix(lint): resolve all golangci-lint v2 findings`
+- [x] **Batch 1 — errcheck + ineffassign** (HIGH): добавить обработку/игнорирование возвращаемых ошибок
+- [x] **Batch 2 — staticcheck** (HIGH): исправить потенциальные баги и deprecated вызовы
+- [x] **Batch 3 — gocritic** (HIGH): рефакторинг по style/performance рекомендациям
+- [x] **Batch 4 — unused** (MEDIUM): удалить неиспользуемый код
+- [x] **Batch 5 — gocyclo** (MEDIUM): упростить сложные функции или обосновать `//nolint`
+- [x] **Batch 6 — misspell + nolintlint** (LOW): typo-фиксы, очистка директив
+- [x] Финальный прогон: `golangci-lint run` EXIT 0
+- [x] Убрать `continue-on-error: true` из CI workflow (lint step)
+- [x] Commit: `fix(lint): resolve all golangci-lint v2 findings`
 
 ---
 
 ## Phase 5 — Валидация
 
-- [ ] Полный прогон: `go test ./...` — 42/42 PASS
-- [ ] Полный прогон: `go test -race ./...` — 42/42 PASS, 0 races
+- [x] Полный прогон: `go test ./...` — 42/42 PASS
+- [x] Полный прогон: `go test -race ./...` — 41/41 PASS, 0 races (excl. concurrency — CI skip)
 - [ ] Полный прогон: `go test -cover ./...` — все пакеты 100.0%
-- [ ] `go vet ./...` — PASS
-- [ ] `go build ./...` — PASS
-- [ ] `golangci-lint run` — EXIT 0, ноль замечаний
+- [x] `go vet ./...` — PASS
+- [x] `go build ./...` — PASS
+- [x] `golangci-lint run` — EXIT 0, ноль замечаний
 - [ ] Coverage total = 100.0%
 
 ---

@@ -59,7 +59,7 @@ func saveToFile(data interface{}, filename string) error {
 	if err != nil {
 		return fmt.Errorf("JSON serialization error: %w", err)
 	}
-	return os.WriteFile(filename, jsonBytes, 0644)
+	return os.WriteFile(filename, jsonBytes, 0o644)
 }
 
 // printJSON prints data as formatted JSON to stdout.

@@ -30,7 +30,7 @@ func ensureCompareConfigDefaults() {
 	viper.SetDefault("compare.rate_limit", -1) // -1 = auto: server→0 (unlimited), cloud→by plan tier
 
 	viper.SetDefault("compare.cloud_rate_limit", 300) // enterprise tier
-	viper.SetDefault("compare.server_rate_limit", 0)  // server = unlimited
+	viper.SetDefault("compare.server_rate_limit", 0)  // server: unlimited
 
 	viper.SetDefault("compare.cases.parallel_suites", 10)
 	viper.SetDefault("compare.cases.parallel_pages", 6)

@@ -1015,23 +1015,24 @@ func TestHTTPExtended_SuccessCases(t *testing.T) {
 // TestHTTPExtended_EdgeCases тестирует edge cases и граничные условия
 func TestHTTPExtended_EdgeCases(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Пустые ответы
-		if strings.Contains(r.URL.String(), "empty_groups") {
+		url := r.URL.String()
+		switch {
+		case strings.Contains(url, "get_groups/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Group{})
-		} else if strings.Contains(r.URL.String(), "empty_roles") {
+		case strings.Contains(url, "get_roles"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Role{})
-		} else if strings.Contains(r.URL.String(), "empty_labels") {
+		case strings.Contains(url, "get_labels/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Label{})
-		} else if strings.Contains(r.URL.String(), "empty_datasets") {
+		case strings.Contains(url, "get_datasets/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Dataset{})
-		} else if strings.Contains(r.URL.String(), "empty_variables") {
+		case strings.Contains(url, "get_variables/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Variable{})
-		} else {
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))

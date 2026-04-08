@@ -76,12 +76,12 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 			}
 		}
 
-		filepath, err := outputBySavePath(toSave, "get", "json", savePath)
+		fpath, err := outputBySavePath(toSave, "get", "json", savePath)
 		if err != nil {
 			return fmt.Errorf("save error: %w", err)
 		}
-		if !quiet && filepath != "" {
-			ui.Infof(os.Stdout, "Response saved to %s", filepath)
+		if !quiet && fpath != "" {
+			ui.Infof(os.Stdout, "Response saved to %s", fpath)
 		}
 		return nil
 	}
@@ -128,7 +128,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 // Output checks if --save flag is set and saves data to file if so.
 // If --save is not set, outputs data to stdout as JSON.
 // Returns the saved file path for user notification (empty string if output to stdout).
-func Output(cmd *cobra.Command, data interface{}, resource string, format string) (string, error) {
+func Output(cmd *cobra.Command, data interface{}, resource, format string) (string, error) {
 	saveFlag, err := cmd.Flags().GetBool("save")
 	if err != nil {
 		return "", fmt.Errorf("error reading --save flag: %w", err)
@@ -162,7 +162,7 @@ func Output(cmd *cobra.Command, data interface{}, resource string, format string
 	return "", nil
 }
 
-func outputBySavePath(data interface{}, resource string, format string, savePath string) (string, error) {
+func outputBySavePath(data interface{}, resource, format, savePath string) (string, error) {
 	if savePath == defaultSavePathMarker {
 		return SaveToFile(data, resource, format)
 	}
@@ -172,7 +172,7 @@ func outputBySavePath(data interface{}, resource string, format string, savePath
 
 // SaveToFile saves data to a file in the exports directory.
 // Returns the full path of the saved file.
-func SaveToFile(data interface{}, resource string, format string) (string, error) {
+func SaveToFile(data interface{}, resource, format string) (string, error) {
 	// Generate filename
 	filename := GenerateFilename(resource, format)
 
@@ -210,7 +210,7 @@ func SaveToFile(data interface{}, resource string, format string) (string, error
 	}
 
 	// Write file
-	if err := os.WriteFile(filePath, content, 0644); err != nil {
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
 		return "", fmt.Errorf("error writing file: %w", err)
 	}
 
@@ -247,7 +247,7 @@ func SaveToFileWithPath(data interface{}, format, filePath string) (string, erro
 		return "", fmt.Errorf("unsupported format: %s", format)
 	}
 
-	if err := os.WriteFile(filePath, content, 0644); err != nil {
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
 		return "", fmt.Errorf("error writing file: %w", err)
 	}
 
@@ -374,7 +374,7 @@ func getRowValues(v reflect.Value, headers []string) []string {
 
 // GenerateFilename generates a filename with pattern: {resource}_YYYY-MM-DD_HH-MM-SS.{format}
 // For resource "all", uses "all-resources" as prefix
-func GenerateFilename(resource string, format string) string {
+func GenerateFilename(resource, format string) string {
 	// Handle special case for "all" resource
 	if resource == "all" {
 		resource = "all-resources"
@@ -393,7 +393,7 @@ func SaveJSONToFile(filename string, data interface{}) error {
 		return fmt.Errorf("serialization error: %w", err)
 	}
 
-	if err := os.WriteFile(filename, jsonData, 0644); err != nil {
+	if err := os.WriteFile(filename, jsonData, 0o644); err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
 

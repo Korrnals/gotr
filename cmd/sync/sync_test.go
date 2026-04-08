@@ -269,7 +269,8 @@ func TestSetTestClient_WithExistingContext(t *testing.T) {
 
 func TestCmd_Help(t *testing.T) {
 	// Проверяем, что Help вызывается без ошибок
-	Cmd.Run(Cmd, []string{})
+	err := Cmd.Help()
+	assert.NoError(t, err)
 }
 
 func TestCmd_Properties(t *testing.T) {

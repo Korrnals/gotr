@@ -229,7 +229,7 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 }
 
 // ImportCasesReport is like ImportCases but returns lists of created IDs and errors for CLI reporting.
-func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) ([]int64, []string, error) {
+func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) (createdIDs []int64, errs []string, err error) {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run или нет данных — импорт cases пропущен", "count", len(filtered))
 		return nil, nil, nil
@@ -239,8 +239,6 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	var createdIDs []int64
-	var errors []string
 
 	for _, c := range filtered {
 		wg.Add(1)
@@ -281,7 +279,7 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
 			if err != nil {
 				mu.Lock()
-				errors = append(errors, fmt.Sprintf("кейс %q: %v", caseData.Title, err))
+				errs = append(errs, fmt.Sprintf("кейс %q: %v", caseData.Title, err))
 				m.logger.Errorw("Ошибка импорта case", "title", caseData.Title, "error", err)
 				mu.Unlock()
 				return
@@ -297,5 +295,5 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 	wg.Wait()
 
 	m.logger.Infow("Импорт cases (report) завершён", "imported", m.importedCases)
-	return createdIDs, errors, nil
+	return createdIDs, errs, nil
 }

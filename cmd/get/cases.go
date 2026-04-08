@@ -194,8 +194,8 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 }
 
 // fetchAndOutputCases retrieves cases and outputs the result.
-func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, client client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
-	cases, err := client.GetCases(ctx, projectID, suiteID, sectionID)
+func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
+	cases, err := cli.GetCases(ctx, projectID, suiteID, sectionID)
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, client client.
 }
 
 // fetchCasesFromAllSuites retrieves cases from all suites in the project.
-func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
+func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	op := ui.NewOperation(ui.StatusConfig{
 		Title:  fmt.Sprintf("Loading cases from %d suites...", len(suites)),
@@ -216,7 +216,7 @@ func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, client cli
 
 	allCases := make(data.GetCasesResponse, 0)
 	for _, suite := range suites {
-		cases, err := client.GetCases(ctx, projectID, suite.ID, sectionID)
+		cases, err := cli.GetCases(ctx, projectID, suite.ID, sectionID)
 		if err != nil {
 			task.Error(err)
 			task.Increment()

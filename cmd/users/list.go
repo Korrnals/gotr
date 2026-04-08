@@ -125,4 +125,4 @@ func listProjectUsers(ctx context.Context, cmd *cobra.Command, cli usersClient, 
 }
 
 // Verify interface compliance
-var _ usersClient = (client.ClientInterface)(nil)
+var _ usersClient = client.ClientInterface(nil)

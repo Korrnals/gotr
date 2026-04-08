@@ -8,7 +8,7 @@ import (
 )
 
 // FetchSharedStepsData retrieves shared steps from both source and target projects.
-func (m *Migration) FetchSharedStepsData(ctx context.Context) (source data.GetSharedStepsResponse, target data.GetSharedStepsResponse, err error) {
+func (m *Migration) FetchSharedStepsData(ctx context.Context) (source, target data.GetSharedStepsResponse, err error) {
 	m.logger.Info("Начало получения shared steps из source проекта")
 
 	source, err = m.Client.GetSharedSteps(ctx, m.srcProject)
@@ -30,7 +30,7 @@ func (m *Migration) FetchSharedStepsData(ctx context.Context) (source data.GetSh
 }
 
 // FetchCasesData retrieves cases from both source and target suites.
-func (m *Migration) FetchCasesData(ctx context.Context) (source data.GetCasesResponse, target data.GetCasesResponse, err error) {
+func (m *Migration) FetchCasesData(ctx context.Context) (source, target data.GetCasesResponse, err error) {
 	m.logger.Info("Начало получения cases из source suite")
 
 	source, err = m.Client.GetCases(ctx, m.srcProject, m.srcSuite, 0)
@@ -52,7 +52,7 @@ func (m *Migration) FetchCasesData(ctx context.Context) (source data.GetCasesRes
 }
 
 // FetchSuitesData retrieves suites from both source and target projects.
-func (m *Migration) FetchSuitesData(ctx context.Context) (source data.GetSuitesResponse, target data.GetSuitesResponse, err error) {
+func (m *Migration) FetchSuitesData(ctx context.Context) (source, target data.GetSuitesResponse, err error) {
 	m.logger.Info("Начало получения suites из source проекта")
 	source, err = m.Client.GetSuites(ctx, m.srcProject)
 	if err != nil {
@@ -73,7 +73,7 @@ func (m *Migration) FetchSuitesData(ctx context.Context) (source data.GetSuitesR
 }
 
 // FetchSectionsData retrieves sections from both source and target suites.
-func (m *Migration) FetchSectionsData(ctx context.Context) (source data.GetSectionsResponse, target data.GetSectionsResponse, err error) {
+func (m *Migration) FetchSectionsData(ctx context.Context) (source, target data.GetSectionsResponse, err error) {
 	m.logger.Info("Начало получения sections из source suite")
 
 	source, err = m.Client.GetSections(ctx, m.srcProject, m.srcSuite)

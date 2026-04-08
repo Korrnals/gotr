@@ -24,7 +24,7 @@ func (m *Migration) ExportSharedSteps(steps data.GetSharedStepsResponse, filtere
 	if dir == "" {
 		dir = ".testrail"
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -39,7 +39,7 @@ func (m *Migration) ExportSharedSteps(steps data.GetSharedStepsResponse, filtere
 		return err
 	}
 
-	if err := exportWriteFile(file, jsonData, 0644); err != nil {
+	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
 		return err
 	}
 
@@ -57,7 +57,7 @@ func (m *Migration) ExportSuites(suites data.GetSuitesResponse, filtered bool, d
 	if dir == "" {
 		dir = ".testrail"
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -72,7 +72,7 @@ func (m *Migration) ExportSuites(suites data.GetSuitesResponse, filtered bool, d
 		return err
 	}
 
-	if err := exportWriteFile(file, jsonData, 0644); err != nil {
+	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
 		return err
 	}
 
@@ -90,7 +90,7 @@ func (m *Migration) ExportCases(cases data.GetCasesResponse, filtered bool, dir 
 	if dir == "" {
 		dir = ".testrail"
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -105,7 +105,7 @@ func (m *Migration) ExportCases(cases data.GetCasesResponse, filtered bool, dir 
 		return err
 	}
 
-	if err := exportWriteFile(file, jsonData, 0644); err != nil {
+	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
 		return err
 	}
 
@@ -123,7 +123,7 @@ func (m *Migration) ExportSections(sections data.GetSectionsResponse, filtered b
 	if dir == "" {
 		dir = ".testrail"
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -138,7 +138,7 @@ func (m *Migration) ExportSections(sections data.GetSectionsResponse, filtered b
 		return err
 	}
 
-	if err := exportWriteFile(file, jsonData, 0644); err != nil {
+	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
 		return err
 	}
 

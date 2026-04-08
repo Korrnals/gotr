@@ -62,7 +62,7 @@ func logDir() string {
 		panic(err)
 	}
 	testPath := filepath.Join(base, "test_runs")
-	if err := os.MkdirAll(testPath, 0755); err != nil {
+	if err := os.MkdirAll(testPath, 0o755); err != nil {
 		panic(err)
 	}
 	return testPath

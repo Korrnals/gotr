@@ -192,5 +192,6 @@ func TestProductionVarClosures(t *testing.T) {
 // TestCmd_Run_Help covers the Run func on root Cmd that calls cmd.Help().
 func TestCmd_Run_Help(t *testing.T) {
 	Cmd.SetArgs([]string{})
-	Cmd.Run(Cmd, nil)
+	err := Cmd.Help()
+	assert.NoError(t, err)
 }

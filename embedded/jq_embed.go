@@ -59,13 +59,13 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	tmpFile.Close() // close before writing to avoid "text file busy"
 
 	// Write the embedded binary to the temp file
-	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0644); err != nil {
+	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0o644); err != nil {
 		os.Remove(tmpPath)
 		return err
 	}
 
 	// Explicitly set the executable permission
-	if err := os.Chmod(tmpPath, 0755); err != nil {
+	if err := os.Chmod(tmpPath, 0o755); err != nil {
 		os.Remove(tmpPath)
 		return fmt.Errorf("{jq_embed} - не удалось установить права на исполнение: %w", err)
 	}

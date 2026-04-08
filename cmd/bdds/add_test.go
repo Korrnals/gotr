@@ -16,7 +16,7 @@ import (
 func TestAddCmd_Success(t *testing.T) {
 	tmpDir := t.TempDir()
 	bddFile := filepath.Join(tmpDir, "scenario.feature")
-	err := os.WriteFile(bddFile, []byte("Feature: Login\n  Given user is on login page"), 0644)
+	err := os.WriteFile(bddFile, []byte("Feature: Login\n  Given user is on login page"), 0o644)
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
@@ -38,7 +38,7 @@ func TestAddCmd_Success(t *testing.T) {
 func TestAddCmd_DryRun(t *testing.T) {
 	tmpDir := t.TempDir()
 	bddFile := filepath.Join(tmpDir, "scenario.feature")
-	err := os.WriteFile(bddFile, []byte("Feature: Test"), 0644)
+	err := os.WriteFile(bddFile, []byte("Feature: Test"), 0o644)
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{}
@@ -85,7 +85,7 @@ func TestAddCmd_FileNotFound(t *testing.T) {
 func TestAddCmd_ClientError(t *testing.T) {
 	tmpDir := t.TempDir()
 	bddFile := filepath.Join(tmpDir, "scenario.feature")
-	err := os.WriteFile(bddFile, []byte("Feature: Test"), 0644)
+	err := os.WriteFile(bddFile, []byte("Feature: Test"), 0o644)
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
@@ -106,7 +106,7 @@ func TestAddCmd_ClientError(t *testing.T) {
 func TestAddCmd_NoArgs_Interactive(t *testing.T) {
 	tmpDir := t.TempDir()
 	bddFile := filepath.Join(tmpDir, "scenario.feature")
-	err := os.WriteFile(bddFile, []byte("Feature: Login\n  Given user is on login page"), 0644)
+	err := os.WriteFile(bddFile, []byte("Feature: Login\n  Given user is on login page"), 0o644)
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
@@ -145,7 +145,7 @@ func TestAddCmd_NoArgs_Interactive(t *testing.T) {
 func TestAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	tmpDir := t.TempDir()
 	bddFile := filepath.Join(tmpDir, "scenario.feature")
-	err := os.WriteFile(bddFile, []byte("Feature: Login"), 0644)
+	err := os.WriteFile(bddFile, []byte("Feature: Login"), 0o644)
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{}
@@ -164,7 +164,7 @@ func TestAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 func TestAddCmd_NoArgs_NoPrompterInContext_Error(t *testing.T) {
 tmpDir := t.TempDir()
 bddFile := filepath.Join(tmpDir, "scenario.feature")
-err := os.WriteFile(bddFile, []byte("Feature: Login"), 0644)
+err := os.WriteFile(bddFile, []byte("Feature: Login"), 0o644)
 assert.NoError(t, err)
 
 mock := &client.MockClient{}
@@ -181,7 +181,7 @@ assert.Contains(t, err.Error(), "non-interactive mode")
 func TestAddCmd_NoArgs_Interactive_GetProjectsError(t *testing.T) {
 tmpDir := t.TempDir()
 bddFile := filepath.Join(tmpDir, "scenario.feature")
-err := os.WriteFile(bddFile, []byte("Feature: Error Test"), 0644)
+err := os.WriteFile(bddFile, []byte("Feature: Error Test"), 0o644)
 assert.NoError(t, err)
 
 mock := &client.MockClient{

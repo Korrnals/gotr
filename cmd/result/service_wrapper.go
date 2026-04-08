@@ -47,8 +47,8 @@ func (w *resultServiceWrapper) PrintSuccess(ctx context.Context, cmd *cobra.Comm
 }
 
 // Output delegates command output formatting to the underlying result service.
-func (w *resultServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return w.svc.Output(ctx, cmd, data)
+func (w *resultServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
+	return w.svc.Output(ctx, cmd, v)
 }
 
 // AddForTest delegates single-test result creation to the underlying result service.

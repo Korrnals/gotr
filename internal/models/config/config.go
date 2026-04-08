@@ -67,13 +67,13 @@ func (c *Config) WithDefaults() *Config {
 // Create writes the configuration file to disk.
 func (c *Config) Create() error {
 	dir := filepath.Dir(c.Path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
 	content := []byte(c.renderTemplate())
 
-	if err := os.WriteFile(c.Path, content, 0600); err != nil {
+	if err := os.WriteFile(c.Path, content, 0o600); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", c.Path, err)
 	}
 

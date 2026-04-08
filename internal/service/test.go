@@ -18,8 +18,8 @@ type TestService struct {
 }
 
 // NewTestService creates a new service for working with tests.
-func NewTestService(client client.ClientInterface) *TestService {
-	return &TestService{client: client}
+func NewTestService(c client.ClientInterface) *TestService {
+	return &TestService{client: c}
 }
 
 // Get retrieves a test by ID.
@@ -97,6 +97,6 @@ func (s *TestService) PrintSuccess(ctx context.Context, cmd *cobra.Command, form
 }
 
 // Output renders the result as JSON.
-func (s *TestService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return output.OutputResultWithFlags(cmd, data)
+func (s *TestService) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
+	return output.OutputResultWithFlags(cmd, v)
 }

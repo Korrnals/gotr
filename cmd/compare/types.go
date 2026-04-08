@@ -597,8 +597,8 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 }
 
 // GetProjectName retrieves a single project name (helper for tests)
-func GetProjectName(cli client.ClientInterface, projectID int64) (string, error) {
-	proj, err := cli.GetProject(context.Background(), projectID)
+func GetProjectName(ctx context.Context, cli client.ClientInterface, projectID int64) (string, error) {
+	proj, err := cli.GetProject(ctx, projectID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get project %d: %w", projectID, err)
 	}

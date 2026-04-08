@@ -171,7 +171,7 @@ func TestGetProjectName_Success(t *testing.T) {
 		},
 	}
 
-	name, err := GetProjectName(mock, 1)
+	name, err := GetProjectName(context.Background(), mock, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Project", name)
 }
@@ -183,7 +183,7 @@ func TestGetProjectName_ProjectIsNilFallback(t *testing.T) {
 		},
 	}
 
-	name, err := GetProjectName(mock, 42)
+	name, err := GetProjectName(context.Background(), mock, 42)
 	assert.NoError(t, err)
 	assert.Equal(t, "Project 42", name)
 }
@@ -195,7 +195,7 @@ func TestGetProjectName_Error(t *testing.T) {
 		},
 	}
 
-	name, err := GetProjectName(mock, 77)
+	name, err := GetProjectName(context.Background(), mock, 77)
 	assert.Error(t, err)
 	assert.Empty(t, name)
 	assert.Contains(t, err.Error(), "failed to get project 77")

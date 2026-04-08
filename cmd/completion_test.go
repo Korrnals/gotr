@@ -27,9 +27,9 @@ func TestCompletionCmd_Run_Shells(t *testing.T) {
 	for _, shell := range shells {
 		t.Run(shell, func(t *testing.T) {
 			withStdoutToDevNull(t, func() {
-				completionCmd.Run(completionCmd, []string{shell})
+				err := completionCmd.RunE(completionCmd, []string{shell})
+				assert.NoError(t, err)
 			})
-			assert.True(t, true)
 		})
 	}
 }

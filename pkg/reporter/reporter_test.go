@@ -237,11 +237,11 @@ func TestStripEmoji(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"10/10 сьютов завершены ✅", "10/10 сьютов завершены (OK)"},
-		{"ошибка ⚠️ найдена", "ошибка (!) найдена"},
-		{"всё ❌ плохо", "всё (X) плохо"},
+		{"10/10 suites completed ✅", "10/10 suites completed (OK)"},
+		{"error ⚠️ found", "error (!) found"},
+		{"all ❌ bad", "all (X) bad"},
 		{"no emoji", "no emoji"},
-		{"OK ✅ и ⚠️ рядом", "OK (OK) и (!) рядом"},
+		{"OK ✅ and ⚠️ nearby", "OK (OK) and (!) nearby"},
 	}
 	for _, tt := range tests {
 		got := StripEmoji(tt.input)
@@ -278,7 +278,7 @@ func TestConsistentLineWidth(t *testing.T) {
 	var buf bytes.Buffer
 	New("align").
 		Writer(&buf).
-		Section("Тест").
+		Section("Test").
 		Stat("⏱️", "Time", "1s").
 		Stat("📦", "Cases", 100).
 		Stat("⚠️", "Errors", 0).
@@ -318,15 +318,15 @@ func TestIndentation(t *testing.T) {
 	var buf bytes.Buffer
 	New("indent").
 		Writer(&buf).
-		Section("Проект 30").
-		Stat("📋", "Сьютов", 10).
-		Stat("📂", "Секций", 740).
+		Section("Project 30").
+		Stat("📋", "Suites", 10).
+		Stat("📂", "Sections", 740).
 		Print()
 
 	out := buf.String()
 
 	// Section should NOT be indented (level 0).
-	if !strings.Contains(out, "Проект 30") {
+	if !strings.Contains(out, "Project 30") {
 		t.Error("missing section name")
 	}
 
@@ -334,7 +334,7 @@ func TestIndentation(t *testing.T) {
 	if !strings.Contains(out, "  ") {
 		t.Error("stats should have indentation")
 	}
-	if !strings.Contains(out, "Сьютов: 10") {
+	if !strings.Contains(out, "Suites: 10") {
 		t.Error("missing stat")
 	}
 }
@@ -343,8 +343,8 @@ func TestInlineEmojiStripped(t *testing.T) {
 	var buf bytes.Buffer
 	New("strip").
 		Writer(&buf).
-		Stat("📈", "Полнота", "10/10 сьютов завершены ✅").
-		Stat("⚠️", "Проблема", "error found").
+		Stat("📈", "Completeness", "10/10 suites completed ✅").
+		Stat("⚠️", "Problem", "error found").
 		Print()
 
 	out := buf.String()

@@ -17,7 +17,7 @@ import (
 func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-history [case-id]",
-		Short: "Получить историю изменений кейса по ID кейса",
+		Short: "Get case change history by case ID",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
@@ -85,7 +85,7 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "sharedstep-history [step-id]",
-		Short: "Получить историю изменений shared step по ID шага",
+		Short: "Get shared step change history by step ID",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()

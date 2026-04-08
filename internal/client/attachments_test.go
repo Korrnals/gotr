@@ -47,7 +47,7 @@ func TestAddAttachmentToCase(t *testing.T) {
 			if tc.mockResponse != nil {
 				mockClient.AddAttachmentToCaseFunc = func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
 					if tc.name == "FileNotFound" {
-						return nil, nil // или ошибка, в зависимости от реализации
+						return nil, nil // or error, depending on implementation
 					}
 					return tc.mockResponse, nil
 				}
@@ -57,7 +57,7 @@ func TestAddAttachmentToCase(t *testing.T) {
 			result, err := mockClient.AddAttachmentToCase(ctx, tc.caseID, tc.filePath)
 
 			if tc.wantErr {
-				// Для теста FileNotFound просто проверяем что вызов произошел
+				// For FileNotFound test just verify the call was made
 				return
 			}
 			if err != nil {
@@ -162,10 +162,10 @@ func TestAddAttachmentToRun(t *testing.T) {
 func TestAddAttachmentToCaseError(t *testing.T) {
 	mockClient := &MockClient{}
 	mockClient.AddAttachmentToCaseFunc = func(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error) {
-		return nil, nil // Симулируем ошибку или nil ответ
+		return nil, nil // Simulate error or nil response
 	}
 
-	// Проверяем что метод вызывается
+	// Verify the method is called
 	ctx := context.Background()
 	_, err := mockClient.AddAttachmentToCase(ctx, 999, "/tmp/test.txt")
 	if err != nil {

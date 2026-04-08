@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get cases ====================
+// ==================== Tests for get cases ====================
 
 func TestCasesCmd_WithSuiteID(t *testing.T) {
 	mock := &client.MockClient{
@@ -94,7 +94,7 @@ func TestCasesCmd_AutoSelectSingleSuite(t *testing.T) {
 
 	cmd := newCasesCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"30"}) // Без --suite-id
+	cmd.SetArgs([]string{"30"}) // Without --suite-id
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
@@ -154,7 +154,7 @@ func TestCasesCmd_InvalidProjectIDFlag(t *testing.T) {
 func TestCasesCmd_NoSuites(t *testing.T) {
 	mock := &client.MockClient{
 		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
-			return data.GetSuitesResponse{}, nil // Нет сьютов
+			return data.GetSuitesResponse{}, nil // No suites
 		},
 	}
 
@@ -261,7 +261,7 @@ func TestCasesCmd_MultipleSuites_InteractiveSelectError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to select")
 }
 
-// ==================== Тесты для get case ====================
+// ==================== Tests for get case ====================
 
 func TestCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -512,7 +512,7 @@ func TestCaseCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для fetchCasesFromAllSuites ====================
+// ==================== Tests for fetchCasesFromAllSuites ====================
 
 func TestFetchCasesFromAllSuites_WithError(t *testing.T) {
 	mock := &client.MockClient{
@@ -535,7 +535,7 @@ func TestFetchCasesFromAllSuites_WithError(t *testing.T) {
 	cmd.SetArgs([]string{"30", "--all-suites"})
 
 	err := cmd.Execute()
-	// Ошибка в одном сьюте не прерывает выполнение, просто выводится сообщение
+	// Error in one suite does not stop execution, just prints a message
 	assert.NoError(t, err)
 }
 

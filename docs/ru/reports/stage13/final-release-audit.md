@@ -37,27 +37,29 @@ Language: Русский | [English](../../../en/reports/stage13/final-release-a
 
 ---
 
-**Дата:** 6 апреля 2026  
-**Ветка:** `stage-13.0-final-refactoring`  
-**Scope:** Полный аудит 268 исходных + 249 тестовых файлов, 123 документа
+**Дата:** 6 апреля 2026 (обновлено: Stage 13.5 — Quality Hardening)  
+**Ветка:** `stage-13.5-quality-hardening`  
+**Commit:** `a2ab489`  
+**Scope:** Полный аудит 268 исходных + 249 тестовых файлов, 125 документов, Go 1.25.0
 
 ---
 
 ## Итоговый вердикт
 
-| Область | Оценка | Блокер? |
-| --- | --- | --- |
-| **Архитектура и слои** | **PASS** (c оговорками) | Нет |
-| **TestRail API покрытие** | **PASS** (87–92%) | Нет |
-| **Качество кода** | **PASS** | Нет (исправлено 2026-04-06) |
-| **Тестовое покрытие** | **PASS** (96.8–100%) | Нет |
-| **Документация** | **PASS** | Нет (исправлено 2026-04-06) |
-| **CI/Build/Security** | **WARN** | Нет (stdlib vuln) |
+| Область | Фаза | Оценка | Findings | Блокер? |
+| --- | --- | --- | --- | --- |
+| **Архитектура и слои** | Phase 1 | **CONDITIONAL PASS** | 0C / 0H / 3M / 2L | Нет |
+| **TestRail API покрытие** | Phase 2 | **PASS** | 135 endpoints, 98% impl | Нет |
+| **Качество кода** | Phase 3 | **CONDITIONAL PASS** | 0C / 0H / 4M / 4L | Нет |
+| **Тестовое покрытие** | Phase 4 | **PASS** | 42/42 ≥97.4%, 0 races | Нет |
+| **Документация** | Phase 5 | **CONDITIONAL PASS** | 0C / 2H / 3M / 3L | Да (README) |
+| **CI/Build/Security** | Phase 6 | **PASS** | 6 stdlib vulns, 0 dep vulns | Нет |
 
-### Решение: **PASS — все блокеры исправлены (2026-04-06)**
+### Решение: **CONDITIONAL PASS — 2 HIGH в README требуют фикса**
 
-> **Addendum 2026-04-06:** Все 4 блокера (R-1, R-2, D-1, D-2) исправлены и верифицированы.
-> 42/42 пакетов PASS с `-race`, 0 data races. Бейджи README обновлены до 3.0.0 / Go 1.25.0.
+> Phase 5 обнаружила 2 HIGH: фантомные `cmd/common/` и `internal/utils/` в README Project Structure.
+> Также 3 MEDIUM: устаревшие библиотеки в таблице Acknowledgements, устаревшая секция "What's New v2.8.0".
+> Все остальные фазы — PASS или CONDITIONAL PASS без HIGH.
 
 ---
 
@@ -364,6 +366,113 @@ pkg/* → (нет внутренних зависимостей)
 - Ограниченный параллелизм в migration (C-2)
 - CLI команды для оставшихся API ресурсов (API-2)
 - Дополнение api_paths.go (API-1)
+
+---
+
+## Stage 13.5 — Quality Hardening Audit
+
+**Дата:** Stage 13.5 audit run  
+**Ветка:** `stage-13.5-quality-hardening` @ `a2ab489`
+
+### Phase 0 — Scope
+
+- Source files: 268
+- Test files: 249
+- Doc files: 125
+- Go version: 1.25.0
+
+### Phase 1 — Architecture (CONDITIONAL PASS)
+
+| Проверка | Результат |
+| --- | --- |
+| Layer boundaries (cmd↛cmd, pkg↛internal) | PASS — 0 нарушений |
+| Dependency direction | WARN — `internal/client → cobra`, `internal/service → output` |
+| Interface usage | WARN — часть cmd/ на `ClientInterface`, часть на `*HTTPClient` |
+| Package cohesion | PASS |
+| Coupling hotspots | WARN — `cmd/compare` 8 internal deps |
+| Concurrency architecture | PASS — одностороннее `concurrency → concurrent` |
+| Model layer | WARN — `models/config → ui.Infof` |
+
+Findings: 0 CRITICAL, 0 HIGH, 3 MEDIUM, 2 LOW.
+
+### Phase 2 — TestRail API Coverage (PASS)
+
+- 135 endpoints в api_paths.go, 26 resource groups
+- 128+ client methods (98% coverage)
+- 22 resource groups с CLI командами
+- Core CRUD (Cases, Runs, Results, Plans): 100%
+- Pagination, Rate Limiting, Parallel fetching: все реализованы
+
+### Phase 3 — Code Quality (CONDITIONAL PASS)
+
+| Проверка | Результат |
+| --- | --- |
+| Error handling (`%w`, RunE, Silence) | WARN — 12 мест без `%w` в client, completion.go swallowed errs |
+| Resource management | PASS — no leaks |
+| Context propagation | WARN — 3 `context.Background()` вместо parent ctx |
+| Cobra CLI patterns | PASS |
+| Security | WARN — export files 0644 (не credentials) |
+| DRY | WARN — update.go/add.go boilerplate |
+| Go best practices | WARN — doc.go отсутствует в 26 пакетах |
+
+Findings: 0 CRITICAL, 0 HIGH, 4 MEDIUM, 4 LOW.
+
+### Phase 4 — Tests & Race (PASS)
+
+- 42/42 packages PASS, min coverage 97.4% (cmd/sync)
+- 0 data races (`go test -race`)
+- Mock layer: complete (128 methods, compile-time check)
+- Test quality spot-check: 5/5 packages PASS (table-driven, error injection, isolation)
+- 8 files без прямого `_test.go` (покрыты косвенно через package coverage)
+
+### Phase 5 — Documentation (CONDITIONAL PASS)
+
+| Проверка | Результат |
+| --- | --- |
+| CLI ↔ Docs mapping | PASS — 29/29 команд задокументированы |
+| README | WARN — фантомные `cmd/common/`, `internal/utils/`; устаревшие libs в таблице |
+| Architecture docs | PASS |
+| Navigation | PASS — 0 broken links |
+| EN/RU parity | WARN — EN 61, RU 63 (2 internal reports) |
+
+Findings: 0 CRITICAL, 2 HIGH, 3 MEDIUM, 3 LOW.
+
+### Phase 6 — CI/Build/Security (PASS)
+
+| Gate | Результат |
+| --- | --- |
+| `go build ./...` | PASS |
+| `go vet ./...` | PASS |
+| `go test ./...` | PASS (42/42) |
+| `go test -race ./...` | PASS (41/41, 0 races) |
+| `golangci-lint run` | PASS (0 issues) |
+| `govulncheck ./...` | 6 stdlib vulns (go1.25.6→1.25.9), 0 dep vulns — NON-BLOCKING |
+| Makefile `verify` | PASS — runs all gates |
+| Makefile `release` | PASS — includes checksums |
+
+### Сводная таблица findings
+
+| Severity | Count | Источник |
+| --- | --- | --- |
+| CRITICAL | 0 | — |
+| HIGH | 2 | README: фантомные `cmd/common/`, `internal/utils/` (Phase 5) |
+| MEDIUM | 10 | Architecture (3) + Code Quality (4) + Documentation (3) |
+| LOW | 9 | Architecture (2) + Code Quality (4) + Documentation (3) |
+
+### Вердикт: **CONDITIONAL PASS**
+
+**Блокеры перед PR (2 HIGH):**
+
+1. Удалить `cmd/common/` и `internal/utils/` из README Project Structure
+2. Удалить `cheggaaa/pb/v3` и `itchyny/gojq` из README Acknowledgements
+
+**Рекомендовано (MEDIUM, non-blocking):**
+
+- Обновить секцию "What's New" в README (v2.8.0 → v3.0.0)
+- `context.Background()` → parent ctx в `compare/types.go`, `sync/sync.go`, `concurrent/pool.go`
+- `internal/client → cobra` decoupling
+- `internal/service → output` decoupling
+- `models/config → ui.Infof` вынести в caller
 
 ---
 

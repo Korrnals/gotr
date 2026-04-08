@@ -9,6 +9,10 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
+// maxImportConcurrency limits the number of parallel API calls during import
+// to avoid overwhelming the TestRail server.
+const maxImportConcurrency = 10
+
 // ImportSharedSteps imports filtered shared steps in parallel.
 // Updates the mapping (AddPair with status "created" for new IDs).
 // Logs success/error entries from goroutines.
@@ -22,10 +26,13 @@ func (m *Migration) ImportSharedSteps(ctx context.Context, filtered data.GetShar
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, step := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(s data.SharedStep) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
 			// Prepare request (deep copy steps)
@@ -77,10 +84,13 @@ func (m *Migration) ImportSuites(ctx context.Context, filtered data.GetSuitesRes
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, suite := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(s data.Suite) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
 			// Prepare request
@@ -123,10 +133,13 @@ func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSection
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, section := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(s data.Section) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
 			// Prepare request
@@ -171,10 +184,13 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, c := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(caseData data.Case) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
 			// Prepare request
@@ -239,10 +255,13 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, c := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(caseData data.Case) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
 			// Prepare request

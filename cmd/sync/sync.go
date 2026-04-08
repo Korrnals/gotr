@@ -58,23 +58,23 @@ var testClientKey = &struct{}{}
 func SetTestClient(cmd *cobra.Command, mockClient client.ClientInterface) {
 	ctx := cmd.Context()
 	if ctx == nil {
-		ctx = context.Background()
+		ctx = context.TODO()
 	}
 	cmd.SetContext(context.WithValue(ctx, testClientKey, mockClient))
 }
 
 // getClientSafe safely calls getClient with a nil check.
 // Fallback: gets client from context (for tests).
-func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
+func getClientSafe(cmd *cobra.Command) client.ClientInterface {
 	if clientAccessor != nil {
-		if c := clientAccessor.GetClientSafe(cmd); c != nil {
+		if c := clientAccessor.GetClientSafe(cmd.Context()); c != nil {
 			return c
 		}
 	}
 	// Fallback for old tests — get from context by old key
 	if ctx := cmd.Context(); ctx != nil {
 		if v := ctx.Value(testHTTPClientKey); v != nil {
-			if c, ok := v.(*client.HTTPClient); ok {
+			if c, ok := v.(client.ClientInterface); ok {
 				return c
 			}
 		}

@@ -50,7 +50,7 @@ func WithProgressMonitor(monitor ProgressMonitor) PoolOption {
 }
 
 // NewWorkerPool creates a new worker pool with the given options.
-func NewWorkerPool(opts ...PoolOption) *WorkerPool {
+func NewWorkerPool(ctx context.Context, opts ...PoolOption) *WorkerPool {
 	pool := &WorkerPool{
 		maxWorkers: 5,                   // Default: 5 concurrent workers
 		limiter:    NewRateLimiter(150), // Default: 150 req/min (TestRail limit)
@@ -60,7 +60,7 @@ func NewWorkerPool(opts ...PoolOption) *WorkerPool {
 		opt(pool)
 	}
 
-	pool.errGroup, pool.errGroupCtx = errgroup.WithContext(context.Background())
+	pool.errGroup, pool.errGroupCtx = errgroup.WithContext(ctx)
 	pool.errGroup.SetLimit(pool.maxWorkers)
 
 	return pool
@@ -100,7 +100,7 @@ type Result[T any] struct {
 }
 
 // ParallelMap executes a function in parallel for each item in the slice.
-func ParallelMap[T any, R any](items []T, maxWorkers int, fn func(T, int) (R, error)) ([]Result[R], error) {
+func ParallelMap[T any, R any](ctx context.Context, items []T, maxWorkers int, fn func(T, int) (R, error)) ([]Result[R], error) {
 	if len(items) == 0 {
 		return nil, nil
 	}
@@ -112,7 +112,7 @@ func ParallelMap[T any, R any](items []T, maxWorkers int, fn func(T, int) (R, er
 	results := make([]Result[R], len(items))
 	var mu sync.Mutex
 
-	g, _ := errgroup.WithContext(context.Background())
+	g, _ := errgroup.WithContext(ctx)
 	g.SetLimit(maxWorkers)
 
 	for i, item := range items {
@@ -132,7 +132,7 @@ func ParallelMap[T any, R any](items []T, maxWorkers int, fn func(T, int) (R, er
 }
 
 // ParallelForEach executes a function in parallel for each item (no return value).
-func ParallelForEach[T any](items []T, maxWorkers int, fn func(T, int) error) error {
+func ParallelForEach[T any](ctx context.Context, items []T, maxWorkers int, fn func(T, int) error) error {
 	if len(items) == 0 {
 		return nil
 	}
@@ -141,7 +141,7 @@ func ParallelForEach[T any](items []T, maxWorkers int, fn func(T, int) error) er
 		maxWorkers = 5
 	}
 
-	g, _ := errgroup.WithContext(context.Background())
+	g, _ := errgroup.WithContext(ctx)
 	g.SetLimit(maxWorkers)
 
 	for i, item := range items {

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"github.com/Korrnals/gotr/internal/ui"
 )
 
 // DefaultConfigValues are default placeholders used in the configuration template.
@@ -77,7 +75,6 @@ func (c *Config) Create() error {
 		return fmt.Errorf("failed to write file %s: %w", c.Path, err)
 	}
 
-	ui.Infof(os.Stdout, "Config file created: %s", c.Path)
 	return nil
 }
 

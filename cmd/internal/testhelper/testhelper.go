@@ -43,7 +43,7 @@ func GetClientForTests(cmd *cobra.Command) client.ClientInterface {
 
 // SetupTestCmdWithBuffer creates a test command with a mock client and output buffer.
 // Used when command output needs to be verified.
-func SetupTestCmdWithBuffer(t *testing.T, mock *client.MockClient) (*cobra.Command, *cobra.Command) {
+func SetupTestCmdWithBuffer(t *testing.T, mock *client.MockClient) (root, sub *cobra.Command) {
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), HTTPClientKey, mock)
 	cmd.SetContext(ctx)

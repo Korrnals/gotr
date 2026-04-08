@@ -29,13 +29,13 @@ type Migration struct {
 // NewMigration creates a new Migration instance with a zap logger.
 func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, dstSuite int64, compareField, logDir string) (*Migration, error) {
 	// Create directory for log files
-	if err := os.MkdirAll(logDir, 0755); err != nil {
+	if err := os.MkdirAll(logDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create log directory %s: %w", logDir, err)
 	}
 
 	// JSON log file path
 	logFile := filepath.Join(logDir, fmt.Sprintf("migration_%s.json", time.Now().Format("2006-01-02_15-04-05")))
-	fileWriter, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	fileWriter, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return nil, err
 	}

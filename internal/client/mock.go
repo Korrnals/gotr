@@ -236,7 +236,7 @@ func (m *MockClient) DeleteProject(ctx context.Context, projectID int64) error {
 // CasesAPI
 // ---------------------------------------------------------------------------
 // GetCases calls the configured mock implementation when it is set.
-func (m *MockClient) GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+func (m *MockClient) GetCases(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 	if m.GetCasesFunc != nil {
 		return m.GetCasesFunc(ctx, projectID, suiteID, sectionID)
 	}
@@ -244,7 +244,7 @@ func (m *MockClient) GetCases(ctx context.Context, projectID int64, suiteID int6
 }
 
 // GetCasesPage calls the configured mock implementation when it is set.
-func (m *MockClient) GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+func (m *MockClient) GetCasesPage(ctx context.Context, projectID, suiteID int64, offset, limit int) (data.GetCasesResponse, error) {
 	if m.GetCasesPageFunc != nil {
 		return m.GetCasesPageFunc(ctx, projectID, suiteID, offset, limit)
 	}
@@ -842,7 +842,7 @@ func (m *MockClient) AddAttachmentToPlan(ctx context.Context, planID int64, file
 }
 
 // AddAttachmentToPlanEntry calls the configured mock implementation when it is set.
-func (m *MockClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+func (m *MockClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID, filePath string) (*data.AttachmentResponse, error) {
 	if m.AddAttachmentToPlanEntryFunc != nil {
 		return m.AddAttachmentToPlanEntryFunc(ctx, planID, entryID, filePath)
 	}

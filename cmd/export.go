@@ -76,7 +76,7 @@ Examples:
 		} else {
 			// Save to .testrail/ (legacy behavior)
 			exportDir := ".testrail"
-			if err := os.MkdirAll(exportDir, 0755); err != nil {
+			if err := os.MkdirAll(exportDir, 0o755); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", exportDir, err)
 			}
 			filename := fmt.Sprintf("%s/%s_%s.json", exportDir, resource, time.Now().Format("20060102_150405"))
@@ -95,11 +95,10 @@ Examples:
 	},
 }
 
-func resolveExportInputs(cmd *cobra.Command, args []string) (string, string, string, error) {
+func resolveExportInputs(cmd *cobra.Command, args []string) (resource, endpoint, id string, err error) {
 	ctx := cmd.Context()
 	p := interactive.PrompterFromContext(ctx)
 
-	resource := ""
 	if len(args) > 0 {
 		resource = strings.ToLower(args[0])
 	} else {
@@ -113,7 +112,6 @@ func resolveExportInputs(cmd *cobra.Command, args []string) (string, string, str
 		resource = strings.ToLower(ValidResources[idx])
 	}
 
-	endpoint := ""
 	if len(args) > 1 {
 		endpoint = args[1]
 	} else {

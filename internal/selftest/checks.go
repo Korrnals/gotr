@@ -96,7 +96,7 @@ func (c BaseDirChecker) Check() CheckResult {
 		if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 			missing = append(missing, check.name)
 			// Auto-create missing directory
-			if mkErr := os.MkdirAll(dir, 0755); mkErr != nil {
+			if mkErr := os.MkdirAll(dir, 0o755); mkErr != nil {
 				failedDirs = append(failedDirs, check.name)
 			}
 		}
@@ -211,7 +211,7 @@ func (c AllTestsChecker) Check() CheckResult {
 
 	// Save full report to ~/.gotr/selftest/
 	if reportDir, pathErr := paths.SelftestDirPath(); pathErr == nil {
-		if mkErr := os.MkdirAll(reportDir, 0755); mkErr == nil {
+		if mkErr := os.MkdirAll(reportDir, 0o755); mkErr == nil {
 			timestamp := time.Now().Format("2006-01-02_150405")
 			reportPath := filepath.Join(reportDir, fmt.Sprintf("test-report-%s.log", timestamp))
 
@@ -220,7 +220,7 @@ func (c AllTestsChecker) Check() CheckResult {
 			reportContent += fmt.Sprintf("Results: %d passed, %d failed, %d skipped\n\n", passed, failed, skipped)
 			reportContent += outStr
 
-			if writeErr := os.WriteFile(reportPath, []byte(reportContent), 0644); writeErr == nil {
+			if writeErr := os.WriteFile(reportPath, []byte(reportContent), 0o644); writeErr == nil {
 				result.Details += fmt.Sprintf(" | Report: %s", reportPath)
 
 				// Update "latest" symlink

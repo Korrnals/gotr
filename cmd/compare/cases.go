@@ -257,58 +257,11 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	execStats.LoadErrorsP1 = int(task1.Errors())
 	execStats.LoadErrorsP2 = int(task2.Errors())
 
+	// Merge failed pages from both projects and delegate reporting/retry
+	// to handleFailedPages (extracted to reduce cyclomatic complexity).
 	allFailedPages := append(append([]concurrency.FailedPage{}, failedPages1...), failedPages2...)
 	execStats.FailedPagesBefore = len(allFailedPages)
-	if len(allFailedPages) > 0 {
-		ui.Warningf(os.Stderr, "Unfetched pages after retry/recovery: %d", len(allFailedPages))
-		showLimit := 10
-		if len(allFailedPages) < showLimit {
-			showLimit = len(allFailedPages)
-		}
-		for i := 0; i < showLimit; i++ {
-			fp := allFailedPages[i]
-			ui.Infof(os.Stderr, "  - project=%d suite=%d page=%d offset=%d limit=%d", fp.ProjectID, fp.SuiteID, fp.PageNum, fp.Offset, fp.Limit)
-		}
-		if len(allFailedPages) > showLimit {
-			ui.Infof(os.Stderr, "  ... and %d more pages (see JSON report)", len(allFailedPages)-showLimit)
-		}
-
-		reportPath, saveErr := saveFailedPagesReport(allFailedPages, "")
-		if saveErr != nil {
-			ui.Warningf(os.Stderr, "Failed to save failed-pages report: %v", saveErr)
-		} else {
-			ui.Infof(os.Stderr, "Failed-pages report saved: %s", reportPath)
-			execStats.FailedPagesReport = reportPath
-		}
-
-		if runtimeConfig.AutoRetryFailedPages {
-			operation.Phase("Running auto-retry for failed pages...")
-			execStats.RetryAttempted = true
-			remaining, retryStats, retryErr := executeRetryFailedPages(
-				ctx,
-				cli,
-				allFailedPages,
-				retryFailedPagesOptions{
-					Attempts: runtimeConfig.RetryAttempts,
-					Workers:  runtimeConfig.RetryWorkers,
-					Delay:    runtimeConfig.RetryDelay,
-				},
-				"auto-retry after compare cases",
-				"",
-			)
-			execStats.RetryStats = retryStats
-			execStats.FailedPagesAfter = len(remaining)
-			if retryErr != nil {
-				execStats.RetryFailedWithErr = true
-				ui.Warningf(os.Stderr, "Auto-retry finished with error: %v", retryErr)
-			} else if len(remaining) == 0 {
-				ui.Successf(os.Stderr, "Auto-retry: all failed pages were processed successfully")
-			}
-		} else {
-			execStats.FailedPagesAfter = len(allFailedPages)
-			ui.Warningf(os.Stderr, "Auto-retry is disabled via compare.cases.auto_retry_failed_pages")
-		}
-	}
+	handleFailedPages(ctx, cli, allFailedPages, runtimeConfig, operation, &execStats)
 
 	if err1 != nil {
 		return nil, execStats, fmt.Errorf("failed to load project %d: %w", pid1, err1)
@@ -342,6 +295,74 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	}
 
 	return result, execStats, nil
+}
+
+// handleFailedPages reports, saves, and optionally auto-retries failed pages.
+// Extracted from compareCasesInternal to keep the main orchestration function lean.
+// Three-phase logic:
+//  1. Display up to 10 failed pages as a human-readable summary.
+//  2. Persist the full list to a JSON report for later manual retry.
+//  3. If auto-retry is enabled in runtimeConfig, run executeRetryFailedPages
+//     and record the outcome in execStats.
+func handleFailedPages(ctx context.Context, cli client.ClientInterface, allFailedPages []concurrency.FailedPage, runtimeConfig compareCasesRuntimeConfig, operation ui.Operation, execStats *casesExecutionStats) {
+	if len(allFailedPages) == 0 {
+		return
+	}
+
+	// Display a truncated summary (up to 10 pages) so the user sees
+	// which pages were not fetched without flooding the terminal.
+	ui.Warningf(os.Stderr, "Unfetched pages after retry/recovery: %d", len(allFailedPages))
+	showLimit := 10
+	if len(allFailedPages) < showLimit {
+		showLimit = len(allFailedPages)
+	}
+	for i := 0; i < showLimit; i++ {
+		fp := allFailedPages[i]
+		ui.Infof(os.Stderr, "  - project=%d suite=%d page=%d offset=%d limit=%d", fp.ProjectID, fp.SuiteID, fp.PageNum, fp.Offset, fp.Limit)
+	}
+	if len(allFailedPages) > showLimit {
+		ui.Infof(os.Stderr, "  ... and %d more pages (see JSON report)", len(allFailedPages)-showLimit)
+	}
+
+	// Save full failed-pages list to JSON for post-hoc `gotr compare retry-failed-pages`.
+	reportPath, saveErr := saveFailedPagesReport(allFailedPages, "")
+	if saveErr != nil {
+		ui.Warningf(os.Stderr, "Failed to save failed-pages report: %v", saveErr)
+	} else {
+		ui.Infof(os.Stderr, "Failed-pages report saved: %s", reportPath)
+		execStats.FailedPagesReport = reportPath
+	}
+
+	// Auto-retry: when enabled, immediately re-fetch failed pages using the
+	// worker pool in executeRetryFailedPages. The result updates execStats
+	// so the caller can set the correct CompareStatus (partial/complete).
+	if runtimeConfig.AutoRetryFailedPages {
+		operation.Phase("Running auto-retry for failed pages...")
+		execStats.RetryAttempted = true
+		remaining, retryStats, retryErr := executeRetryFailedPages(
+			ctx,
+			cli,
+			allFailedPages,
+			retryFailedPagesOptions{
+				Attempts: runtimeConfig.RetryAttempts,
+				Workers:  runtimeConfig.RetryWorkers,
+				Delay:    runtimeConfig.RetryDelay,
+			},
+			"auto-retry after compare cases",
+			"",
+		)
+		execStats.RetryStats = retryStats
+		execStats.FailedPagesAfter = len(remaining)
+		if retryErr != nil {
+			execStats.RetryFailedWithErr = true
+			ui.Warningf(os.Stderr, "Auto-retry finished with error: %v", retryErr)
+		} else if len(remaining) == 0 {
+			ui.Successf(os.Stderr, "Auto-retry: all failed pages were processed successfully")
+		}
+	} else {
+		execStats.FailedPagesAfter = len(allFailedPages)
+		ui.Warningf(os.Stderr, "Auto-retry is disabled via compare.cases.auto_retry_failed_pages")
+	}
 }
 
 // fetchCasesForProject loads all cases for a single project.
@@ -399,52 +420,85 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 		return nil, nil, pds, err
 	}
 
-	// Log execution stats for diagnostics
+	// Populate per-suite diagnostics from the parallel execution result.
+	// Extracted into collectParallelFetchStats to reduce the CC of fetchCasesForProject.
 	if result != nil {
-		stats := result.Stats
-		debug.DebugPrint("[Project %d] Fetch stats: %d suites completed, %d pages, %d raw cases, expected=%d, partial=%v",
-			projectID, stats.CompletedSuites, stats.TotalPages, stats.TotalCases, stats.ExpectedCases, result.Partial)
-		pds.CasesExpected = int(stats.ExpectedCases)
-		pds.SuitesWithTotal = stats.SuitesWithTotal
-		pds.SuitesVerified = stats.SuitesVerified
-		if len(stats.SuiteResults) > 0 {
-			sum := 0
-			emptySuites := 0
-			for _, r := range stats.SuiteResults {
-				sum += r.CasesFetched
-				if r.CasesFetched == 0 {
-					emptySuites++
-				}
-				verified := "✗"
-				if r.Verified {
-					verified = "✓"
-				}
-				debug.DebugPrint("[Project %d] Suite %d: %d cases [%s]",
-					projectID, r.SuiteID, r.CasesFetched, verified)
-			}
-			debug.DebugPrint("[Project %d] Suite totals: Σ=%d, empty=%d, count=%d",
-				projectID, sum, emptySuites, len(stats.SuiteResults))
-			pds.SuiteDetailsSum = sum
-			pds.SuiteDetailsEmpty = emptySuites
-			pds.SuiteDetailsCount = len(stats.SuiteResults)
-		}
-		pds.TotalPages = stats.TotalPages
-		pds.FailedPages = stats.FailedPages
+		collectParallelFetchStats(result, projectID, &pds)
 	}
 
-	// Collect unique cases (ID dedup) and count sections
-	var allCases []ItemInfo
+	// Remove duplicate case IDs (suites may overlap) and gather title/section stats.
+	// Extracted into deduplicateCases to keep fetchCasesForProject focused on orchestration.
+	allCases, sectionCount, emptyTitles, uniqueTitles := deduplicateCases(cases)
+
+	pds.CasesRaw = len(cases)
+	pds.CasesUnique = len(allCases)
+	pds.UniqueTitles = uniqueTitles
+	pds.EmptyTitles = emptyTitles
+	pds.Sections = sectionCount
+	pds.Elapsed = time.Since(fetchStart)
+
+	debug.DebugPrint("[Project %d] Total: %d raw → %d unique IDs → %d unique titles (empty titles: %d), %d sections",
+		projectID, len(cases), len(allCases), uniqueTitles, emptyTitles, sectionCount)
+
+	if result != nil {
+		return allCases, result.FailedPages, pds, nil
+	}
+
+	return allCases, nil, pds, nil
+}
+
+// collectParallelFetchStats fills projectDataStats from a parallel execution result.
+// It walks SuiteResults to compute per-suite aggregates (sum, empty count)
+// and populates page/failure counters used in the loading summary banner.
+func collectParallelFetchStats(result *concurrency.ExecutionResult, projectID int64, pds *projectDataStats) {
+	stats := result.Stats
+	debug.DebugPrint("[Project %d] Fetch stats: %d suites completed, %d pages, %d raw cases, expected=%d, partial=%v",
+		projectID, stats.CompletedSuites, stats.TotalPages, stats.TotalCases, stats.ExpectedCases, result.Partial)
+	pds.CasesExpected = int(stats.ExpectedCases)
+	pds.SuitesWithTotal = stats.SuitesWithTotal
+	pds.SuitesVerified = stats.SuitesVerified
+	if len(stats.SuiteResults) > 0 {
+		sum := 0
+		emptySuites := 0
+		for _, r := range stats.SuiteResults {
+			sum += r.CasesFetched
+			if r.CasesFetched == 0 {
+				emptySuites++
+			}
+			verified := "✗"
+			if r.Verified {
+				verified = "✓"
+			}
+			debug.DebugPrint("[Project %d] Suite %d: %d cases [%s]",
+				projectID, r.SuiteID, r.CasesFetched, verified)
+		}
+		debug.DebugPrint("[Project %d] Suite totals: Σ=%d, empty=%d, count=%d",
+			projectID, sum, emptySuites, len(stats.SuiteResults))
+		pds.SuiteDetailsSum = sum
+		pds.SuiteDetailsEmpty = emptySuites
+		pds.SuiteDetailsCount = len(stats.SuiteResults)
+	}
+	pds.TotalPages = stats.TotalPages
+	pds.FailedPages = stats.FailedPages
+}
+
+// deduplicateCases removes duplicate cases by ID and counts sections/titles.
+// When cases are fetched from multiple suites, IDs can repeat; this function
+// produces a clean unique slice and computes three auxiliary metrics:
+//   - sectionCount: distinct section IDs encountered (for integrity checks)
+//   - emptyTitles: cases with blank titles (data quality indicator)
+//   - uniqueTitles: case-insensitive distinct titles (for title-based comparison)
+func deduplicateCases(cases data.GetCasesResponse) (items []ItemInfo, sectionCount, emptyTitles, uniqueTitles int) {
 	caseIDs := make(map[int64]bool)
 	sectionIDs := make(map[int64]struct{})
 
-	emptyTitles := 0
 	for _, c := range cases {
 		if !caseIDs[c.ID] {
 			caseIDs[c.ID] = true
 			if c.Title == "" {
 				emptyTitles++
 			}
-			allCases = append(allCases, ItemInfo{
+			items = append(items, ItemInfo{
 				ID:   c.ID,
 				Name: c.Title,
 			})
@@ -454,65 +508,43 @@ func fetchCasesForProject(ctx context.Context, cli client.ClientInterface, proje
 		}
 	}
 
-	// Count unique titles for verification
 	titleSet := make(map[string]struct{})
-	for _, item := range allCases {
+	for _, item := range items {
 		if item.Name != "" {
 			titleSet[strings.ToLower(item.Name)] = struct{}{}
 		}
 	}
 
-	pds.CasesRaw = len(cases)
-	pds.CasesUnique = len(allCases)
-	pds.UniqueTitles = len(titleSet)
-	pds.EmptyTitles = emptyTitles
-	pds.Sections = len(sectionIDs)
-	pds.Elapsed = time.Since(fetchStart)
-
-	debug.DebugPrint("[Project %d] Total: %d raw → %d unique IDs → %d unique titles (empty titles: %d), %d sections",
-		projectID, len(cases), len(allCases), len(titleSet), emptyTitles, len(sectionIDs))
-
-	if result != nil {
-		return allCases, result.FailedPages, pds, nil
-	}
-
-	return allCases, nil, pds, nil
+	return items, len(sectionIDs), emptyTitles, len(titleSet)
 }
 
 func collectCompareHeavyFlagOverrides(cmd *cobra.Command) map[string]any {
 	overrides := map[string]any{}
 
-	if flag := cmd.Flags().Lookup("rate-limit"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetInt("rate-limit")
-		overrides["rate_limit"] = value
+	intFlags := []struct{ flag, key string }{
+		{"rate-limit", "rate_limit"},
+		{"parallel-suites", "parallel_suites"},
+		{"parallel-pages", "parallel_pages"},
+		{"page-retries", "page_retries"},
+		{"retry-attempts", "retry_attempts"},
+		{"retry-workers", "retry_workers"},
 	}
-	if flag := cmd.Flags().Lookup("parallel-suites"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetInt("parallel-suites")
-		overrides["parallel_suites"] = value
+	for _, f := range intFlags {
+		if flag := cmd.Flags().Lookup(f.flag); flag != nil && flag.Changed {
+			value, _ := cmd.Flags().GetInt(f.flag)
+			overrides[f.key] = value
+		}
 	}
-	if flag := cmd.Flags().Lookup("parallel-pages"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetInt("parallel-pages")
-		overrides["parallel_pages"] = value
+
+	durationFlags := []struct{ flag, key string }{
+		{"timeout", "timeout"},
+		{"retry-delay", "retry_delay"},
 	}
-	if flag := cmd.Flags().Lookup("page-retries"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetInt("page-retries")
-		overrides["page_retries"] = value
-	}
-	if flag := cmd.Flags().Lookup("timeout"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetDuration("timeout")
-		overrides["timeout"] = value
-	}
-	if flag := cmd.Flags().Lookup("retry-attempts"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetInt("retry-attempts")
-		overrides["retry_attempts"] = value
-	}
-	if flag := cmd.Flags().Lookup("retry-workers"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetInt("retry-workers")
-		overrides["retry_workers"] = value
-	}
-	if flag := cmd.Flags().Lookup("retry-delay"); flag != nil && flag.Changed {
-		value, _ := cmd.Flags().GetDuration("retry-delay")
-		overrides["retry_delay"] = value
+	for _, f := range durationFlags {
+		if flag := cmd.Flags().Lookup(f.flag); flag != nil && flag.Changed {
+			value, _ := cmd.Flags().GetDuration(f.flag)
+			overrides[f.key] = value
+		}
 	}
 
 	return overrides
@@ -530,14 +562,14 @@ func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath s
 	path := strings.TrimSpace(requestedPath)
 	if path == "" {
 		exportsDir, _ := outpututils.GetExportsDir("compare")
-		if err := os.MkdirAll(exportsDir, 0755); err != nil {
+		if err := os.MkdirAll(exportsDir, 0o755); err != nil {
 			return "", fmt.Errorf("creating reports directory: %w", err)
 		}
 		path = filepath.Join(exportsDir, fmt.Sprintf("failed_pages_%s.json", time.Now().Format("2006-01-02_15-04-05")))
 	} else {
 		dir := filepath.Dir(path)
 		if dir != "" && dir != "." {
-			if err := os.MkdirAll(dir, 0755); err != nil {
+			if err := os.MkdirAll(dir, 0o755); err != nil {
 				return "", fmt.Errorf("creating directory %s: %w", dir, err)
 			}
 		}
@@ -553,12 +585,12 @@ func saveFailedPagesReport(failedPages []concurrency.FailedPage, requestedPath s
 		FailedPages: failedPages,
 	}
 
-	data, err := compareCasesMarshalIndent(payload, "", "  ")
+	raw, err := compareCasesMarshalIndent(payload, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("marshal failed pages: %w", err)
 	}
 
-	if err := compareCasesWriteFile(path, data, 0644); err != nil {
+	if err := compareCasesWriteFile(path, raw, 0o644); err != nil {
 		return "", fmt.Errorf("writing report %s: %w", path, err)
 	}
 

@@ -68,7 +68,7 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 // Helper methods for convenience
 
 // GetTestsByStatus fetches tests with a specific status.
-func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID int64, statusID int64) ([]data.Test, error) {
+func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID, statusID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"status_id": strconv.FormatInt(statusID, 10),
 	}
@@ -76,7 +76,7 @@ func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID int64, statusID
 }
 
 // GetTestsAssignedTo fetches tests assigned to a user.
-func (c *HTTPClient) GetTestsAssignedTo(ctx context.Context, runID int64, userID int64) ([]data.Test, error) {
+func (c *HTTPClient) GetTestsAssignedTo(ctx context.Context, runID, userID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"assignedto_id": strconv.FormatInt(userID, 10),
 	}

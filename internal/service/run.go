@@ -32,8 +32,8 @@ type RunService struct {
 }
 
 // NewRunService creates a new service for working with test runs.
-func NewRunService(client *client.HTTPClient) *RunService {
-	return &RunService{client: client}
+func NewRunService(c *client.HTTPClient) *RunService {
+	return &RunService{client: c}
 }
 
 // NewRunServiceFromInterface creates a service from a client interface (for testing).
@@ -158,8 +158,8 @@ func (s *RunService) Delete(ctx context.Context, runID int64) error {
 }
 
 // Output renders the result as JSON and saves to a file (if --output is set).
-func (s *RunService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return output.OutputResultWithFlags(cmd, data)
+func (s *RunService) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
+	return output.OutputResultWithFlags(cmd, v)
 }
 
 // PrintSuccess prints a success message.

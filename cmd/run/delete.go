@@ -37,8 +37,8 @@ func (w *runServiceWrapper) Create(ctx context.Context, projectID int64, req *da
 }
 
 // Output delegates command output formatting to the underlying run service.
-func (w *runServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return w.svc.Output(ctx, cmd, data)
+func (w *runServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
+	return w.svc.Output(ctx, cmd, v)
 }
 
 // Close delegates run closing to the underlying run service.

@@ -17,6 +17,38 @@ import (
 // Global initialization of TestRailAPI structures (initialized once).
 var api = testrailapi.New()
 
+// resourcePathsRegistry maps resource names to their API path providers.
+// Single source of truth for all resource dispatch in resources.go.
+var resourcePathsRegistry = map[string]func() []testrailapi.APIPath{
+	"all":            api.Paths,
+	"cases":          api.Cases.Paths,
+	"casefields":     api.CaseFields.Paths,
+	"casetypes":      api.CaseTypes.Paths,
+	"configurations": api.Configurations.Paths,
+	"projects":       api.Projects.Paths,
+	"priorities":     api.Priorities.Paths,
+	"runs":           api.Runs.Paths,
+	"tests":          api.Tests.Paths,
+	"suites":         api.Suites.Paths,
+	"sections":       api.Sections.Paths,
+	"statuses":       api.Statuses.Paths,
+	"milestones":     api.Milestones.Paths,
+	"plans":          api.Plans.Paths,
+	"results":        api.Results.Paths,
+	"resultfields":   api.ResultFields.Paths,
+	"reports":        api.Reports.Paths,
+	"attachments":    api.Attachments.Paths,
+	"users":          api.Users.Paths,
+	"roles":          api.Roles.Paths,
+	"templates":      api.Templates.Paths,
+	"groups":         api.Groups.Paths,
+	"sharedsteps":    api.SharedSteps.Paths,
+	"variables":      api.Variables.Paths,
+	"labels":         api.Labels.Paths,
+	"datasets":       api.Datasets.Paths,
+	"bdds":           api.BDDs.Paths,
+}
+
 // contextKey is an unexported key type, scoped to the cmd package.
 type contextKey string
 
@@ -27,50 +59,11 @@ const httpClientKey contextKey = "httpClient"
 var ValidResources []string
 
 func init() {
-	// Collect unique resources from all API groups
-	seen := make(map[string]bool)
-	resources := []string{"all"} // "all" is a special resource
-
-	groups := []struct {
-		name  string
-		paths []testrailapi.APIPath
-	}{
-		{"cases", api.Cases.Paths()},
-		{"casefields", api.CaseFields.Paths()},
-		{"casetypes", api.CaseTypes.Paths()},
-		{"configurations", api.Configurations.Paths()},
-		{"projects", api.Projects.Paths()},
-		{"priorities", api.Priorities.Paths()},
-		{"runs", api.Runs.Paths()},
-		{"tests", api.Tests.Paths()},
-		{"suites", api.Suites.Paths()},
-		{"sections", api.Sections.Paths()},
-		{"statuses", api.Statuses.Paths()},
-		{"milestones", api.Milestones.Paths()},
-		{"plans", api.Plans.Paths()},
-		{"results", api.Results.Paths()},
-		{"resultfields", api.ResultFields.Paths()},
-		{"reports", api.Reports.Paths()},
-		{"attachments", api.Attachments.Paths()},
-		{"users", api.Users.Paths()},
-		{"roles", api.Roles.Paths()},
-		{"templates", api.Templates.Paths()},
-		{"groups", api.Groups.Paths()},
-		{"sharedsteps", api.SharedSteps.Paths()},
-		{"variables", api.Variables.Paths()},
-		{"labels", api.Labels.Paths()},
-		{"datasets", api.Datasets.Paths()},
-		{"bdds", api.BDDs.Paths()},
-	}
-
-	for _, g := range groups {
-		if len(g.paths) > 0 {
-			seen[g.name] = true
+	resources := make([]string, 0, len(resourcePathsRegistry))
+	for name, pathsFn := range resourcePathsRegistry {
+		if len(pathsFn()) > 0 {
+			resources = append(resources, name)
 		}
-	}
-
-	for r := range seen {
-		resources = append(resources, r)
 	}
 	sort.Strings(resources)
 	ValidResources = resources
@@ -148,81 +141,25 @@ func extractAllEndpointName(uri string) string {
 }
 
 // getResourceEndpoints returns a list of endpoints for the given resource.
-func getResourceEndpoints(resource string, outputType string) ([]string, error) {
-	var paths []testrailapi.APIPath
-	switch resource {
-	case "all":
-		paths = api.Paths()
-	case "cases":
-		paths = api.Cases.Paths()
-	case "casefields":
-		paths = api.CaseFields.Paths()
-	case "casetypes":
-		paths = api.CaseTypes.Paths()
-	case "configurations":
-		paths = api.Configurations.Paths()
-	case "projects":
-		paths = api.Projects.Paths()
-	case "priorities":
-		paths = api.Priorities.Paths()
-	case "runs":
-		paths = api.Runs.Paths()
-	case "tests":
-		paths = api.Tests.Paths()
-	case "suites":
-		paths = api.Suites.Paths()
-	case "sections":
-		paths = api.Sections.Paths()
-	case "statuses":
-		paths = api.Statuses.Paths()
-	case "milestones":
-		paths = api.Milestones.Paths()
-	case "plans":
-		paths = api.Plans.Paths()
-	case "results":
-		paths = api.Results.Paths()
-	case "resultfields":
-		paths = api.ResultFields.Paths()
-	case "reports":
-		paths = api.Reports.Paths()
-	case "attachments":
-		paths = api.Attachments.Paths()
-	case "users":
-		paths = api.Users.Paths()
-	case "roles":
-		paths = api.Roles.Paths()
-	case "templates":
-		paths = api.Templates.Paths()
-	case "groups":
-		paths = api.Groups.Paths()
-	case "sharedsteps":
-		paths = api.SharedSteps.Paths()
-	case "variables":
-		paths = api.Variables.Paths()
-	case "labels":
-		paths = api.Labels.Paths()
-	case "datasets":
-		paths = api.Datasets.Paths()
-	case "bdds":
-		paths = api.BDDs.Paths()
-	default:
+func getResourceEndpoints(resource, outputType string) ([]string, error) {
+	paths := getResourcePaths(resource)
+	if paths == nil {
 		ui.Warningf(os.Stdout, "Unknown resource: %s", resource)
 		fmt.Println("\nAvailable resources:")
-		fmt.Println("  all, cases, casefields, casetypes, configurations, projects, priorities,")
-		fmt.Println("  runs, tests, suites, sections, statuses, milestones, plans, results,")
-		fmt.Println("  resultfields, reports, attachments, users, roles, templates, groups,")
-		fmt.Println("  sharedsteps, variables, labels, datasets, bdds")
+		fmt.Println("  " + strings.Join(ValidResources, ", "))
 		return nil, nil
 	}
 
-	// Sort for consistent output
 	sort.Slice(paths, func(i, j int) bool {
 		return paths[i].URI < paths[j].URI
 	})
 
-	var endpoints []string
+	return formatEndpoints(paths, resource, outputType)
+}
+
+// formatEndpoints renders API paths according to the requested output format.
+func formatEndpoints(paths []testrailapi.APIPath, resource, outputType string) ([]string, error) {
 	switch outputType {
-	// JSON output — for scripts and automation
 	case "json":
 		data, err := json.MarshalIndent(paths, "", "  ")
 		if err != nil {
@@ -230,14 +167,13 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 		}
 		fmt.Println(string(data))
 		return nil, nil
-	// Method + Endpoint output
 	case "short":
 		for _, p := range paths {
 			fmt.Printf("%s %s\n", p.Method, p.URI)
 		}
 		return nil, nil
-	// Short output — URI only
 	case "list":
+		var endpoints []string
 		for _, p := range paths {
 			name := extractGetEndpointName(p.URI)
 			endpoints = append(endpoints, name)
@@ -255,9 +191,8 @@ func getResourceEndpoints(resource string, outputType string) ([]string, error) 
 			}
 			fmt.Println()
 		}
+		return nil, nil
 	}
-
-	return endpoints, nil
 }
 
 // getAllShortEndpoints returns all short endpoint names for a resource (GET, POST, DELETE).
@@ -332,9 +267,9 @@ func replaceAllPlaceholders(uri, id string) string {
 }
 
 // buildRequestParams assembles the full endpoint path and query parameters from flags and positional ID.
-func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (string, map[string]string, error) {
-	fullEndpoint := endpoint
-	queryParams := make(map[string]string)
+func buildRequestParams(endpoint, mainID string, cmd *cobra.Command) (fullEndpoint string, queryParams map[string]string, err error) {
+	fullEndpoint = endpoint
+	queryParams = make(map[string]string)
 
 	// Substitute the main ID (project_id, run_id, etc.)
 	if mainID != "" {
@@ -374,62 +309,8 @@ func buildRequestParams(endpoint string, mainID string, cmd *cobra.Command) (str
 
 // getResourcePaths returns API paths for the given resource name.
 func getResourcePaths(resource string) []testrailapi.APIPath {
-	switch resource {
-	case "all":
-		return api.Paths()
-	case "cases":
-		return api.Cases.Paths()
-	case "casefields":
-		return api.CaseFields.Paths()
-	case "casetypes":
-		return api.CaseTypes.Paths()
-	case "configurations":
-		return api.Configurations.Paths()
-	case "projects":
-		return api.Projects.Paths()
-	case "priorities":
-		return api.Priorities.Paths()
-	case "runs":
-		return api.Runs.Paths()
-	case "tests":
-		return api.Tests.Paths()
-	case "suites":
-		return api.Suites.Paths()
-	case "sections":
-		return api.Sections.Paths()
-	case "statuses":
-		return api.Statuses.Paths()
-	case "milestones":
-		return api.Milestones.Paths()
-	case "plans":
-		return api.Plans.Paths()
-	case "results":
-		return api.Results.Paths()
-	case "resultfields":
-		return api.ResultFields.Paths()
-	case "reports":
-		return api.Reports.Paths()
-	case "attachments":
-		return api.Attachments.Paths()
-	case "users":
-		return api.Users.Paths()
-	case "roles":
-		return api.Roles.Paths()
-	case "templates":
-		return api.Templates.Paths()
-	case "groups":
-		return api.Groups.Paths()
-	case "sharedsteps":
-		return api.SharedSteps.Paths()
-	case "variables":
-		return api.Variables.Paths()
-	case "labels":
-		return api.Labels.Paths()
-	case "datasets":
-		return api.Datasets.Paths()
-	case "bdds":
-		return api.BDDs.Paths()
-	default:
-		return nil
+	if fn, ok := resourcePathsRegistry[resource]; ok {
+		return fn()
 	}
+	return nil
 }

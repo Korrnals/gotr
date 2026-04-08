@@ -29,7 +29,7 @@ func TestLoadFailedPages_Success(t *testing.T) {
     {"project_id":34,"suite_id":2002,"offset":250,"limit":250,"page_num":2,"error":"503"}
   ]
 }`
-	require.NoError(t, os.WriteFile(path, []byte(jsonData), 0644))
+	require.NoError(t, os.WriteFile(path, []byte(jsonData), 0o644))
 
 	pages, err := loadFailedPages(path)
 	require.NoError(t, err)
@@ -41,7 +41,7 @@ func TestLoadFailedPages_Success(t *testing.T) {
 func TestLoadFailedPages_InvalidJSON(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "failed_invalid.json")
-	require.NoError(t, os.WriteFile(path, []byte("{invalid"), 0644))
+	require.NoError(t, os.WriteFile(path, []byte("{invalid"), 0o644))
 
 	_, err := loadFailedPages(path)
 	require.Error(t, err)
@@ -51,7 +51,7 @@ func TestLoadFailedPages_InvalidJSON(t *testing.T) {
 func TestLoadFailedPages_NilFailedPagesField(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "failed_nil.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0}`), 0644))
+	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0}`), 0o644))
 
 	pages, err := loadFailedPages(path)
 	require.NoError(t, err)
@@ -196,7 +196,7 @@ func TestRunRetryFailedPages_ResolveOptionsError(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "failed.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0,"failed_pages":[]}`), 0644))
+	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0,"failed_pages":[]}`), 0o644))
 
 	cmd := newRetryFailedPagesCmd()
 	require.NoError(t, cmd.Flags().Set("from", path))
@@ -219,7 +219,7 @@ func TestRunRetryFailedPages_Success(t *testing.T) {
 
 	dir := t.TempDir()
 	path := filepath.Join(dir, "failed.json")
-	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0,"failed_pages":[]}`), 0644))
+	require.NoError(t, os.WriteFile(path, []byte(`{"generated_at":"2026-03-29T00:00:00Z","total":0,"failed_pages":[]}`), 0o644))
 
 	cmd := newRetryFailedPagesCmd()
 	require.NoError(t, cmd.Flags().Set("from", path))

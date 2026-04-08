@@ -62,13 +62,13 @@ func decodeCasesResponseWithSize(body []byte) ([]data.Case, int64, error) {
 // GetCases fetches **all** cases for a project (with pagination).
 // suiteID and sectionID are optional (0 = not used).
 // Returns the full list of cases.
-func (c *HTTPClient) GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+func (c *HTTPClient) GetCases(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 	return c.GetCasesWithProgress(ctx, projectID, suiteID, sectionID, nil)
 }
 
 // GetCasesPage fetches a single page of cases at the given offset/limit.
 // Useful for targeted retries of failed pages without re-fetching everything.
-func (c *HTTPClient) GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error) {
+func (c *HTTPClient) GetCasesPage(ctx context.Context, projectID, suiteID int64, offset, limit int) (data.GetCasesResponse, error) {
 	endpoint := fmt.Sprintf("get_cases/%d", projectID)
 	query := map[string]string{
 		"suite_id": fmt.Sprintf("%d", suiteID),
@@ -100,7 +100,7 @@ func (c *HTTPClient) GetCasesPage(ctx context.Context, projectID int64, suiteID 
 
 // GetCasesWithProgress fetches **all** cases for a project with progress tracking.
 // monitor is called after each page (every 250 cases).
-func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID int64, suiteID int64, sectionID int64, monitor ProgressMonitor) (data.GetCasesResponse, error) {
+func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID, suiteID, sectionID int64, monitor ProgressMonitor) (data.GetCasesResponse, error) {
 	var all data.GetCasesResponse
 	offset := int64(0)
 	limit := int64(250)
@@ -122,9 +122,9 @@ func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID int64, 
 		if err != nil {
 			return nil, fmt.Errorf("request error GetCases for project %d: %w", projectID, err)
 		}
-		defer resp.Body.Close()
 
 		body, readErr := io.ReadAll(resp.Body)
+		resp.Body.Close()
 		if readErr != nil {
 			return nil, fmt.Errorf("response body read error (offset=%d): %w", offset, readErr)
 		}

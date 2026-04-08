@@ -137,35 +137,36 @@ func runAdd(cmd *cobra.Command, args []string) error {
 		return runAddInteractive(cli, cmd, endpoint, id)
 	}
 
-	// Route by endpoint
-	switch endpoint {
-	case "project":
+	return dispatchAdd(cli, cmd, endpoint, id, args, jsonData)
+}
+
+// addEndpointSpec describes a simple add endpoint with optional ID requirement.
+type addEndpointSpec struct {
+	idLabel string // empty for endpoints that don't require an ID (e.g. project)
+	fn      func(client.ClientInterface, *cobra.Command, int64, []byte) error
+}
+
+var addEndpoints = map[string]addEndpointSpec{
+	"project": {"", func(cli client.ClientInterface, cmd *cobra.Command, _ int64, jsonData []byte) error {
 		return addProject(cli, cmd, jsonData)
-	case "suite":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add suite <project_id>")
+	}},
+	"suite":        {"project_id", addSuite},
+	"section":      {"project_id", addSection},
+	"case":         {"section_id", addCase},
+	"run":          {"project_id", addRun},
+	"result":       {"test_id", addResult},
+	"shared-step":  {"project_id", addSharedStep},
+}
+
+func dispatchAdd(cli client.ClientInterface, cmd *cobra.Command, endpoint string, id int64, args []string, jsonData []byte) error {
+	if spec, ok := addEndpoints[endpoint]; ok {
+		if spec.idLabel != "" && id == 0 {
+			return fmt.Errorf("%s required: gotr add %s <%s>", spec.idLabel, endpoint, spec.idLabel)
 		}
-		return addSuite(cli, cmd, id, jsonData)
-	case "section":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add section <project_id>")
-		}
-		return addSection(cli, cmd, id, jsonData)
-	case "case":
-		if id == 0 {
-			return fmt.Errorf("section_id required: gotr add case <section_id>")
-		}
-		return addCase(cli, cmd, id, jsonData)
-	case "run":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add run <project_id>")
-		}
-		return addRun(cli, cmd, id, jsonData)
-	case "result":
-		if id == 0 {
-			return fmt.Errorf("test_id required: gotr add result <test_id>")
-		}
-		return addResult(cli, cmd, id, jsonData)
+		return spec.fn(cli, cmd, id, jsonData)
+	}
+
+	switch endpoint {
 	case "result-for-case":
 		if id == 0 || len(args) < 3 {
 			return fmt.Errorf("run_id and case_id required: gotr add result-for-case <run_id> <case_id>")
@@ -175,11 +176,6 @@ func runAdd(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		return addResultForCase(cli, cmd, id, caseID, jsonData)
-	case "shared-step":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add shared-step <project_id>")
-		}
-		return addSharedStep(cli, cmd, id, jsonData)
 	case "attachment":
 		return runAddAttachment(cli, cmd, args)
 	default:
@@ -582,191 +578,177 @@ func addSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command, pr
 
 // runAddDryRun performs a dry-run for the add command.
 func runAddDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string, id int64, jsonData []byte) error {
-	// Read flags
-	name, _ := cmd.Flags().GetString("name")
-	title, _ := cmd.Flags().GetString("title")
-	description, _ := cmd.Flags().GetString("description")
-	announcement, _ := cmd.Flags().GetString("announcement")
-	showAnn, _ := cmd.Flags().GetBool("show-announcement")
-	suiteID, _ := cmd.Flags().GetInt64("suite-id")
-	sectionID, _ := cmd.Flags().GetInt64("section-id")
-	milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
-	templateID, _ := cmd.Flags().GetInt64("template-id")
-	typeID, _ := cmd.Flags().GetInt64("type-id")
-	priorityID, _ := cmd.Flags().GetInt64("priority-id")
-	refs, _ := cmd.Flags().GetString("refs")
-	comment, _ := cmd.Flags().GetString("comment")
-	statusID, _ := cmd.Flags().GetInt64("status-id")
-	elapsed, _ := cmd.Flags().GetString("elapsed")
-	defects, _ := cmd.Flags().GetString("defects")
-	assignedTo, _ := cmd.Flags().GetInt64("assignedto-id")
-	caseIDsStr, _ := cmd.Flags().GetString("case-ids")
-	includeAll, _ := cmd.Flags().GetBool("include-all")
-
-	var method, url string
-	var body interface{}
-
-	switch endpoint {
-	case "project":
-		if len(jsonData) > 0 {
-			var req data.AddProjectRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			body = data.AddProjectRequest{
-				Name:             name,
-				Announcement:     announcement,
-				ShowAnnouncement: showAnn,
-			}
+	handler, ok := addDryRunHandlers[endpoint]
+	if !ok {
+		if endpoint == "attachment" {
+			return fmt.Errorf("use --dry-run with a specific attachment subcommand")
 		}
-		method = "POST"
-		url = "/index.php?/api/v2/add_project/"
-		dr.PrintOperation("Create Project", method, url, body)
-
-	case "suite":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add suite <project_id> --dry-run")
-		}
-		if len(jsonData) > 0 {
-			var req data.AddSuiteRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			body = data.AddSuiteRequest{
-				Name:        name,
-				Description: description,
-			}
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/add_suite/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Create Suite in Project %d", id), method, url, body)
-
-	case "section":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add section <project_id> --dry-run")
-		}
-		if len(jsonData) > 0 {
-			var req data.AddSectionRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			body = data.AddSectionRequest{
-				Name:        name,
-				Description: description,
-				SuiteID:     suiteID,
-				ParentID:    sectionID,
-			}
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/add_section/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Create Section in Project %d", id), method, url, body)
-
-	case "case":
-		if id == 0 {
-			return fmt.Errorf("section_id required: gotr add case <section_id> --dry-run")
-		}
-		if len(jsonData) > 0 {
-			var req data.AddCaseRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			body = data.AddCaseRequest{
-				Title:      title,
-				TemplateID: templateID,
-				TypeID:     typeID,
-				PriorityID: priorityID,
-				Refs:       refs,
-			}
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/add_case/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Create Case in Section %d", id), method, url, body)
-
-	case "run":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add run <project_id> --dry-run")
-		}
-		if len(jsonData) > 0 {
-			var req data.AddRunRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			caseIDs := parseCaseIDs(caseIDsStr)
-			body = data.AddRunRequest{
-				Name:        name,
-				Description: description,
-				SuiteID:     suiteID,
-				MilestoneID: milestoneID,
-				AssignedTo:  assignedTo,
-				IncludeAll:  includeAll,
-				CaseIDs:     caseIDs,
-			}
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/add_run/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Create Run in Project %d", id), method, url, body)
-
-	case "result":
-		if id == 0 {
-			return fmt.Errorf("test_id required: gotr add result <test_id> --dry-run")
-		}
-		if len(jsonData) > 0 {
-			var req data.AddResultRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			body = data.AddResultRequest{
-				StatusID:   statusID,
-				Comment:    comment,
-				Elapsed:    elapsed,
-				Defects:    defects,
-				AssignedTo: assignedTo,
-			}
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/add_result/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Add Result for Test %d", id), method, url, body)
-
-	case "shared-step":
-		if id == 0 {
-			return fmt.Errorf("project_id required: gotr add shared-step <project_id> --dry-run")
-		}
-		if len(jsonData) > 0 {
-			var req data.AddSharedStepRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			body = data.AddSharedStepRequest{
-				Title: title,
-			}
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/add_shared_step/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Create Shared Step in Project %d", id), method, url, body)
-
-	case "attachment":
-		// Attachment dry-run is handled separately in runAddAttachment.
-		// This case should not be called directly.
-		return fmt.Errorf("use --dry-run with a specific attachment subcommand")
-
-	default:
 		return fmt.Errorf("unsupported endpoint for dry-run: %s", endpoint)
 	}
+	return handler(cmd, dr, id, jsonData)
+}
 
+var addDryRunHandlers = map[string]func(*cobra.Command, *output.DryRunPrinter, int64, []byte) error{
+	"project":     dryRunAddProject,
+	"suite":       dryRunAddSuite,
+	"section":     dryRunAddSection,
+	"case":        dryRunAddCase,
+	"run":         dryRunAddRun,
+	"result":      dryRunAddResult,
+	"shared-step": dryRunAddSharedStep,
+}
+
+func dryRunAddProject(cmd *cobra.Command, dr *output.DryRunPrinter, _ int64, jsonData []byte) error {
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.AddProjectRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		announcement, _ := cmd.Flags().GetString("announcement")
+		showAnn, _ := cmd.Flags().GetBool("show-announcement")
+		body = data.AddProjectRequest{Name: name, Announcement: announcement, ShowAnnouncement: showAnn}
+	}
+	dr.PrintOperation("Create Project", "POST", "/index.php?/api/v2/add_project/", body)
+	return nil
+}
+
+func dryRunAddSuite(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	if id == 0 {
+		return fmt.Errorf("project_id required: gotr add suite <project_id> --dry-run")
+	}
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.AddSuiteRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		description, _ := cmd.Flags().GetString("description")
+		body = data.AddSuiteRequest{Name: name, Description: description}
+	}
+	dr.PrintOperation(fmt.Sprintf("Create Suite in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_suite/%d", id), body)
+	return nil
+}
+
+func dryRunAddSection(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	if id == 0 {
+		return fmt.Errorf("project_id required: gotr add section <project_id> --dry-run")
+	}
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.AddSectionRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		description, _ := cmd.Flags().GetString("description")
+		suiteID, _ := cmd.Flags().GetInt64("suite-id")
+		sectionID, _ := cmd.Flags().GetInt64("section-id")
+		body = data.AddSectionRequest{Name: name, Description: description, SuiteID: suiteID, ParentID: sectionID}
+	}
+	dr.PrintOperation(fmt.Sprintf("Create Section in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_section/%d", id), body)
+	return nil
+}
+
+func dryRunAddCase(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	if id == 0 {
+		return fmt.Errorf("section_id required: gotr add case <section_id> --dry-run")
+	}
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.AddCaseRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		title, _ := cmd.Flags().GetString("title")
+		templateID, _ := cmd.Flags().GetInt64("template-id")
+		typeID, _ := cmd.Flags().GetInt64("type-id")
+		priorityID, _ := cmd.Flags().GetInt64("priority-id")
+		refs, _ := cmd.Flags().GetString("refs")
+		body = data.AddCaseRequest{Title: title, TemplateID: templateID, TypeID: typeID, PriorityID: priorityID, Refs: refs}
+	}
+	dr.PrintOperation(fmt.Sprintf("Create Case in Section %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_case/%d", id), body)
+	return nil
+}
+
+func dryRunAddRun(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	if id == 0 {
+		return fmt.Errorf("project_id required: gotr add run <project_id> --dry-run")
+	}
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.AddRunRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		description, _ := cmd.Flags().GetString("description")
+		suiteID, _ := cmd.Flags().GetInt64("suite-id")
+		milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
+		assignedTo, _ := cmd.Flags().GetInt64("assignedto-id")
+		caseIDsStr, _ := cmd.Flags().GetString("case-ids")
+		includeAll, _ := cmd.Flags().GetBool("include-all")
+		body = data.AddRunRequest{
+			Name: name, Description: description, SuiteID: suiteID,
+			MilestoneID: milestoneID, AssignedTo: assignedTo,
+			IncludeAll: includeAll, CaseIDs: parseCaseIDs(caseIDsStr),
+		}
+	}
+	dr.PrintOperation(fmt.Sprintf("Create Run in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_run/%d", id), body)
+	return nil
+}
+
+func dryRunAddResult(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	if id == 0 {
+		return fmt.Errorf("test_id required: gotr add result <test_id> --dry-run")
+	}
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.AddResultRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		statusID, _ := cmd.Flags().GetInt64("status-id")
+		comment, _ := cmd.Flags().GetString("comment")
+		elapsed, _ := cmd.Flags().GetString("elapsed")
+		defects, _ := cmd.Flags().GetString("defects")
+		assignedTo, _ := cmd.Flags().GetInt64("assignedto-id")
+		body = data.AddResultRequest{StatusID: statusID, Comment: comment, Elapsed: elapsed, Defects: defects, AssignedTo: assignedTo}
+	}
+	dr.PrintOperation(fmt.Sprintf("Add Result for Test %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_result/%d", id), body)
+	return nil
+}
+
+func dryRunAddSharedStep(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	if id == 0 {
+		return fmt.Errorf("project_id required: gotr add shared-step <project_id> --dry-run")
+	}
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.AddSharedStepRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		title, _ := cmd.Flags().GetString("title")
+		body = data.AddSharedStepRequest{Title: title}
+	}
+	dr.PrintOperation(fmt.Sprintf("Create Shared Step in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_shared_step/%d", id), body)
 	return nil
 }
 
@@ -1027,6 +1009,21 @@ func splitString(s, sep string) []string {
 	return result
 }
 
+// attachmentSpec describes a simple attachment endpoint (ID + file path).
+type attachmentSpec struct {
+	minArgs int
+	usage   string
+	idLabel string
+	handler func(client.ClientInterface, *cobra.Command, int64, string) error
+}
+
+var simpleAttachSpecs = map[string]attachmentSpec{
+	"case":   {4, "gotr add attachment case <case_id> <file_path>", "case_id", addAttachmentToCase},
+	"plan":   {4, "gotr add attachment plan <plan_id> <file_path>", "plan_id", addAttachmentToPlan},
+	"result": {4, "gotr add attachment result <result_id> <file_path>", "result_id", addAttachmentToResult},
+	"run":    {4, "gotr add attachment run <run_id> <file_path>", "run_id", addAttachmentToRun},
+}
+
 // runAddAttachment handles attachment creation (DEPRECATED: use 'gotr attachments add' instead).
 func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []string) error {
 	fmt.Fprintln(os.Stderr, "⚠️  WARNING: 'gotr add attachment' is deprecated. Use 'gotr attachments add' instead.")
@@ -1037,29 +1034,18 @@ func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []str
 
 	attachmentType := args[1]
 
+	if spec, ok := simpleAttachSpecs[attachmentType]; ok {
+		if len(args) < spec.minArgs {
+			return fmt.Errorf("usage: %s", spec.usage)
+		}
+		id, err := flags.ValidateRequiredID(args, 2, spec.idLabel)
+		if err != nil {
+			return err
+		}
+		return spec.handler(cli, cmd, id, args[3])
+	}
+
 	switch attachmentType {
-	case "case":
-		if len(args) < 4 {
-			return fmt.Errorf("usage: gotr add attachment case <case_id> <file_path>")
-		}
-		caseID, err := flags.ValidateRequiredID(args, 2, "case_id")
-		if err != nil {
-			return err
-		}
-		filePath := args[3]
-		return addAttachmentToCase(cli, cmd, caseID, filePath)
-
-	case "plan":
-		if len(args) < 4 {
-			return fmt.Errorf("usage: gotr add attachment plan <plan_id> <file_path>")
-		}
-		planID, err := flags.ValidateRequiredID(args, 2, "plan_id")
-		if err != nil {
-			return err
-		}
-		filePath := args[3]
-		return addAttachmentToPlan(cli, cmd, planID, filePath)
-
 	case "plan-entry":
 		if len(args) < 5 {
 			return fmt.Errorf("usage: gotr add attachment plan-entry <plan_id> <entry_id> <file_path>")
@@ -1068,32 +1054,7 @@ func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []str
 		if err != nil {
 			return err
 		}
-		entryID := args[3]
-		filePath := args[4]
-		return addAttachmentToPlanEntry(cli, cmd, planID, entryID, filePath)
-
-	case "result":
-		if len(args) < 4 {
-			return fmt.Errorf("usage: gotr add attachment result <result_id> <file_path>")
-		}
-		resultID, err := flags.ValidateRequiredID(args, 2, "result_id")
-		if err != nil {
-			return err
-		}
-		filePath := args[3]
-		return addAttachmentToResult(cli, cmd, resultID, filePath)
-
-	case "run":
-		if len(args) < 4 {
-			return fmt.Errorf("usage: gotr add attachment run <run_id> <file_path>")
-		}
-		runID, err := flags.ValidateRequiredID(args, 2, "run_id")
-		if err != nil {
-			return err
-		}
-		filePath := args[3]
-		return addAttachmentToRun(cli, cmd, runID, filePath)
-
+		return addAttachmentToPlanEntry(cli, cmd, planID, args[3], args[4])
 	default:
 		return fmt.Errorf("unsupported attachment type: %s. Available: case, plan, plan-entry, result, run", attachmentType)
 	}

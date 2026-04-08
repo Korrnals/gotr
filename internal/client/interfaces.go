@@ -26,8 +26,8 @@ type ProjectsAPI interface {
 
 // CasesAPI — test case operations.
 type CasesAPI interface {
-	GetCases(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error)
-	GetCasesPage(ctx context.Context, projectID int64, suiteID int64, offset int, limit int) (data.GetCasesResponse, error)
+	GetCases(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error)
+	GetCasesPage(ctx context.Context, projectID, suiteID int64, offset, limit int) (data.GetCasesResponse, error)
 	GetCase(ctx context.Context, caseID int64) (*data.Case, error)
 	AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
@@ -140,7 +140,7 @@ type PlansAPI interface {
 type AttachmentsAPI interface {
 	AddAttachmentToCase(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToPlan(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error)
-	AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToResult(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToRun(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error)
 	DeleteAttachment(ctx context.Context, attachmentID int64) error

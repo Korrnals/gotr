@@ -621,7 +621,7 @@ func TestRunEmbeddedJQ_WriteFileError_ReadOnlyBinary(t *testing.T) {
 			for _, e := range ents {
 				if strings.HasPrefix(e.Name(), "jq-") {
 					p := filepath.Join(tmpDir, e.Name())
-					_ = os.Chmod(p, 0644)
+					_ = os.Chmod(p, 0o644)
 					_ = os.Remove(p)
 				}
 			}

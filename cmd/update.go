@@ -419,179 +419,191 @@ func updateSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command,
 
 // runUpdateDryRun performs a dry-run for the update command.
 func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string, id int64, jsonData []byte) error {
-	// Read flags
-	name, _ := cmd.Flags().GetString("name")
-	title, _ := cmd.Flags().GetString("title")
-	description, _ := cmd.Flags().GetString("description")
-	announcement, _ := cmd.Flags().GetString("announcement")
-	showAnn, _ := cmd.Flags().GetBool("show-announcement")
-	isCompleted, _ := cmd.Flags().GetBool("is-completed")
-	milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
-	assignedToID, _ := cmd.Flags().GetInt64("assignedto-id")
-	includeAll, _ := cmd.Flags().GetBool("include-all")
-	typeID, _ := cmd.Flags().GetInt64("type-id")
-	priorityID, _ := cmd.Flags().GetInt64("priority-id")
-	refs, _ := cmd.Flags().GetString("refs")
-	caseIDsStr, _ := cmd.Flags().GetString("case-ids")
-
-	var method, url string
-	var body interface{}
-
-	switch endpoint {
-	case "project":
-		if len(jsonData) > 0 {
-			var req data.UpdateProjectRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			req := data.UpdateProjectRequest{
-				ShowAnnouncement: showAnn,
-				IsCompleted:      isCompleted,
-			}
-			if name != "" {
-				req.Name = name
-			}
-			if announcement != "" {
-				req.Announcement = announcement
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_project/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Project %d", id), method, url, body)
-
-	case "suite":
-		if len(jsonData) > 0 {
-			var req data.UpdateSuiteRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			req := data.UpdateSuiteRequest{
-				IsCompleted: isCompleted,
-			}
-			if name != "" {
-				req.Name = name
-			}
-			if description != "" {
-				req.Description = description
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_suite/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Suite %d", id), method, url, body)
-
-	case "section":
-		if len(jsonData) > 0 {
-			var req data.UpdateSectionRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			req := data.UpdateSectionRequest{}
-			if name != "" {
-				req.Name = name
-			}
-			if description != "" {
-				req.Description = description
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_section/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Section %d", id), method, url, body)
-
-	case "case":
-		if len(jsonData) > 0 {
-			var req data.UpdateCaseRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			req := data.UpdateCaseRequest{}
-			if title != "" {
-				req.Title = &title
-			}
-			if typeID > 0 {
-				req.TypeID = &typeID
-			}
-			if priorityID > 0 {
-				req.PriorityID = &priorityID
-			}
-			if refs != "" {
-				req.Refs = &refs
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_case/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Case %d", id), method, url, body)
-
-	case "run":
-		if len(jsonData) > 0 {
-			var req data.UpdateRunRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			req := data.UpdateRunRequest{
-				IncludeAll: &includeAll,
-			}
-			if name != "" {
-				req.Name = &name
-			}
-			if description != "" {
-				req.Description = &description
-			}
-			if milestoneID > 0 {
-				req.MilestoneID = &milestoneID
-			}
-			if assignedToID > 0 {
-				req.AssignedTo = &assignedToID
-			}
-			if caseIDsStr != "" {
-				caseIDs := parseCaseIDs(caseIDsStr)
-				req.CaseIDs = caseIDs
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_run/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Run %d", id), method, url, body)
-
-	case "shared-step":
-		if len(jsonData) > 0 {
-			var req data.UpdateSharedStepRequest
-			if err := json.Unmarshal(jsonData, &req); err != nil {
-				return fmt.Errorf("invalid JSON data: %w", err)
-			}
-			body = req
-		} else {
-			req := data.UpdateSharedStepRequest{}
-			if title != "" {
-				req.Title = title
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_shared_step/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Shared Step %d", id), method, url, body)
-
-	case "labels":
-		labels, _ := cmd.Flags().GetString("labels")
-		dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %s", id, labels))
-
-	default:
+	handler, ok := updateDryRunHandlers[endpoint]
+	if !ok {
 		return fmt.Errorf("unsupported endpoint for dry-run: %s", endpoint)
 	}
+	return handler(cmd, dr, id, jsonData)
+}
 
+var updateDryRunHandlers = map[string]func(*cobra.Command, *output.DryRunPrinter, int64, []byte) error{
+	"project":     dryRunUpdateProject,
+	"suite":       dryRunUpdateSuite,
+	"section":     dryRunUpdateSection,
+	"case":        dryRunUpdateCase,
+	"run":         dryRunUpdateRun,
+	"shared-step": dryRunUpdateSharedStep,
+	"labels":      dryRunUpdateLabels,
+}
+
+func dryRunUpdateProject(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.UpdateProjectRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		announcement, _ := cmd.Flags().GetString("announcement")
+		showAnn, _ := cmd.Flags().GetBool("show-announcement")
+		isCompleted, _ := cmd.Flags().GetBool("is-completed")
+		req := data.UpdateProjectRequest{ShowAnnouncement: showAnn, IsCompleted: isCompleted}
+		if name != "" {
+			req.Name = name
+		}
+		if announcement != "" {
+			req.Announcement = announcement
+		}
+		body = req
+	}
+	dr.PrintOperation(fmt.Sprintf("Update Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/update_project/%d", id), body)
+	return nil
+}
+
+func dryRunUpdateSuite(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.UpdateSuiteRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		description, _ := cmd.Flags().GetString("description")
+		isCompleted, _ := cmd.Flags().GetBool("is-completed")
+		req := data.UpdateSuiteRequest{IsCompleted: isCompleted}
+		if name != "" {
+			req.Name = name
+		}
+		if description != "" {
+			req.Description = description
+		}
+		body = req
+	}
+	dr.PrintOperation(fmt.Sprintf("Update Suite %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/update_suite/%d", id), body)
+	return nil
+}
+
+func dryRunUpdateSection(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.UpdateSectionRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		description, _ := cmd.Flags().GetString("description")
+		req := data.UpdateSectionRequest{}
+		if name != "" {
+			req.Name = name
+		}
+		if description != "" {
+			req.Description = description
+		}
+		body = req
+	}
+	dr.PrintOperation(fmt.Sprintf("Update Section %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/update_section/%d", id), body)
+	return nil
+}
+
+func dryRunUpdateCase(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.UpdateCaseRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		title, _ := cmd.Flags().GetString("title")
+		typeID, _ := cmd.Flags().GetInt64("type-id")
+		priorityID, _ := cmd.Flags().GetInt64("priority-id")
+		refs, _ := cmd.Flags().GetString("refs")
+		req := data.UpdateCaseRequest{}
+		if title != "" {
+			req.Title = &title
+		}
+		if typeID > 0 {
+			req.TypeID = &typeID
+		}
+		if priorityID > 0 {
+			req.PriorityID = &priorityID
+		}
+		if refs != "" {
+			req.Refs = &refs
+		}
+		body = req
+	}
+	dr.PrintOperation(fmt.Sprintf("Update Case %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/update_case/%d", id), body)
+	return nil
+}
+
+func dryRunUpdateRun(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.UpdateRunRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		name, _ := cmd.Flags().GetString("name")
+		description, _ := cmd.Flags().GetString("description")
+		milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
+		assignedToID, _ := cmd.Flags().GetInt64("assignedto-id")
+		includeAll, _ := cmd.Flags().GetBool("include-all")
+		caseIDsStr, _ := cmd.Flags().GetString("case-ids")
+		req := data.UpdateRunRequest{IncludeAll: &includeAll}
+		if name != "" {
+			req.Name = &name
+		}
+		if description != "" {
+			req.Description = &description
+		}
+		if milestoneID > 0 {
+			req.MilestoneID = &milestoneID
+		}
+		if assignedToID > 0 {
+			req.AssignedTo = &assignedToID
+		}
+		if caseIDsStr != "" {
+			caseIDs := parseCaseIDs(caseIDsStr)
+			req.CaseIDs = caseIDs
+		}
+		body = req
+	}
+	dr.PrintOperation(fmt.Sprintf("Update Run %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/update_run/%d", id), body)
+	return nil
+}
+
+func dryRunUpdateSharedStep(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	var body interface{}
+	if len(jsonData) > 0 {
+		var req data.UpdateSharedStepRequest
+		if err := json.Unmarshal(jsonData, &req); err != nil {
+			return fmt.Errorf("invalid JSON data: %w", err)
+		}
+		body = req
+	} else {
+		title, _ := cmd.Flags().GetString("title")
+		req := data.UpdateSharedStepRequest{}
+		if title != "" {
+			req.Title = title
+		}
+		body = req
+	}
+	dr.PrintOperation(fmt.Sprintf("Update Shared Step %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/update_shared_step/%d", id), body)
+	return nil
+}
+
+func dryRunUpdateLabels(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, _ []byte) error {
+	labels, _ := cmd.Flags().GetString("labels")
+	dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %s", id, labels))
 	return nil
 }
 
@@ -779,8 +791,8 @@ func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, 
 	return outputUpdateResult(cmd, step)
 }
 
-func outputUpdateResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "result", "json")
+func outputUpdateResult(cmd *cobra.Command, v interface{}) error {
+	_, err := output.Output(cmd, v, "result", "json")
 	return err
 }
 

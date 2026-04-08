@@ -34,8 +34,8 @@ type ResultService struct {
 }
 
 // NewResultService creates a new service for working with test results.
-func NewResultService(client *client.HTTPClient) *ResultService {
-	return &ResultService{client: client}
+func NewResultService(c *client.HTTPClient) *ResultService {
+	return &ResultService{client: c}
 }
 
 // NewResultServiceFromInterface creates a service from a client interface (for testing).
@@ -200,8 +200,8 @@ func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req
 }
 
 // Output renders the result as JSON and saves to a file (if --output is set).
-func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return output.OutputResultWithFlags(cmd, data)
+func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, v interface{}) error {
+	return output.OutputResultWithFlags(cmd, v)
 }
 
 // PrintSuccess prints a success message.

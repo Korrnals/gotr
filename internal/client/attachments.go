@@ -170,7 +170,7 @@ func (c *HTTPClient) AddAttachmentToPlan(ctx context.Context, planID int64, file
 
 // AddAttachmentToPlanEntry uploads an attachment to a plan entry.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttoplanentry
-func (c *HTTPClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+func (c *HTTPClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_plan_entry/%d/%s", planID, entryID)
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }

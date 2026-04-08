@@ -54,7 +54,7 @@ func EnsureLogsDirPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("cannot create logs directory: %w", err)
 	}
 	return dir, nil
@@ -121,7 +121,7 @@ func EnsureAllDirs() error {
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("cannot create directory %s: %w", dir, err)
 		}
 	}
@@ -134,5 +134,5 @@ func EnsureDir(dirFunc func() (string, error)) error {
 	if err != nil {
 		return err
 	}
-	return os.MkdirAll(dir, 0755)
+	return os.MkdirAll(dir, 0o755)
 }

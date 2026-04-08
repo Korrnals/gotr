@@ -87,7 +87,7 @@ func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseDat
 }
 
 // SaveResponseToFile saves a generic ResponseData to a file.
-func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, filename string, outputFormat string) error {
+func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, filename, outputFormat string) error {
 	var toSave []byte
 	switch outputFormat {
 	case "json":
@@ -99,7 +99,7 @@ func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, 
 		toSave, _ = json.MarshalIndent(data, "", "  ")
 	}
 
-	if err := os.WriteFile(filename, toSave, 0644); err != nil {
+	if err := os.WriteFile(filename, toSave, 0o644); err != nil {
 		return err
 	}
 	fmt.Printf("Response saved to %s (format: %s)\n", filename, outputFormat)

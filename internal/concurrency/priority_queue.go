@@ -43,7 +43,10 @@ func (h priorityHeap) Swap(i, j int) {
 // Push appends a new item to the heap and initializes its index.
 func (h *priorityHeap) Push(x interface{}) {
 	n := len(*h)
-	item := x.(PriorityItem)
+	item, ok := x.(PriorityItem)
+	if !ok {
+		return
+	}
 	item.Index = n
 	*h = append(*h, item)
 }
@@ -113,7 +116,10 @@ func (pq *PriorityQueue) Pop() (SuiteTask, bool) {
 		return SuiteTask{}, false
 	}
 
-	item := heap.Pop(&pq.heap).(PriorityItem)
+	item, ok := heap.Pop(&pq.heap).(PriorityItem)
+	if !ok {
+		return SuiteTask{}, false
+	}
 	return item.Task, true
 }
 
@@ -127,7 +133,10 @@ func (pq *PriorityQueue) TryPop() (SuiteTask, bool) {
 		return SuiteTask{}, false
 	}
 
-	item := heap.Pop(&pq.heap).(PriorityItem)
+	item, ok := heap.Pop(&pq.heap).(PriorityItem)
+	if !ok {
+		return SuiteTask{}, false
+	}
 	return item.Task, true
 }
 

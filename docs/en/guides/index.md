@@ -11,6 +11,7 @@ Language: [Русский](../../ru/guides/index.md) | English
     - [Interactive Mode](interactive-mode.md)
     - [Progress](progress.md)
     - [Commands Index](commands/index.md)
+    - [Instructions](instructions/index.md)
   - [Architecture](../architecture/index.md)
   - [Operations](../operations/index.md)
   - [Reports](../reports/index.md)
@@ -30,6 +31,12 @@ Start here — deploy gotr and configure TestRail connection.
 Full reference for 32+ CLI commands organized into 4 groups.
 
 - [Commands Index](commands/index.md) — complete navigator with **CRUD Operations**, **Core Resources**, **Special Resources**
+
+### Instructions
+
+Ready-to-use step-by-step recipes for common tasks.
+
+- [Instructions](instructions/index.md) — data migration, CRUD operations, project comparison
 
 ### Special Modes
 

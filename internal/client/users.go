@@ -79,7 +79,10 @@ func (c *HTTPClient) GetUserByEmail(ctx context.Context, email string) (*data.Us
 // AddUser creates a new user.
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#adduser
 func (c *HTTPClient) AddUser(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, "add_user", bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error adding user: %w", err)
@@ -97,7 +100,10 @@ func (c *HTTPClient) AddUser(ctx context.Context, req data.AddUserRequest) (*dat
 // https://support.testrail.com/hc/en-us/articles/7077807509812-Users#updateuser
 func (c *HTTPClient) UpdateUser(ctx context.Context, userID int64, req data.UpdateUserRequest) (*data.User, error) {
 	endpoint := fmt.Sprintf("update_user/%d", userID)
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating user %d: %w", userID, err)

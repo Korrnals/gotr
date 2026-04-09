@@ -46,7 +46,10 @@ func (c *HTTPClient) GetProject(ctx context.Context, projectID int64) (*data.Get
 // Requires Name in the AddProjectRequest.
 // Returns the created project.
 func (c *HTTPClient) AddProject(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := "add_project"
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -66,7 +69,10 @@ func (c *HTTPClient) AddProject(ctx context.Context, req *data.AddProjectRequest
 // Requires admin permissions.
 func (c *HTTPClient) UpdateProject(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
 	endpoint := fmt.Sprintf("update_project/%d", projectID)
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error UpdateProject %d: %w", projectID, err)

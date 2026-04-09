@@ -13,7 +13,10 @@ import (
 // AddResult adds a result for a test.
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresult
 func (c *HTTPClient) AddResult(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_result/%d", testID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -32,7 +35,10 @@ func (c *HTTPClient) AddResult(ctx context.Context, testID int64, req *data.AddR
 // AddResultForCase adds a result for a case in a run.
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresultforcase
 func (c *HTTPClient) AddResultForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_result_for_case/%d/%d", runID, caseID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -51,7 +57,10 @@ func (c *HTTPClient) AddResultForCase(ctx context.Context, runID, caseID int64, 
 // AddResults adds results for multiple tests in a run (bulk).
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresults
 func (c *HTTPClient) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_results/%d", runID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -70,7 +79,10 @@ func (c *HTTPClient) AddResults(ctx context.Context, runID int64, req *data.AddR
 // AddResultsForCases adds results for cases in a run (bulk).
 // https://support.testrail.com/hc/en-us/articles/7077874763156-Results#addresultsforcases
 func (c *HTTPClient) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_results_for_cases/%d", runID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {

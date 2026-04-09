@@ -47,7 +47,10 @@ func (c *HTTPClient) AddMilestone(ctx context.Context, projectID int64, req *dat
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_milestone/%d", projectID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -71,7 +74,10 @@ func (c *HTTPClient) UpdateMilestone(ctx context.Context, milestoneID int64, req
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_milestone/%d", milestoneID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)

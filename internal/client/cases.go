@@ -189,7 +189,10 @@ func (c *HTTPClient) GetHistoryForCase(ctx context.Context, caseID int64) (*data
 // AddCase creates a new test case in a section.
 // Requires sectionID and Title in the request.
 func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	endpoint := fmt.Sprintf("add_case/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -209,7 +212,10 @@ func (c *HTTPClient) AddCase(ctx context.Context, sectionID int64, req *data.Add
 // UpdateCase updates an existing test case.
 // Supports partial updates.
 func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	endpoint := fmt.Sprintf("update_case/%d", caseID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -228,7 +234,10 @@ func (c *HTTPClient) UpdateCase(ctx context.Context, caseID int64, req *data.Upd
 
 // UpdateCases performs a bulk update of cases in a suite.
 func (c *HTTPClient) UpdateCases(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	endpoint := fmt.Sprintf("update_cases/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -260,7 +269,10 @@ func (c *HTTPClient) DeleteCase(ctx context.Context, caseID int64) error {
 
 // DeleteCases performs a bulk deletion of cases in a suite.
 func (c *HTTPClient) DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	endpoint := fmt.Sprintf("delete_cases/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -308,7 +320,10 @@ func (c *HTTPClient) GetCaseFields(ctx context.Context) (data.GetCaseFieldsRespo
 
 // AddCaseField creates a new case field.
 func (c *HTTPClient) AddCaseField(ctx context.Context, req *data.AddCaseFieldRequest) (*data.AddCaseFieldResponse, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	endpoint := "add_case_field"
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -428,7 +443,10 @@ func casesEqualByField(c1, c2 data.Case, field string) bool {
 // CopyCasesToSection copies cases to the specified section.
 // POST index.php?/api/v2/copy_cases_to_section/:section_id
 func (c *HTTPClient) CopyCasesToSection(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	endpoint := fmt.Sprintf("copy_cases_to_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -443,7 +461,10 @@ func (c *HTTPClient) CopyCasesToSection(ctx context.Context, sectionID int64, re
 // MoveCasesToSection moves cases to the specified section.
 // POST index.php?/api/v2/move_cases_to_section/:section_id
 func (c *HTTPClient) MoveCasesToSection(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	endpoint := fmt.Sprintf("move_cases_to_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)

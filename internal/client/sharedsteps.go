@@ -58,7 +58,10 @@ func (c *HTTPClient) GetSharedStepHistory(ctx context.Context, stepID int64) (*d
 func (c *HTTPClient) AddSharedStep(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 	endpoint := fmt.Sprintf("add_shared_step/%d", projectID)
 
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
 		return nil, fmt.Errorf("request error AddSharedStep in project %d: %w", projectID, err)
@@ -76,7 +79,10 @@ func (c *HTTPClient) AddSharedStep(ctx context.Context, projectID int64, req *da
 // UpdateSharedStep updates an existing shared step.
 // Supports partial updates.
 func (c *HTTPClient) UpdateSharedStep(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_shared_step/%d", stepID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {

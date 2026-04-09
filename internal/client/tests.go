@@ -48,7 +48,10 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_test/%d", testID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)

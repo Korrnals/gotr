@@ -7,6 +7,187 @@
 
 ---
 
+## [Unreleased]
+
+---
+
+## [3.0.0] - 2026-04-09
+
+### Added
+
+#### Stage 13.5: Quality Hardening & Full Audit
+
+- **`api_paths.go`** — +14 endpoints added to the endpoint registry, complete coverage of TestRail API v2.
+- **`attachments list --for-project`** — new subcommand wrapping `GetAttachmentsForProject()`.
+- **`bdds add`** — stdin reading support: `cat scenario.feature | gotr bdds add 12345`.
+- **`sync shared-steps --save-filtered`** — automatic/interactive saving of filtered shared steps list via `ExportSharedSteps()`.
+- **Generic CRUD executor** (`internal/crud`) — eliminates boilerplate for simple CRUD commands.
+- **Compare resource registry** (`cmd/compare`) — declarative resource registration replacing manual wiring.
+
+### Changed
+
+- `compare all`: stage-by-stage progress tracker in terminal (`done/active/pending`) for all resources.
+- `compare all`: shared suites prefetch for `cases/suites/sections` to avoid repeated `get_suites` calls.
+- `compare all`: resource failures are now marked as `PARTIAL` (instead of misleading `INTERRUPTED`).
+- `compare all`: unsupported TestRail endpoints (`404 Unknown method`) are shown as `UNSUPPORTED` with a dedicated `Unsupported endpoints` summary block.
+- `compare all` JSON/YAML meta now distinguishes real errors from unsupported endpoints:
+  - `error_summary_count` / `error_resources` for real failures
+  - `unsupported_summary_count` / `unsupported_resources` for server-unsupported methods
+- Legacy `internal/progress` package removed; progress/status flow is unified via `internal/ui` runtime.
+- All Russian text in Go source files translated to English (i18n pass: 1738+ lines across 2 passes).
+- `panic(err)` in `main.go` and `cmd/commands.go` replaced with `fmt.Fprintf(os.Stderr)` + `os.Exit(1)`.
+- `ClientInterface` unified across all service packages (B-2..B-4 audit remediation).
+
+### Fixed
+
+- `internal/client` paginator: fixed potential infinite loop for flat-array API responses with page size at or above 250.
+- `compare sections`: stabilized loading path via client pagination behavior and added regression coverage in paginator tests.
+- All `io.ReadAll(resp.Body)` calls wrapped with `io.LimitReader` (10 MiB cap) to prevent unbounded memory allocation.
+- File descriptor leak in `migration/types.go` — `logFile` now properly closed in `Migration.Close()`.
+- `os.Remove` error paths in `embedded/jq_embed.go` now checked and logged.
+- All `json.Marshal` errors across the codebase handled (45+ fixes in 17 files).
+- Safe type assertions with comma-ok pattern throughout; `os.Getwd` errors properly handled.
+- Context propagation ensured across all API calls (F-2..F-7 audit findings).
+
+### Security
+
+- Bounded parallelism enforced in all concurrent operations.
+- All HTTP response body reads are size-limited.
+- `ReadResponse` documentation clarifies `resp.Body` ownership contract.
+
+### Quality
+
+- **golangci-lint**: 290 findings → **0** (errcheck, staticcheck, gocritic, gocyclo, misspell, unused, nolintlint, ineffassign).
+- **Test suite**: 43/43 packages pass with race detector, 0 data races.
+- **0 TODO/FIXME/HACK** markers in production code.
+- **Audit verdict**: UNCONDITIONAL PASS (7 audit rounds completed).
+
+## [3.0.0] - 2026-03-12
+
+### Added
+
+#### Stage 6.8: Concurrency Unification & Compare Subcommands
+
+- **`internal/concurrency/`** — новый unified concurrency-пакет (переименован из `internal/parallel/`)
+  - Три уровня стратегий:
+    - `FetchParallel[T]` — лёгкая: один API-вызов на проект, параллельная загрузка P1+P2
+    - `FetchParallelBySuite[T]` — средняя: per-suite запросы (для `sections`)
+    - `FetchParallelPaginated` — тяжёлая: `ParallelController` с пагинацией (для `cases`)
+  - Generic API через Go generics `[T any]`
+
+- **`pkg/reporter/`** — универсальный reporter вынесен в публичный пакет (из `internal/ui/reporter/`)
+  - Builder pattern: `Section` / `Stat` / `StatIf` / `StatFmt` / `Print`
+  - go-pretty/v6 для выровненного boxed-вывода
+
+- **Generic `newSimpleCompareCmd`** — одна generic-фабрика вместо 9 идентичных файлов (`cmd/compare/simple.go`)
+  - Устранено ~1200 строк копипасты
+  - Все простые подкоманды используют `FetchParallel[T]` для параллельной загрузки проектов
+
+- **`compare sections`** — параллельная загрузка секций по сьютам через `FetchParallelBySuite[T]`
+
+- **`compare all`** — единообразный вывод через `pkg/reporter`, partial results при недоступных API
+
+### Changed
+
+- `internal/parallel/` → `internal/concurrency/` (переименование пакета и всех импортов)
+- `internal/ui/reporter/` → `pkg/reporter/` (вынесен в публичный пакет)
+- Все 13 compare-подкоманд используют `pkg/reporter` для вывода статистики
+- `OnSuiteComplete` → `OnItemComplete` в интерфейсе `ProgressReporter`
+- Дефолтные значения: `parallel-suites=10`, `parallel-pages=6` (стабильные для TestRail Server)
+
+### Fixed
+
+- `compare all` более не использует `fmt.Println` с emoji и box-drawing символами
+- Устранено некорректное выравнивание статистики в терминалах без поддержки emoji
+
+### Performance
+
+- Простые compare-подкоманды (runs, plans, milestones и др.): загрузка P1 и P2 **параллельно**
+- `compare sections`: параллельная загрузка по сьютам вместо последовательной
+
+---
+
+#### Stage 6.9: Generic Paginator & Pagination Audit
+
+### Added
+
+- **`internal/client/paginator.go`** — универсальный generic-пагинатор `fetchAllPages[T]`
+  - Обрабатывает оба формата TestRail API без ветвлений в бизнес-логике:
+    - **Paginated wrapper** (TestRail 6.7+): `{"offset":0,"limit":250,"size":N,"<key>":[...]}`
+    - **Flat array** (старые TestRail Server): `[item1, item2, ...]`
+  - Автоматическое определение формата по первому байту ответа
+  - Стандартный размер страницы: 250 элементов (TestRail default)
+  - Выход по условию: `len(page) < limit` (последняя страница)
+
+- **Миграция 9 критичных list-методов** на `fetchAllPages[T]`:
+  - `GetRuns(projectID)` — runs теперь не обрезаются на 250
+  - `GetPlans(projectID)` — планы теперь не обрезаются на 250
+  - `GetSections(projectID, suiteID)` — секции (критично для `compare sections`)
+  - `GetSharedSteps(projectID)` — shared steps
+  - `GetMilestones(projectID)` — milestones
+  - `GetResults(runID)` — результаты рана
+  - `GetResultsForRun(runID)` — расширенный вариант
+  - `GetTests(runID)` — тесты рана
+  - `GetSuites(projectID)` — сьюты проекта
+
+### Changed
+
+- Все 9 мигрированных методов: тело метода упрощено с ~30 строк ручного цикла до 1 вызова `fetchAllPages`
+- Удалено ~145 строк дублированного pagination boilerplate из `internal/client/`
+
+### Tests
+
+- `internal/client/paginator_test.go` — 11 новых unit-тестов:
+  - Оба формата ответа (paginated wrapper и flat array)
+  - Многостраничная загрузка (multi-page accumulation)
+  - Граничные случаи: пустой ответ, последняя неполная страница
+  - Тест на ошибку сервера (HTTP 500)
+  - Table-driven tests для `decodeListResponse`
+
+### Verified
+
+- `compare all --pid1 30 --pid2 34`: 20 509 кейсов (87 стр.) + 116 009 кейсов (475 стр.) — пагинация подтверждена на реальных данных
+- `compare runs`, `compare plans`, `compare milestones`, `compare sections`, `compare sharedsteps`: все работают корректно
+- `go test ./...` — все тесты зелёные
+
+---
+
+#### Stage 7.0: Context Propagation
+
+### Added
+
+- **`context.Context`** во все ~100 методов `ClientInterface`
+  - `signal.NotifyContext` → корректное завершение по Ctrl+C
+  - Контекст пробрасывается CLI → Service → Client → HTTP
+
+### Changed
+
+- Все API-методы принимают `ctx context.Context` первым аргументом
+- `cmd.ExecuteContext()` вместо `cmd.Execute()`
+- `MockClient` обновлён под новые сигнатуры
+
+---
+
+#### Stage 8.0: UI/Output Refactoring
+
+### Added
+
+- **`internal/ui/`** — универсальные хелперы:
+  - `ui.Table(headers, rows)` — обёртка над go-pretty вместо tabwriter
+  - `ui.JSON(v)` — форматированный JSON-вывод
+  - `ui.Success()`, `ui.Warn()`, `ui.Error()`, `ui.Info()` — цветные сообщения
+  - `ui.Print()`, `ui.Printf()`, `ui.Println()` — обёртки стандартного вывода
+- **`--format` PersistentFlag** — глобальный флаг формата вывода на root-уровне
+- Массовая миграция: `tabwriter` → `ui.Table`, `json.MarshalIndent` → `ui.JSON`, `fmt.Print*` → `ui.*` (49 файлов)
+
+### Changed
+
+- `internal/flags/`: `*Var` → `GetFlag`, `ValidateRequiredID`
+- `os.Exit` → `panic` в `GetClient*` (тестируемость)
+- Все error messages переведены на английский
+
+---
+
 ## [2.7.0] - 2026-02-20
 
 ### Added
@@ -18,7 +199,7 @@
   - Real-time updates via buffered channels
   - Thread-safe, non-blocking implementation
   - Works with any long-running operation
-  - See [docs/progress.md](docs/progress.md) for details
+  - See [docs/guides/progress.md](docs/guides/progress.md) for details
 
 - **Multi-Progress-Bars (mpb)**: Visual feedback for long-running operations
   - `github.com/vbauerster/mpb/v8` integration (multi-progress-bar library)
@@ -108,7 +289,7 @@
   - `--save` is now a boolean flag (no value required)
   - Saves to `~/.gotr/exports/{resource}/{resource}_YYYY-MM-DD_HH-MM-SS.{format}`
   - Supports JSON, YAML, and CSV formats via `--format` flag (where applicable)
-  - Affected commands: `get`, `export`, `users list`, `labels list`, `reports list-cross-project`, 
+  - Affected commands: `get`, `export`, `users list`, `labels list`, `reports list-cross-project`,
     `test get/list`, `tests list`, `groups add/update`, and all `compare` subcommands
 - **Field-based comparison** for cases: `--field title`, `--field priority_id`, etc.
 - **Formatted table output** for `compare all`:
@@ -302,12 +483,12 @@
 
 #### Архитектурная документация
 
-- **Системная документация** `.systems/ARCHITECTURE.md` (660 строк):
+- **Системная документация** `.github/copilot/instructions/`:
   - Полное описание 4 слоёв архитектуры
   - Таблицы разделения ответственности
   - Полный перечень компонентов (22 команды, 3 сервиса, 40+ API методов)
   - Примеры рефакторинга
-- **Пользовательская документация** `docs/architecture.md` (243 строки):
+- **Пользовательская документация** `docs/architecture/overview.md` (243 строки):
   - Упрощённое описание архитектуры
   - Примеры потоков данных
   - Полный список команд
@@ -344,8 +525,7 @@
 
 #### Системные изменения
 
-- Создана директория `.systems/` для файлов разработки
-- Директория `.systems/` добавлена в `.gitignore`
+- Системные файлы разработки вынесены в служебные инструкции `.github/copilot/instructions/`
 - Внедрено осознанное версионирование (Semantic Versioning)
 
 ---
@@ -379,12 +559,12 @@
 #### Документация
 
 - Создана директория `docs/` с подробной документацией:
-  - `installation.md` — установка
-  - `configuration.md` — конфигурация
-  - `get-commands.md` — команды получения данных
-  - `sync-commands.md` — команды синхронизации
-  - `interactive-mode.md` — интерактивный режим
-  - `other-commands.md` — другие команды
+  - `guides/installation.md` — установка
+  - `guides/configuration.md` — конфигурация
+  - `guides/commands/get.md` — команды получения данных
+  - `guides/commands/sync.md` — команды синхронизации
+  - `guides/interactive-mode.md` — интерактивный режим
+  - `guides/commands/other.md` — другие команды
 
 ### Changed
 

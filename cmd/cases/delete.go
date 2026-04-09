@@ -2,29 +2,48 @@ package cases
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'cases delete'
-// Эндпоинт: POST /delete_case/{case_id}
+// newDeleteCmd creates the 'cases delete' command.
+// Endpoint: POST /delete_case/{case_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <case_id>",
-		Short: "Удалить тест-кейс",
-		Long:  `Удаляет тест-кейс по его ID.`,
-		Example: `  # Удалить тест-кейс
+		Use:   "delete [case_id]",
+		Short: "Delete a test case",
+		Long:  `Deletes a test case by its ID.`,
+		Example: `  # Delete a test case
   gotr cases delete 12345
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr cases delete 12345 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id required: gotr cases delete [case_id]")
+				}
+
+				caseID, err = resolveCaseIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check dry-run
@@ -34,17 +53,16 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			if err := cli.DeleteCase(caseID); err != nil {
+			if err := cli.DeleteCase(ctx, caseID); err != nil {
 				return fmt.Errorf("failed to delete case: %w", err)
 			}
 
-			fmt.Printf("✅ Case %d deleted\n", caseID)
+			ui.Successf(os.Stdout, "Case %d deleted", caseID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Preview what will be deleted without actually deleting")
 
 	return cmd
 }

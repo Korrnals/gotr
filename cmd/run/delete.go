@@ -1,107 +1,105 @@
 package run
 
 import (
+	"context"
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
 )
 
-// runServiceWrapper оборачивает сервис для работы с runs
+// runServiceWrapper wraps the service for working with runs.
 type runServiceWrapper struct {
 	svc *service.RunService
 }
 
-func (w *runServiceWrapper) Delete(runID int64) error {
-	return w.svc.Delete(runID)
+// Delete delegates run deletion to the underlying run service.
+func (w *runServiceWrapper) Delete(ctx context.Context, runID int64) error {
+	return w.svc.Delete(ctx, runID)
 }
 
-func (w *runServiceWrapper) ParseID(args []string, index int) (int64, error) {
-	return w.svc.ParseID(args, index)
+// ParseID delegates run ID parsing to the underlying run service.
+func (w *runServiceWrapper) ParseID(ctx context.Context, args []string, index int) (int64, error) {
+	return w.svc.ParseID(ctx, args, index)
 }
 
-func (w *runServiceWrapper) PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
-	w.svc.PrintSuccess(cmd, format, args...)
+// Create delegates run creation to the underlying run service.
+func (w *runServiceWrapper) Create(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+	return w.svc.Create(ctx, projectID, req)
 }
 
-func (w *runServiceWrapper) Create(projectID int64, req *data.AddRunRequest) (*data.Run, error) {
-	return w.svc.Create(projectID, req)
+
+// Close delegates run closing to the underlying run service.
+func (w *runServiceWrapper) Close(ctx context.Context, runID int64) (*data.Run, error) {
+	return w.svc.Close(ctx, runID)
 }
 
-func (w *runServiceWrapper) Output(cmd *cobra.Command, data interface{}) error {
-	return w.svc.Output(cmd, data)
+// Update delegates run updates to the underlying run service.
+func (w *runServiceWrapper) Update(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
+	return w.svc.Update(ctx, runID, req)
 }
 
-func (w *runServiceWrapper) Close(runID int64) (*data.Run, error) {
-	return w.svc.Close(runID)
+// Get delegates run retrieval by ID to the underlying run service.
+func (w *runServiceWrapper) Get(ctx context.Context, runID int64) (*data.Run, error) {
+	return w.svc.Get(ctx, runID)
 }
 
-func (w *runServiceWrapper) Update(runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
-	return w.svc.Update(runID, req)
+// GetByProject delegates project run listing to the underlying run service.
+func (w *runServiceWrapper) GetByProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+	return w.svc.GetByProject(ctx, projectID)
 }
 
-func (w *runServiceWrapper) Get(runID int64) (*data.Run, error) {
-	return w.svc.Get(runID)
-}
-
-func (w *runServiceWrapper) GetByProject(projectID int64) (data.GetRunsResponse, error) {
-	return w.svc.GetByProject(projectID)
-}
-
-// newRunServiceFromInterface создаёт сервис из клиента-интерфейса
+// newRunServiceFromInterface creates a service from a client interface.
 func newRunServiceFromInterface(cli client.ClientInterface) *runServiceWrapper {
-	// Пытаемся привести к *HTTPClient, если это не mock
-	if httpClient, ok := cli.(*client.HTTPClient); ok {
-		return &runServiceWrapper{svc: service.NewRunService(httpClient)}
-	}
-	// Для тестов с mock - используем специальный конструктор
-	return &runServiceWrapper{svc: service.NewRunServiceFromInterface(cli)}
+	return &runServiceWrapper{svc: service.NewRunService(cli)}
 }
 
-// newDeleteCmd создаёт команду 'run delete'
-// Эндпоинт: POST /delete_run/{run_id}
+// newDeleteCmd creates the 'run delete' command.
+// Endpoint: POST /delete_run/{run_id}
 func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [run-id]",
-		Short: "Удалить test run",
-		Long: `Удаляет test run по его ID.
+		Short: "Delete a test run",
+		Long: `Deletes a test run by its ID.
 
-⚠️ ВНИМАНИЕ: Это действие необратимо!
+WARNING: This action is irreversible!
 
-При удалении run:
-- Все результаты тестов будут удалены
-- Все тесты (tests) будут удалены
-- Сама структура run будет удалена
-- Кейсы в сьюте останутся нетронутыми
+When a run is deleted:
+- All test results will be deleted
+- All tests will be deleted
+- The run structure itself will be deleted
+- Cases in the suite will remain untouched
 
-Рекомендуется сначала закрыть run (gotr run close), а не удалять.
+It is recommended to close a run (gotr run close) rather than delete it.
 
-Примеры:
-	# Удалить run (без подтверждения — осторожно!)
+Examples:
+	# Delete a run (no confirmation — use with caution!)
 	gotr run delete 12345
 
-	# Удалить в тихом режиме (для скриптов)
+	# Delete in quiet mode (for scripts)
 	gotr run delete 12345 -q
 
-	# Dry-run режим
+	# Dry-run mode
 	gotr run delete 12345 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
+			}
+
+			runID, err := resolveRunID(ctx, cli, args)
+			if err != nil {
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			svc := newRunServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
-			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
-			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run delete")
@@ -114,21 +112,19 @@ func newDeleteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return nil
 			}
 
-			if err := svc.Delete(runID); err != nil {
-				return fmt.Errorf("ошибка удаления test run: %w", err)
+			if err := svc.Delete(ctx, runID); err != nil {
+				return fmt.Errorf("failed to delete test run: %w", err)
 			}
 
-			svc.PrintSuccess(cmd, "Test run %d удалён успешно", runID)
+			output.PrintSuccess(cmd, "Test run %d deleted successfully", runID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }
 
-// deleteCmd используется для регистрации в Register
-var deleteCmd = newDeleteCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+// deleteCmd is used for registration in Register.
+var deleteCmd = newDeleteCmd(getClientSafe)

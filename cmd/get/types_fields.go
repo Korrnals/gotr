@@ -8,19 +8,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newCaseTypesCmd создаёт команду для получения типов кейсов
+// newCaseTypesCmd creates the command for retrieving case types.
 func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-types",
-		Short: "Получить список типов кейсов",
+		Short: "Get list of case types",
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			types, err := cli.GetCaseTypes()
+			types, err := cli.GetCaseTypes(ctx)
 			if err != nil {
 				return err
 			}
@@ -30,19 +31,20 @@ func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cob
 	}
 }
 
-// newCaseFieldsCmd создаёт команду для получения полей кейсов
+// newCaseFieldsCmd creates the command for retrieving case fields.
 func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-fields",
-		Short: "Получить список полей кейсов",
+		Short: "Get list of case fields",
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			fields, err := cli.GetCaseFields()
+			fields, err := cli.GetCaseFields(ctx)
 			if err != nil {
 				return err
 			}
@@ -52,12 +54,12 @@ func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 	}
 }
 
-// caseTypesCmd — экспортированная команда для регистрации
+// caseTypesCmd is the exported command registered with the root.
 var caseTypesCmd = newCaseTypesCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// caseFieldsCmd — экспортированная команда для регистрации
+// caseFieldsCmd is the exported command registered with the root.
 var caseFieldsCmd = newCaseFieldsCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

@@ -1,19 +1,21 @@
 package datasets
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddDatasetFunc: func(projectID int64, name string) (*data.Dataset, error) {
+		AddDatasetFunc: func(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "New Dataset", name)
 			return &data.Dataset{ID: 100, Name: name, ProjectID: projectID}, nil
@@ -30,7 +32,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		AddDatasetFunc: func(projectID int64, name string) (*data.Dataset, error) {
+		AddDatasetFunc: func(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 			return &data.Dataset{ID: 200, Name: name}, nil
 		},
 	}
@@ -45,8 +47,8 @@ func TestAddCmd_WithSaveFlag(t *testing.T) {
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddDatasetFunc: func(projectID int64, name string) (*data.Dataset, error) {
-			return nil, fmt.Errorf("проект не найден")
+		AddDatasetFunc: func(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
+			return nil, fmt.Errorf("project not found")
 		},
 	}
 
@@ -56,10 +58,10 @@ func TestAddCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "проект не найден")
+	assert.Contains(t, err.Error(), "project not found")
 }
 
-// ==================== Dry-run тесты ====================
+// ==================== Dry-run tests ====================
 
 func TestAddCmd_DryRun(t *testing.T) {
 	mock := &client.MockClient{}
@@ -71,7 +73,7 @@ func TestAddCmd_DryRun(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestAddCmd_InvalidProjectID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -81,7 +83,7 @@ func TestAddCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestAddCmd_ZeroProjectID(t *testing.T) {
@@ -92,7 +94,7 @@ func TestAddCmd_ZeroProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный project_id")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestAddCmd_NoArgs(t *testing.T) {
@@ -105,6 +107,40 @@ func TestAddCmd_NoArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestAddCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name", "Test", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"--name", "Test", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 func TestAddCmd_MissingName(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newAddCmd(getClientForTests)
@@ -113,5 +149,5 @@ func TestAddCmd_MissingName(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "--name обязателен")
+	assert.Contains(t, err.Error(), "--name is required")
 }

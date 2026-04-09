@@ -2,55 +2,72 @@ package datasets
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'datasets delete'
-// Эндпоинт: POST /delete_dataset/{dataset_id}
+// newDeleteCmd creates the 'datasets delete' command.
+// Endpoint: POST /delete_dataset/{dataset_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <dataset_id>",
-		Short: "Удалить датасет",
-		Long: `Удаляет датасет по его ID.
+		Use:   "delete [dataset_id]",
+		Short: "Delete a dataset",
+		Long: `Deletes a dataset by its ID.
 
-⚠️ Внимание: удаление нельзя отменить! Все данные из датасета
-будут безвозвратно удалены. Убедитесь, что датасет не используется
-в активных тест-планах перед удалением.
+⚠️ Warning: deletion cannot be undone! All data in the dataset
+will be permanently removed. Make sure the dataset is not used
+in active test plans before deleting.
 
-Используйте --dry-run для проверки перед удалением.`,
-		Example: `  # Удалить датасет
+Use --dry-run to preview before deleting.`,
+		Example: `  # Delete a dataset
   gotr datasets delete 123
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr datasets delete 123 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
+			ctx := cmd.Context()
+			cli := getClient(cmd)
+
+			var datasetID int64
+			var err error
+			if len(args) > 0 {
+				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("dataset_id required: gotr datasets delete [dataset_id]")
+				}
+				datasetID, err = resolveDatasetIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("datasets delete")
-				dr.PrintSimple("Удалить датасет", fmt.Sprintf("Dataset ID: %d", datasetID))
+				dr.PrintSimple("Delete dataset", fmt.Sprintf("Dataset ID: %d", datasetID))
 				return nil
 			}
 
-			cli := getClient(cmd)
-			if err := cli.DeleteDataset(datasetID); err != nil {
-				return fmt.Errorf("не удалось удалить датасет: %w", err)
+			if err := cli.DeleteDataset(ctx, datasetID); err != nil {
+				return fmt.Errorf("failed to delete dataset: %w", err)
 			}
 
-			fmt.Printf("✅ Датасет %d удалён\n", datasetID)
+			ui.Successf(os.Stdout, "Dataset %d deleted", datasetID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

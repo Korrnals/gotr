@@ -1,22 +1,23 @@
-// cmd/completion.go (или в root.go)
+// cmd/completion.go
 
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
-// completionCmd — служебная команда для генерации автодополнения
+// completionCmd generates shell completion scripts.
 var completionCmd = &cobra.Command{
 	Use:   "completion [bash|zsh|fish|powershell]",
 	Short: "Generate completion script",
-	Long: `Генерирует скрипт автодополнения для указанной оболочки.
+	Long: `Generates a shell completion script for the specified shell.
 
-Примеры:
-	source <(gotr completion bash)                  # временно для текущей сессии
-	gotr completion bash > /usr/local/etc/bash_completion.d/gotr  # навсегда (macOS/Linux)
+Examples:
+	source <(gotr completion bash)                  # temporary for current session
+	gotr completion bash > /usr/local/etc/bash_completion.d/gotr  # persistent (macOS/Linux)
 
 Zsh:
 	gotr completion zsh > "${fpath[1]}/_gotr"
@@ -27,22 +28,26 @@ Fish:
 	DisableFlagsInUseLine: true,
 	ValidArgs:             []string{"bash", "zsh", "fish", "powershell"},
 	Args:                  cobra.MatchAll(cobra.ExactArgs(1), cobra.OnlyValidArgs),
-	// ОТКЛЮЧАЕМ PersistentPreRunE — клиент не нужен!
+	// Disable PersistentPreRunE — client not needed.
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		// Ничего не делаем — переопределяем родительский
+		// Override parent PersistentPreRunE (no-op)
 	},
-	// Полностью отключаем всё, что делает rootCmd (клиент + вывод Viper)
-	PersistentPreRunE: nil, // или PersistentPreRun: func() {}
-	Run: func(cmd *cobra.Command, args []string) {
+	PersistentPreRunE: nil,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var err error
 		switch args[0] {
 		case "bash":
-			_ = cmd.Root().GenBashCompletion(os.Stdout)
+			err = cmd.Root().GenBashCompletion(os.Stdout)
 		case "zsh":
-			_ = cmd.Root().GenZshCompletion(os.Stdout)
+			err = cmd.Root().GenZshCompletion(os.Stdout)
 		case "fish":
-			_ = cmd.Root().GenFishCompletion(os.Stdout, true)
+			err = cmd.Root().GenFishCompletion(os.Stdout, true)
 		case "powershell":
-			_ = cmd.Root().GenPowerShellCompletion(os.Stdout)
+			err = cmd.Root().GenPowerShellCompletion(os.Stdout)
 		}
+		if err != nil {
+			return fmt.Errorf("failed to generate %s completion: %w", args[0], err)
+		}
+		return nil
 	},
 }

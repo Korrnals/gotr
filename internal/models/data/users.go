@@ -1,39 +1,39 @@
 // internal/models/data/users.go
 package data
 
-// User — пользователь TestRail
+// User represents a TestRail user.
 type User struct {
-	ID        int64  `json:"id"`         // Уникальный ID пользователя
-	Name      string `json:"name"`       // Имя пользователя
-	Email     string `json:"email"`      // Email пользователя
-	IsActive  bool   `json:"is_active"`  // Активен ли пользователь
-	RoleID    int64  `json:"role_id"`    // ID роли пользователя
-	Role      string `json:"role"`       // Название роли
-	IsAdmin   bool   `json:"is_admin"`   // Является ли администратором
-	MfaAuth   int    `json:"mfa_auth"`   // MFA статус
-	MfaSecret string `json:"mfa_secret,omitempty"` // MFA секрет (обычно не возвращается)
+	ID        int64  `json:"id"`                   // Unique user ID
+	Name      string `json:"name"`                 // User name
+	Email     string `json:"email"`                // User email
+	IsActive  bool   `json:"is_active"`            // Whether the user is active
+	RoleID    int64  `json:"role_id"`              // User role ID
+	Role      string `json:"role"`                 // Role name
+	IsAdmin   bool   `json:"is_admin"`             // Whether the user is an administrator
+	MfaAuth   int    `json:"mfa_auth"`             // MFA status
+	MfaSecret string `json:"mfa_secret,omitempty"` // MFA secret (usually not returned)
 }
 
-// GetUsersResponse — ответ на get_users
+// GetUsersResponse is the response for get_users.
 type GetUsersResponse []User
 
-// GetUserResponse — ответ на get_user
+// GetUserResponse is the response for get_user.
 type GetUserResponse User
 
-// AddUserRequest — запрос для add_user
+// AddUserRequest is the request for add_user.
 type AddUserRequest struct {
-	Name     string `json:"name"`              // Имя пользователя (обязательно)
-	Email    string `json:"email"`             // Email пользователя (обязательно)
-	RoleID   int64  `json:"role_id,omitempty"` // ID роли пользователя
-	IsAdmin  int    `json:"is_admin,omitempty"` // 1 = администратор, 0 = нет
-	Password string `json:"password,omitempty"` // Пароль пользователя
+	Name     string `json:"name"`               // User name (required)
+	Email    string `json:"email"`              // User email (required)
+	RoleID   int64  `json:"role_id,omitempty"`  // User role ID
+	IsAdmin  int    `json:"is_admin,omitempty"` // 1 = administrator, 0 = no
+	Password string `json:"password,omitempty"` // User password
 }
 
-// UpdateUserRequest — запрос для update_user
+// UpdateUserRequest is the request for update_user.
 type UpdateUserRequest struct {
-	Name     string `json:"name,omitempty"`      // Имя пользователя
-	Email    string `json:"email,omitempty"`     // Email пользователя
-	RoleID   int64  `json:"role_id,omitempty"`   // ID роли пользователя
-	IsAdmin  int    `json:"is_admin,omitempty"`  // 1 = администратор, 0 = нет
-	IsActive int    `json:"is_active,omitempty"` // 1 = активен, 0 = неактивен
+	Name     string `json:"name,omitempty"`      // User name
+	Email    string `json:"email,omitempty"`     // User email
+	RoleID   int64  `json:"role_id,omitempty"`   // User role ID
+	IsAdmin  int    `json:"is_admin,omitempty"`  // 1 = administrator, 0 = no
+	IsActive int    `json:"is_active,omitempty"` // 1 = active, 0 = inactive
 }

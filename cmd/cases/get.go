@@ -2,37 +2,54 @@ package cases
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'cases get'
-// Эндпоинт: GET /get_case/{case_id}
+// newGetCmd creates the 'cases get' command.
+// Endpoint: GET /get_case/{case_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	return &cobra.Command{
-		Use:   "get <case_id>",
-		Short: "Получить тест-кейс по ID",
-		Long:  `Получает детальную информацию о тест-кейсе по его идентификатору.`,
-		Example: `  # Получить информацию о кейсе
+		Use:   "get [case_id]",
+		Short: "Get a test case by ID",
+		Long:  `Retrieves detailed information about a test case by its identifier.`,
+		Example: `  # Get case information
   gotr cases get 12345
 
-  # Сохранить в файл
+  # Save to file
   gotr cases get 12345 -o case.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id required: gotr cases get [case_id]")
+				}
+
+				caseID, err = resolveCaseIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			cli := getClient(cmd)
-			resp, err := cli.GetCase(caseID)
+			resp, err := cli.GetCase(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("failed to get case: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 }

@@ -1,40 +1,43 @@
 package get
 
 import (
+	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
 
-// newSharedStepsCmd создаёт команду для получения shared steps проекта
+// newSharedStepsCmd creates the command for retrieving project shared steps.
 func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sharedsteps [project-id]",
-		Short: "Получить shared steps проекта",
-		Long: `Получить shared steps (общие шаги) проекта.
+		Short: "Get project shared steps",
+		Long: `Get project shared steps.
 
-Если ID проекта не указан, будет предложено выбрать проект из списка.
+If the project ID is not specified, you will be prompted to select a project from the list.
 
-Примеры:
-	# Интерактивный выбор проекта
+Examples:
+	# Interactive project selection
 	gotr get sharedsteps
 
-	# Явное указание проекта
+	# Explicit project specification
 	gotr get sharedsteps 30
 	gotr get sharedsteps --project-id 30
 `,
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			// Получаем ID проекта
+			// Resolve project ID
 			projectIDStr := ""
 			if len(args) > 0 {
 				projectIDStr = args[0]
@@ -47,59 +50,81 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 			var err error
 
 			if projectIDStr == "" {
-				// Интерактивный выбор проекта
-				projectID, err = selectProjectInteractively(cli)
+				// Interactive project selection
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}
 			} else {
-				projectID, err = strconv.ParseInt(projectIDStr, 10, 64)
+				projectID, err = flags.ParseID(projectIDStr)
 				if err != nil {
-					return fmt.Errorf("некорректный ID проекта: %w", err)
+					return fmt.Errorf("invalid project_id: %w", err)
 				}
 			}
 
-			// Create progress manager and spinner
-			pm := progress.NewManager()
-			spinner := pm.NewSpinner("")
-			spinner.Describe("Загрузка shared steps...")
-
-			steps, err := cli.GetSharedSteps(projectID)
+			steps, err := runGetStatus(command, "Loading shared steps...", func(ctx context.Context) (any, error) {
+				return cli.GetSharedSteps(ctx, projectID)
+			})
 			if err != nil {
 				return err
 			}
 
-			spinner.Finish()
 			return handleOutput(command, steps, start)
 		},
 	}
 
-	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	cmd.Flags().String("project-id", "", "Project ID (alternative to positional argument)")
 
 	return cmd
 }
 
-// newSharedStepCmd создаёт команду для получения одного shared step
+// newSharedStepCmd creates the command for retrieving a single shared step.
 func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
-		Use:   "sharedstep <step-id>",
-		Short: "Получить один shared step по ID шага",
-		Long:  "Получает детальную информацию о конкретном shared step по его ID.",
-		Args:  cobra.ExactArgs(1),
+		Use:   "sharedstep [step-id]",
+		Short: "Get a single shared step by step ID",
+		Long:  "Retrieves detailed information about a specific shared step by its ID.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			idStr := args[0]
-			id, err := strconv.ParseInt(idStr, 10, 64)
-			if err != nil {
-				return fmt.Errorf("некорректный ID шага: %w", err)
+			var id int64
+			var err error
+			if len(args) > 0 {
+				id, err = flags.ParseID(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid step ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("step_id required: gotr get sharedstep [step-id]")
+				}
+
+				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+
+				steps, err := cli.GetSharedSteps(ctx, projectID)
+				if err != nil {
+					return fmt.Errorf("failed to get shared steps: %w", err)
+				}
+				if len(steps) == 0 {
+					return fmt.Errorf("no shared steps found in project %d", projectID)
+				}
+
+				id, err = selectSharedStepID(ctx, steps)
+				if err != nil {
+					return err
+				}
 			}
 
-			step, err := cli.GetSharedStep(id)
+			step, err := cli.GetSharedStep(ctx, id)
 			if err != nil {
 				return err
 			}
@@ -109,12 +134,27 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 	}
 }
 
-// sharedStepsCmd — экспортированная команда для регистрации
+func selectSharedStepID(ctx context.Context, steps data.GetSharedStepsResponse) (int64, error) {
+	p := interactive.PrompterFromContext(ctx)
+	options := make([]string, 0, len(steps))
+	for i, step := range steps {
+		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, step.ID, step.Title))
+	}
+
+	idx, _, err := p.Select("Select shared step:", options)
+	if err != nil {
+		return 0, fmt.Errorf("failed to select shared step: %w", err)
+	}
+
+	return steps[idx].ID, nil
+}
+
+// sharedStepsCmd is the exported command registered with the root.
 var sharedStepsCmd = newSharedStepsCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// sharedStepCmd — экспортированная команда для регистрации
+// sharedStepCmd is the exported command registered with the root.
 var sharedStepCmd = newSharedStepCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

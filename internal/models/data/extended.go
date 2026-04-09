@@ -3,81 +3,81 @@
 
 package data
 
-// Group — группа пользователей
+// Group represents a user group.
 type Group struct {
-	ID        int64  `json:"id"`         // Уникальный ID группы
-	Name      string `json:"name"`       // Название группы
-	UserIDs   []int64 `json:"user_ids"`  // ID пользователей в группе
-	ProjectID int64  `json:"project_id"` // ID проекта
+	ID        int64   `json:"id"`         // Unique group ID
+	Name      string  `json:"name"`       // Group name
+	UserIDs   []int64 `json:"user_ids"`   // User IDs in the group
+	ProjectID int64   `json:"project_id"` // Project ID
 }
 
-// GetGroupsResponse — ответ на get_groups
+// GetGroupsResponse is the response for get_groups.
 type GetGroupsResponse []Group
 
-// Role — роль пользователя
+// Role represents a user role.
 type Role struct {
-	ID   int64  `json:"id"`   // Уникальный ID роли
-	Name string `json:"name"` // Название роли
+	ID   int64  `json:"id"`   // Unique role ID
+	Name string `json:"name"` // Role name
 }
 
-// GetRolesResponse — ответ на get_roles
+// GetRolesResponse is the response for get_roles.
 type GetRolesResponse []Role
 
-// ResultField — поле результата
+// ResultField represents a result field definition.
 type ResultField struct {
-	ID       int64  `json:"id"`        // Уникальный ID поля
-	Name     string `json:"name"`      // Название поля
-	SystemName string `json:"system_name"` // Системное название
-	TypeID   int    `json:"type_id"`   // Тип поля
-	IsActive bool   `json:"is_active"` // Активно ли поле
+	ID         int64  `json:"id"`          // Unique field ID
+	Name       string `json:"name"`        // Field name
+	SystemName string `json:"system_name"` // System name
+	TypeID     int    `json:"type_id"`     // Field type
+	IsActive   bool   `json:"is_active"`   // Whether the field is active
 }
 
-// GetResultFieldsResponse — ответ на get_result_fields
+// GetResultFieldsResponse is the response for get_result_fields.
 type GetResultFieldsResponse []ResultField
 
-// Dataset — набор данных для параметризованных тестов
+// Dataset represents a data set for parameterized tests.
 type Dataset struct {
-	ID        int64  `json:"id"`         // Уникальный ID набора
-	Name      string `json:"name"`       // Название набора
-	ProjectID int64  `json:"project_id"` // ID проекта
+	ID        int64  `json:"id"`         // Unique dataset ID
+	Name      string `json:"name"`       // Dataset name
+	ProjectID int64  `json:"project_id"` // Project ID
 }
 
-// GetDatasetsResponse — ответ на get_datasets
+// GetDatasetsResponse is the response for get_datasets.
 type GetDatasetsResponse []Dataset
 
-// Variable — переменная в наборе данных
+// Variable represents a variable in a dataset.
 type Variable struct {
-	ID        int64  `json:"id"`         // Уникальный ID переменной
-	Name      string `json:"name"`       // Название переменной
-	DatasetID int64  `json:"dataset_id"` // ID набора данных
+	ID        int64  `json:"id"`         // Unique variable ID
+	Name      string `json:"name"`       // Variable name
+	DatasetID int64  `json:"dataset_id"` // Dataset ID
 }
 
-// GetVariablesResponse — ответ на get_variables
+// GetVariablesResponse is the response for get_variables.
 type GetVariablesResponse []Variable
 
-// BDD — BDD сценарий для кейса
+// BDD represents a BDD scenario for a case.
 type BDD struct {
-	ID      int64  `json:"id"`       // Уникальный ID
-	CaseID  int64  `json:"case_id"`  // ID кейса
-	Content string `json:"content"`  // Содержимое BDD сценария
+	ID      int64  `json:"id"`      // Unique ID
+	CaseID  int64  `json:"case_id"` // Case ID
+	Content string `json:"content"` // BDD scenario content
 }
 
-// UpdateLabelsRequest — запрос на обновление labels теста
+// UpdateLabelsRequest is the request to update test labels.
 type UpdateLabelsRequest struct {
-	Labels []string `json:"labels"` // Список labels
+	Labels []string `json:"labels"` // List of labels
 }
 
-// UpdateTestsLabelsRequest — запрос на обновление labels для нескольких тестов
+// UpdateTestsLabelsRequest is the request to update labels for multiple tests.
 type UpdateTestsLabelsRequest struct {
-	TestIDs []int64  `json:"test_ids"` // ID тестов
-	Labels  []string `json:"labels"`   // Список labels
+	TestIDs []int64  `json:"test_ids"` // Test IDs
+	Labels  []string `json:"labels"`   // List of labels
 }
 
-// UpdateLabelRequest — запрос на обновление метки
+// UpdateLabelRequest is the request to update a label.
 type UpdateLabelRequest struct {
-	ProjectID int64  `json:"project_id"` // ID проекта
-	Title     string `json:"title"`      // Название метки (max 20 символов)
+	ProjectID int64  `json:"project_id"` // Project ID
+	Title     string `json:"title"`      // Label title (max 20 characters)
 }
 
-// GetLabelsResponse — ответ на get_labels
+// GetLabelsResponse is the response for get_labels.
 type GetLabelsResponse []Label

@@ -2,54 +2,71 @@ package variables
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'variables delete'
-// Эндпоинт: POST /delete_variable/{variable_id}
+// newDeleteCmd creates the 'variables delete' command.
+// Endpoint: POST /delete_variable/{variable_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <variable_id>",
-		Short: "Удалить переменную",
-		Long: `Удаляет переменную из датасета.
+		Use:   "delete [variable_id]",
+		Short: "Delete a variable",
+		Long: `Deletes a variable from a dataset.
 
-⚠️ Внимание: удаление нельзя отменить! Все значения этой переменной
-будут безвозвратно удалены. Убедитесь, что переменная не используется
-в активных тест-кейсах.
+⚠️ Warning: deletion cannot be undone! All values of this variable
+will be permanently deleted. Make sure the variable is not used
+in active test cases.
 
-Используйте --dry-run для проверки перед удалением.`,
-		Example: `  # Удалить переменную
+Use --dry-run to preview before deleting.`,
+		Example: `  # Delete a variable
   gotr variables delete 789
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr variables delete 789 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			variableID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || variableID <= 0 {
-				return fmt.Errorf("некорректный variable_id: %s", args[0])
+			var variableID int64
+			if len(args) > 0 {
+				var err error
+				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("variable_id is required in non-interactive mode: gotr variables delete [variable_id]")
+				}
+				var err error
+				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("variables delete")
-				dr.PrintSimple("Удалить переменную", fmt.Sprintf("Variable ID: %d", variableID))
+				dr.PrintSimple("Delete Variable", fmt.Sprintf("Variable ID: %d", variableID))
 				return nil
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeleteVariable(variableID); err != nil {
-				return fmt.Errorf("не удалось удалить переменную: %w", err)
+			ctx := cmd.Context()
+			if err := cli.DeleteVariable(ctx, variableID); err != nil {
+				return fmt.Errorf("failed to delete variable: %w", err)
 			}
 
-			fmt.Printf("✅ Переменная %d удалена\n", variableID)
+			ui.Successf(os.Stdout, "Variable %d deleted", variableID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

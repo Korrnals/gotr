@@ -1,11 +1,13 @@
 package run
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
@@ -13,7 +15,7 @@ import (
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetRunsResponse{
 				{ID: 1, Name: "Run 1", ProjectID: 30, PassedCount: 10, FailedCount: 2},
@@ -76,7 +78,7 @@ func TestListCmd_NegativeProjectID(t *testing.T) {
 
 func TestListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -92,7 +94,7 @@ func TestListCmd_APIError(t *testing.T) {
 
 func TestListCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{}, nil
 		},
 	}
@@ -109,12 +111,12 @@ func TestListCmd_InteractiveMode(t *testing.T) {
 	// Test interactive mode - it will fail since we don't have real projects
 	// but we verify the code path is taken
 	mock := &client.MockClient{
-		GetProjectsFunc: func() (data.GetProjectsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
 			return data.GetProjectsResponse{
 				{ID: 30, Name: "Test Project"},
 			}, nil
 		},
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{
 				{ID: 1, Name: "Run 1", ProjectID: 30},
 			}, nil
@@ -135,7 +137,7 @@ func TestListCmd_InteractiveMode(t *testing.T) {
 
 func TestListCmd_WithLargeProjectID(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			assert.Equal(t, int64(999999999), projectID)
 			return data.GetRunsResponse{
 				{ID: 1, Name: "Large Project Run", ProjectID: projectID},
@@ -160,29 +162,37 @@ func TestListCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestListCmd_MockClientTypeAssertion(t *testing.T) {
-	// Test interactive mode with mock client (non-HTTPClient type)
+	// Test interactive mode with mock client via Prompter injection
 	mock := &client.MockClient{
-		GetProjectsFunc: func() (data.GetProjectsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
 			return data.GetProjectsResponse{
 				{ID: 30, Name: "Test Project"},
 			}, nil
 		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetRunsResponse{
+				{ID: 1, Name: "Run 1", ProjectID: 30},
+			}, nil
+		},
 	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
 
 	cmd := newListCmd(func(cmd *cobra.Command) client.ClientInterface {
 		return mock
 	})
+	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
 	// No args triggers interactive mode
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
-	// Should fail with specific error about interactive mode
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "интерактивный режим недоступен в тестовом режиме")
+	assert.NoError(t, err)
 }
 
 func TestListCmd_InvalidProjectIDFormat(t *testing.T) {
@@ -194,5 +204,5 @@ func TestListCmd_InvalidProjectIDFormat(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID проекта")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }

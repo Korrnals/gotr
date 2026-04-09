@@ -3,11 +3,9 @@ package interactive
 
 import (
 	"fmt"
-
-	"github.com/AlecAivazis/survey/v2"
 )
 
-// ProjectAnswers содержит ответы для создания/обновления проекта
+// ProjectAnswers holds answers for creating/updating a project.
 type ProjectAnswers struct {
 	Name             string
 	Announcement     string
@@ -15,14 +13,14 @@ type ProjectAnswers struct {
 	IsCompleted      bool
 }
 
-// SuiteAnswers содержит ответы для создания/обновления сьюта
+// SuiteAnswers holds answers for creating/updating a suite.
 type SuiteAnswers struct {
 	Name        string
 	Description string
 	IsCompleted bool
 }
 
-// CaseAnswers содержит ответы для создания/обновления кейса
+// CaseAnswers holds answers for creating/updating a test case.
 type CaseAnswers struct {
 	Title      string
 	SectionID  int64
@@ -31,7 +29,7 @@ type CaseAnswers struct {
 	Refs       string
 }
 
-// RunAnswers содержит ответы для создания/обновления run
+// RunAnswers holds answers for creating/updating a test run.
 type RunAnswers struct {
 	Name        string
 	Description string
@@ -41,113 +39,89 @@ type RunAnswers struct {
 	IncludeAll  bool
 }
 
-// AskProject запускает wizard для проекта
-func AskProject(isUpdate bool) (*ProjectAnswers, error) {
+// AskProjectWithPrompter runs project wizard using unified prompter.
+func AskProjectWithPrompter(p Prompter, isUpdate bool) (*ProjectAnswers, error) {
 	answers := &ProjectAnswers{}
 
-	questions := []*survey.Question{
-		{
-			Name: "name",
-			Prompt: &survey.Input{
-				Message: "Название проекта:",
-			},
-			Validate: survey.Required,
-		},
-		{
-			Name: "announcement",
-			Prompt: &survey.Multiline{
-				Message: "Announcement (опционально):",
-			},
-		},
-		{
-			Name: "showAnnouncement",
-			Prompt: &survey.Confirm{
-				Message: "Показывать announcement?",
-				Default: true,
-			},
-		},
+	name, err := p.Input("Project name:", "")
+	if err != nil {
+		return nil, fmt.Errorf("project name input failed: %w", err)
 	}
+	if name == "" {
+		return nil, fmt.Errorf("project name is required")
+	}
+
+	announcement, err := p.MultilineInput("Announcement (optional):", "")
+	if err != nil {
+		return nil, fmt.Errorf("announcement input failed: %w", err)
+	}
+
+	showAnnouncement, err := p.Confirm("Show announcement?", true)
+	if err != nil {
+		return nil, fmt.Errorf("show announcement confirm failed: %w", err)
+	}
+
+	answers.Name = name
+	answers.Announcement = announcement
+	answers.ShowAnnouncement = showAnnouncement
 
 	if isUpdate {
-		questions = append(questions, &survey.Question{
-			Name: "isCompleted",
-			Prompt: &survey.Confirm{
-				Message: "Отметить как завершённый?",
-				Default: false,
-			},
-		})
-	}
-
-	if err := survey.Ask(questions, answers); err != nil {
-		return nil, err
+		isCompleted, err := p.Confirm("Mark as completed?", false)
+		if err != nil {
+			return nil, fmt.Errorf("is completed confirm failed: %w", err)
+		}
+		answers.IsCompleted = isCompleted
 	}
 
 	return answers, nil
 }
 
-// AskSuite запускает wizard для сьюта
-func AskSuite(isUpdate bool) (*SuiteAnswers, error) {
+// AskSuiteWithPrompter runs suite wizard using unified prompter.
+func AskSuiteWithPrompter(p Prompter, isUpdate bool) (*SuiteAnswers, error) {
 	answers := &SuiteAnswers{}
 
-	questions := []*survey.Question{
-		{
-			Name: "name",
-			Prompt: &survey.Input{
-				Message: "Название сьюта:",
-			},
-			Validate: survey.Required,
-		},
-		{
-			Name: "description",
-			Prompt: &survey.Multiline{
-				Message: "Описание (опционально):",
-			},
-		},
+	name, err := p.Input("Suite name:", "")
+	if err != nil {
+		return nil, fmt.Errorf("suite name input failed: %w", err)
 	}
+	if name == "" {
+		return nil, fmt.Errorf("suite name is required")
+	}
+
+	description, err := p.MultilineInput("Description (optional):", "")
+	if err != nil {
+		return nil, fmt.Errorf("suite description input failed: %w", err)
+	}
+
+	answers.Name = name
+	answers.Description = description
 
 	if isUpdate {
-		questions = append(questions, &survey.Question{
-			Name: "isCompleted",
-			Prompt: &survey.Confirm{
-				Message: "Отметить как завершённый?",
-				Default: false,
-			},
-		})
-	}
-
-	if err := survey.Ask(questions, answers); err != nil {
-		return nil, err
+		isCompleted, err := p.Confirm("Mark as completed?", false)
+		if err != nil {
+			return nil, fmt.Errorf("suite completion confirm failed: %w", err)
+		}
+		answers.IsCompleted = isCompleted
 	}
 
 	return answers, nil
 }
 
-// AskCase запускает wizard для тест-кейса
-func AskCase(isUpdate bool) (*CaseAnswers, error) {
+// AskCaseWithPrompter runs case wizard using unified prompter.
+func AskCaseWithPrompter(p Prompter, isUpdate bool) (*CaseAnswers, error) {
 	answers := &CaseAnswers{}
 
-	questions := []*survey.Question{
-		{
-			Name: "title",
-			Prompt: &survey.Input{
-				Message: "Заголовок (title):",
-			},
-			Validate: survey.Required,
-		},
+	title, err := p.Input("Title:", "")
+	if err != nil {
+		return nil, fmt.Errorf("case title input failed: %w", err)
 	}
-
-	if !isUpdate {
-		questions = append(questions, &survey.Question{
-			Name: "sectionId",
-			Prompt: &survey.Input{
-				Message: "ID секции:",
-				Default: "0",
-			},
-			Validate: survey.Required,
-		})
+	if title == "" {
+		return nil, fmt.Errorf("case title is required")
 	}
+	answers.Title = title
 
-	// Тип кейса
+	// Case type selection
+	typeIDs := []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 	typeOptions := []string{
 		"1 - Acceptance",
 		"2 - Accessibility",
@@ -162,97 +136,83 @@ func AskCase(isUpdate bool) (*CaseAnswers, error) {
 		"11 - Smoke & Sanity",
 		"12 - Usability",
 	}
-	
-	var typeStr string
-	if err := survey.AskOne(&survey.Select{
-		Message: "Тип кейса:",
-		Options: typeOptions,
-		Default: typeOptions[0],
-	}, &typeStr); err != nil {
-		return nil, err
+	typeIdx, _, err := p.Select("Case type:", typeOptions)
+	if err != nil {
+		return nil, fmt.Errorf("case type selection failed: %w", err)
 	}
-	// Парсим ID из строки "1 - Acceptance"
-	fmt.Sscanf(typeStr, "%d", &answers.TypeID)
+	answers.TypeID = typeIDs[typeIdx]
 
-	// Приоритет
+	// Priority selection
+	priorityIDs := []int64{1, 2, 3, 4}
 	priorityOptions := []string{
 		"1 - Critical",
-		"2 - High", 
+		"2 - High",
 		"3 - Medium",
 		"4 - Low",
 	}
-	
-	var priorityStr string
-	if err := survey.AskOne(&survey.Select{
-		Message: "Приоритет:",
-		Options: priorityOptions,
-		Default: priorityOptions[2],
-	}, &priorityStr); err != nil {
-		return nil, err
+	priorityIdx, _, err := p.Select("Priority:", priorityOptions)
+	if err != nil {
+		return nil, fmt.Errorf("priority selection failed: %w", err)
 	}
-	fmt.Sscanf(priorityStr, "%d", &answers.PriorityID)
+	answers.PriorityID = priorityIDs[priorityIdx]
 
 	// Refs
-	if err := survey.AskOne(&survey.Input{
-		Message: "Ссылки/референсы (через запятую):",
-	}, &answers.Refs); err != nil {
-		return nil, err
+	refs, err := p.Input("References (comma-separated):", "")
+	if err != nil {
+		return nil, fmt.Errorf("references input failed: %w", err)
 	}
+	answers.Refs = refs
 
 	return answers, nil
 }
 
-// AskRun запускает wizard для test run
-func AskRun(isUpdate bool) (*RunAnswers, error) {
+// AskRunWithPrompter runs run wizard using unified prompter.
+func AskRunWithPrompter(p Prompter, isUpdate bool) (*RunAnswers, error) {
 	answers := &RunAnswers{}
 
-	questions := []*survey.Question{
-		{
-			Name: "name",
-			Prompt: &survey.Input{
-				Message: "Название test run:",
-			},
-			Validate: survey.Required,
-		},
-		{
-			Name: "description",
-			Prompt: &survey.Multiline{
-				Message: "Описание (опционально):",
-			},
-		},
+	name, err := p.Input("Test run name:", "")
+	if err != nil {
+		return nil, fmt.Errorf("run name input failed: %w", err)
 	}
+	if name == "" && !isUpdate {
+		return nil, fmt.Errorf("run name is required")
+	}
+	answers.Name = name
+
+	description, err := p.MultilineInput("Description (optional):", "")
+	if err != nil {
+		return nil, fmt.Errorf("run description input failed: %w", err)
+	}
+	answers.Description = description
 
 	if !isUpdate {
-		questions = append(questions, &survey.Question{
-			Name: "suiteId",
-			Prompt: &survey.Input{
-				Message: "ID сьюта:",
-			},
-			Validate: survey.Required,
-		})
+		suiteIDRaw, err := p.Input("Suite ID:", "")
+		if err != nil {
+			return nil, fmt.Errorf("suite id input failed: %w", err)
+		}
+		if suiteIDRaw == "" {
+			return nil, fmt.Errorf("suite id is required")
+		}
+		_, err = fmt.Sscanf(suiteIDRaw, "%d", &answers.SuiteID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid suite id: %w", err)
+		}
 	}
 
-	if err := survey.Ask(questions, answers); err != nil {
-		return nil, err
+	includeAll, err := p.Confirm("Include all cases from suite?", true)
+	if err != nil {
+		return nil, fmt.Errorf("include all confirm failed: %w", err)
 	}
-
-	// Include all cases
-	if err := survey.AskOne(&survey.Confirm{
-		Message: "Включить все кейсы сьюта?",
-		Default: true,
-	}, &answers.IncludeAll); err != nil {
-		return nil, err
-	}
+	answers.IncludeAll = includeAll
 
 	return answers, nil
 }
 
-// AskConfirm запрашивает подтверждение перед выполнением действия
-func AskConfirm(message string) (bool, error) {
-	var confirm bool
-	err := survey.AskOne(&survey.Confirm{
-		Message: message,
-		Default: true,
-	}, &confirm)
-	return confirm, err
+// AskConfirmWithPrompter asks confirmation via unified prompter.
+func AskConfirmWithPrompter(p Prompter, message string) (bool, error) {
+	confirm, err := p.Confirm(message, true)
+	if err != nil {
+		return false, fmt.Errorf("confirmation failed: %w", err)
+	}
+	return confirm, nil
 }

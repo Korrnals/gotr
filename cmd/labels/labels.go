@@ -1,4 +1,4 @@
-// Package labels реализует CLI команды для работы с метками тестов TestRail
+// Package labels implements CLI commands for managing TestRail test labels.
 package labels
 
 import (
@@ -6,44 +6,44 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с метками
+// Register registers all label management commands on the given root.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	labelsCmd := &cobra.Command{
 		Use:   "labels",
-		Short: "Управление метками тестов",
-		Long: `Обновление меток (labels) для тестов и тестовых прогонов.
+		Short: "Manage test labels",
+		Long: `Manage labels for tests and test runs.
 
-Метки позволяют категоризировать и группировать тесты для удобного анализа.
-Можно обновлять метки как для одного теста, так и для всех тестов в прогоне.`,
+Labels allow you to categorize and group tests for convenient analysis.
+You can update labels for a single test or for all tests in a run.`,
 	}
 
-	// Добавление команд получения и управления метками
+	// Add get and management subcommands
 	labelsCmd.AddCommand(newGetCmd(getClient))
 	labelsCmd.AddCommand(newListCmd(getClient))
 	labelsCmd.AddCommand(newUpdateLabelCmd(getClient))
 
-	// Создание родительской команды 'update'
+	// Create the parent 'update' command
 	updateCmd := &cobra.Command{
 		Use:   "update",
-		Short: "Обновить метки для тестов",
-		Long: `Обновляет метки для одного теста или сразу для всех тестов в прогоне.
+		Short: "Update labels for tests",
+		Long: `Updates labels for a single test or for all tests in a run.
 
-Доступные подкоманды:
-  • test  — обновить метки одного теста по ID
-  • tests — обновить метки всех тестов в прогоне`,
+Available subcommands:
+  • test  — update labels for a single test by ID
+  • tests — update labels for all tests in a run`,
 	}
 
-	// Общие флаги для всех подкоманд update
-	updateCmd.PersistentFlags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	// Shared flags for all update subcommands
+	updateCmd.PersistentFlags().Bool("dry-run", false, "Show what would be done without making changes")
 
-	// Добавление подкоманд к 'update'
+	// Add subcommands to 'update'
 	updateCmd.AddCommand(newUpdateTestCmd(getClient))
 	updateCmd.AddCommand(newUpdateTestsCmd(getClient))
 
-	// Добавление 'update' в labels
+	// Attach 'update' to the labels command
 	labelsCmd.AddCommand(updateCmd)
 
 	root.AddCommand(labelsCmd)

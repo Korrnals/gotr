@@ -5,35 +5,51 @@ package attachments
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'attachments get'
-// Эндпоинт: GET /get_attachment/{attachment_id}
+// newGetCmd creates the 'attachments get' command.
+// Endpoint: GET /get_attachment/{attachment_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <attachment_id>",
-		Short: "Получить информацию о вложении",
-		Long: `Получает детальную информацию о вложении по его ID.
+		Use:   "get [attachment_id]",
+		Short: "Get attachment details",
+		Long: `Retrieves detailed information about an attachment by its ID.
 
-Выводит: ID, имя файла, размер, MIME-тип, дату создания и привязку к ресурсам.`,
-		Example: `  # Получить информацию о вложении
+Displays: ID, filename, size, MIME type, creation date, and resource bindings.`,
+		Example: `  # Get attachment details
   gotr attachments get 12345
 
-  # Вывод в JSON
+  # Output as JSON
   gotr attachments get 12345 -o json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			attachmentID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || attachmentID <= 0 {
-				return fmt.Errorf("invalid attachment_id: %s", args[0])
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var attachmentID int64
+			var err error
+			if len(args) > 0 {
+				attachmentID, err = flags.ValidateRequiredID(args, 0, "attachment_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("attachment_id required: gotr attachments get [attachment_id]")
+				}
+
+				attachmentID, err = resolveAttachmentIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
-			client := getClient(cmd)
-			resp, err := client.GetAttachment(attachmentID)
+			resp, err := client.GetAttachment(ctx, attachmentID)
 			if err != nil {
 				return fmt.Errorf("failed to get attachment: %w", err)
 			}

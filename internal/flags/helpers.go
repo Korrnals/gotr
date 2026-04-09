@@ -16,19 +16,19 @@ func ParseID(s string) (int64, error) {
 // ParseIDFromArgs parses ID from command arguments.
 func ParseIDFromArgs(args []string, index int) (int64, error) {
 	if index >= len(args) {
-		return 0, fmt.Errorf("отсутствует аргумент с ID на позиции %d", index)
+		return 0, fmt.Errorf("missing ID argument at position %d", index)
 	}
 	return ParseID(args[index])
 }
 
-// ValidateRequiredID validates that ID is provided (for non-interactive commands).
+// ValidateRequiredID validates that ID is provided and positive (for non-interactive commands).
 func ValidateRequiredID(args []string, index int, name string) (int64, error) {
 	if len(args) <= index {
-		return 0, fmt.Errorf("необходимо указать %s", name)
+		return 0, fmt.Errorf("required %s not provided", name)
 	}
 	id, err := ParseID(args[index])
-	if err != nil {
-		return 0, fmt.Errorf("некорректный %s: %w", name, err)
+	if err != nil || id <= 0 {
+		return 0, fmt.Errorf("invalid %s: %s", name, args[index])
 	}
 	return id, nil
 }

@@ -1,18 +1,21 @@
 package groups
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestDeleteCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteGroupFunc: func(groupID int64) error {
+		DeleteGroupFunc: func(ctx context.Context, groupID int64) error {
 			assert.Equal(t, int64(123), groupID)
 			return nil
 		},
@@ -39,7 +42,7 @@ func TestDeleteCmd_DryRun(t *testing.T) {
 
 func TestDeleteCmd_DifferentGroupID(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteGroupFunc: func(groupID int64) error {
+		DeleteGroupFunc: func(ctx context.Context, groupID int64) error {
 			assert.Equal(t, int64(456), groupID)
 			return nil
 		},
@@ -55,7 +58,7 @@ func TestDeleteCmd_DifferentGroupID(t *testing.T) {
 
 func TestDeleteCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		DeleteGroupFunc: func(groupID int64) error {
+		DeleteGroupFunc: func(ctx context.Context, groupID int64) error {
 			return fmt.Errorf("group not found")
 		},
 	}
@@ -69,7 +72,7 @@ func TestDeleteCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestDeleteCmd_InvalidGroupID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -80,7 +83,7 @@ func TestDeleteCmd_InvalidGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestDeleteCmd_ZeroGroupID(t *testing.T) {
@@ -92,7 +95,7 @@ func TestDeleteCmd_ZeroGroupID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "group_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid group_id")
 }
 
 func TestDeleteCmd_NoArgs(t *testing.T) {
@@ -104,4 +107,43 @@ func TestDeleteCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestDeleteCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetGroupsFunc: func(ctx context.Context, projectID int64) (data.GetGroupsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetGroupsResponse{{ID: 123, Name: "QA Team"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newDeleteCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestDeleteCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newDeleteCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"--dry-run"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }

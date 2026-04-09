@@ -4,19 +4,21 @@
 package labels
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты успешных сценариев ====================
+// ==================== Success scenario tests ====================
 
 func TestUpdateLabelCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			assert.Equal(t, int64(1), labelID)
 			assert.Equal(t, int64(10), req.ProjectID)
 			assert.Equal(t, "Updated Label", req.Title)
@@ -37,7 +39,7 @@ func TestUpdateLabelCmd_Success(t *testing.T) {
 
 func TestUpdateLabelCmd_WithShortFlags(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			assert.Equal(t, int64(5), labelID)
 			assert.Equal(t, int64(20), req.ProjectID)
 			assert.Equal(t, "New Title", req.Title)
@@ -58,7 +60,7 @@ func TestUpdateLabelCmd_WithShortFlags(t *testing.T) {
 
 func TestUpdateLabelCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return &data.Label{ID: 3, Name: "Saved Label"}, nil
 		},
 	}
@@ -73,7 +75,7 @@ func TestUpdateLabelCmd_WithSave(t *testing.T) {
 
 func TestUpdateLabelCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return &data.Label{ID: 7, Name: "JSON Label"}, nil
 		},
 	}
@@ -86,11 +88,11 @@ func TestUpdateLabelCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты ошибок API ====================
+// ==================== API error tests ====================
 
 func TestUpdateLabelCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return nil, fmt.Errorf("label not found")
 		},
 	}
@@ -106,7 +108,7 @@ func TestUpdateLabelCmd_NotFound(t *testing.T) {
 
 func TestUpdateLabelCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return nil, fmt.Errorf("permission denied")
 		},
 	}
@@ -122,7 +124,7 @@ func TestUpdateLabelCmd_APIError(t *testing.T) {
 
 func TestUpdateLabelCmd_ProjectNotFound(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -136,7 +138,7 @@ func TestUpdateLabelCmd_ProjectNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "project not found")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestUpdateLabelCmd_InvalidLabelID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -162,15 +164,53 @@ func TestUpdateLabelCmd_ZeroLabelID(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid label_id")
 }
 
-func TestUpdateLabelCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
-
+func TestUpdateLabelCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return []data.Label{{ID: 10, Name: "Bug"}}, nil
+		},
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+			assert.Equal(t, int64(10), labelID)
+			return &data.Label{ID: 10, Name: "New Title"}, nil
+		},
+	}
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0}, // project
+		interactive.SelectResponse{Index: 0}, // label
+	)
 	cmd := newUpdateLabelCmd(getClientForTests)
-	cmd.SetContext(setupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{})
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--project", "1", "--title", "New Title"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestUpdateLabelCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateLabelCmd(getClientForTests)
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), niPrompter))
+	cmd.SetArgs([]string{"--project", "1", "--title", "Test"})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestUpdateLabelCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateLabelCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--project", "1", "--title", "Test"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "label_id is required in non-interactive mode")
 }
 
 func TestUpdateLabelCmd_TooManyArgs(t *testing.T) {
@@ -210,7 +250,7 @@ func TestUpdateLabelCmd_MissingTitleFlag(t *testing.T) {
 
 func TestUpdateLabelCmd_EmptyTitle(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateLabelFunc: func(labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 			// API might return an error for empty title
 			if req.Title == "" {
 				return nil, fmt.Errorf("title cannot be empty")
@@ -227,4 +267,22 @@ func TestUpdateLabelCmd_EmptyTitle(t *testing.T) {
 	// Should still call the API, which may return an error
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "title cannot be empty")
+}
+
+func TestUpdateLabelCmd_DryRun_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		UpdateLabelFunc: func(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
+			called = true
+			return &data.Label{ID: labelID, Name: req.Title}, nil
+		},
+	}
+
+	cmd := newUpdateLabelCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1", "--project", "10", "--title", "Updated Label", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.False(t, called)
 }

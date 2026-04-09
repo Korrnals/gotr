@@ -1,20 +1,23 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get sections section ====================
+// ==================== Tests for get sections section ====================
 
 func TestSectionGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionFunc: func(sectionID int64) (*data.Section, error) {
+		GetSectionFunc: func(ctx context.Context, sectionID int64) (*data.Section, error) {
 			assert.Equal(t, int64(100), sectionID)
 			return &data.Section{
 				ID:      100,
@@ -42,7 +45,7 @@ func TestSectionGetCmd_InvalidSectionID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "section_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid section_id")
 }
 
 func TestSectionGetCmd_ZeroSectionID(t *testing.T) {
@@ -54,7 +57,7 @@ func TestSectionGetCmd_ZeroSectionID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "section_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid section_id")
 }
 
 func TestSectionGetCmd_NegativeSectionID(t *testing.T) {
@@ -79,9 +82,53 @@ func TestSectionGetCmd_NoArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestSectionGetCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			assert.Equal(t, int64(0), suiteID)
+			return data.GetSectionsResponse{{ID: 100, Name: "Test Section", SuiteID: 20069}}, nil
+		},
+		GetSectionFunc: func(ctx context.Context, sectionID int64) (*data.Section, error) {
+			assert.Equal(t, int64(100), sectionID)
+			return &data.Section{ID: 100, Name: "Test Section", SuiteID: 20069}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestSectionGetCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 func TestSectionGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionFunc: func(sectionID int64) (*data.Section, error) {
+		GetSectionFunc: func(ctx context.Context, sectionID int64) (*data.Section, error) {
 			return nil, fmt.Errorf("section not found")
 		},
 	}
@@ -95,11 +142,11 @@ func TestSectionGetCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для get sections list ====================
+// ==================== Tests for get sections list ====================
 
 func TestSectionsListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(0), suiteID)
 			return data.GetSectionsResponse{
@@ -119,7 +166,7 @@ func TestSectionsListCmd_Success(t *testing.T) {
 
 func TestSectionsListCmd_WithSuiteID(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			return data.GetSectionsResponse{
@@ -145,7 +192,7 @@ func TestSectionsListCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestSectionsListCmd_ZeroProjectID(t *testing.T) {
@@ -157,7 +204,7 @@ func TestSectionsListCmd_ZeroProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "project_id должен быть положительным числом")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestSectionsListCmd_NegativeProjectID(t *testing.T) {
@@ -172,6 +219,42 @@ func TestSectionsListCmd_NegativeProjectID(t *testing.T) {
 }
 
 func TestSectionsListCmd_NoArgs(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSectionsResponse{{ID: 1, Name: "Section 1", SuiteID: 20069}}, nil
+		},
+	}
+
+	cmd := newSectionsListCmd(testhelper.GetClientForTests)
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestSectionsListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+
+	cmd := newSectionsListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestSectionsListCmd_NoArgs_NoPrompter_Error(t *testing.T) {
 	mock := &client.MockClient{}
 
 	cmd := newSectionsListCmd(testhelper.GetClientForTests)
@@ -180,11 +263,12 @@ func TestSectionsListCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no projects found")
 }
 
 func TestSectionsListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSectionsFunc: func(projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -196,4 +280,125 @@ func TestSectionsListCmd_APIError(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "not found")
+}
+
+func TestSectionGetCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "section_id required")
+}
+
+func TestSectionGetCmd_NoArgs_Interactive_GetSectionsError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return nil, fmt.Errorf("sections unavailable")
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get sections list")
+}
+
+func TestSectionGetCmd_NoArgs_Interactive_EmptySections(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			return data.GetSectionsResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newSectionGetCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no sections found")
+}
+
+func TestSectionGetCmd_NilClient(t *testing.T) {
+	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	}
+
+	cmd := newSectionGetCmd(nilClientFunc)
+	cmd.SetArgs([]string{"100"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestSectionsListCmd_ProjectIDFlagOverridesArg(t *testing.T) {
+	mock := &client.MockClient{
+		GetSectionsFunc: func(ctx context.Context, projectID int64, suiteID int64) (data.GetSectionsResponse, error) {
+			assert.Equal(t, int64(40), projectID)
+			return data.GetSectionsResponse{{ID: 1, Name: "Section 1", SuiteID: 20069}}, nil
+		},
+	}
+
+	cmd := newSectionsListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"30", "--project-id", "40"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestSectionsListCmd_NoArgs_Interactive_SelectProjectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("project lookup failed")
+		},
+	}
+
+	p := interactive.NewMockPrompter()
+	cmd := newSectionsListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project lookup failed")
+}
+
+func TestSectionsListCmd_NilClient(t *testing.T) {
+	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
+		return nil
+	}
+
+	cmd := newSectionsListCmd(nilClientFunc)
+	cmd.SetArgs([]string{"30"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
+}
+
+func TestSelectSectionID_SelectError(t *testing.T) {
+	sections := data.GetSectionsResponse{{ID: 10, Name: "S-10"}}
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
+
+	sectionID, err := selectSectionID(ctx, sections)
+	assert.Error(t, err)
+	assert.Equal(t, int64(0), sectionID)
+	assert.Contains(t, err.Error(), "failed to select section")
 }

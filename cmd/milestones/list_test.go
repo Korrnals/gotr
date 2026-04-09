@@ -1,19 +1,21 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			assert.Equal(t, int64(1), projectID)
 			return []data.Milestone{
 				{ID: 100, Name: "Release 1.0"},
@@ -32,7 +34,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return []data.Milestone{}, nil
 		},
 	}
@@ -47,7 +49,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetMilestonesFunc: func(projectID int64) ([]data.Milestone, error) {
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -60,7 +62,7 @@ func TestListCmd_ClientError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestListCmd_InvalidProjectID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -80,4 +82,41 @@ func TestListCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestListCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetMilestonesFunc: func(ctx context.Context, projectID int64) ([]data.Milestone, error) {
+			assert.Equal(t, int64(1), projectID)
+			return []data.Milestone{{ID: 100, Name: "Release 1.0"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }

@@ -1,4 +1,4 @@
-// Package tests реализует CLI команды для работы с тестами TestRail
+// Package tests implements CLI commands for managing TestRail tests.
 package tests
 
 import (
@@ -6,22 +6,22 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is a function type that returns a client instance.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с тестами
+// Register registers all test-related subcommands on the given root command.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	testsCmd := &cobra.Command{
 		Use:   "tests",
-		Short: "Управление тестами",
-		Long: `Управление тестами (tests) — результатами выполнения тест-кейсов
-в тестовых прогонах.
+		Short: "Manage tests",
+		Long: `Manage tests — results of test case executions
+in test runs.
 
-Тест представляет собой конкретное выполнение тест-кейса в рамках
-тестового прогона с определённым статусом и результатом.
+A test represents a specific execution of a test case within
+a test run with a specific status and result.
 
-Доступные операции:
-  • update — обновить тест (статус, комментарий, время)`,
+Available operations:
+  • update — update a test (status, comment, time)`,
 	}
 
 	testsCmd.AddCommand(newUpdateCmd(getClient))

@@ -2,52 +2,60 @@ package datasets
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'datasets list'
-// Эндпоинт: GET /get_datasets/{project_id}
+// newListCmd creates the 'datasets list' command.
+// Endpoint: GET /get_datasets/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
-		Short: "Список датасетов проекта",
-		Long: `Выводит список всех датасетов (наборов тестовых данных),
-доступных в указанном проекте.
+		Use:   "list [project_id]",
+		Short: "List project datasets",
+		Long: `Lists all datasets (test data sets) available in the specified project.
 
-Каждый датасет содержит название и таблицу с параметрами для
-параметризованного тестирования.`,
-		Example: `  # Получить список датасетов проекта
+Each dataset contains a name and a table with parameters
+for parameterized testing.`,
+		Example: `  # Get the list of project datasets
   gotr datasets list 1
 
-  # Сохранить в файл
+  # Save to file
   gotr datasets list 5 -o datasets.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("некорректный project_id: %s", args[0])
-			}
-
 			cli := getClient(cmd)
-			resp, err := cli.GetDatasets(projectID)
-			if err != nil {
-				return fmt.Errorf("не удалось получить список датасетов: %w", err)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id required: gotr datasets list [project_id]")
+				}
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			return outputResult(cmd, resp)
+			resp, err := cli.GetDatasets(ctx, projectID)
+			if err != nil {
+				return fmt.Errorf("failed to get datasets list: %w", err)
+			}
+
+			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "datasets", "json")
-	return err
 }

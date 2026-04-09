@@ -4,16 +4,16 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для Register ====================
+// ==================== Tests for Register ====================
 
 func TestRegister(t *testing.T) {
-	// Пропускаем если флаги уже определены (другие тесты могут их определить)
+	// Skip if flags are already defined (other tests may define them)
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skip("Flags already registered, skipping Register test")
@@ -22,16 +22,16 @@ func TestRegister(t *testing.T) {
 
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
-	// Проверяем, что команда sync добавлена
+	// Verify that the sync command is added
 	syncCmd, _, err := root.Find([]string{"sync"})
 	assert.NoError(t, err)
 	assert.NotNil(t, syncCmd)
 
-	// Проверяем наличие подкоманд
+	// Verify that subcommands exist
 	sharedStepsCmd, _, _ := root.Find([]string{"sync", "shared-steps"})
 	assert.NotNil(t, sharedStepsCmd)
 
@@ -49,7 +49,7 @@ func TestRegister(t *testing.T) {
 }
 
 func TestRegister_Help(t *testing.T) {
-	// Пропускаем если флаги уже определены
+	// Skip if flags are already defined
 	defer func() {
 		if r := recover(); r != nil {
 			t.Skip("Flags already registered, skipping Register_Help test")
@@ -58,128 +58,128 @@ func TestRegister_Help(t *testing.T) {
 
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
-	// Проверяем, что вызов без аргументов показывает help
+	// Verify that calling without arguments shows help
 	root.SetArgs([]string{"sync"})
 	err := root.Execute()
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для getClientSafe ====================
+// ==================== Tests for getClientSafe ====================
 
 func TestGetClientSafe_WithNilAccessor(t *testing.T) {
-	// Сохраняем старое значение
+	// Save original value
 	oldAccessor := clientAccessor
 	clientAccessor = nil
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём команду с контекстом
+	// Create command with context
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
-	
+
 	result := getClientSafe(cmd)
 	assert.Nil(t, result)
 }
 
 func TestGetClientSafe_WithAccessorReturnsClient(t *testing.T) {
-	// Сохраняем старое значение
+	// Save original value
 	oldAccessor := clientAccessor
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём mock HTTP клиент
+	// Create mock HTTP client
 	mockClient := &client.HTTPClient{}
 
-	// Создаём accessor, который возвращает клиент
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	// Create accessor that returns client
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return mockClient
 	})
 
-	// Создаём команду
+	// Create command
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
-	// Должен вернуть клиент от accessor
+	// Should return client from accessor
 	result := getClientSafe(cmd)
 	assert.Equal(t, mockClient, result)
 }
 
 func TestGetClientSafe_WithAccessorReturnsNil_UsesContextFallback(t *testing.T) {
-	// Сохраняем старое значение
+	// Save original value
 	oldAccessor := clientAccessor
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём accessor, который возвращает nil
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	// Create accessor that returns nil
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
-	// Создаём mock HTTP клиент
+	// Create mock HTTP client
 	mockClient := &client.HTTPClient{}
 
-	// Создаём команду с контекстом, содержащим клиент по старому ключу
+	// Create command with context containing client by old key
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), testHTTPClientKey, mockClient)
 	cmd.SetContext(ctx)
 
-	// Должен вернуть клиент из контекста (fallback)
+	// Should return client from context (fallback)
 	result := getClientSafe(cmd)
 	assert.Equal(t, mockClient, result)
 }
 
 func TestGetClientSafe_WithInvalidTypeInContext(t *testing.T) {
-	// Сохраняем старое значение
+	// Save original value
 	oldAccessor := clientAccessor
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём accessor, который возвращает nil
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	// Create accessor that returns nil
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
-	// Создаём команду с контекстом, содержащим НЕВЕРНЫЙ тип по ключу
+	// Create command with context containing WRONG type by key
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), testHTTPClientKey, "not a client")
 	cmd.SetContext(ctx)
 
-	// Должен вернуть nil, так как тип не совпадает
+	// Should return nil since type does not match
 	result := getClientSafe(cmd)
 	assert.Nil(t, result)
 }
 
 func TestGetClientSafe_WithNilContext(t *testing.T) {
-	// Сохраняем старое значение
+	// Save original value
 	oldAccessor := clientAccessor
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём accessor, который возвращает nil
-	clientAccessor = client.NewAccessor(func(cmd *cobra.Command) *client.HTTPClient {
+	// Create accessor that returns nil
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
-	// Создаём команду без контекста (nil)
+	// Create command without context (nil)
 	cmd := &cobra.Command{}
-	// cmd.Context() вернёт nil
+	// cmd.Context() returns nil
 
-	// Не должно паниковать, должен вернуть nil
+	// Should not panic, should return nil
 	result := getClientSafe(cmd)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для getClientInterface ====================
+// ==================== Tests for getClientInterface ====================
 
 func TestGetClientInterface_WithNilAccessor(t *testing.T) {
-	// Сохраняем старое значение
+	// Save original value
 	oldAccessor := clientAccessor
 	clientAccessor = nil
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём команду с контекстом
+	// Create command with context
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
-	
+
 	result := getClientInterface(cmd)
 	assert.Nil(t, result)
 }
@@ -201,53 +201,53 @@ func TestGetClientInterface_WithMockInContext(t *testing.T) {
 	cmd := &cobra.Command{}
 	SetTestClient(cmd, mock)
 
-	// Проверяем, что getClientInterface возвращает mock клиент
+	// Verify that getClientInterface returns mock client
 	result := getClientInterface(cmd)
 	assert.NotNil(t, result)
 }
 
-// ==================== Тесты для SetGetClientForTests ====================
+// ==================== Tests for SetGetClientForTests ====================
 
 func TestSetGetClientForTests_WithNilAccessor(t *testing.T) {
-	// Сохраняем старое значение
+	// Save original value
 	oldAccessor := clientAccessor
 	clientAccessor = nil
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
-	// Не должно паниковать
+	// Should not panic
 	SetGetClientForTests(fn)
 	assert.NotNil(t, clientAccessor)
 }
 
 func TestSetGetClientForTests_WithExistingAccessor(t *testing.T) {
-	// Сначала инициализируем accessor
+	// First initialize accessor
 	oldAccessor := clientAccessor
-	SetGetClientForTests(func(cmd *cobra.Command) *client.HTTPClient { return nil })
+	SetGetClientForTests(func(ctx context.Context) client.ClientInterface { return nil })
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
-	// Не должно паниковать
+	// Should not panic
 	SetGetClientForTests(fn)
 	assert.NotNil(t, clientAccessor)
 }
 
-// ==================== Тесты для SetTestClient ====================
+// ==================== Tests for SetTestClient ====================
 
 func TestSetTestClient_WithNilContext(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := &cobra.Command{}
 
-	// Не должно паниковать при nil контексте
+	// Should not panic on nil context
 	SetTestClient(cmd, mock)
 
-	// Проверяем, что клиент установлен
+	// Verify that client is set
 	result := getClientInterface(cmd)
 	assert.Equal(t, mock, result)
 }
@@ -257,23 +257,86 @@ func TestSetTestClient_WithExistingContext(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
 
-	// Не должно паниковать при существующем контексте
+	// Should not panic on existing context
 	SetTestClient(cmd, mock)
 
-	// Проверяем, что клиент установлен
+	// Verify that client is set
 	result := getClientInterface(cmd)
 	assert.Equal(t, mock, result)
 }
 
-// ==================== Тесты для Cmd ====================
+// ==================== Tests for Cmd ====================
 
 func TestCmd_Help(t *testing.T) {
-	// Проверяем, что Help вызывается без ошибок
-	Cmd.Run(Cmd, []string{})
+	// Verify that Help is called without errors
+	err := Cmd.Help()
+	assert.NoError(t, err)
 }
 
 func TestCmd_Properties(t *testing.T) {
 	assert.Equal(t, "sync", Cmd.Use)
 	assert.NotEmpty(t, Cmd.Short)
 	assert.NotEmpty(t, Cmd.Long)
+}
+
+// ==================== Comprehensive tests for sync edge cases ====================
+
+func TestGetClientSafe_Context(t *testing.T) {
+	oldAccessor := clientAccessor
+	defer func() { clientAccessor = oldAccessor }()
+
+	clientAccessor = client.NewAccessor(func(ctx context.Context) client.ClientInterface {
+		return nil
+	})
+
+	cmd := &cobra.Command{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cmd.SetContext(ctx)
+
+	result := getClientSafe(cmd)
+	assert.Nil(t, result) // Should be nil because accessor returns nil
+}
+
+func TestGetClientInterface_Nil(t *testing.T) {
+	oldAccessor := clientAccessor
+	defer func() { clientAccessor = oldAccessor }()
+
+	clientAccessor = nil
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	result := getClientInterface(cmd)
+	assert.Nil(t, result)
+}
+
+func TestSetTestClient_MultipleUpdates(t *testing.T) {
+	mock1 := &client.MockClient{}
+	mock2 := &client.MockClient{}
+
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+
+	SetTestClient(cmd, mock1)
+	result1 := getClientInterface(cmd)
+	assert.Equal(t, mock1, result1)
+
+	SetTestClient(cmd, mock2)
+	result2 := getClientInterface(cmd)
+	assert.Equal(t, mock2, result2)
+}
+
+func TestSetGetClientForTests_NilAccessorInitially(t *testing.T) {
+	oldAccessor := clientAccessor
+	defer func() { clientAccessor = oldAccessor }()
+
+	clientAccessor = nil
+
+	fn := func(ctx context.Context) client.ClientInterface {
+		return nil
+	}
+
+	SetGetClientForTests(fn)
+	assert.NotNil(t, clientAccessor)
 }

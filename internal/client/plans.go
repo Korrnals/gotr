@@ -3,28 +3,22 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetPlan получает тест-план по ID
+// GetPlan fetches a test plan by ID.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#getplan
-func (c *HTTPClient) GetPlan(planID int64) (*data.Plan, error) {
+func (c *HTTPClient) GetPlan(ctx context.Context, planID int64) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("get_plan/%d", planID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting plan %d: %w", planID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -33,48 +27,31 @@ func (c *HTTPClient) GetPlan(planID int64) (*data.Plan, error) {
 	return &plan, nil
 }
 
-// GetPlans получает список тест-планов проекта
+// GetPlans fetches the test plan list for a project (with pagination).
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#getplans
-func (c *HTTPClient) GetPlans(projectID int64) (data.GetPlansResponse, error) {
+func (c *HTTPClient) GetPlans(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
 	endpoint := fmt.Sprintf("get_plans/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	plans, err := fetchAllPages[data.Plan](ctx, c, endpoint, nil, "plans")
 	if err != nil {
 		return nil, fmt.Errorf("error getting plans for project %d: %w", projectID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for project %d: %s", resp.Status, projectID, string(body))
-	}
-
-	var plans data.GetPlansResponse
-	if err := json.NewDecoder(resp.Body).Decode(&plans); err != nil {
-		return nil, fmt.Errorf("error decoding plans: %w", err)
-	}
-	return plans, nil
+	return data.GetPlansResponse(plans), nil
 }
 
-// AddPlan создает новый тест-план
+// AddPlan creates a new test plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplan
-func (c *HTTPClient) AddPlan(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+func (c *HTTPClient) AddPlan(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan/%d", projectID)
 
 	jsonBody, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating plan: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -83,26 +60,20 @@ func (c *HTTPClient) AddPlan(projectID int64, req *data.AddPlanRequest) (*data.P
 	return &plan, nil
 }
 
-// UpdatePlan обновляет существующий тест-план
+// UpdatePlan updates an existing test plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplan
-func (c *HTTPClient) UpdatePlan(planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
+func (c *HTTPClient) UpdatePlan(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan/%d", planID)
 
 	jsonBody, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan %d: %w", planID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -111,21 +82,16 @@ func (c *HTTPClient) UpdatePlan(planID int64, req *data.UpdatePlanRequest) (*dat
 	return &plan, nil
 }
 
-// ClosePlan закрывает тест-план
+// ClosePlan closes a test plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#closeplan
-func (c *HTTPClient) ClosePlan(planID int64) (*data.Plan, error) {
+func (c *HTTPClient) ClosePlan(ctx context.Context, planID int64) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("close_plan/%d", planID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error closing plan %d: %w", planID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -134,44 +100,34 @@ func (c *HTTPClient) ClosePlan(planID int64) (*data.Plan, error) {
 	return &plan, nil
 }
 
-// DeletePlan удаляет тест-план
+// DeletePlan deletes a test plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#deleteplan
-func (c *HTTPClient) DeletePlan(planID int64) error {
+func (c *HTTPClient) DeletePlan(ctx context.Context, planID int64) error {
 	endpoint := fmt.Sprintf("delete_plan/%d", planID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting plan %d: %w", planID, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s for plan %d: %s", resp.Status, planID, string(body))
-	}
 	return nil
 }
 
-// AddPlanEntry добавляет entry в существующий тест-план
+// AddPlanEntry adds an entry to an existing test plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplanentry
-func (c *HTTPClient) AddPlanEntry(planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
+func (c *HTTPClient) AddPlanEntry(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan_entry/%d", planID)
 
 	jsonBody, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error adding plan entry: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -180,26 +136,20 @@ func (c *HTTPClient) AddPlanEntry(planID int64, req *data.AddPlanEntryRequest) (
 	return &plan, nil
 }
 
-// UpdatePlanEntry обновляет entry в тест-плане
+// UpdatePlanEntry updates an entry in a test plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplanentry
-func (c *HTTPClient) UpdatePlanEntry(planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
+func (c *HTTPClient) UpdatePlanEntry(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan_entry/%d/%s", planID, entryID)
 
 	jsonBody, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling request: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-
-	resp, err := c.Post(endpoint, bytes.NewReader(jsonBody), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan entry %s: %w", entryID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for entry %s: %s", resp.Status, entryID, string(body))
-	}
 
 	var plan data.Plan
 	if err := json.NewDecoder(resp.Body).Decode(&plan); err != nil {
@@ -208,20 +158,16 @@ func (c *HTTPClient) UpdatePlanEntry(planID int64, entryID string, req *data.Upd
 	return &plan, nil
 }
 
-// DeletePlanEntry удаляет entry из тест-плана
+// DeletePlanEntry deletes an entry from a test plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#deleteplanentry
-func (c *HTTPClient) DeletePlanEntry(planID int64, entryID string) error {
+func (c *HTTPClient) DeletePlanEntry(ctx context.Context, planID int64, entryID string) error {
 	endpoint := fmt.Sprintf("delete_plan_entry/%d/%s", planID, entryID)
 
-	resp, err := c.Post(endpoint, bytes.NewReader([]byte("{}")), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader([]byte("{}")), nil)
 	if err != nil {
 		return fmt.Errorf("error deleting plan entry %s: %w", entryID, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API returned %s for entry %s: %s", resp.Status, entryID, string(body))
-	}
 	return nil
 }

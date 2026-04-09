@@ -7,40 +7,35 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'roles list'
-// Эндпоинт: GET /get_roles
+// newListCmd creates the 'roles list' command.
+// Endpoint: GET /get_roles
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Список ролей системы",
-		Long: `Выводит список всех ролей пользователей, доступных в системе TestRail.
+		Short: "List system roles",
+		Long: `Displays a list of all user roles available in the TestRail system.
 
-Каждая роль содержит ID и название. Роли используются для управления
-правами доступа пользователей к различным функциям системы.`,
-		Example: `  # Получить список всех ролей
+Each role contains an ID and a name. Roles are used to manage
+user access rights to various system features.`,
+		Example: `  # Get list of all roles
   gotr roles list
 
-  # Сохранить в файл
+  # Save to a file
   gotr roles list -o roles.json`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
-			resp, err := cli.GetRoles()
+			ctx := cmd.Context()
+			resp, err := cli.GetRoles(ctx)
 			if err != nil {
-				return fmt.Errorf("не удалось получить список ролей: %w", err)
+				return fmt.Errorf("failed to get roles list: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "roles")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "roles", "json")
-	return err
 }

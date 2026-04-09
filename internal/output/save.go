@@ -10,7 +10,11 @@ import (
 	"reflect"
 	"time"
 
+	embed "github.com/Korrnals/gotr/embedded"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,31 +23,154 @@ func AddFlag(cmd *cobra.Command) {
 	cmd.Flags().Bool("save", false, "Save output to file in ~/.gotr/exports/")
 }
 
+// OutputResult is a convenience wrapper for Output with format="json".
+// It discards the file path and returns only the error.
+func OutputResult(cmd *cobra.Command, data interface{}, resource string) error {
+	_, err := Output(cmd, data, resource, "json")
+	return err
+}
+
+// resolveSavePath determines the save path from flags and interactive prompts.
+func resolveSavePath(cmd *cobra.Command, saveFlag bool) (string, error) {
+	if saveFlag {
+		return defaultSavePathMarker, nil
+	}
+	if ShouldPromptForInteractiveSave(cmd) {
+		p := interactive.PrompterFromContext(cmd.Context())
+		promptedPath, err := PromptSavePathWithOptions(p, "response", false)
+		if err != nil {
+			if !isSkippableInteractiveSavePromptError(err) {
+				return "", err
+			}
+			return "", nil
+		}
+		return promptedPath, nil
+	}
+	return "", nil
+}
+
+// wrapWithMeta wraps data with metadata (status, duration, timestamp).
+func wrapWithMeta(data any, start time.Time) any {
+	return struct {
+		Status     string        `json:"status"`
+		StatusCode int           `json:"status_code"`
+		Duration   time.Duration `json:"duration"`
+		Timestamp  time.Time     `json:"timestamp"`
+		Data       any           `json:"data"`
+	}{
+		Status:     "200 OK",
+		StatusCode: 200,
+		Duration:   time.Since(start),
+		Timestamp:  time.Now(),
+		Data:       data,
+	}
+}
+
+// OutputGetResult handles get-command output, including save/json-full/jq modes.
+func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	outputFormat, _ := cmd.Flags().GetString("type")
+	saveFlag, _ := cmd.Flags().GetBool("save")
+	jqEnabled, _ := cmd.Flags().GetBool("jq")
+	jqFilter, _ := cmd.Flags().GetString("jq-filter")
+	bodyOnly, _ := cmd.Flags().GetBool("body-only")
+
+	if !jqEnabled {
+		jqEnabled = viper.GetBool("jq_format")
+	}
+
+	savePath, err := resolveSavePath(cmd, saveFlag)
+	if err != nil {
+		return err
+	}
+
+	if savePath != "" {
+		toSave := data
+		if !bodyOnly {
+			toSave = wrapWithMeta(data, start)
+		}
+
+		fpath, err := outputBySavePath(toSave, "get", "json", savePath)
+		if err != nil {
+			return fmt.Errorf("save error: %w", err)
+		}
+		if !quiet && fpath != "" {
+			ui.Infof(os.Stdout, "Response saved to %s", fpath)
+		}
+		return nil
+	}
+
+	if jqEnabled || jqFilter != "" {
+		payload, err := json.Marshal(data)
+		if err != nil {
+			return fmt.Errorf("jq marshal error: %w", err)
+		}
+		return embed.RunEmbeddedJQ(payload, jqFilter)
+	}
+
+	if quiet {
+		return nil
+	}
+
+	switch outputFormat {
+	case "json":
+		return ui.JSON(cmd, data)
+	case "json-full":
+		return ui.JSON(cmd, wrapWithMeta(data, start))
+	default:
+		ui.Warning(os.Stdout, "Table output not implemented yet")
+		return nil
+	}
+}
+
 // Output checks if --save flag is set and saves data to file if so.
 // If --save is not set, outputs data to stdout as JSON.
 // Returns the saved file path for user notification (empty string if output to stdout).
-func Output(cmd *cobra.Command, data interface{}, resource string, format string) (string, error) {
+func Output(cmd *cobra.Command, data interface{}, resource, format string) (string, error) {
 	saveFlag, err := cmd.Flags().GetBool("save")
 	if err != nil {
 		return "", fmt.Errorf("error reading --save flag: %w", err)
 	}
 
-	if !saveFlag {
-		// Output to stdout as JSON
-		content, err := json.MarshalIndent(data, "", "  ")
+	savePath := ""
+	if saveFlag {
+		savePath = defaultSavePathMarker
+	} else if ShouldPromptForInteractiveSave(cmd) {
+		p := interactive.PrompterFromContext(cmd.Context())
+		promptedPath, err := PromptSavePathWithOptions(p, resource+" result", false)
 		if err != nil {
-			return "", fmt.Errorf("error marshaling to JSON: %w", err)
+			if !isSkippableInteractiveSavePromptError(err) {
+				return "", err
+			}
+			promptedPath = ""
 		}
-		fmt.Fprintln(cmd.OutOrStdout(), string(content))
-		return "", nil
+		savePath = promptedPath
 	}
 
-	return SaveToFile(data, resource, format)
+	if savePath != "" {
+		return outputBySavePath(data, resource, format, savePath)
+	}
+
+	// Output to stdout as JSON
+	content, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return "", fmt.Errorf("error marshaling to JSON: %w", err)
+	}
+ 	fmt.Fprintln(cmd.OutOrStdout(), string(content))
+	return "", nil
+}
+
+func outputBySavePath(data interface{}, resource, format, savePath string) (string, error) {
+	if savePath == defaultSavePathMarker {
+		return SaveToFile(data, resource, format)
+	}
+
+	return SaveToFileWithPath(data, format, savePath)
 }
 
 // SaveToFile saves data to a file in the exports directory.
 // Returns the full path of the saved file.
-func SaveToFile(data interface{}, resource string, format string) (string, error) {
+func SaveToFile(data interface{}, resource, format string) (string, error) {
 	// Generate filename
 	filename := GenerateFilename(resource, format)
 
@@ -81,7 +208,44 @@ func SaveToFile(data interface{}, resource string, format string) (string, error
 	}
 
 	// Write file
-	if err := os.WriteFile(filePath, content, 0644); err != nil {
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
+		return "", fmt.Errorf("error writing file: %w", err)
+	}
+
+	return filePath, nil
+}
+
+// SaveToFileWithPath saves data to an explicit file path.
+// Returns the full path of the saved file.
+func SaveToFileWithPath(data interface{}, format, filePath string) (string, error) {
+	if filePath == "" {
+		return "", fmt.Errorf("file path is empty")
+	}
+
+	if err := EnsureDir(filepath.Dir(filePath)); err != nil {
+		return "", fmt.Errorf("error creating output directory: %w", err)
+	}
+
+	var content []byte
+	var err error
+	switch format {
+	case "json":
+		content, err = json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return "", fmt.Errorf("error marshaling to JSON: %w", err)
+		}
+	case "yaml":
+		content, err = yaml.Marshal(data)
+		if err != nil {
+			return "", fmt.Errorf("error marshaling to YAML: %w", err)
+		}
+	case "csv":
+		return saveToCSV(data, filePath)
+	default:
+		return "", fmt.Errorf("unsupported format: %s", format)
+	}
+
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
 		return "", fmt.Errorf("error writing file: %w", err)
 	}
 
@@ -208,7 +372,7 @@ func getRowValues(v reflect.Value, headers []string) []string {
 
 // GenerateFilename generates a filename with pattern: {resource}_YYYY-MM-DD_HH-MM-SS.{format}
 // For resource "all", uses "all-resources" as prefix
-func GenerateFilename(resource string, format string) string {
+func GenerateFilename(resource, format string) string {
 	// Handle special case for "all" resource
 	if resource == "all" {
 		resource = "all-resources"
@@ -218,4 +382,51 @@ func GenerateFilename(resource string, format string) string {
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 
 	return fmt.Sprintf("%s_%s.%s", resource, timestamp, format)
+}
+
+// SaveJSONToFile writes JSON with indentation to a specific file path.
+func SaveJSONToFile(filename string, data interface{}) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("serialization error: %w", err)
+	}
+
+	if err := os.WriteFile(filename, jsonData, 0o644); err != nil {
+		return fmt.Errorf("write file: %w", err)
+	}
+
+	return nil
+}
+
+// OutputResultWithFlags prints JSON and supports root-level --output/--quiet flags.
+func OutputResultWithFlags(cmd *cobra.Command, data interface{}) error {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	outputPath, _ := cmd.Flags().GetString("output")
+
+	if outputPath != "" {
+		if err := SaveJSONToFile(outputPath, data); err != nil {
+			return err
+		}
+		if !quiet {
+			ui.Infof(os.Stdout, "Response saved to %s", outputPath)
+		}
+	}
+
+	if !quiet {
+		pretty, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			return fmt.Errorf("JSON formatting error: %w", err)
+		}
+		fmt.Println(string(pretty))
+	}
+
+	return nil
+}
+
+// PrintSuccess prints success message unless --quiet is enabled.
+func PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	if !quiet {
+		ui.Successf(os.Stdout, format, args...)
+	}
 }

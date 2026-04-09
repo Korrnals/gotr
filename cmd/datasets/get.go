@@ -2,41 +2,56 @@ package datasets
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'datasets get'
-// Эндпоинт: GET /get_dataset/{dataset_id}
+// newGetCmd creates the 'datasets get' command.
+// Endpoint: GET /get_dataset/{dataset_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <dataset_id>",
-		Short: "Получить датасет по ID",
-		Long: `Получает детальную информацию о датасете по его ID.
+		Use:   "get [dataset_id]",
+		Short: "Get a dataset by ID",
+		Long: `Retrieves detailed information about a dataset by its ID.
 
-Включает название, структуру таблицы (колонки) и все строки
-с тестовыми данными для параметризованного тестирования.`,
-		Example: `  # Получить информацию о датасете
+Includes the name, table structure (columns), and all rows
+with test data for parameterized testing.`,
+		Example: `  # Get dataset information
   gotr datasets get 123
 
-  # Сохранить в файл
+  # Save to file
   gotr datasets get 456 -o dataset.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
-			}
-
 			cli := getClient(cmd)
-			resp, err := cli.GetDataset(datasetID)
-			if err != nil {
-				return fmt.Errorf("не удалось получить датасет: %w", err)
+			ctx := cmd.Context()
+
+			var datasetID int64
+			var err error
+			if len(args) > 0 {
+				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("dataset_id required: gotr datasets get [dataset_id]")
+				}
+				datasetID, err = resolveDatasetIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			return outputResult(cmd, resp)
+			resp, err := cli.GetDataset(ctx, datasetID)
+			if err != nil {
+				return fmt.Errorf("failed to get dataset: %w", err)
+			}
+
+			return output.OutputResult(cmd, resp, "datasets")
 		},
 	}
 

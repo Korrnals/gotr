@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 )
 
-// SharedStep — основная структура одного общего шага
+// SharedStep is the primary structure for a shared step.
 type SharedStep struct {
 	ID                   int64   `json:"id"`
 	Title                string  `json:"title,omitempty"`
@@ -14,19 +14,19 @@ type SharedStep struct {
 	CreatedOn            int64   `json:"created_on,omitempty"`
 	UpdatedBy            int64   `json:"updated_by,omitempty"`
 	UpdatedOn            int64   `json:"updated_on,omitempty"`
-	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Step из shared.go
-	CaseIDs              []int64 `json:"case_ids,omitempty"`               // Кейсы, где используется этот step
-	// Для неизвестных расширений
+	CustomStepsSeparated []Step  `json:"custom_steps_separated,omitempty"` // Step from shared.go
+	CaseIDs              []int64 `json:"case_ids,omitempty"`               // Cases using this shared step
+	// For unknown extensions
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"`
 }
 
-// GetSharedStepsResponse — ответ на get_shared_steps (просто массив шагов)
+// GetSharedStepsResponse is the response for get_shared_steps (array of steps).
 type GetSharedStepsResponse []SharedStep
 
-// GetSharedStepResponse — ответ на get_shared_step (один шаг напрямую)
+// GetSharedStepResponse is the response for get_shared_step (a single step).
 type GetSharedStepResponse SharedStep
 
-// GetSharedStepHistoryResponse — ответ на get_shared_step_history
+// GetSharedStepHistoryResponse is the response for get_shared_step_history.
 type GetSharedStepHistoryResponse struct {
 	Pagination
 	History []struct {
@@ -38,21 +38,21 @@ type GetSharedStepHistoryResponse struct {
 	} `json:"step_history"`
 }
 
-// Request структуры
+// Request structs
 
-// AddSharedStepRequest — запрос для add_shared_step
+// AddSharedStepRequest is the request for add_shared_step.
 type AddSharedStepRequest struct {
-	Title                string `json:"title"` // обязательно
+	Title                string `json:"title"` // Required
 	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"`
 }
 
-// UpdateSharedStepRequest — запрос для update_shared_step
+// UpdateSharedStepRequest is the request for update_shared_step.
 type UpdateSharedStepRequest struct {
 	Title                string `json:"title,omitempty"`
 	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"`
 }
 
-// DeleteSharedStepRequest — запрос для delete_shared_step
+// DeleteSharedStepRequest is the request for delete_shared_step.
 type DeleteSharedStepRequest struct {
-	KeepInCases int `json:"keep_in_cases"` // 1 — сохранить в кейсах, 0 — удалить
+	KeepInCases int `json:"keep_in_cases"` // 1 = keep in cases, 0 = remove
 }

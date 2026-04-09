@@ -2,41 +2,58 @@ package milestones
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'milestones list'
-// Эндпоинт: GET /get_milestones/{project_id}
+// newListCmd creates the 'milestones list' command.
+// Endpoint: GET /get_milestones/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
-		Short: "Список майлстонов проекта",
-		Long: `Выводит список всех майлстонов указанного проекта.
+		Use:   "list [project_id]",
+		Short: "List project milestones",
+		Long: `Lists all milestones of the specified project.
 
-Показывает ID, название, статус завершения и дедлайны всех майлстонов.
-Поддерживает вывод в JSON для автоматизации.`,
-		Example: `  # Список майлстонов проекта
+Displays ID, name, completion status, and deadlines of all milestones.
+Supports JSON output for automation.`,
+		Example: `  # List project milestones
   gotr milestones list 1
 
-  # Сохранить список в файл
+  # Save list to file
   gotr milestones list 1 -o milestones.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			var projectID int64
+			if len(args) > 0 {
+				var err error
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				ctx := cmd.Context()
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr milestones list [project_id]")
+				}
+				cli := getClient(cmd)
+				var err error
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetMilestones(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetMilestones(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list milestones: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "milestones")
 		},
 	}
 

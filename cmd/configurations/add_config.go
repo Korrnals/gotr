@@ -2,62 +2,83 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newAddConfigCmd создаёт команду 'configurations add-config'
-// Эндпоинт: POST /add_config/{group_id}
+// newAddConfigCmd creates the 'configurations add-config' command.
+// Endpoint: POST /add_config/{group_id}
 func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add-config <group_id>",
-		Short: "Добавить конфигурацию в группу",
-		Long: `Добавляет новую конфигурацию в существующую группу.
+		Use:   "add-config [group_id]",
+		Short: "Add a configuration to a group",
+		Long: `Adds a new configuration to an existing group.
 
-Конфигурация — это конкретное значение (например: "Chrome", "Windows 10",
-"iPhone 12") в рамках группы. Конфигурации используются при создании
-тест-планов с множественными конфигурациями.`,
-		Example: `  # Добавить "Chrome" в группу 5
+A configuration is a specific value (e.g., "Chrome", "Windows 10",
+"iPhone 12") within a group. Configurations are used when creating
+test plans with multiple configurations.`,
+		Example: `  # Add "Chrome" to group 5
   gotr configurations add-config 5 --name="Chrome"
 
-  # Проверить перед добавлением
+  # Preview before adding
   gotr configurations add-config 5 --name="Firefox" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("некорректный group_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations add-config [group_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations add-config [group_id]")
+				}
+
+				groupID, err = resolveGroupIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations add-config")
-				dr.PrintSimple("Добавить конфигурацию", fmt.Sprintf("Group ID: %d, Name: %s", groupID, name))
+				dr.PrintSimple("Add configuration", fmt.Sprintf("Group ID: %d, Name: %s", groupID, name))
 				return nil
 			}
 
 			req := data.AddConfigRequest{Name: name}
-			cli := getClient(cmd)
-			resp, err := cli.AddConfig(groupID, &req)
+			resp, err := cli.AddConfig(ctx, groupID, &req)
 			if err != nil {
-				return fmt.Errorf("не удалось добавить конфигурацию: %w", err)
+				return fmt.Errorf("failed to add configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация добавлена (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Configuration added (ID: %d)", resp.ID)
+			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be done without adding")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название конфигурации (обязательно)")
+	cmd.Flags().String("name", "", "Configuration name (required)")
 
 	return cmd
 }

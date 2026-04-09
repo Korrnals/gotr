@@ -2,51 +2,64 @@ package templates
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'templates list'
-// Эндпоинт: GET /get_templates/{project_id}
+// newListCmd creates the 'templates list' command.
+// Endpoint: GET /get_templates/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
-		Short: "Список шаблонов проекта",
-		Long: `Выводит список всех шаблонов указанного проекта.
+		Use:   "list [project_id]",
+		Short: "List project templates",
+		Long: `Displays a list of all templates for the specified project.
 
-Показывает ID, название и признак шаблона по умолчанию.
-Поддерживает вывод в JSON для автоматизации.`,
-		Example: `  # Список шаблонов проекта
+Shows ID, name, and the default template indicator.
+Supports JSON output for automation.`,
+		Example: `  # List project templates
   gotr templates list 1
 
-  # Сохранить список в файл
+  # Save list to a file
   gotr templates list 1 -o templates.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr templates list [project_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr templates list [project_id]")
+				}
+
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			cli := getClient(cmd)
-			resp, err := cli.GetTemplates(projectID)
+			resp, err := cli.GetTemplates(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list templates: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "templates")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "templates", "json")
-	return err
 }

@@ -2,12 +2,14 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetTest(t *testing.T) {
@@ -48,7 +50,6 @@ func TestGetTest(t *testing.T) {
 					t.Errorf("expected GET, got %s", r.Method)
 				}
 
-
 				w.WriteHeader(tt.mockStatus)
 				if tt.mockResp != nil {
 					json.NewEncoder(w).Encode(tt.mockResp)
@@ -57,7 +58,8 @@ func TestGetTest(t *testing.T) {
 			defer server.Close()
 
 			client, _ := NewClient(server.URL, "test@test.com", "testpass", false)
-			test, err := client.GetTest(tt.testID)
+			ctx := context.Background()
+			test, err := client.GetTest(ctx, tt.testID)
 
 			if tt.wantErr {
 				if err == nil {
@@ -145,7 +147,8 @@ func TestGetTests(t *testing.T) {
 			defer server.Close()
 
 			client, _ := NewClient(server.URL, "test@test.com", "testpass", false)
-			tests, err := client.GetTests(tt.runID, tt.filters)
+			ctx := context.Background()
+			tests, err := client.GetTests(ctx, tt.runID, tt.filters)
 
 			if tt.wantErr {
 				if err == nil {
@@ -240,7 +243,8 @@ func TestUpdateTest(t *testing.T) {
 			defer server.Close()
 
 			client, _ := NewClient(server.URL, "test@test.com", "testpass", false)
-			test, err := client.UpdateTest(tt.testID, tt.request)
+			ctx := context.Background()
+			test, err := client.UpdateTest(ctx, tt.testID, tt.request)
 
 			if tt.wantErr {
 				if err == nil {
@@ -267,4 +271,63 @@ func TestUpdateTest(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetTestsHelpers(t *testing.T) {
+	t.Run("GetTestsByStatus", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_tests/100")
+			assert.Equal(t, "1", r.URL.Query().Get("status_id"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode([]data.Test{{ID: 1, StatusID: 1}})
+		})
+		defer server.Close()
+
+		tests, err := client.GetTestsByStatus(context.Background(), 100, 1)
+		assert.NoError(t, err)
+		assert.Len(t, tests, 1)
+	})
+
+	t.Run("GetTestsAssignedTo", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php", r.URL.Path)
+			assert.Contains(t, r.URL.String(), "get_tests/100")
+			assert.Equal(t, "7", r.URL.Query().Get("assignedto_id"))
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode([]data.Test{{ID: 2, AssignedTo: 7}})
+		})
+		defer server.Close()
+
+		tests, err := client.GetTestsAssignedTo(context.Background(), 100, 7)
+		assert.NoError(t, err)
+		assert.Len(t, tests, 1)
+	})
+}
+
+func TestUpdateTest_HTTPErrorAndDecodeBranches(t *testing.T) {
+	t.Run("decode error on 200", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodPost, r.Method)
+			assert.Contains(t, r.URL.String(), "update_test/42")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		})
+		defer server.Close()
+
+		_, err := client.UpdateTest(context.Background(), 42, &data.UpdateTestRequest{StatusID: 5})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error test")
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {})
+		server.Close()
+
+		_, err := client.UpdateTest(context.Background(), 42, &data.UpdateTestRequest{AssignedTo: 7})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error UpdateTest")
+	})
 }

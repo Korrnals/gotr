@@ -2,58 +2,79 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newUpdateConfigCmd создаёт команду 'configurations update-config'
-// Эндпоинт: POST /update_config/{config_id}
+// newUpdateConfigCmd creates the 'configurations update-config' command.
+// Endpoint: POST /update_config/{config_id}
 func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update-config <config_id>",
-		Short: "Обновить конфигурацию",
-		Long: `Обновляет название существующей конфигурации.`,
-		Example: `  # Изменить название конфигурации
+		Use:   "update-config [config_id]",
+		Short: "Update a configuration",
+		Long:  `Updates the name of an existing configuration.`,
+		Example: `  # Change configuration name
   gotr configurations update-config 10 --name="Chrome 120"
 
-  # Проверить перед обновлением
+  # Preview before updating
   gotr configurations update-config 10 --name="Chrome 120" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || configID <= 0 {
-				return fmt.Errorf("некорректный config_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var configID int64
+			var err error
+			if len(args) > 0 {
+				configID, err = flags.ValidateRequiredID(args, 0, "config_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations update-config [config_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations update-config [config_id]")
+				}
+
+				configID, err = resolveConfigIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations update-config")
-				dr.PrintSimple("Обновить конфигурацию", fmt.Sprintf("Config ID: %d, New Name: %s", configID, name))
+				dr.PrintSimple("Update configuration", fmt.Sprintf("Config ID: %d, New Name: %s", configID, name))
 				return nil
 			}
 
 			req := data.UpdateConfigRequest{Name: name}
-			cli := getClient(cmd)
-			resp, err := cli.UpdateConfig(configID, &req)
+			resp, err := cli.UpdateConfig(ctx, configID, &req)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить конфигурацию: %w", err)
+				return fmt.Errorf("failed to update configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация %d обновлена\n", configID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Configuration %d updated", configID)
+			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be done without applying changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название конфигурации (обязательно)")
+	cmd.Flags().String("name", "", "New configuration name (required)")
 
 	return cmd
 }

@@ -1,20 +1,22 @@
 package roles
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
 			assert.Equal(t, int64(1), roleID)
 			return &data.Role{
 				ID:   1,
@@ -33,7 +35,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
 			return &data.Role{ID: 2, Name: "Tester"}, nil
 		},
 	}
@@ -48,8 +50,8 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetRoleFunc: func(roleID int64) (*data.Role, error) {
-			return nil, fmt.Errorf("роль не найдена")
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
+			return nil, fmt.Errorf("role not found")
 		},
 	}
 
@@ -59,10 +61,10 @@ func TestGetCmd_NotFound(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "роль не найдена")
+	assert.Contains(t, err.Error(), "role not found")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestGetCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -72,7 +74,7 @@ func TestGetCmd_InvalidID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный role_id")
+	assert.Contains(t, err.Error(), "invalid role_id")
 }
 
 func TestGetCmd_ZeroID(t *testing.T) {
@@ -83,13 +85,61 @@ func TestGetCmd_ZeroID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный role_id")
+	assert.Contains(t, err.Error(), "invalid role_id")
 }
 
-func TestGetCmd_NoArgs(t *testing.T) {
+func TestGetCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
+			return data.GetRolesResponse{{ID: 2, Name: "Tester"}}, nil
+		},
+		GetRoleFunc: func(ctx context.Context, roleID int64) (*data.Role, error) {
+			assert.Equal(t, int64(2), roleID)
+			return &data.Role{ID: 2, Name: "Tester"}, nil
+		},
+	}
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestGetCmd_NoArgs_NonInteractive(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestGetCmd_NoArgs_NoPrompter(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newGetCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestGetCmd_ResolveInteractiveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetRolesFunc: func(ctx context.Context) (data.GetRolesResponse, error) {
+			return nil, fmt.Errorf("roles boom")
+		},
+	}
+
+	cmd := newGetCmd(testhelper.GetClientForTests)
+	base := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(base.Context(), interactive.NewMockPrompter()))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()

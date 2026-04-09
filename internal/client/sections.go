@@ -3,132 +3,192 @@ package client
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
+	"time"
 
+	"github.com/Korrnals/gotr/internal/concurrency"
+	"github.com/Korrnals/gotr/internal/concurrent"
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetSections — получает секции для suite в проекте (suite_id обязательно для multi-suite проектов)
-func (c *HTTPClient) GetSections(projectID, suiteID int64) (data.GetSectionsResponse, error) {
+// GetSections fetches sections for a suite in a project (with pagination).
+// suite_id is required for multi-suite projects.
+func (c *HTTPClient) GetSections(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
 	endpoint := fmt.Sprintf("get_sections/%d", projectID)
-	
-	// Формируем query-параметры
-	query := make(map[string]string)
+	var baseQuery map[string]string
 	if suiteID != 0 {
-		query["suite_id"] = fmt.Sprintf("%d", suiteID)
+		baseQuery = map[string]string{"suite_id": fmt.Sprintf("%d", suiteID)}
 	}
-	
-	resp, err := c.Get(endpoint, query)
+	sections, err := fetchAllPages[data.Section](ctx, c, endpoint, baseQuery, "sections")
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetSections для проекта %d, suite %d: %w", projectID, suiteID, err)
+		return nil, fmt.Errorf("request error GetSections for project %d, suite %d: %w", projectID, suiteID, err)
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении секций проекта %d, suite %d: %s", resp.Status, projectID, suiteID, string(body))
-	}
-
-	var sections data.GetSectionsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&sections); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования секций проекта %d, suite %d: %w", projectID, suiteID, err)
-	}
-
-	return sections, nil
+	return data.GetSectionsResponse(sections), nil
 }
 
-// GetSection — получает одну секцию по ID
-func (c *HTTPClient) GetSection(sectionID int64) (*data.Section, error) {
+// GetSectionsParallelCtx gets sections from multiple suites with shared runtime controls.
+// If suiteIDs is empty, it falls back to unfiltered sections request (suite_id=0).
+func (c *HTTPClient) GetSectionsParallelCtx(
+	ctx context.Context,
+	projectID int64,
+	suiteIDs []int64,
+	config *concurrency.ControllerConfig,
+) (data.GetSectionsResponse, error) {
+	if config == nil {
+		config = concurrency.DefaultControllerConfig()
+	} else {
+		config.Normalize()
+	}
+
+	if config.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, config.Timeout)
+		defer cancel()
+	}
+
+	if len(suiteIDs) == 0 {
+		return c.GetSections(ctx, projectID, 0)
+	}
+
+	var limiter *concurrent.AdaptiveRateLimiter
+	if config.RequestsPerMinute > 0 {
+		limiter = concurrent.NewAdaptiveRateLimiter(config.RequestsPerMinute)
+	}
+
+	maxRetries := config.MaxRetries
+	if maxRetries < 0 {
+		maxRetries = 0
+	}
+
+	opts := []concurrency.FetchOption{
+		concurrency.WithContinueOnError(),
+		concurrency.WithMaxConcurrency(config.MaxConcurrentSuites),
+	}
+	if config.Reporter != nil {
+		opts = append(opts, concurrency.WithReporter(config.Reporter))
+	}
+
+	sections, err := concurrency.FetchParallelBySuite(ctx, suiteIDs,
+		c.sectionsFetcher(ctx, projectID, limiter, maxRetries),
+		opts...,
+	)
+	if err != nil && len(sections) == 0 {
+		return nil, err
+	}
+
+	return data.GetSectionsResponse(sections), err
+}
+
+// sectionsFetcher returns a closure that fetches sections for a single suite
+// with rate limiting and exponential-backoff retries.
+// Extracted from GetSectionsParallelCtx to keep cyclomatic complexity manageable.
+func (c *HTTPClient) sectionsFetcher(ctx context.Context, projectID int64, limiter *concurrent.AdaptiveRateLimiter, maxRetries int) func(int64) ([]data.Section, error) {
+	return func(suiteID int64) ([]data.Section, error) {
+		// Honor the global rate limiter before the first attempt.
+		if limiter != nil {
+			if waitErr := limiter.WaitCtx(ctx); waitErr != nil {
+				return nil, waitErr
+			}
+		}
+
+		var lastErr error
+		for attempt := 0; attempt <= maxRetries; attempt++ {
+			sections, fetchErr := c.GetSections(ctx, projectID, suiteID)
+			if fetchErr == nil {
+				return sections, nil
+			}
+
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+
+			lastErr = fetchErr
+			if attempt == maxRetries {
+				break
+			}
+
+			// Exponential back-off: 100ms, 200ms, 400ms, …
+			delay := time.Duration(100*(1<<attempt)) * time.Millisecond
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		return nil, lastErr
+	}
+}
+
+// GetSection fetches a single section by ID.
+func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Section, error) {
 	endpoint := fmt.Sprintf("get_section/%d", sectionID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса GetSection %d: %w", sectionID, err)
+		return nil, fmt.Errorf("request error GetSection %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при получении секции %d: %s", resp.Status, sectionID, string(body))
-	}
-
 	var section data.Section
 	if err := json.NewDecoder(resp.Body).Decode(&section); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования секции %d: %w", sectionID, err)
+		return nil, fmt.Errorf("decode error section %d: %w", sectionID, err)
 	}
 
 	return &section, nil
 }
 
-// AddSection — создаёт новую секцию в suite проекта
-func (c *HTTPClient) AddSection(projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+// AddSection creates a new section in a project's suite.
+func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка маршалинга AddSectionRequest: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-
 	endpoint := fmt.Sprintf("add_section/%d", projectID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса AddSection для проекта %d: %w", projectID, err)
+		return nil, fmt.Errorf("request error AddSection for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при создании секции в проекте %d: %s", resp.Status, projectID, string(body))
-	}
-
 	var section data.Section
 	if err := json.NewDecoder(resp.Body).Decode(&section); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования созданной секции: %w", err)
+		return nil, fmt.Errorf("decode error created section: %w", err)
 	}
 
 	return &section, nil
 }
 
-// UpdateSection — обновляет секцию (name, description, parent_id для перемещения)
-func (c *HTTPClient) UpdateSection(sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+// UpdateSection updates a section (name, description, parent_id for moving).
+func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка маршалинга UpdateSectionRequest: %w", err)
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-
 	endpoint := fmt.Sprintf("update_section/%d", sectionID)
-	resp, err := c.Post(endpoint, bytes.NewReader(bodyBytes), nil)
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
-		return nil, fmt.Errorf("ошибка запроса UpdateSection %d: %w", sectionID, err)
+		return nil, fmt.Errorf("request error UpdateSection %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API вернул %s при обновлении секции %d: %s", resp.Status, sectionID, string(body))
-	}
-
 	var section data.Section
 	if err := json.NewDecoder(resp.Body).Decode(&section); err != nil {
-		return nil, fmt.Errorf("ошибка декодирования обновлённой секции %d: %w", sectionID, err)
+		return nil, fmt.Errorf("decode error updated section %d: %w", sectionID, err)
 	}
 
 	return &section, nil
 }
 
-// DeleteSection — удаляет секцию (необратимо, удаляет cases/results)
-func (c *HTTPClient) DeleteSection(sectionID int64) error {
+// DeleteSection deletes a section (irreversible, deletes cases/results).
+func (c *HTTPClient) DeleteSection(ctx context.Context, sectionID int64) error {
 	endpoint := fmt.Sprintf("delete_section/%d", sectionID)
-	resp, err := c.Post(endpoint, nil, nil)
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
-		return fmt.Errorf("ошибка запроса DeleteSection %d: %w", sectionID, err)
+		return fmt.Errorf("request error DeleteSection %d: %w", sectionID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API вернул %s при удалении секции %d: %s", resp.Status, sectionID, string(body))
-	}
 
 	return nil
 }

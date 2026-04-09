@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-// MappingPair — пара source → target ID с метаданными
+// MappingPair represents a source → target ID pair with metadata.
 type MappingPair struct {
 	SourceID  int64     `json:"source_id"`
 	TargetID  int64     `json:"target_id"`
 	CreatedAt time.Time `json:"created_at"`
-	Status    string    `json:"status"` // "created" или "existing"
+	Status    string    `json:"status"` // "created" or "existing"
 }
 
-// SharedStepMapping — полная структура mapping с контекстом проектов
+// SharedStepMapping holds the full mapping structure with project context.
 type SharedStepMapping struct {
 	SrcProjectID int64         `json:"src_project_id"`
 	DstProjectID int64         `json:"dst_project_id"`
@@ -26,10 +26,10 @@ type SharedStepMapping struct {
 	Count        int           `json:"count"`
 	Pairs        []MappingPair `json:"pairs"`
 
-	index map[int64]int64 // быстрый поиск (не экспортируется)
+	index map[int64]int64 // fast lookup (not exported)
 }
 
-// NewSharedStepMapping — конструктор
+// NewSharedStepMapping creates a new SharedStepMapping for the given project pair.
 func NewSharedStepMapping(srcProjectID, dstProjectID int64) *SharedStepMapping {
 	return &SharedStepMapping{
 		SrcProjectID: srcProjectID,
@@ -41,7 +41,7 @@ func NewSharedStepMapping(srcProjectID, dstProjectID int64) *SharedStepMapping {
 	}
 }
 
-// AddPair — добавляет пару
+// AddPair adds a source→target ID pair to the mapping (skips duplicates).
 func (sm *SharedStepMapping) AddPair(sourceID, targetID int64, status string) {
 	if _, exists := sm.index[sourceID]; exists {
 		return
@@ -57,20 +57,20 @@ func (sm *SharedStepMapping) AddPair(sourceID, targetID int64, status string) {
 	sm.Count++
 }
 
-// GetTargetBySource — поиск target по source
+// GetTargetBySource looks up a target ID by source ID.
 func (sm *SharedStepMapping) GetTargetBySource(sourceID int64) (int64, bool) {
 	targetID, ok := sm.index[sourceID]
 	return targetID, ok
 }
 
-// SortPairs — сортировка для экспорта
+// SortPairs sorts pairs by source ID for consistent export output.
 func (sm *SharedStepMapping) SortPairs() {
 	sort.Slice(sm.Pairs, func(i, j int) bool {
 		return sm.Pairs[i].SourceID < sm.Pairs[j].SourceID
 	})
 }
 
-// Save — сохраняет в JSON
+// Save writes the mapping to a JSON file in the given directory.
 func (sm *SharedStepMapping) Save(dir string) error {
 	if sm.Count == 0 {
 		return nil
@@ -80,24 +80,24 @@ func (sm *SharedStepMapping) Save(dir string) error {
 		dir = ".testrail"
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
 	sm.SortPairs()
 
 	file := filepath.Join(dir, fmt.Sprintf("mapping_%s.json", time.Now().Format("2006-01-02_15-04-05")))
-	data := sm // marshal всей структуры
+	data := sm // marshal the entire struct
 
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
 
-	return os.WriteFile(file, jsonData, 0644)
+	return os.WriteFile(file, jsonData, 0o644)
 }
 
-// LoadSharedStepMapping — загружает маппу общих шагов из файла
+// LoadSharedStepMapping loads a shared step mapping from a JSON file.
 func LoadSharedStepMapping(file string) (*SharedStepMapping, error) {
 	data, err := os.ReadFile(file)
 	if err != nil {

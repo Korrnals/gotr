@@ -2,30 +2,45 @@ package labels
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newUpdateTestCmd создаёт команду 'labels update test'
-// Эндпоинт: POST /update_test/{test_id}
+// newUpdateTestCmd creates the 'labels update test' command.
+// Endpoint: POST /update_test/{test_id}
 func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "test <test_id>",
-		Short: "Обновить метки одного теста",
-		Long:  `Обновляет метки для конкретного теста по его ID.`,
-		Example: `  # Добавить метки smoke и critical
+		Use:   "test [test_id]",
+		Short: "Update labels for a single test",
+		Long:  `Updates labels for a specific test by its ID.`,
+		Example: `  # Add labels smoke and critical
   gotr labels update test 12345 --labels="smoke,critical"
 
-  # Проверить без изменений
+  # Preview without making changes
   gotr labels update test 99999 --labels="regression" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || testID <= 0 {
-				return fmt.Errorf("invalid test_id: %s", args[0])
+			var testID int64
+			var err error
+			if len(args) > 0 {
+				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("test_id is required in non-interactive mode: gotr labels update test [test_id]")
+				}
+				if _, ok := interactive.PrompterFromContext(cmd.Context()).(*interactive.NonInteractivePrompter); ok {
+					return fmt.Errorf("test_id is required in non-interactive mode: gotr labels update test [test_id]")
+				}
+				if testID, err = resolveTestIDInteractive(cmd.Context(), getClient(cmd)); err != nil {
+					return err
+				}
 			}
 
 			labelsFlag, _ := cmd.Flags().GetString("labels")
@@ -42,7 +57,8 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.UpdateTestLabels(testID, labels); err != nil {
+			ctx := cmd.Context()
+			if err := cli.UpdateTestLabels(ctx, testID, labels); err != nil {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 
@@ -51,23 +67,23 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
-	cmd.MarkFlagRequired("labels")
+	cmd.Flags().String("labels", "", "Comma-separated list of labels (required)")
+	_ = cmd.MarkFlagRequired("labels")
 
 	return cmd
 }
 
-// newUpdateTestsCmd создаёт команду 'labels update tests'
-// Эндпоинт: POST /update_tests/{run_id}
+// newUpdateTestsCmd creates the 'labels update tests' command.
+// Endpoint: POST /update_tests/{run_id}
 func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tests",
-		Short: "Обновить метки нескольких тестов в прогоне",
-		Long:  `Обновляет метки для нескольких тестов в рамках одного тестового прогона.`,
-		Example: `  # Обновить метки для тестов 1,2,3 в прогоне 100
+		Short: "Update labels for multiple tests in a run",
+		Long:  `Updates labels for multiple tests within a single test run.`,
+		Example: `  # Update labels for tests 1,2,3 in run 100
   gotr labels update tests --run-id=100 --test-ids=1,2,3 --labels="smoke,critical"
 
-  # Проверить без изменений
+  # Preview without making changes
   gotr labels update tests --run-id=200 --test-ids=10,20 --labels="regression" --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID, _ := cmd.Flags().GetInt64("run-id")
@@ -98,7 +114,8 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.UpdateTestsLabels(runID, testIDs, labels); err != nil {
+			ctx := cmd.Context()
+			if err := cli.UpdateTestsLabels(ctx, runID, testIDs, labels); err != nil {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 
@@ -107,18 +124,18 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64("run-id", 0, "ID тестового прогона (обязательно)")
-	cmd.Flags().String("test-ids", "", "Список ID тестов через запятую (обязательно)")
-	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
+	cmd.Flags().Int64("run-id", 0, "Test run ID (required)")
+	cmd.Flags().String("test-ids", "", "Comma-separated list of test IDs (required)")
+	cmd.Flags().String("labels", "", "Comma-separated list of labels (required)")
 
-	cmd.MarkFlagRequired("run-id")
-	cmd.MarkFlagRequired("test-ids")
-	cmd.MarkFlagRequired("labels")
+	_ = cmd.MarkFlagRequired("run-id")
+	_ = cmd.MarkFlagRequired("test-ids")
+	_ = cmd.MarkFlagRequired("labels")
 
 	return cmd
 }
 
-// parseLabels разбирает метки, разделённые запятыми
+// parseLabels splits a comma-separated string into a list of label names.
 func parseLabels(s string) []string {
 	var labels []string
 	for _, part := range strings.Split(s, ",") {
@@ -130,7 +147,7 @@ func parseLabels(s string) []string {
 	return labels
 }
 
-// parseIntList разбирает список чисел, разделённых запятыми
+// parseIntList splits a comma-separated string into a list of int64 IDs.
 func parseIntList(s string) []int64 {
 	var ids []int64
 	for _, part := range strings.Split(s, ",") {
@@ -138,7 +155,7 @@ func parseIntList(s string) []int64 {
 		if part == "" {
 			continue
 		}
-		id, err := strconv.ParseInt(part, 10, 64)
+		id, err := flags.ParseID(part)
 		if err == nil && id > 0 {
 			ids = append(ids, id)
 		}

@@ -1,8 +1,9 @@
 // internal/client/sharedsteps_test.go
-// Тесты для SharedSteps API POST-методов
+// Tests for SharedSteps API POST methods
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -119,7 +120,8 @@ func TestAddSharedStep(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			step, err := client.AddSharedStep(tt.projectID, tt.request)
+			ctx := context.Background()
+			step, err := client.AddSharedStep(ctx, tt.projectID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -190,7 +192,8 @@ func TestUpdateSharedStep(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			step, err := client.UpdateSharedStep(tt.sharedStepID, tt.request)
+			ctx := context.Background()
+			step, err := client.UpdateSharedStep(ctx, tt.sharedStepID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -242,7 +245,8 @@ func TestDeleteSharedStep(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.DeleteSharedStep(tt.sharedStepID, 0)
+			ctx := context.Background()
+			err := client.DeleteSharedStep(ctx, tt.sharedStepID, 0)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -251,4 +255,231 @@ func TestDeleteSharedStep(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetSharedSteps(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/index.php", r.URL.Path)
+		assert.Equal(t, "0", r.URL.Query().Get("offset"))
+		assert.Equal(t, "250", r.URL.Query().Get("limit"))
+		assert.Contains(t, r.URL.String(), "get_shared_steps/30")
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(data.GetSharedStepsResponse{{ID: 11, Title: "Login"}})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	steps, err := client.GetSharedSteps(context.Background(), 30)
+	assert.NoError(t, err)
+	assert.Len(t, steps, 1)
+	assert.Equal(t, int64(11), steps[0].ID)
+}
+
+func TestGetSharedStep(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_shared_step/200", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.SharedStep{ID: 200, Title: "Step"})
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		step, err := client.GetSharedStep(context.Background(), 200)
+		assert.NoError(t, err)
+		assert.NotNil(t, step)
+		assert.Equal(t, int64(200), step.ID)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetSharedStep(context.Background(), 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+}
+
+func TestGetSharedStepHistory(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_shared_step_history/200", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"offset":0,"limit":250,"size":1,"step_history":[{"id":1,"timestamp":10,"user_id":5,"title":"v1"}]}`))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		history, err := client.GetSharedStepHistory(context.Background(), 200)
+		assert.NoError(t, err)
+		assert.NotNil(t, history)
+		assert.Len(t, history.History, 1)
+	})
+
+	t.Run("decode error", func(t *testing.T) {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("{"))
+		}
+
+		client, server := mockClient(t, handler)
+		defer server.Close()
+
+		_, err := client.GetSharedStepHistory(context.Background(), 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error shared step history")
+	})
+}
+
+func TestSharedSteps_ErrorBranches(t *testing.T) {
+	t.Run("GetSharedSteps request error from API status", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Contains(t, r.URL.String(), "get_shared_steps/30")
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("boom"))
+		})
+		defer server.Close()
+
+		_, err := client.GetSharedSteps(context.Background(), 30)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetSharedSteps")
+	})
+
+	t.Run("GetSharedStep decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_shared_step/200", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.GetSharedStep(context.Background(), 200)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error shared step")
+	})
+
+	t.Run("GetSharedStepHistory non-OK", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_shared_step_history/201", r.URL.String())
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		})
+		defer server.Close()
+
+		_, err := client.GetSharedStepHistory(context.Background(), 201)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned 404 Not Found")
+	})
+
+	t.Run("AddSharedStep decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_shared_step/30", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.AddSharedStep(context.Background(), 30, &data.AddSharedStepRequest{Title: "t"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error created shared step")
+	})
+
+	t.Run("UpdateSharedStep decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/update_shared_step/31", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.UpdateSharedStep(context.Background(), 31, &data.UpdateSharedStepRequest{Title: "u"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error updated shared step")
+	})
+
+	t.Run("DeleteSharedStep query parameter keep_in_cases", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/delete_shared_step/32&keep_in_cases=1", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+		})
+		defer server.Close()
+
+		err := client.DeleteSharedStep(context.Background(), 32, 1)
+		assert.NoError(t, err)
+	})
+}
+
+func TestSharedSteps_RequestErrors(t *testing.T) {
+	t.Run("GetSharedStep request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.GetSharedStep(context.Background(), 1)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetSharedStep")
+	})
+
+	t.Run("GetSharedStepHistory request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.GetSharedStepHistory(context.Background(), 2)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error GetSharedStepHistory")
+	})
+
+	t.Run("AddSharedStep request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.AddSharedStep(context.Background(), 3, &data.AddSharedStepRequest{Title: "x"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error AddSharedStep")
+	})
+
+	t.Run("UpdateSharedStep request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		_, err := client.UpdateSharedStep(context.Background(), 4, &data.UpdateSharedStepRequest{Title: "x"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error UpdateSharedStep")
+	})
+
+	t.Run("DeleteSharedStep request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		err := client.DeleteSharedStep(context.Background(), 5, 0)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error DeleteSharedStep")
+	})
 }

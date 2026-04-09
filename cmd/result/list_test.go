@@ -1,21 +1,23 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для result list (direct mode) ====================
+// ==================== Tests for result list (direct mode) ====================
 
 func TestListCmd_Direct_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			return data.GetResultsResponse{
 				{ID: 1, TestID: 100, StatusID: 1, Comment: "Passed"},
@@ -46,7 +48,7 @@ func TestListCmd_Direct_InvalidRunID(t *testing.T) {
 
 func TestListCmd_Direct_ZeroRunID(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("invalid run_id")
 		},
 	}
@@ -61,7 +63,7 @@ func TestListCmd_Direct_ZeroRunID(t *testing.T) {
 
 func TestListCmd_Direct_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
@@ -77,7 +79,7 @@ func TestListCmd_Direct_APIError(t *testing.T) {
 
 func TestListCmd_Direct_EmptyResults(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return data.GetResultsResponse{}, nil
 		},
 	}
@@ -90,23 +92,21 @@ func TestListCmd_Direct_EmptyResults(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для result list (interactive mode) ====================
+// ==================== Tests for result list (interactive mode) ====================
 
 func TestListCmd_Interactive_NoProjects(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{}, nil
+		},
+	}
 
-	// Устанавливаем мок селектор с ошибкой (проекты не найдены)
-	selectors = &mockProjectSelector{projectID: 0, err: fmt.Errorf("no projects found")}
-
-	mock := &client.MockClient{}
+	p := interactive.NewMockPrompter()
 
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	// Не передаем аргументы - должен включиться интерактивный режим
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
+	// No arguments passed - should enable interactive mode
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -114,7 +114,7 @@ func TestListCmd_Interactive_NoProjects(t *testing.T) {
 	assert.Contains(t, err.Error(), "no projects")
 }
 
-// ==================== Тесты для edge cases ====================
+// ==================== Tests for edge cases ====================
 
 func TestListCmd_NilClient(t *testing.T) {
 	cmd := newListCmd(func(cmd *cobra.Command) client.ClientInterface { return nil })
@@ -122,12 +122,12 @@ func TestListCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "клиент")
+	assert.Contains(t, err.Error(), "client")
 }
 
 func TestListCmd_NegativeRunID(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("invalid run_id")
 		},
 	}

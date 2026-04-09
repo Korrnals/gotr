@@ -1,31 +1,31 @@
 // internal/models/data/plans.go
 package data
 
-// Plan — тест-план в TestRail
+// Plan represents a test plan in TestRail.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans
 type Plan struct {
-	ID          int64       `json:"id"`                    // The unique ID of the test plan
-	Name        string      `json:"name"`                  // The name of the test plan
-	Description string      `json:"description,omitempty"` // The description of the test plan
-	MilestoneID int64       `json:"milestone_id"`          // The ID of the milestone this test plan is associated with
-	AssignedTo  int64       `json:"assignedto,omitempty"`  // The ID of the user the test plan is assigned to
-	ProjectID   int64       `json:"project_id"`            // The ID of the project this test plan belongs to
-	IsCompleted bool        `json:"is_completed"`          // True if the test plan is marked as completed
-	CompletedOn Timestamp   `json:"completed_on,omitempty"` // The date/time when the test plan was closed
-	PassedCount int         `json:"passed_count"`          // The number of tests in the test plan marked as passed
-	BlockedCount int        `json:"blocked_count"`         // The number of tests in the test plan marked as blocked
-	UntestedCount int      `json:"untested_count"`        // The number of tests in the test plan marked as untested
-	RetestCount int         `json:"retest_count"`          // The number of tests in the test plan marked as retest
-	FailedCount int         `json:"failed_count"`          // The number of tests in the test plan marked as failed
+	ID                int64          `json:"id"`                            // The unique ID of the test plan
+	Name              string         `json:"name"`                          // The name of the test plan
+	Description       string         `json:"description,omitempty"`         // The description of the test plan
+	MilestoneID       int64          `json:"milestone_id"`                  // The ID of the milestone this test plan is associated with
+	AssignedTo        int64          `json:"assignedto,omitempty"`          // The ID of the user the test plan is assigned to
+	ProjectID         int64          `json:"project_id"`                    // The ID of the project this test plan belongs to
+	IsCompleted       bool           `json:"is_completed"`                  // True if the test plan is marked as completed
+	CompletedOn       Timestamp      `json:"completed_on,omitempty"`        // The date/time when the test plan was closed
+	PassedCount       int            `json:"passed_count"`                  // The number of tests in the test plan marked as passed
+	BlockedCount      int            `json:"blocked_count"`                 // The number of tests in the test plan marked as blocked
+	UntestedCount     int            `json:"untested_count"`                // The number of tests in the test plan marked as untested
+	RetestCount       int            `json:"retest_count"`                  // The number of tests in the test plan marked as retest
+	FailedCount       int            `json:"failed_count"`                  // The number of tests in the test plan marked as failed
 	CustomStatusCount map[string]int `json:"custom_status_count,omitempty"` // Custom statuses count
-	Entries     []PlanEntry `json:"entries,omitempty"`     // An array of test plan entries (runs)
-	URL         string      `json:"url,omitempty"`         // The address/URL of the test plan
-	CreatedOn   Timestamp   `json:"created_on,omitempty"`  // The date/time when the test plan was created
-	CreatedBy   int64       `json:"created_by,omitempty"`  // The ID of the user who created the test plan
+	Entries           []PlanEntry    `json:"entries,omitempty"`             // An array of test plan entries (runs)
+	URL               string         `json:"url,omitempty"`                 // The address/URL of the test plan
+	CreatedOn         Timestamp      `json:"created_on,omitempty"`          // The date/time when the test plan was created
+	CreatedBy         int64          `json:"created_by,omitempty"`          // The ID of the user who created the test plan
 }
 
-// PlanEntry — запись (entry) в тест-плане
-// Каждый entry представляет собой конфигурацию рана в плане
+// PlanEntry represents an entry in a test plan.
+// Each entry defines a run configuration within the plan.
 type PlanEntry struct {
 	ID          string    `json:"id"`                    // The unique ID of the test plan entry
 	Name        string    `json:"name"`                  // The name of the test plan entry
@@ -40,34 +40,34 @@ type PlanEntry struct {
 	CreatedBy   int64     `json:"created_by,omitempty"`  // The ID of the user who created the entry
 }
 
-// GetPlansResponse — ответ на get_plans
+// GetPlansResponse is the response for get_plans.
 type GetPlansResponse []Plan
 
-// GetPlanResponse — ответ на get_plan
+// GetPlanResponse is the response for get_plan.
 type GetPlanResponse Plan
 
-// AddPlanRequest — запрос на создание плана
+// AddPlanRequest is the request to create a plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplan
 type AddPlanRequest struct {
-	Name        string           `json:"name"`                  // The name of the test plan (required)
-	Description string           `json:"description,omitempty"` // The description of the test plan
+	Name        string           `json:"name"`                   // The name of the test plan (required)
+	Description string           `json:"description,omitempty"`  // The description of the test plan
 	MilestoneID int64            `json:"milestone_id,omitempty"` // The ID of the milestone to link to
-	Entries     []PlanEntryInput `json:"entries,omitempty"`     // An array of test plan entries to create
+	Entries     []PlanEntryInput `json:"entries,omitempty"`      // An array of test plan entries to create
 }
 
-// PlanEntryInput — входные данные для создания entry в плане
+// PlanEntryInput defines the input data for creating a plan entry.
 type PlanEntryInput struct {
-	Name        string  `json:"name"`                  // The name of the test plan entry (required)
-	Description string  `json:"description,omitempty"` // The description of the test plan entry
-	SuiteID     int64   `json:"suite_id"`              // The ID of the test suite (required)
-	AssignedTo  int64   `json:"assignedto,omitempty"`  // The ID of the user the entry is assigned to
-	IncludeAll  bool    `json:"include_all"`           // True to include all test cases
-	CaseIDs     []int64 `json:"case_ids,omitempty"`    // Array of case IDs to include
-	ConfigIDs   []int64 `json:"config_ids,omitempty"`  // Array of configuration IDs
-	Runs        []RunInput `json:"runs,omitempty"`     // Array of configurations for multiple runs
+	Name        string     `json:"name"`                  // The name of the test plan entry (required)
+	Description string     `json:"description,omitempty"` // The description of the test plan entry
+	SuiteID     int64      `json:"suite_id"`              // The ID of the test suite (required)
+	AssignedTo  int64      `json:"assignedto,omitempty"`  // The ID of the user the entry is assigned to
+	IncludeAll  bool       `json:"include_all"`           // True to include all test cases
+	CaseIDs     []int64    `json:"case_ids,omitempty"`    // Array of case IDs to include
+	ConfigIDs   []int64    `json:"config_ids,omitempty"`  // Array of configuration IDs
+	Runs        []RunInput `json:"runs,omitempty"`        // Array of configurations for multiple runs
 }
 
-// RunInput — входные данные для создания run в entry
+// RunInput defines the input data for creating a run within an entry.
 type RunInput struct {
 	ConfigIDs   []int64 `json:"config_ids,omitempty"`  // Array of configuration IDs for this run
 	AssignedTo  int64   `json:"assignedto,omitempty"`  // The ID of the user the run is assigned to
@@ -75,15 +75,15 @@ type RunInput struct {
 	CaseIDs     []int64 `json:"case_ids,omitempty"`    // Array of case IDs for this run
 }
 
-// UpdatePlanRequest — запрос на обновление плана
+// UpdatePlanRequest is the request to update a plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplan
 type UpdatePlanRequest struct {
-	Name        string `json:"name,omitempty"`        // The name of the test plan
-	Description string `json:"description,omitempty"` // The description of the test plan
+	Name        string `json:"name,omitempty"`         // The name of the test plan
+	Description string `json:"description,omitempty"`  // The description of the test plan
 	MilestoneID int64  `json:"milestone_id,omitempty"` // The ID of the milestone to link to
 }
 
-// AddPlanEntryRequest — запрос на добавление entry в существующий план
+// AddPlanEntryRequest is the request to add an entry to an existing plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#addplanentry
 type AddPlanEntryRequest struct {
 	Name        string  `json:"name"`                  // The name of the test plan entry (required)
@@ -95,7 +95,7 @@ type AddPlanEntryRequest struct {
 	ConfigIDs   []int64 `json:"config_ids,omitempty"`  // Array of configuration IDs
 }
 
-// UpdatePlanEntryRequest — запрос на обновление entry в плане
+// UpdatePlanEntryRequest is the request to update an entry in a plan.
 // https://support.testrail.com/hc/en-us/articles/7077996481044-Plans#updateplanentry
 type UpdatePlanEntryRequest struct {
 	Name        string  `json:"name,omitempty"`        // The name of the test plan entry
@@ -105,5 +105,5 @@ type UpdatePlanEntryRequest struct {
 	CaseIDs     []int64 `json:"case_ids,omitempty"`    // Array of case IDs to include
 }
 
-// ClosePlanRequest — запрос на закрытие плана (обычно пустой)
+// ClosePlanRequest is the request to close a plan (usually empty).
 type ClosePlanRequest struct{}

@@ -1,15 +1,17 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты сухого запуска ====================
+// ==================== Dry run tests ====================
 
 func TestAddCmd_DryRun(t *testing.T) {
 	mock := &client.MockClient{}
@@ -31,11 +33,11 @@ func TestAddCmd_DryRun_WithDueDate(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Release 1.0", req.Name)
 			assert.Equal(t, "2026-03-01", req.DueOn)
@@ -53,7 +55,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_Success_Minimal(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(5), projectID)
 			assert.Equal(t, "Sprint 1", req.Name)
 			return &data.Milestone{ID: 200, Name: req.Name}, nil
@@ -70,7 +72,7 @@ func TestAddCmd_Success_Minimal(t *testing.T) {
 
 func TestAddCmd_WithDescription(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Release 2.0", req.Name)
 			assert.Equal(t, "Major release", req.Description)
@@ -88,7 +90,7 @@ func TestAddCmd_WithDescription(t *testing.T) {
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddMilestoneFunc: func(projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -102,7 +104,7 @@ func TestAddCmd_ClientError(t *testing.T) {
 	assert.Contains(t, err.Error(), "project not found")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestAddCmd_InvalidProjectID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -143,4 +145,42 @@ func TestAddCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+}
+
+func TestAddCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		AddMilestoneFunc: func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+			assert.Equal(t, int64(1), projectID)
+			assert.Equal(t, "Sprint 1", req.Name)
+			return &data.Milestone{ID: 200, Name: req.Name}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name=Sprint 1"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{"--name=Sprint 1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }

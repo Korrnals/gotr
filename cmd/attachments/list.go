@@ -5,42 +5,49 @@ package attachments
 
 import (
 	"fmt"
-	"strconv"
-	"text/tabwriter"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'attachments list'
-// Поддерживает списки для case, plan, run, test, plan-entry
+// newListCmd creates the 'attachments list' command.
+// Supports listing for case, plan, run, test, and plan-entry resources.
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Получить список вложений",
-		Long: `Получает список вложений для различных типов ресурсов.
+		Short: "List attachments",
+		Long: `Lists attachments for various resource types.
 
-Поддерживаемые типы ресурсов:
-  • case       — вложения тест-кейса
-  • plan       — вложения тест-плана
-  • plan-entry — вложения записи плана
-  • run        — вложения тест-рана
-  • test       — вложения теста`,
-		Example: `  # Список вложений кейса
+Supported resource types:
+  • case       — test case attachments
+  • plan       — test plan attachments
+  • plan-entry — plan entry attachments
+  • project    — project attachments
+  • run        — test run attachments
+  • test       — test attachments`,
+		Example: `  # List case attachments
   gotr attachments list case 123
 
-  # Список вложений плана
+  # List plan attachments
   gotr attachments list plan 456
 
-  # Список вложений теста
+  # List project attachments
+  gotr attachments list project 1
+
+  # List test attachments
   gotr attachments list test 789`,
 	}
 
-	// Добавляем подкоманды для каждого типа
+	// Register subcommands for each resource type
 	cmd.AddCommand(newListCaseCmd(getClient))
 	cmd.AddCommand(newListPlanCmd(getClient))
 	cmd.AddCommand(newListPlanEntryCmd(getClient))
+	cmd.AddCommand(newListProjectCmd(getClient))
 	cmd.AddCommand(newListRunCmd(getClient))
 	cmd.AddCommand(newListTestCmd(getClient))
 
@@ -49,17 +56,32 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
 func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "case <case_id>",
-		Short: "Список вложений тест-кейса",
-		Args:  cobra.ExactArgs(1),
+		Use:   "case [case_id]",
+		Short: "List test case attachments",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id required: gotr attachments list case [case_id]")
+				}
+
+				caseID, err = resolveCaseIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
-			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForCase(caseID)
+			attachments, err := client.GetAttachmentsForCase(ctx, caseID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -73,17 +95,32 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 
 func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "plan <plan_id>",
-		Short: "Список вложений тест-плана",
-		Args:  cobra.ExactArgs(1),
+		Use:   "plan [plan_id]",
+		Short: "List test plan attachments",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var planID int64
+			var err error
+			if len(args) > 0 {
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("plan_id required: gotr attachments list plan [plan_id]")
+				}
+
+				planID, err = resolvePlanIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
-			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForPlan(planID)
+			attachments, err := client.GetAttachmentsForPlan(ctx, planID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -97,17 +134,87 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 
 func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "plan-entry <plan_id> <entry_id>",
-		Short: "Список вложений записи плана",
-		Args:  cobra.ExactArgs(2),
+		Use:   "plan-entry [plan_id] [entry_id]",
+		Short: "List plan entry attachments",
+		Args:  cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var planID int64
+			var entryID string
+			var err error
+
+			switch len(args) {
+			case 2:
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+				entryID = args[1]
+			case 1:
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("entry_id required: gotr attachments list plan-entry [plan_id] [entry_id]")
+				}
+				entryID, err = resolvePlanEntryIDInteractive(ctx, client, planID)
+				if err != nil {
+					return err
+				}
+			default:
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("plan_id required: gotr attachments list plan-entry [plan_id] [entry_id]")
+				}
+				planID, entryID, err = resolvePlanAndEntryIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
+			attachments, err := client.GetAttachmentsForPlanEntry(ctx, planID, entryID)
+			if err != nil {
+				return fmt.Errorf("failed to list attachments: %w", err)
+			}
+
+			return outputAttachmentsList(cmd, attachments)
+		},
+	}
+	output.AddFlag(cmd)
+	return cmd
+}
+
+func newListProjectCmd(getClient GetClientFunc) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "project [project_id]",
+		Short: "List project attachments",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForPlanEntry(planID, args[1])
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id required: gotr attachments list project [project_id]")
+				}
+
+				p := interactive.PrompterFromContext(ctx)
+				projectID, err = interactive.SelectProject(ctx, p, client, "")
+				if err != nil {
+					return err
+				}
+			}
+
+			attachments, err := client.GetAttachmentsForProject(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -121,17 +228,32 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 
 func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run <run_id>",
-		Short: "Список вложений тест-рана",
-		Args:  cobra.ExactArgs(1),
+		Use:   "run [run_id]",
+		Short: "List test run attachments",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			runID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || runID <= 0 {
-				return fmt.Errorf("invalid run_id: %s", args[0])
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var runID int64
+			var err error
+			if len(args) > 0 {
+				runID, err = flags.ValidateRequiredID(args, 0, "run_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("run_id required: gotr attachments list run [run_id]")
+				}
+
+				runID, err = resolveRunIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
-			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForRun(runID)
+			attachments, err := client.GetAttachmentsForRun(ctx, runID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -145,17 +267,32 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 
 func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "test <test_id>",
-		Short: "Список вложений теста",
-		Args:  cobra.ExactArgs(1),
+		Use:   "test [test_id]",
+		Short: "List test attachments",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			testID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || testID <= 0 {
-				return fmt.Errorf("invalid test_id: %s", args[0])
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var testID int64
+			var err error
+			if len(args) > 0 {
+				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("test_id required: gotr attachments list test [test_id]")
+				}
+
+				testID, err = resolveTestIDInteractive(ctx, client)
+				if err != nil {
+					return err
+				}
 			}
 
-			client := getClient(cmd)
-			attachments, err := client.GetAttachmentsForTest(testID)
+			attachments, err := client.GetAttachmentsForTest(ctx, testID)
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -179,10 +316,11 @@ func outputAttachmentsList(cmd *cobra.Command, attachments data.GetAttachmentsRe
 		return nil
 	}
 
-	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "ID\tNAME\tSIZE\tCREATED_ON")
+	t := ui.NewTable(cmd)
+	t.AppendHeader(table.Row{"ID", "NAME", "SIZE", "CREATED_ON"})
 	for _, a := range attachments {
-		fmt.Fprintf(w, "%d\t%s\t%d\t%d\n", a.ID, a.Name, a.Size, a.CreatedOn)
+		t.AppendRow(table.Row{a.ID, a.Name, a.Size, a.CreatedOn})
 	}
-	return w.Flush()
+	ui.Table(cmd, t)
+	return nil
 }

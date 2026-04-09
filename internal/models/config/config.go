@@ -5,43 +5,42 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-
-	"go.yaml.in/yaml/v3"
 )
 
-// DefaultConfigValues — дефолтные placeholder'ы в шаблоне конфигурации.
-// Эти значения используются как при создании конфига, так и для проверки валидности.
+// DefaultConfigValues are default placeholders used in the configuration template.
+// These values are used both when creating config and for validity checks.
 const (
 	DefaultBaseURL  = "https://yourcompany.testrail.io/"
 	DefaultUsername = "your-email@example.com"
 	DefaultAPIKey   = "your_api_key_here"
 )
 
+// ConfigData stores serialized gotr configuration fields.
 type ConfigData struct {
 	BaseURL  string `yaml:"base_url"`
 	Username string `yaml:"username"`
 	APIKey   string `yaml:"api_key"`
 	Insecure bool   `yaml:"insecure"`
 	JqFormat bool   `yaml:"jq_format"`
+	Debug    bool   `yaml:"debug"`
 }
 
-// Config — представляет один конфиг-файл
+// Config represents a single configuration file.
 type Config struct {
-	Path string      // полный путь к файлу
-	Data *ConfigData // данные (можно расширять)
+	Path string      // Full path to the file
+	Data *ConfigData // Configuration data
 }
 
-// New создаёт экземпляр конфига по произвольному пути
+// New creates a Config instance at the given path.
 func New(path string) *Config {
 	return &Config{
 		Path: path,
-		Data: &ConfigData{}, // пустой или с дефолтами
+		Data: &ConfigData{},
 	}
 }
 
-// Default возвращает конфиг по стандартному пути (~/.gotr/config/default.yaml)
+// Default returns a Config at the standard path (~/.gotr/config/default.yaml).
 func Default() (*Config, error) {
-	// Используем centralized paths
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil, err
@@ -50,7 +49,7 @@ func Default() (*Config, error) {
 	return New(path), nil
 }
 
-// WithDefaults заполняет дефолтными значениями
+// WithDefaults populates the config with default placeholder values.
 func (c *Config) WithDefaults() *Config {
 	c.Data = &ConfigData{
 		BaseURL:  DefaultBaseURL,
@@ -58,35 +57,119 @@ func (c *Config) WithDefaults() *Config {
 		APIKey:   DefaultAPIKey,
 		Insecure: false,
 		JqFormat: false,
+		Debug:    false,
 	}
 	return c
 }
 
-// Create создаёт файл на диске
+// Create writes the configuration file to disk.
 func (c *Config) Create() error {
 	dir := filepath.Dir(c.Path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("не удалось создать директорию: %w", err)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
-	header := []byte("# gotr configuration file\n# Отредактируйте под свои данные\n\n")
-	yamlData, _ := yaml.Marshal(c.Data)
-	content := append(header, yamlData...)
+	content := []byte(c.renderTemplate())
 
-	if err := os.WriteFile(c.Path, content, 0644); err != nil {
-		return fmt.Errorf("не удалось записать файл %s: %w", c.Path, err)
+	if err := os.WriteFile(c.Path, content, 0o600); err != nil {
+		return fmt.Errorf("failed to write file %s: %w", c.Path, err)
 	}
 
-	fmt.Printf("Создан конфиг-файл: %s\n", c.Path)
 	return nil
 }
 
-// Path возвращает путь (для подкоманды path)
+func (c *Config) renderTemplate() string {
+	data := c.Data
+	if data == nil {
+		data = (&Config{}).WithDefaults().Data
+	}
+
+	return fmt.Sprintf(`# gotr configuration file
+#
+# Configuration source priority:
+#   1) CLI flags
+#   2) Environment variables (TESTRAIL_*)
+#   3) This file
+
+# TestRail base URL.
+# Cloud example:  https://yourcompany.testrail.io
+# Server example: https://testrail.example.local
+base_url: %q
+
+# Login (usually the TestRail user's email).
+username: %q
+
+# TestRail user API key.
+api_key: %q
+
+# true  -> skip TLS certificate verification (insecure, use only for internal environments)
+# false -> standard secure TLS verification
+insecure: %v
+
+# Enable jq-formatted output (if the embedded jq binary is available).
+jq_format: %v
+
+# Enable gotr debug output.
+debug: %v
+
+compare:
+  # Deployment mode for compare requests:
+  #   auto   - attempt to detect from URL (cloud/server)
+  #   cloud  - force cloud profile
+  #   server - force server profile
+  deployment: "auto"
+
+  # For cloud profile: professional|enterprise
+  cloud_tier: "professional"
+
+  # Global rate limit (requests per minute) for compare.
+  #   -1 -> automatic based on profile (cloud/server)
+  #    0 -> rate limiting disabled
+  #   >0 -> fixed value in req/min
+  rate_limit: -1
+
+  # Default for cloud when rate_limit=-1.
+  # professional: 180, enterprise: 300
+  cloud_rate_limit: 300
+
+  # Default for server when rate_limit=-1.
+  # Typically 0 (no limit).
+  server_rate_limit: 0
+
+  cases:
+    # Parallelism across suites (between suites).
+    parallel_suites: 10
+
+    # Parallelism for pages within a single suite.
+    parallel_pages: 6
+
+    # Number of retries per page during the main compare cases fetch stage.
+    page_retries: 5
+
+    # Timeout for the entire compare cases operation.
+    timeout: "30m"
+
+    retry:
+      # Retry attempts for a single failed page.
+      attempts: 5
+
+      # Number of parallel retry workers.
+      workers: 12
+
+      # Delay between retry attempts for a single page.
+      delay: "200ms"
+
+    # Always attempt to automatically retry failed pages after the main compare cases stage.
+    auto_retry_failed_pages: true
+`, data.BaseURL, data.Username, data.APIKey, data.Insecure, data.JqFormat, data.Debug)
+}
+
+// PathString returns the config file path.
 func (c *Config) PathString() string {
 	return c.Path
 }
 
-// IsValid проверяет, что конфиг содержит реальные данные, а не дефолтные placeholder'ы
+// IsValid checks that the config contains real data, not default placeholders.
 func (c *Config) IsValid() bool {
 	if c.Data == nil {
 		return false
@@ -96,7 +179,7 @@ func (c *Config) IsValid() bool {
 		c.Data.APIKey != "" && c.Data.APIKey != DefaultAPIKey
 }
 
-// IsDefaultValue проверяет, является ли значение дефолтным placeholder'ом
+// IsDefaultValue checks whether the given value matches a default placeholder.
 func IsDefaultValue(value, defaultValue string) bool {
 	return value == "" || value == defaultValue
 }

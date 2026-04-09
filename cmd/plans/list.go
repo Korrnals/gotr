@@ -2,30 +2,45 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'plans list'
-// Эндпоинт: GET /get_plans/{project_id}
+// newListCmd creates the 'plans list' command.
+// Endpoint: GET /get_plans/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
-		Short: "Список тест-планов",
-		Long:  `Выводит список всех тест-планов проекта.`,
-		Example: `  # Список планов проекта
+		Use:   "list [project_id]",
+		Short: "List test plans",
+		Long:  `Lists all test plans for a project.`,
+		Example: `  # List project plans
   gotr plans list 1`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			var projectID int64
+			if len(args) > 0 {
+				var err error
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr plans list [project_id]")
+				}
+				var err error
+				projectID, err = resolveProjectIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetPlans(projectID)
+			ctx := cmd.Context()
+			resp, err := cli.GetPlans(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list plans: %w", err)
 			}

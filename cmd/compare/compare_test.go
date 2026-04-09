@@ -2,6 +2,8 @@
 package compare
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -10,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для parseFlags ====================
+// ==================== Tests for parseFlags ====================
 
 func TestParseFlags_Success(t *testing.T) {
 	cmd := &cobra.Command{}
@@ -55,47 +57,35 @@ func TestParseFlags_InvalidPid1(t *testing.T) {
 	assert.Contains(t, err.Error(), "pid1")
 }
 
-// ==================== Тесты для buildResourceDiff ====================
+func TestParseFlags_InvalidPid2(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("pid1", "", "")
+	cmd.Flags().String("pid2", "", "")
+	cmd.Flags().String("field", "title", "")
+	cmd.ParseFlags([]string{"--pid1=30", "--pid2=invalid"})
 
-func TestBuildResourceDiff(t *testing.T) {
-	first := []string{"A", "B", "C"}
-	second := []string{"B", "C", "D"}
+	_, _, _, err := parseFlags(cmd)
 
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, "test", diff.Resource)
-	assert.Equal(t, 3, diff.TotalFirst)
-	assert.Equal(t, 3, diff.TotalSecond)
-	assert.Equal(t, 2, len(diff.Common))     // B, C
-	assert.Equal(t, 1, len(diff.OnlyFirst))  // A
-	assert.Equal(t, 1, len(diff.OnlySecond)) // D
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "pid2")
 }
 
-func TestBuildResourceDiff_EmptyFirst(t *testing.T) {
-	first := []string{}
-	second := []string{"A", "B", "C"}
+func TestParseFlags_EmptyFieldDefaultsToTitle(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.Flags().String("pid1", "", "")
+	cmd.Flags().String("pid2", "", "")
+	cmd.Flags().String("field", "", "")
+	cmd.ParseFlags([]string{"--pid1=30", "--pid2=31"})
 
-	diff := buildResourceDiff("test", first, second)
+	pid1, pid2, field, err := parseFlags(cmd)
 
-	assert.Equal(t, 0, diff.TotalFirst)
-	assert.Equal(t, 3, diff.TotalSecond)
-	assert.Equal(t, 0, len(diff.Common))
-	assert.Equal(t, 0, len(diff.OnlyFirst))
-	assert.Equal(t, 3, len(diff.OnlySecond))
+	assert.NoError(t, err)
+	assert.Equal(t, int64(30), pid1)
+	assert.Equal(t, int64(31), pid2)
+	assert.Equal(t, "title", field)
 }
 
-func TestBuildResourceDiff_BothEmpty(t *testing.T) {
-	first := []string{}
-	second := []string{}
-
-	diff := buildResourceDiff("test", first, second)
-
-	assert.Equal(t, 0, diff.TotalFirst)
-	assert.Equal(t, 0, diff.TotalSecond)
-	assert.Equal(t, 0, len(diff.Common))
-}
-
-// ==================== Тесты для collectNames ====================
+// ==================== Tests for collectNames ====================
 
 func TestCollectNames(t *testing.T) {
 	names := collectNames(3, func(i int) string {
@@ -117,11 +107,12 @@ func TestCollectNames_ZeroSize(t *testing.T) {
 	assert.Nil(t, names)
 }
 
-// ==================== Тесты для GetProjectNames ====================
+// ==================== Tests for GetProjectNames ====================
 
 func TestGetProjectNames_Success(t *testing.T) {
+	ctx := context.Background()
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{
 				ID:   projectID,
 				Name: "Test Project " + string(rune('0'+projectID)),
@@ -129,15 +120,50 @@ func TestGetProjectNames_Success(t *testing.T) {
 		},
 	}
 
-	name1, name2, err := GetProjectNames(mock, 1, 2)
+	name1, name2, err := GetProjectNames(ctx, mock, 1, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Project 1", name1)
 	assert.Equal(t, "Test Project 2", name2)
 }
 
+func TestGetProjectNames_FirstProjectError(t *testing.T) {
+	ctx := context.Background()
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, errors.New("project lookup failed")
+		},
+	}
+
+	name1, name2, err := GetProjectNames(ctx, mock, 1, 2)
+	assert.Error(t, err)
+	assert.Empty(t, name1)
+	assert.Empty(t, name2)
+	assert.Contains(t, err.Error(), "failed to get project 1")
+}
+
+func TestGetProjectNames_SecondProjectError(t *testing.T) {
+	ctx := context.Background()
+	call := 0
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			call++
+			if call == 1 {
+				return &data.GetProjectResponse{ID: projectID, Name: "Project One"}, nil
+			}
+			return nil, errors.New("second lookup failed")
+		},
+	}
+
+	name1, name2, err := GetProjectNames(ctx, mock, 1, 2)
+	assert.Error(t, err)
+	assert.Empty(t, name1)
+	assert.Empty(t, name2)
+	assert.Contains(t, err.Error(), "failed to get project 2")
+}
+
 func TestGetProjectName_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{
 				ID:   projectID,
 				Name: "Test Project",
@@ -145,12 +171,37 @@ func TestGetProjectName_Success(t *testing.T) {
 		},
 	}
 
-	name, err := GetProjectName(mock, 1)
+	name, err := GetProjectName(context.Background(), mock, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Project", name)
 }
 
-// ==================== Тесты для CompareResult ====================
+func TestGetProjectName_ProjectIsNilFallback(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, nil
+		},
+	}
+
+	name, err := GetProjectName(context.Background(), mock, 42)
+	assert.NoError(t, err)
+	assert.Equal(t, "Project 42", name)
+}
+
+func TestGetProjectName_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			return nil, errors.New("boom")
+		},
+	}
+
+	name, err := GetProjectName(context.Background(), mock, 77)
+	assert.Error(t, err)
+	assert.Empty(t, name)
+	assert.Contains(t, err.Error(), "failed to get project 77")
+}
+
+// ==================== Tests for CompareResult ====================
 
 func TestCompareResult_Struct(t *testing.T) {
 	result := &CompareResult{
@@ -189,24 +240,4 @@ func TestIDMappingPair(t *testing.T) {
 	assert.Equal(t, int64(1), pair.ID1)
 	assert.Equal(t, int64(2), pair.ID2)
 	assert.Equal(t, "Test", pair.Name)
-}
-
-// ==================== Тесты для ResourceDiff ====================
-
-func TestResourceDiff_Struct(t *testing.T) {
-	diff := ResourceDiff{
-		Resource:    "suites",
-		TotalFirst:  5,
-		TotalSecond: 7,
-		Common:      []string{"A", "B"},
-		OnlyFirst:   []string{"C"},
-		OnlySecond:  []string{"D", "E"},
-	}
-
-	assert.Equal(t, "suites", diff.Resource)
-	assert.Equal(t, 5, diff.TotalFirst)
-	assert.Equal(t, 7, diff.TotalSecond)
-	assert.Equal(t, 2, len(diff.Common))
-	assert.Equal(t, 1, len(diff.OnlyFirst))
-	assert.Equal(t, 2, len(diff.OnlySecond))
 }

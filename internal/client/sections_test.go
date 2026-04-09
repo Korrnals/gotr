@@ -1,13 +1,16 @@
 // internal/client/sections_test.go
-// Тесты для Sections API POST-методов
+// Tests for Sections API POST methods
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
+	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,12 +36,12 @@ func TestAddSection(t *testing.T) {
 			},
 			mockStatus: http.StatusOK,
 			mockResponse: data.Section{
-				ID:          500,
-				SuiteID:     100,
-				Name:        "Login Tests",
-				Description: "All login-related test cases",
+				ID:           500,
+				SuiteID:      100,
+				Name:         "Login Tests",
+				Description:  "All login-related test cases",
 				DisplayOrder: 1,
-				Depth:       0,
+				Depth:        0,
 			},
 			wantErr: false,
 		},
@@ -117,7 +120,8 @@ func TestAddSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			section, err := client.AddSection(tt.projectID, tt.request)
+			ctx := context.Background()
+			section, err := client.AddSection(ctx, tt.projectID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -172,7 +176,7 @@ func TestUpdateSection(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
 				expectedPath := fmt.Sprintf("/index.php?/api/v2/update_section/%d", tt.sectionID)
-					assert.Equal(t, expectedPath, r.URL.String())
+				assert.Equal(t, expectedPath, r.URL.String())
 
 				var req data.UpdateSectionRequest
 				json.NewDecoder(r.Body).Decode(&req)
@@ -186,7 +190,8 @@ func TestUpdateSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			section, err := client.UpdateSection(tt.sectionID, tt.request)
+			ctx := context.Background()
+			section, err := client.UpdateSection(ctx, tt.sectionID, tt.request)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -238,7 +243,8 @@ func TestDeleteSection(t *testing.T) {
 			client, server := mockClient(t, handler)
 			defer server.Close()
 
-			err := client.DeleteSection(tt.sectionID)
+			ctx := context.Background()
+			err := client.DeleteSection(ctx, tt.sectionID)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -247,4 +253,211 @@ func TestDeleteSection(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetSectionsParallelCtx_BySuites(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Contains(t, r.URL.String(), "get_sections/30")
+
+		suiteID := r.URL.Query().Get("suite_id")
+		var payload map[string]any
+		switch suiteID {
+		case "100":
+			payload = map[string]any{"offset": 0, "limit": 250, "size": 1, "sections": []map[string]any{{"id": 1, "suite_id": 100, "name": "S-100"}}}
+		case "200":
+			payload = map[string]any{"offset": 0, "limit": 250, "size": 1, "sections": []map[string]any{{"id": 2, "suite_id": 200, "name": "S-200"}}}
+		default:
+			payload = map[string]any{"offset": 0, "limit": 250, "size": 0, "sections": []map[string]any{}}
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(payload)
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	got, err := client.GetSectionsParallelCtx(
+		context.Background(),
+		30,
+		[]int64{100, 200},
+		&concurrency.ControllerConfig{MaxConcurrentSuites: 2, Timeout: 2 * time.Second},
+	)
+
+	assert.NoError(t, err)
+	assert.Len(t, got, 2)
+}
+
+func TestGetSectionsParallelCtx_EmptySuitesFallback(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Contains(t, r.URL.String(), "get_sections/30")
+		assert.Equal(t, "", r.URL.Query().Get("suite_id"))
+
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"offset":   0,
+			"limit":    250,
+			"size":     1,
+			"sections": []map[string]any{{"id": 10, "name": "Common"}},
+		})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	got, err := client.GetSectionsParallelCtx(context.Background(), 30, nil, nil)
+
+	assert.NoError(t, err)
+	assert.Len(t, got, 1)
+	assert.Equal(t, int64(10), got[0].ID)
+}
+
+func TestGetSectionsParallelCtx_Timeout(t *testing.T) {
+	handler := func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(80 * time.Millisecond)
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"offset":   0,
+			"limit":    250,
+			"size":     1,
+			"sections": []map[string]any{{"id": 1, "suite_id": 100, "name": "Late"}},
+		})
+	}
+
+	client, server := mockClient(t, handler)
+	defer server.Close()
+
+	_, err := client.GetSectionsParallelCtx(
+		context.Background(),
+		30,
+		[]int64{100},
+		&concurrency.ControllerConfig{MaxConcurrentSuites: 1, Timeout: 10 * time.Millisecond},
+	)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "deadline")
+}
+
+func TestGetSection(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_section/500", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			json.NewEncoder(w).Encode(data.Section{ID: 500, Name: "Auth"})
+		})
+		defer server.Close()
+
+		section, err := client.GetSection(context.Background(), 500)
+		assert.NoError(t, err)
+		assert.NotNil(t, section)
+		assert.Equal(t, int64(500), section.ID)
+	})
+
+	t.Run("api error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusNotFound)
+			_, _ = w.Write([]byte("missing"))
+		})
+		defer server.Close()
+
+		_, err := client.GetSection(context.Background(), 500)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "API returned")
+	})
+}
+
+func TestSections_ErrorBranches(t *testing.T) {
+	t.Run("GetSection decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "GET", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/get_section/501", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.GetSection(context.Background(), 501)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error section")
+	})
+
+	t.Run("AddSection decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/add_section/30", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.AddSection(context.Background(), 30, &data.AddSectionRequest{SuiteID: 100, Name: "S"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error created section")
+	})
+
+	t.Run("UpdateSection decode error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "/index.php?/api/v2/update_section/500", r.URL.String())
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"broken":`))
+		})
+		defer server.Close()
+
+		_, err := client.UpdateSection(context.Background(), 500, &data.UpdateSectionRequest{Name: "U"})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "decode error updated section")
+	})
+
+	t.Run("DeleteSection request error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+		})
+		server.Close()
+
+		err := client.DeleteSection(context.Background(), 500)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "request error DeleteSection")
+	})
+
+	t.Run("GetSectionsParallelCtx partial results with error", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			suiteID := r.URL.Query().Get("suite_id")
+			switch suiteID {
+			case "100":
+				w.WriteHeader(http.StatusOK)
+				_ = json.NewEncoder(w).Encode(map[string]any{
+					"offset":   0,
+					"limit":    250,
+					"size":     1,
+					"sections": []map[string]any{{"id": 1, "suite_id": 100, "name": "ok"}},
+				})
+			default:
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte("boom"))
+			}
+		})
+		defer server.Close()
+
+		cfg := &concurrency.ControllerConfig{MaxConcurrentSuites: 2, MaxRetries: -1, RequestsPerMinute: 60, Timeout: time.Second}
+		sections, err := client.GetSectionsParallelCtx(context.Background(), 30, []int64{100, 200}, cfg)
+		assert.Error(t, err)
+		assert.NotEmpty(t, sections)
+	})
+
+	t.Run("GetSectionsParallelCtx all suites failed returns nil sections", func(t *testing.T) {
+		client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("boom"))
+		})
+		defer server.Close()
+
+		cfg := &concurrency.ControllerConfig{MaxConcurrentSuites: 2, Timeout: time.Second}
+		sections, err := client.GetSectionsParallelCtx(context.Background(), 30, []int64{100, 200}, cfg)
+		assert.Error(t, err)
+		assert.Nil(t, sections)
+	})
 }

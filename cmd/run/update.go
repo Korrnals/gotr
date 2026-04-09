@@ -3,48 +3,50 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'run update'
+// newUpdateCmd creates the 'run update' command.
 func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [run-id]",
-		Short: "Обновить test run",
-		Long: `Обновляет существующий test run.
+		Short: "Update a test run",
+		Long: `Updates an existing test run.
 
-Можно обновлять только открытые runs. Для обновления используйте флаги.
-Только изменённые поля будут отправлены в API.
+Only open runs can be updated. Use flags to specify changes.
+Only modified fields will be sent to the API.
 
-Примеры:
-	# Изменить название и описание
+Examples:
+	# Change name and description
 	gotr run update 12345 --name "Updated Name" --description "New description"
 
-	# Переназначить на другого пользователя
+	# Reassign to another user
 	gotr run update 12345 --assigned-to 10
 
-	# Изменить набор кейсов в run
+	# Change the set of cases in the run
 	gotr run update 12345 --case-ids 100,200,300 --include-all=false
 
-	# Dry-run режим
+	# Dry-run mode
 	gotr run update 12345 --name "Test" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
+			}
+
+			runID, err := resolveRunID(ctx, cli, args)
+			if err != nil {
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			svc := newRunServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
-			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
-			}
 
-			// Собираем параметры из флагов (только изменённые)
+			// Collect parameters from flags (changed only)
 			req := &data.UpdateRunRequest{}
 
 			if cmd.Flags().Changed("name") {
@@ -72,7 +74,7 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				req.IncludeAll = &includeAll
 			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run update")
@@ -85,28 +87,26 @@ func newUpdateCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 				return nil
 			}
 
-			run, err := svc.Update(runID, req)
+			run, err := svc.Update(ctx, runID, req)
 			if err != nil {
-				return fmt.Errorf("ошибка обновления test run: %w", err)
+				return fmt.Errorf("failed to update test run: %w", err)
 			}
 
-			svc.PrintSuccess(cmd, "Test run обновлён успешно:")
-			return svc.Output(cmd, run)
+			output.PrintSuccess(cmd, "Test run updated successfully:")
+			return output.OutputResultWithFlags(cmd, run)
 		},
 	}
 
-	cmd.Flags().String("name", "", "Новое название")
-	cmd.Flags().String("description", "", "Новое описание")
-	cmd.Flags().Int64("milestone-id", 0, "ID milestone")
-	cmd.Flags().Int64("assigned-to", 0, "ID пользователя для назначения")
-	cmd.Flags().Int64Slice("case-ids", nil, "Список ID кейсов (через запятую)")
-	cmd.Flags().Bool("include-all", false, "Включить все кейсы сьюты")
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().String("name", "", "New name")
+	cmd.Flags().String("description", "", "New description")
+	cmd.Flags().Int64("milestone-id", 0, "Milestone ID")
+	cmd.Flags().Int64("assigned-to", 0, "User ID to assign")
+	cmd.Flags().Int64Slice("case-ids", nil, "List of case IDs (comma-separated)")
+	cmd.Flags().Bool("include-all", false, "Include all suite cases")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }
 
-// updateCmd — экспортированная команда
-var updateCmd = newUpdateCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+// updateCmd is the exported command.
+var updateCmd = newUpdateCmd(getClientSafe)

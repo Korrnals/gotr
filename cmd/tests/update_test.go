@@ -1,23 +1,24 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			assert.Equal(t, int64(12345), testID)
 			assert.Equal(t, int64(1), req.StatusID)
 			return &data.Test{ID: testID, StatusID: 1}, nil
@@ -35,7 +36,7 @@ func TestUpdateCmd_Success(t *testing.T) {
 
 func TestUpdateCmd_WithAssignedTo(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			assert.Equal(t, int64(5), req.AssignedTo)
 			return &data.Test{ID: testID, AssignedTo: 5}, nil
 		},
@@ -51,27 +52,23 @@ func TestUpdateCmd_WithAssignedTo(t *testing.T) {
 }
 
 func TestUpdateCmd_WithOutput(t *testing.T) {
-	t.Skip("TODO: fix output file test")
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			return &data.Test{ID: testID, StatusID: 1}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "test.json")
-
 	cmd := newUpdateCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	cmd.SetContext(testCmd.Context())
-	cmd.SetArgs([]string{"12345", "--status-id", "1", "-o", outputFile})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{"12345", "--status-id", "1"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "12345")
+	assert.Contains(t, buf.String(), "12345")
 }
 
 func TestUpdateCmd_DryRun(t *testing.T) {
@@ -96,7 +93,54 @@ func TestUpdateCmd_InvalidID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestUpdateCmd_NoArgs(t *testing.T) {
+func TestUpdateCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 100, Name: "Run 1", ProjectID: projectID}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(100), runID)
+			return []data.Test{{ID: 1, CaseID: 101, RunID: runID, Title: "Test 1", StatusID: 1}}, nil
+		},
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+			assert.Equal(t, int64(1), testID)
+			assert.Equal(t, int64(1), req.StatusID)
+			return &data.Test{ID: testID, StatusID: 1}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
+	cmd.SetArgs([]string{"--status-id", "1"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestUpdateCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), niPrompter))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestUpdateCmd_NoArgs_NoPrompter_Error(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newUpdateCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
@@ -105,12 +149,29 @@ func TestUpdateCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "test_id is required in non-interactive mode")
+}
+
+func TestUpdateCmd_ResolveInteractiveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects boom")
+		},
+	}
+
+	cmd := newUpdateCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{"--status-id", "1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
 }
 
 func TestUpdateCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		UpdateTestFunc: func(testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
-			return nil, fmt.Errorf("тест не найден")
+		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
+			return nil, fmt.Errorf("test not found")
 		},
 	}
 
@@ -121,7 +182,7 @@ func TestUpdateCmd_ClientError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "тест не найден")
+	assert.Contains(t, err.Error(), "test not found")
 }
 
 func TestGetClientForTests_NilCmd(t *testing.T) {
@@ -137,7 +198,7 @@ func TestGetClientForTests_NilContext(t *testing.T) {
 
 func TestGetClientForTests_NoMockInContext(t *testing.T) {
 	cmd := &cobra.Command{}
-	ctx := context.WithValue(context.Background(), "other_key", "value")
+	ctx := context.WithValue(context.Background(), testhelper.ContextKey("other_key"), "value")
 	cmd.SetContext(ctx)
 
 	result := testhelper.GetClientForTests(cmd)
@@ -150,7 +211,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	cmd := &cobra.Command{}
 	cmd.Flags().Bool("save", false, "")
 
-	err := outputResult(cmd, badData, time.Now())
+	err := output.OutputResult(cmd, badData, "tests")
 	assert.Error(t, err)
 }
 
@@ -192,7 +253,7 @@ func TestOutputResult_WithSaveFlag(t *testing.T) {
 	cmd.Flags().Bool("save", true, "")
 
 	data := map[string]string{"key": "value"}
-	err := outputResult(cmd, data, time.Now())
+	err := output.OutputResult(cmd, data, "tests")
 	assert.NoError(t, err)
 }
 
@@ -201,6 +262,6 @@ func TestOutputResult_WithoutSaveFlag(t *testing.T) {
 	cmd.Flags().Bool("save", false, "")
 
 	data := map[string]string{"key": "value"}
-	err := outputResult(cmd, data, time.Now())
+	err := output.OutputResult(cmd, data, "tests")
 	assert.NoError(t, err)
 }

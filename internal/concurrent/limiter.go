@@ -24,7 +24,7 @@ func NewRateLimiter(requestsPerMinute int) *RateLimiter {
 
 	// Convert requests per minute to rate per second
 	ratePerSecond := rate.Limit(float64(requestsPerMinute) / 60.0)
-	
+
 	// Burst size: allow 15% of the rate or minimum 10
 	burst := requestsPerMinute * 15 / 100
 	if burst < 10 {
@@ -39,9 +39,15 @@ func NewRateLimiter(requestsPerMinute int) *RateLimiter {
 
 // Wait blocks until a token is available.
 func (rl *RateLimiter) Wait() {
-	if rl != nil && rl.limiter != nil {
-		rl.limiter.Wait(context.Background())
+	_ = rl.WaitCtx(context.Background())
+}
+
+// WaitCtx blocks until a token is available or the context is canceled.
+func (rl *RateLimiter) WaitCtx(ctx context.Context) error {
+	if rl == nil || rl.limiter == nil {
+		return nil
 	}
+	return rl.limiter.Wait(ctx)
 }
 
 // WaitWithTimeout blocks until a token is available or timeout is reached.
@@ -76,9 +82,9 @@ func (rl *RateLimiter) Tokens() int {
 
 // Reservation represents a reservation of tokens.
 type Reservation struct {
-	limiter   *RateLimiter
-	reserved  bool
-	delay     time.Duration
+	limiter  *RateLimiter
+	reserved bool
+	delay    time.Duration
 }
 
 // Reserve reserves a token for future use.
@@ -120,16 +126,28 @@ func (r *Reservation) Cancel() {
 
 // AdaptiveRateLimiter adjusts rate based on API responses.
 type AdaptiveRateLimiter struct {
-	baseLimiter *RateLimiter
-	targetRPS   float64
-	currentRPS  float64
-	sampleSize  int
+	baseLimiter   *RateLimiter
+	targetRPS     float64
+	currentRPS    float64
+	sampleSize    int
 	responseTimes []time.Duration
-	mu          sync.Mutex
+	mu            sync.Mutex
 }
 
 // NewAdaptiveRateLimiter creates an adaptive rate limiter.
+// If initialRequestsPerMinute is 0, rate limiting is disabled (unlimited).
 func NewAdaptiveRateLimiter(initialRequestsPerMinute int) *AdaptiveRateLimiter {
+	if initialRequestsPerMinute <= 0 {
+		// Unlimited mode — no rate limiter
+		return &AdaptiveRateLimiter{
+			baseLimiter:   nil,
+			targetRPS:     0,
+			currentRPS:    0,
+			sampleSize:    10,
+			responseTimes: make([]time.Duration, 0, 10),
+		}
+	}
+
 	return &AdaptiveRateLimiter{
 		baseLimiter:   NewRateLimiter(initialRequestsPerMinute),
 		targetRPS:     float64(initialRequestsPerMinute) / 60.0,
@@ -141,15 +159,21 @@ func NewAdaptiveRateLimiter(initialRequestsPerMinute int) *AdaptiveRateLimiter {
 
 // Wait blocks until a token is available.
 func (arl *AdaptiveRateLimiter) Wait() {
-	if arl != nil && arl.baseLimiter != nil {
-		arl.baseLimiter.Wait()
+	_ = arl.WaitCtx(context.Background())
+}
+
+// WaitCtx blocks until a token is available or the context is canceled.
+func (arl *AdaptiveRateLimiter) WaitCtx(ctx context.Context) error {
+	if arl == nil || arl.baseLimiter == nil {
+		return nil
 	}
+	return arl.baseLimiter.WaitCtx(ctx)
 }
 
 // RecordResponseTime records a response time for adaptive adjustment.
 func (arl *AdaptiveRateLimiter) RecordResponseTime(d time.Duration) {
-	if arl == nil {
-		return
+	if arl == nil || arl.baseLimiter == nil {
+		return // unlimited mode — no adaptation needed
 	}
 
 	arl.mu.Lock()
@@ -179,24 +203,22 @@ func averageDuration(durations []time.Duration) time.Duration {
 }
 
 func (arl *AdaptiveRateLimiter) adjustRate(avgResponseTime time.Duration) {
-	// If average response time is high, reduce rate
-	// If low, we could increase rate, but be conservative
-	if avgResponseTime > 2*time.Second {
-		// Slow down
-		arl.currentRPS = arl.currentRPS * 0.9
-	} else if avgResponseTime < 500*time.Millisecond {
-		// Speed up slightly, but don't exceed target
-		arl.currentRPS = min(arl.currentRPS*1.05, arl.targetRPS)
+	// Minimum rate floor: never go below 50% of target rate.
+	// TestRail API typically responds in 1-5s for large suites — that's normal,
+	// not a sign of overload. Only slow down on truly excessive response times
+	// (>10s suggests server is under heavy load or rate limiting).
+	minRPS := arl.targetRPS * 0.5
+
+	if avgResponseTime > 10*time.Second {
+		// Genuinely overloaded — slow down moderately
+		arl.currentRPS = max(arl.currentRPS*0.85, minRPS)
+	} else if avgResponseTime < 1*time.Second {
+		// Fast responses — speed up towards target
+		arl.currentRPS = min(arl.currentRPS*1.1, arl.targetRPS)
 	}
+	// For 1-10s: do nothing — this is normal API latency, not overload
 
 	// Update the underlying limiter
 	newRate := rate.Limit(arl.currentRPS)
 	arl.baseLimiter.limiter.SetLimit(newRate)
-}
-
-func min(a, b float64) float64 {
-	if a < b {
-		return a
-	}
-	return b
 }

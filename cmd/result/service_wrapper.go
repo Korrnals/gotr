@@ -1,109 +1,103 @@
 package result
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service"
-	"github.com/spf13/cobra"
 )
 
-// ResultServiceInterface определяет интерфейс для операций с результатами
+// ResultServiceInterface defines the interface for test result operations.
 type ResultServiceInterface interface {
-	ParseID(args []string, index int) (int64, error)
-	PrintSuccess(cmd *cobra.Command, format string, args ...interface{})
-	Output(cmd *cobra.Command, data interface{}) error
-	AddForTest(testID int64, req *data.AddResultRequest) (*data.Result, error)
-	AddForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
-	AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
-	AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
-	GetForTest(testID int64) (data.GetResultsResponse, error)
-	GetForCase(runID, caseID int64) (data.GetResultsResponse, error)
-	GetForRun(runID int64) (data.GetResultsResponse, error)
-	GetRunsForProject(projectID int64) (data.GetRunsResponse, error)
-	// AddBulkResults парсит JSON и добавляет результаты (bulk операция)
-	AddBulkResults(runID int64, fileData []byte) (interface{}, error)
+	ParseID(ctx context.Context, args []string, index int) (int64, error)
+	AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
+	AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
+	AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error)
+	GetForTest(ctx context.Context, testID int64) (data.GetResultsResponse, error)
+	GetForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error)
+	GetForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error)
+	GetRunsForProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error)
+	// AddBulkResults parses JSON and submits results (bulk operation).
+	AddBulkResults(ctx context.Context, runID int64, fileData []byte) (interface{}, error)
 }
 
-// resultServiceWrapper оборачивает сервис для работы с результатами
+// resultServiceWrapper wraps the result service for command handlers.
 type resultServiceWrapper struct {
 	svc *service.ResultService
 }
 
-// Проверка что resultServiceWrapper реализует ResultServiceInterface
+// Compile-time check: resultServiceWrapper implements ResultServiceInterface.
 var _ ResultServiceInterface = (*resultServiceWrapper)(nil)
 
-func (w *resultServiceWrapper) ParseID(args []string, index int) (int64, error) {
-	return w.svc.ParseID(args, index)
+// ParseID delegates ID parsing to the underlying result service.
+func (w *resultServiceWrapper) ParseID(ctx context.Context, args []string, index int) (int64, error) {
+	return w.svc.ParseID(ctx, args, index)
 }
 
-func (w *resultServiceWrapper) PrintSuccess(cmd *cobra.Command, format string, args ...interface{}) {
-	w.svc.PrintSuccess(cmd, format, args...)
+// AddForTest delegates single-test result creation to the underlying result service.
+func (w *resultServiceWrapper) AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
+	return w.svc.AddForTest(ctx, testID, req)
 }
 
-func (w *resultServiceWrapper) Output(cmd *cobra.Command, data interface{}) error {
-	return w.svc.Output(cmd, data)
+// AddForCase delegates case result creation to the underlying result service.
+func (w *resultServiceWrapper) AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
+	return w.svc.AddForCase(ctx, runID, caseID, req)
 }
 
-func (w *resultServiceWrapper) AddForTest(testID int64, req *data.AddResultRequest) (*data.Result, error) {
-	return w.svc.AddForTest(testID, req)
+// AddResults delegates bulk test result creation to the underlying result service.
+func (w *resultServiceWrapper) AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+	return w.svc.AddResults(ctx, runID, req)
 }
 
-func (w *resultServiceWrapper) AddForCase(runID, caseID int64, req *data.AddResultRequest) (*data.Result, error) {
-	return w.svc.AddForCase(runID, caseID, req)
+// AddResultsForCases delegates bulk case result creation to the underlying result service.
+func (w *resultServiceWrapper) AddResultsForCases(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+	return w.svc.AddResultsForCases(ctx, runID, req)
 }
 
-func (w *resultServiceWrapper) AddResults(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
-	return w.svc.AddResults(runID, req)
+// GetForTest delegates test result retrieval to the underlying result service.
+func (w *resultServiceWrapper) GetForTest(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
+	return w.svc.GetForTest(ctx, testID)
 }
 
-func (w *resultServiceWrapper) AddResultsForCases(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
-	return w.svc.AddResultsForCases(runID, req)
+// GetForCase delegates run/case result retrieval to the underlying result service.
+func (w *resultServiceWrapper) GetForCase(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
+	return w.svc.GetForCase(ctx, runID, caseID)
 }
 
-func (w *resultServiceWrapper) GetForTest(testID int64) (data.GetResultsResponse, error) {
-	return w.svc.GetForTest(testID)
+// GetForRun delegates run result retrieval to the underlying result service.
+func (w *resultServiceWrapper) GetForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
+	return w.svc.GetForRun(ctx, runID)
 }
 
-func (w *resultServiceWrapper) GetForCase(runID, caseID int64) (data.GetResultsResponse, error) {
-	return w.svc.GetForCase(runID, caseID)
+// GetRunsForProject delegates run listing to the underlying result service.
+func (w *resultServiceWrapper) GetRunsForProject(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+	return w.svc.GetRunsForProject(ctx, projectID)
 }
 
-func (w *resultServiceWrapper) GetForRun(runID int64) (data.GetResultsResponse, error) {
-	return w.svc.GetForRun(runID)
-}
-
-func (w *resultServiceWrapper) GetRunsForProject(projectID int64) (data.GetRunsResponse, error) {
-	return w.svc.GetRunsForProject(projectID)
-}
-
-// AddBulkResults парсит JSON и добавляет результаты (bulk операция)
-func (w *resultServiceWrapper) AddBulkResults(runID int64, fileData []byte) (interface{}, error) {
-	// Пробуем как массив с test_id
+// AddBulkResults parses JSON and submits results (bulk operation).
+func (w *resultServiceWrapper) AddBulkResults(ctx context.Context, runID int64, fileData []byte) (interface{}, error) {
+	// Try parsing as an array with test_id
 	var testResults []data.ResultEntry
 	if err := json.Unmarshal(fileData, &testResults); err == nil && len(testResults) > 0 {
 		req := &data.AddResultsRequest{Results: testResults}
-		return w.svc.AddResults(runID, req)
+		return w.svc.AddResults(ctx, runID, req)
 	}
 
-	// Пробуем как массив с case_id
+	// Try parsing as an array with case_id
 	var caseResults []data.ResultForCaseEntry
 	if err := json.Unmarshal(fileData, &caseResults); err == nil && len(caseResults) > 0 {
 		req := &data.AddResultsForCasesRequest{Results: caseResults}
-		return w.svc.AddResultsForCases(runID, req)
+		return w.svc.AddResultsForCases(ctx, runID, req)
 	}
 
-	return nil, fmt.Errorf("не удалось распарсить JSON файл: ожидается массив с test_id или case_id")
+	return nil, fmt.Errorf("failed to parse JSON file: expected array with test_id or case_id")
 }
 
-// newResultServiceFromInterface создаёт сервис из клиента-интерфейса
+// newResultServiceFromInterface creates a result service from a client interface.
 func newResultServiceFromInterface(cli client.ClientInterface) ResultServiceInterface {
-	// Пытаемся привести к *HTTPClient, если это не mock
-	if httpClient, ok := cli.(*client.HTTPClient); ok {
-		return &resultServiceWrapper{svc: service.NewResultService(httpClient)}
-	}
-	// Для тестов с mock - используем специальный конструктор
-	return &resultServiceWrapper{svc: service.NewResultServiceFromInterface(cli)}
+	return &resultServiceWrapper{svc: service.NewResultService(cli)}
 }

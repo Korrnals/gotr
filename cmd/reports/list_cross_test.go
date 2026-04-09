@@ -1,6 +1,7 @@
 package reports
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -10,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCrossProjectCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetCrossProjectReportsFunc: func() (data.GetReportsResponse, error) {
+		GetCrossProjectReportsFunc: func(ctx context.Context) (data.GetReportsResponse, error) {
 			return data.GetReportsResponse{
 				{ID: 100, Name: "Cross Project Summary", Description: "Summary across projects"},
 				{ID: 200, Name: "Cross Project Coverage", Description: "Coverage across projects"},
@@ -32,7 +33,7 @@ func TestListCrossProjectCmd_Success(t *testing.T) {
 
 func TestListCrossProjectCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetCrossProjectReportsFunc: func() (data.GetReportsResponse, error) {
+		GetCrossProjectReportsFunc: func(ctx context.Context) (data.GetReportsResponse, error) {
 			return data.GetReportsResponse{}, nil
 		},
 	}
@@ -47,7 +48,7 @@ func TestListCrossProjectCmd_Empty(t *testing.T) {
 
 func TestListCrossProjectCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCrossProjectReportsFunc: func() (data.GetReportsResponse, error) {
+		GetCrossProjectReportsFunc: func(ctx context.Context) (data.GetReportsResponse, error) {
 			return nil, fmt.Errorf("failed to fetch cross-project reports")
 		},
 	}
@@ -63,7 +64,7 @@ func TestListCrossProjectCmd_ClientError(t *testing.T) {
 
 func TestListCrossProjectCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetCrossProjectReportsFunc: func() (data.GetReportsResponse, error) {
+		GetCrossProjectReportsFunc: func(ctx context.Context) (data.GetReportsResponse, error) {
 			return data.GetReportsResponse{
 				{ID: 100, Name: "Cross Project Report", Description: "Test"},
 			}, nil

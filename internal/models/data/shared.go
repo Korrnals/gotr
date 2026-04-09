@@ -1,7 +1,7 @@
 // models/data/shared.go
 package data
 
-// Pagination — общая структура для пагинированных ответов
+// Pagination is the common structure for paginated API responses.
 type Pagination struct {
 	Offset int64 `json:"offset"`
 	Limit  int64 `json:"limit"`
@@ -12,7 +12,7 @@ type Pagination struct {
 	} `json:"_links,omitempty"`
 }
 
-// Step — шаг кейса (custom_steps_separated)
+// Step represents a test case step (custom_steps_separated).
 type Step struct {
 	Content        string `json:"content,omitempty"`
 	AdditionalInfo string `json:"additional_info,omitempty"`
@@ -21,7 +21,7 @@ type Step struct {
 	SharedStepID   int64  `json:"shared_step_id,omitempty"`
 }
 
-// Label — метка кейса (используется в Case.Labels)
+// Label represents a test case label (used in Case.Labels).
 type Label struct {
 	ID   int64  `json:"id"`
 	Name string `json:"name"`

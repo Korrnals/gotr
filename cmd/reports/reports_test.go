@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для Register ====================
+// ==================== Tests for Register ====================
 
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{}
@@ -18,12 +18,12 @@ func TestRegister(t *testing.T) {
 		return mock
 	})
 
-	// Проверяем, что команда reports добавлена
+	// Verify reports command is added
 	reportsCmd, _, err := root.Find([]string{"reports"})
 	assert.NoError(t, err)
 	assert.NotNil(t, reportsCmd)
 
-	// Проверяем наличие подкоманд
+	// Verify subcommands are present
 	listCmd, _, _ := root.Find([]string{"reports", "list"})
 	assert.NotNil(t, listCmd)
 
@@ -45,7 +45,7 @@ func TestRegister_Help(t *testing.T) {
 		return mock
 	})
 
-	// Проверяем, что вызов без аргументов показывает help
+	// Verify calling without arguments shows help
 	root.SetArgs([]string{"reports"})
 	err := root.Execute()
 	assert.NoError(t, err)

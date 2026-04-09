@@ -4,30 +4,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'cases add'
-// Эндпоинт: POST /add_case/{section_id}
+// newAddCmd creates the 'cases add' command.
+// Endpoint: POST /add_case/{section_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <section_id>",
-		Short: "Создать новый тест-кейс",
-		Long:  `Создаёт новый тест-кейс в указанной секции.`,
-		Example: `  # Создать тест-кейс с параметрами
-  gotr cases add 100 --title="Тест авторизации" --template-id=1
+		Use:   "add [section_id]",
+		Short: "Create a new test case",
+		Long:  `Creates a new test case in the specified section.`,
+		Example: `  # Create a test case with parameters
+  gotr cases add 100 --title="Auth test" --template-id=1
 
-  # Создать из JSON-файла
+  # Create from a JSON file
   gotr cases add 100 --json-file=case.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			sectionID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || sectionID <= 0 {
-				return fmt.Errorf("invalid section_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var sectionID int64
+			var err error
+			if len(args) > 0 {
+				sectionID, err = flags.ValidateRequiredID(args, 0, "section_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("section_id required: gotr cases add [section_id]")
+				}
+
+				sectionID, err = resolveSectionIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check JSON file
@@ -61,25 +79,24 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			resp, err := cli.AddCase(sectionID, &req)
+			resp, err := cli.AddCase(ctx, sectionID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create case: %w", err)
 			}
 
-			fmt.Printf("✅ Case created (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Case created (ID: %d)", resp.ID)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().Bool("dry-run", false, "Preview the action without creating anything")
 	output.AddFlag(cmd)
-	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными кейса")
-	cmd.Flags().String("title", "", "Название тест-кейса")
-	cmd.Flags().Int64("template-id", 0, "ID шаблона")
-	cmd.Flags().Int64("type-id", 0, "ID типа теста")
-	cmd.Flags().Int64("priority-id", 0, "ID приоритета")
-	cmd.Flags().String("refs", "", "Ссылки (референсы)")
+	cmd.Flags().String("json-file", "", "Path to a JSON file with case data")
+	cmd.Flags().String("title", "", "Test case title")
+	cmd.Flags().Int64("template-id", 0, "Template ID")
+	cmd.Flags().Int64("type-id", 0, "Test type ID")
+	cmd.Flags().Int64("priority-id", 0, "Priority ID")
+	cmd.Flags().String("refs", "", "References")
 
 	return cmd
 }

@@ -2,38 +2,56 @@ package milestones
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'milestones add'
-// Эндпоинт: POST /add_milestone/{project_id}
+// newAddCmd creates the 'milestones add' command.
+// Endpoint: POST /add_milestone/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <project_id>",
-		Short: "Создать новый майлстон",
-		Long: `Создаёт новый майлстон (веху) в указанном проекте.
+		Use:   "add [project_id]",
+		Short: "Create a new milestone",
+		Long: `Creates a new milestone in the specified project.
 
-Майлстон — это этап разработки, к которому привязываются тестовые прогоны.
-Можно указать дедлайн, описание и родительский майлстон для иерархии.
+A milestone is a development stage to which test runs are linked.
+You can specify a deadline, description, and parent milestone for hierarchy.
 
-Примеры использования:
-  # Создать простой майлстон
-  gotr milestones add 1 --name="Релиз 1.0"
+Usage examples:
+  # Create a simple milestone
+  gotr milestones add 1 --name="Release 1.0"
 
-  # Майлстон с дедлайном и описанием
-  gotr milestones add 1 --name="Спринт 5" --due-on="2026-03-15" --description="Цель спринта"
+  # Milestone with deadline and description
+  gotr milestones add 1 --name="Sprint 5" --due-on="2026-03-15" --description="Sprint goal"
 
-  # Вложенный майлстон (подэтап)
-  gotr milestones add 1 --name="Итерация 1.1" --parent-id=123`,
-		Args: cobra.ExactArgs(1),
+  # Nested milestone (sub-stage)
+  gotr milestones add 1 --name="Iteration 1.1" --parent-id=123`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			var projectID int64
+			if len(args) > 0 {
+				var err error
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				ctx := cmd.Context()
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr milestones add [project_id]")
+				}
+				cli := getClient(cmd)
+				var err error
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -60,21 +78,22 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddMilestone(projectID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddMilestone(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create milestone: %w", err)
 			}
 
-			fmt.Printf("✅ Milestone created (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Milestone created (ID: %d)", resp.ID)
+			return output.OutputResult(cmd, resp, "milestones")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без реального выполнения")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without actually executing")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название майлстона (обязательно)")
-	cmd.Flags().String("description", "", "Описание майлстона")
-	cmd.Flags().String("due-on", "", "Дедлайн в формате YYYY-MM-DD")
+	cmd.Flags().String("name", "", "Milestone name (required)")
+	cmd.Flags().String("description", "", "Milestone description")
+	cmd.Flags().String("due-on", "", "Deadline in YYYY-MM-DD format")
 
 	return cmd
 }

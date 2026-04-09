@@ -1,52 +1,56 @@
 package get
 
 import (
+	"context"
 	"fmt"
-	"strconv"
+	"os"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newCasesCmd создаёт команду для получения кейсов проекта
+// newCasesCmd creates the command for retrieving project test cases.
 func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cases [project-id]",
-		Short: "Получить кейсы проекта",
-		Long: `Получить кейсы проекта.
+		Short: "Get project test cases",
+		Long: `Get project test cases.
 
-Если проект содержит несколько сьютов и --suite-id не указан, 
-будет предложено выбрать сьют из списка.
+If the project contains multiple suites and --suite-id is not specified,
+you will be prompted to select a suite from the list.
 
-Обязательные параметры:
-	ID проекта — позиционный аргумент или флаг --project-id
+Required parameters:
+	Project ID — positional argument or --project-id flag
 
-Опциональные параметры:
-	ID сюиты — флаг --suite-id (обязателен для проектов с multiple suites)
-	ID секции — флаг --section-id
-	Все сьюты — флаг --all-suites (получить кейсы из всех сьютов проекта)
+Optional parameters:
+	Suite ID — --suite-id flag (required for projects with multiple suites)
+	Section ID — --section-id flag
+	All suites — --all-suites flag (get cases from all project suites)
 
-Примеры:
-	# Автоматический выбор сьюта (если один) или интерактивный выбор
+Examples:
+	# Automatic suite selection (if single) or interactive selection
 	gotr get cases 30
 
-	# Явное указание сьюта
+	# Explicit suite specification
 	gotr get cases 30 --suite-id 20069
 
-	# Получить кейсы из всех сьютов проекта
+	# Get cases from all project suites
 	gotr get cases 30 --all-suites
 
-	# С фильтрацией по секции
+	# Filter by section
 	gotr get cases 30 --suite-id 20069 --section-id 100
 `,
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			projectIDStr := ""
@@ -60,15 +64,15 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			var err error
 
 			if projectIDStr == "" {
-				// Интерактивный выбор проекта
-				projectID, err = selectProjectInteractively(cli)
+				// Interactive project selection
+				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
 					return err
 				}
 			} else {
-				projectID, err = strconv.ParseInt(projectIDStr, 10, 64)
+				projectID, err = flags.ParseID(projectIDStr)
 				if err != nil {
-					return fmt.Errorf("некорректный ID проекта: %w", err)
+					return fmt.Errorf("invalid project_id: %w", err)
 				}
 			}
 
@@ -76,71 +80,110 @@ func newCasesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.C
 			allSuites, _ := command.Flags().GetBool("all-suites")
 			suiteID, _ := command.Flags().GetInt64("suite-id")
 
-			// Если указан конкретный suite-id — используем его
+			// Use the explicit suite-id if provided
 			if suiteID != 0 {
-				return fetchAndOutputCases(command, cli, projectID, suiteID, sectionID, start)
+				return fetchAndOutputCases(ctx, command, cli, projectID, suiteID, sectionID, start)
 			}
 
-			// Получаем список сьютов проекта
-			suites, err := cli.GetSuites(projectID)
+			// Fetch suites for the project
+			suites, err := cli.GetSuites(ctx, projectID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить список сьютов проекта %d: %w", projectID, err)
+				return fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
 			}
 
 			if len(suites) == 0 {
-				return fmt.Errorf("в проекте %d не найдено сьютов", projectID)
+				return fmt.Errorf("no suites found in project %d", projectID)
 			}
 
-			// Если --all-suites — собираем кейсы из всех сьютов
+			// If --all-suites, collect cases from every suite
 			if allSuites {
-				return fetchCasesFromAllSuites(command, cli, projectID, suites, sectionID, start)
+				return fetchCasesFromAllSuites(ctx, command, cli, projectID, suites, sectionID, start)
 			}
 
-			// Если только один сьют — используем его автоматически
+			// Single suite — use it automatically
 			if len(suites) == 1 {
-				fmt.Printf("В проекте найден один сьют (ID: %d), используем его автоматически...\n", suites[0].ID)
-				return fetchAndOutputCases(command, cli, projectID, suites[0].ID, sectionID, start)
+				ui.Infof(os.Stdout, "Project has one suite (ID: %d), using automatically...", suites[0].ID)
+				return fetchAndOutputCases(ctx, command, cli, projectID, suites[0].ID, sectionID, start)
 			}
 
-			// Несколько сьютов — интерактивный выбор
-			selectedSuiteID, err := selectSuiteInteractively(suites)
+			// Multiple suites — interactive selection
+			selectedSuiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 			if err != nil {
 				return err
 			}
 
-			return fetchAndOutputCases(command, cli, projectID, selectedSuiteID, sectionID, start)
+			return fetchAndOutputCases(ctx, command, cli, projectID, selectedSuiteID, sectionID, start)
 		},
 	}
 
-	cmd.Flags().Int64P("suite-id", "s", 0, "ID тест-сюиты (если не указан — будет предложен выбор)")
-	cmd.Flags().Int64("section-id", 0, "ID секции (опционально)")
-	cmd.Flags().Bool("all-suites", false, "Получить кейсы из всех сьютов проекта")
-	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	cmd.Flags().Int64P("suite-id", "s", 0, "Test suite ID (if not specified, interactive selection will be offered)")
+	cmd.Flags().Int64("section-id", 0, "Section ID (optional)")
+	cmd.Flags().Bool("all-suites", false, "Get cases from all project suites")
+	cmd.Flags().String("project-id", "", "Project ID (alternative to positional argument)")
 
 	return cmd
 }
 
-// newCaseCmd создаёт команду для получения одного кейса
+// newCaseCmd creates the command for retrieving a single test case.
 func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
-		Use:   "case <case-id>",
-		Short: "Получить один кейс по ID кейса",
-		Long:  "Получает детальную информацию о конкретном тест-кейсе по его ID.",
-		Args:  cobra.ExactArgs(1),
+		Use:   "case [case-id]",
+		Short: "Get a single case by case ID",
+		Long:  "Retrieves detailed information about a specific test case by its ID.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
+			ctx := command.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
-			idStr := args[0]
-			id, err := strconv.ParseInt(idStr, 10, 64)
-			if err != nil {
-				return fmt.Errorf("некорректный ID кейса: %w", err)
+			var id int64
+			var err error
+			if len(args) > 0 {
+				id, err = flags.ParseID(args[0])
+				if err != nil {
+					return fmt.Errorf("invalid case ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id required: gotr get case [case-id]")
+				}
+
+				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
+				if err != nil {
+					return err
+				}
+
+				suites, err := cli.GetSuites(ctx, projectID)
+				if err != nil {
+					return fmt.Errorf("failed to get suites: %w", err)
+				}
+				if len(suites) == 0 {
+					return fmt.Errorf("no suites found in project %d", projectID)
+				}
+
+				suiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
+				if err != nil {
+					return err
+				}
+
+				cases, err := cli.GetCases(ctx, projectID, suiteID, 0)
+				if err != nil {
+					return fmt.Errorf("failed to get cases: %w", err)
+				}
+				if len(cases) == 0 {
+					return fmt.Errorf("no cases found in suite %d", suiteID)
+				}
+
+				id, err = selectCaseID(ctx, cases)
+				if err != nil {
+					return err
+				}
 			}
 
-			kase, err := cli.GetCase(id)
+			kase, err := cli.GetCase(ctx, id)
 			if err != nil {
 				return err
 			}
@@ -150,9 +193,9 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 	}
 }
 
-// fetchAndOutputCases получает кейсы и выводит результат
-func fetchAndOutputCases(cmd *cobra.Command, client client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
-	cases, err := client.GetCases(projectID, suiteID, sectionID)
+// fetchAndOutputCases retrieves cases and outputs the result.
+func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
+	cases, err := cli.GetCases(ctx, projectID, suiteID, sectionID)
 	if err != nil {
 		return err
 	}
@@ -160,38 +203,39 @@ func fetchAndOutputCases(cmd *cobra.Command, client client.ClientInterface, proj
 	return handleOutput(cmd, cases, start)
 }
 
-// fetchCasesFromAllSuites получает кейсы из всех сьютов проекта
-func fetchCasesFromAllSuites(cmd *cobra.Command, client client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
-	// Create progress manager
-	pm := progress.NewManager()
-
-	// Create progress bar for suites
-	var bar *progress.Bar
-	if len(suites) > 1 {
-		bar = pm.NewBar(int64(len(suites)), fmt.Sprintf("Загрузка кейсов из %d сьютов...", len(suites)))
-	}
+// fetchCasesFromAllSuites retrieves cases from all suites in the project.
+func fetchCasesFromAllSuites(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, projectID int64, suites data.GetSuitesResponse, sectionID int64, start time.Time) error {
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	op := ui.NewOperation(ui.StatusConfig{
+		Title:  fmt.Sprintf("Loading cases from %d suites...", len(suites)),
+		Writer: os.Stderr,
+		Quiet:  quiet,
+	})
+	defer op.Finish()
+	task := op.AddTask("suites", len(suites))
 
 	allCases := make(data.GetCasesResponse, 0)
 	for _, suite := range suites {
-		cases, err := client.GetCases(projectID, suite.ID, sectionID)
+		cases, err := cli.GetCases(ctx, projectID, suite.ID, sectionID)
 		if err != nil {
-			bar.Add(1)
+			task.Error(err)
+			task.Increment()
 			continue // Skip suites that fail
 		}
 		allCases = append(allCases, cases...)
-		bar.Add(1)
+		task.Increment()
 	}
-	bar.Finish()
+	task.Finish()
 
 	return handleOutput(cmd, allCases, start)
 }
 
-// casesCmd — экспортированная команда для регистрации
+// casesCmd is the exported command registered with the root.
 var casesCmd = newCasesCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })
 
-// caseCmd — экспортированная команда для регистрации
+// caseCmd is the exported command registered with the root.
 var caseCmd = newCaseCmd(func(cmd *cobra.Command) client.ClientInterface {
 	return getClient(cmd)
 })

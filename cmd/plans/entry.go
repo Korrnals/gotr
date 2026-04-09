@@ -2,26 +2,29 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 	"strings"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newEntryCmd создаёт родительскую команду 'plans entry'
-// Родительская команда для управления записями плана
+// newEntryCmd creates the parent 'plans entry' command.
+// Groups subcommands for managing plan entries.
 func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	entryCmd := &cobra.Command{
 		Use:   "entry",
-		Short: "Управление записями плана",
-		Long: `Управление записями (entries) тест-плана — тестовыми прогонами внутри плана.
+		Short: "Manage plan entries",
+		Long: `Manage test plan entries — test runs within a plan.
 
-Подкоманды:
-  • add    — добавить запись (тестовый прогон) в план
-  • update — обновить существующую запись
-  • delete — удалить запись из плана`,
+Subcommands:
+  • add    — add an entry (test run) to a plan
+  • update — update an existing entry
+  • delete — delete an entry from a plan`,
 	}
 
 	entryCmd.AddCommand(newEntryAddCmd(getClient))
@@ -31,23 +34,36 @@ func newEntryCmd(getClient GetClientFunc) *cobra.Command {
 	return entryCmd
 }
 
-// newEntryAddCmd создаёт команду 'plans entry add'
-// Эндпоинт: POST /add_plan_entry/{plan_id}
+// newEntryAddCmd creates the 'plans entry add' command.
+// Endpoint: POST /add_plan_entry/{plan_id}
 func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <plan_id>",
-		Short: "Добавить запись в план",
-		Long:  `Добавляет новую запись (тестовый прогон) в существующий план.`,
-		Example: `  # Добавить прогон с названием
-  gotr plans entry add 100 --suite-id=50 --name="Прогон 1"
+		Use:   "add [plan_id]",
+		Short: "Add an entry to a plan",
+		Long:  `Adds a new entry (test run) to an existing plan.`,
+		Example: `  # Add a run with a name
+  gotr plans entry add 100 --suite-id=50 --name="Run 1"
 
-  # Добавить с конфигурациями
+  # Add with configurations
   gotr plans entry add 100 --suite-id=50 --config-ids="1,2,3"`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			var planID int64
+			if len(args) > 0 {
+				var err error
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans entry add [plan_id]")
+				}
+				var err error
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
@@ -74,42 +90,66 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddPlanEntry(planID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddPlanEntry(ctx, planID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to add plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry added to plan %d\n", planID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Entry added to plan %d", planID)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without adding")
 	output.AddFlag(cmd)
-	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
-	cmd.Flags().String("name", "", "Название записи")
-	cmd.Flags().String("config-ids", "", "ID конфигураций через запятую")
+	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
+	cmd.Flags().String("name", "", "Entry name")
+	cmd.Flags().String("config-ids", "", "Comma-separated configuration IDs")
 
 	return cmd
 }
 
-// newEntryUpdateCmd создаёт команду 'plans entry update'
-// Эндпоинт: POST /update_plan_entry/{plan_id}/{entry_id}
+// newEntryUpdateCmd creates the 'plans entry update' command.
+// Endpoint: POST /update_plan_entry/{plan_id}/{entry_id}
 func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <plan_id> <entry_id>",
-		Short: "Обновить запись плана",
-		Long:  `Обновляет существующую запись в тест-плане.`,
-		Example: `  # Изменить название записи
-  gotr plans entry update 100 abc123 --name="Обновлённая запись"`,
-		Args: cobra.ExactArgs(2),
+		Use:   "update [plan_id] [entry_id]",
+		Short: "Update a plan entry",
+		Long:  `Updates an existing entry in a test plan.`,
+		Example: `  # Change entry name
+  gotr plans entry update 100 abc123 --name="Updated entry"`,
+		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			var planID int64
+			var err error
+			if len(args) > 0 {
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans entry update [plan_id] [entry_id]")
+				}
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
-			entryID := args[1]
+			var entryID string
+			if len(args) > 1 {
+				entryID = args[1]
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("entry_id is required in non-interactive mode: gotr plans entry update [plan_id] [entry_id]")
+				}
+				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
+				if err != nil {
+					return err
+				}
+			}
 			if entryID == "" {
 				return fmt.Errorf("entry_id is required")
 			}
@@ -128,43 +168,67 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdatePlanEntry(planID, entryID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.UpdatePlanEntry(ctx, planID, entryID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry %s updated in plan %d\n", entryID, planID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Entry %s updated in plan %d", entryID, planID)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название записи")
+	cmd.Flags().String("name", "", "New entry name")
 
 	return cmd
 }
 
-// newEntryDeleteCmd создаёт команду 'plans entry delete'
-// Эндпоинт: POST /delete_plan_entry/{plan_id}/{entry_id}
+// newEntryDeleteCmd creates the 'plans entry delete' command.
+// Endpoint: POST /delete_plan_entry/{plan_id}/{entry_id}
 func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <plan_id> <entry_id>",
-		Short: "Удалить запись плана",
-		Long:  `Удаляет запись из тест-плана.`,
-		Example: `  # Удалить запись из плана
+		Use:   "delete [plan_id] [entry_id]",
+		Short: "Delete a plan entry",
+		Long:  `Deletes an entry from a test plan.`,
+		Example: `  # Delete an entry from a plan
   gotr plans entry delete 100 abc123
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr plans entry delete 100 abc123 --dry-run`,
-		Args: cobra.ExactArgs(2),
+		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			var planID int64
+			var err error
+			if len(args) > 0 {
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans entry delete [plan_id] [entry_id]")
+				}
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
-			entryID := args[1]
+			var entryID string
+			if len(args) > 1 {
+				entryID = args[1]
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("entry_id is required in non-interactive mode: gotr plans entry delete [plan_id] [entry_id]")
+				}
+				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
+				if err != nil {
+					return err
+				}
+			}
 			if entryID == "" {
 				return fmt.Errorf("entry_id is required")
 			}
@@ -177,21 +241,22 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeletePlanEntry(planID, entryID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeletePlanEntry(ctx, planID, entryID); err != nil {
 				return fmt.Errorf("failed to delete plan entry: %w", err)
 			}
 
-			fmt.Printf("✅ Entry %s deleted from plan %d\n", entryID, planID)
+			ui.Successf(os.Stdout, "Entry %s deleted from plan %d", entryID, planID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted")
 
 	return cmd
 }
 
-// parseIntList разбирает список чисел, разделённых запятыми
+// parseIntList splits a comma-separated string into a list of int64 IDs.
 func parseIntList(s string) []int64 {
 	var ids []int64
 	for _, part := range strings.Split(s, ",") {
@@ -199,7 +264,7 @@ func parseIntList(s string) []int64 {
 		if part == "" {
 			continue
 		}
-		id, err := strconv.ParseInt(part, 10, 64)
+		id, err := flags.ParseID(part)
 		if err == nil && id > 0 {
 			ids = append(ids, id)
 		}

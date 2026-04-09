@@ -1,21 +1,23 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get cases ====================
+// ==================== Tests for get cases ====================
 
 func TestCasesCmd_WithSuiteID(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			assert.Equal(t, int64(0), sectionID)
@@ -36,7 +38,7 @@ func TestCasesCmd_WithSuiteID(t *testing.T) {
 
 func TestCasesCmd_WithProjectIDFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			return data.GetCasesResponse{
@@ -55,7 +57,7 @@ func TestCasesCmd_WithProjectIDFlag(t *testing.T) {
 
 func TestCasesCmd_WithSectionID(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			assert.Equal(t, int64(100), sectionID)
@@ -75,13 +77,13 @@ func TestCasesCmd_WithSectionID(t *testing.T) {
 
 func TestCasesCmd_AutoSelectSingleSuite(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Master Suite"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			assert.Equal(t, int64(20069), suiteID)
 			return data.GetCasesResponse{
@@ -92,7 +94,7 @@ func TestCasesCmd_AutoSelectSingleSuite(t *testing.T) {
 
 	cmd := newCasesCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	cmd.SetArgs([]string{"30"}) // Без --suite-id
+	cmd.SetArgs([]string{"30"}) // Without --suite-id
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
@@ -100,14 +102,14 @@ func TestCasesCmd_AutoSelectSingleSuite(t *testing.T) {
 
 func TestCasesCmd_AllSuites(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Suite 1"},
 				{ID: 20070, Name: "Suite 2"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			if suiteID == 20069 {
 				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
 			}
@@ -135,7 +137,7 @@ func TestCasesCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID проекта")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestCasesCmd_InvalidProjectIDFlag(t *testing.T) {
@@ -151,8 +153,8 @@ func TestCasesCmd_InvalidProjectIDFlag(t *testing.T) {
 
 func TestCasesCmd_NoSuites(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
-			return data.GetSuitesResponse{}, nil // Нет сьютов
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{}, nil // No suites
 		},
 	}
 
@@ -162,12 +164,12 @@ func TestCasesCmd_NoSuites(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не найдено сьютов")
+	assert.Contains(t, err.Error(), "no suites found")
 }
 
 func TestCasesCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -183,7 +185,7 @@ func TestCasesCmd_APIError(t *testing.T) {
 
 func TestCasesCmd_GetSuitesError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return nil, fmt.Errorf("failed to get suites")
 		},
 	}
@@ -194,14 +196,76 @@ func TestCasesCmd_GetSuitesError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не удалось получить список сьютов")
+	assert.Contains(t, err.Error(), "failed to get suites")
 }
 
-// ==================== Тесты для get case ====================
+func TestCasesCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+
+	cmd := newCasesCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestCasesCmd_MultipleSuites_InteractiveSelect(t *testing.T) {
+	mock := &client.MockClient{
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSuitesResponse{
+				{ID: 20069, Name: "Suite 1"},
+				{ID: 20070, Name: "Suite 2"},
+			}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			assert.Equal(t, int64(20070), suiteID)
+			return data.GetCasesResponse{{ID: 2, Title: "Case 2"}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 1})
+	cmd := newCasesCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"30"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestCasesCmd_MultipleSuites_InteractiveSelectError(t *testing.T) {
+	mock := &client.MockClient{
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{
+				{ID: 20069, Name: "Suite 1"},
+				{ID: 20070, Name: "Suite 2"},
+			}, nil
+		},
+	}
+
+	// Empty queue forces MockPrompter.Select() error branch.
+	p := interactive.NewMockPrompter()
+	cmd := newCasesCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"30"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select")
+}
+
+// ==================== Tests for get case ====================
 
 func TestCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFunc: func(caseID int64) (*data.Case, error) {
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
 			return &data.Case{
 				ID:    12345,
@@ -227,7 +291,7 @@ func TestCaseCmd_InvalidCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID кейса")
+	assert.Contains(t, err.Error(), "invalid case ID")
 }
 
 func TestCaseCmd_NoArgs(t *testing.T) {
@@ -241,9 +305,200 @@ func TestCaseCmd_NoArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestCaseCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite", ProjectID: 30}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			assert.Equal(t, int64(20069), suiteID)
+			return data.GetCasesResponse{{ID: 12345, Title: "Case 12345"}}, nil
+		},
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
+			assert.Equal(t, int64(12345), caseID)
+			return &data.Case{ID: 12345, Title: "Case 12345"}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestCaseCmd_NoArgs_Interactive_GetSuitesError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return nil, fmt.Errorf("failed to get suites")
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get suites")
+}
+
+func TestCaseCmd_NoArgs_Interactive_NoSuites(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no suites found")
+}
+
+func TestCaseCmd_NoArgs_Interactive_SelectSuiteError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}, {ID: 20070, Name: "Other Suite"}}, nil
+		},
+	}
+
+	// One select response for project, then missing response for suite selection.
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select")
+}
+
+func TestCaseCmd_NoArgs_Interactive_GetCasesError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return nil, fmt.Errorf("failed to get cases")
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get cases")
+}
+
+func TestCaseCmd_NoArgs_Interactive_NoCases(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "no cases found")
+}
+
+func TestCaseCmd_NoArgs_Interactive_SelectCaseError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			return data.GetSuitesResponse{{ID: 20069, Name: "Master Suite"}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{{ID: 12345, Title: "Case 12345"}}, nil
+		},
+	}
+
+	// Two select responses for project and suite, missing response for case selection.
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select case")
+}
+
+func TestCaseCommands_GlobalRegistrationVarsInitialized(t *testing.T) {
+	assert.NotNil(t, casesCmd)
+	assert.NotNil(t, caseCmd)
+}
+
+func TestCaseCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+
+	cmd := newCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
 func TestCaseCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetCaseFunc: func(caseID int64) (*data.Case, error) {
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
 			return nil, fmt.Errorf("case not found")
 		},
 	}
@@ -257,17 +512,17 @@ func TestCaseCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для fetchCasesFromAllSuites ====================
+// ==================== Tests for fetchCasesFromAllSuites ====================
 
 func TestFetchCasesFromAllSuites_WithError(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Suite 1"},
 				{ID: 20070, Name: "Suite 2"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			if suiteID == 20070 {
 				return nil, fmt.Errorf("suite not found")
 			}
@@ -280,18 +535,18 @@ func TestFetchCasesFromAllSuites_WithError(t *testing.T) {
 	cmd.SetArgs([]string{"30", "--all-suites"})
 
 	err := cmd.Execute()
-	// Ошибка в одном сьюте не прерывает выполнение, просто выводится сообщение
+	// Error in one suite does not stop execution, just prints a message
 	assert.NoError(t, err)
 }
 
 func TestCasesCmd_AllSuites_WithSectionID(t *testing.T) {
 	mock := &client.MockClient{
-		GetSuitesFunc: func(projectID int64) (data.GetSuitesResponse, error) {
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 			return data.GetSuitesResponse{
 				{ID: 20069, Name: "Suite 1"},
 			}, nil
 		},
-		GetCasesFunc: func(projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
 			assert.Equal(t, int64(100), sectionID)
 			return data.GetCasesResponse{{ID: 1, Title: "Case in Section"}}, nil
 		},
@@ -306,7 +561,7 @@ func TestCasesCmd_AllSuites_WithSectionID(t *testing.T) {
 }
 
 func TestCasesCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда клиент не инициализирован
+	// Test case when client is not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
@@ -316,11 +571,11 @@ func TestCasesCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestCaseCmd_NilClient(t *testing.T) {
-	// Тестируем случай когда клиент не инициализирован
+	// Test case when client is not initialized
 	nilClientFunc := func(cmd *cobra.Command) client.ClientInterface {
 		return nil
 	}
@@ -330,5 +585,5 @@ func TestCaseCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

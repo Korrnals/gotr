@@ -2,41 +2,56 @@ package groups
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'groups get'
-// Эндпоинт: GET /get_group/{group_id}
+// newGetCmd creates the 'groups get' command.
+// Endpoint: GET /get_group/{group_id}
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get <group_id>",
-		Short: "Получить группу по ID",
-		Long: `Получает детальную информацию о группе пользователей по её ID.
+		Use:   "get [group_id]",
+		Short: "Get a group by ID",
+		Long: `Get detailed information about a user group by its ID.
 
-Включает название группы и полный список пользователей,
-входящих в эту группу с их ролями и контактной информацией.`,
-		Example: `  # Получить информацию о группе
+Includes the group name and a full list of users
+belonging to the group with their roles and contact information.`,
+		Example: `  # Get group information
   gotr groups get 1
 
-  # Сохранить в файл
+  # Save to file
   gotr groups get 5 -o group.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("некорректный group_id: %s", args[0])
-			}
-
 			cli := getClient(cmd)
-			resp, err := cli.GetGroup(groupID)
-			if err != nil {
-				return fmt.Errorf("не удалось получить группу: %w", err)
+			ctx := cmd.Context()
+
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id required: gotr groups get [group_id]")
+				}
+				groupID, err = resolveGroupIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			return outputResult(cmd, resp)
+			resp, err := cli.GetGroup(ctx, groupID)
+			if err != nil {
+				return fmt.Errorf("failed to get group: %w", err)
+			}
+
+			return output.OutputResult(cmd, resp, "groups")
 		},
 	}
 

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,31 +10,34 @@ import (
 	"time"
 )
 
-// ResponseData — для универсальных запросов (когда структура неизвестна).
+// ResponseData holds a generic response for requests where the structure is unknown.
 type ResponseData struct {
 	Status     string              `json:"status"`
 	StatusCode int                 `json:"status_code"`
 	Headers    map[string][]string `json:"headers"`
-	Body       interface{}         `json:"body"`       		   // распарсенный JSON
-    RawBody    []byte              `json:"raw_body,omitempty"` // сырые байты (опционально в JSON)
+	Body       interface{}         `json:"body"`               // parsed JSON
+	RawBody    []byte              `json:"raw_body,omitempty"` // raw bytes (optional in JSON output)
 	Timestamp  time.Time           `json:"timestamp"`
 	Duration   time.Duration       `json:"duration"`
 }
 
-// PrintResponse — красивый вывод универсального (с типом interface{}) ответа
-// Чтение ЛЮБОГО ответа
-func (c *HTTPClient) ReadResponse(resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
-	// Считываем поток ответа (сырые данные) в переменную
-	bodyBytes, err := io.ReadAll(resp.Body)
+// maxResponseBodySize is the upper limit for reading HTTP response bodies (50 MB).
+const maxResponseBodySize = 50 * 1024 * 1024
+
+// ReadResponse reads any HTTP response into a generic ResponseData struct.
+// The caller is responsible for closing resp.Body after this call returns.
+func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
+	// Read the raw response body
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return ResponseData{}, err
 	}
-	// Преобразуем сырые данные в формат JSON, для дальнейшей записи в структуру 'ResponseData'
+	// Parse raw bytes as JSON for storage in ResponseData
 	var bodyData interface{}
 	if err := json.Unmarshal(bodyBytes, &bodyData); err != nil {
 		bodyData = string(bodyBytes)
 	}
-	// Записываем (маппим) полученные данные в структуру
+	// Map response data into the ResponseData struct
 	data := ResponseData{
 		Status:     resp.Status,
 		StatusCode: resp.StatusCode,
@@ -43,62 +47,86 @@ func (c *HTTPClient) ReadResponse(resp *http.Response, duration time.Duration, o
 		Timestamp:  time.Now(),
 		Duration:   duration,
 	}
-	// Возвращаем целиком заполненную  данными структуру 'ResponseData'
+	// Return the fully populated ResponseData
 	return data, nil
 }
 
-// ReadJSONResponse — универсальный метод для чтения ответа в любую структуру (не в interface{})
-func (c *HTTPClient) ReadJSONResponse(resp *http.Response, target any) error {
-    if resp.StatusCode != http.StatusOK {
-        body, _ := io.ReadAll(resp.Body)
-        return fmt.Errorf("ошибка API: %s, тело: %s", resp.Status, string(body))
-    }
-    defer resp.Body.Close()
+// ReadJSONResponse decodes an HTTP response body into the given typed target.
+func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, target any) error {
+	if resp == nil {
+		return fmt.Errorf("nil response")
+	}
+	if resp.Body == nil {
+		return fmt.Errorf("nil response body")
+	}
 
-    if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
-        return fmt.Errorf("ошибка декодирования: %w", err)
-    }
-    return nil
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
+		if err != nil {
+			return fmt.Errorf("API error: %s, failed to read error body: %w", resp.Status, err)
+		}
+		return fmt.Errorf("API error: %s, body: %s", resp.Status, string(body))
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(target); err != nil {
+		return fmt.Errorf("decode error: %w", err)
+	}
+	return nil
 }
 
-// PrintResponseFromData — вывод из уже готовой структуры (без чтения resp.Body), с нетипизированным телом ответа
-func (c *HTTPClient) PrintResponseFromData(data ResponseData, outputFormat string) {
-    switch outputFormat {
-    case "json":
-        pretty, _ := json.MarshalIndent(data.Body, "", "  ")
-        fmt.Println(string(pretty))
-    case "json-full":
-        pretty, _ := json.MarshalIndent(data, "", "  ")
-        fmt.Println(string(pretty))
-    default: // table
-        printTable(data)
-    }
+// PrintResponseFromData prints a pre-built ResponseData (without re-reading resp.Body).
+func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseData, outputFormat string) {
+	switch outputFormat {
+	case "json":
+		pretty, err := json.MarshalIndent(data.Body, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to marshal response body: %v\n", err)
+			return
+		}
+		fmt.Println(string(pretty))
+	case "json-full":
+		pretty, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to marshal response data: %v\n", err)
+			return
+		}
+		fmt.Println(string(pretty))
+	default: // table
+		printTable(data)
+	}
 }
 
-// SaveResponseToFile — сохранение не типизированного ответа
-func (c *HTTPClient) SaveResponseToFile(data ResponseData, filename string, outputFormat string) error {
-	var toSave []byte
-    switch outputFormat {
-    case "json":
-        toSave, _ = json.MarshalIndent(data.Body, "", "  ")
-    case "json-full":
-        toSave, _ = json.MarshalIndent(data, "", "  ")
-    default: // table
-        // Для table сохраняем как json-full (или можно сделать отдельный формат)
-        toSave, _ = json.MarshalIndent(data, "", "  ")
-    }
+// SaveResponseToFile saves a generic ResponseData to a file.
+func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, filename, outputFormat string) error {
+	var (
+		toSave []byte
+		err    error
+	)
+	switch outputFormat {
+	case "json":
+		toSave, err = json.MarshalIndent(data.Body, "", "  ")
+	case "json-full":
+		toSave, err = json.MarshalIndent(data, "", "  ")
+	default: // table
+		// For table format, fall back to json-full
+		toSave, err = json.MarshalIndent(data, "", "  ")
+	}
+	if err != nil {
+		return fmt.Errorf("failed to marshal response data: %w", err)
+	}
 
-    if err := os.WriteFile(filename, toSave, 0644); err != nil {
-        return err
-    }
-    fmt.Printf("Ответ сохранён в файл %s (формат: %s)\n", filename, outputFormat)
+	if err := os.WriteFile(filename, toSave, 0o644); err != nil {
+		return err
+	}
+	fmt.Printf("Response saved to %s (format: %s)\n", filename, outputFormat)
 
 	return nil
 }
 
-
-// Вспомогательные приватные функции //
-// 'printTable' - формирует таблицу ответа
+// Private helpers //
+// printTable formats a response as a human-readable table.
 func printTable(data ResponseData) {
 	fmt.Printf("Status: %s (%d)\n", data.Status, data.StatusCode)
 	fmt.Printf("Duration: %v\n", data.Duration)
@@ -110,6 +138,10 @@ func printTable(data ResponseData) {
 		}
 	}
 	fmt.Printf("\nBody:\n")
-	jsonBody, _ := json.MarshalIndent(data.Body, "", "  ")
+	jsonBody, err := json.MarshalIndent(data.Body, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to marshal response body: %v\n", err)
+		return
+	}
 	fmt.Println(string(jsonBody))
 }

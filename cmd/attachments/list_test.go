@@ -5,6 +5,7 @@ package attachments
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,16 +13,17 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для attachments list case ====================
+// ==================== Tests for attachments list case ====================
 
 func TestListCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(123), caseID)
 			return data.GetAttachmentsResponse{
 				{ID: 1, Name: "screenshot.png", Size: 1024, CreatedOn: 1704067200},
@@ -48,7 +50,7 @@ func TestListCaseCmd_Success(t *testing.T) {
 
 func TestListCaseCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return data.GetAttachmentsResponse{}, nil
 		},
 	}
@@ -73,7 +75,7 @@ func TestListCaseCmd_WithSaveFlag(t *testing.T) {
 	defer os.Setenv("HOME", origHome)
 
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return data.GetAttachmentsResponse{
 				{ID: 1, Name: "test.pdf", Size: 2048, CreatedOn: 1704067200},
 			}, nil
@@ -112,7 +114,7 @@ func TestListCaseCmd_InvalidCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestListCaseCmd_ZeroCaseID(t *testing.T) {
@@ -124,12 +126,12 @@ func TestListCaseCmd_ZeroCaseID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid case_id")
+	assert.Contains(t, err.Error(), "case_id")
 }
 
 func TestListCaseCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("case not found")
 		},
 	}
@@ -154,11 +156,64 @@ func TestListCaseCmd_NoArgs(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для attachments list plan ====================
+func TestListCaseCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetSuitesResponse{{ID: 10, Name: "Suite 10", ProjectID: 1}}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			assert.Equal(t, int64(10), suiteID)
+			return data.GetCasesResponse{{ID: 123, Title: "Case 123"}}, nil
+		},
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(123), caseID)
+			return data.GetAttachmentsResponse{{ID: 1, Name: "attachment.txt", Size: 100, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "attachment.txt")
+}
+
+func TestListCaseCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListCaseCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+// ==================== Tests for attachments list plan ====================
 
 func TestListPlanCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanFunc: func(planID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanFunc: func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(456), planID)
 			return data.GetAttachmentsResponse{
 				{ID: 3, Name: "plan-doc.pdf", Size: 4096, CreatedOn: 1704067200},
@@ -187,12 +242,12 @@ func TestListPlanCmd_InvalidPlanID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestListPlanCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanFunc: func(planID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanFunc: func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("plan not found")
 		},
 	}
@@ -206,11 +261,58 @@ func TestListPlanCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для attachments list plan-entry ====================
+func TestListPlanCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 456, Name: "Plan 456"}}, nil
+		},
+		GetAttachmentsForPlanFunc: func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(456), planID)
+			return data.GetAttachmentsResponse{{ID: 10, Name: "plan-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListPlanCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "plan-attachment.txt")
+}
+
+func TestListPlanCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListPlanCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+// ==================== Tests for attachments list plan-entry ====================
 
 func TestListPlanEntryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanEntryFunc: func(planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(100), planID)
 			assert.Equal(t, "entry-abc123", entryID)
 			return data.GetAttachmentsResponse{
@@ -240,12 +342,12 @@ func TestListPlanEntryCmd_InvalidPlanID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid plan_id")
+	assert.Contains(t, err.Error(), "plan_id")
 }
 
 func TestListPlanEntryCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForPlanEntryFunc: func(planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("plan entry not found")
 		},
 	}
@@ -281,11 +383,92 @@ func TestListPlanEntryCmd_OnlyOneArg(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для attachments list run ====================
+func TestListPlanEntryCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetPlansFunc: func(ctx context.Context, projectID int64) (data.GetPlansResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetPlansResponse{{ID: 100, Name: "Plan 100"}}, nil
+		},
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			return &data.Plan{ID: 100, Name: "Plan 100", Entries: []data.PlanEntry{{ID: "entry-1", Name: "Entry 1"}}}, nil
+		},
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(100), planID)
+			assert.Equal(t, "entry-1", entryID)
+			return data.GetAttachmentsResponse{{ID: 11, Name: "entry-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "entry-attachment.txt")
+}
+
+func TestListPlanEntryCmd_OnlyPlanID_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+			assert.Equal(t, int64(100), planID)
+			return &data.Plan{ID: 100, Name: "Plan 100", Entries: []data.PlanEntry{{ID: "entry-2", Name: "Entry 2"}}}, nil
+		},
+		GetAttachmentsForPlanEntryFunc: func(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(100), planID)
+			assert.Equal(t, "entry-2", entryID)
+			return data.GetAttachmentsResponse{{ID: 12, Name: "entry-two.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"100"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "entry-two.txt")
+}
+
+func TestListPlanEntryCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+// ==================== Tests for attachments list run ====================
 
 func TestListRunCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForRunFunc: func(runID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForRunFunc: func(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(789), runID)
 			return data.GetAttachmentsResponse{
 				{ID: 5, Name: "run-report.html", Size: 8192, CreatedOn: 1704067200},
@@ -314,12 +497,12 @@ func TestListRunCmd_InvalidRunID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid run_id")
+	assert.Contains(t, err.Error(), "run_id")
 }
 
 func TestListRunCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForRunFunc: func(runID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForRunFunc: func(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
@@ -333,11 +516,58 @@ func TestListRunCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для attachments list test ====================
+func TestListRunCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 789, Name: "Run 789"}}, nil
+		},
+		GetAttachmentsForRunFunc: func(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(789), runID)
+			return data.GetAttachmentsResponse{{ID: 13, Name: "run-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListRunCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "run-attachment.txt")
+}
+
+func TestListRunCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListRunCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+// ==================== Tests for attachments list test ====================
 
 func TestListTestCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForTestFunc: func(testID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForTestFunc: func(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 			assert.Equal(t, int64(321), testID)
 			return data.GetAttachmentsResponse{
 				{ID: 6, Name: "test-screenshot.png", Size: 3072, CreatedOn: 1704067200},
@@ -366,7 +596,7 @@ func TestListTestCmd_InvalidTestID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid test_id")
+	assert.Contains(t, err.Error(), "test_id")
 }
 
 func TestListTestCmd_ZeroTestID(t *testing.T) {
@@ -378,12 +608,12 @@ func TestListTestCmd_ZeroTestID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid test_id")
+	assert.Contains(t, err.Error(), "test_id")
 }
 
 func TestListTestCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForTestFunc: func(testID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForTestFunc: func(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 			return nil, fmt.Errorf("test not found")
 		},
 	}
@@ -397,11 +627,63 @@ func TestListTestCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для outputAttachmentsList ====================
+func TestListTestCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{{ID: 200, Name: "Run 200"}}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(200), runID)
+			return []data.Test{{ID: 321, CaseID: 55, Title: "Test 321"}}, nil
+		},
+		GetAttachmentsForTestFunc: func(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(321), testID)
+			return data.GetAttachmentsResponse{{ID: 14, Name: "test-attachment.txt", Size: 10, CreatedOn: 1704067200}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListTestCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "test-attachment.txt")
+}
+
+func TestListTestCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListTestCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+// ==================== Tests for outputAttachmentsList ====================
 
 func TestOutputAttachmentsList_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetAttachmentsForCaseFunc: func(caseID int64) (data.GetAttachmentsResponse, error) {
+		GetAttachmentsForCaseFunc: func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 			return data.GetAttachmentsResponse{}, nil
 		},
 	}
@@ -416,4 +698,208 @@ func TestOutputAttachmentsList_Empty(t *testing.T) {
 	err := cmd.Execute()
 	assert.NoError(t, err)
 	assert.Contains(t, buf.String(), "No attachments found")
+}
+
+// ============= LAYER 2: !HasPrompterInContext branches + invalid ID in case 1 =============
+
+func TestListPlanCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+cmd := newListPlanCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "plan_id required")
+}
+
+func TestListRunCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+cmd := newListRunCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "run_id required")
+}
+
+func TestListTestCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+cmd := newListTestCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "test_id required")
+}
+
+func TestListPlanEntryCmd_OnlyPlanID_InvalidPlanID(t *testing.T) {
+cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+cmd.SetContext(testhelper.SetupTestCmd(t, &client.MockClient{}).Context())
+cmd.SetArgs([]string{"invalid"})
+
+err := cmd.Execute()
+assert.Error(t, err)
+assert.Contains(t, err.Error(), "plan_id")
+}
+
+// ============= LAYER 2 EXTENSION: newListPlanEntryCmd remaining branches =============
+
+func TestListPlanEntryCmd_OnlyPlanID_ResolvePlanEntryError(t *testing.T) {
+// case 1 with valid planID, interactive, but resolvePlanEntryIDInteractive fails
+mock := &client.MockClient{
+GetPlanFunc: func(ctx context.Context, planID int64) (*data.Plan, error) {
+return nil, assert.AnError
+},
+}
+
+p := interactive.NewMockPrompter()
+cmd := newListPlanEntryCmd(testhelper.GetClientForTests)
+cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+cmd.SetArgs([]string{"100"})
+
+err := cmd.Execute()
+assert.Error(t, err)
+}
+
+// ==================== Tests for attachments list project ====================
+
+func TestListProjectCmd_Success(t *testing.T) {
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetAttachmentsResponse{
+				{ID: 10, Name: "report.pdf", Size: 4096, CreatedOn: 1704067200},
+				{ID: 11, Name: "data.csv", Size: 2048, CreatedOn: 1704153600},
+			}, nil
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	out := buf.String()
+	assert.Contains(t, out, "report.pdf")
+	assert.Contains(t, out, "data.csv")
+	assert.Contains(t, out, "4096")
+}
+
+func TestListProjectCmd_EmptyList(t *testing.T) {
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			return data.GetAttachmentsResponse{}, nil
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "No attachments found")
+}
+
+func TestListProjectCmd_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			return nil, fmt.Errorf("api error")
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to list attachments")
+}
+
+func TestListProjectCmd_InvalidID(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"abc"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id")
+}
+
+func TestListProjectCmd_NoArgs_NoInteractive(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id required")
+}
+
+func TestListProjectCmd_WithSaveFlag(t *testing.T) {
+	tempHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", origHome)
+
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			return data.GetAttachmentsResponse{
+				{ID: 10, Name: "report.pdf", Size: 4096, CreatedOn: 1704067200},
+			}, nil
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1", "--save"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	matches, _ := filepath.Glob(filepath.Join(tempHome, ".gotr", "exports", "attachments*"))
+	assert.NotEmpty(t, matches, "expected export file to be created")
+}
+
+func TestListProjectCmd_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project Alpha"},
+			}, nil
+		},
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetAttachmentsResponse{
+				{ID: 10, Name: "file.txt", Size: 256, CreatedOn: 1704067200},
+			}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "file.txt")
 }

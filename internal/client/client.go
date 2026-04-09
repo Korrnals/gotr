@@ -1,102 +1,126 @@
 package client
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/utils"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
+
+	"github.com/Korrnals/gotr/internal/debug"
 )
 
 const apiPrefix = "index.php?/api/v2/"
 
+// HTTPClient wraps HTTP transport and base URL handling for TestRail API calls.
 type HTTPClient struct {
 	client  *http.Client
 	baseURL *url.URL
 }
 
-// Скрытая структура с опциями (не экспортируется!)
+// options holds internal client configuration (unexported).
 type options struct {
 	insecure            bool
 	timeout             time.Duration
 	tlsHandshakeTimeout time.Duration
 }
 
-// authTransport автоматически добавляет Basic Auth ко всем запросам
+// authTransport automatically injects Basic Auth into every outgoing request.
 type authTransport struct {
 	username string
 	apiKey   string
 	base     http.RoundTripper
 }
 
+// RoundTrip injects authentication and required default headers into each request.
 func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.SetBasicAuth(t.username, t.apiKey)
-	// Устанавливаем Content-Type только если он не установлен
+	// Set Content-Type only if not already set
 	if req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/json")
+	}
+	// User-Agent is required by some TestRail installations —
+	// without a browser-like header the server may return 403/401.
+	if req.Header.Get("User-Agent") == "" {
+		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; gotr/2.7; +https://github.com/Korrnals/gotr)")
 	}
 	return t.base.RoundTrip(req)
 }
 
-// Значение по умолчанию
+// defaultOptions holds the default client configuration values.
 var defaultOptions = options{
 	insecure:            false,
 	timeout:             30 * time.Second,
 	tlsHandshakeTimeout: 10 * time.Second,
 }
 
-// Тип-функция для опций
+// ClientOption is a functional option for configuring NewClient.
 type ClientOption func(*options)
 
-// Функция-опция WithInsecureSkipVerify -  вкл/выкл проверку tls-сертификата
+// WithSkipTlsVerify enables or disables TLS certificate verification.
 func WithSkipTlsVerify(insecure bool) ClientOption {
 	return func(o *options) {
 		o.insecure = insecure
 	}
 }
 
-// Функция-опция WithTimeout -
+// WithTimeout sets the HTTP client request timeout.
 func WithTimeout(duration time.Duration) ClientOption {
 	return func(o *options) {
 		o.timeout = duration
 	}
 }
 
-// NewClient создает новый клиент HTTP с опциями, которые передаются в качестве аргументов
-func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOption) (*HTTPClient, error) {
-	// Парсим, но игнорируем ошибки — будем строить заново
+// NewClient creates a new HTTP client for TestRail API calls with the given options.
+func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...ClientOption) (*HTTPClient, error) {
+	// Parse URL; we rebuild with scheme+host only
 	parsed, err := url.Parse(strings.TrimSpace(baseURLStr))
 	if err != nil || parsed.Host == "" {
-		return nil, fmt.Errorf("неверный или пустой base URL: %s", baseURLStr)
+		return nil, fmt.Errorf("invalid or empty base URL: %s", baseURLStr)
 	}
 
-	// Создаём новый URL только с scheme и host
+	// Build a clean URL with scheme and host only
 	cleanURL := &url.URL{
 		Scheme: parsed.Scheme,
-		Host:   parsed.Host, // автоматически обрабатывает порт
+		Host:   parsed.Host, // includes port if present
 	}
 
-	if debug {
-		utils.DebugPrint("{client} - Оригинальный baseURL: %s", baseURLStr)
-		utils.DebugPrint("{client} - Нормализованный baseURL: %s", cleanURL.String())
+	if debugMode {
+		debug.DebugPrint("{client} - Original baseURL: %s", baseURLStr)
+		debug.DebugPrint("{client} - Normalized baseURL: %s", cleanURL.String())
 	}
-	// Создаем конфигурацию с опциями по умолчанию
+	// Apply default options, then override with provided ones
 	cfg := defaultOptions
 	for _, o := range opts {
 		o(&cfg)
 	}
-	// Создаем транспорт с нужными опциями
+
+	if cfg.insecure {
+		fmt.Fprintln(os.Stderr, "WARNING: TLS certificate verification is disabled (--insecure). Connection is vulnerable to MITM attacks.")
+	}
+
+	// Configure HTTP transport.
+	// MaxConnsPerHost MUST match actual concurrency:
+	// 2 projects × 8 suites × 10 pages = 160 concurrent requests.
+	// With MaxConnsPerHost=50, 110 requests queue inside Go transport;
+	// http.Client.Timeout includes queue wait, causing cascading timeouts
+	// and exponential-backoff retries → 3× slower than expected.
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{
 			InsecureSkipVerify: cfg.insecure,
 		},
 		TLSHandshakeTimeout: cfg.tlsHandshakeTimeout,
+		MaxIdleConns:        200,
+		MaxIdleConnsPerHost: 200,
+		MaxConnsPerHost:     0, // unlimited — concurrency governed by parallel settings
+		IdleConnTimeout:     90 * time.Second,
 	}
-	// Создаем транспорт с Basic Auth, который будет добавляться в каждый запрос
+	// Wrap transport with Basic Auth injector
 	auth := authTransport{
 		username: username,
 		apiKey:   apiKey,
@@ -112,60 +136,60 @@ func NewClient(baseURLStr, username, apiKey string, debug bool, opts ...ClientOp
 	}, nil
 }
 
-// DoRequest — универсальный метод для любого HTTP-запроса
-// DoRequest — универсальный метод, формирует URL вручную для TestRail
-func (c *HTTPClient) DoRequest(method, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
-	// Очищаем endpoint от ведущего слеша
+// DoRequest is the universal method for making HTTP requests to TestRail.
+// It builds the URL manually to accommodate TestRail's non-standard query format.
+func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
+	// Strip leading slash from endpoint
 	cleanEndpoint := strings.TrimPrefix(endpoint, "/")
-	utils.DebugPrint("{DoRequest} - cleanEndpoint: %s", cleanEndpoint)
+	debug.DebugPrint("{DoRequest} - cleanEndpoint: %s", cleanEndpoint)
 
-	// Формируем путь вручную — TestRail требует ? в пути некодированным
+	// Build path manually — TestRail requires literal '?' in the path
 	path := apiPrefix + cleanEndpoint
-	utils.DebugPrint("{DoRequest} - Path: %s", path)
-	// Базовый URL как строка (с trailing слешем, если нужно)
+	debug.DebugPrint("{DoRequest} - Path: %s", path)
+	// Base URL as string (trim trailing slash)
 	base := strings.TrimSuffix(c.baseURL.String(), "/")
-	utils.DebugPrint("{DoRequest} - Базовый URL: %s", base)
-	// Полный URL как строка
+	debug.DebugPrint("{DoRequest} - Base URL: %s", base)
+	// Full URL as string
 	fullURL := base + "/" + path
 
-	// Добавляем query-параметры через & (особенность TestRail)
+	// Append query params with '&' (TestRail uses '?' inside the path prefix)
 	if len(queryParams) > 0 {
 		q := url.Values{}
 		for k, v := range queryParams {
 			q.Add(k, v)
 		}
-		fullURL += "&" + q.Encode() // & вместо ?
+		fullURL += "&" + q.Encode() // '&' instead of '?'
 	}
 
-	utils.DebugPrint("{DoRequest} - Формируемый URL: %s", fullURL)
-	// Создаем сам запрос
-	req, err := http.NewRequest(method, fullURL, body)
+	debug.DebugPrint("{DoRequest} - Constructed URL: %s", fullURL)
+	// Create the HTTP request
+	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {
 		return nil, err
 	}
 
-	// Проверяем, есть ли Content-Type в queryParams (для multipart/form-data)
+	// Check for Content-Type override in queryParams (e.g. multipart/form-data)
 	contentType := "application/json"
 	if ct, ok := queryParams["Content-Type"]; ok {
 		contentType = ct
-		// Удаляем Content-Type из queryParams чтобы не добавлять его в URL
+		// Remove Content-Type from params so it's not appended to URL
 		delete(queryParams, "Content-Type")
 	}
 
-	// Устанавливаем заголовок Content-Type
+	// Set the Content-Type header
 	req.Header.Set("Content-Type", contentType)
-	// Выпоняем сформированный запрос
+	// Execute the request
 	return c.client.Do(req)
 }
 
-// Get — обёртка для GET-запросов с умной обработкой ошибок
-func (c *HTTPClient) Get(endpoint string, queryParams map[string]string) (*http.Response, error) {
-	resp, err := c.DoRequest("GET", endpoint, nil, queryParams)
+// Get performs a GET request with automatic non-200 error handling.
+func (c *HTTPClient) Get(ctx context.Context, endpoint string, queryParams map[string]string) (*http.Response, error) {
+	resp, err := c.DoRequest(ctx, "GET", endpoint, nil, queryParams)
 	if err != nil {
 		return nil, err
 	}
 
-	// Если статус не OK — сразу форматируем красивую ошибку
+	// Non-200 status — return a formatted API error
 	if resp.StatusCode != http.StatusOK {
 		return nil, c.formatAPIError(resp)
 	}
@@ -173,14 +197,14 @@ func (c *HTTPClient) Get(endpoint string, queryParams map[string]string) (*http.
 	return resp, nil
 }
 
-// Post — обёртка для POST-запросов с умной обработкой ошибок
-func (c *HTTPClient) Post(endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
-	resp, err := c.DoRequest("POST", endpoint, body, queryParams)
+// Post performs a POST request with automatic non-200 error handling.
+func (c *HTTPClient) Post(ctx context.Context, endpoint string, body io.Reader, queryParams map[string]string) (*http.Response, error) {
+	resp, err := c.DoRequest(ctx, "POST", endpoint, body, queryParams)
 	if err != nil {
 		return nil, err
 	}
 
-	// Аналогично: если не OK — красивая ошибка
+	// Non-200 status — return a formatted API error
 	if resp.StatusCode != http.StatusOK {
 		return nil, c.formatAPIError(resp)
 	}
@@ -188,24 +212,23 @@ func (c *HTTPClient) Post(endpoint string, body io.Reader, queryParams map[strin
 	return resp, nil
 }
 
-// formatAPIError — центральная функция для красивого форматирования ошибок от TestRail
+// formatAPIError formats a non-200 API response into a descriptive error.
 func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
-		return fmt.Errorf("API вернул %s, но не удалось прочитать тело ошибки: %w", resp.Status, err)
+		return fmt.Errorf("API returned %s, failed to read error body: %w", resp.Status, err)
 	}
 
-	// Пытаемся распарсить как JSON с полем "error"
+	// Try parsing as JSON with an "error" field
 	var errStruct struct {
 		Error string `json:"error"`
 	}
 	if json.Unmarshal(bodyBytes, &errStruct) == nil && errStruct.Error != "" {
-		// Go автоматически декодирует \uXXXX в нормальный UTF-8 текст
-		return fmt.Errorf("API вернул %s: %s", resp.Status, errStruct.Error)
+		return fmt.Errorf("API returned %s: %s", resp.Status, errStruct.Error)
 	}
 
-	// Если не получилось распарсить как JSON с error — выводим тело как есть
-	return fmt.Errorf("API вернул %s: %s", resp.Status, string(bodyBytes))
+	// Fallback: return raw body as error text
+	return fmt.Errorf("API returned %s: %s", resp.Status, string(bodyBytes))
 }

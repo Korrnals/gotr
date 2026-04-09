@@ -1,6 +1,7 @@
 package users
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -12,7 +13,7 @@ import (
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddUserFunc: func(req data.AddUserRequest) (*data.User, error) {
+		AddUserFunc: func(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
 			assert.Equal(t, "John Doe", req.Name)
 			assert.Equal(t, "john@example.com", req.Email)
 			return &data.User{
@@ -34,7 +35,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_WithAdmin(t *testing.T) {
 	mock := &client.MockClient{
-		AddUserFunc: func(req data.AddUserRequest) (*data.User, error) {
+		AddUserFunc: func(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
 			assert.Equal(t, "Admin User", req.Name)
 			assert.Equal(t, 1, req.IsAdmin)
 			return &data.User{
@@ -77,7 +78,7 @@ func TestAddCmd_MissingEmail(t *testing.T) {
 
 func TestAddCmd_Error(t *testing.T) {
 	mock := &client.MockClient{
-		AddUserFunc: func(req data.AddUserRequest) (*data.User, error) {
+		AddUserFunc: func(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
 			return nil, fmt.Errorf("email already exists")
 		},
 	}
@@ -89,4 +90,22 @@ func TestAddCmd_Error(t *testing.T) {
 	err := cmd.Execute()
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "email already exists")
+}
+
+func TestAddCmd_DryRun_NoMutatingCall(t *testing.T) {
+	called := false
+	mock := &client.MockClient{
+		AddUserFunc: func(ctx context.Context, req data.AddUserRequest) (*data.User, error) {
+			called = true
+			return &data.User{ID: 1, Name: req.Name, Email: req.Email}, nil
+		},
+	}
+
+	cmd := newAddCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"--name", "John Doe", "--email", "john@example.com", "--dry-run"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.False(t, called)
 }

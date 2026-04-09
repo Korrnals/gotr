@@ -15,6 +15,7 @@ Language: [Русский](../../../ru/reports/stage13/architecture-conformance.
       - [CRUD Operations](../../guides/commands/index.md#crud-operations)
       - [Core Resources](../../guides/commands/index.md#core-resources)
       - [Special Resources](../../guides/commands/index.md#special-resources)
+    - [Instructions](../../guides/instructions/index.md)
   - [Architecture](../../architecture/index.md)
   - [Operations](../../operations/index.md)
   - [Reports](../index.md)

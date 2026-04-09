@@ -26,6 +26,7 @@ Language: [Русский](../../../ru/guides/commands/tests.md) | English
         - [plans](plans.md)
         - [reports](reports.md)
       - [Special Resources](bdds.md)
+    - [Instructions](../instructions/index.md)
   - [Architecture](../../architecture/index.md)
   - [Operations](../../operations/index.md)
   - [Reports](../../reports/index.md)

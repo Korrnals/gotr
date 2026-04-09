@@ -6,6 +6,7 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 - [Документация](../../index.md)
   - [Гайды](../../guides/index.md)
+    - [Инструкции](../../guides/instructions/index.md)
   - [Архитектура](../../architecture/index.md)
   - [Эксплуатация](../../operations/index.md)
   - [Отчёты](../index.md)

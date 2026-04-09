@@ -19,6 +19,7 @@ Language: [Русский](../../../ru/guides/commands/completion.md) | English
       - [CRUD Operations](add.md)
       - [Core Resources](get.md)
       - [Special Resources](bdds.md)
+    - [Instructions](../instructions/index.md)
   - [Architecture](../../architecture/index.md)
   - [Operations](../../operations/index.md)
   - [Reports](../../reports/index.md)

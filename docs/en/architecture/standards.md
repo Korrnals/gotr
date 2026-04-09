@@ -15,6 +15,7 @@ Language: [Русский](../../ru/architecture/standards.md) | English
       - [CRUD Operations](../guides/commands/index.md#crud-operations)
       - [Core Resources](../guides/commands/index.md#core-resources)
       - [Special Resources](../guides/commands/index.md#special-resources)
+    - [Instructions](../guides/instructions/index.md)
   - [Architecture](index.md)
     - [Overview](overview.md)
     - [Concurrency](concurrency.md)

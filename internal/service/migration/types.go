@@ -22,8 +22,9 @@ type Migration struct {
 	compareField  string
 	importedCases int // number of successfully imported cases
 
-	mapping *SharedStepMapping // shared step ID mapping (see mapping.go)
-	logger  *zap.SugaredLogger
+	mapping  *SharedStepMapping // shared step ID mapping (see mapping.go)
+	logger   *zap.SugaredLogger
+	logFile  *os.File // log file handle, closed in Close()
 }
 
 // NewMigration creates a new Migration instance with a zap logger.
@@ -61,6 +62,7 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 		importedCases: 0,
 		mapping:       NewSharedStepMapping(srcProject, dstProject), // from mapping.go
 		logger:        logger,
+		logFile:       fileWriter,
 	}
 
 	m.logger.Info("Migration object created", "log_file", logFile)
@@ -72,6 +74,11 @@ func (m *Migration) Close() error {
 	if m.logger != nil {
 		if err := m.logger.Sync(); err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to flush migration log: %v\n", err)
+		}
+	}
+	if m.logFile != nil {
+		if err := m.logFile.Close(); err != nil {
+			return fmt.Errorf("failed to close migration log file: %w", err)
 		}
 	}
 	return nil

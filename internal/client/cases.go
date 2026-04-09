@@ -83,7 +83,7 @@ func (c *HTTPClient) GetCasesPage(ctx context.Context, projectID, suiteID int64,
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return nil, fmt.Errorf("response body read error GetCasesPage project=%d suite=%d offset=%d limit=%d: %w",
 			projectID, suiteID, offset, limit, err)
@@ -123,7 +123,7 @@ func (c *HTTPClient) GetCasesWithProgress(ctx context.Context, projectID, suiteI
 			return nil, fmt.Errorf("request error GetCases for project %d: %w", projectID, err)
 		}
 
-		body, readErr := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 		resp.Body.Close()
 		if readErr != nil {
 			return nil, fmt.Errorf("response body read error (offset=%d): %w", offset, readErr)
@@ -539,7 +539,7 @@ func (f *casesFetcher) FetchPageCtx(ctx context.Context, req concurrency.PageReq
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return nil, -1, fmt.Errorf("read body error: %w", err)
 	}

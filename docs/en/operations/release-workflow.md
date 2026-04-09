@@ -15,6 +15,7 @@ Language: [Русский](../../ru/operations/release-workflow.md) | English
       - [CRUD Operations](../guides/commands/index.md#crud-operations)
       - [Core Resources](../guides/commands/index.md#core-resources)
       - [Special Resources](../guides/commands/index.md#special-resources)
+    - [Instructions](../guides/instructions/index.md)
   - [Architecture](../architecture/index.md)
   - [Operations](index.md)
     - [Release Workflow](release-workflow.md)

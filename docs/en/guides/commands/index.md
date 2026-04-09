@@ -45,6 +45,7 @@ Language: [Русский](../../../ru/guides/commands/index.md) | English
         - [templates](templates.md)
         - [users](users.md)
         - [variables](variables.md)
+    - [Instructions](../instructions/index.md)
   - [Architecture](../../architecture/index.md)
   - [Operations](../../operations/index.md)
   - [Reports](../../reports/index.md)

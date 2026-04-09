@@ -15,6 +15,7 @@ Language: Русский | [English](../../../en/reports/history/layer2-final-re
       - [CRUD операции](../../guides/commands/index.md#crud-операции)
       - [Основные ресурсы](../../guides/commands/index.md#основные-ресурсы)
       - [Специальные ресурсы](../../guides/commands/index.md#специальные-ресурсы)
+    - [Инструкции](../../guides/instructions/index.md)
   - [Архитектура](../../architecture/index.md)
   - [Эксплуатация](../../operations/index.md)
   - [Отчёты](../index.md)

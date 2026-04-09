@@ -47,6 +47,7 @@
     - [Прогресс](docs/ru/guides/progress.md)
     - [Каталог команд](docs/ru/guides/commands/index.md)
       - [Группы команд](docs/ru/guides/commands/index.md#группы-команд-и-подгруппы)
+    - [Инструкции](docs/ru/guides/instructions/index.md)
   - [Архитектура](docs/ru/architecture/index.md)
   - [Эксплуатация](docs/ru/operations/index.md)
   - [Отчёты](docs/ru/reports/index.md)

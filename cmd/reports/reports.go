@@ -1,4 +1,4 @@
-// Package reports реализует CLI команды для работы с отчётами TestRail
+// Package reports implements CLI commands for managing TestRail reports.
 package reports
 
 import (
@@ -6,27 +6,27 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с отчётами
+// Register adds all report-related subcommands to the root command.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	reportsCmd := &cobra.Command{
 		Use:   "reports",
-		Short: "Управление отчётами проекта",
-		Long: `Управление шаблонами отчётов и генерация отчётов TestRail.
+		Short: "Manage project reports",
+		Long: `Manage TestRail report templates and generate reports.
 
-Шаблоны отчётов используются для создания различных типов отчётов
-о тестировании (сводные отчёты, отчёты по покрытию, сравнительные отчёты).
+Report templates are used to create various types of testing reports
+(summary reports, coverage reports, comparison reports).
 
-Доступные операции:
-  • list               — список шаблонов отчётов проекта
-  • list-cross-project — список кросс-проектных отчётов
-  • run                — запустить генерацию отчёта по шаблону
-  • run-cross-project  — запустить кросс-проектный отчёт`,
+Available operations:
+  • list               — list project report templates
+  • list-cross-project — list cross-project reports
+  • run                — run report generation from a template
+  • run-cross-project  — run a cross-project report`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	reportsCmd.AddCommand(newListCmd(getClient))
 	reportsCmd.AddCommand(newListCrossProjectCmd(getClient))
 	reportsCmd.AddCommand(newRunCmd(getClient))

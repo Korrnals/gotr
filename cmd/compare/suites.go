@@ -1,13 +1,15 @@
 package compare
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -15,47 +17,46 @@ import (
 func newSuitesCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suites",
-		Short: "Сравнить тест-сюиты между проектами",
-		Long: `Выполняет сравнение тест-сюитов между двумя проектами.
+		Short: "Compare test suites between projects",
+		Long: `Compares test suites between two projects.
 
-Примеры:
-  # Сравнить сюиты
+Examples:
+	# Compare suites
   gotr compare suites --pid1 30 --pid2 31
 
-  # Сохранить результат в файл по умолчанию
+	# Save result to default file
   gotr compare suites --pid1 30 --pid2 31 --save
 
-  # Сохранить результат в указанный файл
+	# Save result to specific file
   gotr compare suites --pid1 30 --pid2 31 --save-to suites_diff.json
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClientSafe(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			// Parse flags
-			pid1, pid2, format, savePath, err := parseCommonFlags(cmd)
+			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
 				return err
 			}
 
 			// Get project names
-			project1Name, project2Name, err := GetProjectNames(cli, pid1, pid2)
+			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
 				return err
 			}
 
-			// Create progress manager
-			pm := progress.NewManager()
-
 			// Start timer
 			startTime := time.Now()
+			quiet, _ := cmd.Flags().GetBool("quiet")
 
 			// Compare suites
-			result, err := compareSuitesInternal(cli, pid1, pid2, pm)
+			result, err := compareSuitesInternal(ctx, cli, pid1, pid2, quiet)
 			if err != nil {
-				return fmt.Errorf("ошибка сравнения сюитов: %w", err)
+				return fmt.Errorf("suites comparison error: %w", err)
 			}
 
 			elapsed := time.Since(startTime)
@@ -66,10 +67,9 @@ func newSuitesCmd() *cobra.Command {
 			}
 
 			// Print statistics
-			quiet, _ := cmd.Flags().GetBool("quiet")
 			if !quiet {
-				PrintCompareStats("suites", pid1, pid2, 
-					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed)
+				PrintCompareStats("suites", pid1, pid2,
+					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed, result.Status)
 			}
 
 			return nil
@@ -82,30 +82,55 @@ func newSuitesCmd() *cobra.Command {
 	return cmd
 }
 
-// suitesCmd — экспортированная команда
+// suitesCmd is the exported suites compare command.
 var suitesCmd = newSuitesCmd()
 
 // compareSuitesInternal compares suites between two projects and returns the result.
-// Uses parallel API to fetch both projects simultaneously.
-func compareSuitesInternal(cli client.ClientInterface, pid1, pid2 int64, pm *progress.Manager) (*CompareResult, error) {
-	progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Параллельная загрузка сьютов из проектов %d и %d...", pid1, pid2))
+// Uses a parallel API call to fetch both projects simultaneously.
+// The optional quiet flag suppresses progress and warning output when true.
+func compareSuitesInternal(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, quiet ...bool) (*CompareResult, error) {
+	isQuiet := len(quiet) > 0 && quiet[0]
+	return compareSuitesInternalWithSuites(ctx, cli, pid1, pid2, isQuiet, nil)
+}
 
-	// Fetch suites from both projects in parallel
-	suitesByProject, err := cli.GetSuitesParallel([]int64{pid1, pid2}, 2, nil)
+func compareSuitesInternalWithSuites(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloaded map[int64]data.GetSuitesResponse) (*CompareResult, error) {
+	isQuiet := quiet
+
+	suitesByProject := preloaded
+	var err error
+	if suitesByProject == nil {
+		suitesByProject, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+			Title:  fmt.Sprintf("Loading suites from projects %d and %d...", pid1, pid2),
+			Writer: os.Stderr,
+			Quiet:  isQuiet,
+		}, func(ctx context.Context) (map[int64]data.GetSuitesResponse, error) {
+			// Fetch suites from both projects in parallel.
+			return cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
+		})
+	}
+
 	if err != nil && len(suitesByProject) == 0 {
-		return nil, fmt.Errorf("ошибка получения сюитов: %w", err)
+		return nil, fmt.Errorf("failed to get suites: %w", err)
 	}
 
 	// Convert to ItemInfo slices
 	suites1 := suitesToItems(suitesByProject[pid1])
 	suites2 := suitesToItems(suitesByProject[pid2])
 
-	if err != nil {
-		// Partial failure - log warning but continue with what we have
-		fmt.Printf("⚠ Предупреждение: не все проекты загружены: %v\n", err)
+	result := compareItemInfos("suites", pid1, pid2, suites1, suites2)
+	if ctx.Err() != nil {
+		result.Status = CompareStatusInterrupted
 	}
 
-	return compareItemInfos("suites", pid1, pid2, suites1, suites2), nil
+	if err != nil && !isQuiet {
+		// Partial failure - log warning but continue with what we have
+		ui.Warningf(os.Stderr, "not all projects were loaded: %v", err)
+		if result.Status == "" || result.Status == CompareStatusComplete {
+			result.Status = CompareStatusPartial
+		}
+	}
+
+	return result, nil
 }
 
 // suitesToItems converts GetSuitesResponse to []ItemInfo
@@ -118,24 +143,6 @@ func suitesToItems(suites data.GetSuitesResponse) []ItemInfo {
 		})
 	}
 	return items
-}
-
-// fetchSuiteItems fetches all suites for a project and returns them as ItemInfo slice.
-func fetchSuiteItems(cli client.ClientInterface, projectID int64) ([]ItemInfo, error) {
-	suites, err := cli.GetSuites(projectID)
-	if err != nil {
-		return nil, err
-	}
-
-	items := make([]ItemInfo, 0, len(suites))
-	for _, s := range suites {
-		items = append(items, ItemInfo{
-			ID:   s.ID,
-			Name: s.Name,
-		})
-	}
-
-	return items, nil
 }
 
 // compareItemInfos compares two slices of ItemInfo and returns a CompareResult.
@@ -192,6 +199,7 @@ func compareItemInfos(resource string, pid1, pid2 int64, items1, items2 []ItemIn
 		Resource:     resource,
 		Project1ID:   pid1,
 		Project2ID:   pid2,
+		Status:       CompareStatusComplete,
 		OnlyInFirst:  onlyInFirst,
 		OnlyInSecond: onlyInSecond,
 		Common:       common,

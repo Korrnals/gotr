@@ -2,52 +2,73 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newDeleteGroupCmd создаёт команду 'configurations delete-group'
-// Эндпоинт: POST /delete_config_group/{group_id}
+// newDeleteGroupCmd creates the 'configurations delete-group' command.
+// Endpoint: POST /delete_config_group/{group_id}
 func newDeleteGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete-group <group_id>",
-		Short: "Удалить группу конфигураций",
-		Long: `Удаляет группу конфигураций и все её конфигурации.
+		Use:   "delete-group [group_id]",
+		Short: "Delete a configuration group",
+		Long: `Deletes a configuration group and all its configurations.
 
-⚠️ Внимание: удаление нельзя отменить! Все конфигурации в группе
-будут также удалены. Убедитесь, что группа не используется
-в активных тест-планах.`,
-		Example: `  # Удалить группу
+⚠️ Warning: deletion cannot be undone! All configurations in the group
+will also be deleted. Make sure the group is not used
+in active test plans.`,
+		Example: `  # Delete a group
   gotr configurations delete-group 5
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr configurations delete-group 5 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			groupID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || groupID <= 0 {
-				return fmt.Errorf("некорректный group_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var groupID int64
+			var err error
+			if len(args) > 0 {
+				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations delete-group [group_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("group_id is required in non-interactive mode: gotr configurations delete-group [group_id]")
+				}
+
+				groupID, err = resolveGroupIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations delete-group")
-				dr.PrintSimple("Удалить группу", fmt.Sprintf("Group ID: %d", groupID))
+				dr.PrintSimple("Delete group", fmt.Sprintf("Group ID: %d", groupID))
 				return nil
 			}
 
-			cli := getClient(cmd)
-			if err := cli.DeleteConfigGroup(groupID); err != nil {
-				return fmt.Errorf("не удалось удалить группу: %w", err)
+			if err := cli.DeleteConfigGroup(ctx, groupID); err != nil {
+				return fmt.Errorf("failed to delete group: %w", err)
 			}
 
-			fmt.Printf("✅ Группа %d удалена\n", groupID)
+			ui.Successf(os.Stdout, "Group %d deleted", groupID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be deleted without actually deleting")
 
 	return cmd
 }

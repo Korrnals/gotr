@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/bdds"
 	"github.com/Korrnals/gotr/cmd/cases"
@@ -12,91 +15,114 @@ import (
 	"github.com/Korrnals/gotr/cmd/labels"
 	"github.com/Korrnals/gotr/cmd/milestones"
 	"github.com/Korrnals/gotr/cmd/plans"
+	"github.com/Korrnals/gotr/cmd/reports"
 	"github.com/Korrnals/gotr/cmd/result"
+	"github.com/Korrnals/gotr/cmd/roles"
 	"github.com/Korrnals/gotr/cmd/run"
 	"github.com/Korrnals/gotr/cmd/sync"
+	"github.com/Korrnals/gotr/cmd/templates"
 	"github.com/Korrnals/gotr/cmd/test"
+	"github.com/Korrnals/gotr/cmd/tests"
+	"github.com/Korrnals/gotr/cmd/users"
 	"github.com/Korrnals/gotr/cmd/variables"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-// init регистрирует все команды при старте
+// init registers all commands at startup.
 func init() {
-	// Сначала инициализируем конфиг
+	// Initialize config first
 	initConfig()
 
-	// Глобальные флаги root команды
+	// Global flags for the root command
 	initGlobalFlags()
 
-	// Регистрация всех команд
+	// Register top-level commands
 	registerConfigCmd()
 	registerListCmd()
 	registerAddCmd()
 	registerDeleteCmd()
 	registerUpdateCmd()
-	registerCopyCmd()
 	registerExportCmd()
-	registerImportCmd()
 	registerCompletionCmd()
 
-	// Регистрация команд из подпакетов (передаем GetClient)
-	attachments.Register(rootCmd, GetClientInterface)
-	bdds.Register(rootCmd, GetClientInterface)
-	cases.Register(rootCmd, GetClientInterface)
-	compare.Register(rootCmd, GetClientInterface)
-	configurations.Register(rootCmd, GetClientInterface)
-	datasets.Register(rootCmd, GetClientInterface)
+	// Register subpackage commands (pass GetClient* accessor)
+	attachments.Register(rootCmd, GetClient)
+	bdds.Register(rootCmd, GetClient)
+	cases.Register(rootCmd, GetClient)
+	compare.Register(rootCmd, GetClient)
+	configurations.Register(rootCmd, GetClient)
+	datasets.Register(rootCmd, GetClient)
 	get.Register(rootCmd, GetClient)
-	groups.Register(rootCmd, GetClientInterface)
-	labels.Register(rootCmd, GetClientInterface)
-	milestones.Register(rootCmd, GetClientInterface)
-	plans.Register(rootCmd, GetClientInterface)
-	run.Register(rootCmd, GetClient)
-	result.Register(rootCmd, GetClient)
-	sync.Register(rootCmd, GetClient)
-	test.Register(rootCmd, GetClient)
-	variables.Register(rootCmd, GetClientInterface)
+	groups.Register(rootCmd, GetClient)
+	labels.Register(rootCmd, GetClient)
+	milestones.Register(rootCmd, GetClient)
+	plans.Register(rootCmd, GetClient)
+	reports.Register(rootCmd, GetClient)
+	run.Register(rootCmd, GetClientFromCtx)
+	result.Register(rootCmd, GetClientFromCtx)
+	roles.Register(rootCmd, GetClient)
+	sync.Register(rootCmd, GetClientFromCtx)
+	test.Register(rootCmd, GetClientFromCtx)
+	templates.Register(rootCmd, GetClient)
+	tests.Register(rootCmd, GetClient)
+	users.Register(rootCmd, GetClient)
+	variables.Register(rootCmd, GetClient)
 }
 
-// initGlobalFlags инициализирует глобальные флаги для rootCmd
+// must terminates the process if err is non-nil. Used for init-time bindings
+// that indicate a programming error (e.g. binding a non-existent flag).
+func must(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fatal: init error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// initGlobalFlags registers persistent flags shared by all subcommands.
 func initGlobalFlags() {
-	// Глобальные флаги — ТОЛЬКО подключение и базовая настройка
-	rootCmd.PersistentFlags().String("url", "", "Базовый URL TestRail")
-	rootCmd.PersistentFlags().StringP("username", "u", "", "Email пользователя TestRail")
-	rootCmd.PersistentFlags().StringP("api-key", "k", "", "API ключ TestRail")
-	rootCmd.PersistentFlags().Bool("insecure", false, "Пропустить проверку TLS сертификата")
-	rootCmd.PersistentFlags().BoolP("config", "c", false, "Создать дефолтный файл конфигурации")
+	// Global flags — connection and basic settings only
+	rootCmd.PersistentFlags().String("url", "", "TestRail base URL")
+	rootCmd.PersistentFlags().StringP("username", "u", "", "TestRail user email")
+	rootCmd.PersistentFlags().StringP("api-key", "k", "", "TestRail API key")
+	rootCmd.PersistentFlags().Bool("insecure", false, "Skip TLS certificate verification")
+	rootCmd.PersistentFlags().BoolP("config", "c", false, "Create default config file")
 
-	// Скрытый debug
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Включить отладочный вывод")
-	rootCmd.PersistentFlags().MarkHidden("debug")
+	// Hidden debug flag
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug output")
+	must(rootCmd.PersistentFlags().MarkHidden("debug"))
 
-	// Quiet mode (тихий режим для CI/CD)
-	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Тихий режим (только результат, без прогресса)")
+	// Quiet mode (suppress informational output for CI/CD)
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Suppress progress, stats, and save messages")
 
-	// Биндим к Viper
-	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
-	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))
-	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
-	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure"))
-	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+	// Non-interactive mode (CI/CD, scripting)
+	rootCmd.PersistentFlags().Bool("non-interactive", false, "Disable interactive prompts; fail if input required")
+
+	// Global output format
+	rootCmd.PersistentFlags().StringP("format", "f", "table", "Output format: table, json, csv, md, html")
+
+	// Bind flags to Viper
+	must(viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url")))
+	must(viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username")))
+	must(viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")))
+	must(viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")))
+	must(viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")))
 }
 
 // ============================================
-// Конфигурация
+// Config
 // ============================================
 
 func registerConfigCmd() {
 	rootCmd.AddCommand(configCmd)
 
-	// Подкоманды config
+	// Config subcommands
 	configCmd.AddCommand(configInitCmd)
 	configCmd.AddCommand(configPathCmd)
 	configCmd.AddCommand(configViewCmd)
 	configCmd.AddCommand(configEditCmd)
 
-	// Автодополнение для "gotr config "
+	// Shell completion for "gotr config "
 	configCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
 			return []string{"init", "path", "view", "edit"}, cobra.ShellCompDirectiveNoFileComp
@@ -112,11 +138,11 @@ func registerConfigCmd() {
 func registerListCmd() {
 	rootCmd.AddCommand(listCmd)
 
-	// Флаги только для list
-	listCmd.Flags().Bool("json", false, "Вывести в формате JSON")
-	listCmd.Flags().Bool("short", false, "Краткий вывод (только URI)")
+	// Flags specific to list
+	listCmd.Flags().Bool("json", false, "Output as JSON")
+	listCmd.Flags().Bool("short", false, "Short output (URI only)")
 
-	// Автодополнение для первого аргумента (ресурса)
+	// Shell completion for the first argument (resource name)
 	listCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
 			return ValidResources, cobra.ShellCompDirectiveNoFileComp
@@ -150,30 +176,22 @@ func registerUpdateCmd() {
 }
 
 // ============================================
-// Copy
-// ============================================
-
-func registerCopyCmd() {
-	rootCmd.AddCommand(copyCmd)
-}
-
-// ============================================
 // Export
 // ============================================
 
 func registerExportCmd() {
 	rootCmd.AddCommand(exportCmd)
 
-	// Специфичные флаги для export
-	exportCmd.Flags().StringP("project-id", "p", "", "ID проекта (для эндпоинтов с {project_id})")
-	exportCmd.Flags().StringP("suite-id", "s", "", "ID тест-сюиты (для get_cases)")
-	exportCmd.Flags().String("section-id", "", "ID секции (для get_cases)")
-	exportCmd.Flags().String("milestone-id", "", "ID milestone (для get_runs)")
-	
-	// Флаг --save для сохранения в ~/.gotr/exports/
-	exportCmd.Flags().Bool("save", false, "Сохранить ответ в ~/.gotr/exports/export/")
+	// Export-specific flags
+	exportCmd.Flags().StringP("project-id", "p", "", "Project ID (for endpoints with {project_id})")
+	exportCmd.Flags().StringP("suite-id", "s", "", "Suite ID (for get_cases)")
+	exportCmd.Flags().String("section-id", "", "Section ID (for get_cases)")
+	exportCmd.Flags().String("milestone-id", "", "Milestone ID (for get_runs)")
 
-	// Автодополнение
+	// Save response to ~/.gotr/exports/
+	exportCmd.Flags().Bool("save", false, "Save response to ~/.gotr/exports/export/")
+
+	// Shell completion
 	exportCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		if len(args) == 0 {
 			return ValidResources, cobra.ShellCompDirectiveNoFileComp
@@ -184,14 +202,6 @@ func registerExportCmd() {
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	}
-}
-
-// ============================================
-// Import
-// ============================================
-
-func registerImportCmd() {
-	rootCmd.AddCommand(importCmd)
 }
 
 // ============================================

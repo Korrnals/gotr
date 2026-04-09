@@ -2,29 +2,45 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newDeleteCmd создаёт команду 'plans delete'
-// Эндпоинт: POST /delete_plan/{plan_id}
+// newDeleteCmd creates the 'plans delete' command.
+// Endpoint: POST /delete_plan/{plan_id}
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete <plan_id>",
-		Short: "Удалить тест-план",
-		Long:  `Удаляет тест-план по его ID.`,
-		Example: `  # Удалить план
+		Use:   "delete [plan_id]",
+		Short: "Delete a test plan",
+		Long:  `Deletes a test plan by its ID.`,
+		Example: `  # Delete a plan
   gotr plans delete 12345
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr plans delete 12345 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			var planID int64
+			if len(args) > 0 {
+				var err error
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans delete [plan_id]")
+				}
+				var err error
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check dry-run
@@ -35,16 +51,17 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			if err := cli.DeletePlan(planID); err != nil {
+			ctx := cmd.Context()
+			if err := cli.DeletePlan(ctx, planID); err != nil {
 				return fmt.Errorf("failed to delete plan: %w", err)
 			}
 
-			fmt.Printf("✅ Plan %d deleted\n", planID)
+			ui.Successf(os.Stdout, "Plan %d deleted", planID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

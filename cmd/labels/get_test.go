@@ -4,19 +4,21 @@
 package labels
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты успешных сценариев ====================
+// ==================== Success scenario tests ====================
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			assert.Equal(t, int64(1), labelID)
 			return &data.Label{
 				ID:   1,
@@ -35,7 +37,7 @@ func TestGetCmd_Success(t *testing.T) {
 
 func TestGetCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return &data.Label{ID: 5, Name: "Critical"}, nil
 		},
 	}
@@ -50,7 +52,7 @@ func TestGetCmd_WithSave(t *testing.T) {
 
 func TestGetCmd_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return &data.Label{ID: 10, Name: "Regression"}, nil
 		},
 	}
@@ -63,11 +65,11 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты ошибок API ====================
+// ==================== API error tests ====================
 
 func TestGetCmd_NotFound(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return nil, fmt.Errorf("label not found")
 		},
 	}
@@ -83,7 +85,7 @@ func TestGetCmd_NotFound(t *testing.T) {
 
 func TestGetCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetLabelFunc: func(labelID int64) (*data.Label, error) {
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
 			return nil, fmt.Errorf("connection refused")
 		},
 	}
@@ -97,7 +99,7 @@ func TestGetCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "connection refused")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestGetCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -136,15 +138,53 @@ func TestGetCmd_NegativeID(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid label_id")
 }
 
-func TestGetCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
+func TestGetCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetLabelsFunc: func(ctx context.Context, projectID int64) (data.GetLabelsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return []data.Label{{ID: 10, Name: "Bug"}}, nil
+		},
+		GetLabelFunc: func(ctx context.Context, labelID int64) (*data.Label, error) {
+			assert.Equal(t, int64(10), labelID)
+			return &data.Label{ID: 10, Name: "Bug"}, nil
+		},
+	}
+	p := interactive.NewMockPrompter().WithSelectResponses(
+		interactive.SelectResponse{Index: 0}, // project
+		interactive.SelectResponse{Index: 0}, // label
+	)
+	cmd := newGetCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
 
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestGetCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newGetCmd(getClientForTests)
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), niPrompter))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestGetCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
 	cmd := newGetCmd(getClientForTests)
 	cmd.SetContext(setupTestCmd(t, mock).Context())
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "label_id is required in non-interactive mode")
 }
 
 func TestGetCmd_TooManyArgs(t *testing.T) {

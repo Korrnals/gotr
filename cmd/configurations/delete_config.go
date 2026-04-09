@@ -2,51 +2,72 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newDeleteConfigCmd создаёт команду 'configurations delete-config'
-// Эндпоинт: POST /delete_config/{config_id}
+// newDeleteConfigCmd creates the 'configurations delete-config' command.
+// Endpoint: POST /delete_config/{config_id}
 func newDeleteConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "delete-config <config_id>",
-		Short: "Удалить конфигурацию",
-		Long: `Удаляет конфигурацию из группы.
+		Use:   "delete-config [config_id]",
+		Short: "Delete a configuration",
+		Long: `Deletes a configuration from a group.
 
-⚠️ Внимание: удаление нельзя отменить! Убедитесь, что конфигурация
-не используется в активных тест-планах.`,
-		Example: `  # Удалить конфигурацию
+⚠️ Warning: deletion cannot be undone! Make sure the configuration
+is not used in active test plans.`,
+		Example: `  # Delete a configuration
   gotr configurations delete-config 10
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr configurations delete-config 10 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			configID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || configID <= 0 {
-				return fmt.Errorf("некорректный config_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var configID int64
+			var err error
+			if len(args) > 0 {
+				configID, err = flags.ValidateRequiredID(args, 0, "config_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations delete-config [config_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("config_id is required in non-interactive mode: gotr configurations delete-config [config_id]")
+				}
+
+				configID, err = resolveConfigIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations delete-config")
-				dr.PrintSimple("Удалить конфигурацию", fmt.Sprintf("Config ID: %d", configID))
+				dr.PrintSimple("Delete configuration", fmt.Sprintf("Config ID: %d", configID))
 				return nil
 			}
 
-			cli := getClient(cmd)
-			if err := cli.DeleteConfig(configID); err != nil {
-				return fmt.Errorf("не удалось удалить конфигурацию: %w", err)
+			if err := cli.DeleteConfig(ctx, configID); err != nil {
+				return fmt.Errorf("failed to delete configuration: %w", err)
 			}
 
-			fmt.Printf("✅ Конфигурация %d удалена\n", configID)
+			ui.Successf(os.Stdout, "Configuration %d deleted", configID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be deleted without actually deleting")
 
 	return cmd
 }

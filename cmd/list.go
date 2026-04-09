@@ -1,43 +1,65 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/spf13/cobra"
 )
 
-// listCmd — основная субкоманда: gotr list <resource>
+// listCmd is the main subcommand: gotr list <resource>
 var listCmd = &cobra.Command{
 	Use:   "list <resource>",
-	Short: "Вывод списка доступных эндпоинтов TestRail API по ресурсу",
-	Long: `Выводит список доступных эндпоинтов TestRail API v2 для указанного ресурса.
+	Short: "List available TestRail API endpoints for a resource",
+	Long: `Lists available TestRail API v2 endpoints for a given resource.
 
-Примеры:
-	gotr list projects          # эндпоинты для проектов
-	gotr list cases             # эндпоинты для кейсов
-	gotr list all               # все эндпоинты
-	gotr list cases --json      # в формате JSON
-	gotr list cases --short     # краткий вывод (Method URI)`,
+Examples:
+	gotr list projects          # endpoints for projects
+	gotr list cases             # endpoints for cases
+	gotr list all               # all endpoints
+	gotr list cases --json      # as JSON
+	gotr list cases --short     # short output (Method URI)`,
 
-	Args: cobra.ExactArgs(1), // Требует ровно один аргумент
-	Run: func(cmd *cobra.Command, args []string) {
-		resource := strings.ToLower(args[0])
+	Args: cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		resource := ""
+		if len(args) > 0 {
+			resource = strings.ToLower(args[0])
+		} else {
+			if !interactive.HasPrompterInContext(cmd.Context()) {
+				return fmt.Errorf("resource required: gotr list <resource>")
+			}
+			p := interactive.PrompterFromContext(cmd.Context())
+			idx, _, err := p.Select("Select resource:", ValidResources)
+			if err != nil {
+				return fmt.Errorf("failed to select resource: %w", err)
+			}
+			resource = strings.ToLower(ValidResources[idx])
+		}
 
-		// Читаем флаги, которые объявили ниже в init()
-		jsonOutput, _ := cmd.Flags().GetBool("json")   // true, если --json
-		shortOutput, _ := cmd.Flags().GetBool("short") // true, если --short
+		// Read flags declared below in init()
+		jsonOutput, _ := cmd.Flags().GetBool("json")
+		shortOutput, _ := cmd.Flags().GetBool("short")
 
-		// Красивый вывод в JSON
+		// JSON output
 		if jsonOutput {
-			getResourceEndpoints(resource, "json")
-			return
+			if _, err := getResourceEndpoints(resource, "json"); err != nil {
+				return err
+			}
+			return nil
 		}
-		// Короткий вывод (Method + URI)
+		// Short output (Method + URI)
 		if shortOutput {
-			getResourceEndpoints(resource, "short")
-			return
+			if _, err := getResourceEndpoints(resource, "short"); err != nil {
+				return err
+			}
+			return nil
 		}
-		// Полный, красивый вывод
-		getResourceEndpoints(resource, "")
+		// Full, formatted output
+		if _, err := getResourceEndpoints(resource, ""); err != nil {
+			return err
+		}
+		return nil
 	},
 }

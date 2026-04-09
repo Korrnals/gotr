@@ -1,29 +1,38 @@
 package cases
 
 import (
+	"context"
 	"fmt"
-	"strconv"
+	"os"
 	"strings"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newBulkCmd создаёт родительскую команду 'cases bulk'
-// Родительская команда для массовых операций над кейсами
+func runBulkStatus[T any](cmd *cobra.Command, total int, fn func(context.Context) (T, error)) (T, error) {
+	return ui.RunWithStatus(cmd.Context(), ui.StatusConfig{
+		Title:  fmt.Sprintf("Processing %d cases...", total),
+		Writer: os.Stderr,
+	}, fn)
+}
+
+// newBulkCmd creates the parent 'cases bulk' command.
 func newBulkCmd(getClient GetClientFunc) *cobra.Command {
 	bulkCmd := &cobra.Command{
 		Use:   "bulk",
-		Short: "Массовые операции над тест-кейсами",
-		Long: `Массовые операции: обновление, удаление, копирование или перемещение нескольких тест-кейсов.
+		Short: "Bulk operations on test cases",
+		Long: `Bulk operations: update, delete, copy or move multiple test cases.
 
-Подкоманды:
-  • update — массовое обновление полей
-  • delete — массовое удаление
-  • copy   — копирование в другую секцию
-  • move   — перемещение в другую секцию`,
+Subcommands:
+  • update — bulk field update
+  • delete — bulk deletion
+  • copy   — copy to another section
+  • move   — move to another section`,
 	}
 
 	bulkCmd.AddCommand(newBulkUpdateCmd(getClient))
@@ -34,17 +43,17 @@ func newBulkCmd(getClient GetClientFunc) *cobra.Command {
 	return bulkCmd
 }
 
-// newBulkUpdateCmd создаёт команду 'cases bulk update'
-// Эндпоинт: POST /update_cases/{suite_id}
+// newBulkUpdateCmd creates the 'cases bulk update' command.
+// Endpoint: POST /update_cases/{suite_id}
 func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update <case_ids...>",
-		Short: "Массовое обновление кейсов",
-		Long:  `Обновляет несколько тест-кейсов одновременно с одинаковыми значениями полей.`,
-		Example: `  # Обновить приоритет нескольких кейсов
+		Short: "Bulk update test cases",
+		Long:  `Updates multiple test cases at once with the same field values.`,
+		Example: `  # Update priority of several cases
   gotr cases bulk update 1,2,3 --suite-id=100 --priority-id=1
 
-  # Обновить оценку времени
+  # Update time estimate
   gotr cases bulk update 1 2 3 --suite-id=100 --estimate="1h 30m"`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -58,7 +67,15 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
 			if suiteID <= 0 {
-				return fmt.Errorf("--suite-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--suite-id is required")
+				}
+
+				selectedSuiteID, err := resolveSuiteIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				suiteID = selectedSuiteID
 			}
 
 			req := data.UpdateCasesRequest{CaseIDs: caseIDs}
@@ -75,40 +92,39 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			resp, err := cli.UpdateCases(suiteID, &req)
+			resp, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (*data.GetCasesResponse, error) {
+				return cli.UpdateCases(ctx, suiteID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update cases: %w", err)
 			}
 
-			fmt.Printf("✅ Updated %d cases\n", len(caseIDs))
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Updated %d cases", len(caseIDs))
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Preview the action without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
-	cmd.Flags().Int64("priority-id", 0, "ID приоритета для установки")
-	cmd.Flags().String("estimate", "", "Оценка времени (например: '1h 30m')")
+	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
+	cmd.Flags().Int64("priority-id", 0, "Priority ID to set")
+	cmd.Flags().String("estimate", "", "Time estimate (e.g. '1h 30m')")
 
 	return cmd
 }
 
-// newBulkDeleteCmd создаёт команду 'cases bulk delete'
-// Эндпоинт: POST /delete_cases/{suite_id}
+// newBulkDeleteCmd creates the 'cases bulk delete' command.
+// Endpoint: POST /delete_cases/{suite_id}
 func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete <case_ids...>",
-		Short: "Массовое удаление кейсов",
-		Long:  `Удаляет несколько тест-кейсов одновременно.`,
-		Example: `  # Удалить несколько кейсов
+		Short: "Bulk delete test cases",
+		Long:  `Deletes multiple test cases at once.`,
+		Example: `  # Delete several cases
   gotr cases bulk delete 1,2,3 --suite-id=100
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr cases bulk delete 1,2,3 --suite-id=100 --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -122,7 +138,15 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
 			if suiteID <= 0 {
-				return fmt.Errorf("--suite-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--suite-id is required")
+				}
+
+				selectedSuiteID, err := resolveSuiteIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				suiteID = selectedSuiteID
 			}
 
 			req := data.DeleteCasesRequest{CaseIDs: caseIDs}
@@ -133,36 +157,36 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			if err := cli.DeleteCases(suiteID, &req); err != nil {
+			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeleteCases(ctx, suiteID, &req)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete cases: %w", err)
 			}
 
-			fmt.Printf("✅ Deleted %d cases\n", len(caseIDs))
+			ui.Successf(os.Stdout, "Deleted %d cases", len(caseIDs))
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено")
-	cmd.Flags().Int64("suite-id", 0, "ID сьюты (обязательно)")
+	cmd.Flags().Bool("dry-run", false, "Preview what will be deleted")
+	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
 
 	return cmd
 }
 
-// newBulkCopyCmd создаёт команду 'cases bulk copy'
-// Эндпоинт: POST /copy_cases_to_section/{section_id}
+// newBulkCopyCmd creates the 'cases bulk copy' command.
+// Endpoint: POST /copy_cases_to_section/{section_id}
 func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "copy <case_ids...>",
-		Short: "Копировать кейсы в секцию",
-		Long:  `Копирует несколько тест-кейсов в другую секцию.`,
-		Example: `  # Копировать кейсы в другую секцию
+		Short: "Copy cases to a section",
+		Long:  `Copies multiple test cases to another section.`,
+		Example: `  # Copy cases to another section
   gotr cases bulk copy 1,2,3 --section-id=50
 
-  # Проверить перед копированием
+  # Preview before copying
   gotr cases bulk copy 1,2,3 --section-id=50 --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -176,7 +200,15 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 
 			sectionID, _ := cmd.Flags().GetInt64("section-id")
 			if sectionID <= 0 {
-				return fmt.Errorf("--section-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--section-id is required")
+				}
+
+				selectedSectionID, err := resolveSectionIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				sectionID = selectedSectionID
 			}
 
 			req := data.CopyCasesRequest{CaseIDs: caseIDs}
@@ -187,36 +219,36 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			if err := cli.CopyCasesToSection(sectionID, &req); err != nil {
+			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.CopyCasesToSection(ctx, sectionID, &req)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to copy cases: %w", err)
 			}
 
-			fmt.Printf("✅ Copied %d cases to section %d\n", len(caseIDs), sectionID)
+			ui.Successf(os.Stdout, "Copied %d cases to section %d", len(caseIDs), sectionID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано")
-	cmd.Flags().Int64("section-id", 0, "ID целевой секции (обязательно)")
+	cmd.Flags().Bool("dry-run", false, "Preview the action without making changes")
+	cmd.Flags().Int64("section-id", 0, "Target section ID (required)")
 
 	return cmd
 }
 
-// newBulkMoveCmd создаёт команду 'cases bulk move'
-// Эндпоинт: POST /move_cases_to_section/{section_id}
+// newBulkMoveCmd creates the 'cases bulk move' command.
+// Endpoint: POST /move_cases_to_section/{section_id}
 func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "move <case_ids...>",
-		Short: "Переместить кейсы в секцию",
-		Long:  `Перемещает несколько тест-кейсов в другую секцию.`,
-		Example: `  # Переместить кейсы в другую секцию
+		Short: "Move cases to a section",
+		Long:  `Moves multiple test cases to another section.`,
+		Example: `  # Move cases to another section
   gotr cases bulk move 1,2,3 --section-id=50
 
-  # Проверить перед перемещением
+  # Preview before moving
   gotr cases bulk move 1,2,3 --section-id=50 --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
@@ -230,7 +262,15 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 
 			sectionID, _ := cmd.Flags().GetInt64("section-id")
 			if sectionID <= 0 {
-				return fmt.Errorf("--section-id is required")
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("--section-id is required")
+				}
+
+				selectedSectionID, err := resolveSectionIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+				sectionID = selectedSectionID
 			}
 
 			req := data.MoveCasesRequest{CaseIDs: caseIDs}
@@ -241,26 +281,26 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Обработка %d кейсов...", len(caseIDs)))
-
 			cli := getClient(cmd)
-			if err := cli.MoveCasesToSection(sectionID, &req); err != nil {
+			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.MoveCasesToSection(ctx, sectionID, &req)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to move cases: %w", err)
 			}
 
-			fmt.Printf("✅ Moved %d cases to section %d\n", len(caseIDs), sectionID)
+			ui.Successf(os.Stdout, "Moved %d cases to section %d", len(caseIDs), sectionID)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано")
-	cmd.Flags().Int64("section-id", 0, "ID целевой секции (обязательно)")
+	cmd.Flags().Bool("dry-run", false, "Preview the action without making changes")
+	cmd.Flags().Int64("section-id", 0, "Target section ID (required)")
 
 	return cmd
 }
 
-// parseIDList разбирает ID, разделённые запятыми или пробелами
+// parseIDList parses IDs separated by commas or spaces.
 func parseIDList(args []string) []int64 {
 	var ids []int64
 	for _, arg := range args {
@@ -269,17 +309,11 @@ func parseIDList(args []string) []int64 {
 			if part == "" {
 				continue
 			}
-			id, err := strconv.ParseInt(part, 10, 64)
+			id, err := flags.ParseID(part)
 			if err == nil && id > 0 {
 				ids = append(ids, id)
 			}
 		}
 	}
 	return ids
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "cases", "json")
-	return err
 }

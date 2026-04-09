@@ -1,21 +1,23 @@
 package get
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get projects ====================
+// ==================== Tests for get projects ====================
 
 func TestProjectsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectsFunc: func() (data.GetProjectsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
 			return data.GetProjectsResponse{
 				{ID: 1, Name: "Project 1", SuiteMode: 1},
 				{ID: 2, Name: "Project 2", SuiteMode: 2},
@@ -34,7 +36,7 @@ func TestProjectsCmd_Success(t *testing.T) {
 
 func TestProjectsCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectsFunc: func() (data.GetProjectsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
 			return data.GetProjectsResponse{}, nil
 		},
 	}
@@ -49,7 +51,7 @@ func TestProjectsCmd_EmptyList(t *testing.T) {
 
 func TestProjectsCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectsFunc: func() (data.GetProjectsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
 			return nil, fmt.Errorf("connection refused")
 		},
 	}
@@ -63,11 +65,11 @@ func TestProjectsCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "connection refused")
 }
 
-// ==================== Тесты для get project ====================
+// ==================== Tests for get project ====================
 
 func TestProjectCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			assert.Equal(t, int64(30), projectID)
 			return &data.GetProjectResponse{
 				ID:        30,
@@ -94,23 +96,48 @@ func TestProjectCmd_InvalidProjectID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID проекта")
+	assert.Contains(t, err.Error(), "invalid project_id")
 }
 
 func TestProjectCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
+			assert.Equal(t, int64(30), projectID)
+			return &data.GetProjectResponse{ID: 30, Name: "Project 30"}, nil
+		},
+	}
 
 	cmd := newProjectCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestProjectCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 30, Name: "Project 30"}}, nil
+		},
+	}
+
+	cmd := newProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter()))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
 func TestProjectCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetProjectFunc: func(projectID int64) (*data.GetProjectResponse, error) {
+		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -134,7 +161,7 @@ func TestProjectsCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
 
 func TestProjectCmd_NilClient(t *testing.T) {
@@ -147,5 +174,5 @@ func TestProjectCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "HTTP клиент не инициализирован")
+	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }

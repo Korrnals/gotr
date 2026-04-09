@@ -7,13 +7,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для addSyncFlags ====================
+// ==================== Tests for addSyncFlags ====================
 
 func TestAddSyncFlags(t *testing.T) {
 	cmd := &cobra.Command{}
 	addSyncFlags(cmd)
 
-	// Проверяем, что все флаги добавлены
+	// Verify that all flags are registered
 	flags := []string{
 		"src-project",
 		"src-suite",
@@ -37,7 +37,7 @@ func TestAddSyncFlags_DefaultValues(t *testing.T) {
 	cmd := &cobra.Command{}
 	addSyncFlags(cmd)
 
-	// Проверяем значения по умолчанию
+	// Verify default values
 	compareField, err := cmd.Flags().GetString("compare-field")
 	assert.NoError(t, err)
 	assert.Equal(t, "title", compareField)
@@ -75,7 +75,7 @@ func TestAddSyncFlags_SetValues(t *testing.T) {
 	cmd := &cobra.Command{}
 	addSyncFlags(cmd)
 
-	// Устанавливаем значения флагов
+	// Set flag values
 	cmd.Flags().Set("src-project", "10")
 	cmd.Flags().Set("src-suite", "20")
 	cmd.Flags().Set("dst-project", "30")
@@ -87,7 +87,7 @@ func TestAddSyncFlags_SetValues(t *testing.T) {
 	cmd.Flags().Set("mapping-file", "mapping.json")
 	cmd.Flags().Set("output", "output.json")
 
-	// Проверяем установленные значения
+	// Verify set values
 	srcProject, _ := cmd.Flags().GetInt64("src-project")
 	assert.Equal(t, int64(10), srcProject)
 

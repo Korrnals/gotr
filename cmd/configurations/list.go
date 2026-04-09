@@ -2,55 +2,68 @@ package configurations
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'configurations list'
-// Эндпоинт: GET /get_configs/{project_id}
+// newListCmd creates the 'configurations list' command.
+// Endpoint: GET /get_configs/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
-		Short: "Список конфигураций проекта",
-		Long: `Выводит список конфигураций, доступных в указанном проекте.
+		Use:   "list [project_id]",
+		Short: "List project configurations",
+		Long: `Lists configurations available in the specified project.
 
-Конфигурации представляют собой тестовые среды (браузеры, ОС, устройства)
-и группируются по типам. Используются при создании тест-планов
-с множественными конфигурациями.
+Configurations represent test environments (browsers, OS, devices)
+and are grouped by type. They are used when creating test plans
+with multiple configurations.
 
-Каждая конфигурация имеет ID, который используется для указания
-в параметрах при создании записей плана с конфигурациями.`,
-		Example: `  # Получить конфигурации проекта
+Each configuration has an ID that is used to specify
+parameters when creating plan entries with configurations.`,
+		Example: `  # Get project configurations
   gotr configurations list 1
 
-  # Сохранить в файл для анализа
+  # Save to file for analysis
   gotr configurations list 5 -o configs.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("некорректный project_id: %s", args[0])
-			}
-
 			cli := getClient(cmd)
-			resp, err := cli.GetConfigs(projectID)
-			if err != nil {
-				return fmt.Errorf("не удалось получить конфигурации: %w", err)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr configurations list [project_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr configurations list [project_id]")
+				}
+
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			return outputResult(cmd, resp)
+			resp, err := cli.GetConfigs(ctx, projectID)
+			if err != nil {
+				return fmt.Errorf("failed to get configurations: %w", err)
+			}
+
+			return output.OutputResult(cmd, resp, "configurations")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "configurations", "json")
-	return err
 }

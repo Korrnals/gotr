@@ -2,59 +2,76 @@ package variables
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'variables update'
-// Эндпоинт: POST /update_variable/{variable_id}
+// newUpdateCmd creates the 'variables update' command.
+// Endpoint: POST /update_variable/{variable_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <variable_id>",
-		Short: "Обновить переменную",
-		Long: `Обновляет название существующей переменной.
+		Use:   "update [variable_id]",
+		Short: "Update a variable",
+		Long: `Updates the name of an existing variable.
 
-⚠️ Обратите внимание: через API можно обновить только название переменной.
-Для изменения значений используйте веб-интерфейс TestRail.`,
-		Example: `  # Изменить название переменной
+⚠️ Note: only the variable name can be updated via the API.
+To modify values, use the TestRail web interface.`,
+		Example: `  # Change a variable name
   gotr variables update 789 --name="new_name"
 
-  # Проверить перед обновлением
+  # Preview before updating
   gotr variables update 789 --name="new_name" --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			variableID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || variableID <= 0 {
-				return fmt.Errorf("некорректный variable_id: %s", args[0])
+			var variableID int64
+			if len(args) > 0 {
+				var err error
+				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("variable_id is required in non-interactive mode: gotr variables update [variable_id]")
+				}
+				var err error
+				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
 			if name == "" {
-				return fmt.Errorf("--name обязателен")
+				return fmt.Errorf("--name is required")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("variables update")
-				dr.PrintSimple("Обновить переменную", fmt.Sprintf("Variable ID: %d, New Name: %s", variableID, name))
+				dr.PrintSimple("Update Variable", fmt.Sprintf("Variable ID: %d, New Name: %s", variableID, name))
 				return nil
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.UpdateVariable(variableID, name)
+			ctx := cmd.Context()
+			resp, err := cli.UpdateVariable(ctx, variableID, name)
 			if err != nil {
-				return fmt.Errorf("не удалось обновить переменную: %w", err)
+				return fmt.Errorf("failed to update variable: %w", err)
 			}
 
-			fmt.Printf("✅ Переменная %d обновлена\n", variableID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Variable %d updated", variableID)
+			return output.OutputResult(cmd, resp, "variables")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название переменной (обязательно)")
+	cmd.Flags().String("name", "", "New variable name (required)")
 
 	return cmd
 }

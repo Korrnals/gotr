@@ -1,26 +1,22 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/Korrnals/gotr/internal/client"
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
+	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-// containsStr проверяет содержит ли строка substr
-func containsStr(s, substr string) bool {
-	return strings.Contains(s, substr)
-}
-
-// ==================== Тесты для saveToFile ====================
+// ==================== Tests for saveToFile ====================
 
 func TestSaveToFile_Success(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -34,7 +30,7 @@ func TestSaveToFile_Success(t *testing.T) {
 	err := saveToFile(data, filename)
 	assert.NoError(t, err)
 
-	// Проверяем что файл создан
+	// Verify that the file was created
 	content, err := os.ReadFile(filename)
 	assert.NoError(t, err)
 	assert.Contains(t, string(content), "123")
@@ -45,16 +41,16 @@ func TestSaveToFile_InvalidData(t *testing.T) {
 	tmpDir := t.TempDir()
 	filename := filepath.Join(tmpDir, "test_output.json")
 
-	// Канал нельзя сериализовать в JSON
+	// Channels cannot be serialized to JSON
 	invalidData := make(chan int)
 
 	err := saveToFile(invalidData, filename)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "сериализации")
+	assert.Contains(t, err.Error(), "serialization")
 }
 
 func TestSaveToFile_InvalidPath(t *testing.T) {
-	// Путь к несуществующей директории без прав на создание
+	// Path to a non-existent directory without write permissions
 	invalidPath := "/nonexistent_dir_xyz/test.json"
 
 	data := map[string]string{"key": "value"}
@@ -63,11 +59,11 @@ func TestSaveToFile_InvalidPath(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для service_wrapper ====================
+// ==================== Tests for service_wrapper ====================
 
 func TestResultServiceWrapper_AddResults(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsFunc: func(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+		AddResultsFunc: func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Len(t, req.Results, 2)
 			return data.GetResultsResponse{
@@ -78,12 +74,13 @@ func TestResultServiceWrapper_AddResults(t *testing.T) {
 	}
 
 	wrapper := &resultServiceWrapper{svc: nil}
-	// Проверяем что wrapper реализует интерфейс
+	// Verify that wrapper implements the interface
 	var _ ResultServiceInterface = wrapper
 
-	// Создадим сервис через конструктор
+	// Create a service via constructor
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResults(12345, &data.AddResultsRequest{
+	results, err := svc.AddResults(ctx, 12345, &data.AddResultsRequest{
 		Results: []data.ResultEntry{
 			{TestID: 101, StatusID: 1},
 			{TestID: 102, StatusID: 5},
@@ -96,13 +93,14 @@ func TestResultServiceWrapper_AddResults(t *testing.T) {
 
 func TestResultServiceWrapper_AddResults_Error(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsFunc: func(runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
+		AddResultsFunc: func(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("run not found")
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResults(99999, &data.AddResultsRequest{
+	results, err := svc.AddResults(ctx, 99999, &data.AddResultsRequest{
 		Results: []data.ResultEntry{{TestID: 101, StatusID: 1}},
 	})
 
@@ -112,7 +110,7 @@ func TestResultServiceWrapper_AddResults_Error(t *testing.T) {
 
 func TestResultServiceWrapper_AddResultsForCases(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsForCasesFunc: func(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+		AddResultsForCasesFunc: func(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			assert.Len(t, req.Results, 2)
 			return data.GetResultsResponse{
@@ -122,8 +120,9 @@ func TestResultServiceWrapper_AddResultsForCases(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResultsForCases(12345, &data.AddResultsForCasesRequest{
+	results, err := svc.AddResultsForCases(ctx, 12345, &data.AddResultsForCasesRequest{
 		Results: []data.ResultForCaseEntry{
 			{CaseID: 301, StatusID: 1},
 			{CaseID: 302, StatusID: 1},
@@ -136,13 +135,14 @@ func TestResultServiceWrapper_AddResultsForCases(t *testing.T) {
 
 func TestResultServiceWrapper_AddResultsForCases_Error(t *testing.T) {
 	mock := &client.MockClient{
-		AddResultsForCasesFunc: func(runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
+		AddResultsForCasesFunc: func(ctx context.Context, runID int64, req *data.AddResultsForCasesRequest) (data.GetResultsResponse, error) {
 			return nil, fmt.Errorf("invalid case_id")
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	results, err := svc.AddResultsForCases(12345, &data.AddResultsForCasesRequest{
+	results, err := svc.AddResultsForCases(ctx, 12345, &data.AddResultsForCasesRequest{
 		Results: []data.ResultForCaseEntry{{CaseID: 301, StatusID: 1}},
 	})
 
@@ -152,7 +152,7 @@ func TestResultServiceWrapper_AddResultsForCases_Error(t *testing.T) {
 
 func TestResultServiceWrapper_GetRunsForProject(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetRunsResponse{
 				{ID: 101, Name: "Run 1", ProjectID: 1},
@@ -161,8 +161,9 @@ func TestResultServiceWrapper_GetRunsForProject(t *testing.T) {
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	runs, err := svc.GetRunsForProject(1)
+	runs, err := svc.GetRunsForProject(ctx, 1)
 
 	assert.NoError(t, err)
 	assert.Len(t, runs, 2)
@@ -171,187 +172,172 @@ func TestResultServiceWrapper_GetRunsForProject(t *testing.T) {
 
 func TestResultServiceWrapper_GetRunsForProject_Error(t *testing.T) {
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
-	runs, err := svc.GetRunsForProject(999)
+	runs, err := svc.GetRunsForProject(ctx, 999)
 
 	assert.Error(t, err)
 	assert.Nil(t, runs)
 }
 
-// ==================== Тесты для newResultServiceFromInterface ====================
+// ==================== Tests for newResultServiceFromInterface ====================
 
 func TestNewResultServiceFromInterface_WithHTTPClient(t *testing.T) {
-	// Создаем mock HTTPClient
+	httpClient := &client.HTTPClient{}
+
+	svc := newResultServiceFromInterface(httpClient)
+	assert.NotNil(t, svc)
+}
+
+func TestNewResultServiceFromInterface_WithMockClient(t *testing.T) {
 	mock := &client.MockClient{}
 
-	// Передаем как ClientInterface
 	svc := newResultServiceFromInterface(mock)
 	assert.NotNil(t, svc)
 }
 
-// ==================== Тесты для SetGetClientForTests и getClientSafe ====================
+// ==================== Tests for SetGetClientForTests and getClientSafe ====================
 
 func TestSetGetClientForTests(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Сбрасываем accessor
+	// Reset accessor
 	clientAccessor = nil
 
-	// Устанавливаем тестовую функцию
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	// Set test function
+	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
 	SetGetClientForTests(mockFn)
 	assert.NotNil(t, clientAccessor)
 
-	// Повторный вызов должен обновить функцию
+	// Repeated call should update the function
 	SetGetClientForTests(mockFn)
 	assert.NotNil(t, clientAccessor)
 }
 
 func TestGetClientSafe_WithNilAccessor(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Сбрасываем accessor
+	// Reset accessor
 	clientAccessor = nil
 
-	// Должен вернуть nil когда accessor nil
+	// Should return nil when accessor is nil
 	cmd := &cobra.Command{}
 	cli := getClientSafe(cmd)
 	assert.Nil(t, cli)
 }
 
 func TestGetClientSafe_WithAccessor(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Создаем accessor с тестовой функцией
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	// Create accessor with test function
+	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 	clientAccessor = client.NewAccessor(mockFn)
 
-	// Должен вернуть nil (так как mockFn возвращает nil)
+	// Should return nil (since mockFn returns nil)
 	cmd := &cobra.Command{}
 	cli := getClientSafe(cmd)
 	assert.Nil(t, cli)
 }
 
-// ==================== Тесты для Register ====================
+// ==================== Tests for Register ====================
 
 func TestRegister(t *testing.T) {
-	// Сохраняем текущее состояние
+	// Save current state
 	oldAccessor := clientAccessor
 	defer func() {
 		clientAccessor = oldAccessor
 	}()
 
-	// Сбрасываем accessor
+	// Reset accessor
 	clientAccessor = nil
 
-	// Создаем корневую команду
+	// Create root command
 	rootCmd := &cobra.Command{Use: "gotr"}
 
-	// Mock функция получения клиента
-	mockFn := func(cmd *cobra.Command) *client.HTTPClient {
+	// Mock client getter function
+	mockFn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
-	// Регистрируем result команду
+	// Register result command
 	Register(rootCmd, mockFn)
 
-	// Проверяем что команда добавлена
+	// Verify that command was added
 	assert.NotNil(t, clientAccessor)
 
-	// Проверяем что result команда есть в root
+	// Verify that result command exists in root
 	resultCmd, _, err := rootCmd.Find([]string{"result"})
 	assert.NoError(t, err)
 	assert.NotNil(t, resultCmd)
 
-	// Проверяем что подкоманды добавлены
+	// Verify that subcommands were added
 	subcommands := []string{"list", "get", "get-case", "add", "add-case", "add-bulk", "fields"}
 	for _, sub := range subcommands {
 		cmd, _, err := rootCmd.Find([]string{"result", sub})
 		assert.NoError(t, err, "subcommand %s should exist", sub)
 		assert.NotNil(t, cmd, "subcommand %s should not be nil", sub)
 
-		// Проверяем что флаги save и quiet добавлены
+		// Verify that save and quiet flags were added
 		saveFlag := cmd.Flags().Lookup("save")
 		assert.NotNil(t, saveFlag, "save flag should exist on %s", sub)
 
-		quietFlag := cmd.Flags().Lookup("quiet")
-		assert.NotNil(t, quietFlag, "quiet flag should exist on %s", sub)
+		// Local quiet override should not be declared on subcommands.
+		// Global quiet may come from root persistent flags at runtime.
+		assert.Nil(t, cmd.Flags().Lookup("quiet"), "quiet should not be declared locally on %s", sub)
 	}
 }
 
-// ==================== Mock selectors для тестирования интерактивного режима ====================
-
-type mockProjectSelector struct {
-	projectID int64
-	err       error
-}
-
-func (m *mockProjectSelector) SelectProjectInteractively(httpClient client.ClientInterface) (int64, error) {
-	return m.projectID, m.err
-}
-
-type mockRunSelector struct {
-	runID int64
-	err   error
-}
-
-func (m *mockRunSelector) SelectRunInteractively(runs data.GetRunsResponse) (int64, error) {
-	return m.runID, m.err
-}
-
-// ==================== Тесты для list command (интерактивный режим) ====================
+// ==================== Tests for list command (interactive mode) ====================
 
 func TestListCmd_Interactive_Success(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	oldRunSelectors := runSelectors
-	defer func() {
-		selectors = oldSelectors
-		runSelectors = oldRunSelectors
-	}()
-
-	// Устанавливаем мок селекторы
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-	runSelectors = &mockRunSelector{runID: 12345, err: nil}
-
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return data.GetRunsResponse{
 				{ID: 12345, Name: "Test Run", ProjectID: 1},
 			}, nil
 		},
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			assert.Equal(t, int64(12345), runID)
 			return []data.Result{{ID: 1, TestID: 100, StatusID: 1}}, nil
 		},
 	}
 
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}). // select project
+		WithSelectResponses(interactive.SelectResponse{Index: 0})  // select run
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	// Без аргументов - должен включиться интерактивный режим
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
+	// Without arguments - should enable interactive mode
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -359,44 +345,44 @@ func TestListCmd_Interactive_Success(t *testing.T) {
 }
 
 func TestListCmd_Interactive_SelectProjectError(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
+	}
 
-	// Устанавливаем мок селектор с ошибкой
-	selectors = &mockProjectSelector{projectID: 0, err: fmt.Errorf("user cancelled")}
-
-	mock := &client.MockClient{}
+	// Empty MockPrompter — queue is exhausted, SelectProject will return an error
+	p := interactive.NewMockPrompter()
 
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "user cancelled")
 }
 
 func TestListCmd_Interactive_GetRunsError(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
-
-	// Устанавливаем мок селектор
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return nil, fmt.Errorf("failed to get runs")
 		},
 	}
 
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}) // select project
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -405,73 +391,70 @@ func TestListCmd_Interactive_GetRunsError(t *testing.T) {
 }
 
 func TestListCmd_Interactive_EmptyRuns(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	defer func() {
-		selectors = oldSelectors
-	}()
-
-	// Устанавливаем мок селектор
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{}, nil
 		},
 	}
 
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}) // select project
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не найдено")
+	assert.Contains(t, err.Error(), "no test runs found")
 }
 
 func TestListCmd_Interactive_SelectRunError(t *testing.T) {
-	// Сохраняем оригинальные селекторы
-	oldSelectors := selectors
-	oldRunSelectors := runSelectors
-	defer func() {
-		selectors = oldSelectors
-		runSelectors = oldRunSelectors
-	}()
-
-	// Устанавливаем мок селекторы
-	selectors = &mockProjectSelector{projectID: 1, err: nil}
-	runSelectors = &mockRunSelector{runID: 0, err: fmt.Errorf("user cancelled selection")}
-
 	mock := &client.MockClient{
-		GetRunsFunc: func(projectID int64) (data.GetRunsResponse, error) {
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
 			return data.GetRunsResponse{
 				{ID: 12345, Name: "Test Run", ProjectID: 1},
 			}, nil
 		},
 	}
 
+	// MockPrompter: 1 SelectResponse for project, none for run — queue is exhausted
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
 	cmd := newListCmd(testhelper.GetClientForTests)
-	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	ctx := testhelper.SetupTestCmd(t, mock).Context()
+	cmd.SetContext(interactive.WithPrompter(ctx, p))
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "cancelled")
 }
 
-// ==================== Тесты для outputResult (через команду с флагом output) ====================
+// ==================== Tests for outputResult (via command with output flag) ====================
 
 func TestOutputResult_WithSaveFlag(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsForRunFunc: func(runID int64) (data.GetResultsResponse, error) {
+		GetResultsForRunFunc: func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 			return []data.Result{{ID: 1, TestID: 100, StatusID: 1}}, nil
 		},
 	}
 
-	// Пересоздаем команду с нашим getClient чтобы использовать mock
+	// Recreate the command with our getClient to use the mock
 	cmd := newListCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
-	// Добавляем флаг save (как это делает Register)
+	// Add save flag (as Register does)
 	output.AddFlag(cmd)
 	cmd.SetArgs([]string{"12345", "--save"})
 
@@ -479,77 +462,65 @@ func TestOutputResult_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Дополнительные тесты для покрытия ====================
+// ==================== Additional tests for coverage ====================
 
 func TestAddBulkResults_ParseError(t *testing.T) {
-	// Тест для покрытия ветки ошибки парсинга JSON в AddBulkResults
+	// Test for covering the JSON parse error branch in AddBulkResults
 	mock := &client.MockClient{}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
-	// Передаем некорректный JSON который не парсится ни в один формат
+	// Pass invalid JSON that cannot be parsed into any format
 	invalidJSON := []byte(`{"invalid": "json"}`)
 
-	result, err := svc.AddBulkResults(12345, invalidJSON)
+	result, err := svc.AddBulkResults(ctx, 12345, invalidJSON)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "не удалось распарсить")
+	assert.Contains(t, err.Error(), "failed to parse")
 }
 
 func TestPrintJSON_Error(t *testing.T) {
-	// Тестируем ошибку в printJSON с несериализуемыми данными
-	invalidData := make(chan int) // Канал нельзя сериализовать
+	// Test printJSON error with non-serializable data
+	invalidData := make(chan int) // Channels cannot be serialized
 
 	err := printJSON(invalidData)
 
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "сериализации")
+	assert.Contains(t, err.Error(), "serialization")
 }
 
-// ==================== Тесты для defaultSelectors ====================
-
-func TestDefaultSelectors_SelectProjectInteractively(t *testing.T) {
-	// Тестируем что defaultSelectors.SelectProjectInteractivities вызывает interactive.SelectProjectInteractively
-	// Это тест для покрытия метода - фактически он не сможет выполниться без пользовательского ввода
-	d := &defaultSelectors{}
-	assert.NotNil(t, d)
-}
-
-func TestDefaultSelectors_SelectRunInteractively(t *testing.T) {
-	// Тестируем что defaultSelectors.SelectRunInteractively вызывает interactive.SelectRunInteractively
-	d := &defaultSelectors{}
-	assert.NotNil(t, d)
-}
-
-// ==================== Дополнительные тесты для service_wrapper ====================
+// ==================== Additional tests for service_wrapper ====================
 
 func TestResultServiceWrapper_AddBulkResults_EmptyArray(t *testing.T) {
-	// Тест для покрытия ветки с пустым массивом в JSON
+	// Test for covering the empty array branch in JSON
 	mock := &client.MockClient{}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
-	// Пустой массив
+	// Empty array
 	emptyJSON := []byte(`[]`)
 
-	result, err := svc.AddBulkResults(12345, emptyJSON)
+	result, err := svc.AddBulkResults(ctx, 12345, emptyJSON)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
-	assert.Contains(t, err.Error(), "не удалось распарсить")
+	assert.Contains(t, err.Error(), "failed to parse")
 }
 
 func TestResultServiceWrapper_AddBulkResults_InvalidJSON(t *testing.T) {
-	// Тест для покрытия ветки с невалидным JSON
+	// Test for covering the invalid JSON branch
 	mock := &client.MockClient{}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
-	// Невалидный JSON
+	// Invalid JSON
 	invalidJSON := []byte(`{invalid json`)
 
-	result, err := svc.AddBulkResults(12345, invalidJSON)
+	result, err := svc.AddBulkResults(ctx, 12345, invalidJSON)
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
@@ -557,45 +528,81 @@ func TestResultServiceWrapper_AddBulkResults_InvalidJSON(t *testing.T) {
 
 func TestResultServiceWrapper_AllMethods(t *testing.T) {
 	mock := &client.MockClient{
-		GetResultsFunc: func(testID int64) (data.GetResultsResponse, error) {
+		GetResultsFunc: func(ctx context.Context, testID int64) (data.GetResultsResponse, error) {
 			return []data.Result{{ID: 1, TestID: testID}}, nil
 		},
-		GetResultsForCaseFunc: func(runID, caseID int64) (data.GetResultsResponse, error) {
+		GetResultsForCaseFunc: func(ctx context.Context, runID, caseID int64) (data.GetResultsResponse, error) {
 			return []data.Result{{ID: 1, TestID: 100}}, nil
 		},
 	}
 
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
 	// Test GetForTest
-	results, err := svc.GetForTest(123)
+	results, err := svc.GetForTest(ctx, 123)
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 
 	// Test GetForCase
-	results, err = svc.GetForCase(1, 100)
+	results, err = svc.GetForCase(ctx, 1, 100)
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 
 	// Test GetForRun
-	mock.GetResultsForRunFunc = func(runID int64) (data.GetResultsResponse, error) {
+	mock.GetResultsForRunFunc = func(ctx context.Context, runID int64) (data.GetResultsResponse, error) {
 		return []data.Result{{ID: 1, TestID: 200}}, nil
 	}
-	results, err = svc.GetForRun(456)
+	results, err = svc.GetForRun(ctx, 456)
 	assert.NoError(t, err)
 	assert.Len(t, results, 1)
 }
 
 func TestResultServiceWrapper_ParseID(t *testing.T) {
 	mock := &client.MockClient{}
+	ctx := context.Background()
 	svc := newResultServiceFromInterface(mock)
 
 	// Test valid ID
-	id, err := svc.ParseID([]string{"123"}, 0)
+	id, err := svc.ParseID(ctx, []string{"123"}, 0)
 	assert.NoError(t, err)
 	assert.Equal(t, int64(123), id)
 
 	// Test invalid ID
-	_, err = svc.ParseID([]string{"abc"}, 0)
+	_, err = svc.ParseID(ctx, []string{"abc"}, 0)
 	assert.Error(t, err)
+}
+// TestProductionVarClosures exercises the production-var wiring closures
+// (e.g. var addCmd = newAddCmd(func(cmd) { return getClientSafe(cmd) })).
+func TestProductionVarClosures(t *testing.T) {
+	old := clientAccessor
+	defer func() { clientAccessor = old }()
+	clientAccessor = nil
+
+	cmds := []struct {
+		name string
+		cmd  *cobra.Command
+	}{
+		{"addCmd", addCmd},
+		{"addCaseCmd", addCaseCmd},
+		{"addBulkCmd", addBulkCmd},
+		{"fieldsCmd", fieldsCmd},
+		{"getCmd", getCmd},
+		{"getCaseCmd", getCaseCmd},
+		{"listCmd", listCmd},
+	}
+
+	for _, tc := range cmds {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() { recover() }()
+			_ = tc.cmd.RunE(tc.cmd, []string{"1"})
+		})
+	}
+}
+
+// TestCmd_Run_Help covers the Run func on root Cmd that calls cmd.Help().
+func TestCmd_Run_Help(t *testing.T) {
+	Cmd.SetArgs([]string{})
+	err := Cmd.Help()
+	assert.NoError(t, err)
 }

@@ -1,4 +1,4 @@
-// Package templates реализует CLI команды для работы с шаблонами TestRail
+// Package templates implements CLI commands for managing TestRail case templates.
 package templates
 
 import (
@@ -6,24 +6,24 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с шаблонами
+// Register adds all template-related subcommands to the root command.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	templatesCmd := &cobra.Command{
 		Use:   "templates",
-		Short: "Управление шаблонами тест-кейсов",
-		Long: `Управление шаблонами (templates) — форматами отображения тест-кейсов.
+		Short: "Manage test case templates",
+		Long: `Manage templates — display formats for test cases.
 
-Шаблоны определяют структуру и поля, доступные при создании
-и редактировании тест-кейсов в проекте.
+Templates define the structure and fields available when creating
+and editing test cases in a project.
 
-Доступные операции:
-  • list   — список шаблонов проекта`,
+Available operations:
+  • list   — list project templates`,
 	}
 
-	// Добавление подкоманд
+	// Register subcommands
 	templatesCmd.AddCommand(newListCmd(getClient))
 
 	root.AddCommand(templatesCmd)

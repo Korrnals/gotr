@@ -1,19 +1,23 @@
 package test
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Empty(t, filters)
 			return []data.Test{
@@ -34,7 +38,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_WithStatusFilter(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, "5", filters["status_id"])
 			return []data.Test{
@@ -54,7 +58,7 @@ func TestListCmd_WithStatusFilter(t *testing.T) {
 
 func TestListCmd_WithAssignedToFilter(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, "10", filters["assignedto_id"])
 			return []data.Test{
@@ -74,7 +78,7 @@ func TestListCmd_WithAssignedToFilter(t *testing.T) {
 
 func TestListCmd_WithMultipleFilters(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			assert.Equal(t, int64(100), runID)
 			assert.Equal(t, "5", filters["status_id"])
 			assert.Equal(t, "10", filters["assignedto_id"])
@@ -95,7 +99,7 @@ func TestListCmd_WithMultipleFilters(t *testing.T) {
 
 func TestListCmd_WithSave(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			return []data.Test{
 				{ID: 1, CaseID: 101, RunID: runID, Title: "Test 1", StatusID: 1},
 			}, nil
@@ -121,7 +125,7 @@ func TestListCmd_InvalidRunID(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "некорректный ID")
+	assert.Contains(t, err.Error(), "invalid ID")
 }
 
 func TestListCmd_ZeroRunID(t *testing.T) {
@@ -136,9 +140,55 @@ func TestListCmd_ZeroRunID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestListCmd_NoArgs(t *testing.T) {
+func TestListCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project 1"},
+			}, nil
+		},
+		GetRunsFunc: func(ctx context.Context, projectID int64) (data.GetRunsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetRunsResponse{
+				{ID: 100, Name: "Run 1", ProjectID: projectID},
+			}, nil
+		},
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			assert.Equal(t, int64(100), runID)
+			return []data.Test{
+				{ID: 1, CaseID: 101, RunID: runID, Title: "Test 1", StatusID: 1},
+			}, nil
+		},
+	}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	mock := &client.MockClient{}
 
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), niPrompter))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestListCmd_NoArgs_NoPrompter_Error(t *testing.T) {
+	mock := &client.MockClient{}
 	cmd := newListCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	cmd.SetContext(testCmd.Context())
@@ -146,12 +196,13 @@ func TestListCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "run_id is required in non-interactive mode")
 }
 
 func TestListCmd_APIError(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
-			return nil, fmt.Errorf("ран не найден")
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return nil, fmt.Errorf("run not found")
 		},
 	}
 
@@ -162,12 +213,12 @@ func TestListCmd_APIError(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "ран не найден")
+	assert.Contains(t, err.Error(), "run not found")
 }
 
 func TestListCmd_EmptyList(t *testing.T) {
 	mock := &client.MockClient{
-		GetTestsFunc: func(runID int64, filters map[string]string) ([]data.Test, error) {
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
 			return []data.Test{}, nil
 		},
 	}
@@ -189,5 +240,58 @@ func TestListCmd_NilClient(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "не инициализирован")
+	assert.Contains(t, err.Error(), "not initialized")
+}
+
+func TestListCmd_TooManyArgs(t *testing.T) {
+	mock := &client.MockClient{}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"100", "200"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "accepts at most 1 arg")
+}
+
+func TestListCmd_NoArgs_Interactive_ResolveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	p := interactive.NewMockPrompter()
+	cmd.SetContext(interactive.WithPrompter(testCmd.Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to select project")
+}
+
+func TestListCmd_WithSave_SaveError_HomeIsFile(t *testing.T) {
+	homeMarker := t.TempDir()
+	target := homeMarker + "/home-file"
+	require.NoError(t, os.WriteFile(target, []byte("x"), 0o600))
+	t.Setenv("HOME", target)
+
+	mock := &client.MockClient{
+		GetTestsFunc: func(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error) {
+			return []data.Test{{ID: 1, RunID: runID}}, nil
+		},
+	}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	testCmd := testhelper.SetupTestCmd(t, mock)
+	cmd.SetContext(testCmd.Context())
+	cmd.SetArgs([]string{"100", "--save"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "save error")
 }

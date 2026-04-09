@@ -1,19 +1,49 @@
 package compare
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
-	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/flags"
+	outpututils "github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
+)
+
+type compareCSVWriter interface {
+	Write(record []string) error
+	Flush()
+}
+
+var (
+	newCompareCSVWriter = func(w io.Writer) compareCSVWriter { return csv.NewWriter(w) }
+	compareTypesPrint   = printTable
+	compareTypesPipe    = os.Pipe
+	compareTypesCopy    = io.Copy
+	compareTypesWrite   = os.WriteFile
+)
+
+// CompareStatus describes whether the comparison completed fully.
+// Stored in the output JSON so CI/CD pipelines can check it reliably.
+type CompareStatus string
+
+const (
+	// CompareStatusComplete means all data was fetched without interruption or page errors.
+	CompareStatusComplete CompareStatus = "complete"
+	// CompareStatusInterrupted means the command was interrupted (e.g. Ctrl+C).
+	// Data in the output file is PARTIAL and must not be treated as authoritative.
+	CompareStatusInterrupted CompareStatus = "interrupted"
+	// CompareStatusPartial means the command finished but some pages had permanent fetch errors.
+	// Data may be missing entries from the failed pages.
+	CompareStatusPartial CompareStatus = "partial"
 )
 
 // ItemInfo represents a generic item with ID and name
@@ -35,31 +65,22 @@ type CompareResult struct {
 	Resource     string           `json:"resource" yaml:"resource"`
 	Project1ID   int64            `json:"project1_id" yaml:"project1_id"`
 	Project2ID   int64            `json:"project2_id" yaml:"project2_id"`
+	Status       CompareStatus    `json:"status" yaml:"status"`
 	OnlyInFirst  []ItemInfo       `json:"only_in_first" yaml:"only_in_first"`
 	OnlyInSecond []ItemInfo       `json:"only_in_second" yaml:"only_in_second"`
 	Common       []CommonItemInfo `json:"common" yaml:"common"`
 }
 
-// ResourceDiff represents a diff between two resources (legacy structure)
-type ResourceDiff struct {
-	Resource    string   `json:"resource"`
-	TotalFirst  int      `json:"total_first"`
-	TotalSecond int      `json:"total_second"`
-	Common      []string `json:"common"`
-	OnlyFirst   []string `json:"only_first"`
-	OnlySecond  []string `json:"only_second"`
-}
-
 // GetProjectNames retrieves project names for both project IDs
-func GetProjectNames(cli client.ClientInterface, pid1, pid2 int64) (string, string, error) {
-	proj1, err := cli.GetProject(pid1)
+func GetProjectNames(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64) (name1, name2 string, err error) {
+	proj1, err := cli.GetProject(ctx, pid1)
 	if err != nil {
-		return "", "", fmt.Errorf("ошибка получения проекта %d: %w", pid1, err)
+		return "", "", fmt.Errorf("failed to get project %d: %w", pid1, err)
 	}
 
-	proj2, err := cli.GetProject(pid2)
+	proj2, err := cli.GetProject(ctx, pid2)
 	if err != nil {
-		return "", "", fmt.Errorf("ошибка получения проекта %d: %w", pid2, err)
+		return "", "", fmt.Errorf("failed to get project %d: %w", pid2, err)
 	}
 
 	return proj1.Name, proj2.Name, nil
@@ -97,7 +118,9 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 			case "json", "yaml", "csv":
 				// Save in structured format with auto-generated filename
 				exportsDir, _ := outpututils.GetExportsDir("compare")
-				os.MkdirAll(exportsDir, 0755)
+				if err := os.MkdirAll(exportsDir, 0o755); err != nil {
+					return fmt.Errorf("failed to create exports directory: %w", err)
+				}
 				filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
 				if err := saveToFileWithPath(result, format, filePath); err != nil {
 					return err
@@ -121,12 +144,15 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 			if err := saveToFileWithPath(result, format, savePath); err != nil {
 				return err
 			}
-			// Message is printed by saveToFile
+			if q, _ := cmd.Flags().GetBool("quiet"); !q {
+				fmt.Println()
+				ui.Infof(os.Stdout, "Result saved to %s", savePath)
+			}
 		case "table":
 			// Save table as text
 			return saveTableToFile(cmd, result, project1Name, project2Name, savePath)
 		default:
-			return fmt.Errorf("неподдерживаемый формат: %s", format)
+			return fmt.Errorf("unsupported format: %s", format)
 		}
 		return nil
 	}
@@ -134,7 +160,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 	// Otherwise, print to stdout
 	switch format {
 	case "json":
-		return printJSON(result)
+		return ui.JSON(cmd, result)
 	case "yaml":
 		return printYAML(result)
 	case "csv":
@@ -142,12 +168,6 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 	default:
 		return printTable(result, project1Name, project2Name)
 	}
-}
-
-// tableCell represents a cell in the table with content and width
-type tableCell struct {
-	content string
-	width   int
 }
 
 // truncateString truncates a string to maxWidth with ellipsis if needed
@@ -215,7 +235,7 @@ func printSeparator(widths []int) {
 
 // printTable prints the result in table format
 func printTable(result CompareResult, project1Name, project2Name string) error {
-	fmt.Printf("\n=== Сравнение: %s (проекты %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
+	fmt.Printf("\n=== Comparison: %s (projects %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
 
 	// Table 1: Only in Project 1
 	printOnlyInProjectTable(result.OnlyInFirst, result.Project1ID, project1Name)
@@ -234,7 +254,7 @@ func printTable(result CompareResult, project1Name, project2Name string) error {
 
 // printOnlyInProjectTable prints a table for items only in one project
 func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName string) {
-	// Column widths - increased for long Russian names
+	// Column widths are widened for long names.
 	idWidth := 8
 	nameWidth := 70
 
@@ -243,14 +263,14 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 	totalInnerWidth := idWidth + nameWidth + 3*len(widths) - 1
 
 	// Title
-	title := fmt.Sprintf("Только в проекте %d - \"%s\"", projectID, projectName)
+	title := fmt.Sprintf("Only in project %d - %q", projectID, projectName)
 	printHorizontalBorder("┌", "┬", "┐", widths)
 	printHeader(title, totalInnerWidth)
 
 	// If no items, show empty message
 	if len(items) == 0 {
 		printSeparator(widths)
-		printHeader("(нет)", totalInnerWidth)
+		printHeader("(none)", totalInnerWidth)
 		printHorizontalBorder("└", "┴", "┘", widths)
 		fmt.Println()
 		return
@@ -272,7 +292,7 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 
 // printCommonTable prints a table for common items
 func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
-	// Column widths - increased for long Russian names
+	// Column widths are widened for long names.
 	nameWidth := 50
 	id1Width := 12
 	id2Width := 12
@@ -284,12 +304,12 @@ func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 
 	// Title
 	printHorizontalBorder("┌", "┬", "┐", widths)
-	printHeader("Общие в обоих проектах", totalInnerWidth)
+	printHeader("Common in both projects", totalInnerWidth)
 
 	// If no items, show empty message
 	if len(items) == 0 {
 		printSeparator(widths)
-		printHeader("(нет)", totalInnerWidth)
+		printHeader("(none)", totalInnerWidth)
 		printHorizontalBorder("└", "┴", "┘", widths)
 		fmt.Println()
 		return
@@ -301,15 +321,15 @@ func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 		"Name",
 		fmt.Sprintf("ID proj %d", project1ID),
 		fmt.Sprintf("ID proj %d", project2ID),
-		"Статус ID",
+		"ID status",
 	}, widths)
 	printSeparator(widths)
 
 	// Data rows
 	for _, item := range items {
-		status := "✓ Совпадают"
+		status := "✓ Match"
 		if !item.IDsMatch {
-			status = "⚠ Различаются"
+			status = "⚠ Differ"
 		}
 		printRow([]string{
 			item.Name,
@@ -343,12 +363,12 @@ func printIDMappingTable(items []CommonItemInfo) {
 
 	// Title
 	printHorizontalBorder("┌", "┬", "┐", widths)
-	printHeader("Маппинг ID (для обновления)", totalInnerWidth)
+	printHeader("ID mapping (for updates)", totalInnerWidth)
 
 	// If no mappings, don't show the table at all (or show empty message)
 	if len(mappings) == 0 {
 		printSeparator(widths)
-		printHeader("(все ID совпадают)", totalInnerWidth)
+		printHeader("(all IDs match)", totalInnerWidth)
 		printHorizontalBorder("└", "┴", "┘", widths)
 		fmt.Println()
 		return
@@ -372,11 +392,13 @@ func printIDMappingTable(items []CommonItemInfo) {
 	fmt.Println()
 }
 
-// printJSON prints the result as JSON
+// printJSON prints the result as JSON.
+//
+// Deprecated: use ui.JSON(cmd, result) directly in new code
 func printJSON(result CompareResult) error {
 	data, err := json.MarshalIndent(result, "", "  ")
 	if err != nil {
-		return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+		return fmt.Errorf("failed to marshal result: %w", err)
 	}
 	fmt.Println(string(data))
 	return nil
@@ -386,7 +408,7 @@ func printJSON(result CompareResult) error {
 func printYAML(result CompareResult) error {
 	data, err := yaml.Marshal(result)
 	if err != nil {
-		return fmt.Errorf("ошибка маршалинга YAML: %w", err)
+		return fmt.Errorf("failed to marshal result: %w", err)
 	}
 	fmt.Println(string(data))
 	return nil
@@ -394,7 +416,7 @@ func printYAML(result CompareResult) error {
 
 // printCSV prints the result as CSV
 func printCSV(result CompareResult) error {
-	writer := csv.NewWriter(os.Stdout)
+	writer := newCompareCSVWriter(os.Stdout)
 	defer writer.Flush()
 
 	// Header
@@ -434,16 +456,18 @@ func saveCompareResult(result CompareResult, format, savePath string) error {
 	switch format {
 	case "json":
 		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
 	case "yaml":
 		data, err = yaml.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("failed to marshal YAML: %w", err)
+		}
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
-		return fmt.Errorf("формат '%s' не поддерживается для сохранения", format)
-	}
-
-	if err != nil {
-		return fmt.Errorf("ошибка форматирования: %w", err)
+		return fmt.Errorf("format '%s' not supported for save", format)
 	}
 
 	return saveToFile(data, savePath)
@@ -453,11 +477,11 @@ func saveCompareResult(result CompareResult, format, savePath string) error {
 func saveCSV(result CompareResult, savePath string) error {
 	file, err := os.Create(savePath)
 	if err != nil {
-		return fmt.Errorf("ошибка создания файла: %w", err)
+		return fmt.Errorf("file create error: %w", err)
 	}
 	defer file.Close()
 
-	writer := csv.NewWriter(file)
+	writer := newCompareCSVWriter(file)
 	defer writer.Flush()
 
 	// Header
@@ -486,20 +510,15 @@ func saveCSV(result CompareResult, savePath string) error {
 		}
 	}
 
-	// Print on new line after progress bar
-	fmt.Println()
-	fmt.Printf("Результат сохранён в %s\n", savePath)
 	return nil
 }
 
-// saveToFile saves data to a file
+// saveToFile saves data to a file.
+// Callers are responsible for printing confirmation (respecting quiet flag).
 func saveToFile(data []byte, savePath string) error {
-	if err := os.WriteFile(savePath, data, 0644); err != nil {
-		return fmt.Errorf("ошибка записи файла: %w", err)
+	if err := os.WriteFile(savePath, data, 0o644); err != nil {
+		return fmt.Errorf("file write error: %w", err)
 	}
-	// Print on new line after progress bar
-	fmt.Println()
-	fmt.Printf("Результат сохранён в %s\n", savePath)
 	return nil
 }
 
@@ -507,9 +526,9 @@ func saveToFile(data []byte, savePath string) error {
 func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, project2Name string, customPath ...string) error {
 	// Create pipe to capture stdout
 	oldStdout := os.Stdout
-	r, w, err := os.Pipe()
+	r, w, err := compareTypesPipe()
 	if err != nil {
-		return fmt.Errorf("ошибка создания pipe: %w", err)
+		return fmt.Errorf("pipe create error: %w", err)
 	}
 	os.Stdout = w
 
@@ -518,7 +537,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	errChan := make(chan error, 1)
 	go func() {
 		var buf strings.Builder
-		_, err := io.Copy(&buf, r)
+		_, err := compareTypesCopy(&buf, r)
 		if err != nil {
 			errChan <- err
 			return
@@ -527,7 +546,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	}()
 
 	// Print table (writes to stdout)
-	printErr := printTable(result, project1Name, project2Name)
+	printErr := compareTypesPrint(result, project1Name, project2Name)
 
 	// Restore stdout and close writer
 	w.Close()
@@ -538,7 +557,7 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 	select {
 	case output = <-outChan:
 	case err := <-errChan:
-		return fmt.Errorf("ошибка чтения вывода: %w", err)
+		return fmt.Errorf("output read error: %w", err)
 	}
 
 	if printErr != nil {
@@ -553,18 +572,21 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		// Use default path with .txt extension for table
 		filePath = outpututils.GenerateFilename("compare", "txt")
 		exportsDir, _ := outpututils.GetExportsDir("compare")
-		os.MkdirAll(exportsDir, 0755)
+		if err := os.MkdirAll(exportsDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create exports directory: %w", err)
+		}
 		filePath = exportsDir + "/" + filePath
 	}
 
 	// Write to file
-	if err := os.WriteFile(filePath, []byte(output), 0644); err != nil {
-		return fmt.Errorf("ошибка записи файла: %w", err)
+	if err := compareTypesWrite(filePath, []byte(output), 0o644); err != nil {
+		return fmt.Errorf("file write error: %w", err)
 	}
 
-	// Print on new line after progress bar
-	fmt.Println()
-	fmt.Printf("Результат сохранён в %s\n", filePath)
+	if q, _ := cmd.Flags().GetBool("quiet"); !q {
+		fmt.Println()
+		ui.Infof(os.Stdout, "Result saved to %s", filePath)
+	}
 	return nil
 }
 
@@ -577,12 +599,12 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 	case "json":
 		data, err = json.MarshalIndent(result, "", "  ")
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
 	case "yaml":
 		data, err = yaml.Marshal(result)
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга YAML: %w", err)
+			return fmt.Errorf("failed to marshal YAML: %w", err)
 		}
 	case "csv":
 		return saveCSV(result, savePath)
@@ -590,7 +612,7 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 		// Default to JSON for unknown formats
 		data, err = json.MarshalIndent(result, "", "  ")
 		if err != nil {
-			return fmt.Errorf("ошибка маршалинга JSON: %w", err)
+			return fmt.Errorf("failed to marshal JSON: %w", err)
 		}
 	}
 
@@ -598,10 +620,10 @@ func saveToFileWithPath(result CompareResult, format, savePath string) error {
 }
 
 // GetProjectName retrieves a single project name (helper for tests)
-func GetProjectName(cli client.ClientInterface, projectID int64) (string, error) {
-	proj, err := cli.GetProject(projectID)
+func GetProjectName(ctx context.Context, cli client.ClientInterface, projectID int64) (string, error) {
+	proj, err := cli.GetProject(ctx, projectID)
 	if err != nil {
-		return "", fmt.Errorf("ошибка получения проекта %d: %w", projectID, err)
+		return "", fmt.Errorf("failed to get project %d: %w", projectID, err)
 	}
 	if proj == nil {
 		return fmt.Sprintf("Project %d", projectID), nil
@@ -642,15 +664,15 @@ func getClientSafe(cmd *cobra.Command) client.ClientInterface {
 // parseFlags parses common flags for compare commands
 func parseFlags(cmd *cobra.Command) (pid1, pid2 int64, field string, err error) {
 	pid1Str, _ := cmd.Flags().GetString("pid1")
-	pid1, err = strconv.ParseInt(pid1Str, 10, 64)
+	pid1, err = flags.ParseID(pid1Str)
 	if err != nil || pid1 <= 0 {
-		return 0, 0, "", fmt.Errorf("укажите корректный pid1 (--pid1)")
+		return 0, 0, "", fmt.Errorf("specify valid pid1 (--pid1)")
 	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
-	pid2, err = strconv.ParseInt(pid2Str, 10, 64)
+	pid2, err = flags.ParseID(pid2Str)
 	if err != nil || pid2 <= 0 {
-		return 0, 0, "", fmt.Errorf("укажите корректный pid2 (--pid2)")
+		return 0, 0, "", fmt.Errorf("specify valid pid2 (--pid2)")
 	}
 
 	field, _ = cmd.Flags().GetString("field")
@@ -659,43 +681,4 @@ func parseFlags(cmd *cobra.Command) (pid1, pid2 int64, field string, err error) 
 	}
 
 	return pid1, pid2, field, nil
-}
-
-// buildResourceDiff builds a ResourceDiff from two string slices
-func buildResourceDiff(resource string, first, second []string) ResourceDiff {
-	firstSet := make(map[string]bool)
-	secondSet := make(map[string]bool)
-
-	for _, f := range first {
-		firstSet[strings.ToLower(strings.TrimSpace(f))] = true
-	}
-
-	for _, s := range second {
-		secondSet[strings.ToLower(strings.TrimSpace(s))] = true
-	}
-
-	var common, onlyFirst, onlySecond []string
-
-	for f := range firstSet {
-		if secondSet[f] {
-			common = append(common, f)
-		} else {
-			onlyFirst = append(onlyFirst, f)
-		}
-	}
-
-	for s := range secondSet {
-		if !firstSet[s] {
-			onlySecond = append(onlySecond, s)
-		}
-	}
-
-	return ResourceDiff{
-		Resource:    resource,
-		TotalFirst:  len(firstSet),
-		TotalSecond: len(secondSet),
-		Common:      common,
-		OnlyFirst:   onlyFirst,
-		OnlySecond:  onlySecond,
-	}
 }

@@ -108,3 +108,17 @@ func TestGetFlagBool(t *testing.T) {
 	assert.True(t, GetFlagBool(cmd, "test-bool"))
 	assert.False(t, GetFlagBool(cmd, "non-existent"))
 }
+
+func TestGetFlagInt64(t *testing.T) {
+	cmd := &cobra.Command{Use: "test"}
+	cmd.Flags().Int64("count", 0, "count")
+	cmd.SetArgs([]string{"--count", "42"})
+	cmd.Execute()
+
+	got, err := GetFlagInt64(cmd, "count")
+	assert.NoError(t, err)
+	assert.Equal(t, int64(42), got)
+
+	_, err2 := GetFlagInt64(cmd, "non-existent")
+	assert.Error(t, err2)
+}

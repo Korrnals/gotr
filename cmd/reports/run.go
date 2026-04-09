@@ -1,41 +1,75 @@
 package reports
 
 import (
+	"context"
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newRunCmd создаёт команду 'reports run'
-// Эндпоинт: GET /run_report/{template_id}
+// newRunCmd creates the 'reports run' command.
+// Endpoint: GET /run_report/{template_id}
 func newRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run <template_id>",
-		Short: "Запустить генерацию отчёта по шаблону",
-		Long: `Запускает генерацию отчёта по указанному шаблону.
+		Use:   "run [template_id]",
+		Short: "Run report generation from a template",
+		Long: `Runs report generation using the specified template.
 
-Возвращает ID отчёта, URL для скачивания и статус генерации.
-Для проверки статуса готовности отчёта выполните команду повторно.`,
-		Example: `  # Запустить генерацию отчёта
+Returns the report ID, download URL, and generation status.
+To check report readiness status, run the command again.`,
+		Example: `  # Run report generation
   gotr reports run 42
 
-  # Сохранить результат в файл
+  # Save result to file
   gotr reports run 42 -o report_result.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			templateID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || templateID <= 0 {
-				return fmt.Errorf("invalid template_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var templateID int64
+			var err error
+			if len(args) > 0 {
+				templateID, err = flags.ValidateRequiredID(args, 0, "template_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run [template_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run [template_id]")
+				}
+
+				templateID, err = resolveReportTemplateIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Запуск генерации отчёта...")
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := output.NewDryRunPrinter("reports run")
+				dr.PrintOperation(
+					fmt.Sprintf("Run report template %d", templateID),
+					"GET",
+					fmt.Sprintf("/index.php?/api/v2/run_report/%d", templateID),
+					nil,
+				)
+				return nil
+			}
 
-			cli := getClient(cmd)
-			resp, err := cli.RunReport(templateID)
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Running report...",
+				Writer: os.Stderr,
+			}, func(ctx context.Context) (any, error) {
+				return cli.RunReport(ctx, templateID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to run report: %w", err)
 			}
@@ -45,6 +79,7 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without running generation")
 	output.AddFlag(cmd)
 
 	return cmd

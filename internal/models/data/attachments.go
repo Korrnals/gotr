@@ -1,29 +1,29 @@
 // internal/models/data/attachments.go
 package data
 
-// Attachment представляет файл вложения в TestRail
+// Attachment represents a file attachment in TestRail.
 type Attachment struct {
-	ID          int64  `json:"id"`           // Уникальный ID вложения
-	Name        string `json:"name"`         // Имя файла
-	Filename    string `json:"filename"`     // Имя файла (альтернативное поле)
-	Size        int64  `json:"size"`         // Размер файла в байтах
-	ContentType string `json:"content_type"` // MIME-тип содержимого
-	CreatedOn   int64  `json:"created_on"`   // Timestamp создания
-	ProjectID   int64  `json:"project_id"`   // ID проекта
-	CaseID      int64  `json:"case_id"`      // ID кейса (если привязано к кейсу)
-	RunID       int64  `json:"run_id"`       // ID рана (если привязано к рану)
-	PlanID      int64  `json:"plan_id"`      // ID плана (если привязано к плану)
-	ResultID    int64  `json:"result_id"`    // ID результата (если привязано к результату)
-	UserID      int64  `json:"user_id"`      // ID пользователя, загрузившего файл
+	ID          int64  `json:"id"`           // Unique attachment ID
+	Name        string `json:"name"`         // File name
+	Filename    string `json:"filename"`     // File name (alternative field)
+	Size        int64  `json:"size"`         // File size in bytes
+	ContentType string `json:"content_type"` // MIME content type
+	CreatedOn   int64  `json:"created_on"`   // Creation timestamp
+	ProjectID   int64  `json:"project_id"`   // Project ID
+	CaseID      int64  `json:"case_id"`      // Case ID (if attached to a case)
+	RunID       int64  `json:"run_id"`       // Run ID (if attached to a run)
+	PlanID      int64  `json:"plan_id"`      // Plan ID (if attached to a plan)
+	ResultID    int64  `json:"result_id"`    // Result ID (if attached to a result)
+	UserID      int64  `json:"user_id"`      // ID of the user who uploaded the file
 }
 
-// AttachmentResponse ответ от API при добавлении вложения
+// AttachmentResponse is the API response for adding an attachment.
 type AttachmentResponse struct {
-	AttachmentID int64  `json:"attachment_id"` // ID созданного вложения
-	URL          string `json:"url"`           // URL для доступа к вложению
-	Name         string `json:"name"`          // Имя файла
-	Size         int64  `json:"size"`          // Размер файла
+	AttachmentID int64  `json:"attachment_id"` // ID of the created attachment
+	URL          string `json:"url"`           // URL for accessing the attachment
+	Name         string `json:"name"`          // File name
+	Size         int64  `json:"size"`          // File size
 }
 
-// GetAttachmentsResponse ответ на получение списка вложений
+// GetAttachmentsResponse is the response for retrieving a list of attachments.
 type GetAttachmentsResponse []Attachment

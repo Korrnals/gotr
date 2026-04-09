@@ -2,36 +2,55 @@ package reports
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'reports list'
-// Эндпоинт: GET /get_reports/{project_id}
+// newListCmd creates the 'reports list' command.
+// Endpoint: GET /get_reports/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
-		Short: "Список шаблонов отчётов проекта",
-		Long: `Выводит список всех шаблонов отчётов указанного проекта.
+		Use:   "list [project_id]",
+		Short: "List project report templates",
+		Long: `Lists all report templates for the specified project.
 
-Показывает ID, название и описание всех доступных шаблонов отчётов.
-Поддерживает вывод в JSON для автоматизации.`,
-		Example: `  # Список шаблонов отчётов проекта
+Displays the ID, name, and description of all available report templates.
+Supports JSON output for automation.`,
+		Example: `  # List project report templates
   gotr reports list 1
 
-  # Сохранить список в файл
+  # Save list to file
   gotr reports list 1 -o reports.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr reports list [project_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr reports list [project_id]")
+				}
+
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			cli := getClient(cmd)
-			resp, err := cli.GetReports(projectID)
+			resp, err := cli.GetReports(ctx, projectID)
 			if err != nil {
 				return fmt.Errorf("failed to list reports: %w", err)
 			}

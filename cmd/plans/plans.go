@@ -1,4 +1,4 @@
-// Package plans реализует CLI команды для работы с тест-планами TestRail
+// Package plans implements CLI commands for managing TestRail test plans.
 package plans
 
 import (
@@ -6,29 +6,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetClientFunc — тип функции для получения клиента
+// GetClientFunc is the function type for obtaining an API client.
 type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Register регистрирует все команды для работы с тест-планами
+// Register registers all test plan management commands on the given root.
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	plansCmd := &cobra.Command{
 		Use:   "plans",
-		Short: "Управление тест-планами",
-		Long: `Управление тест-планами: создание, обновление, закрытие, удаление и управление записями.
+		Short: "Manage test plans",
+		Long: `Manage test plans: create, update, close, delete, and manage entries.
 
-Тест-план — это набор тестовых прогонов (entries), объединённых общей целью.
+A test plan is a collection of test runs (entries) grouped by a common goal.
 
-Основные операции:
-  • add    — создать тест-план
-  • get    — получить информацию о плане
-  • list   — список планов проекта
-  • update — обновить план
-  • close  — закрыть план (завершить)
-  • delete — удалить план
-  • entry  — управление записями плана (add/update/delete)`,
+Main operations:
+  • add    — create a test plan
+  • get    — get plan information
+  • list   — list project plans
+  • update — update a plan
+  • close  — close a plan (complete)
+  • delete — delete a plan
+  • entry  — manage plan entries (add/update/delete)`,
 	}
 
-	// Добавление подкоманд
+	// Add subcommands
 	plansCmd.AddCommand(newAddCmd(getClient))
 	plansCmd.AddCommand(newGetCmd(getClient))
 	plansCmd.AddCommand(newListCmd(getClient))

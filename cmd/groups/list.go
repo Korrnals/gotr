@@ -2,52 +2,61 @@ package groups
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'groups list'
-// Эндпоинт: GET /get_groups/{project_id}
+// newListCmd creates the 'groups list' command.
+// Endpoint: GET /get_groups/{project_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <project_id>",
-		Short: "Список групп проекта",
-		Long: `Выводит список групп пользователей, доступных в указанном проекте.
+		Use:   "list [project_id]",
+		Short: "List project groups",
+		Long: `List user groups available in the specified project.
 
-Каждая группа содержит ID, название и информацию о пользователях,
-входящих в группу. Используется для просмотра структуры команд
-и управления правами доступа в рамках проекта.`,
-		Example: `  # Получить список групп проекта
+Each group contains an ID, name, and information about users
+belonging to the group. Used for viewing team structure
+and managing access rights within a project.`,
+		Example: `  # List project groups
   gotr groups list 1
 
-  # Сохранить в файл
+  # Save to file
   gotr groups list 5 -o groups.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("некорректный project_id: %s", args[0])
-			}
-
 			cli := getClient(cmd)
-			resp, err := cli.GetGroups(projectID)
-			if err != nil {
-				return fmt.Errorf("не удалось получить список групп: %w", err)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id required: gotr groups list [project_id]")
+				}
+				projectID, err = resolveProjectIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			return outputResult(cmd, resp)
+			resp, err := cli.GetGroups(ctx, projectID)
+			if err != nil {
+				return fmt.Errorf("failed to get groups list: %w", err)
+			}
+
+			return output.OutputResult(cmd, resp, "groups")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "groups", "json")
-	return err
 }

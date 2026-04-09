@@ -1,28 +1,28 @@
 // internal/models/data/reports.go
 package data
 
-// ReportTemplate — шаблон отчёта
+// ReportTemplate represents a report template.
 type ReportTemplate struct {
-	ID          int64  `json:"id"`           // Уникальный ID шаблона
-	Name        string `json:"name"`         // Название шаблона
-	Description string `json:"description"`  // Описание
+	ID          int64  `json:"id"`          // Unique template ID
+	Name        string `json:"name"`        // Template name
+	Description string `json:"description"` // Description
 }
 
-// Report — сгенерированный отчёт
+// Report represents a generated report.
 type Report struct {
-	ID        int64  `json:"id"`         // ID отчёта
-	Name      string `json:"name"`       // Название
-	URL       string `json:"url"`        // URL для скачивания
-	Status    string `json:"status"`     // Статус (completed, pending, error)
-	CreatedOn int64  `json:"created_on"` // Timestamp создания
+	ID        int64  `json:"id"`         // Report ID
+	Name      string `json:"name"`       // Name
+	URL       string `json:"url"`        // Download URL
+	Status    string `json:"status"`     // Status (completed, pending, error)
+	CreatedOn int64  `json:"created_on"` // Creation timestamp
 }
 
-// GetReportsResponse — ответ на get_reports
+// GetReportsResponse is the response for get_reports.
 type GetReportsResponse []ReportTemplate
 
-// RunReportResponse — ответ на run_report
+// RunReportResponse is the response for run_report.
 type RunReportResponse struct {
-	ReportID  int64  `json:"report_id"`
-	URL       string `json:"url"`
-	Status    string `json:"status"`
+	ReportID int64  `json:"report_id"`
+	URL      string `json:"url"`
+	Status   string `json:"status"`
 }

@@ -1,21 +1,24 @@
 package templates
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/cmd/internal/testhelper"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			assert.Equal(t, int64(1), projectID)
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
@@ -34,7 +37,7 @@ func TestListCmd_Success(t *testing.T) {
 
 func TestListCmd_Empty(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{}, nil
 		},
 	}
@@ -49,7 +52,7 @@ func TestListCmd_Empty(t *testing.T) {
 
 func TestListCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -62,7 +65,7 @@ func TestListCmd_ClientError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestListCmd_InvalidProjectID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -74,7 +77,39 @@ func TestListCmd_InvalidProjectID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestListCmd_NoArgs(t *testing.T) {
+func TestListCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return []data.Template{{ID: 1, Name: "Test Case (Text)", IsDefault: true}}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+	cmd := newListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListCmd(testhelper.GetClientForTests)
+	niPrompter := interactive.NewNonInteractivePrompter()
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), niPrompter))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestListCmd_NoArgs_NoPrompter_Error(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := newListCmd(testhelper.GetClientForTests)
 	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
@@ -82,13 +117,29 @@ func TestListCmd_NoArgs(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id is required in non-interactive mode")
 }
 
-// ==================== Тесты для outputResult ====================
+func TestListCmd_ResolveInteractiveError(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return nil, fmt.Errorf("projects boom")
+		},
+	}
+
+	cmd := newListCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), interactive.NewMockPrompter()))
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+}
+
+// ==================== outputResult tests ====================
 
 func TestOutputResult_Stdout(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
 			}, nil
@@ -105,7 +156,7 @@ func TestOutputResult_Stdout(t *testing.T) {
 
 func TestOutputResult_ToFile(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
 				{ID: 2, Name: "Test Case (Steps)", IsDefault: false},
@@ -128,13 +179,13 @@ func TestOutputResult_MarshalError(t *testing.T) {
 	// Channel cannot be marshaled to JSON
 	invalidData := make(chan int)
 
-	err := outputResult(cmd, invalidData)
+	err := output.OutputResult(cmd, invalidData, "templates")
 	assert.Error(t, err)
 }
 
 func TestOutputResult_SaveToFile(t *testing.T) {
 	mock := &client.MockClient{
-		GetTemplatesFunc: func(projectID int64) (data.GetTemplatesResponse, error) {
+		GetTemplatesFunc: func(ctx context.Context, projectID int64) (data.GetTemplatesResponse, error) {
 			return []data.Template{
 				{ID: 1, Name: "Test Case (Text)", IsDefault: true},
 			}, nil
@@ -149,7 +200,7 @@ func TestOutputResult_SaveToFile(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для Register ====================
+// ==================== Register tests ====================
 
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{Use: "gotr"}

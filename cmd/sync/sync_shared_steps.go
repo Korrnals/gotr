@@ -1,38 +1,42 @@
 package sync
 
 import (
+	"context"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/progress"
-	"github.com/Korrnals/gotr/internal/utils"
-	"strings"
+	"os"
+
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
 )
 
 var sharedStepsCmd = &cobra.Command{
 	Use:   "shared-steps",
-	Short: "Миграция общих шагов (shared steps)",
-	Long: `Перенос общих шагов (shared steps) из source проекта в destination проект.
+	Short: "Migrate shared steps",
+	Long: `Transfer shared steps from source project to destination project.
 
-Особенности:
-• Автоматический интерактивный выбор проектов и сьютов (если не указаны флаги)
-• Генерация mapping для замены shared_step_id при миграции кейсов
-• Подтверждение перед импортом
+Features:
+• Automatic interactive selection of projects and suites (if flags are not specified)
+• Generates mapping for shared_step_id replacement during case migration
+• Confirmation before import
 
-Примеры:
-	# Полностью интерактивный режим
+Examples:
+	# Fully interactive mode
 	gotr sync shared-steps
 
-	# Частично интерактивный
+	# Partially interactive
 	gotr sync shared-steps --src-project 30
 
-	# Полностью через флаги
+	# Fully via flags
 	gotr sync shared-steps --src-project 30 --src-suite 20069 --dst-project 31 --approve --save-mapping
 `,
 
-
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
+		ctx := cmd.Context()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -40,61 +44,87 @@ var sharedStepsCmd = &cobra.Command{
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
+		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 
+		p := interactive.PrompterFromContext(ctx)
 		var err error
 
-		// Интерактивный выбор source проекта
+		// Interactive source project selection
 		if srcProject == 0 {
-			srcProject, err = selectProjectInteractively(cli, "Выберите SOURCE проект (откуда копировать shared steps):")
+			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy shared steps from):")
 			if err != nil {
 				return err
 			}
 		}
 
-		// Интерактивный выбор source сьюта (опционально, можно 0)
+		// Interactive source suite selection (optional, can be 0)
 		if srcSuite == 0 {
-			// Спрашиваем нужен ли suite
-			fmt.Print("\nУказать source suite? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-				srcSuite, err = selectSuiteInteractively(cli, srcProject, "Выберите SOURCE сьют:")
+			// Ask if suite is needed
+			specifySuite, err := p.Confirm("Specify source suite?", false)
+			if err != nil {
+				return err
+			}
+			if specifySuite {
+				srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 				if err != nil {
 					return err
 				}
 			}
 		}
 
-		// Интерактивный выбор destination проекта
+		// Interactive destination project selection
 		if dstProject == 0 {
-			dstProject, err = selectProjectInteractively(cli, "Выберите DESTINATION проект (куда копировать shared steps):")
+			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy shared steps to):")
 			if err != nil {
 				return err
 			}
 		}
 
-		// Директория для логов и инициализация миграции
-		logDir := utils.LogDir()
-		// Шаг 1) Инициализация объекта миграции (логирование, client, параметры)
+		// Log directory and migration initialization
+		logDir, err := paths.EnsureLogsDirPath()
+		if err != nil {
+			return err
+		}
+		// Step 1) Initialize migration object (logging, client, parameters)
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, 0, compareField, logDir)
 		if err != nil {
 			return err
 		}
 		defer m.Close()
 
-		// Create progress manager
-		pm := progress.NewManager()
+		op := newSyncOperation("Sync shared steps", quiet)
+defer op.Finish()
 
-		progress.Describe(pm.NewSpinner(""), "Загрузка shared steps...")
-		sourceSteps, targetSteps, err := m.FetchSharedStepsData()
+		op.Phase("Loading shared steps")
+		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", quiet, func(ctx context.Context) (struct {
+			Source data.GetSharedStepsResponse
+			Target data.GetSharedStepsResponse
+		}, error) {
+			sourceSteps, targetSteps, err := m.FetchSharedStepsData(ctx)
+			if err != nil {
+				return struct {
+					Source data.GetSharedStepsResponse
+					Target data.GetSharedStepsResponse
+				}{}, err
+			}
+			return struct {
+				Source data.GetSharedStepsResponse
+				Target data.GetSharedStepsResponse
+			}{Source: sourceSteps, Target: targetSteps}, nil
+		})
 		if err != nil {
 			return err
 		}
+		sourceSteps := loadedSteps.Source
+		targetSteps := loadedSteps.Target
 
-		// Шаг 2) Получение кейсов source для определения использования shared steps
-		sourceCases, err := m.Client.GetCases(srcProject, srcSuite, 0)
+		// Step 2) Fetch source cases to determine shared steps usage
+		op.Phase("Loading source cases")
+		sourceCases, err := runSyncStatus(ctx, "Loading source cases...", quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
+			return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
+		})
 		if err != nil {
 			return err
 		}
@@ -103,63 +133,68 @@ var sharedStepsCmd = &cobra.Command{
 			caseIDsSet[c.ID] = struct{}{}
 		}
 
-		// Шаг 3) Фильтрация кандидатов (исключаем используемые и дубликаты)
+		// Step 3) Filter candidates (exclude used and duplicates)
 		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("\nГотово к импорту: %d новых shared steps\n", len(filtered))
+		ui.Infof(os.Stdout, "Ready to import: %d new shared steps", len(filtered))
 
 		if dryRun {
-			fmt.Println("Dry-run: импорт не выполнен")
+			ui.Info(os.Stdout, "Dry-run: import skipped")
 			return nil
 		}
 
 		if len(filtered) == 0 {
-			fmt.Println("Нет новых shared steps")
+			ui.Info(os.Stdout, "No new shared steps")
 			return nil
 		}
 
-		// Шаг 4) Подтверждение импорта
+		// Step 4) Confirm import
+		op.Phase("Awaiting confirmation")
 		if !autoApprove {
-			fmt.Printf("Подтверждение импорта %d shared steps...\n", len(filtered))
-			fmt.Print("Продолжить? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
-				fmt.Println("Отменено")
+			ui.Infof(os.Stdout, "Confirm import of %d shared steps...", len(filtered))
+			ok, err := p.Confirm("Continue?", false)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				ui.Canceled(os.Stdout)
 				return nil
 			}
 		}
 
-		// Шаг 5) Импорт
-		progress.Describe(pm.NewSpinner(""), fmt.Sprintf("Импорт %d shared steps...", len(filtered)))
-		err = m.ImportSharedSteps(filtered, false)
+		// Step 5) Import
+		op.Phase("Importing shared steps")
+		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
+			return struct{}{}, m.ImportSharedSteps(ctx, filtered, false)
+		})
 		if err != nil {
 			return err
 		}
 
-		// Шаг 6) Сохранение mapping/filtered при запросе
+		// Step 6) Save mapping/filtered if requested
 		if autoSaveMapping {
-			m.ExportMapping(logDir)
+			_ = m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
-			fmt.Print("\nСохранить mapping? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-				m.ExportMapping(logDir)
+			ok, err := p.Confirm("Save mapping?", false)
+			if err == nil && ok {
+				_ = m.ExportMapping(logDir)
 			}
 		}
 
+		// Step 7) Save filtered shared steps list if requested
 		if autoSaveFiltered {
-			// Сохранение filtered
+			if err := m.ExportSharedSteps(filtered, true, logDir); err != nil {
+				ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
+			}
 		} else if len(filtered) > 0 {
-			fmt.Print("\nСохранить filtered shared steps? [y/N]: ")
-			var confirm string
-			fmt.Scanln(&confirm)
-			if strings.ToLower(strings.TrimSpace(confirm)) == "y" {
-				// Сохранение
+			ok, err := p.Confirm("Save filtered shared steps list?", false)
+			if err == nil && ok {
+				if err := m.ExportSharedSteps(filtered, true, logDir); err != nil {
+					ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
+				}
 			}
 		}
 

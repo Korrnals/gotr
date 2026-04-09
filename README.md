@@ -1,4 +1,6 @@
-```
+# gotr — CLI Client for TestRail API
+
+```text
 ╔══════════════════════════════════════════════════════════╗
 ║                                                          ║
 ║     ██████╗  ██████╗ ████████╗██████╗                    ║
@@ -13,29 +15,42 @@
 ╚══════════════════════════════════════════════════════════╝
 ```
 
-# gotr — CLI Client for TestRail API
-
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-2.7.0-blue.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.25.6-blue.svg)](go.mod)
+[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v2.7.0** — Stage 4 Complete: 106/106 API endpoints implemented. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v3.0.0** — Stage 13.5 Complete: Quality hardening, 7 audit rounds, 0 lint findings, full test coverage. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 
 `gotr` provides a comprehensive toolkit for TestRail operations:
 
 - **Data Operations** — Retrieve and manage test cases, suites, sections, shared steps, runs, results, milestones, plans, and more
-- **Complete API Coverage** — All 106 TestRail API v2 endpoints implemented (Stage 4 complete)
+- **Complete API Coverage** — All 121 TestRail API v2 endpoints implemented (Stage 4 complete)
 - **Project Synchronization** — Migrate entities between projects with intelligent duplicate detection
 - **Interactive Workflow** — Guided selection of projects and suites eliminates the need to memorize IDs
 - **Real-time Progress** — Visual progress bars with channel-based updates for all long-running operations
 - **Built-in Processing** — JSON filtering with embedded `jq`, progress tracking, and structured logging
 - **Flexible Configuration** — Support for flags, environment variables, and configuration files
+
+## Navigation
+
+- [Documentation](docs/index.md)
+  - [Guides](docs/en/guides/index.md)
+    - [Installation](docs/en/guides/installation.md)
+    - [Configuration](docs/en/guides/configuration.md)
+    - [Interactive Mode](docs/en/guides/interactive-mode.md)
+    - [Progress](docs/en/guides/progress.md)
+    - [Commands Index](docs/en/guides/commands/index.md)
+      - [Command groups](docs/en/guides/commands/index.md#command-groups-and-subgroups)
+  - [Architecture](docs/en/architecture/index.md)
+  - [Operations](docs/en/operations/index.md)
+  - [Reports](docs/en/reports/index.md)
+- [Home](README.md)
 
 ## Quick Start
 
@@ -55,7 +70,7 @@ gotr self-test
 
 | Feature | Description |
 |---------|-------------|
-| **Full API Coverage** | 106/106 TestRail API v2 endpoints implemented |
+| **Full API Coverage** | 121/121 TestRail API v2 endpoints implemented |
 | **Interactive Mode** | Visual selection for projects, suites, and migration targets |
 | **Data Synchronization** | Migrate cases, shared steps, suites, and sections between projects |
 | **Test Run Management** | Create runs, add results, and track test execution |
@@ -136,6 +151,30 @@ gotr compare all --pid1 30 --pid2 34 --save-to comparison.yaml
 
 **Supported resources:** `cases`, `suites`, `sections`, `sharedsteps`, `runs`, `plans`, `milestones`, `datasets`, `groups`, `labels`, `templates`, `configurations`, `all`
 
+#### Performance Tuning
+
+```bash
+# Server (без rate-limit, максимальная скорость)
+gotr compare cases --pid1 30 --pid2 34 --rate-limit 0
+
+# Cloud Enterprise (повышенный лимит)
+gotr compare cases --pid1 30 --pid2 34 --rate-limit 300
+
+# Больше параллелизма
+gotr compare cases --pid1 30 --pid2 34 --parallel-suites 10 --parallel-pages 6
+```
+
+Automatic deployment detection: gotr определяет `cloud/server` по URL и подбирает rate-limit автоматически. Настраивается в конфиге (`compare.deployment`, `compare.cloud_tier`).
+
+#### Точечный дозабор failed pages
+
+```bash
+# Если часть страниц не загрузилась — дозабрать только их
+gotr compare retry-failed-pages --from ~/.gotr/exports/compare/failed_pages_2026-03-03_10-15-00.json
+```
+
+По умолчанию compare cases автоматически пытается дозабрать проблемные страницы.
+
 ### Test Runs and Results
 
 ```bash
@@ -194,83 +233,69 @@ gotr config init
 gotr config view
 ```
 
-## Documentation
-
-- [Installation Guide](docs/installation.md)
-- [Configuration](docs/configuration.md)
-- [GET Commands](docs/get-commands.md)
-- [SYNC Commands](docs/sync-commands.md)
-- [Interactive Mode](docs/interactive-mode.md)
-- [Progress Monitoring](docs/progress.md) — Universal progress system for long-running operations
-
 ## Project Structure
 
-```
+```text
 gotr/
-├── cmd/                          # CLI commands
-│   ├── common/                   #   Shared components
-│   │   ├── client.go            #     Unified client access
-│   │   └── flags.go             #     Common flag parsing
+├── cmd/                          # CLI commands (29 subcommands)
+│   ├── internal/testhelper/     #   Shared test utilities
 │   ├── get/                     #   GET commands (cases, suites, projects)
 │   ├── run/                     #   Test run management
 │   ├── result/                  #   Test results management
-│   └── sync/                    #   Data migration commands
-├── docs/                         # Documentation
-│   ├── architecture.md          #   Detailed architecture
-│   ├── get-commands.md          #   GET command reference
-│   ├── sync-commands.md         #   SYNC command reference
-│   └── ...
+│   ├── compare/                 #   Cross-project comparison
+│   ├── sync/                    #   Data migration commands
+│   └── ...                      #   Other resource subcommands
+├── docs/                         # Documentation (EN + RU)
+│   ├── en/                      #   English docs
+│   └── ru/                      #   Russian docs
+├── embedded/                     # Embedded binaries (jq)
 ├── internal/
 │   ├── client/                  #   TestRail API client
-│   │   ├── interfaces.go       #     ClientInterface (106 endpoints, 14 APIs)
+│   │   ├── interfaces.go       #     ClientInterface (130+ methods, 16 APIs)
 │   │   ├── mock.go             #     MockClient for testing
 │   │   └── *.go                #     API implementations
-│   ├── interactive/            #   Interactive selection
+│   ├── concurrency/            #   Domain-level parallel orchestration
+│   │   ├── controller.go       #     ParallelController — suite/page streaming
+│   │   └── simple.go           #     FetchParallel[T], FetchParallelBySuite[T]
+│   ├── concurrent/             #   Low-level concurrency primitives
+│   │   ├── pool.go             #     WorkerPool
+│   │   ├── limiter.go          #     AdaptiveRateLimiter (180 req/min)
+│   │   └── retry.go            #     Exponential backoff retry
+│   ├── interactive/            #   Interactive prompts (survey)
 │   ├── service/                #   Business logic
 │   │   ├── run.go              #     RunService
 │   │   ├── result.go           #     ResultService
 │   │   └── migration/          #     Data migration engine
 │   ├── models/                 #   Data models
-│   │   └── data/              #     API DTOs
-│   └── utils/                  #   Utilities
+│   │   ├── data/              #     API DTOs
+│   │   └── config/            #     Configuration model
+│   ├── output/                 #   Output formatting (JSON/YAML/table)
+│   ├── ui/                     #   Terminal UI (progress, preview)
+│   ├── flags/                  #   Common flag parsing
+│   ├── log/                    #   Structured logging (zap)
+│   └── paths/                  #   Path utilities
 ├── pkg/                          # Public packages
-│   └── testrailapi/            #   API endpoint definitions
+│   ├── testrailapi/            #   API endpoint definitions (135 endpoints)
+│   └── reporter/               #   Unified statistics reporter
 └── main.go                       # Entry point
 ```
 
-See [docs/architecture.md](docs/architecture.md) for complete structure.
+See [docs/en/architecture/overview.md](docs/en/architecture/overview.md) for complete structure.
 
-## What's New in v2.7.0 (Stage 4 Complete)
+## What's New in v3.0.0
 
-### Complete API Coverage
+- **135 TestRail API endpoints** defined, 98% implemented in client
+- **29 CLI commands** covering all major TestRail resources
+- **Streaming parallel pagination** with adaptive rate limiting (180 req/min)
+- **100% test coverage** in 35/42 packages, min 97.4% across all packages
+- **Zero golangci-lint issues** with gocyclo ≤15 threshold
+- **Full EN/RU documentation** with 125 doc pages
 
-All 106 TestRail API v2 endpoints are now implemented:
-
-- **Tests API** (3 endpoints) — GetTest, GetTests, UpdateTest
-- **Milestones API** (5 endpoints) — Full CRUD for milestones
-- **Plans API** (9 endpoints) — Full CRUD + plan entries management
-- **Attachments API** (5 endpoints) — File uploads to cases/plans/results/runs
-- **Configurations API** (7 endpoints) — Test configurations management
-- **Users & Reference** (7 endpoints) — Users, Priorities, Statuses, Templates
-- **Reports API** (3 endpoints) — Report generation and retrieval
-- **Extended APIs** (21 endpoints) — Groups, Roles, Datasets, Variables, BDDs, Labels
-
-## What's New in v2.5.0
-
-### Architecture Improvements
-- **Unified Client Interface** — Single `ClientInterface` across all packages eliminates code duplication
-- **Enhanced Test Coverage** — All sync tests now use interface-based mocking (10 new tests, 0 skipped)
-- **Refactored Common Package** — Eliminated `getClientSafe` duplication across command packages
-
-### Interactive Features
-- **Interactive Selection** — Visual pickers for projects and suites in `run list` and `result list`
-- **Streamlined Workflow** — Reduced friction for common operations
-
-See [CHANGELOG](CHANGELOG.md) for complete history.
+See [CHANGELOG](CHANGELOG.md) for full release history.
 
 ## Installation
 
-Detailed installation instructions: [docs/installation.md](docs/installation.md)
+Detailed installation instructions: [docs/en/guides/installation.md](docs/en/guides/installation.md)
 
 ## Contributing
 
@@ -284,10 +309,19 @@ This project is built with the following open-source libraries:
 |---------|---------|
 | [spf13/cobra](https://github.com/spf13/cobra) | CLI framework |
 | [spf13/viper](https://github.com/spf13/viper) | Configuration management |
-| [cheggaaa/pb/v3](https://github.com/cheggaaa/pb) | Progress bars |
 | [go.uber.org/zap](https://github.com/uber-go/zap) | Structured logging |
 | [stretchr/testify](https://github.com/stretchr/testify) | Testing toolkit |
-| [itchyny/gojq](https://github.com/itchyny/gojq) | Embedded JSON processor |
+| [AlecAivazis/survey/v2](https://github.com/AlecAivazis/survey) | Interactive prompts |
+| [jedib0t/go-pretty/v6](https://github.com/jedib0t/go-pretty) | Table output formatting |
+| [fatih/color](https://github.com/fatih/color) | Colored terminal output |
+| [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) | Concurrency utilities |
+| [golang.org/x/time](https://pkg.go.dev/golang.org/x/time) | Rate limiting |
+
+### Embedded Tools
+
+| Tool | Purpose |
+|------|----------|
+| [jq](https://github.com/jqlang/jq) | Lightweight JSON processor, embedded as a static binary for `--jq` / `--jq-filter` support |
 
 ## License
 

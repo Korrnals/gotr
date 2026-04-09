@@ -7,32 +7,45 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// newGetByEmailCmd создаёт команду 'users get-by-email'
-// Эндпоинт: GET /get_user_by_email
+// newGetByEmailCmd creates the 'users get-by-email' command.
+// Endpoint: GET /get_user_by_email
 func newGetByEmailCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "get-by-email <email>",
-		Short: "Получить пользователя по email",
-		Long: `Получает информацию о пользователе по его email адресу.
+		Use:   "get-by-email [email]",
+		Short: "Get user by email",
+		Long: `Retrieves user information by their email address.
 
-Выводит полную информацию: ID, имя, email, статус активности, 
-роль, ID роли, MFA статус и признак администратора.
+Displays full information: ID, name, email, activity status,
+role, role ID, MFA status, and administrator flag.
 
-Полезно для поиска пользователя, когда известен email, но не ID.`,
-		Example: `  # Получить пользователя по email
+Useful for finding a user when the email is known but not the ID.`,
+		Example: `  # Get user by email
   gotr users get-by-email user@example.com
 
-  # Сохранить результат в файл
+  # Save result to a file
   gotr users get-by-email user@example.com -o user.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			email := args[0]
+			var email string
+			if len(args) > 0 {
+				email = args[0]
+			} else {
+				if err := requireInteractiveUserArg(cmd.Context(), "gotr users get-by-email [email]"); err != nil {
+					return err
+				}
+				var err error
+				email, err = resolveEmailInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
+			}
 			if email == "" {
 				return fmt.Errorf("email cannot be empty")
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetUserByEmail(email)
+			ctx := cmd.Context()
+			resp, err := cli.GetUserByEmail(ctx, email)
 			if err != nil {
 				return fmt.Errorf("failed to get user by email: %w", err)
 			}

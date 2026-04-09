@@ -2,80 +2,112 @@ package bdds
 
 import (
 	"fmt"
+	"io"
 	"os"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'bdds add'
-// Эндпоинт: POST /add_bdd/{test_case_id}
+// newAddCmd creates the 'bdds add' command.
+// Endpoint: POST /add_bdd/{test_case_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <case_id>",
-		Short: "Добавить BDD сценарий к тест-кейсу",
-		Long: `Добавляет BDD сценарий в формате Gherkin к указанному тест-кейсу.
+		Use:   "add [case_id]",
+		Short: "Add a BDD scenario to a test case",
+		Long: `Add a Gherkin-format BDD scenario to the specified test case.
 
-Сценарий должен быть в формате Given-When-Then (Дано-Когда-Тогда).
-Можно передать содержимое через файл или напрямую.`,
-		Example: `  # Добавить BDD из файла
+The scenario must follow the Given-When-Then format.
+Content can be provided via a file or directly.`,
+		Example: `  # Add BDD from a file
   gotr bdds add 12345 --file=scenario.feature
 
-  # Добавить BDD из stdin
+  # Add BDD from stdin
   cat scenario.feature | gotr bdds add 12345`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("некорректный case_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("case_id is required in non-interactive mode: gotr bdds add [case_id]")
+				}
+				caseID, err = resolveCaseIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			// Читаем содержимое BDD
+			// Read the BDD content
 			content, err := readBDDContent(cmd)
 			if err != nil {
 				return err
 			}
 			if content == "" {
-				return fmt.Errorf("BDD содержимое не может быть пустым (используйте --file или stdin)")
+				return fmt.Errorf("BDD content cannot be empty (use --file or stdin)")
 			}
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("bdds add")
-				dr.PrintSimple("Добавить BDD", fmt.Sprintf("Case ID: %d", caseID))
+				dr.PrintSimple("Add BDD", fmt.Sprintf("Case ID: %d", caseID))
 				return nil
 			}
 
-			cli := getClient(cmd)
-			resp, err := cli.AddBDD(caseID, content)
+			resp, err := cli.AddBDD(ctx, caseID, content)
 			if err != nil {
-				return fmt.Errorf("не удалось добавить BDD: %w", err)
+				return fmt.Errorf("failed to add BDD: %w", err)
 			}
 
-			fmt.Printf("✅ BDD добавлен к кейсу %d\n", caseID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "BDD added to case %d", caseID)
+			return output.OutputResult(cmd, resp, "bdds")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("file", "", "Путь к файлу с Gherkin сценарием")
+	cmd.Flags().String("file", "", "Path to a Gherkin scenario file")
 
 	return cmd
 }
 
-// readBDDContent читает содержимое BDD из файла или stdin
+// readBDDContent reads BDD content from a file or stdin.
 func readBDDContent(cmd *cobra.Command) (string, error) {
 	filePath, _ := cmd.Flags().GetString("file")
 	if filePath != "" {
 		data, err := os.ReadFile(filePath)
 		if err != nil {
-			return "", fmt.Errorf("не удалось прочитать файл: %w", err)
+			return "", fmt.Errorf("failed to read file: %w", err)
 		}
 		return string(data), nil
 	}
 
-	// TODO: Чтение из stdin если файл не указан
-	// Пока возвращаем пустую строку, будет ошибка валидации
+	// Read from stdin if data is being piped.
+	stat, err := stdinStat()
+	if err == nil && (stat.Mode()&os.ModeCharDevice) == 0 {
+		data, err := io.ReadAll(io.LimitReader(stdinReader(), 10<<20)) // 10 MiB limit
+		if err != nil {
+			return "", fmt.Errorf("failed to read from stdin: %w", err)
+		}
+		return string(data), nil
+	}
+
 	return "", nil
 }
+
+// Indirection points for testing.
+var stdinStat = func() (os.FileInfo, error) { return os.Stdin.Stat() }
+var stdinReader = func() io.Reader { return os.Stdin }

@@ -4,50 +4,69 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду для получения списка тестов
+// newListCmd creates the command for listing tests.
 func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [run-id]",
-		Short: "Получить список тестов в ране",
-		Long: `Получает список всех тестов для указанного тест-рана.
+		Short: "List tests in a run",
+		Long: `Retrieves a list of all tests for the specified test run.
 
-Можно применять фильтры:
-	--status-id      Фильтр по статусу (1=passed, 5=failed, etc.)
-	--assigned-to    Фильтр по назначенному пользователю
+Filters can be applied:
+	--status-id      Filter by status (1=passed, 5=failed, etc.)
+	--assigned-to    Filter by assigned user
 
-Примеры:
-	# Получить все тесты в ране
+Examples:
+	# Get all tests in a run
 	gotr test list 100
 
-	# Получить только failed тесты
+	# Get only failed tests
 	gotr test list 100 --status-id 5
 
-	# Получить тесты, назначенные на пользователя
+	# Get tests assigned to a user
 	gotr test list 100 --assigned-to 10
 
-	# Сохранить в файл
+	# Save to file
 	gotr test list 100 -o tests.json
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			httpClient := getClient(cmd)
+			ctx := cmd.Context()
 			if httpClient == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
 			}
 
 			svc := service.NewTestService(httpClient)
-			runID, err := svc.ParseID(args, 0)
-			if err != nil {
-				return fmt.Errorf("некорректный ID рана: %w", err)
+
+			var runID int64
+			var err error
+
+			if len(args) > 0 {
+				runID, err = svc.ParseID(ctx, args, 0)
+				if err != nil {
+					return fmt.Errorf("invalid run ID: %w", err)
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("run_id is required in non-interactive mode: gotr test list [run_id]")
+				}
+				runID, err = resolveRunIDInteractive(ctx, httpClient)
+				if err != nil {
+					return err
+				}
 			}
 
-			// Собираем фильтры
+			// Collect filters
 			filters := make(map[string]string)
 
 			if cmd.Flags().Changed("status-id") {
@@ -60,32 +79,31 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 				filters["assignedto_id"] = strconv.FormatInt(assignedTo, 10)
 			}
 
-			tests, err := svc.GetForRun(runID, filters)
+			tests, err := svc.GetForRun(ctx, runID, filters)
 			if err != nil {
-				return fmt.Errorf("ошибка получения списка тестов: %w", err)
+				return fmt.Errorf("failed to get test list: %w", err)
 			}
 
-			// Проверяем нужно ли сохранить в файл
+			// Check if output should be saved to file
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
 				filepath, err := output.Output(cmd, tests, "test", "json")
 				if err != nil {
-					return fmt.Errorf("ошибка сохранения: %w", err)
+					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
-					svc.PrintSuccess(cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)
+					output.PrintSuccess(cmd, "Test list (%d) saved to %s", len(tests), filepath)
 				}
 				return nil
 			}
 
-			return svc.Output(cmd, tests)
+			return output.OutputResultWithFlags(cmd, tests)
 		},
 	}
 
 	output.AddFlag(cmd)
-	cmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
-	cmd.Flags().Int64("status-id", 0, "Фильтр по ID статуса")
-	cmd.Flags().Int64("assigned-to", 0, "Фильтр по ID назначенного пользователя")
+	cmd.Flags().Int64("status-id", 0, "Filter by status ID")
+	cmd.Flags().Int64("assigned-to", 0, "Filter by assigned user ID")
 
 	return cmd
 }

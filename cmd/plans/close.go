@@ -2,29 +2,45 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newCloseCmd создаёт команду 'plans close'
-// Эндпоинт: POST /close_plan/{plan_id}
+// newCloseCmd creates the 'plans close' command.
+// Endpoint: POST /close_plan/{plan_id}
 func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "close <plan_id>",
-		Short: "Закрыть тест-план",
-		Long:  `Закрывает открытый тест-план (отмечает как завершённый).`,
-		Example: `  # Закрыть план
+		Use:   "close [plan_id]",
+		Short: "Close a test plan",
+		Long:  `Closes an open test plan (marks it as completed).`,
+		Example: `  # Close a plan
   gotr plans close 12345
 
-  # Проверить перед закрытием
+  # Preview before closing
   gotr plans close 12345 --dry-run`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			planID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || planID <= 0 {
-				return fmt.Errorf("invalid plan_id: %s", args[0])
+			var planID int64
+			if len(args) > 0 {
+				var err error
+				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("plan_id is required in non-interactive mode: gotr plans close [plan_id]")
+				}
+				var err error
+				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			// Check dry-run
@@ -35,17 +51,18 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.ClosePlan(planID)
+			ctx := cmd.Context()
+			resp, err := cli.ClosePlan(ctx, planID)
 			if err != nil {
 				return fmt.Errorf("failed to close plan: %w", err)
 			}
 
-			fmt.Printf("✅ Plan %d closed\n", planID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Plan %d closed", planID)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без реального закрытия")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without actually closing")
 	output.AddFlag(cmd)
 
 	return cmd

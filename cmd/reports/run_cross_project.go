@@ -1,41 +1,75 @@
 package reports
 
 import (
+	"context"
 	"fmt"
-	"strconv"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
-	"github.com/Korrnals/gotr/internal/progress"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newRunCrossProjectCmd создаёт команду 'reports run-cross-project'
-// Эндпоинт: GET /run_cross_project_report/{template_id}
+// newRunCrossProjectCmd creates the 'reports run-cross-project' command.
+// Endpoint: GET /run_cross_project_report/{template_id}
 func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "run-cross-project <template_id>",
-		Short: "Запустить кросс-проектный отчёт",
-		Long: `Запускает генерацию кросс-проектного отчёта по указанному шаблону.
+		Use:   "run-cross-project [template_id]",
+		Short: "Run a cross-project report",
+		Long: `Runs cross-project report generation using the specified template.
 
-Кросс-проектные отчёты охватывают несколько проектов TestRail.
-Возвращает ID отчёта, URL для скачивания и статус генерации.`,
-		Example: `  # Запустить кросс-проектный отчёт
+Cross-project reports span multiple TestRail projects.
+Returns the report ID, download URL, and generation status.`,
+		Example: `  # Run a cross-project report
   gotr reports run-cross-project 42
 
-  # Сохранить результат в файл
+  # Save result to file
   gotr reports run-cross-project 42 -o cross_project_report.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			templateID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || templateID <= 0 {
-				return fmt.Errorf("invalid template_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var templateID int64
+			var err error
+			if len(args) > 0 {
+				templateID, err = flags.ValidateRequiredID(args, 0, "template_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run-cross-project [template_id]")
+				}
+				if interactive.IsNonInteractive(ctx) {
+					return fmt.Errorf("template_id is required in non-interactive mode: gotr reports run-cross-project [template_id]")
+				}
+
+				templateID, err = resolveCrossProjectReportTemplateIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
-			pm := progress.NewManager()
-			progress.Describe(pm.NewSpinner(""), "Запуск генерации кросс-проектного отчёта...")
+			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
+				dr := output.NewDryRunPrinter("reports run-cross-project")
+				dr.PrintOperation(
+					fmt.Sprintf("Run cross-project report template %d", templateID),
+					"GET",
+					fmt.Sprintf("/index.php?/api/v2/run_cross_project_report/%d", templateID),
+					nil,
+				)
+				return nil
+			}
 
-			cli := getClient(cmd)
-			resp, err := cli.RunCrossProjectReport(templateID)
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Running cross-project report...",
+				Writer: os.Stderr,
+			}, func(ctx context.Context) (any, error) {
+				return cli.RunCrossProjectReport(ctx, templateID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to run cross-project report: %w", err)
 			}
@@ -45,6 +79,7 @@ func newRunCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without running generation")
 	output.AddFlag(cmd)
 
 	return cmd

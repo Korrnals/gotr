@@ -2,31 +2,40 @@
 package migration
 
 import (
+	"context"
 	"fmt"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"sync"
+
+	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// ImportSharedSteps — импортирует отфильтрованные shared steps параллельно
-// Обновляет mapping (AddPair для новых ID, status "created")
-// Добавляет записи в лог из горутин (успех/ошибки)
-func (m *Migration) ImportSharedSteps(filtered data.GetSharedStepsResponse, dryRun bool) error {
+// maxImportConcurrency limits the number of parallel API calls during import
+// to avoid overwhelming the TestRail server.
+const maxImportConcurrency = 10
+
+// ImportSharedSteps imports filtered shared steps in parallel.
+// Updates the mapping (AddPair with status "created" for new IDs).
+// Logs success/error entries from goroutines.
+func (m *Migration) ImportSharedSteps(ctx context.Context, filtered data.GetSharedStepsResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
-		m.logger.Infow("Dry-run или нет данных — импорт shared steps пропущен", "count", len(filtered))
+		m.logger.Infow("Dry-run or no data — shared steps import skipped", "count", len(filtered))
 		return nil
 	}
 
-	m.logger.Infow("Начало импорта shared steps", "count", len(filtered))
+	m.logger.Infow("Starting shared steps import", "count", len(filtered))
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, step := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(s data.SharedStep) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
-			// Подготовка request (глубокое копирование шагов)
+			// Prepare request (deep copy steps)
 			req := &data.AddSharedStepRequest{
 				Title:                s.Title,
 				CustomStepsSeparated: make([]data.Step, len(s.CustomStepsSeparated)),
@@ -41,11 +50,11 @@ func (m *Migration) ImportSharedSteps(filtered data.GetSharedStepsResponse, dryR
 				}
 			}
 
-			// Создание в target проекте
-			created, err := m.Client.AddSharedStep(m.dstProject, req)
+			// Create in target project
+			created, err := m.Client.AddSharedStep(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
-				m.logger.Errorw("Ошибка импорта shared step", "title", s.Title, "error", err)
+				m.logger.Errorw("Error importing shared step", "title", s.Title, "error", err)
 				mu.Unlock()
 				return
 			}
@@ -53,46 +62,48 @@ func (m *Migration) ImportSharedSteps(filtered data.GetSharedStepsResponse, dryR
 			mu.Lock()
 			m.mapping.AddPair(s.ID, created.ID, "created")
 			m.importedCases++
-			m.logger.Infow("Успешно создан shared step", "old_id", s.ID, "new_id", created.ID, "title", s.Title)
+			m.logger.Infow("Successfully created shared step", "old_id", s.ID, "new_id", created.ID, "title", s.Title)
 			mu.Unlock()
 		}(step)
 	}
 	wg.Wait()
 
-	m.logger.Infow("Импорт shared steps завершён", "imported", m.importedCases)
+	m.logger.Infow("Shared steps import completed", "imported", m.importedCases)
 	return nil
 }
 
-// ImportSuites — импортирует отфильтрованные suites параллельно
-// Обновляет mapping (AddPair для новых ID, status "created")
-// Добавляет записи в лог
-func (m *Migration) ImportSuites(filtered data.GetSuitesResponse, dryRun bool) error {
+// ImportSuites imports filtered suites in parallel.
+// Updates the mapping (AddPair with status "created" for new IDs).
+func (m *Migration) ImportSuites(ctx context.Context, filtered data.GetSuitesResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
-		m.logger.Infow("Dry-run или нет данных — импорт suites пропущен", "count", len(filtered))
+		m.logger.Infow("Dry-run or no data — suites import skipped", "count", len(filtered))
 		return nil
 	}
 
-	m.logger.Infow("Начало импорта suites", "count", len(filtered))
+	m.logger.Infow("Starting suites import", "count", len(filtered))
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, suite := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(s data.Suite) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
-			// Подготовка request
+			// Prepare request
 			req := &data.AddSuiteRequest{
 				Name:        s.Name,
 				Description: s.Description,
 			}
 
-			// Создание в target проекте
-			created, err := m.Client.AddSuite(m.dstProject, req)
+			// Create in target project
+			created, err := m.Client.AddSuite(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
-				m.logger.Errorw("Ошибка импорта suite", "name", s.Name, "error", err)
+				m.logger.Errorw("Error importing suite", "name", s.Name, "error", err)
 				mu.Unlock()
 				return
 			}
@@ -100,36 +111,38 @@ func (m *Migration) ImportSuites(filtered data.GetSuitesResponse, dryRun bool) e
 			mu.Lock()
 			m.mapping.AddPair(s.ID, created.ID, "created")
 			m.importedCases++
-			m.logger.Infow("Успешно создан suite", "old_id", s.ID, "new_id", created.ID, "name", s.Name)
+			m.logger.Infow("Successfully created suite", "old_id", s.ID, "new_id", created.ID, "name", s.Name)
 			mu.Unlock()
 		}(suite)
 	}
 	wg.Wait()
 
-	m.logger.Infow("Импорт suites завершён", "imported", m.importedCases)
+	m.logger.Infow("Suites import completed", "imported", m.importedCases)
 	return nil
 }
 
-// ImportSections — импортирует отфильтрованные sections параллельно
-// Обновляет mapping (AddPair для новых ID, status "created")
-// Добавляет записи в лог
-func (m *Migration) ImportSections(filtered data.GetSectionsResponse, dryRun bool) error {
+// ImportSections imports filtered sections in parallel.
+// Updates the mapping (AddPair with status "created" for new IDs).
+func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSectionsResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
-		m.logger.Infow("Dry-run или нет данных — импорт sections пропущен", "count", len(filtered))
+		m.logger.Infow("Dry-run or no data — sections import skipped", "count", len(filtered))
 		return nil
 	}
 
-	m.logger.Infow("Начало импорта sections", "count", len(filtered))
+	m.logger.Infow("Starting sections import", "count", len(filtered))
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, section := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(s data.Section) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
-			// Подготовка request
+			// Prepare request
 			req := &data.AddSectionRequest{
 				Name:        s.Name,
 				Description: s.Description,
@@ -137,11 +150,11 @@ func (m *Migration) ImportSections(filtered data.GetSectionsResponse, dryRun boo
 				ParentID:    s.ParentID,
 			}
 
-			// Создание в target проекте
-			created, err := m.Client.AddSection(m.dstProject, req)
+			// Create in target project
+			created, err := m.Client.AddSection(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
-				m.logger.Errorw("Ошибка импорта section", "name", s.Name, "error", err)
+				m.logger.Errorw("Error importing section", "name", s.Name, "error", err)
 				mu.Unlock()
 				return
 			}
@@ -149,36 +162,38 @@ func (m *Migration) ImportSections(filtered data.GetSectionsResponse, dryRun boo
 			mu.Lock()
 			m.mapping.AddPair(s.ID, created.ID, "created")
 			m.importedCases++
-			m.logger.Infow("Успешно создан section", "old_id", s.ID, "new_id", created.ID, "name", s.Name)
+			m.logger.Infow("Successfully created section", "old_id", s.ID, "new_id", created.ID, "name", s.Name)
 			mu.Unlock()
 		}(section)
 	}
 	wg.Wait()
 
-	m.logger.Infow("Импорт sections завершён", "imported", m.importedCases)
+	m.logger.Infow("Sections import completed", "imported", m.importedCases)
 	return nil
 }
 
-// ImportCases — импортирует отфильтрованные cases параллельно
-// Заменяет SharedStepID по mapping
-// Добавляет записи в лог
-func (m *Migration) ImportCases(filtered data.GetCasesResponse, dryRun bool) error {
+// ImportCases imports filtered cases in parallel.
+// Replaces SharedStepID references using the mapping.
+func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
-		m.logger.Infow("Dry-run или нет данных — импорт cases пропущен", "count", len(filtered))
+		m.logger.Infow("Dry-run or no data — cases import skipped", "count", len(filtered))
 		return nil
 	}
 
-	m.logger.Infow("Начало импорта cases", "count", len(filtered))
+	m.logger.Infow("Starting cases import", "count", len(filtered))
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, c := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(caseData data.Case) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
-			// Подготовка request
+			// Prepare request
 			req := &data.AddCaseRequest{
 				Title:                caseData.Title,
 				TypeID:               caseData.TypeID,
@@ -202,56 +217,54 @@ func (m *Migration) ImportCases(filtered data.GetCasesResponse, dryRun bool) err
 				if orig.SharedStepID != 0 {
 					if newID, exists := m.mapping.GetTargetBySource(orig.SharedStepID); exists {
 						newStep.SharedStepID = newID
-						m.logger.Infow("Замена shared_step_id в кейсе", "title", caseData.Title, "old", orig.SharedStepID, "new", newID)
-					} else {
-						m.logger.Warnw("Shared step ID не найден в mapping", "old_id", orig.SharedStepID, "case_title", caseData.Title)
 					}
 				}
 
 				req.CustomStepsSeparated[i] = newStep
 			}
 
-			// Создание в target suite
-			created, err := m.Client.AddCase(m.dstSuite, req)
+			// Create in target suite
+			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
 			if err != nil {
 				mu.Lock()
-				m.logger.Errorw("Ошибка импорта кейса", "title", caseData.Title, "error", err)
+				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", err)
 				mu.Unlock()
 				return
 			}
 
 			mu.Lock()
 			m.importedCases++
-			m.logger.Infow("Успешно создан кейс", "old_id", caseData.ID, "new_id", created.ID, "title", caseData.Title)
+			m.logger.Infow("Successfully created case", "old_id", caseData.ID, "new_id", created.ID, "title", caseData.Title)
 			mu.Unlock()
 		}(c)
 	}
 	wg.Wait()
 
-	m.logger.Infow("Импорт cases завершён", "imported", m.importedCases)
+	m.logger.Infow("Cases import completed", "imported", m.importedCases)
 	return nil
 }
 
-// ImportCasesReport — как ImportCases, но возвращает список созданных ID и ошибок для использования в CLI
-func (m *Migration) ImportCasesReport(filtered data.GetCasesResponse, dryRun bool) ([]int64, []string, error) {
+// ImportCasesReport is like ImportCases but returns lists of created IDs and errors for CLI reporting.
+func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) (createdIDs []int64, errs []string, err error) {
 	if dryRun || len(filtered) == 0 {
-		m.logger.Infow("Dry-run или нет данных — импорт cases пропущен", "count", len(filtered))
+		m.logger.Infow("Dry-run or no data — cases import skipped", "count", len(filtered))
 		return nil, nil, nil
 	}
 
-	m.logger.Infow("Начало импорта cases (report)", "count", len(filtered))
+	m.logger.Infow("Starting cases import (report)", "count", len(filtered))
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	var createdIDs []int64
-	var errors []string
+	sem := make(chan struct{}, maxImportConcurrency)
 
 	for _, c := range filtered {
 		wg.Add(1)
+		sem <- struct{}{}
 		go func(caseData data.Case) {
+			defer func() { <-sem }()
 			defer wg.Done()
 
-			// Подготовка request
+			// Prepare request
 			req := &data.AddCaseRequest{
 				Title:                caseData.Title,
 				TypeID:               caseData.TypeID,
@@ -275,21 +288,18 @@ func (m *Migration) ImportCasesReport(filtered data.GetCasesResponse, dryRun boo
 				if orig.SharedStepID != 0 {
 					if newID, exists := m.mapping.GetTargetBySource(orig.SharedStepID); exists {
 						newStep.SharedStepID = newID
-						m.logger.Infow("Замена shared_step_id в кейсе", "title", caseData.Title, "old", orig.SharedStepID, "new", newID)
-					} else {
-						m.logger.Warnw("Shared step ID не найден в mapping", "old_id", orig.SharedStepID, "case_title", caseData.Title)
 					}
 				}
 
 				req.CustomStepsSeparated[i] = newStep
 			}
 
-			// Создание в target suite
-			created, err := m.Client.AddCase(m.dstSuite, req)
+			// Create in target suite
+			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
 			if err != nil {
 				mu.Lock()
-				errors = append(errors, fmt.Sprintf("кейс %q: %v", caseData.Title, err))
-				m.logger.Errorw("Ошибка импорта кейса", "title", caseData.Title, "error", err)
+				errs = append(errs, fmt.Sprintf("case %q: %v", caseData.Title, err))
+				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", err)
 				mu.Unlock()
 				return
 			}
@@ -297,12 +307,12 @@ func (m *Migration) ImportCasesReport(filtered data.GetCasesResponse, dryRun boo
 			mu.Lock()
 			createdIDs = append(createdIDs, created.ID)
 			m.importedCases++
-			m.logger.Infow("Успешно создан кейс (report)", "old_id", caseData.ID, "new_id", created.ID, "title", caseData.Title)
+			m.logger.Infow("Successfully created case (report)", "old_id", caseData.ID, "new_id", created.ID, "title", caseData.Title)
 			mu.Unlock()
 		}(c)
 	}
 	wg.Wait()
 
-	m.logger.Infow("Импорт cases (report) завершён", "imported", m.importedCases)
-	return createdIDs, errors, nil
+	m.logger.Infow("Cases import (report) completed", "imported", m.importedCases)
+	return createdIDs, errs, nil
 }

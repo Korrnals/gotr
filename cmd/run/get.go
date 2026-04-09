@@ -3,46 +3,48 @@ package run
 import (
 	"fmt"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newGetCmd создаёт команду 'run get'
+// newGetCmd creates the 'run get' command.
 func newGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [run-id]",
-		Short: "Получить информацию о test run",
-		Long: `Получает детальную информацию о test run по его ID.
+		Short: "Get test run information",
+		Long: `Gets detailed information about a test run by its ID.
 
-Test run — это экземпляр тест-сюиты, запущенный для выполнения тестов.
-В ответе содержится: название, описание, статистика прохождения,
-даты создания/обновления, assignedto_id и другие поля.
+A test run is an instance of a test suite launched for test execution.
+The response contains: name, description, execution statistics,
+creation/update dates, assignedto_id, and other fields.
 
-Примеры:
-	# Получить информацию о run
+Examples:
+	# Get run information
 	gotr run get 12345
 
-	# Сохранить результат в файл
+	# Save the result to a file
 	gotr run get 12345 -o run_info.json
 
-	# Dry-run режим
+	# Dry-run mode
 	gotr run get 12345 --dry-run
 `,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
+			ctx := cmd.Context()
 			if cli == nil {
-				return fmt.Errorf("HTTP клиент не инициализирован")
+				return fmt.Errorf("HTTP client not initialized")
+			}
+
+			runID, err := resolveRunID(ctx, cli, args)
+			if err != nil {
+				return fmt.Errorf("invalid test run ID: %w", err)
 			}
 
 			svc := newRunServiceFromInterface(cli)
-			runID, err := svc.ParseID(args, 0)
-			if err != nil {
-				return fmt.Errorf("некорректный ID test run: %w", err)
-			}
 
-			// Проверяем dry-run режим
+			// Check dry-run mode
 			isDryRun, _ := cmd.Flags().GetBool("dry-run")
 			if isDryRun {
 				dr := output.NewDryRunPrinter("run get")
@@ -55,21 +57,19 @@ Test run — это экземпляр тест-сюиты, запущенный
 				return nil
 			}
 
-			run, err := svc.Get(runID)
+			run, err := svc.Get(ctx, runID)
 			if err != nil {
-				return fmt.Errorf("ошибка получения test run: %w", err)
+				return fmt.Errorf("failed to get test run: %w", err)
 			}
 
-			return svc.Output(cmd, run)
+			return output.OutputResultWithFlags(cmd, run)
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }
 
-// getCmd — экспортированная команда
-var getCmd = newGetCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+// getCmd is the exported command.
+var getCmd = newGetCmd(getClientSafe)

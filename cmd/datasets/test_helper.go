@@ -8,10 +8,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// testHTTPClientKey — ключ для хранения HTTP клиента в контексте тестов
-const testHTTPClientKey = "httpClient"
+// testContextKey is an unexported key type for context values in tests.
+type testContextKey string
 
-// getClientForTests возвращает клиент из контекста для использования в тестах
+// testHTTPClientKey is the context key for storing the HTTP client in tests.
+const testHTTPClientKey testContextKey = "httpClient"
+
+// getClientForTests returns the client from the command context for use in tests.
 func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 	if cmd == nil || cmd.Context() == nil {
 		return nil
@@ -22,7 +25,7 @@ func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 	return nil
 }
 
-// setupTestCmd создаёт тестовую команду с mock клиентом в контексте
+// setupTestCmd creates a test command with a mock client in the context.
 func setupTestCmd(t *testing.T, mock *client.MockClient) *cobra.Command {
 	t.Helper()
 	cmd := &cobra.Command{}

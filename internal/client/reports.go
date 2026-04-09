@@ -2,28 +2,22 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// GetReports получает список шаблонов отчётов для проекта
+// GetReports fetches the report template list for a project.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#getreports
-func (c *HTTPClient) GetReports(projectID int64) (data.GetReportsResponse, error) {
+func (c *HTTPClient) GetReports(ctx context.Context, projectID int64) (data.GetReportsResponse, error) {
 	endpoint := fmt.Sprintf("get_reports/%d", projectID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting reports for project %d: %w", projectID, err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for project %d: %s", resp.Status, projectID, string(body))
-	}
 
 	var reports data.GetReportsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reports); err != nil {
@@ -32,21 +26,16 @@ func (c *HTTPClient) GetReports(projectID int64) (data.GetReportsResponse, error
 	return reports, nil
 }
 
-// RunReport запускает генерацию отчёта по шаблону
+// RunReport triggers report generation from a template.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#runreport
-func (c *HTTPClient) RunReport(templateID int64) (*data.RunReportResponse, error) {
+func (c *HTTPClient) RunReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 	endpoint := fmt.Sprintf("run_report/%d", templateID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error running report %d: %w", templateID, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for template %d: %s", resp.Status, templateID, string(body))
-	}
-
 	var reportResp data.RunReportResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reportResp); err != nil {
 		return nil, fmt.Errorf("error decoding report response: %w", err)
@@ -54,21 +43,16 @@ func (c *HTTPClient) RunReport(templateID int64) (*data.RunReportResponse, error
 	return &reportResp, nil
 }
 
-// RunCrossProjectReport запускает кросс-проектный отчёт
+// RunCrossProjectReport triggers a cross-project report.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#runcrossprojectreport
-func (c *HTTPClient) RunCrossProjectReport(templateID int64) (*data.RunReportResponse, error) {
+func (c *HTTPClient) RunCrossProjectReport(ctx context.Context, templateID int64) (*data.RunReportResponse, error) {
 	endpoint := fmt.Sprintf("run_cross_project_report/%d", templateID)
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error running cross-project report %d: %w", templateID, err)
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s for template %d: %s", resp.Status, templateID, string(body))
-	}
-
 	var reportResp data.RunReportResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reportResp); err != nil {
 		return nil, fmt.Errorf("error decoding report response: %w", err)
@@ -76,20 +60,15 @@ func (c *HTTPClient) RunCrossProjectReport(templateID int64) (*data.RunReportRes
 	return &reportResp, nil
 }
 
-// GetCrossProjectReports получает список кросс-проектных шаблонов отчётов
+// GetCrossProjectReports fetches the cross-project report template list.
 // https://support.testrail.com/hc/en-us/articles/7077721635988-Reports#getcrossprojectreports
-func (c *HTTPClient) GetCrossProjectReports() (data.GetReportsResponse, error) {
+func (c *HTTPClient) GetCrossProjectReports(ctx context.Context) (data.GetReportsResponse, error) {
 	endpoint := "get_cross_project_reports"
-	resp, err := c.Get(endpoint, nil)
+	resp, err := c.Get(ctx, endpoint, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error getting cross-project reports: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
-	}
 
 	var reports data.GetReportsResponse
 	if err := json.NewDecoder(resp.Body).Decode(&reports); err != nil {

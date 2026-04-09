@@ -1,7 +1,7 @@
 // models/data/suites.go
 package data
 
-// Suite — структура тест-сюиты
+// Suite represents a test suite.
 type Suite struct {
 	ID          int64  `json:"id"`
 	Name        string `json:"name,omitempty"`
@@ -14,19 +14,19 @@ type Suite struct {
 	URL         string `json:"url,omitempty"`
 }
 
-// GetSuitesResponse — ответ на get_suites (массив сюит напрямую)
+// GetSuitesResponse is the response for get_suites (direct array of suites).
 type GetSuitesResponse []Suite
 
-// GetSuiteResponse — ответ на get_suite (одна сюита напрямую)
+// GetSuiteResponse is the response for get_suite (a single suite).
 type GetSuiteResponse Suite
 
-// AddSuiteRequest — запрос для add_suite
+// AddSuiteRequest is the request for add_suite.
 type AddSuiteRequest struct {
-	Name        string `json:"name"` // обязательно
+	Name        string `json:"name"` // Required
 	Description string `json:"description,omitempty"`
 }
 
-// UpdateSuiteRequest — запрос для update_suite
+// UpdateSuiteRequest is the request for update_suite.
 type UpdateSuiteRequest struct {
 	Name        string `json:"name,omitempty"`
 	Description string `json:"description,omitempty"`

@@ -9,13 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// mockContextKey - тип для ключа контекста
+// mockContextKey - type for context key
 type mockContextKey struct{}
 
-// ==================== Тесты для getClientInterface ====================
+// ==================== Tests for getClientInterface ====================
 
 func TestGetClientInterface_WithNilAccessor(t *testing.T) {
-	// Сохраняем старое значение
+	// Save the old value
 	oldAccessor := clientAccessor
 	clientAccessor = nil
 	defer func() { clientAccessor = oldAccessor }()
@@ -26,70 +26,70 @@ func TestGetClientInterface_WithNilAccessor(t *testing.T) {
 }
 
 func TestGetClientInterface_WithAccessor(t *testing.T) {
-	// Сохраняем старое значение
+	// Save the old value
 	oldAccessor := clientAccessor
 	defer func() { clientAccessor = oldAccessor }()
 
-	// Создаём команду
+	// Create a command
 	cmd := &cobra.Command{}
 
-	// Сначала устанавливаем accessor
-	SetGetClientForTests(func(cmd *cobra.Command) *client.HTTPClient {
+	// First set the accessor
+	SetGetClientForTests(func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
 	result := getClientInterface(cmd)
-	// accessor возвращает nil т.к. HTTPClient не установлен
+	// accessor returns nil because HTTPClient is not set
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для SetGetClientForTests ====================
+// ==================== Tests for SetGetClientForTests ====================
 
 func TestSetGetClientForTests_WithNilAccessor(t *testing.T) {
-	// Сохраняем старое значение
+	// Save the old value
 	oldAccessor := clientAccessor
 	clientAccessor = nil
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
-	// Не должно паниковать
+	// Should not panic
 	SetGetClientForTests(fn)
 	assert.NotNil(t, clientAccessor)
 }
 
 func TestSetGetClientForTests_WithExistingAccessor(t *testing.T) {
-	// Сначала инициализируем accessor
+	// First initialize the accessor
 	oldAccessor := clientAccessor
-	SetGetClientForTests(func(cmd *cobra.Command) *client.HTTPClient { return nil })
+	SetGetClientForTests(func(ctx context.Context) client.ClientInterface { return nil })
 	defer func() { clientAccessor = oldAccessor }()
 
-	fn := func(cmd *cobra.Command) *client.HTTPClient {
+	fn := func(ctx context.Context) client.ClientInterface {
 		return nil
 	}
 
-	// Не должно паниковать
+	// Should not panic
 	SetGetClientForTests(fn)
 	assert.NotNil(t, clientAccessor)
 }
 
-// ==================== Тесты для Register ====================
+// ==================== Tests for Register ====================
 
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
-	// Проверяем, что команда test добавлена
+	// Verify that the test command is added
 	testCmd, _, err := root.Find([]string{"test"})
 	assert.NoError(t, err)
 	assert.NotNil(t, testCmd)
 
-	// Проверяем наличие подкоманд
+	// Verify subcommands exist
 	getCmd, _, _ := root.Find([]string{"test", "get"})
 	assert.NotNil(t, getCmd)
 
@@ -100,7 +100,7 @@ func TestRegister(t *testing.T) {
 func TestRegister_Help(t *testing.T) {
 	root := &cobra.Command{}
 
-	Register(root, func(cmd *cobra.Command) *client.HTTPClient {
+	Register(root, func(ctx context.Context) client.ClientInterface {
 		return nil
 	})
 
@@ -108,17 +108,37 @@ func TestRegister_Help(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, testCmd)
 
-	// Проверяем, что вызов без аргументов показывает help
+	// Verify that calling without arguments shows help
 	root.SetArgs([]string{"test"})
 	err = root.Execute()
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для Cmd ====================
+func TestRegister_NoLocalQuietFlags(t *testing.T) {
+	root := &cobra.Command{}
+
+	Register(root, func(ctx context.Context) client.ClientInterface {
+		return nil
+	})
+
+	testCmd, _, err := root.Find([]string{"test"})
+	assert.NoError(t, err)
+	assert.NotNil(t, testCmd)
+
+	// Verify that quiet flag is not declared locally on subcommands.
+	// Global quiet should be inherited from root persistent flags.
+	for _, sub := range testCmd.Commands() {
+		quietFlag := sub.Flags().Lookup("quiet")
+		assert.Nil(t, quietFlag, "quiet should not be declared locally on subcommand %s", sub.Name())
+	}
+}
+
+// ==================== Tests for Cmd ====================
 
 func TestCmd_Help(t *testing.T) {
-	// Проверяем, что Help вызывается без ошибок
-	Cmd.Run(Cmd, []string{})
+	// Verify that Help is called without errors
+	err := Cmd.Help()
+	assert.NoError(t, err)
 }
 
 func TestCmd_Properties(t *testing.T) {
@@ -127,19 +147,19 @@ func TestCmd_Properties(t *testing.T) {
 	assert.NotEmpty(t, Cmd.Long)
 }
 
-// TestGetClientInterface_WithMockClientInContext проверяет получение mock клиента из контекста
+// TestGetClientInterface_WithMockClientInContext verifies getting a mock client from context
 func TestGetClientInterface_WithMockClientInContext(t *testing.T) {
 	mock := &client.MockClient{}
-	
+
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), mockContextKey{}, mock)
 	cmd.SetContext(ctx)
-	
-	// Прямо тестируем получение значения из контекста
+
+	// Directly test getting a value from context
 	val := cmd.Context().Value(mockContextKey{})
 	assert.NotNil(t, val)
-	
-	// Проверяем что это MockClient
+
+	// Verify it is a MockClient
 	if c, ok := val.(*client.MockClient); ok {
 		assert.Equal(t, mock, c)
 	}

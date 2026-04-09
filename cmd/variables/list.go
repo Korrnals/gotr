@@ -2,51 +2,60 @@ package variables
 
 import (
 	"fmt"
-	"strconv"
 
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
-// newListCmd создаёт команду 'variables list'
-// Эндпоинт: GET /get_variables/{dataset_id}
+// newListCmd creates the 'variables list' command.
+// Endpoint: GET /get_variables/{dataset_id}
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "list <dataset_id>",
-		Short: "Список переменных датасета",
-		Long: `Выводит список переменных, определённых в указанном датасете.
+		Use:   "list [dataset_id]",
+		Short: "List dataset variables",
+		Long: `Displays the list of variables defined in the specified dataset.
 
-Переменные используются для параметризованного тестирования
-и представляют собой колонки в таблице тестовых данных.`,
-		Example: `  # Получить список переменных датасета
+Variables are used for parameterized testing
+and represent columns in the test data table.`,
+		Example: `  # Get list of dataset variables
   gotr variables list 123
 
-  # Сохранить в файл
+  # Save to a file
   gotr variables list 456 -o vars.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			datasetID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || datasetID <= 0 {
-				return fmt.Errorf("некорректный dataset_id: %s", args[0])
+			var datasetID int64
+			if len(args) > 0 {
+				var err error
+				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("dataset_id is required in non-interactive mode: gotr variables list [dataset_id]")
+				}
+				var err error
+				datasetID, err = resolveDatasetIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.GetVariables(datasetID)
+			ctx := cmd.Context()
+			resp, err := cli.GetVariables(ctx, datasetID)
 			if err != nil {
-				return fmt.Errorf("не удалось получить список переменных: %w", err)
+				return fmt.Errorf("failed to get variables list: %w", err)
 			}
 
-			return outputResult(cmd, resp)
+			return output.OutputResult(cmd, resp, "variables")
 		},
 	}
 
 	output.AddFlag(cmd)
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "variables", "json")
-	return err
 }

@@ -4,30 +4,48 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newUpdateCmd создаёт команду 'cases update'
-// Эндпоинт: POST /update_case/{case_id}
+// newUpdateCmd creates the 'cases update' command.
+// Endpoint: POST /update_case/{case_id}
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "update <case_id>",
-		Short: "Обновить тест-кейс",
-		Long:  `Обновляет существующий тест-кейс.`,
-		Example: `  # Обновить название и приоритет
-  gotr cases update 12345 --title="Новое название" --priority-id=2
+		Use:   "update [case_id]",
+		Short: "Update a test case",
+		Long:  `Updates an existing test case.`,
+		Example: `  # Update title and priority
+  gotr cases update 12345 --title="New title" --priority-id=2
 
-  # Обновить из JSON-файла
+  # Update from a JSON file
   gotr cases update 12345 --json-file=update.json`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			caseID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || caseID <= 0 {
-				return fmt.Errorf("invalid case_id: %s", args[0])
+			cli := getClient(cmd)
+			ctx := cmd.Context()
+
+			var caseID int64
+			var err error
+			if len(args) > 0 {
+				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("case_id required: gotr cases update [case_id]")
+				}
+
+				caseID, err = resolveCaseIDInteractive(ctx, cli)
+				if err != nil {
+					return err
+				}
 			}
 
 			jsonFile, _ := cmd.Flags().GetString("json-file")
@@ -64,24 +82,23 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			cli := getClient(cmd)
-			resp, err := cli.UpdateCase(caseID, &req)
+			resp, err := cli.UpdateCase(ctx, caseID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update case: %w", err)
 			}
 
-			fmt.Printf("✅ Case %d updated\n", caseID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Case %d updated", caseID)
+			return output.OutputResult(cmd, resp, "cases")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Preview the action without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными для обновления")
-	cmd.Flags().String("title", "", "Новое название")
-	cmd.Flags().Int64("type-id", 0, "Новый ID типа")
-	cmd.Flags().Int64("priority-id", 0, "Новый ID приоритета")
-	cmd.Flags().String("refs", "", "Новые ссылки")
+	cmd.Flags().String("json-file", "", "Path to a JSON file with update data")
+	cmd.Flags().String("title", "", "New title")
+	cmd.Flags().Int64("type-id", 0, "New type ID")
+	cmd.Flags().Int64("priority-id", 0, "New priority ID")
+	cmd.Flags().String("refs", "", "New references")
 
 	return cmd
 }

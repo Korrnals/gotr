@@ -2,30 +2,46 @@ package plans
 
 import (
 	"fmt"
-	"strconv"
+	"os"
 
-	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
-// newAddCmd создаёт команду 'plans add'
-// Эндпоинт: POST /add_plan/{project_id}
+// newAddCmd creates the 'plans add' command.
+// Endpoint: POST /add_plan/{project_id}
 func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "add <project_id>",
-		Short: "Создать новый тест-план",
-		Long:  `Создаёт новый тест-план в указанном проекте.`,
-		Example: `  # Создать план для спринта
-  gotr plans add 1 --name="План спринта 1"
+		Use:   "add [project_id]",
+		Short: "Create a new test plan",
+		Long:  `Creates a new test plan in the specified project.`,
+		Example: `  # Create a sprint plan
+  gotr plans add 1 --name="Sprint 1 Plan"
 
-  # Создать план регрессии с описанием
-  gotr plans add 1 --name="Регрессия" --description="Полный набор регрессионных тестов"`,
-		Args: cobra.ExactArgs(1),
+  # Create a regression plan with description
+  gotr plans add 1 --name="Regression" --description="Full regression test suite"`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID, err := strconv.ParseInt(args[0], 10, 64)
-			if err != nil || projectID <= 0 {
-				return fmt.Errorf("invalid project_id: %s", args[0])
+			var projectID int64
+			if len(args) > 0 {
+				var err error
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(cmd.Context()) {
+					return fmt.Errorf("project_id is required in non-interactive mode: gotr plans add [project_id]")
+				}
+				var err error
+				projectID, err = resolveProjectIDInteractive(cmd.Context(), getClient(cmd))
+				if err != nil {
+					return err
+				}
 			}
 
 			name, _ := cmd.Flags().GetString("name")
@@ -52,27 +68,22 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
-			resp, err := cli.AddPlan(projectID, &req)
+			ctx := cmd.Context()
+			resp, err := cli.AddPlan(ctx, projectID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to create plan: %w", err)
 			}
 
-			fmt.Printf("✅ Plan created (ID: %d)\n", resp.ID)
-			return outputResult(cmd, resp)
+			ui.Successf(os.Stdout, "Plan created (ID: %d)", resp.ID)
+			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название плана (обязательно)")
-	cmd.Flags().String("description", "", "Описание плана")
-	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
+	cmd.Flags().String("name", "", "Plan name (required)")
+	cmd.Flags().String("description", "", "Plan description")
+	cmd.Flags().Int64("milestone-id", 0, "Milestone ID")
 
 	return cmd
-}
-
-// outputResult выводит результат в JSON или сохраняет в файл
-func outputResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "plans", "json")
-	return err
 }

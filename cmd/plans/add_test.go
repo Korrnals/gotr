@@ -1,10 +1,12 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/stretchr/testify/assert"
 )
@@ -35,7 +37,7 @@ func TestAddCmd_DryRun_WithDescription(t *testing.T) {
 
 func TestAddCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Sprint 1 Plan", req.Name)
 			assert.Equal(t, "Full regression", req.Description)
@@ -53,7 +55,7 @@ func TestAddCmd_Success(t *testing.T) {
 
 func TestAddCmd_Success_Minimal(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(5), projectID)
 			assert.Equal(t, "Minimal Plan", req.Name)
 			return &data.Plan{ID: 200, Name: req.Name}, nil
@@ -70,7 +72,7 @@ func TestAddCmd_Success_Minimal(t *testing.T) {
 
 func TestAddCmd_WithMilestone(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			assert.Equal(t, int64(1), projectID)
 			assert.Equal(t, "Plan with Milestone", req.Name)
 			assert.Equal(t, int64(10), req.MilestoneID)
@@ -88,7 +90,7 @@ func TestAddCmd_WithMilestone(t *testing.T) {
 
 func TestAddCmd_ClientError(t *testing.T) {
 	mock := &client.MockClient{
-		AddPlanFunc: func(projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 			return nil, fmt.Errorf("project not found")
 		},
 	}
@@ -136,12 +138,39 @@ func TestAddCmd_MissingName(t *testing.T) {
 	assert.Contains(t, err.Error(), "name is required")
 }
 
-func TestAddCmd_NoArgs(t *testing.T) {
-	mock := &client.MockClient{}
+func TestAddCmd_NoArgs_NonInteractive_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+	}
 	cmd := newAddCmd(getClientForTests)
-	cmd.SetContext(setupTestCmd(t, mock).Context())
+	ctx := interactive.WithPrompter(setupTestCmd(t, mock).Context(), interactive.NewNonInteractivePrompter())
+	cmd.SetContext(ctx)
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
 	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive mode")
+}
+
+func TestAddCmd_NoArgs_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{{ID: 1, Name: "Project 1"}}, nil
+		},
+		AddPlanFunc: func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+			assert.Equal(t, int64(1), projectID)
+			return &data.Plan{ID: 101, Name: req.Name, ProjectID: projectID}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(interactive.WithPrompter(setupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{"--name", "Plan Interactive"})
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
 }

@@ -1,44 +1,43 @@
 package get
 
 import (
-	"encoding/json"
-	"fmt"
+	"context"
+	"os"
 	"time"
 
-	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/client"
-	embed "github.com/Korrnals/gotr/embedded"
+	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-// GetClientFunc — тип функции для получения клиента
-type GetClientFunc func(cmd *cobra.Command) *client.HTTPClient
+// GetClientFunc is the function type for obtaining an HTTP client.
+type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 
-// Cmd — основная команда для GET-запросов
+// Cmd is the root command for GET requests to the TestRail API.
 var Cmd = &cobra.Command{
 	Use:   "get",
-	Short: "GET-запросы к TestRail API",
-	Long: `Выполняет GET-запросы к TestRail API.
+	Short: "GET requests to TestRail API",
+	Long: `Performs GET requests to TestRail API.
 
-Подкоманды:
-	case               - получить один кейс по ID кейса
-	cases              - получить кейсы проекта (требует ID проекта и ID сюиты)
-	case-types         - получить список типов кейсов
-	case-fields        - получить список полей кейсов
-	case-history       - получить историю изменений кейса по ID кейса
+Subcommands:
+	case               - get a single case by case ID
+	cases              - get project cases (requires project ID and suite ID)
+	case-types         - get list of case types
+	case-fields        - get list of case fields
+	case-history       - get case change history by case ID
 
-	project            - получить один проект по ID проекта
-	projects           - получить все проекты
+	project            - get a single project by project ID
+	projects           - get all projects
 
-	sharedstep         - получить один shared step по ID шага
-	sharedsteps        - получить shared steps проекта (требует ID проекта)
-	sharedstep-history - получить историю изменений shared step по ID шага
+	sharedstep         - get a single shared step by step ID
+	sharedsteps        - get project shared steps (requires project ID)
+	sharedstep-history - get shared step change history by step ID
 
-	suite              - получить одну тест-сюиту по ID сюиты
-	suites             - получить тест-сюиты проекта (требует ID проекта)
+	suite              - get a single test suite by suite ID
+	suites             - get project test suites (requires project ID)
 
-Примеры:
+Examples:
 	gotr get project 30
 	gotr get projects
 
@@ -55,98 +54,31 @@ var Cmd = &cobra.Command{
 
 var getClient GetClientFunc
 
-// SetGetClientForTests устанавливает getClient для тестов
+// SetGetClientForTests overrides the getClient accessor for testing.
 func SetGetClientForTests(fn GetClientFunc) {
 	getClient = fn
 }
 
-// handleOutput — общая логика вывода, сохранения и jq
+// handleOutput delegates get-command rendering/output orchestration to internal/output.
 func handleOutput(command *cobra.Command, data any, start time.Time) error {
-	quiet, _ := command.Flags().GetBool("quiet")
-	outputFormat, _ := command.Flags().GetString("type")
-	saveFlag, _ := command.Flags().GetBool("save")
-	jqEnabled, _ := command.Flags().GetBool("jq")
-	jqFilter, _ := command.Flags().GetString("jq-filter")
-	bodyOnly, _ := command.Flags().GetBool("body-only")
-
-	// Если jq не указан явно — берём из конфига
-	if !jqEnabled {
-		jqEnabled = viper.GetBool("jq_format")
-	}
-
-	if saveFlag {
-		var toSave interface{} = data
-		if !bodyOnly {
-			toSave = struct {
-				Status     string        `json:"status"`
-				StatusCode int           `json:"status_code"`
-				Duration   time.Duration `json:"duration"`
-				Timestamp  time.Time     `json:"timestamp"`
-				Data       any           `json:"data"`
-			}{
-				Status:     "200 OK",
-				StatusCode: 200,
-				Duration:   time.Since(start),
-				Timestamp:  time.Now(),
-				Data:       data,
-			}
-		}
-		filepath, err := output.Output(command, toSave, "get", "json")
-		if err != nil {
-			return fmt.Errorf("ошибка сохранения: %w", err)
-		}
-		if !quiet && filepath != "" {
-			fmt.Printf("Ответ сохранён в %s\n", filepath)
-		}
-		return nil
-	}
-
-	if jqEnabled || jqFilter != "" {
-		toSave, err := json.Marshal(data)
-		if err != nil {
-			return fmt.Errorf("ошибка маршалинга для jq: %w", err)
-		}
-		if err := embed.RunEmbeddedJQ(toSave, jqFilter); err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if !quiet {
-		switch outputFormat {
-		case "json":
-			pretty, _ := json.MarshalIndent(data, "", "  ")
-			fmt.Println(string(pretty))
-		case "json-full":
-			full := struct {
-				Status     string        `json:"status"`
-				StatusCode int           `json:"status_code"`
-				Duration   time.Duration `json:"duration"`
-				Timestamp  time.Time     `json:"timestamp"`
-				Data       any           `json:"data"`
-			}{
-				Status:     "200 OK",
-				StatusCode: 200,
-				Duration:   time.Since(start),
-				Timestamp:  time.Now(),
-				Data:       data,
-			}
-			pretty, _ := json.MarshalIndent(full, "", "  ")
-			fmt.Println(string(pretty))
-		default:
-			fmt.Println("Table output not implemented yet")
-		}
-	}
-
-	return nil
+	return output.OutputGetResult(command, data, start)
 }
 
-// Register регистрирует команду get и все её подкоманды
+func runGetStatus[T any](command *cobra.Command, title string, fn func(context.Context) (T, error)) (T, error) {
+	quiet, _ := command.Flags().GetBool("quiet")
+	return ui.RunWithStatus(command.Context(), ui.StatusConfig{
+		Title:  title,
+		Writer: os.Stderr,
+		Quiet:  quiet,
+	}, fn)
+}
+
+// Register adds the get command and all its subcommands to rootCmd.
 func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	getClient = clientFn
 	rootCmd.AddCommand(Cmd)
 
-	// Добавляем подкоманды
+	// Register subcommands
 	Cmd.AddCommand(casesCmd)
 	Cmd.AddCommand(caseCmd)
 	Cmd.AddCommand(caseTypesCmd)
@@ -160,15 +92,15 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	Cmd.AddCommand(suitesCmd)
 	Cmd.AddCommand(suiteCmd)
 
-	// Локальные флаги — только для подкоманд get и их детей
+	// Local flags — scoped to get subcommands and their children
 	for _, subCmd := range Cmd.Commands() {
-		subCmd.Flags().StringP("type", "t", "json", "Формат вывода: json, json-full, table")
+		subCmd.Flags().StringP("type", "t", "json", "Output format: json, json-full, table")
 		output.AddFlag(subCmd)
-		subCmd.Flags().BoolP("quiet", "q", false, "Тихий режим")
-		subCmd.Flags().BoolP("jq", "j", false, "Включить jq-форматирование (переопределяет конфиг jq_format)")
-		subCmd.Flags().String("jq-filter", "", "jq-фильтр")
-		subCmd.Flags().BoolP("body-only", "b", false, "Сохранить только тело ответа (без метаданных)")
+		subCmd.Flags().BoolP("quiet", "q", false, "Quiet mode")
+		subCmd.Flags().BoolP("jq", "j", false, "Enable jq formatting (overrides config jq_format)")
+		subCmd.Flags().String("jq-filter", "", "jq filter")
+		subCmd.Flags().BoolP("body-only", "b", false, "Save response body only (without metadata)")
 	}
 
-	// Специфичные флаги для cases уже определены в конструкторе newCasesCmd
+	// Cases-specific flags are already defined in the newCasesCmd constructor
 }

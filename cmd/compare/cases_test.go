@@ -115,7 +115,7 @@ func TestSaveFailedPagesReport_CustomPathDirCreateError(t *testing.T) {
 	pages := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
 
 	base := filepath.Join(t.TempDir(), "not-a-dir")
-	require.NoError(t, os.WriteFile(base, []byte("file"), 0644))
+	require.NoError(t, os.WriteFile(base, []byte("file"), 0o644))
 	path := filepath.Join(base, "failed.json")
 
 	_, err := saveFailedPagesReport(pages, path)
@@ -127,7 +127,7 @@ func TestSaveFailedPagesReport_DefaultDirCreateError(t *testing.T) {
 	pages := []concurrency.FailedPage{{ProjectID: 1, SuiteID: 2, Offset: 0, Limit: 250, PageNum: 1, Error: "timeout"}}
 
 	fakeHomeFile := filepath.Join(t.TempDir(), "home-as-file")
-	require.NoError(t, os.WriteFile(fakeHomeFile, []byte("not-a-dir"), 0644))
+	require.NoError(t, os.WriteFile(fakeHomeFile, []byte("not-a-dir"), 0o644))
 	t.Setenv("HOME", fakeHomeFile)
 
 	_, err := saveFailedPagesReport(pages, "")

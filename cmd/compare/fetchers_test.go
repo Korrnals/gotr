@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для compareSuitesInternal ====================
+// ==================== Tests for compareSuitesInternal ====================
 
 func TestCompareSuitesInternal_Success(t *testing.T) {
 	ctx := context.Background()
@@ -107,7 +107,7 @@ func TestCompareSuitesInternal_Empty(t *testing.T) {
 	assert.Equal(t, 0, len(result.Common))
 }
 
-// ==================== Тесты для compareCasesInternal ====================
+// ==================== Tests for compareCasesInternal ====================
 
 func TestCompareCasesInternal_Success(t *testing.T) {
 	ctx := context.Background()
@@ -199,7 +199,7 @@ func TestCompareCasesInternal_CanceledContext(t *testing.T) {
 	assert.True(t, execStats.Interrupted)
 }
 
-// ==================== Тесты для compareSectionsInternal ====================
+// ==================== Tests for compareSectionsInternal ====================
 
 func TestCompareSectionsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -342,7 +342,7 @@ func TestCompareSectionsInternalWithSuites_Project2ErrorWrapped(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to load project 2 sections")
 }
 
-// ==================== Тесты для compareSimpleInternal (plans) ====================
+// ==================== Tests for compareSimpleInternal (plans) ====================
 
 func TestComparePlansInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -379,7 +379,7 @@ func TestComparePlansInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (runs) ====================
+// ==================== Tests for compareSimpleInternal (runs) ====================
 
 func TestCompareRunsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -416,7 +416,7 @@ func TestCompareRunsInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (milestones) ====================
+// ==================== Tests for compareSimpleInternal (milestones) ====================
 
 func TestCompareMilestonesInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -453,7 +453,7 @@ func TestCompareMilestonesInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (datasets) ====================
+// ==================== Tests for compareSimpleInternal (datasets) ====================
 
 func TestCompareDatasetsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -490,7 +490,7 @@ func TestCompareDatasetsInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (groups) ====================
+// ==================== Tests for compareSimpleInternal (groups) ====================
 
 func TestCompareGroupsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -527,7 +527,7 @@ func TestCompareGroupsInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (labels) ====================
+// ==================== Tests for compareSimpleInternal (labels) ====================
 
 func TestCompareLabelsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -564,7 +564,7 @@ func TestCompareLabelsInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (templates) ====================
+// ==================== Tests for compareSimpleInternal (templates) ====================
 
 func TestCompareTemplatesInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -601,7 +601,7 @@ func TestCompareTemplatesInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (configurations) ====================
+// ==================== Tests for compareSimpleInternal (configurations) ====================
 
 func TestCompareConfigurationsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -638,7 +638,7 @@ func TestCompareConfigurationsInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareSimpleInternal (sharedsteps) ====================
+// ==================== Tests for compareSimpleInternal (sharedsteps) ====================
 
 func TestCompareSharedStepsInternal_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -675,7 +675,7 @@ func TestCompareSharedStepsInternal_Error(t *testing.T) {
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты для compareItemInfos ====================
+// ==================== Tests for compareItemInfos ====================
 
 func TestCompareItemInfos(t *testing.T) {
 	items1 := []ItemInfo{
@@ -730,7 +730,7 @@ func TestCompareItemInfos_Empty(t *testing.T) {
 	assert.Equal(t, 0, len(result.Common))
 }
 
-// ==================== Тесты для getFieldValue ====================
+// ==================== Tests for getFieldValue ====================
 
 func TestGetFieldValue(t *testing.T) {
 	c := data.Case{
@@ -756,7 +756,7 @@ func TestGetFieldValue(t *testing.T) {
 	assert.Equal(t, "<unknown field>", getFieldValue(c, "unknown"))
 }
 
-// ==================== Тесты для getCaseKey ====================
+// ==================== Tests for getCaseKey ====================
 
 func TestGetCaseKey(t *testing.T) {
 	item := ItemInfo{ID: 1, Name: "Test Case"}

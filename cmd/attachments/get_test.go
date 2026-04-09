@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для attachments get ====================
+// ==================== Tests for attachments get ====================
 
 func TestGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

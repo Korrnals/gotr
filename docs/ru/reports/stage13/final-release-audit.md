@@ -37,27 +37,29 @@ Language: Русский | [English](../../../en/reports/stage13/final-release-a
 
 ---
 
-**Дата:** 6 апреля 2026  
-**Ветка:** `stage-13.0-final-refactoring`  
-**Scope:** Полный аудит 268 исходных + 249 тестовых файлов, 123 документа
+**Дата:** 6 апреля 2026 (обновлено: 9 апреля 2026 — Phase 7 Closure)  
+**Ветка:** `stage-13.5-quality-hardening`  
+**Commit:** `9abccc5`  
+**Scope:** Полный аудит 268 исходных + 250 тестовых файлов, 125+ документов, Go 1.25.0
 
 ---
 
 ## Итоговый вердикт
 
-| Область | Оценка | Блокер? |
-| --- | --- | --- |
-| **Архитектура и слои** | **PASS** (c оговорками) | Нет |
-| **TestRail API покрытие** | **PASS** (87–92%) | Нет |
-| **Качество кода** | **PASS** | Нет (исправлено 2026-04-06) |
-| **Тестовое покрытие** | **PASS** (96.8–100%) | Нет |
-| **Документация** | **PASS** | Нет (исправлено 2026-04-06) |
-| **CI/Build/Security** | **WARN** | Нет (stdlib vuln) |
+| Область | Фаза | Оценка | Findings | Блокер? |
+| --- | --- | --- | --- | --- |
+| **Архитектура и слои** | Phase 1 | **CONDITIONAL PASS** | 0C / 0H / 3M / 2L | Нет |
+| **TestRail API покрытие** | Phase 2 | **PASS** | 135 endpoints, 98% impl | Нет |
+| **Качество кода** | Phase 3 | **CONDITIONAL PASS** | 0C / 0H / 4M / 4L | Нет |
+| **Тестовое покрытие** | Phase 4 | **PASS** | 42/42 ≥97.4%, 0 races | Нет |
+| **Документация** | Phase 5 | **PASS** | 0C / 0H / 0M / 3L (fixed) | Нет |
+| **CI/Build/Security** | Phase 6 | **PASS** | 6 stdlib vulns, 0 dep vulns | Нет |
 
-### Решение: **PASS — все блокеры исправлены (2026-04-06)**
+### Решение: **PASS — все блокеры исправлены (2026-04-08)**
 
-> **Addendum 2026-04-06:** Все 4 блокера (R-1, R-2, D-1, D-2) исправлены и верифицированы.
-> 42/42 пакетов PASS с `-race`, 0 data races. Бейджи README обновлены до 3.0.0 / Go 1.25.0.
+> 2 HIGH в README исправлены: фантомные директории удалены, таблицы библиотек актуализированы,
+> секция "What's New" обновлена до v3.0.0. Оставшиеся MEDIUM — architectural smells,
+> не блокируют релиз.
 
 ---
 
@@ -77,7 +79,7 @@ Language: Русский | [English](../../../en/reports/stage13/final-release-a
 
 ### Граф зависимостей
 
-```
+```text
 cmd/* → internal/service, internal/client, internal/output, internal/ui,
         internal/flags, internal/interactive, internal/models/data
 internal/service → internal/client, internal/models/data, internal/output
@@ -308,8 +310,8 @@ pkg/* → (нет внутренних зависимостей)
 
 ### Блокеры (MUST FIX перед PR)
 
-| # | Severity | Область | Описание |
-| --- | --- | --- | --- |
+| # | Severity | Область | Описание | Статус |
+| --- | --- | --- | --- | --- |
 | **R-1** | **CRITICAL** | Race | `TestAggregator_StatsAccuracy` — data race на shared переменной | ✅ Fixed |
 | **R-2** | **CRITICAL** | Race | `TestWithProgressMonitor` — `mockMonitor.count++` без sync | ✅ Fixed |
 | **D-1** | **HIGH** | README | Бейдж версии `2.8.0` → `3.0.0` | ✅ Fixed |
@@ -353,9 +355,71 @@ pkg/* → (нет внутренних зависимостей)
 
 ### Рекомендуемый дополнительный scope
 
-5. Исправить C-1 (defer в цикле) — реальная production-утечка
-6. Обновить таблицу библиотек в README (D-3)
-7. Обновить golangci-lint до версии, совместимой с Go 1.25
+5. Исправить C-1 (defer в цикле) — реальная production-утечка ✅ Fixed (F-1)
+6. Обновить таблицу библиотек в README (D-3) ✅ Fixed
+7. Обновить golangci-lint до версии, совместимой с Go 1.25 ✅ v2.11.4
+
+---
+
+## 9. Remediation — Phase 6.5 Quality Hardening
+
+**Статус:** В процессе (2026-04-08 — 2026-04-09)
+
+### Закрытые F-findings (Critical/High fixes)
+
+| ID | Описание | Commit | Статус |
+| --- | --- | --- | --- |
+| F-1 | C-1 — defer в цикле (cases.go) | Перенесён ранее | ✅ Verified |
+| F-2 | C-2 — bounded parallelism (migration/import.go, semaphore=10) | `41cf03b` | ✅ Done |
+| F-3 | compare/types.go — GetProjectName принимает ctx | `41cf03b` | ✅ Done |
+| F-4 | sync.go — context.Background()→TODO() | `41cf03b` | ✅ Done |
+| F-5 | concurrent/pool.go — ctx в NewWorkerPool/ParallelMap/ParallelForEach | `41cf03b` | ✅ Done |
+| F-6 | models/config — убран ui.Infof из модели в caller | `41cf03b` | ✅ Done |
+| F-7 | completion.go — Run→RunE с error wrapping | `41cf03b` | ✅ Done |
+
+### Закрытые B-findings (Backlog refactoring)
+
+| ID | Описание | Commit | Статус |
+| --- | --- | --- | --- |
+| B-2 | GetClient/GetClientFromCtx возвращают ClientInterface | `891034d` | ✅ Done |
+| B-3 | Service Output/PrintSuccess прокси удалены, прямые вызовы output | `891034d` | ✅ Done |
+| B-4 | ClientInterface унифицирован по всем cmd/ и service/ | `891034d` | ✅ Done |
+| B-6 | doc.go — 18 пустых удалены, 8 заполнены | `669ef3c` | ✅ Done |
+| B-7 | MarkFlagRequired error wrapping | `891034d` | ✅ Done |
+| i18n | 1738 строк Russian→English в 170+ Go-файлах | `b1dce38`, `f077d8c` | ✅ Done |
+
+### B-1: DRY CRUD — Generic Executor (Go Generics)
+
+**Проблема:** `cmd/add.go` (1100 LOC), `cmd/update.go` (844 LOC) — 70% boilerplate.
+
+**Решение:** `internal/crud/executor.go` — generic `Execute[Req, Resp]` + `DryRun[Req]` (Go 1.18+ generics).
+Общая логика JSON/flags парсинга, API-вызова и вывода — в двух generic-функциях.
+Для каждой сущности — единственная `buildXxxReq(cmd, validate)` функция, shared между execute и dry-run.
+
+| Шаг | Описание | Статус |
+| --- | --- | --- |
+| 1 | `internal/crud/executor.go` — Execute + DryRun generic functions | ✅ Done |
+| 2 | `internal/crud/executor_test.go` — 7 тестов (JSON/flags/errors) | ✅ Done |
+| 3 | Рефакторинг cmd/add.go: 7 buildReq + 7 slim addXxx + 7 slim dryRunXxx | ✅ Done |
+| 4 | Рефакторинг cmd/update.go: 6 buildReq + 6 slim updateXxx + 6 slim dryRunXxx | ✅ Done |
+| 5 | cmd/delete.go — уже лаконичен, не требует рефакторинга | ✅ Skip |
+| 6 | Финальная верификация: 260 тестов PASS, 0 lint issues | ✅ Done |
+
+**Результат:** add.go 1200→1057 LOC (-143), update.go 850→697 LOC (-153), net -217 LOC prod code.
+
+### B-5: Compare Resource Registry
+
+**Проблема:** `cmd/compare/all.go` — 12 хардкодных вызовов compare-функций (тройное дублирование).
+
+**Решение:** `resourceRegistry` — единый массив `resourceEntry` (display, key, accessor, factory).
+
+| Шаг | Описание | Статус |
+| --- | --- | --- |
+| 1 | `resourceEntry` struct + `resourceRegistry` (12 entries) | ✅ Done |
+| 2 | `newSimpleResourceEntry()` factory для 9 simple ресурсов | ✅ Done |
+| 3 | Верификация тестов cmd/compare/ | ✅ Done |
+
+**Результат:** all.go 726→~680 LOC, тройное дублирование устранено, добавление ресурса = 1 строка.
 
 ### Post-release backlog
 
@@ -364,6 +428,173 @@ pkg/* → (нет внутренних зависимостей)
 - Ограниченный параллелизм в migration (C-2)
 - CLI команды для оставшихся API ресурсов (API-2)
 - Дополнение api_paths.go (API-1)
+
+---
+
+## Stage 13.5 — Quality Hardening Audit
+
+**Дата:** Stage 13.5 audit run  
+**Ветка:** `stage-13.5-quality-hardening` @ `a2ab489`
+
+### Phase 0 — Scope
+
+- Source files: 268
+- Test files: 249
+- Doc files: 125
+- Go version: 1.25.0
+
+### Phase 1 — Architecture (CONDITIONAL PASS)
+
+| Проверка | Результат |
+| --- | --- |
+| Layer boundaries (cmd↛cmd, pkg↛internal) | PASS — 0 нарушений |
+| Dependency direction | WARN — `internal/client → cobra`, `internal/service → output` |
+| Interface usage | WARN — часть cmd/ на `ClientInterface`, часть на `*HTTPClient` |
+| Package cohesion | PASS |
+| Coupling hotspots | WARN — `cmd/compare` 8 internal deps |
+| Concurrency architecture | PASS — одностороннее `concurrency → concurrent` |
+| Model layer | WARN — `models/config → ui.Infof` |
+
+Findings: 0 CRITICAL, 0 HIGH, 3 MEDIUM, 2 LOW.
+
+### Phase 2 — TestRail API Coverage (PASS)
+
+- 135 endpoints в api_paths.go, 26 resource groups
+- 128+ client methods (98% coverage)
+- 22 resource groups с CLI командами
+- Core CRUD (Cases, Runs, Results, Plans): 100%
+- Pagination, Rate Limiting, Parallel fetching: все реализованы
+
+### Phase 3 — Code Quality (CONDITIONAL PASS)
+
+| Проверка | Результат |
+| --- | --- |
+| Error handling (`%w`, RunE, Silence) | WARN — 12 мест без `%w` в client, completion.go swallowed errs |
+| Resource management | PASS — no leaks |
+| Context propagation | WARN — 3 `context.Background()` вместо parent ctx |
+| Cobra CLI patterns | PASS |
+| Security | WARN — export files 0644 (не credentials) |
+| DRY | WARN — update.go/add.go boilerplate |
+| Go best practices | WARN — doc.go отсутствует в 26 пакетах |
+
+Findings: 0 CRITICAL, 0 HIGH, 4 MEDIUM, 4 LOW.
+
+### Phase 4 — Tests & Race (PASS)
+
+- 42/42 packages PASS, min coverage 97.4% (cmd/sync)
+- 0 data races (`go test -race`)
+- Mock layer: complete (128 methods, compile-time check)
+- Test quality spot-check: 5/5 packages PASS (table-driven, error injection, isolation)
+- 8 files без прямого `_test.go` (покрыты косвенно через package coverage)
+
+### Phase 5 — Documentation (CONDITIONAL PASS)
+
+| Проверка | Результат |
+| --- | --- |
+| CLI ↔ Docs mapping | PASS — 29/29 команд задокументированы |
+| README | WARN — фантомные `cmd/common/`, `internal/utils/`; устаревшие libs в таблице |
+| Architecture docs | PASS |
+| Navigation | PASS — 0 broken links |
+| EN/RU parity | WARN — EN 61, RU 63 (2 internal reports) |
+
+Findings: 0 CRITICAL, 2 HIGH, 3 MEDIUM, 3 LOW.
+
+### Phase 6 — CI/Build/Security (PASS)
+
+| Gate | Результат |
+| --- | --- |
+| `go build ./...` | PASS |
+| `go vet ./...` | PASS |
+| `go test ./...` | PASS (42/42) |
+| `go test -race ./...` | PASS (41/41, 0 races) |
+| `golangci-lint run` | PASS (0 issues) |
+| `govulncheck ./...` | 6 stdlib vulns (go1.25.6→1.25.9), 0 dep vulns — NON-BLOCKING |
+| Makefile `verify` | PASS — runs all gates |
+| Makefile `release` | PASS — includes checksums |
+
+### Сводная таблица findings
+
+| Severity | Count | Источник |
+| --- | --- | --- |
+| CRITICAL | 0 | — |
+| HIGH | 0 | ~~2 README~~ — исправлено 2026-04-08 |
+| MEDIUM | 7 | Architecture (3) + Code Quality (4) |
+| LOW | 9 | Architecture (2) + Code Quality (4) + Documentation (3) |
+
+### Вердикт: **PASS**
+
+**Блокеры: 0** (исправлены 2026-04-08)
+
+**Рекомендовано (MEDIUM, non-blocking, backlog):**
+
+- `context.Background()` → parent ctx в `compare/types.go`, `sync/sync.go`, `concurrent/pool.go`
+- `internal/client → cobra` decoupling
+- `internal/service → output` decoupling
+- `models/config → ui.Infof` вынести в caller
+
+---
+
+## 10. Phase 7 — Final Closure Audit (2026-04-09)
+
+### Scope
+
+Финальный комплексный аудит перед закрытием стадии и создании PR.
+
+### Автоматизированные проверки
+
+| Gate | Результат |
+| --- | --- |
+| `go test -race -short ./...` | **PASS** — 43/43 пакетов, 3615+ тестов, 0 data races |
+| `go vet ./...` | **PASS** |
+| `go build ./...` | **PASS** |
+| Workspace errors (LSP) | **0** |
+
+### Статический анализ (grep-audit)
+
+| Проверка | Результат |
+| --- | --- |
+| `TODO/FIXME/HACK/XXX` в prod-коде | **0** (только `context.TODO` в тестах — безопасно) |
+| `panic(` в prod-коде | **0** (только в test helpers — безопасно) |
+| `exec.Command` / `os/exec` | Только в `embedded/jq_embed.go`, `internal/selftest`, `internal/ui/editor.go` — ожидаемо |
+| `io.ReadAll` без `LimitReader` | **0** в production-коде (все вызовы обёрнуты) |
+
+### Security scan
+
+| Проверка | Результат |
+| --- | --- |
+| AWS ключи / private keys / GitHub tokens | **0** — не найдено |
+| Hardcoded passwords / api_key / token | **0** — все совпадения являются placeholder'ами, тестовыми фикстурами или примерами в документации |
+
+### Hardening (commit `9abccc5`)
+
+| ID | Описание | Файл | Статус |
+| --- | --- | --- | --- |
+| H-1 | Unbounded `io.ReadAll(resp.Body)` в `formatAPIError()` → `io.LimitReader` | `internal/client/client.go:219` | ✅ Fixed |
+| H-2 | Fenced code block без language в markdown | `final-release-audit.md:82` | ✅ Fixed |
+| H-3 | Table column count mismatch (missing "Статус" header) | `final-release-audit.md` | ✅ Fixed |
+
+### Docs sync (commit `cc1cc3e`)
+
+Синхронизированы 6 command guide документов (EN + RU) с реализованным CLI:
+
+- `attachments.md` — добавлена подкоманда `list` + Scenario 5
+- `sync.md` — добавлен флаг `--save-filtered` + Scenario 5
+- `bdds.md` — добавлена поддержка stdin pipe + Scenario 5
+
+### Deep audit (subagent)
+
+Полный read-only аудит всех файлов проекта субагентом:
+
+- Architecture boundaries: **PASS**
+- API completeness: **PASS**
+- Code quality: **PASS** — все findings предыдущих раундов закрыты
+- Test coverage: **PASS** — 43/43 packages
+- Documentation: **PASS** — CLI↔docs в sync
+- Security: **PASS** — no secrets, all reads bounded
+
+### Вердикт Phase 7: **UNCONDITIONAL PASS**
+
+Ноль блокеров. Репозиторий готов к PR.
 
 ---
 

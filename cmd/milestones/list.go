@@ -14,15 +14,15 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Список майлстонов проекта",
-		Long: `Выводит список всех майлстонов указанного проекта.
+		Short: "List project milestones",
+		Long: `Lists all milestones of the specified project.
 
-Показывает ID, название, статус завершения и дедлайны всех майлстонов.
-Поддерживает вывод в JSON для автоматизации.`,
-		Example: `  # Список майлстонов проекта
+Displays ID, name, completion status, and deadlines of all milestones.
+Supports JSON output for automation.`,
+		Example: `  # List project milestones
   gotr milestones list 1
 
-  # Сохранить список в файл
+  # Save list to file
   gotr milestones list 1 -o milestones.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

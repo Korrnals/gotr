@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -14,12 +15,14 @@ import (
 
 // mockSuiteFetcher is a mock implementation of SuiteFetcher for testing
 type mockSuiteFetcher struct {
-	cases           map[int64][]data.Case // suiteID -> cases
-	latency         time.Duration
-	failAfter       int
-	callCount       int32
-	failSuiteIDs    map[int64]bool
-	failPageOffsets map[int64]map[int]bool // suiteID -> offset -> shouldFail
+	cases            map[int64][]data.Case // suiteID -> cases
+	latency          time.Duration
+	callCount        int32
+	failSuiteIDs     map[int64]bool
+	failPageOffsets  map[int64]map[int]bool  // suiteID -> offset -> shouldFail (permanent)
+	failPageMaxTimes int                     // if >0, pages in failPageOffsets fail only this many times
+	mu               sync.Mutex              // guards pageAttempts
+	pageAttempts     map[int64]map[int]int32 // suiteID -> offset -> attempt count
 }
 
 func newMockSuiteFetcher() *mockSuiteFetcher {
@@ -28,6 +31,7 @@ func newMockSuiteFetcher() *mockSuiteFetcher {
 		latency:         10 * time.Millisecond,
 		failSuiteIDs:    make(map[int64]bool),
 		failPageOffsets: make(map[int64]map[int]bool),
+		pageAttempts:    make(map[int64]map[int]int32),
 	}
 }
 
@@ -51,7 +55,16 @@ func (m *mockSuiteFetcher) FetchPageCtx(ctx context.Context, req PageRequest) ([
 	// Check if this page should fail
 	if offsets, ok := m.failPageOffsets[req.SuiteID]; ok {
 		if offsets[req.Offset] {
-			return nil, -1, errors.New("page fetch failed")
+			m.mu.Lock()
+			if m.pageAttempts[req.SuiteID] == nil {
+				m.pageAttempts[req.SuiteID] = make(map[int]int32)
+			}
+			m.pageAttempts[req.SuiteID][req.Offset]++
+			attempt := m.pageAttempts[req.SuiteID][req.Offset]
+			m.mu.Unlock()
+			if m.failPageMaxTimes <= 0 || attempt <= int32(m.failPageMaxTimes) {
+				return nil, -1, errors.New("page fetch failed")
+			}
 		}
 	}
 
@@ -313,7 +326,7 @@ func TestParallelController_ValidateConfig(t *testing.T) {
 		PageSize:            0,  // Invalid → default 250
 	}
 
-	config.Validate()
+	config.Normalize()
 
 	// Should be set to defaults (except RequestsPerMinute: 0 is valid)
 	assert.Equal(t, 5, config.MaxConcurrentSuites)
@@ -333,7 +346,7 @@ func TestParallelController_ValidateConfig_NegativeRPM(t *testing.T) {
 		MaxConsecutiveErrorWaves: 1,
 	}
 
-	config.Validate()
+	config.Normalize()
 	assert.Equal(t, 180, config.RequestsPerMinute)
 }
 
@@ -576,7 +589,7 @@ func TestSuiteWorker_ContextCancellation(t *testing.T) {
 
 	result, err := controller.Execute(ctx, tasks, fetcher, nil)
 
-	// Should return with reduced cases (cancelled early)
+	// Should return with reduced cases (canceled early)
 	assert.True(t, len(result.Cases) < 1000 || err != nil, "Expected early termination due to cancellation")
 }
 
@@ -585,11 +598,14 @@ func TestSuiteWorker_NetworkRetry(t *testing.T) {
 	fetcher := newMockSuiteFetcher()
 	fetcher.addCases(1, 500)
 
-	// Configure to fail offsets 100 and 200
+	// Configure to fail offsets 100 and 200 only once — retry should recover them.
+	// Without failPageMaxTimes, permanent failures + exponential backoff (1s+2s+4s per retry)
+	// would cause a timeout.
 	fetcher.failPageOffsets[1] = map[int]bool{
 		100: true,
 		200: true,
 	}
+	fetcher.failPageMaxTimes = 1
 
 	controller := NewController(&ControllerConfig{
 		MaxConcurrentSuites: 1,
@@ -605,10 +621,9 @@ func TestSuiteWorker_NetworkRetry(t *testing.T) {
 
 	result, err := controller.Execute(context.Background(), tasks, fetcher, nil)
 
-	// Should recover and fetch most/all cases despite initial failures
-	// Note: recovery happens and retries may succeed or fail depending on mock state
+	// Should recover and fetch all cases — transient failures heal after 1 attempt
 	assert.NoError(t, err)
-	assert.True(t, len(result.Cases) >= 300, "Should fetch at least 300 cases after retries")
+	assert.Equal(t, 500, len(result.Cases), "Should fetch all 500 cases after transient retries")
 }
 
 // TestSuiteWorker_PartialResults tests fetching partial suite data when page fails persistently
@@ -732,11 +747,16 @@ func TestFetchSuiteStreaming_EmptySuite(t *testing.T) {
 	assert.Equal(t, 1, result.Stats.CompletedSuites)
 }
 
-// TestFetchSuiteStreaming_MaxPageLimit tests that controller respects page limit safety
+// TestFetchSuiteStreaming_MaxPageLimit tests that the controller correctly handles
+// a large suite requiring many pages of pagination.
+// Note: the 40K-page safety cap is a fallback for unknown totalSize; here the mock
+// returns a known totalSize so the controller stops via the exact bound check.
 func TestFetchSuiteStreaming_MaxPageLimit(t *testing.T) {
 	fetcher := newMockSuiteFetcher()
-	// Add huge number of cases (would require > 40K pages)
-	fetcher.addCases(1, 10000000) // 10M cases with pageSize 250 = 40K pages
+	// 50K cases with pageSize 250 = 200 pages — exercises heavy pagination
+	// without excessive memory/time (10M was ~80MB RAM and caused timeouts).
+	fetcher.addCases(1, 50000)
+	fetcher.latency = 0
 
 	controller := NewController(&ControllerConfig{
 		MaxConcurrentSuites: 1,
@@ -749,13 +769,10 @@ func TestFetchSuiteStreaming_MaxPageLimit(t *testing.T) {
 		{SuiteID: 1, ProjectID: 10},
 	}
 
-	// This should stop at the safety limit (40K pages = 10M cases)
 	result, err := controller.Execute(context.Background(), tasks, fetcher, nil)
 
-	// Should not panic and should complete
 	assert.NoError(t, err)
-	// Should fetch at least SOME data (10M would be fetched, but safety limit is 40K pages)
-	assert.True(t, len(result.Cases) > 1000000 || len(result.Cases) == 10000000, "Should handle large suites")
+	assert.Equal(t, 50000, len(result.Cases), "Should fetch all cases from the large suite")
 }
 
 // TestFetchSuiteStreaming_ConsecutiveErrorWaves tests error wave detection

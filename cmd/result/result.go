@@ -12,38 +12,35 @@ type GetClientFunc = client.GetClientFunc
 // Cmd is the parent command for managing test results.
 var Cmd = &cobra.Command{
 	Use:   "result",
-	Short: "Управление результатами тестов в TestRail",
-	Long: `Команды для добавления и получения результатов тестов (test results) в TestRail.
+	Short: "Manage test results in TestRail",
+	Long: `Commands for adding and retrieving test results in TestRail.
 
-Test result — это результат выполнения отдельного теста (passed, failed, blocked и т.д.)
+Test result is the outcome of an individual test execution (passed, failed, blocked, etc.)
 
-Подкоманды:
-	list       — получить результаты для test run (с интерактивным выбором)
-	get        — получить результаты для test
-	get-case   — получить результаты для кейса в run
-	add        — добавить результат для test
-	add-case   — добавить результат для кейса в run
-	add-bulk   — массовое добавление результатов
+Subcommands:
+	list       — get results for a test run (with interactive selection)
+	get        — get results for a test
+	get-case   — get results for a case in a run
+	add        — add a result for a test
+	add-case   — add a result for a case in a run
+	add-bulk   — bulk add results
 
-Примеры:
-	# Получить результаты с интерактивным выбором run
+Examples:
+	# Get results with interactive run selection
 	gotr result list
 
-	# Получить результаты для конкретного run
+	# Get results for a specific run
 	gotr result list 12345
 
-	# Получить результаты test
+	# Get test results
 	gotr result get 12345
 
-	# Добавить passed результат
+	# Add a passed result
 	gotr result add 12345 --status-id 1 --comment "Test passed successfully"
 
-	# Добавить failed результат с дефектом
+	# Add a failed result with a defect
 	gotr result add 12345 --status-id 5 --comment "Found bug" --defects "BUG-123"
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
 }
 
 var clientAccessor *client.Accessor
@@ -58,11 +55,11 @@ func SetGetClientForTests(fn GetClientFunc) {
 }
 
 // getClientSafe safely calls getClient with a nil guard.
-func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
+func getClientSafe(cmd *cobra.Command) client.ClientInterface {
 	if clientAccessor == nil {
 		return nil
 	}
-	return clientAccessor.GetClientSafe(cmd)
+	return clientAccessor.GetClientSafe(cmd.Context())
 }
 
 // Register adds the result command and all its subcommands to rootCmd.
@@ -85,8 +82,8 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	}
 
 	// Mark required flags (already defined in constructors)
-	addCmd.MarkFlagRequired("status-id")
-	addCaseCmd.MarkFlagRequired("case-id")
-	addCaseCmd.MarkFlagRequired("status-id")
-	addBulkCmd.MarkFlagRequired("results-file")
+	_ = addCmd.MarkFlagRequired("status-id")
+	_ = addCaseCmd.MarkFlagRequired("case-id")
+	_ = addCaseCmd.MarkFlagRequired("status-id")
+	_ = addBulkCmd.MarkFlagRequired("results-file")
 }

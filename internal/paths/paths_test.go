@@ -139,7 +139,7 @@ func TestEnsureLogsDirPath_AlreadyExists(t *testing.T) {
 func TestEnsureLogsDirPath_MkdirError(t *testing.T) {
 	parent := t.TempDir()
 	homeFile := filepath.Join(parent, "not-a-dir")
-	if err := os.WriteFile(homeFile, []byte("x"), 0600); err != nil {
+	if err := os.WriteFile(homeFile, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write home file: %v", err)
 	}
 	t.Setenv("HOME", homeFile)
@@ -191,7 +191,7 @@ func TestEnsureAllDirs_MkdirError(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	baseFile := filepath.Join(home, DirName)
-	if err := os.WriteFile(baseFile, []byte("x"), 0600); err != nil {
+	if err := os.WriteFile(baseFile, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write base file: %v", err)
 	}
 
@@ -218,7 +218,7 @@ func TestEnsureDir_ErrorPaths(t *testing.T) {
 
 	home := t.TempDir()
 	filePath := filepath.Join(home, "not-a-dir")
-	if err := os.WriteFile(filePath, []byte("x"), 0600); err != nil {
+	if err := os.WriteFile(filePath, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write file: %v", err)
 	}
 

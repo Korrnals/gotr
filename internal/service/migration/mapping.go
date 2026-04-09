@@ -80,7 +80,7 @@ func (sm *SharedStepMapping) Save(dir string) error {
 		dir = ".testrail"
 	}
 
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -94,7 +94,7 @@ func (sm *SharedStepMapping) Save(dir string) error {
 		return err
 	}
 
-	return os.WriteFile(file, jsonData, 0644)
+	return os.WriteFile(file, jsonData, 0o644)
 }
 
 // LoadSharedStepMapping loads a shared step mapping from a JSON file.

@@ -39,7 +39,7 @@ func (c *HTTPClient) GetSectionsParallelCtx(
 	if config == nil {
 		config = concurrency.DefaultControllerConfig()
 	} else {
-		config.Validate()
+		config.Normalize()
 	}
 
 	if config.Timeout > 0 {
@@ -71,39 +71,7 @@ func (c *HTTPClient) GetSectionsParallelCtx(
 	}
 
 	sections, err := concurrency.FetchParallelBySuite(ctx, suiteIDs,
-		func(suiteID int64) ([]data.Section, error) {
-			if limiter != nil {
-				if waitErr := limiter.WaitCtx(ctx); waitErr != nil {
-					return nil, waitErr
-				}
-			}
-
-			var lastErr error
-			for attempt := 0; attempt <= maxRetries; attempt++ {
-				sections, fetchErr := c.GetSections(ctx, projectID, suiteID)
-				if fetchErr == nil {
-					return sections, nil
-				}
-
-				if ctx.Err() != nil {
-					return nil, ctx.Err()
-				}
-
-				lastErr = fetchErr
-				if attempt == maxRetries {
-					break
-				}
-
-				delay := time.Duration(100*(1<<attempt)) * time.Millisecond
-				select {
-				case <-ctx.Done():
-					return nil, ctx.Err()
-				case <-time.After(delay):
-				}
-			}
-
-			return nil, lastErr
-		},
+		c.sectionsFetcher(ctx, projectID, limiter, maxRetries),
 		opts...,
 	)
 	if err != nil && len(sections) == 0 {
@@ -111,6 +79,47 @@ func (c *HTTPClient) GetSectionsParallelCtx(
 	}
 
 	return data.GetSectionsResponse(sections), err
+}
+
+// sectionsFetcher returns a closure that fetches sections for a single suite
+// with rate limiting and exponential-backoff retries.
+// Extracted from GetSectionsParallelCtx to keep cyclomatic complexity manageable.
+func (c *HTTPClient) sectionsFetcher(ctx context.Context, projectID int64, limiter *concurrent.AdaptiveRateLimiter, maxRetries int) func(int64) ([]data.Section, error) {
+	return func(suiteID int64) ([]data.Section, error) {
+		// Honor the global rate limiter before the first attempt.
+		if limiter != nil {
+			if waitErr := limiter.WaitCtx(ctx); waitErr != nil {
+				return nil, waitErr
+			}
+		}
+
+		var lastErr error
+		for attempt := 0; attempt <= maxRetries; attempt++ {
+			sections, fetchErr := c.GetSections(ctx, projectID, suiteID)
+			if fetchErr == nil {
+				return sections, nil
+			}
+
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+
+			lastErr = fetchErr
+			if attempt == maxRetries {
+				break
+			}
+
+			// Exponential back-off: 100ms, 200ms, 400ms, …
+			delay := time.Duration(100*(1<<attempt)) * time.Millisecond
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(delay):
+			}
+		}
+
+		return nil, lastErr
+	}
 }
 
 // GetSection fetches a single section by ID.
@@ -132,7 +141,10 @@ func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Sec
 
 // AddSection creates a new section in a project's suite.
 func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_section/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -150,7 +162,10 @@ func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.
 
 // UpdateSection updates a section (name, description, parent_id for moving).
 func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {

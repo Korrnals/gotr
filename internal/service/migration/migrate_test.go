@@ -10,9 +10,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// TestMigration_MigrateSuites проверяет поведение миграции для сущностей suites
+// TestMigration_MigrateSuites verifies migration behavior for suite entities
 func TestMigration_MigrateSuites(t *testing.T) {
-	t.Run("Успешная миграция suites", func(t *testing.T) {
+	t.Run("Successful suites migration", func(t *testing.T) {
 		mock := &MockClient{
 			GetSuitesFunc: func(ctx context.Context, projectID int64) (data.GetSuitesResponse, error) {
 				if projectID == 1 {
@@ -26,7 +26,7 @@ func TestMigration_MigrateSuites(t *testing.T) {
 		}
 
 		m := setupTestMigration(t, mock)
-		m.compareField = "Name" // Переопределяем поле для теста
+		m.compareField = "Name" // Override field for test
 
 		err := m.MigrateSuites(context.Background(), false)
 		assert.NoError(t, err)
@@ -37,9 +37,9 @@ func TestMigration_MigrateSuites(t *testing.T) {
 	})
 }
 
-// TestMigration_MigrateSharedSteps проверяет миграцию общих шагов (shared steps)
+// TestMigration_MigrateSharedSteps verifies shared steps migration
 func TestMigration_MigrateSharedSteps(t *testing.T) {
-	t.Run("Миграция только неиспользуемых шагов", func(t *testing.T) {
+	t.Run("Migration of only unused steps", func(t *testing.T) {
 		mock := &MockClient{
 			GetSharedStepsFunc: func(ctx context.Context, p int64) (data.GetSharedStepsResponse, error) {
 				if p == 1 { // source
@@ -48,7 +48,7 @@ func TestMigration_MigrateSharedSteps(t *testing.T) {
 						{ID: 2, Title: "Free", CaseIDs: []int64{}},
 					}, nil
 				}
-				// target — ВОТ ЗДЕСЬ ИЗМЕНИ 2 на 200
+				// target — CHANGE 2 to 200 HERE
 				return data.GetSharedStepsResponse{
 					{ID: 200, Title: "Free", CaseIDs: []int64{}},
 				}, nil
@@ -59,13 +59,13 @@ func TestMigration_MigrateSharedSteps(t *testing.T) {
 		err := m.MigrateSharedSteps(context.Background(), false)
 
 		assert.NoError(t, err)
-		// Проверяем маппинг: шаг 2 (свободный) должен быть там
+		// Verify mapping: step 2 (free) should be there
 		id, exists := m.mapping.GetTargetBySource(2)
 		assert.True(t, exists)
 		assert.Equal(t, int64(200), id)
 	})
 
-	t.Run("Ошибка получения source cases после успешного fetch shared steps", func(t *testing.T) {
+	t.Run("Error fetching source cases after successful shared steps fetch", func(t *testing.T) {
 		getCasesCalls := 0
 		mock := &MockClient{
 			GetSharedStepsFunc: func(ctx context.Context, p int64) (data.GetSharedStepsResponse, error) {
@@ -89,9 +89,9 @@ func TestMigration_MigrateSharedSteps(t *testing.T) {
 	})
 }
 
-// TestMigration_MigrateSections проверяет поведение миграции для разделов (sections)
+// TestMigration_MigrateSections verifies migration behavior for sections
 func TestMigration_MigrateSections(t *testing.T) {
-	t.Run("Ошибка при получении данных sections", func(t *testing.T) {
+	t.Run("Error fetching sections data", func(t *testing.T) {
 		mock := &MockClient{
 			GetSectionsFunc: func(ctx context.Context, p, s int64) (data.GetSectionsResponse, error) {
 				return data.GetSectionsResponse{}, errors.New("fail to fetch sections")
@@ -104,9 +104,9 @@ func TestMigration_MigrateSections(t *testing.T) {
 	})
 }
 
-// TestMigration_MigrateCases проверяет миграцию тест-кейсов (cases)
+// TestMigration_MigrateCases verifies test cases migration
 func TestMigration_MigrateCases(t *testing.T) {
-	t.Run("Успешная миграция кейсов", func(t *testing.T) {
+	t.Run("Successful cases migration", func(t *testing.T) {
 		mock := &MockClient{
 			GetCasesFunc: func(ctx context.Context, p, s, sec int64) (data.GetCasesResponse, error) {
 				if p == 1 {
@@ -124,14 +124,14 @@ func TestMigration_MigrateCases(t *testing.T) {
 	})
 }
 
-// TestMigration_MigrateFull проверяет последовательную полную миграцию (full flow)
+// TestMigration_MigrateFull verifies sequential full migration (full flow)
 func TestMigration_MigrateFull(t *testing.T) {
-	t.Run("Остановка при ошибке на первом этапе (Suites)", func(t *testing.T) {
+	t.Run("Stop on error at first stage (Suites)", func(t *testing.T) {
 		mock := &MockClient{
 			GetSuitesFunc: func(ctx context.Context, p int64) (data.GetSuitesResponse, error) {
 				return data.GetSuitesResponse{}, errors.New("suites_critical_error")
 			},
-			// Важно: заглушки для остальных, чтобы не падало
+			// Important: stubs for remaining methods so they don't fail
 			GetSectionsFunc: func(ctx context.Context, p, s int64) (data.GetSectionsResponse, error) {
 				return data.GetSectionsResponse{}, nil
 			},
@@ -148,7 +148,7 @@ func TestMigration_MigrateFull(t *testing.T) {
 		assert.Contains(t, err.Error(), "suites_critical_error")
 	})
 
-	t.Run("Остановка при ошибке в sections — cases не запускаются", func(t *testing.T) {
+	t.Run("Stop on sections error — cases not started", func(t *testing.T) {
 		calledCases := false
 
 		mock := &MockClient{
@@ -169,10 +169,10 @@ func TestMigration_MigrateFull(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "sections_error")
-		assert.False(t, calledCases, "MigrateCases не должен был вызываться")
+		assert.False(t, calledCases, "MigrateCases should not have been called")
 	})
 
-	t.Run("Остановка при ошибке в shared steps — финальный этап cases не запускается", func(t *testing.T) {
+	t.Run("Stop on shared steps error — final cases stage not started", func(t *testing.T) {
 		calledCases := false
 
 		mock := &MockClient{
@@ -196,10 +196,10 @@ func TestMigration_MigrateFull(t *testing.T) {
 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "shared_steps_error")
-		assert.False(t, calledCases, "MigrateCases не должен был вызываться после ошибки shared steps")
+		assert.False(t, calledCases, "MigrateCases should not have been called after shared steps error")
 	})
 
-	t.Run("Ошибка на этапе cases после успешных предыдущих этапов", func(t *testing.T) {
+	t.Run("Error at cases stage after previous stages succeeded", func(t *testing.T) {
 		getCasesCalls := 0
 
 		mock := &MockClient{
@@ -229,7 +229,7 @@ func TestMigration_MigrateFull(t *testing.T) {
 		assert.GreaterOrEqual(t, getCasesCalls, 2)
 	})
 
-	t.Run("DryRun не вызывает создание сущностей", func(t *testing.T) {
+	t.Run("DryRun does not create entities", func(t *testing.T) {
 		addSuiteCalled := false
 		addSectionCalled := false
 		addSharedStepCalled := false
@@ -270,13 +270,13 @@ func TestMigration_MigrateFull(t *testing.T) {
 		err := m.MigrateFull(context.Background(), true)
 
 		assert.NoError(t, err)
-		assert.False(t, addSuiteCalled, "AddSuite не должен вызываться в dryRun")
-		assert.False(t, addSectionCalled, "AddSection не должен вызываться в dryRun")
-		assert.False(t, addSharedStepCalled, "AddSharedStep не должен вызываться в dryRun")
-		assert.False(t, addCaseCalled, "AddCase не должен вызываться в dryRun")
+		assert.False(t, addSuiteCalled, "AddSuite should not be called in dryRun")
+		assert.False(t, addSectionCalled, "AddSection should not be called in dryRun")
+		assert.False(t, addSharedStepCalled, "AddSharedStep should not be called in dryRun")
+		assert.False(t, addCaseCalled, "AddCase should not be called in dryRun")
 	})
 
-	t.Run("Успешная полная миграция", func(t *testing.T) {
+	t.Run("Successful full migration", func(t *testing.T) {
 		mock := &MockClient{
 			GetSuitesFunc: func(ctx context.Context, p int64) (data.GetSuitesResponse, error) {
 				return data.GetSuitesResponse{{ID: 10}}, nil
@@ -308,6 +308,6 @@ func TestMigration_MigrateFull(t *testing.T) {
 		err := m.MigrateFull(context.Background(), false)
 
 		assert.NoError(t, err)
-		// Можно проверить mapping (если добавишь counter — проверить imported*)
+		// Can verify mapping (if counter is added — check imported*)
 	})
 }

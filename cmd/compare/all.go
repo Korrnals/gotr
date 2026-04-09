@@ -14,6 +14,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/Korrnals/gotr/pkg/reporter"
@@ -23,19 +24,88 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var compareAllStages = []string{
-	"cases",
-	"suites",
-	"sections",
-	"shared steps",
-	"runs",
-	"plans",
-	"milestones",
-	"datasets",
-	"groups",
-	"labels",
-	"templates",
-	"configurations",
+var compareAllStages []string // populated from resourceRegistry in init()
+
+func init() {
+	compareAllStages = make([]string, len(resourceRegistry))
+	for i, r := range resourceRegistry {
+		compareAllStages[i] = r.displayName
+	}
+}
+
+// resourceEntry defines a single compare-all resource with its metadata,
+// field accessor, and comparison function factory.
+type resourceEntry struct {
+	displayName string                           // human-readable name for progress display
+	key         string                           // key for errors and result assignment
+	label       string                           // label for partial/interrupted results
+	field       func(*allResult) **CompareResult // pointer-to-field accessor
+	// newCompare creates a comparison closure bound to specific execution context.
+	// Resources that don't need cmd (simple ones) ignore the cmd parameter.
+	newCompare func(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface,
+		pid1, pid2 int64, quiet bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error)
+}
+
+var resourceRegistry = []resourceEntry{
+	{
+		displayName: "cases", key: "cases", label: "cases",
+		field: func(r *allResult) **CompareResult { return &r.Cases },
+		newCompare: func(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, _ bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				r, _, err := compareAllCasesFn(ctx, cmd, cli, pid1, pid2, "title", preloadedSuites)
+				return r, err
+			}
+		},
+	},
+	{
+		displayName: "suites", key: "suites", label: "suites",
+		field: func(r *allResult) **CompareResult { return &r.Suites },
+		newCompare: func(ctx context.Context, _ *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				return compareAllSuitesFn(ctx, cli, pid1, pid2, quiet, preloadedSuites)
+			}
+		},
+	},
+	{
+		displayName: "sections", key: "sections", label: "sections",
+		field: func(r *allResult) **CompareResult { return &r.Sections },
+		newCompare: func(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				return compareAllSectionsFn(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites)
+			}
+		},
+	},
+	newSimpleResourceEntry("shared steps", "shared_steps", "sharedsteps",
+		func(r *allResult) **CompareResult { return &r.SharedSteps }, fetchSharedStepItems),
+	newSimpleResourceEntry("runs", "runs", "runs",
+		func(r *allResult) **CompareResult { return &r.Runs }, fetchRunItems),
+	newSimpleResourceEntry("plans", "plans", "plans",
+		func(r *allResult) **CompareResult { return &r.Plans }, fetchPlanItems),
+	newSimpleResourceEntry("milestones", "milestones", "milestones",
+		func(r *allResult) **CompareResult { return &r.Milestones }, fetchMilestoneItems),
+	newSimpleResourceEntry("datasets", "datasets", "datasets",
+		func(r *allResult) **CompareResult { return &r.Datasets }, fetchDatasetItems),
+	newSimpleResourceEntry("groups", "groups", "groups",
+		func(r *allResult) **CompareResult { return &r.Groups }, fetchGroupItems),
+	newSimpleResourceEntry("labels", "labels", "labels",
+		func(r *allResult) **CompareResult { return &r.Labels }, fetchLabelItems),
+	newSimpleResourceEntry("templates", "templates", "templates",
+		func(r *allResult) **CompareResult { return &r.Templates }, fetchTemplateItems),
+	newSimpleResourceEntry("configurations", "configurations", "configurations",
+		func(r *allResult) **CompareResult { return &r.Configurations }, fetchConfigurationItems),
+}
+
+// newSimpleResourceEntry creates a resourceEntry for resources that use the generic
+// compareSimpleInternal pattern (9 out of 12 resources).
+func newSimpleResourceEntry(displayName, key, label string, field func(*allResult) **CompareResult, fetchFn FetchFunc) resourceEntry {
+	return resourceEntry{
+		displayName: displayName, key: key, label: label, field: field,
+		newCompare: func(ctx context.Context, _ *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, _ map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				return compareAllSimpleFn(ctx, cli, pid1, pid2, label, fetchFn, quiet)
+			}
+		},
+	}
 }
 
 var (
@@ -99,10 +169,10 @@ func isUnsupportedEndpointError(err error) bool {
 	return strings.Contains(msg, "404") || strings.Contains(msg, "file not found")
 }
 
-func splitErrorsBySupport(errors map[string]error) (unsupported []string, regular []string) {
+func splitErrorsBySupport(errs map[string]error) (unsupported, regular []string) {
 	unsupported = make([]string, 0)
 	regular = make([]string, 0)
-	for resource, err := range errors {
+	for resource, err := range errs {
 		if isUnsupportedEndpointError(err) {
 			unsupported = append(unsupported, resource)
 			continue
@@ -142,95 +212,32 @@ func fillResourcePartialResult(result *allResult, resource string, pid1, pid2 in
 	if result == nil {
 		return
 	}
-
-	switch resource {
-	case "cases":
-		if result.Cases == nil {
-			result.Cases = partialResult("cases", pid1, pid2)
-		}
-	case "suites":
-		if result.Suites == nil {
-			result.Suites = partialResult("suites", pid1, pid2)
-		}
-	case "sections":
-		if result.Sections == nil {
-			result.Sections = partialResult("sections", pid1, pid2)
-		}
-	case "shared_steps":
-		if result.SharedSteps == nil {
-			result.SharedSteps = partialResult("sharedsteps", pid1, pid2)
-		}
-	case "runs":
-		if result.Runs == nil {
-			result.Runs = partialResult("runs", pid1, pid2)
-		}
-	case "plans":
-		if result.Plans == nil {
-			result.Plans = partialResult("plans", pid1, pid2)
-		}
-	case "milestones":
-		if result.Milestones == nil {
-			result.Milestones = partialResult("milestones", pid1, pid2)
-		}
-	case "datasets":
-		if result.Datasets == nil {
-			result.Datasets = partialResult("datasets", pid1, pid2)
-		}
-	case "groups":
-		if result.Groups == nil {
-			result.Groups = partialResult("groups", pid1, pid2)
-		}
-	case "labels":
-		if result.Labels == nil {
-			result.Labels = partialResult("labels", pid1, pid2)
-		}
-	case "templates":
-		if result.Templates == nil {
-			result.Templates = partialResult("templates", pid1, pid2)
-		}
-	case "configurations":
-		if result.Configurations == nil {
-			result.Configurations = partialResult("configurations", pid1, pid2)
+	for _, r := range resourceRegistry {
+		if r.key == resource {
+			ptr := r.field(result)
+			if *ptr == nil {
+				*ptr = partialResult(r.label, pid1, pid2)
+			}
+			return
 		}
 	}
 }
 
 func fillInterruptedResults(result *allResult, pid1, pid2 int64) {
-	if result.Cases == nil {
-		result.Cases = interruptedResult("cases", pid1, pid2)
+	for _, r := range resourceRegistry {
+		ptr := r.field(result)
+		if *ptr == nil {
+			*ptr = interruptedResult(r.label, pid1, pid2)
+		}
 	}
-	if result.Suites == nil {
-		result.Suites = interruptedResult("suites", pid1, pid2)
-	}
-	if result.Sections == nil {
-		result.Sections = interruptedResult("sections", pid1, pid2)
-	}
-	if result.SharedSteps == nil {
-		result.SharedSteps = interruptedResult("sharedsteps", pid1, pid2)
-	}
-	if result.Runs == nil {
-		result.Runs = interruptedResult("runs", pid1, pid2)
-	}
-	if result.Plans == nil {
-		result.Plans = interruptedResult("plans", pid1, pid2)
-	}
-	if result.Milestones == nil {
-		result.Milestones = interruptedResult("milestones", pid1, pid2)
-	}
-	if result.Datasets == nil {
-		result.Datasets = interruptedResult("datasets", pid1, pid2)
-	}
-	if result.Groups == nil {
-		result.Groups = interruptedResult("groups", pid1, pid2)
-	}
-	if result.Labels == nil {
-		result.Labels = interruptedResult("labels", pid1, pid2)
-	}
-	if result.Templates == nil {
-		result.Templates = interruptedResult("templates", pid1, pid2)
-	}
-	if result.Configurations == nil {
-		result.Configurations = interruptedResult("configurations", pid1, pid2)
+}
+
+func assignCompareResult(result *allResult, key string, r *CompareResult) {
+	for _, entry := range resourceRegistry {
+		if entry.key == key {
+			*entry.field(result) = r
+			return
+		}
 	}
 }
 
@@ -253,11 +260,11 @@ func compareResultStatus(res *CompareResult) CompareStatus {
 	return res.Status
 }
 
-func deriveAllExecutionStatus(result *allResult, interrupted bool, errors map[string]error) CompareStatus {
+func deriveAllExecutionStatus(result *allResult, interrupted bool, errs map[string]error) CompareStatus {
 	if interrupted {
 		return CompareStatusInterrupted
 	}
-	if len(errors) > 0 {
+	if len(errs) > 0 {
 		return CompareStatusPartial
 	}
 
@@ -291,11 +298,11 @@ func deriveAllExecutionStatus(result *allResult, interrupted bool, errors map[st
 	return CompareStatusComplete
 }
 
-func buildAllMeta(result *allResult, interrupted bool, errors map[string]error, elapsed time.Duration) allResultMeta {
-	unsupportedResources, errorResources := splitErrorsBySupport(errors)
+func buildAllMeta(result *allResult, interrupted bool, errs map[string]error, elapsed time.Duration) allResultMeta {
+	unsupportedResources, errorResources := splitErrorsBySupport(errs)
 
 	return allResultMeta{
-		ExecutionStatus:      deriveAllExecutionStatus(result, interrupted, errors),
+		ExecutionStatus:      deriveAllExecutionStatus(result, interrupted, errs),
 		Interrupted:          interrupted,
 		Elapsed:              elapsed.Round(time.Millisecond).String(),
 		ElapsedMs:            elapsed.Milliseconds(),
@@ -355,247 +362,136 @@ Examples:
 	# Save result to a specific file
   gotr compare all --pid1 30 --pid2 31 --save-to result.json
 `,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			cli := getClientSafe(cmd)
-			ctx := cmd.Context()
-			quiet, _ := cmd.Flags().GetBool("quiet")
-			if cli == nil {
-				return fmt.Errorf("HTTP client not initialized")
-			}
-
-			// Parse flags
-			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
-			if err != nil {
-				return err
-			}
-
-			// Get project names
-			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
-			if err != nil {
-				return err
-			}
-
-			startTime := time.Now()
-
-			// Compare all resources
-			result := &allResult{}
-			errors := make(map[string]error)
-			interrupted := false
-			preloadedSuites, suitesPreloadErr := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
-			if suitesPreloadErr != nil {
-				preloadedSuites = nil
-			}
-
-			announce := func(resource string) {
-				if !quiet {
-					printCompareAllStageProgress(os.Stderr, resource)
-					ui.Infof(os.Stderr, "Comparing %s...", resource)
-				}
-			}
-
-			recordErr := func(resource string, err error) {
-				if isContextCancellationError(err) || ctx.Err() != nil {
-					interrupted = true
-					return
-				}
-				errors[resource] = err
-				fillResourcePartialResult(result, resource, pid1, pid2)
-			}
-
-			// Cases
-			announce("cases")
-					if casesResult, _, err := compareAllCasesFn(ctx, cmd, cli, pid1, pid2, "title", preloadedSuites); err == nil {
-				result.Cases = casesResult
-			} else {
-				recordErr("cases", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Suites
-			announce("suites")
-					if suitesResult, err := compareAllSuitesFn(ctx, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
-				result.Suites = suitesResult
-			} else {
-				recordErr("suites", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Sections
-			announce("sections")
-					if sectionsResult, err := compareAllSectionsFn(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites); err == nil {
-				result.Sections = sectionsResult
-			} else {
-				recordErr("sections", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Shared Steps
-			announce("shared steps")
-					if sharedStepsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems, quiet); err == nil {
-				result.SharedSteps = sharedStepsResult
-			} else {
-				recordErr("shared_steps", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Runs
-			announce("runs")
-					if runsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "runs", fetchRunItems, quiet); err == nil {
-				result.Runs = runsResult
-			} else {
-				recordErr("runs", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Plans
-			announce("plans")
-					if plansResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "plans", fetchPlanItems, quiet); err == nil {
-				result.Plans = plansResult
-			} else {
-				recordErr("plans", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Milestones
-			announce("milestones")
-					if milestonesResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems, quiet); err == nil {
-				result.Milestones = milestonesResult
-			} else {
-				recordErr("milestones", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Datasets
-			announce("datasets")
-					if datasetsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems, quiet); err == nil {
-				result.Datasets = datasetsResult
-			} else {
-				recordErr("datasets", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Groups
-			announce("groups")
-					if groupsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "groups", fetchGroupItems, quiet); err == nil {
-				result.Groups = groupsResult
-			} else {
-				recordErr("groups", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Labels
-			announce("labels")
-					if labelsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "labels", fetchLabelItems, quiet); err == nil {
-				result.Labels = labelsResult
-			} else {
-				recordErr("labels", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Templates
-			announce("templates")
-					if templatesResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "templates", fetchTemplateItems, quiet); err == nil {
-				result.Templates = templatesResult
-			} else {
-				recordErr("templates", err)
-			}
-			if interrupted {
-				goto done
-			}
-
-			// Configurations
-			announce("configurations")
-					if configsResult, err := compareAllSimpleFn(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems, quiet); err == nil {
-				result.Configurations = configsResult
-			} else {
-				recordErr("configurations", err)
-			}
-
-		done:
-			if interrupted {
-				fillInterruptedResults(result, pid1, pid2)
-				errors["execution"] = fmt.Errorf("interrupted by user; remaining resources were not processed")
-			}
-
-			// Print summary table
-			elapsed := time.Since(startTime)
-			result.Meta = buildAllMeta(result, interrupted, errors, elapsed)
-			if !quiet {
-				printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
-			}
-
-			// Save result if requested
-			if savePath != "" {
-				if savePath == "__DEFAULT__" {
-					// --save flag was used, check format to determine output type
-					switch format {
-					case "json", "yaml":
-						// Save in structured format with auto-generated filename
-						exportsDir, _ := outpututils.GetExportsDir("compare")
-						os.MkdirAll(exportsDir, 0755)
-						filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
-							if err := saveAllResultFn(result, format, filePath); err != nil {
-							return err
-						}
-						// Message is printed by saveToFile via saveAllResult
-						return nil
-					default:
-						// "table" or unknown - save as text summary
-						return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, "__DEFAULT__", time.Since(startTime))
-					}
-				}
-				// --save-to flag was used with custom path
-				// If format is "table" (default), try to detect from file extension
-				if format == "table" {
-					if detected := getFormatFromExtension(savePath); detected != "" {
-						format = detected
-					}
-				}
-				switch format {
-				case "json", "yaml":
-					if err := saveAllResultFn(result, format, savePath); err != nil {
-						return err
-					}
-					if !quiet {
-						fmt.Println()
-						ui.Infof(os.Stdout, "Result saved to %s", savePath)
-					}
-				case "table":
-					return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errors, savePath, time.Since(startTime))
-				default:
-					return fmt.Errorf("unsupported format '%s' for save, use json, yaml or table", format)
-				}
-				return nil
-			}
-
-			return nil
-		},
+		RunE: executeCompareAll,
 	}
 
 	// Add flags
 	addCommonFlags(cmd)
 
 	return cmd
+}
+
+func executeCompareAll(cmd *cobra.Command, _ []string) error {
+	cli := getClientSafe(cmd)
+	ctx := cmd.Context()
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	if cli == nil {
+		return fmt.Errorf("HTTP client not initialized")
+	}
+
+	pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
+	if err != nil {
+		return err
+	}
+
+	project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
+	if err != nil {
+		return err
+	}
+
+	startTime := time.Now()
+	preloadedSuites, suitesPreloadErr := cli.GetSuitesParallel(ctx, []int64{pid1, pid2}, 2, nil)
+	if suitesPreloadErr != nil {
+		preloadedSuites = nil
+	}
+
+	result, errs, interrupted := runCompareAllResources(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites)
+
+	elapsed := time.Since(startTime)
+	result.Meta = buildAllMeta(result, interrupted, errs, elapsed)
+	if !quiet {
+		printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errs, elapsed)
+	}
+
+	if savePath != "" {
+		return saveCompareAllOutput(cmd, result, format, savePath, quiet, project1Name, pid1, project2Name, pid2, errs, elapsed)
+	}
+	return nil
+}
+
+// compareAllStep defines a single resource comparison step.
+type compareAllStep struct {
+	displayName string
+	key         string
+	compare     func() (*CompareResult, error)
+}
+
+func runCompareAllResources(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloadedSuites map[int64]data.GetSuitesResponse) (*allResult, map[string]error, bool) {
+	result := &allResult{}
+	errs := make(map[string]error)
+	interrupted := false
+
+	// Build steps from the unified resource registry
+	steps := make([]compareAllStep, len(resourceRegistry))
+	for i, entry := range resourceRegistry {
+		steps[i] = compareAllStep{
+			displayName: entry.displayName,
+			key:         entry.key,
+			compare:     entry.newCompare(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites),
+		}
+	}
+
+	for _, step := range steps {
+		if !quiet {
+			printCompareAllStageProgress(os.Stderr, step.displayName)
+			ui.Infof(os.Stderr, "Comparing %s...", step.displayName)
+		}
+		r, err := step.compare()
+		if err != nil {
+			if isContextCancellationError(err) || ctx.Err() != nil {
+				interrupted = true
+				break
+			}
+			errs[step.key] = err
+			fillResourcePartialResult(result, step.key, pid1, pid2)
+			continue
+		}
+		assignCompareResult(result, step.key, r)
+	}
+
+	if interrupted {
+		fillInterruptedResults(result, pid1, pid2)
+		errs["execution"] = fmt.Errorf("interrupted by user; remaining resources were not processed")
+	}
+
+	return result, errs, interrupted
+}
+
+func saveCompareAllOutput(cmd *cobra.Command, result *allResult, format, savePath string, quiet bool, project1Name string, pid1 int64, project2Name string, pid2 int64, errs map[string]error, elapsed time.Duration) error {
+	if savePath == "__DEFAULT__" {
+		switch format {
+		case "json", "yaml":
+			exportsDir, _ := outpututils.GetExportsDir("compare")
+			if err := os.MkdirAll(exportsDir, 0o755); err != nil {
+				return fmt.Errorf("failed to create exports directory: %w", err)
+			}
+			filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
+			return saveAllResultFn(result, format, filePath)
+		default:
+			return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errs, "__DEFAULT__", elapsed)
+		}
+	}
+
+	if format == "table" {
+		if detected := getFormatFromExtension(savePath); detected != "" {
+			format = detected
+		}
+	}
+	switch format {
+	case "json", "yaml":
+		if err := saveAllResultFn(result, format, savePath); err != nil {
+			return err
+		}
+		if !quiet {
+			fmt.Println()
+			ui.Infof(os.Stdout, "Result saved to %s", savePath)
+		}
+	case "table":
+		return saveAllSummaryToFile(cmd, result, project1Name, pid1, project2Name, pid2, errs, savePath, elapsed)
+	default:
+		return fmt.Errorf("unsupported format '%s' for save, use json, yaml or table", format)
+	}
+	return nil
 }
 
 // allCmd is the exported command.
@@ -664,7 +560,7 @@ func addCommonFlags(cmd *cobra.Command) {
 
 // printAllSummaryTable prints a formatted table summary for compare all
 // using go-pretty tables and reporter for consistent aligned output.
-func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errors map[string]error, elapsed time.Duration) {
+func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, pid2 int64, result *allResult, errs map[string]error, elapsed time.Duration) {
 	// Header via reporter
 	rpt := reporter.New("Project comparison").
 		Section("Projects").
@@ -688,18 +584,18 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 		{Number: 5, Align: text.AlignCenter},
 	})
 
-	appendResourceRow(tw, "Cases", result.Cases, errors["cases"])
-	appendResourceRow(tw, "Suites", result.Suites, errors["suites"])
-	appendResourceRow(tw, "Sections", result.Sections, errors["sections"])
-	appendResourceRow(tw, "Shared Steps", result.SharedSteps, errors["shared_steps"])
-	appendResourceRow(tw, "Runs", result.Runs, errors["runs"])
-	appendResourceRow(tw, "Plans", result.Plans, errors["plans"])
-	appendResourceRow(tw, "Milestones", result.Milestones, errors["milestones"])
-	appendResourceRow(tw, "Datasets", result.Datasets, errors["datasets"])
-	appendResourceRow(tw, "Groups", result.Groups, errors["groups"])
-	appendResourceRow(tw, "Labels", result.Labels, errors["labels"])
-	appendResourceRow(tw, "Templates", result.Templates, errors["templates"])
-	appendResourceRow(tw, "Configurations", result.Configurations, errors["configurations"])
+	appendResourceRow(tw, "Cases", result.Cases, errs["cases"])
+	appendResourceRow(tw, "Suites", result.Suites, errs["suites"])
+	appendResourceRow(tw, "Sections", result.Sections, errs["sections"])
+	appendResourceRow(tw, "Shared Steps", result.SharedSteps, errs["shared_steps"])
+	appendResourceRow(tw, "Runs", result.Runs, errs["runs"])
+	appendResourceRow(tw, "Plans", result.Plans, errs["plans"])
+	appendResourceRow(tw, "Milestones", result.Milestones, errs["milestones"])
+	appendResourceRow(tw, "Datasets", result.Datasets, errs["datasets"])
+	appendResourceRow(tw, "Groups", result.Groups, errs["groups"])
+	appendResourceRow(tw, "Labels", result.Labels, errs["labels"])
+	appendResourceRow(tw, "Templates", result.Templates, errs["templates"])
+	appendResourceRow(tw, "Configurations", result.Configurations, errs["configurations"])
 
 	fmt.Println()
 	tw.Render()
@@ -710,8 +606,8 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 		Section("Timing").
 		Stat("⏱️", "Execution time", elapsed.Round(time.Second))
 
-	if len(errors) > 0 {
-		unsupportedResources, regularResources := splitErrorsBySupport(errors)
+	if len(errs) > 0 {
+		unsupportedResources, regularResources := splitErrorsBySupport(errs)
 
 		if len(unsupportedResources) > 0 {
 			footer.Section("Unsupported endpoints")
@@ -723,7 +619,7 @@ func printAllSummaryTable(project1Name string, pid1 int64, project2Name string, 
 		if len(regularResources) > 0 {
 			footer.Section("Errors")
 			for _, resource := range regularResources {
-				footer.Stat("❌", resource, errors[resource])
+				footer.Stat("❌", resource, errs[resource])
 			}
 		}
 	}
@@ -746,7 +642,7 @@ func appendResourceRow(tw table.Writer, name string, result *CompareResult, reso
 	onlyP2 := len(result.OnlyInSecond)
 	common := len(result.Common)
 
-	status := "COMPLETE"
+	var status string
 	switch result.Status {
 	case CompareStatusInterrupted:
 		status = reporter.Red("INTERRUPTED")
@@ -766,7 +662,7 @@ func appendResourceRow(tw table.Writer, name string, result *CompareResult, reso
 }
 
 // saveAllSummaryToFile saves the summary output to a file (for --save or --save-to with table format)
-func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errors map[string]error, savePath string, elapsed time.Duration) error {
+func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name string, pid1 int64, project2Name string, pid2 int64, errs map[string]error, savePath string, elapsed time.Duration) error {
 	// Create pipe to capture stdout
 	oldStdout := os.Stdout
 	r, w, err := compareAllPipe()
@@ -789,7 +685,7 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 	}()
 
 	// Print summary table (writes to stdout)
-	printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errors, elapsed)
+	printAllSummaryTable(project1Name, pid1, project2Name, pid2, result, errs, elapsed)
 
 	// Restore stdout and close writer
 	w.Close()
@@ -811,12 +707,14 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 		// Use default path with .txt extension
 		filePath = outpututils.GenerateFilename("compare", "txt")
 		exportsDir, _ := outpututils.GetExportsDir("compare")
-		os.MkdirAll(exportsDir, 0755)
+		if err := os.MkdirAll(exportsDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create exports directory: %w", err)
+		}
 		filePath = exportsDir + "/" + filePath
 	}
 
 	// Write to file
-	if err := compareAllWriteFile(filePath, []byte(output), 0644); err != nil {
+	if err := compareAllWriteFile(filePath, []byte(output), 0o644); err != nil {
 		return fmt.Errorf("file write error: %w", err)
 	}
 
@@ -830,15 +728,21 @@ func saveAllSummaryToFile(cmd *cobra.Command, result *allResult, project1Name st
 
 // saveAllResult saves the allResult to a file in the specified format.
 func saveAllResult(result *allResult, format, savePath string) error {
-	var output []byte
+	var (
+		output []byte
+		err    error
+	)
 
 	switch format {
 	case "json":
-		output, _ = json.MarshalIndent(result, "", "  ")
+		output, err = json.MarshalIndent(result, "", "  ")
 	case "yaml":
-		output, _ = yaml.Marshal(result)
+		output, err = yaml.Marshal(result)
 	default:
 		return fmt.Errorf("format '%s' not supported for saving all resources, use json or yaml", format)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to marshal result: %w", err)
 	}
 
 	return saveToFile(output, savePath)

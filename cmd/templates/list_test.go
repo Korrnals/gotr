@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -65,7 +65,7 @@ func TestListCmd_ClientError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestListCmd_InvalidProjectID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -135,7 +135,7 @@ func TestListCmd_ResolveInteractiveError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для outputResult ====================
+// ==================== outputResult tests ====================
 
 func TestOutputResult_Stdout(t *testing.T) {
 	mock := &client.MockClient{
@@ -200,7 +200,7 @@ func TestOutputResult_SaveToFile(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для Register ====================
+// ==================== Register tests ====================
 
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{Use: "gotr"}

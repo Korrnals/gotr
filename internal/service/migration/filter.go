@@ -14,7 +14,7 @@ import (
 // Duplicates are added to the mapping with status "existing".
 // New (non-duplicate) steps are returned for import.
 func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse, sourceCaseIDs map[int64]struct{}) (filtered data.GetSharedStepsResponse, err error) {
-	m.logger.Info("Начало фильтрации shared steps по использованию in suite")
+	m.logger.Info("Starting shared steps filtering by usage in suite")
 
 	var candidates data.GetSharedStepsResponse
 	for _, step := range source {
@@ -29,9 +29,9 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 			candidates = append(candidates, step)
 		}
 	}
-	m.logger.Infow("Найдено кандидатов на перенос (не используются in suite)", "count", len(candidates))
+	m.logger.Infow("Found candidates for transfer (not used in suite)", "count", len(candidates))
 
-	m.logger.Info("Проверка дубликатов в target проекте")
+	m.logger.Info("Checking for duplicates in target project")
 	targetMap := make(map[string]int64)
 	for _, t := range target {
 		val := fieldValue(t, m.compareField)
@@ -44,7 +44,7 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 		val := fieldValue(step, m.compareField)
 		if existingID, ok := targetMap[val]; ok {
 			m.mapping.AddPair(step.ID, existingID, "existing")
-			m.logger.Infow("Дубликат найден — добавлен в mapping", "title", step.Title, "old_id", step.ID, "existing_id", existingID)
+			m.logger.Infow("Duplicate found — added to mapping", "title", step.Title, "old_id", step.ID, "existing_id", existingID)
 		} else {
 			filtered = append(filtered, step)
 		}
@@ -58,7 +58,7 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 // Duplicates are added to the mapping with status "existing".
 // New (non-duplicate) suites are returned for import.
 func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtered data.GetSuitesResponse, err error) {
-	m.logger.Info("Начало фильтрации suites по дубликатам (по name)")
+	m.logger.Info("Starting suites filtering by duplicates (by name)")
 
 	targetMap := make(map[string]int64)
 	for _, t := range target {
@@ -70,7 +70,7 @@ func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtere
 	for _, s := range source {
 		if existingID, ok := targetMap[s.Name]; ok {
 			m.mapping.AddPair(s.ID, existingID, "existing")
-			m.logger.Infow("Дубликат suite найден — добавлен в mapping", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
+			m.logger.Infow("Duplicate suite found — added to mapping", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
 		} else {
 			filtered = append(filtered, s)
 		}
@@ -82,7 +82,7 @@ func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtere
 
 // FilterCases filters cases by duplicate detection (using compareField).
 func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered data.GetCasesResponse, err error) {
-	m.logger.Info("Начало фильтрации cases по дубликатам")
+	m.logger.Info("Starting cases filtering by duplicates")
 
 	targetMap := make(map[string]int64)
 	for _, t := range target {
@@ -97,11 +97,11 @@ func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered 
 		if _, exists := targetMap[val]; !exists {
 			filtered = append(filtered, c)
 		} else {
-			m.logger.Infow("Дубликат case найден — пропущен", "title", c.Title)
+			m.logger.Infow("Duplicate case found — skipped", "title", c.Title)
 		}
 	}
 
-	m.logger.Infow("Ready to import новых cases", "count", len(filtered))
+	m.logger.Infow("Ready to import new cases", "count", len(filtered))
 	return filtered, nil
 }
 
@@ -135,7 +135,7 @@ func fieldValue(obj interface{}, field string) string {
 
 // FilterSections filters sections by duplicate detection in the target suite (by name).
 func (m *Migration) FilterSections(source, target data.GetSectionsResponse) (filtered data.GetSectionsResponse, err error) {
-	m.logger.Info("Начало фильтрации sections по дубликатам (по name in suite)")
+	m.logger.Info("Starting sections filtering by duplicates (by name in suite)")
 
 	targetMap := make(map[string]int64)
 	for _, t := range target {
@@ -147,7 +147,7 @@ func (m *Migration) FilterSections(source, target data.GetSectionsResponse) (fil
 	for _, s := range source {
 		if existingID, ok := targetMap[s.Name]; ok {
 			m.mapping.AddPair(s.ID, existingID, "existing")
-			m.logger.Infow("Дубликат section найден — mapping добавлен", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
+			m.logger.Infow("Duplicate section found — mapping added", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
 		} else {
 			filtered = append(filtered, s)
 		}

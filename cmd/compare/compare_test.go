@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для parseFlags ====================
+// ==================== Tests for parseFlags ====================
 
 func TestParseFlags_Success(t *testing.T) {
 	cmd := &cobra.Command{}
@@ -85,7 +85,7 @@ func TestParseFlags_EmptyFieldDefaultsToTitle(t *testing.T) {
 	assert.Equal(t, "title", field)
 }
 
-// ==================== Тесты для collectNames ====================
+// ==================== Tests for collectNames ====================
 
 func TestCollectNames(t *testing.T) {
 	names := collectNames(3, func(i int) string {
@@ -107,7 +107,7 @@ func TestCollectNames_ZeroSize(t *testing.T) {
 	assert.Nil(t, names)
 }
 
-// ==================== Тесты для GetProjectNames ====================
+// ==================== Tests for GetProjectNames ====================
 
 func TestGetProjectNames_Success(t *testing.T) {
 	ctx := context.Background()
@@ -171,7 +171,7 @@ func TestGetProjectName_Success(t *testing.T) {
 		},
 	}
 
-	name, err := GetProjectName(mock, 1)
+	name, err := GetProjectName(context.Background(), mock, 1)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Project", name)
 }
@@ -183,7 +183,7 @@ func TestGetProjectName_ProjectIsNilFallback(t *testing.T) {
 		},
 	}
 
-	name, err := GetProjectName(mock, 42)
+	name, err := GetProjectName(context.Background(), mock, 42)
 	assert.NoError(t, err)
 	assert.Equal(t, "Project 42", name)
 }
@@ -195,13 +195,13 @@ func TestGetProjectName_Error(t *testing.T) {
 		},
 	}
 
-	name, err := GetProjectName(mock, 77)
+	name, err := GetProjectName(context.Background(), mock, 77)
 	assert.Error(t, err)
 	assert.Empty(t, name)
 	assert.Contains(t, err.Error(), "failed to get project 77")
 }
 
-// ==================== Тесты для CompareResult ====================
+// ==================== Tests for CompareResult ====================
 
 func TestCompareResult_Struct(t *testing.T) {
 	result := &CompareResult{

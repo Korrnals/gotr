@@ -14,16 +14,15 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Список датасетов проекта",
-		Long: `Выводит список всех датасетов (наборов тестовых данных),
-доступных в указанном проекте.
+		Short: "List project datasets",
+		Long: `Lists all datasets (test data sets) available in the specified project.
 
-Каждый датасет содержит название и таблицу с параметрами для
-параметризованного тестирования.`,
-		Example: `  # Получить список датасетов проекта
+Each dataset contains a name and a table with parameters
+for parameterized testing.`,
+		Example: `  # Get the list of project datasets
   gotr datasets list 1
 
-  # Сохранить в файл
+  # Save to file
   gotr datasets list 5 -o datasets.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

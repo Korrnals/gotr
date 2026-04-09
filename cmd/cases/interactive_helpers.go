@@ -80,9 +80,9 @@ func resolveSuiteIDInteractive(ctx context.Context, cli client.ClientInterface) 
 	return suiteID, nil
 }
 
-func resolveProjectAndSuiteInteractive(ctx context.Context, cli client.ClientInterface) (int64, int64, error) {
+func resolveProjectAndSuiteInteractive(ctx context.Context, cli client.ClientInterface) (projectID, suiteID int64, err error) {
 	p := interactive.PrompterFromContext(ctx)
-	projectID, err := interactive.SelectProject(ctx, p, cli, "")
+	projectID, err = interactive.SelectProject(ctx, p, cli, "")
 	if err != nil {
 		return 0, 0, err
 	}
@@ -95,7 +95,7 @@ func resolveProjectAndSuiteInteractive(ctx context.Context, cli client.ClientInt
 		return 0, 0, fmt.Errorf("no suites found in project %d", projectID)
 	}
 
-	suiteID, err := interactive.SelectSuite(ctx, p, suites, "")
+	suiteID, err = interactive.SelectSuite(ctx, p, suites, "")
 	if err != nil {
 		return 0, 0, err
 	}

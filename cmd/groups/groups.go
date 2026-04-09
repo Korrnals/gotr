@@ -13,19 +13,19 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	groupsCmd := &cobra.Command{
 		Use:   "groups",
-		Short: "Управление группами пользователей",
-		Long: `Управление группами (groups) пользователей TestRail.
+		Short: "Manage user groups",
+		Long: `Manage TestRail user groups.
 
-Группы используются для организации пользователей по командам, отделам
-или проектам для удобного управления правами доступа.
+Groups are used to organize users by teams, departments,
+or projects for convenient access rights management.
 
-Каждая группа имеет уникальный ID, название и список пользователей,
-входящих в эту группу. Группы используются при настройке прав доступа
-к проектам и назначении ролей.
+Each group has a unique ID, a name, and a list of users
+belonging to the group. Groups are used when configuring
+project access rights and assigning roles.
 
-Доступные операции:
-  • list — список групп проекта
-  • get  — информация о конкретной группе по ID`,
+Available operations:
+  • list — list project groups
+  • get  — get information about a specific group by ID`,
 	}
 
 	// Register subcommands

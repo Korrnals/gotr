@@ -13,15 +13,15 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	usersCmd := &cobra.Command{
 		Use:   "users",
-		Short: "Управление пользователями TestRail",
-		Long: `Управление пользователями и справочниками TestRail.
+		Short: "Manage TestRail users",
+		Long: `Manage TestRail users and references.
 
-Доступные операции:
-  • list          — список всех пользователей
-  • get           — получить пользователя по ID
-  • get-by-email  — получить пользователя по email
-  • add           — создать нового пользователя
-  • update        — обновить пользователя`,
+Available operations:
+  • list          — list all users
+  • get           — get a user by ID
+  • get-by-email  — get a user by email
+  • add           — create a new user
+  • update        — update a user`,
 	}
 
 	// Register subcommands

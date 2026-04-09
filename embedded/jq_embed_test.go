@@ -476,7 +476,7 @@ func TestRunEmbeddedJQ_WriteAndChmodFailureBranches(t *testing.T) {
 	}{
 		{
 			name:             "Chmod path removed after binary write",
-			wantErrSubstring: "не удалось установить права на исполнение",
+			wantErrSubstring: "failed to set executable permissions",
 			prepareSabotage: func(dir string) (start func(), stop func()) {
 				stopCh := make(chan struct{})
 				doneCh := make(chan struct{})
@@ -621,7 +621,7 @@ func TestRunEmbeddedJQ_WriteFileError_ReadOnlyBinary(t *testing.T) {
 			for _, e := range ents {
 				if strings.HasPrefix(e.Name(), "jq-") {
 					p := filepath.Join(tmpDir, e.Name())
-					_ = os.Chmod(p, 0644)
+					_ = os.Chmod(p, 0o644)
 					_ = os.Remove(p)
 				}
 			}

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -98,6 +99,11 @@ func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...Clie
 	for _, o := range opts {
 		o(&cfg)
 	}
+
+	if cfg.insecure {
+		fmt.Fprintln(os.Stderr, "WARNING: TLS certificate verification is disabled (--insecure). Connection is vulnerable to MITM attacks.")
+	}
+
 	// Configure HTTP transport.
 	// MaxConnsPerHost MUST match actual concurrency:
 	// 2 projects × 8 suites × 10 pages = 160 concurrent requests.
@@ -210,7 +216,7 @@ func (c *HTTPClient) Post(ctx context.Context, endpoint string, body io.Reader, 
 func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return fmt.Errorf("API returned %s, failed to read error body: %w", resp.Status, err)
 	}

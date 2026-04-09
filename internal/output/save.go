@@ -30,6 +30,42 @@ func OutputResult(cmd *cobra.Command, data interface{}, resource string) error {
 	return err
 }
 
+// resolveSavePath determines the save path from flags and interactive prompts.
+func resolveSavePath(cmd *cobra.Command, saveFlag bool) (string, error) {
+	if saveFlag {
+		return defaultSavePathMarker, nil
+	}
+	if ShouldPromptForInteractiveSave(cmd) {
+		p := interactive.PrompterFromContext(cmd.Context())
+		promptedPath, err := PromptSavePathWithOptions(p, "response", false)
+		if err != nil {
+			if !isSkippableInteractiveSavePromptError(err) {
+				return "", err
+			}
+			return "", nil
+		}
+		return promptedPath, nil
+	}
+	return "", nil
+}
+
+// wrapWithMeta wraps data with metadata (status, duration, timestamp).
+func wrapWithMeta(data any, start time.Time) any {
+	return struct {
+		Status     string        `json:"status"`
+		StatusCode int           `json:"status_code"`
+		Duration   time.Duration `json:"duration"`
+		Timestamp  time.Time     `json:"timestamp"`
+		Data       any           `json:"data"`
+	}{
+		Status:     "200 OK",
+		StatusCode: 200,
+		Duration:   time.Since(start),
+		Timestamp:  time.Now(),
+		Data:       data,
+	}
+}
+
 // OutputGetResult handles get-command output, including save/json-full/jq modes.
 func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 	quiet, _ := cmd.Flags().GetBool("quiet")
@@ -43,45 +79,23 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 		jqEnabled = viper.GetBool("jq_format")
 	}
 
-	savePath := ""
-	if saveFlag {
-		savePath = defaultSavePathMarker
-	} else if ShouldPromptForInteractiveSave(cmd) {
-		p := interactive.PrompterFromContext(cmd.Context())
-		promptedPath, err := PromptSavePathWithOptions(p, "response", false)
-		if err != nil {
-			if !isSkippableInteractiveSavePromptError(err) {
-				return err
-			}
-			promptedPath = ""
-		}
-		savePath = promptedPath
+	savePath, err := resolveSavePath(cmd, saveFlag)
+	if err != nil {
+		return err
 	}
 
 	if savePath != "" {
 		toSave := data
 		if !bodyOnly {
-			toSave = struct {
-				Status     string        `json:"status"`
-				StatusCode int           `json:"status_code"`
-				Duration   time.Duration `json:"duration"`
-				Timestamp  time.Time     `json:"timestamp"`
-				Data       any           `json:"data"`
-			}{
-				Status:     "200 OK",
-				StatusCode: 200,
-				Duration:   time.Since(start),
-				Timestamp:  time.Now(),
-				Data:       data,
-			}
+			toSave = wrapWithMeta(data, start)
 		}
 
-		filepath, err := outputBySavePath(toSave, "get", "json", savePath)
+		fpath, err := outputBySavePath(toSave, "get", "json", savePath)
 		if err != nil {
 			return fmt.Errorf("save error: %w", err)
 		}
-		if !quiet && filepath != "" {
-			ui.Infof(os.Stdout, "Response saved to %s", filepath)
+		if !quiet && fpath != "" {
+			ui.Infof(os.Stdout, "Response saved to %s", fpath)
 		}
 		return nil
 	}
@@ -91,10 +105,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 		if err != nil {
 			return fmt.Errorf("jq marshal error: %w", err)
 		}
-		if err := embed.RunEmbeddedJQ(payload, jqFilter); err != nil {
-			return err
-		}
-		return nil
+		return embed.RunEmbeddedJQ(payload, jqFilter)
 	}
 
 	if quiet {
@@ -105,20 +116,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 	case "json":
 		return ui.JSON(cmd, data)
 	case "json-full":
-		full := struct {
-			Status     string        `json:"status"`
-			StatusCode int           `json:"status_code"`
-			Duration   time.Duration `json:"duration"`
-			Timestamp  time.Time     `json:"timestamp"`
-			Data       any           `json:"data"`
-		}{
-			Status:     "200 OK",
-			StatusCode: 200,
-			Duration:   time.Since(start),
-			Timestamp:  time.Now(),
-			Data:       data,
-		}
-		return ui.JSON(cmd, full)
+		return ui.JSON(cmd, wrapWithMeta(data, start))
 	default:
 		ui.Warning(os.Stdout, "Table output not implemented yet")
 		return nil
@@ -128,7 +126,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 // Output checks if --save flag is set and saves data to file if so.
 // If --save is not set, outputs data to stdout as JSON.
 // Returns the saved file path for user notification (empty string if output to stdout).
-func Output(cmd *cobra.Command, data interface{}, resource string, format string) (string, error) {
+func Output(cmd *cobra.Command, data interface{}, resource, format string) (string, error) {
 	saveFlag, err := cmd.Flags().GetBool("save")
 	if err != nil {
 		return "", fmt.Errorf("error reading --save flag: %w", err)
@@ -162,7 +160,7 @@ func Output(cmd *cobra.Command, data interface{}, resource string, format string
 	return "", nil
 }
 
-func outputBySavePath(data interface{}, resource string, format string, savePath string) (string, error) {
+func outputBySavePath(data interface{}, resource, format, savePath string) (string, error) {
 	if savePath == defaultSavePathMarker {
 		return SaveToFile(data, resource, format)
 	}
@@ -172,7 +170,7 @@ func outputBySavePath(data interface{}, resource string, format string, savePath
 
 // SaveToFile saves data to a file in the exports directory.
 // Returns the full path of the saved file.
-func SaveToFile(data interface{}, resource string, format string) (string, error) {
+func SaveToFile(data interface{}, resource, format string) (string, error) {
 	// Generate filename
 	filename := GenerateFilename(resource, format)
 
@@ -210,7 +208,7 @@ func SaveToFile(data interface{}, resource string, format string) (string, error
 	}
 
 	// Write file
-	if err := os.WriteFile(filePath, content, 0644); err != nil {
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
 		return "", fmt.Errorf("error writing file: %w", err)
 	}
 
@@ -247,7 +245,7 @@ func SaveToFileWithPath(data interface{}, format, filePath string) (string, erro
 		return "", fmt.Errorf("unsupported format: %s", format)
 	}
 
-	if err := os.WriteFile(filePath, content, 0644); err != nil {
+	if err := os.WriteFile(filePath, content, 0o644); err != nil {
 		return "", fmt.Errorf("error writing file: %w", err)
 	}
 
@@ -374,7 +372,7 @@ func getRowValues(v reflect.Value, headers []string) []string {
 
 // GenerateFilename generates a filename with pattern: {resource}_YYYY-MM-DD_HH-MM-SS.{format}
 // For resource "all", uses "all-resources" as prefix
-func GenerateFilename(resource string, format string) string {
+func GenerateFilename(resource, format string) string {
 	// Handle special case for "all" resource
 	if resource == "all" {
 		resource = "all-resources"
@@ -393,7 +391,7 @@ func SaveJSONToFile(filename string, data interface{}) error {
 		return fmt.Errorf("serialization error: %w", err)
 	}
 
-	if err := os.WriteFile(filename, jsonData, 0644); err != nil {
+	if err := os.WriteFile(filename, jsonData, 0o644); err != nil {
 		return fmt.Errorf("write file: %w", err)
 	}
 

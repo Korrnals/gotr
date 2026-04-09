@@ -14,15 +14,15 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [group_id]",
-		Short: "Получить группу по ID",
-		Long: `Получает детальную информацию о группе пользователей по её ID.
+		Short: "Get a group by ID",
+		Long: `Get detailed information about a user group by its ID.
 
-Включает название группы и полный список пользователей,
-входящих в эту группу с их ролями и контактной информацией.`,
-		Example: `  # Получить информацию о группе
+Includes the group name and a full list of users
+belonging to the group with their roles and contact information.`,
+		Example: `  # Get group information
   gotr groups get 1
 
-  # Сохранить в файл
+  # Save to file
   gotr groups get 5 -o group.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

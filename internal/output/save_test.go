@@ -873,7 +873,7 @@ func TestGetHeaders_Map(t *testing.T) {
 
 type StructWithUnexported struct {
 	Exported   string
-	unexported string //nolint:unused
+	unexported string
 }
 
 func TestGetHeaders_UnexportedFields(t *testing.T) {
@@ -1112,7 +1112,7 @@ func TestFileExists(t *testing.T) {
 
 	// Existing file
 	existingFile := tempDir + "/exists.txt"
-	err := os.WriteFile(existingFile, []byte("test"), 0644)
+	err := os.WriteFile(existingFile, []byte("test"), 0o644)
 	require.NoError(t, err)
 	assert.True(t, FileExists(existingFile))
 
@@ -1207,9 +1207,7 @@ func TestSaveToFile_YAMLMarshalError(t *testing.T) {
 	// YAML library panics on invalid types, so we use a function that can't be marshaled
 	// which will cause yaml.Marshal to panic
 	defer func() {
-		if r := recover(); r != nil {
-			// Expected - YAML library panics on unmarshalable types
-		}
+		recover() // Expected - YAML library panics on unmarshalable types
 	}()
 
 	data := make(chan int)
@@ -1253,13 +1251,13 @@ func TestSaveToFile_FileCreationError(t *testing.T) {
 
 	// Create exports dir
 	exportsDir := tempHome + "/.gotr/exports/test"
-	err := os.MkdirAll(exportsDir, 0755)
+	err := os.MkdirAll(exportsDir, 0o755)
 	require.NoError(t, err)
 
 	// Make the directory read-only
 	err = os.Chmod(exportsDir, 0555)
 	require.NoError(t, err)
-	defer os.Chmod(exportsDir, 0755) // Restore for cleanup
+	defer os.Chmod(exportsDir, 0o755) // Restore for cleanup
 
 	data := map[string]string{"key": "value"}
 	path, err := SaveToFile(data, "test", "json")

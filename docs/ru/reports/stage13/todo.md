@@ -135,7 +135,7 @@ Language: Русский | [English](../../../en/reports/stage13/todo.md)
 - [x] internal/models/config: добавлены unit-тесты (config_test.go).
 - [x] internal/selftest/types: добавлены unit-тесты (types_test.go).
 - [x] internal/log: добавлены unit-тесты (logger_test.go).
-- [x] COV-3: Довести internal/client + internal/service до 95%+. *(перенесено в post-stage backlog по решению о закрытии стадии)*
+- [x] COV-3: Довести internal/client + internal/service до 95%+. _(перенесено в post-stage backlog по решению о закрытии стадии)_
 
 Текущий статус COV-3:
 
@@ -159,10 +159,10 @@ Language: Русский | [English](../../../en/reports/stage13/todo.md)
 - [x] internal/service: добавлены unit-тесты для test service (Get/GetForRun/Update/ParseID).
 - [x] internal/service/migration: добавлены unit-тесты для export/log/mapping loader.
 - [x] internal/service: расширены unit-тесты ResultService (constructors/get/add/parse paths).
-- [x] Довести internal/client + internal/service до 95%+. *(перенесено в post-stage backlog по решению о закрытии стадии)*
-- [x] COV-4: Довести internal/concurrency + internal/concurrent до 95%+. *(перенесено в post-stage backlog по решению о закрытии стадии)*
-- [x] COV-5: Закрыть cmd/* thin wrappers массовыми table-driven тестами. *(перенесено в post-stage backlog по решению о закрытии стадии)*
-- [x] COV-6: Финальный проход до total coverage = 100.0%. *(перенесено в post-stage backlog по решению о закрытии стадии)*
+- [x] Довести internal/client + internal/service до 95%+. _(перенесено в post-stage backlog по решению о закрытии стадии)_
+- [x] COV-4: Довести internal/concurrency + internal/concurrent до 95%+. _(перенесено в post-stage backlog по решению о закрытии стадии)_
+- [x] COV-5: Закрыть cmd/* thin wrappers массовыми table-driven тестами. _(перенесено в post-stage backlog по решению о закрытии стадии)_
+- [x] COV-6: Финальный проход до total coverage = 100.0%. _(перенесено в post-stage backlog по решению о закрытии стадии)_
 
 ## Phase 4 - Validation
 
@@ -190,7 +190,7 @@ Language: Русский | [English](../../../en/reports/stage13/todo.md)
 - [x] Vet gate: go vet ./... .
 - [x] Contract gate: CLI + API matrices completed.
 - [x] Docs gate: все внешние изменения отражены в документации.
-- [x] Coverage gate: `go tool cover -func=/tmp/stage13_full.cover` показывает total = 100.0%. *(перенесено в post-stage backlog по решению о закрытии стадии)*
+- [x] Coverage gate: `go tool cover -func=/tmp/stage13_full.cover` показывает total = 100.0%. _(перенесено в post-stage backlog по решению о закрытии стадии)_
 
 ## Stage Closure Decision (2026-04-06)
 

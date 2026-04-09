@@ -15,19 +15,19 @@ import (
 
 var sectionsCmd = &cobra.Command{
 	Use:   "sections",
-	Short: "Миграция sections между сюитами",
-	Long: `Миграция секций между сюитами в пределах проектов.
+	Short: "Migrate sections between suites",
+	Long: `Migrate sections between suites within projects.
 
-Особенности:
-• Автоматический интерактивный выбор проектов и сьютов
-• Фильтрация дубликатов по названию
-• Подтверждение перед импортом
+Features:
+• Automatic interactive selection of projects and suites
+• Duplicate filtering by name
+• Confirmation before import
 
-Примеры:
-	# Полностью интерактивный режим
+Examples:
+	# Fully interactive mode
 	gotr sync sections
 
-	# Через флаги
+	# Using flags
 	gotr sync sections --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve
 `,
 
@@ -92,7 +92,7 @@ var sectionsCmd = &cobra.Command{
 		defer m.Close()
 
 		op := newSyncOperation("Sync sections", quiet)
-		defer op.Finish()
+defer op.Finish()
 
 		// Step 1) Fetch sections from source and target
 		op.Phase("Loading sections")
@@ -146,7 +146,7 @@ var sectionsCmd = &cobra.Command{
 				return err
 			}
 			if !ok {
-				ui.Cancelled(os.Stdout)
+				ui.Canceled(os.Stdout)
 				return nil
 			}
 		}
@@ -161,11 +161,11 @@ var sectionsCmd = &cobra.Command{
 
 		// Step 5) Save mapping if requested
 		if autoSaveMapping {
-			m.ExportMapping(logDir)
+			_ = m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
 			ok, err := p.Confirm("Save mapping?", false)
 			if err == nil && ok {
-				m.ExportMapping(logDir)
+				_ = m.ExportMapping(logDir)
 			}
 		}
 

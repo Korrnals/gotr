@@ -16,17 +16,17 @@ import (
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [dataset_id]",
-		Short: "Обновить датасет",
-		Long: `Обновляет название существующего датасета.
+		Short: "Update a dataset",
+		Long: `Updates the name of an existing dataset.
 
-⚠️ Обратите внимание: через API можно обновить только название датасета.
-Для изменения структуры таблицы (добавления/изменения колонок и строк)
-используйте веб-интерфейс TestRail.`,
-		Example: `  # Изменить название датасета
-  gotr datasets update 123 --name="Новое название"
+⚠️ Note: only the dataset name can be updated via the API.
+To modify the table structure (add/change columns and rows),
+use the TestRail web interface.`,
+		Example: `  # Change dataset name
+  gotr datasets update 123 --name="New Name"
 
-  # Проверить перед обновлением
-  gotr datasets update 123 --name="Новое название" --dry-run`,
+  # Preview before updating
+  gotr datasets update 123 --name="New Name" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := cmd.Context()
@@ -57,7 +57,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("datasets update")
-				dr.PrintSimple("Обновить датасет", fmt.Sprintf("Dataset ID: %d, New Name: %s", datasetID, name))
+				dr.PrintSimple("Update dataset", fmt.Sprintf("Dataset ID: %d, New Name: %s", datasetID, name))
 				return nil
 			}
 
@@ -71,9 +71,9 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название датасета (обязательно)")
+	cmd.Flags().String("name", "", "New dataset name (required)")
 
 	return cmd
 }

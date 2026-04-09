@@ -94,7 +94,7 @@ func FetchParallelBySuite[T any](
 	}
 
 	if len(collectedErrors) > 0 {
-		return allItems, fmt.Errorf("%d errors during parallel suite fetch: %v", len(collectedErrors), collectedErrors[0])
+		return allItems, fmt.Errorf("%d errors during parallel suite fetch: %w", len(collectedErrors), collectedErrors[0])
 	}
 
 	return allItems, nil

@@ -13,10 +13,10 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [run_id]",
-		Short: "Получить список тестов прогона",
-		Long: `Получить список всех тестов для указанного тестового прогона.
+		Short: "List tests in a run",
+		Long: `Get a list of all tests for the specified test run.
 
-Для фильтрации по статусу используйте флаг --status-id.`,
+Use the --status-id flag to filter by status.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -56,7 +56,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				if statusID > 0 {
 					details += fmt.Sprintf(", Status ID: %d", statusID)
 				}
-				dr.PrintSimple("Получить список тестов", details)
+				dr.PrintSimple("Get test list", details)
 				return nil
 			}
 
@@ -69,8 +69,8 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64("status-id", 0, "ID статуса для фильтрации")
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Int64("status-id", 0, "Status ID for filtering")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
 
 	return cmd

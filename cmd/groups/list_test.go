@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -83,7 +83,7 @@ func TestListCmd_WithSave(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestListCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -154,7 +154,7 @@ func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты вспомогательных функций ====================
+// ==================== Helper function tests ====================
 
 func TestGetClientForTests_NilCmd(t *testing.T) {
 	result := getClientForTests(nil)
@@ -169,14 +169,14 @@ func TestGetClientForTests_NilContext(t *testing.T) {
 
 func TestGetClientForTests_NoMockInContext(t *testing.T) {
 	cmd := &cobra.Command{}
-	ctx := context.WithValue(context.Background(), "other_key", "value")
+	ctx := context.WithValue(context.Background(), testContextKey("other_key"), "value")
 	cmd.SetContext(ctx)
 
 	result := getClientForTests(cmd)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты outputResult ====================
+// ==================== OutputResult tests ====================
 
 func TestOutputResult_JSONError(t *testing.T) {
 	badData := make(chan int)
@@ -188,7 +188,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты регистрации ====================
+// ==================== Registration tests ====================
 
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{}
@@ -196,33 +196,33 @@ func TestRegister(t *testing.T) {
 		return &client.MockClient{}
 	})
 
-	// Проверяем что команда добавлена
+	// Verify command is registered
 	groupsCmd, _, err := root.Find([]string{"groups"})
 	assert.NoError(t, err)
 	assert.NotNil(t, groupsCmd)
 	assert.Equal(t, "groups", groupsCmd.Name())
 
-	// Проверяем что подкоманда list существует
+	// Verify 'list' subcommand exists
 	listCmd, _, err := root.Find([]string{"groups", "list"})
 	assert.NoError(t, err)
 	assert.NotNil(t, listCmd)
 
-	// Проверяем что подкоманда get существует
+	// Verify 'get' subcommand exists
 	getCmd, _, err := root.Find([]string{"groups", "get"})
 	assert.NoError(t, err)
 	assert.NotNil(t, getCmd)
 
-	// Проверяем что подкоманда add существует
+	// Verify 'add' subcommand exists
 	addCmd, _, err := root.Find([]string{"groups", "add"})
 	assert.NoError(t, err)
 	assert.NotNil(t, addCmd)
 
-	// Проверяем что подкоманда update существует
+	// Verify 'update' subcommand exists
 	updateCmd, _, err := root.Find([]string{"groups", "update"})
 	assert.NoError(t, err)
 	assert.NotNil(t, updateCmd)
 
-	// Проверяем что подкоманда delete существует
+	// Verify 'delete' subcommand exists
 	deleteCmd, _, err := root.Find([]string{"groups", "delete"})
 	assert.NoError(t, err)
 	assert.NotNil(t, deleteCmd)

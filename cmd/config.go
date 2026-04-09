@@ -13,10 +13,6 @@ import (
 
 var sensitiveConfigLine = regexp.MustCompile(`(?mi)^(\s*(api_key|password|token|authorization)\s*:\s*)([^\n\r]*)$`)
 
-var (
-	defaultConfig = "$HOME/.gotr/config/default.yaml"
-)
-
 // configCmd is the parent "config" command.
 var configCmd = &cobra.Command{
 	Use:   "config",
@@ -53,7 +49,11 @@ Note:
 		if err != nil {
 			return err
 		}
-		return cfg.WithDefaults().Create()
+		if err := cfg.WithDefaults().Create(); err != nil {
+			return err
+		}
+		ui.Infof(os.Stdout, "Config file created: %s", cfg.Path)
+		return nil
 	},
 }
 

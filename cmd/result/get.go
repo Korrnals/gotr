@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/output"
 	"github.com/spf13/cobra"
 )
 
@@ -16,18 +17,18 @@ import (
 func newGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get [test-id]",
-		Short: "Получить результаты для test",
-		Long: `Получает список результатов для указанного test ID.
+		Short: "Get results for a test",
+		Long: `Gets the list of results for the specified test ID.
 
-Test — это экземпляр тест-кейса в конкретном test run.
-Результаты показывают историю выполнения: статус, комментарии,
-затраченное время, версию ПО, дефекты.
+Test is an instance of a test case in a specific test run.
+Results show the execution history: status, comments,
+elapsed time, software version, defects.
 
-Примеры:
-	# Получить результаты конкретного теста
+Examples:
+	# Get results for a specific test
 	gotr result get 12345
 
-	# Сохранить результаты в файл для анализа
+	# Save results to a file for analysis
 	gotr result get 12345 -o test_results.json
 `,
 		Args: cobra.MaximumNArgs(1),
@@ -66,7 +67,7 @@ Test — это экземпляр тест-кейса в конкретном t
 				return fmt.Errorf("failed to get results: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, results)
+			return output.OutputResultWithFlags(cmd, results)
 		},
 	}
 }
@@ -76,17 +77,17 @@ Test — это экземпляр тест-кейса в конкретном t
 func newGetCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "get-case [run-id] [case-id]",
-		Short: "Получить результаты для кейса в run",
-		Long: `Получает список результатов для указанного кейса в test run.
+		Short: "Get results for a case in a run",
+		Long: `Gets the list of results for the specified case in a test run.
 
-Удобно, когда нужно посмотреть историю выполнения конкретного кейса
-без необходимости знать test_id. Используется комбинация run_id + case_id.
+Convenient when you need to view the execution history of a specific case
+without needing to know the test_id. Uses the run_id + case_id combination.
 
-Примеры:
-	# Получить результаты кейса 98765 в run 12345
+Examples:
+	# Get results for case 98765 in run 12345
 	gotr result get-case 12345 98765
 
-	# Сохранить в файл
+	# Save to file
 	gotr result get-case 12345 98765 -o case_results.json
 `,
 		Args: cobra.MaximumNArgs(2),
@@ -138,7 +139,7 @@ func newGetCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 				return fmt.Errorf("failed to get results: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, results)
+			return output.OutputResultWithFlags(cmd, results)
 		},
 	}
 }
@@ -224,6 +225,6 @@ func selectCaseIDForRun(ctx context.Context, cli client.ClientInterface, runID i
 
 // Backward compatibility: exported vars for registration in result.go
 var (
-	getCmd     = newGetCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
-	getCaseCmd = newGetCaseCmd(func(cmd *cobra.Command) client.ClientInterface { return getClientSafe(cmd) })
+	getCmd     = newGetCmd(getClientSafe)
+	getCaseCmd = newGetCaseCmd(getClientSafe)
 )

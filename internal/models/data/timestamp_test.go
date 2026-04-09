@@ -41,7 +41,7 @@ func TestTimestamp_UnmarshalJSON_null(t *testing.T) {
 	data := []byte("null")
 	var ts Timestamp
 	require.NoError(t, json.Unmarshal(data, &ts))
-	assert.True(t, ts.Time.IsZero())
+	assert.True(t, ts.IsZero())
 }
 
 func TestTimestamp_UnmarshalJSON_rfc3339(t *testing.T) {

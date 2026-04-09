@@ -12,7 +12,7 @@ import (
 func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-types",
-		Short: "Получить список типов кейсов",
+		Short: "Get list of case types",
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)
@@ -35,7 +35,7 @@ func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cob
 func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "case-fields",
-		Short: "Получить список полей кейсов",
+		Short: "Get list of case fields",
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
 			cli := getClient(command)

@@ -94,6 +94,38 @@ func TestPaths_AggregatesAllResources(t *testing.T) {
 		t.Fatal("expected bdd endpoint in aggregated paths")
 	}
 
+	// Phase 13.5: verify newly added endpoints
+	if !hasEndpoint("GET", "index.php?/api/v2/get_attachment/{attachment_id}") {
+		t.Fatal("expected get_attachment endpoint in aggregated paths")
+	}
+	if !hasEndpoint("GET", "index.php?/api/v2/get_attachments_for_case/{case_id}") {
+		t.Fatal("expected get_attachments_for_case endpoint in aggregated paths")
+	}
+	if !hasEndpoint("GET", "index.php?/api/v2/get_attachments_for_project/{project_id}") {
+		t.Fatal("expected get_attachments_for_project endpoint in aggregated paths")
+	}
+	if !hasEndpoint("POST", "index.php?/api/v2/delete_attachment/{attachment_id}") {
+		t.Fatal("expected delete_attachment endpoint in aggregated paths")
+	}
+	if !hasEndpoint("GET", "index.php?/api/v2/get_users/{project_id}") {
+		t.Fatal("expected get_users/{project_id} endpoint in aggregated paths")
+	}
+	if !hasEndpoint("POST", "index.php?/api/v2/add_user") {
+		t.Fatal("expected add_user endpoint in aggregated paths")
+	}
+	if !hasEndpoint("POST", "index.php?/api/v2/update_user/{user_id}") {
+		t.Fatal("expected update_user endpoint in aggregated paths")
+	}
+	if !hasEndpoint("GET", "index.php?/api/v2/get_cross_project_reports") {
+		t.Fatal("expected get_cross_project_reports endpoint in aggregated paths")
+	}
+	if !hasEndpoint("GET", "index.php?/api/v2/get_label/{label_id}") {
+		t.Fatal("expected get_label endpoint in aggregated paths")
+	}
+	if !hasEndpoint("GET", "index.php?/api/v2/get_labels/{project_id}") {
+		t.Fatal("expected get_labels endpoint in aggregated paths")
+	}
+
 	groups := api.Groups.Paths()
 	if len(groups) == 0 {
 		t.Fatal("expected groups paths to be non-empty")

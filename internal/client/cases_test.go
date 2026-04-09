@@ -1,5 +1,5 @@
 // internal/client/cases_test.go
-// Тесты для Cases API POST-методов
+// Tests for Cases API POST methods
 package client
 
 import (

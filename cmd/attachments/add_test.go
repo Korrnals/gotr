@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для flags.ValidateRequiredID ====================
+// ==================== Tests for flags.ValidateRequiredID ====================
 
 func TestValidateRequiredID_Valid(t *testing.T) {
 	id, err := flags.ValidateRequiredID([]string{"12345"}, 0, "test_id")
@@ -41,7 +41,7 @@ func TestValidateRequiredID_Negative(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для validateFileExists ====================
+// ==================== Tests for validateFileExists ====================
 
 func TestValidateFileExists_Exists(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-*.txt")
@@ -59,7 +59,7 @@ func TestValidateFileExists_NotExists(t *testing.T) {
 	assert.Contains(t, err.Error(), "file not found")
 }
 
-// ==================== Тесты для newAddCaseCmd ====================
+// ==================== Tests for newAddCaseCmd ====================
 
 func TestNewAddCaseCmd_Creation(t *testing.T) {
 	cmd := newAddCaseCmd(nil)
@@ -288,7 +288,7 @@ func TestNewAddCaseCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для newAddPlanCmd ====================
+// ==================== Tests for newAddPlanCmd ====================
 
 func TestNewAddPlanCmd_Creation(t *testing.T) {
 	cmd := newAddPlanCmd(nil)
@@ -462,7 +462,7 @@ func TestNewAddPlanCmd_FileNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "file not found")
 }
 
-// ==================== Тесты для newAddPlanEntryCmd ====================
+// ==================== Tests for newAddPlanEntryCmd ====================
 
 func TestNewAddPlanEntryCmd_Creation(t *testing.T) {
 	cmd := newAddPlanEntryCmd(nil)
@@ -684,7 +684,7 @@ func TestNewAddPlanEntryCmd_NoIDs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для newAddResultCmd ====================
+// ==================== Tests for newAddResultCmd ====================
 
 func TestNewAddResultCmd_Creation(t *testing.T) {
 	cmd := newAddResultCmd(nil)
@@ -868,7 +868,7 @@ func TestNewAddResultCmd_NoID_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для newAddRunCmd ====================
+// ==================== Tests for newAddRunCmd ====================
 
 func TestNewAddRunCmd_Creation(t *testing.T) {
 	cmd := newAddRunCmd(nil)
@@ -1042,7 +1042,7 @@ func TestNewAddRunCmd_FileNotFound(t *testing.T) {
 	assert.Contains(t, err.Error(), "file not found")
 }
 
-// ==================== Тесты для outputResult ====================
+// ==================== Tests for outputResult ====================
 
 func TestOutputResult_Stdout(t *testing.T) {
 	mock := &client.MockClient{
@@ -1092,14 +1092,14 @@ func TestOutputResult_StdoutOnly(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для newListCmd ======================================
+// ==================== Tests for newListCmd ======================================
 
 func TestNewListCmd_Creation(t *testing.T) {
 	cmd := newListCmd(nil)
 	assert.Equal(t, "list", cmd.Use)
 	// newListCmd has no RunE, it's a parent command for subcommands
 	// Verify all subcommands are added
-	assert.Equal(t, 5, len(cmd.Commands()))
+	assert.Equal(t, 6, len(cmd.Commands()))
 }
 
 // TestOutputResult_MarshalError tests outputResult when JSON marshaling fails
@@ -1123,7 +1123,7 @@ func TestOutputResult_MarshalError(t *testing.T) {
 	assert.Contains(t, err.Error(), "marshaling")
 }
 
-// ==================== Тесты для Register ====================
+// ==================== Tests for Register ====================
 
 func TestRegister(t *testing.T) {
 	rootCmd := &cobra.Command{Use: "gotr"}

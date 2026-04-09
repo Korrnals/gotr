@@ -119,7 +119,6 @@ func outputHuman(report *selftest.Report, failuresOnly bool) error {
 				filtered = append(filtered, c)
 			}
 		}
-		checks = filtered
 		report.Checks = filtered
 	}
 

@@ -43,10 +43,10 @@ func TestDisplayTaskAndMessages(t *testing.T) {
 	Phase(buf, "phase")
 	Stat(buf, "*", "k", 1)
 	Section(buf, "sec")
-	Cancelled(buf)
+	Canceled(buf)
 	Preview(buf, "title", []PreviewField{{Label: "A", Value: 1}})
 
-	if got := buf.String(); !strings.Contains(got, "PREVIEW") || !strings.Contains(got, "Cancelled") {
+	if got := buf.String(); !strings.Contains(got, "PREVIEW") || !strings.Contains(got, "Canceled") {
 		t.Fatalf("unexpected message output: %s", got)
 	}
 
@@ -58,7 +58,7 @@ func TestDisplayTaskAndMessages(t *testing.T) {
 	Phase(quietBuf, "hidden")
 	Stat(quietBuf, "*", "hidden", 1)
 	Section(quietBuf, "hidden")
-	Cancelled(quietBuf)
+	Canceled(quietBuf)
 	if quietBuf.Len() != 0 {
 		t.Fatalf("expected no output in quiet mode, got: %s", quietBuf.String())
 	}
@@ -109,9 +109,7 @@ func TestRunWithStatusAndOperation(t *testing.T) {
 	if h.Elapsed() < 0 {
 		t.Fatalf("elapsed should be non-negative")
 	}
-	if err := do.Finish(); err != nil {
-		t.Fatalf("operation Finish() error: %v", err)
-	}
+	do.Finish()
 }
 
 func TestRunWithStatus_NonQuietSuccess(t *testing.T) {

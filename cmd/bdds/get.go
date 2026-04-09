@@ -14,15 +14,15 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [case_id]",
-		Short: "Получить BDD сценарий для тест-кейса",
-		Long: `Получает BDD сценарий, привязанный к указанному тест-кейсу.
+		Short: "Get a BDD scenario for a test case",
+		Long: `Retrieve the BDD scenario linked to the specified test case.
 
-Возвращает Gherkin сценарий в формате Given-When-Then,
-если он был добавлен к тест-кейсу.`,
-		Example: `  # Получить BDD для кейса
+Returns the Gherkin scenario in Given-When-Then format,
+if one has been added to the test case.`,
+		Example: `  # Get BDD for a case
   gotr bdds get 12345
 
-  # Сохранить в файл
+  # Save to a file
   gotr bdds get 12345 -o bdd.feature`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -67,7 +67,7 @@ func (m *MockPrompter) Confirm(message string, def bool) (bool, error) {
 }
 
 // Select returns next queued select response.
-func (m *MockPrompter) Select(message string, options []string) (int, string, error) {
+func (m *MockPrompter) Select(message string, options []string) (idx int, value string, err error) {
 	if len(options) == 0 {
 		return 0, "", fmt.Errorf("select options list is empty")
 	}
@@ -83,7 +83,7 @@ func (m *MockPrompter) Select(message string, options []string) (int, string, er
 		return 0, "", fmt.Errorf("mock select index out of range: %d", response.Index)
 	}
 
-	value := response.Value
+	value = response.Value
 	if value == "" {
 		value = options[response.Index]
 	}

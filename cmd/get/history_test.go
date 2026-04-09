@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get case-history ====================
+// ==================== Tests for get case-history ====================
 
 func TestCaseHistoryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -272,7 +272,7 @@ func TestCaseHistoryCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для get sharedstep-history ====================
+// ==================== Tests for get sharedstep-history ====================
 
 func TestSharedStepHistoryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

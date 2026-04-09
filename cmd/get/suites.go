@@ -15,16 +15,16 @@ import (
 func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "suites [project-id]",
-		Short: "Получить тест-сюиты проекта",
-		Long: `Получить тест-сюиты проекта.
+		Short: "Get project test suites",
+		Long: `Get project test suites.
 
-Если ID проекта не указан, будет предложено выбрать проект из списка.
+If the project ID is not specified, you will be prompted to select a project from the list.
 
-Примеры:
-	# Интерактивный выбор проекта
+Examples:
+	# Interactive project selection
 	gotr get suites
 
-	# Явное указание проекта
+	# Explicit project specification
 	gotr get suites 30
 	gotr get suites --project-id 30
 `,
@@ -72,7 +72,7 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 		},
 	}
 
-	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	cmd.Flags().String("project-id", "", "Project ID (alternative to positional argument)")
 
 	return cmd
 }
@@ -81,11 +81,11 @@ func newSuitesCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.
 func newSuiteCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "suite [suite-id]",
-		Short: "Получить одну тест-сюиту по ID сюиты",
+		Short: "Get a single test suite by suite ID",
 		Args:  cobra.MaximumNArgs(1),
-		Long: `Получить информацию о конкретной тест-сюите по её ID.
+		Long: `Get information about a specific test suite by its ID.
 
-Пример:
+Example:
 	gotr get suite 20069
 `,
 		RunE: func(command *cobra.Command, args []string) error {

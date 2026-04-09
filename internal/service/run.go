@@ -11,8 +11,6 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
@@ -32,13 +30,8 @@ type RunService struct {
 }
 
 // NewRunService creates a new service for working with test runs.
-func NewRunService(client *client.HTTPClient) *RunService {
-	return &RunService{client: client}
-}
-
-// NewRunServiceFromInterface creates a service from a client interface (for testing).
-func NewRunServiceFromInterface(cli client.ClientInterface) *RunService {
-	return &RunService{client: cli}
+func NewRunService(c client.ClientInterface) *RunService {
+	return &RunService{client: c}
 }
 
 // Get retrieves information about a test run by ID.
@@ -157,16 +150,6 @@ func (s *RunService) Delete(ctx context.Context, runID int64) error {
 	return nil
 }
 
-// Output renders the result as JSON and saves to a file (if --output is set).
-func (s *RunService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return output.OutputResultWithFlags(cmd, data)
-}
-
-// PrintSuccess prints a success message.
-func (s *RunService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	output.PrintSuccess(cmd, format, args...)
-}
-
 // ParseID parses an ID from command arguments.
 func (s *RunService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
@@ -186,13 +169,13 @@ func (s *RunService) validateID(id int64, fieldName string) error {
 // validateCreateRequest validates the parameters for creating a run.
 func (s *RunService) validateCreateRequest(req *data.AddRunRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if req.Name == "" {
-		return errors.New("название run (name) обязательно")
+		return errors.New("run name is required")
 	}
 	if req.SuiteID <= 0 {
-		return errors.New("suite_id должен быть положительным числом")
+		return errors.New("suite_id must be a positive number")
 	}
 	return nil
 }

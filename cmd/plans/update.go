@@ -17,13 +17,13 @@ import (
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [plan_id]",
-		Short: "Обновить тест-план",
-		Long:  `Обновляет существующий тест-план.`,
-		Example: `  # Изменить название плана
-  gotr plans update 12345 --name="Новое название плана"
+		Short: "Update a test plan",
+		Long:  `Updates an existing test plan.`,
+		Example: `  # Change plan name
+  gotr plans update 12345 --name="New plan name"
 
-  # Изменить описание
-  gotr plans update 12345 --description="Новое описание"`,
+  # Change description
+  gotr plans update 12345 --description="New description"`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var planID int64
@@ -75,11 +75,11 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название плана")
-	cmd.Flags().String("description", "", "Новое описание")
-	cmd.Flags().Int64("milestone-id", 0, "ID майлстона")
+	cmd.Flags().String("name", "", "New plan name")
+	cmd.Flags().String("description", "", "New description")
+	cmd.Flags().Int64("milestone-id", 0, "Milestone ID")
 
 	return cmd
 }

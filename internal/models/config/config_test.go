@@ -223,7 +223,7 @@ func TestCreate_WithNilDataFallsBackToDefaults(t *testing.T) {
 func TestCreate_MkdirAllError(t *testing.T) {
 	tmp := t.TempDir()
 	blocker := filepath.Join(tmp, "blocker")
-	if err := os.WriteFile(blocker, []byte("x"), 0600); err != nil {
+	if err := os.WriteFile(blocker, []byte("x"), 0o600); err != nil {
 		t.Fatalf("write blocker file: %v", err)
 	}
 
@@ -240,7 +240,7 @@ func TestCreate_MkdirAllError(t *testing.T) {
 func TestCreate_WriteFileError(t *testing.T) {
 	tmp := t.TempDir()
 	pathAsDir := filepath.Join(tmp, "config-as-dir")
-	if err := os.MkdirAll(pathAsDir, 0755); err != nil {
+	if err := os.MkdirAll(pathAsDir, 0o755); err != nil {
 		t.Fatalf("mkdir pathAsDir: %v", err)
 	}
 

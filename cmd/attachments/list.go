@@ -20,22 +20,26 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "Получить список вложений",
-		Long: `Получает список вложений для различных типов ресурсов.
+		Short: "List attachments",
+		Long: `Lists attachments for various resource types.
 
-Поддерживаемые типы ресурсов:
-  • case       — вложения тест-кейса
-  • plan       — вложения тест-плана
-  • plan-entry — вложения записи плана
-  • run        — вложения тест-рана
-  • test       — вложения теста`,
-		Example: `  # Список вложений кейса
+Supported resource types:
+  • case       — test case attachments
+  • plan       — test plan attachments
+  • plan-entry — plan entry attachments
+  • project    — project attachments
+  • run        — test run attachments
+  • test       — test attachments`,
+		Example: `  # List case attachments
   gotr attachments list case 123
 
-  # Список вложений плана
+  # List plan attachments
   gotr attachments list plan 456
 
-  # Список вложений теста
+  # List project attachments
+  gotr attachments list project 1
+
+  # List test attachments
   gotr attachments list test 789`,
 	}
 
@@ -43,6 +47,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.AddCommand(newListCaseCmd(getClient))
 	cmd.AddCommand(newListPlanCmd(getClient))
 	cmd.AddCommand(newListPlanEntryCmd(getClient))
+	cmd.AddCommand(newListProjectCmd(getClient))
 	cmd.AddCommand(newListRunCmd(getClient))
 	cmd.AddCommand(newListTestCmd(getClient))
 
@@ -52,7 +57,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "case [case_id]",
-		Short: "Список вложений тест-кейса",
+		Short: "List test case attachments",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -91,7 +96,7 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan [plan_id]",
-		Short: "Список вложений тест-плана",
+		Short: "List test plan attachments",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -130,7 +135,7 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan-entry [plan_id] [entry_id]",
-		Short: "Список вложений записи плана",
+		Short: "List plan entry attachments",
 		Args:  cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -181,10 +186,50 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 	return cmd
 }
 
+func newListProjectCmd(getClient GetClientFunc) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "project [project_id]",
+		Short: "List project attachments",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client := getClient(cmd)
+			ctx := cmd.Context()
+
+			var projectID int64
+			var err error
+			if len(args) > 0 {
+				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
+				if err != nil {
+					return err
+				}
+			} else {
+				if !interactive.HasPrompterInContext(ctx) {
+					return fmt.Errorf("project_id required: gotr attachments list project [project_id]")
+				}
+
+				p := interactive.PrompterFromContext(ctx)
+				projectID, err = interactive.SelectProject(ctx, p, client, "")
+				if err != nil {
+					return err
+				}
+			}
+
+			attachments, err := client.GetAttachmentsForProject(ctx, projectID)
+			if err != nil {
+				return fmt.Errorf("failed to list attachments: %w", err)
+			}
+
+			return outputAttachmentsList(cmd, attachments)
+		},
+	}
+	output.AddFlag(cmd)
+	return cmd
+}
+
 func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [run_id]",
-		Short: "Список вложений тест-рана",
+		Short: "List test run attachments",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -223,7 +268,7 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test [test_id]",
-		Short: "Список вложений теста",
+		Short: "List test attachments",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)

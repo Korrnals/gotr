@@ -17,22 +17,22 @@ import (
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [milestone_id]",
-		Short: "Обновить существующий майлстон",
-		Long: `Обновляет данные существующего майлстона.
+		Short: "Update an existing milestone",
+		Long: `Updates data of an existing milestone.
 
-Можно изменить название, описание, дедлайн и статус завершения.
-Все флаги опциональны — изменятся только указанные поля.`,
-		Example: `  # Изменить название майлстона
-  gotr milestones update 12345 --name="Релиз 1.1"
+You can change the name, description, deadline, and completion status.
+All flags are optional — only specified fields will be changed.`,
+		Example: `  # Change milestone name
+  gotr milestones update 12345 --name="Release 1.1"
 
-  # Изменить дедлайн
+  # Change deadline
   gotr milestones update 12345 --due-on="2026-04-01"
 
-  # Отметить как завершённый
+  # Mark as completed
   gotr milestones update 12345 --is-completed=true
 
-  # Изменить несколько полей
-  gotr milestones update 12345 --name="Новое название" --description="Новое описание"`,
+  # Change multiple fields
+  gotr milestones update 12345 --name="New Name" --description="New description"`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var milestoneID int64
@@ -89,12 +89,12 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без реального выполнения")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without actually executing")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Новое название майлстона")
-	cmd.Flags().String("description", "", "Новое описание")
-	cmd.Flags().String("due-on", "", "Новый дедлайн (YYYY-MM-DD)")
-	cmd.Flags().Bool("is-completed", false, "Отметить как завершённый")
+	cmd.Flags().String("name", "", "New milestone name")
+	cmd.Flags().String("description", "", "New description")
+	cmd.Flags().String("due-on", "", "New deadline (YYYY-MM-DD)")
+	cmd.Flags().Bool("is-completed", false, "Mark as completed")
 
 	return cmd
 }

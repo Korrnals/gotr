@@ -14,19 +14,19 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Список конфигураций проекта",
-		Long: `Выводит список конфигураций, доступных в указанном проекте.
+		Short: "List project configurations",
+		Long: `Lists configurations available in the specified project.
 
-Конфигурации представляют собой тестовые среды (браузеры, ОС, устройства)
-и группируются по типам. Используются при создании тест-планов
-с множественными конфигурациями.
+Configurations represent test environments (browsers, OS, devices)
+and are grouped by type. They are used when creating test plans
+with multiple configurations.
 
-Каждая конфигурация имеет ID, который используется для указания
-в параметрах при создании записей плана с конфигурациями.`,
-		Example: `  # Получить конфигурации проекта
+Each configuration has an ID that is used to specify
+parameters when creating plan entries with configurations.`,
+		Example: `  # Get project configurations
   gotr configurations list 1
 
-  # Сохранить в файл для анализа
+  # Save to file for analysis
   gotr configurations list 5 -o configs.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

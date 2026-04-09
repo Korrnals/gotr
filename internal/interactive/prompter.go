@@ -17,7 +17,7 @@ var ErrNonInteractive = errors.New("non-interactive mode: input required but una
 type Prompter interface {
 	Input(message, defaultVal string) (string, error)
 	Confirm(message string, def bool) (bool, error)
-	Select(message string, options []string) (int, string, error)
+	Select(message string, options []string) (idx int, value string, err error)
 	MultilineInput(message, defaultVal string) (string, error)
 }
 
@@ -57,20 +57,20 @@ func (p *TerminalPrompter) Confirm(message string, def bool) (bool, error) {
 }
 
 // Select asks user to choose one option from the provided list.
-func (p *TerminalPrompter) Select(message string, options []string) (int, string, error) {
+func (p *TerminalPrompter) Select(message string, options []string) (idx int, value string, err error) {
 	if len(options) == 0 {
 		return 0, "", fmt.Errorf("select options list is empty")
 	}
 
 	var selected string
-	err := surveyAskOne(&survey.Select{Message: message, Options: options}, &selected)
+	err = surveyAskOne(&survey.Select{Message: message, Options: options}, &selected)
 	if err != nil {
 		return 0, "", fmt.Errorf("failed to select option: %w", err)
 	}
 
-	for idx, option := range options {
+	for i, option := range options {
 		if option == selected {
-			return idx, selected, nil
+			return i, selected, nil
 		}
 	}
 
@@ -108,7 +108,7 @@ func (p *NonInteractivePrompter) Confirm(message string, def bool) (bool, error)
 }
 
 // Select returns ErrNonInteractive in non-interactive mode.
-func (p *NonInteractivePrompter) Select(message string, options []string) (int, string, error) {
+func (p *NonInteractivePrompter) Select(message string, options []string) (idx int, value string, err error) {
 	return 0, "", ErrNonInteractive
 }
 

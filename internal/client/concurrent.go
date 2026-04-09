@@ -68,7 +68,7 @@ func (c *HTTPClient) GetCasesParallel(ctx context.Context, projectID int64, suit
 	if monitor != nil {
 		opts = append(opts, concurrent.WithProgressMonitor(monitor))
 	}
-	pool := concurrent.NewWorkerPool(opts...)
+	pool := concurrent.NewWorkerPool(ctx, opts...)
 
 	// Submit tasks
 	for _, suiteID := range suiteIDs {
@@ -136,7 +136,7 @@ func (c *HTTPClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 	if monitor != nil {
 		opts = append(opts, concurrent.WithProgressMonitor(monitor))
 	}
-	pool := concurrent.NewWorkerPool(opts...)
+	pool := concurrent.NewWorkerPool(ctx, opts...)
 
 	// Submit tasks
 	for _, projectID := range projectIDs {

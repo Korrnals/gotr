@@ -1,5 +1,5 @@
 // internal/client/sharedsteps_test.go
-// Тесты для SharedSteps API POST-методов
+// Tests for SharedSteps API POST methods
 package client
 
 import (

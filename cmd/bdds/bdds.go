@@ -13,16 +13,16 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	bddsCmd := &cobra.Command{
 		Use:   "bdds",
-		Short: "Управление BDD сценариями",
-		Long: `Управление BDD (Behavior Driven Development) сценариями.
+		Short: "Manage BDD scenarios",
+		Long: `Manage BDD (Behavior Driven Development) scenarios.
 
-BDD сценарии описывают поведение системы в формате Given-When-Then
-(Дано-Когда-Тогда) на языке Gherkin. Привязаны к тест-кейсам
-и позволяют писать тесты на понятном бизнесу языке.
+BDD scenarios describe system behavior in Given-When-Then format
+using the Gherkin language. They are linked to test cases and
+enable writing tests in a business-readable language.
 
-Доступные операции:
-  • get — получить BDD для тест-кейса
-  • add — добавить BDD к тест-кейсу`,
+Available operations:
+  • get — retrieve a BDD scenario for a test case
+  • add — add a BDD scenario to a test case`,
 	}
 
 	bddsCmd.AddCommand(newGetCmd(getClient))

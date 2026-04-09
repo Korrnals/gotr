@@ -137,8 +137,7 @@ func TestGetResourceEndpoints_AllKnownResourcesListMode(t *testing.T) {
 	for _, resource := range resources {
 		t.Run(resource, func(t *testing.T) {
 			endpoints, err := getResourceEndpoints(resource, "list")
-			assert.Error(t, err)
-			assert.Contains(t, err.Error(), "failed to format resource list")
+			assert.NoError(t, err)
 			assert.NotNil(t, endpoints)
 		})
 	}
@@ -165,8 +164,7 @@ func TestGetResourceEndpoints_JSONAndShortModes(t *testing.T) {
 	assert.Nil(t, jsonEndpoints)
 
 	shortEndpoints, shortErr := getResourceEndpoints("projects", "short")
-	assert.Error(t, shortErr)
-	assert.Contains(t, shortErr.Error(), "failed to format short resource list")
+	assert.NoError(t, shortErr)
 	assert.Nil(t, shortEndpoints)
 
 	require.NoError(t, w.Close())

@@ -217,20 +217,20 @@ func (r *Report) Separator() *Report {
 }
 
 // BannerOK adds a prominent green status banner (data complete).
-func (r *Report) BannerOK(text string) *Report {
-	r.elements = append(r.elements, element{typ: elemBanner, value: text, color: ansiGreen})
+func (r *Report) BannerOK(msg string) *Report {
+	r.elements = append(r.elements, element{typ: elemBanner, value: msg, color: ansiGreen})
 	return r
 }
 
 // BannerWarn adds a prominent yellow status banner (data may be incomplete).
-func (r *Report) BannerWarn(text string) *Report {
-	r.elements = append(r.elements, element{typ: elemBanner, value: text, color: ansiYellow})
+func (r *Report) BannerWarn(msg string) *Report {
+	r.elements = append(r.elements, element{typ: elemBanner, value: msg, color: ansiYellow})
 	return r
 }
 
 // BannerError adds a prominent red status banner (data is incomplete / interrupted).
-func (r *Report) BannerError(text string) *Report {
-	r.elements = append(r.elements, element{typ: elemBanner, value: text, color: ansiRed})
+func (r *Report) BannerError(msg string) *Report {
+	r.elements = append(r.elements, element{typ: elemBanner, value: msg, color: ansiRed})
 	return r
 }
 

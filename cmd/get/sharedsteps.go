@@ -16,16 +16,16 @@ import (
 func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sharedsteps [project-id]",
-		Short: "Получить shared steps проекта",
-		Long: `Получить shared steps (общие шаги) проекта.
+		Short: "Get project shared steps",
+		Long: `Get project shared steps.
 
-Если ID проекта не указан, будет предложено выбрать проект из списка.
+If the project ID is not specified, you will be prompted to select a project from the list.
 
-Примеры:
-	# Интерактивный выбор проекта
+Examples:
+	# Interactive project selection
 	gotr get sharedsteps
 
-	# Явное указание проекта
+	# Explicit project specification
 	gotr get sharedsteps 30
 	gotr get sharedsteps --project-id 30
 `,
@@ -73,7 +73,7 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 		},
 	}
 
-	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	cmd.Flags().String("project-id", "", "Project ID (alternative to positional argument)")
 
 	return cmd
 }
@@ -82,8 +82,8 @@ func newSharedStepsCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "sharedstep [step-id]",
-		Short: "Получить один shared step по ID шага",
-		Long:  "Получает детальную информацию о конкретном shared step по его ID.",
+		Short: "Get a single shared step by step ID",
+		Long:  "Retrieves detailed information about a specific shared step by its ID.",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()

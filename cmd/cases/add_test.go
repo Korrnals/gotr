@@ -218,7 +218,7 @@ func TestAddCmd_WithJSONFile(t *testing.T) {
 	tempDir := t.TempDir()
 	jsonFile := tempDir + "/case.json"
 	jsonData := `{"title": "JSON Test Case", "template_id": 2, "priority_id": 1}`
-	err := os.WriteFile(jsonFile, []byte(jsonData), 0644)
+	err := os.WriteFile(jsonFile, []byte(jsonData), 0o644)
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{
@@ -255,7 +255,7 @@ func TestAddCmd_InvalidJSONFile(t *testing.T) {
 	// Create a temp file with invalid JSON
 	tempDir := t.TempDir()
 	jsonFile := tempDir + "/invalid.json"
-	err := os.WriteFile(jsonFile, []byte("not valid json"), 0644)
+	err := os.WriteFile(jsonFile, []byte("not valid json"), 0o644)
 	assert.NoError(t, err)
 
 	mock := &client.MockClient{}

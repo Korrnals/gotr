@@ -16,16 +16,16 @@ import (
 func newSectionsCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "sections",
-		Short: "Управление секциями",
-		Long: `Управление секциями (sections) — организационными единицами
-внутри тест-сюитов для группировки тест-кейсов.
+		Short: "Section management",
+		Long: `Section management (sections) — organizational units
+within test suites for grouping test cases.
 
-Секции позволяют структурировать тесты в иерархию для удобной навигации
-и организации тестовой документации.
+Sections allow structuring tests into a hierarchy for convenient navigation
+and organization of test documentation.
 
-Доступные операции:
-  • get    — получить информацию о секции по ID
-  • list   — список секций проекта/сюиты`,
+Available operations:
+  • get    — get section information by ID
+  • list   — list project/suite sections`,
 	}
 }
 
@@ -33,8 +33,8 @@ func newSectionsCmd() *cobra.Command {
 func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	return &cobra.Command{
 		Use:   "section [section_id]",
-		Short: "Получить информацию о секции",
-		Long:  `Получить детальную информацию о секции по её ID.`,
+		Short: "Get section information",
+		Long:  `Get detailed section information by its ID.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
@@ -106,10 +106,10 @@ func selectSectionID(ctx context.Context, sections data.GetSectionsResponse) (in
 func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project_id]",
-		Short: "Получить список секций проекта",
-		Long: `Получить список всех секций для указанного проекта.
+		Short: "Get project sections list",
+		Long: `Get a list of all sections for the specified project.
 
-Для фильтрации по конкретной сюите используйте флаг --suite-id.`,
+To filter by a specific suite, use the --suite-id flag.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(command *cobra.Command, args []string) error {
 			start := time.Now()
@@ -158,8 +158,8 @@ func newSectionsListCmd(getClient func(*cobra.Command) client.ClientInterface) *
 	}
 
 	// Filter by suite_id
-	cmd.Flags().Int64P("suite-id", "s", 0, "ID сюиты для фильтрации")
-	cmd.Flags().String("project-id", "", "ID проекта (альтернатива позиционному аргументу)")
+	cmd.Flags().Int64P("suite-id", "s", 0, "Suite ID for filtering")
+	cmd.Flags().String("project-id", "", "Project ID (alternative to positional argument)")
 
 	return cmd
 }

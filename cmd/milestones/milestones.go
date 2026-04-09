@@ -13,18 +13,18 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	milestonesCmd := &cobra.Command{
 		Use:   "milestones",
-		Short: "Управление майлстонами (этапами) проекта",
-		Long: `Управление майлстонами (вехами/этапами) проекта.
+		Short: "Manage project milestones",
+		Long: `Manage project milestones.
 
-Майлстоны используются для группировки тестовых прогонов по этапам разработки
-(например: "Релиз 1.0", "Спринт 5", "Бета-версия").
+Milestones are used to group test runs by development stages
+(e.g.: "Release 1.0", "Sprint 5", "Beta").
 
-Доступные операции:
-  • add    — создать новый майлстон
-  • get    — получить информацию о майлстоне
-  • list   — список всех майлстонов проекта  
-  • update — обновить майлстон
-  • delete — удалить майлстон`,
+Available operations:
+  • add    — create a new milestone
+  • get    — get milestone information
+  • list   — list all project milestones  
+  • update — update a milestone
+  • delete — delete a milestone`,
 	}
 
 	// Add subcommands

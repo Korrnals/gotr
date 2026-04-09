@@ -11,12 +11,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// httpClientKey — ключ для хранения HTTP clientа в контексте тестов.
-// Должен совпадать с ключом, используемым в основном коде.
-const httpClientKey = "httpClient"
+// testContextKey is an unexported key type for context values in tests.
+type testContextKey string
 
-// setupTestCmd создаёт тестовую команду с mock clientом в контексте.
-// Используется в тестах для инжекции mock clientа.
+// httpClientKey is the key for storing the HTTP client in the test context.
+// Must match the key used in the main code.
+const httpClientKey testContextKey = "httpClient"
+
+// setupTestCmd creates a test command with a mock client in the context.
+// Used in tests for mock client injection.
 func setupTestCmd(t *testing.T, mock *client.MockClient) *cobra.Command {
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
@@ -24,8 +27,8 @@ func setupTestCmd(t *testing.T, mock *client.MockClient) *cobra.Command {
 	return cmd
 }
 
-// getClientForTests возвращает client из контекста для использования в тестах.
-// Возвращает nil если client не найден или контекст пуст.
+// getClientForTests returns the client from the context for use in tests.
+// Returns nil if the client is not found or the context is empty.
 func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 	if cmd == nil || cmd.Context() == nil {
 		return nil
@@ -33,7 +36,7 @@ func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 	if mock, ok := cmd.Context().Value(httpClientKey).(*client.MockClient); ok {
 		return mock
 	}
-	// Пробуем также интерфейс
+	// Also try the interface
 	if c, ok := cmd.Context().Value(httpClientKey).(client.ClientInterface); ok {
 		return c
 	}

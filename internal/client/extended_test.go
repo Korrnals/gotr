@@ -785,7 +785,7 @@ func TestHTTPExtended_ErrorBranches(t *testing.T) {
 	})
 }
 
-// TestHTTPExtended_SuccessCases тестирует успешные сценарии для всех методов
+// TestHTTPExtended_SuccessCases tests success scenarios for all methods
 func TestHTTPExtended_SuccessCases(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
@@ -1012,26 +1012,27 @@ func TestHTTPExtended_SuccessCases(t *testing.T) {
 	}
 }
 
-// TestHTTPExtended_EdgeCases тестирует edge cases и граничные условия
+// TestHTTPExtended_EdgeCases tests edge cases and boundary conditions
 func TestHTTPExtended_EdgeCases(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Пустые ответы
-		if strings.Contains(r.URL.String(), "empty_groups") {
+		url := r.URL.String()
+		switch {
+		case strings.Contains(url, "get_groups/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Group{})
-		} else if strings.Contains(r.URL.String(), "empty_roles") {
+		case strings.Contains(url, "get_roles"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Role{})
-		} else if strings.Contains(r.URL.String(), "empty_labels") {
+		case strings.Contains(url, "get_labels/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Label{})
-		} else if strings.Contains(r.URL.String(), "empty_datasets") {
+		case strings.Contains(url, "get_datasets/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Dataset{})
-		} else if strings.Contains(r.URL.String(), "empty_variables") {
+		case strings.Contains(url, "get_variables/"):
 			w.WriteHeader(http.StatusOK)
 			_ = json.NewEncoder(w).Encode([]data.Variable{})
-		} else {
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -1042,14 +1043,17 @@ func TestHTTPExtended_EdgeCases(t *testing.T) {
 
 	// Empty responses should still work
 	groups, err := c.GetGroups(ctx, 999)
-	if err == nil && len(groups) == 0 {
-		// This is acceptable
+	if err != nil {
+		t.Fatalf("GetGroups returned unexpected error: %v", err)
+	}
+	if len(groups) != 0 {
+		t.Fatalf("expected empty groups, got %d", len(groups))
 	}
 }
 
-// TestParallel_ExtendedAPI_AllMethods - параллельное тестирование всех extended API методов
+// TestParallel_ExtendedAPI_AllMethods - parallel testing of all extended API methods
 func TestParallel_ExtendedAPI_AllMethods(t *testing.T) {
-	// Группы методов для параллельного тестирования
+	// Method groups for parallel testing
 	t.Run("Parallel_Groups", func(t *testing.T) {
 		t.Parallel()
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get case-types ====================
+// ==================== Tests for get case-types ====================
 
 func TestCaseTypesCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -73,7 +73,7 @@ func TestCaseTypesCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "failed to get case types")
 }
 
-// ==================== Тесты для get case-fields ====================
+// ==================== Tests for get case-fields ====================
 
 func TestCaseFieldsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

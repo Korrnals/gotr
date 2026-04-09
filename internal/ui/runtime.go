@@ -15,7 +15,7 @@ type Operation interface {
 	Phase(title string)
 	Info(format string, args ...any)
 	AddTask(name string, total int) TaskHandle
-	Finish() error
+	Finish()
 }
 
 // TaskHandle bridges intent-level task control with concurrency reporters.
@@ -131,9 +131,8 @@ func (o *displayOperation) AddTask(name string, total int) TaskHandle {
 }
 
 // Finish finalizes the operation and renders the final display frame.
-func (o *displayOperation) Finish() error {
+func (o *displayOperation) Finish() {
 	o.display.Finish()
-	return nil
 }
 
 // Increment marks one logical item as completed.

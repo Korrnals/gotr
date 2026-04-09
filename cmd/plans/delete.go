@@ -16,12 +16,12 @@ import (
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [plan_id]",
-		Short: "Удалить тест-план",
-		Long:  `Удаляет тест-план по его ID.`,
-		Example: `  # Удалить план
+		Short: "Delete a test plan",
+		Long:  `Deletes a test plan by its ID.`,
+		Example: `  # Delete a plan
   gotr plans delete 12345
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr plans delete 12345 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -61,7 +61,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

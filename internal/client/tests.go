@@ -48,7 +48,10 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 		return nil, fmt.Errorf("request body is required")
 	}
 
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_test/%d", testID)
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
@@ -68,7 +71,7 @@ func (c *HTTPClient) UpdateTest(ctx context.Context, testID int64, req *data.Upd
 // Helper methods for convenience
 
 // GetTestsByStatus fetches tests with a specific status.
-func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID int64, statusID int64) ([]data.Test, error) {
+func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID, statusID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"status_id": strconv.FormatInt(statusID, 10),
 	}
@@ -76,7 +79,7 @@ func (c *HTTPClient) GetTestsByStatus(ctx context.Context, runID int64, statusID
 }
 
 // GetTestsAssignedTo fetches tests assigned to a user.
-func (c *HTTPClient) GetTestsAssignedTo(ctx context.Context, runID int64, userID int64) ([]data.Test, error) {
+func (c *HTTPClient) GetTestsAssignedTo(ctx context.Context, runID, userID int64) ([]data.Test, error) {
 	filters := map[string]string{
 		"assignedto_id": strconv.FormatInt(userID, 10),
 	}

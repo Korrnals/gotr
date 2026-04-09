@@ -1,5 +1,5 @@
 // internal/client/cancel_test.go
-// Тест проверяет, что отменённый контекст прерывает HTTP запрос
+// Test verifies that a canceled context aborts an HTTP request
 package client
 
 import (
@@ -9,10 +9,10 @@ import (
 	"testing"
 )
 
-// TestGetRuns_Cancellation проверяет критерий Stage 7.0:
-// отменённый контекст должен возвращать context.Canceled из clientских методов.
+// TestGetRuns_Cancellation verifies Stage 7.0 criterion:
+// a canceled context must return context.Canceled from client methods.
 func TestGetRuns_Cancellation(t *testing.T) {
-	// Сервер, который отвечает успешно (но client не должен до него дойти)
+	// Server that responds successfully (but the client should not reach it)
 	server := newMockServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"runs":[],"offset":0,"limit":250,"size":0}`))
@@ -24,7 +24,7 @@ func TestGetRuns_Cancellation(t *testing.T) {
 		t.Fatalf("failed to create client: %v", err)
 	}
 
-	// Уже отменённый контекст — http.Do вернёт context.Canceled до отправки запроса
+	// Already canceled context — http.Do will return context.Canceled before sending request
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 
@@ -35,8 +35,8 @@ func TestGetRuns_Cancellation(t *testing.T) {
 	}
 }
 
-// TestHTTPClient_CancelledContext проверяет что DoRequest уважает отменённый контекст.
-func TestHTTPClient_CancelledContext(t *testing.T) {
+// TestHTTPClient_CanceledContext verifies that DoRequest respects a canceled context.
+func TestHTTPClient_CanceledContext(t *testing.T) {
 	server := newMockServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	}))

@@ -1,4 +1,3 @@
-// Package test provides CLI commands for managing tests in TestRail
 package test
 
 import (
@@ -12,33 +11,30 @@ type GetClientFunc = client.GetClientFunc
 // Cmd is the parent command for managing tests.
 var Cmd = &cobra.Command{
 	Use:   "test",
-	Short: "Управление тестами в TestRail",
-	Long: `Команды для получения и управления тестами (tests) в TestRail.
+	Short: "Manage tests in TestRail",
+	Long: `Commands for retrieving and managing tests in TestRail.
 
-Test — это конкретный экземпляр тест-кейса в рамках тест-рана.
-Каждый тест имеет статус (passed, failed, blocked и т.д.) и может быть 
-назначен на конкретного пользователя.
+A test is a specific instance of a test case within a test run.
+Each test has a status (passed, failed, blocked, etc.) and can be
+assigned to a specific user.
 
-Подкоманды:
-	get     — получить информацию о тесте по ID
-	list    — получить список тестов в ране
+Subcommands:
+	get     — get test information by ID
+	list    — list tests in a run
 
-Примеры:
-	# Получить информацию о тесте
+Examples:
+	# Get test information
 	gotr test get 12345
 
-	# Получить список тестов в ране
+	# List tests in a run
 	gotr test list 100
 
-	# Получить только failed тесты
+	# Get only failed tests
 	gotr test list 100 --status-id 5
 
-	# Получить тесты, назначенные на пользователя
+	# Get tests assigned to a user
 	gotr test list 100 --assigned-to 10
 `,
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
 }
 
 // clientAccessor is the global accessor for obtaining a client.
@@ -49,7 +45,7 @@ func getClientInterface(cmd *cobra.Command) client.ClientInterface {
 	if clientAccessor == nil {
 		return nil
 	}
-	return clientAccessor.GetClientSafe(cmd)
+	return clientAccessor.GetClientSafe(cmd.Context())
 }
 
 // SetGetClientForTests sets the getClient function for testing.

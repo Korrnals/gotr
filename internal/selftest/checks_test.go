@@ -231,8 +231,8 @@ func TestBaseDirChecker_FileInsteadOfDir(t *testing.T) {
 	assert.NoError(t, os.WriteFile(configPath, []byte("x"), 0o644))
 
 	res := BaseDirChecker{}.Check()
-	assert.Equal(t, ResultPass, res.Result)
-	assert.Equal(t, "Directories created", res.Message)
+	assert.Equal(t, ResultWarn, res.Result)
+	assert.Equal(t, "Some directories could not be created", res.Message)
 	assert.Contains(t, res.Details, "config")
 }
 

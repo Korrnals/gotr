@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestUpdateCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -71,7 +71,7 @@ func TestUpdateCmd_ClientError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты сухого запуска ====================
+// ==================== Dry run tests ====================
 
 func TestUpdateCmd_DryRun(t *testing.T) {
 	mock := &client.MockClient{}
@@ -83,7 +83,7 @@ func TestUpdateCmd_DryRun(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestUpdateCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get sharedsteps ====================
+// ==================== Tests for get sharedsteps ====================
 
 func TestSharedStepsCmd_WithProjectID(t *testing.T) {
 	mock := &client.MockClient{
@@ -108,7 +108,7 @@ func TestSharedStepsCmd_NoArgs_Interactive_SelectProjectError(t *testing.T) {
 	assert.Contains(t, err.Error(), "project lookup failed")
 }
 
-// ==================== Тесты для get sharedstep ====================
+// ==================== Tests for get sharedstep ====================
 
 func TestSharedStepCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

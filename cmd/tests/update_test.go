@@ -1,10 +1,9 @@
 package tests
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -53,27 +52,23 @@ func TestUpdateCmd_WithAssignedTo(t *testing.T) {
 }
 
 func TestUpdateCmd_WithOutput(t *testing.T) {
-	t.Skip("TODO: fix output file test")
 	mock := &client.MockClient{
 		UpdateTestFunc: func(ctx context.Context, testID int64, req *data.UpdateTestRequest) (*data.Test, error) {
 			return &data.Test{ID: testID, StatusID: 1}, nil
 		},
 	}
 
-	tmpDir := t.TempDir()
-	outputFile := filepath.Join(tmpDir, "test.json")
-
 	cmd := newUpdateCmd(testhelper.GetClientForTests)
 	testCmd := testhelper.SetupTestCmd(t, mock)
 	cmd.SetContext(testCmd.Context())
-	cmd.SetArgs([]string{"12345", "--status-id", "1", "-o", outputFile})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetArgs([]string{"12345", "--status-id", "1"})
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
-
-	content, err := os.ReadFile(outputFile)
-	assert.NoError(t, err)
-	assert.Contains(t, string(content), "12345")
+	assert.Contains(t, buf.String(), "12345")
 }
 
 func TestUpdateCmd_DryRun(t *testing.T) {
@@ -203,7 +198,7 @@ func TestGetClientForTests_NilContext(t *testing.T) {
 
 func TestGetClientForTests_NoMockInContext(t *testing.T) {
 	cmd := &cobra.Command{}
-	ctx := context.WithValue(context.Background(), "other_key", "value")
+	ctx := context.WithValue(context.Background(), testhelper.ContextKey("other_key"), "value")
 	cmd.SetContext(ctx)
 
 	result := testhelper.GetClientForTests(cmd)

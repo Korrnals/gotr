@@ -17,15 +17,15 @@ import (
 func newRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [template_id]",
-		Short: "Запустить генерацию отчёта по шаблону",
-		Long: `Запускает генерацию отчёта по указанному шаблону.
+		Short: "Run report generation from a template",
+		Long: `Runs report generation using the specified template.
 
-Возвращает ID отчёта, URL для скачивания и статус генерации.
-Для проверки статуса готовности отчёта выполните команду повторно.`,
-		Example: `  # Запустить генерацию отчёта
+Returns the report ID, download URL, and generation status.
+To check report readiness status, run the command again.`,
+		Example: `  # Run report generation
   gotr reports run 42
 
-  # Сохранить результат в файл
+  # Save result to file
   gotr reports run 42 -o report_result.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,7 +79,7 @@ func newRunCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без запуска генерации")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without running generation")
 	output.AddFlag(cmd)
 
 	return cmd

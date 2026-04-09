@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRootCmd_Properties проверяет базовые свойства root команды
+// TestRootCmd_Properties verifies basic properties of the root command
 func TestRootCmd_Properties(t *testing.T) {
 	assert.Equal(t, "gotr", rootCmd.Use)
 	assert.NotEmpty(t, rootCmd.Short)
@@ -25,30 +25,30 @@ func TestRootCmd_Properties(t *testing.T) {
 	assert.NotEmpty(t, Version)
 }
 
-// TestVersion_Properties проверяет версию
+// TestVersion_Properties verifies version
 func TestVersion_Properties(t *testing.T) {
 	assert.NotEmpty(t, Version)
 	assert.NotEmpty(t, Commit)
 	assert.NotEmpty(t, Date)
 }
 
-// TestGetClient_NotNilContext проверяет что GetClient требует контекст
+// TestGetClient_NotNilContext verifies that GetClient requires a context
 func TestGetClient_NotNilContext(t *testing.T) {
-	// GetClient требует контекст с clientом
-	// Если контекст пустой, функция вызывает panic
-	// Проверяем только что функция существует
+	// GetClient requires a context with a client
+	// If the context is empty, the function exits with code 1
+	// We only verify that the function exists
 	assert.NotNil(t, GetClient)
 }
 
-// TestGetClientInterface_NotNilContext проверяет что GetClientInterface требует контекст
+// TestGetClientInterface_NotNilContext verifies that GetClient requires a context
 func TestGetClientInterface_NotNilContext(t *testing.T) {
-	// GetClientInterface требует контекст с clientом
-	// Если контекст пустой, функция вызывает panic
-	// Проверяем только что функция существует
-	assert.NotNil(t, GetClientInterface)
+	// GetClient requires a context with a client
+	// If the context is empty, the function exits with code 1
+	// We only verify that the function exists
+	assert.NotNil(t, GetClient)
 }
 
-// TestRootCmd_NonInteractiveFlagRegistered проверяет наличие флага --non-interactive
+// TestRootCmd_NonInteractiveFlagRegistered verifies --non-interactive flag is registered
 func TestRootCmd_NonInteractiveFlagRegistered(t *testing.T) {
 	flag := rootCmd.PersistentFlags().Lookup("non-interactive")
 	assert.NotNil(t, flag, "--non-interactive flag must be registered")
@@ -56,12 +56,18 @@ func TestRootCmd_NonInteractiveFlagRegistered(t *testing.T) {
 }
 
 func TestGetClient_PanicWithoutClient(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
 	assert.Panics(t, func() {
 		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
 func TestGetClient_Success(t *testing.T) {
@@ -74,40 +80,59 @@ func TestGetClient_Success(t *testing.T) {
 }
 
 func TestGetClient_PanicOnUnexpectedType(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, struct{}{}))
 
 	assert.Panics(t, func() {
 		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
-func TestGetClientInterface_WithMock(t *testing.T) {
+// TestGetClient_WithMock verifies that GetClient works with a mock client
+func TestGetClient_WithMock(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := &cobra.Command{}
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
 
-	got := GetClientInterface(cmd)
+	got := GetClient(cmd)
 	assert.Equal(t, mock, got)
 }
 
 func TestGetClientInterface_PanicWithoutClient(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
 	assert.Panics(t, func() {
-		_ = GetClientInterface(cmd)
+		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
 func TestGetClientInterface_PanicOnUnexpectedType(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, struct{}{}))
 
 	assert.Panics(t, func() {
-		_ = GetClientInterface(cmd)
+		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
 func TestExecute_SuccessPath(t *testing.T) {

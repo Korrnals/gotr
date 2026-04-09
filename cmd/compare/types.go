@@ -72,7 +72,7 @@ type CompareResult struct {
 }
 
 // GetProjectNames retrieves project names for both project IDs
-func GetProjectNames(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64) (string, string, error) {
+func GetProjectNames(ctx context.Context, cli client.ClientInterface, pid1, pid2 int64) (name1, name2 string, err error) {
 	proj1, err := cli.GetProject(ctx, pid1)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to get project %d: %w", pid1, err)
@@ -118,7 +118,9 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 			case "json", "yaml", "csv":
 				// Save in structured format with auto-generated filename
 				exportsDir, _ := outpututils.GetExportsDir("compare")
-				os.MkdirAll(exportsDir, 0755)
+				if err := os.MkdirAll(exportsDir, 0o755); err != nil {
+					return fmt.Errorf("failed to create exports directory: %w", err)
+				}
 				filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
 				if err := saveToFileWithPath(result, format, filePath); err != nil {
 					return err
@@ -166,12 +168,6 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 	default:
 		return printTable(result, project1Name, project2Name)
 	}
-}
-
-// tableCell represents a cell in the table with content and width
-type tableCell struct {
-	content string
-	width   int
 }
 
 // truncateString truncates a string to maxWidth with ellipsis if needed
@@ -267,7 +263,7 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 	totalInnerWidth := idWidth + nameWidth + 3*len(widths) - 1
 
 	// Title
-	title := fmt.Sprintf("Only in project %d - \"%s\"", projectID, projectName)
+	title := fmt.Sprintf("Only in project %d - %q", projectID, projectName)
 	printHorizontalBorder("┌", "┬", "┐", widths)
 	printHeader(title, totalInnerWidth)
 
@@ -396,17 +392,24 @@ func printIDMappingTable(items []CommonItemInfo) {
 	fmt.Println()
 }
 
-// printJSON prints the result as JSON
+// printJSON prints the result as JSON.
+//
 // Deprecated: use ui.JSON(cmd, result) directly in new code
 func printJSON(result CompareResult) error {
-	data, _ := json.MarshalIndent(result, "", "  ")
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal result: %w", err)
+	}
 	fmt.Println(string(data))
 	return nil
 }
 
 // printYAML prints the result as YAML
 func printYAML(result CompareResult) error {
-	data, _ := yaml.Marshal(result)
+	data, err := yaml.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("failed to marshal result: %w", err)
+	}
 	fmt.Println(string(data))
 	return nil
 }
@@ -448,12 +451,19 @@ func printCSV(result CompareResult) error {
 // saveCompareResult saves the result to a file
 func saveCompareResult(result CompareResult, format, savePath string) error {
 	var data []byte
+	var err error
 
 	switch format {
 	case "json":
-		data, _ = json.MarshalIndent(result, "", "  ")
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
 	case "yaml":
-		data, _ = yaml.Marshal(result)
+		data, err = yaml.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("failed to marshal YAML: %w", err)
+		}
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
@@ -506,7 +516,7 @@ func saveCSV(result CompareResult, savePath string) error {
 // saveToFile saves data to a file.
 // Callers are responsible for printing confirmation (respecting quiet flag).
 func saveToFile(data []byte, savePath string) error {
-	if err := os.WriteFile(savePath, data, 0644); err != nil {
+	if err := os.WriteFile(savePath, data, 0o644); err != nil {
 		return fmt.Errorf("file write error: %w", err)
 	}
 	return nil
@@ -562,12 +572,14 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 		// Use default path with .txt extension for table
 		filePath = outpututils.GenerateFilename("compare", "txt")
 		exportsDir, _ := outpututils.GetExportsDir("compare")
-		os.MkdirAll(exportsDir, 0755)
+		if err := os.MkdirAll(exportsDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create exports directory: %w", err)
+		}
 		filePath = exportsDir + "/" + filePath
 	}
 
 	// Write to file
-	if err := compareTypesWrite(filePath, []byte(output), 0644); err != nil {
+	if err := compareTypesWrite(filePath, []byte(output), 0o644); err != nil {
 		return fmt.Errorf("file write error: %w", err)
 	}
 
@@ -581,25 +593,35 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 // saveToFileWithPath saves the result to a specific file path
 func saveToFileWithPath(result CompareResult, format, savePath string) error {
 	var data []byte
+	var err error
 
 	switch format {
 	case "json":
-		data, _ = json.MarshalIndent(result, "", "  ")
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
 	case "yaml":
-		data, _ = yaml.Marshal(result)
+		data, err = yaml.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("failed to marshal YAML: %w", err)
+		}
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
 		// Default to JSON for unknown formats
-		data, _ = json.MarshalIndent(result, "", "  ")
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
 	}
 
 	return saveToFile(data, savePath)
 }
 
 // GetProjectName retrieves a single project name (helper for tests)
-func GetProjectName(cli client.ClientInterface, projectID int64) (string, error) {
-	proj, err := cli.GetProject(context.Background(), projectID)
+func GetProjectName(ctx context.Context, cli client.ClientInterface, projectID int64) (string, error) {
+	proj, err := cli.GetProject(ctx, projectID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get project %d: %w", projectID, err)
 	}

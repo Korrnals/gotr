@@ -22,6 +22,8 @@ var (
 	Commit  = "unknown"
 	Date    = "unknown"
 	userHomeDir = os.UserHomeDir
+	// processExit is the exit function; overridable in tests.
+	processExit = os.Exit
 )
 
 // rootCmd is the top-level command: gotr
@@ -117,25 +119,28 @@ func Execute(ctx context.Context) {
 }
 
 // GetClient retrieves the HTTP client from the command context.
-func GetClient(cmd *cobra.Command) *client.HTTPClient {
-	val := cmd.Context().Value(httpClientKey)
-	if val == nil {
-		panic("gotr: HTTP client not initialized. Check --username, --api-key and --url")
-	}
-	return val.(*client.HTTPClient)
+func GetClient(cmd *cobra.Command) client.ClientInterface {
+	return GetClientFromCtx(cmd.Context())
 }
 
-// GetClientInterface retrieves the client as an interface (used with mocks in tests).
-func GetClientInterface(cmd *cobra.Command) client.ClientInterface {
-	val := cmd.Context().Value(httpClientKey)
+// GetClientFromCtx retrieves the HTTP client from a context.
+// It satisfies client.GetClientFunc and decouples from cobra.
+// Terminates the process with a clear message if the client is missing
+// (programming error — PersistentPreRunE must set the client first).
+func GetClientFromCtx(ctx context.Context) client.ClientInterface {
+	val := ctx.Value(httpClientKey)
 	if val == nil {
-		panic("gotr: HTTP client not initialized. Check --username, --api-key and --url")
+		fmt.Fprintln(os.Stderr, "FATAL: HTTP client not initialized. Check --username, --api-key and --url")
+		processExit(1)
+		return nil // unreachable
 	}
-	// Support both *client.HTTPClient and *client.MockClient
-	if cli, ok := val.(client.ClientInterface); ok {
-		return cli
+	cli, ok := val.(client.ClientInterface)
+	if !ok {
+		fmt.Fprintln(os.Stderr, "FATAL: stored value does not implement ClientInterface")
+		processExit(1)
+		return nil // unreachable
 	}
-	return val.(*client.HTTPClient)
+	return cli
 }
 
 func initConfig() {

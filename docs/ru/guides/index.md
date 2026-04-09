@@ -11,6 +11,7 @@ Language: Русский | [English](../../en/guides/index.md)
     - [Интерактивный режим](interactive-mode.md)
     - [Прогресс](progress.md)
     - [Каталог команд](commands/index.md)
+    - [Инструкции](instructions/index.md)
   - [Архитектура](../architecture/index.md)
   - [Эксплуатация](../operations/index.md)
   - [Отчёты](../reports/index.md)
@@ -30,6 +31,12 @@ Language: Русский | [English](../../en/guides/index.md)
 Полный справочник 32+ CLI-команд, организованных по 4 группам.
 
 - [Каталог команд](commands/index.md) — полный навигатор со структурой **CRUD операции**, **Основные ресурсы**, **Специальные ресурсы**
+
+### Инструкции
+
+Готовые пошаговые рецепты для типовых задач.
+
+- [Инструкции](instructions/index.md) — миграция данных, CRUD-операции, сравнение проектов
 
 ### Специальные режимы
 

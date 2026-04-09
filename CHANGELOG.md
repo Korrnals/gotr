@@ -9,6 +9,10 @@
 
 ## [Unreleased]
 
+---
+
+## [3.0.0] - 2026-04-09
+
 ### Added
 
 #### Stage 13.5: Quality Hardening & Full Audit

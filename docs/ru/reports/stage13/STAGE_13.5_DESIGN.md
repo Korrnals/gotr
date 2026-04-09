@@ -179,6 +179,55 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 ---
 
+## Phase 6.5 — Remediation: DRY CRUD + Compare Decouple
+
+**Цель:** Закрыть все finding'ы аудита Phase 6 (B-1, B-5) + i18n-унификация.
+
+### 6.5.1. i18n — Унификация языка в кодовой базе
+
+- [x] Pass 1: Russian→English в тестовых описаниях и комментариях (8 файлов)
+- [x] Pass 2: Полный перевод всех 1738 кириллических строк в 170+ Go-файлах
+- [x] Верификация: `grep -rn '[а-яА-ЯёЁ]' --include='*.go'` → 0 совпадений
+- [x] Build + Tests + Lint — PASS
+- [x] Commit: `i18n: translate all Russian text to English in Go source files`
+
+### 6.5.2. B-5 — Compare Resource Registry ✅
+
+**Проблема:** `cmd/compare/all.go` жёстко вызывает 12 compare-функций последовательно. Добавление новой сущности → правка all.go.
+
+**Решение:** Registry pattern — `resourceEntry` struct + `resourceRegistry` массив.
+
+- [x] `resourceEntry` struct (displayName, key, label, accessor, factory)
+- [x] `resourceRegistry` — единый массив 12 записей
+- [x] `newSimpleResourceEntry()` factory для 9 простых ресурсов
+- [x] `init()` автозаполняет `compareAllStages` из registry
+- [x] `runCompareAllResources()` строит steps из registry
+- [x] Верификация: `go test ./cmd/compare/... -count=1` — PASS (3.5s)
+- [x] all.go: 726→~680 LOC, тройное дублирование устранено
+
+### 6.5.3. B-1 — DRY CRUD через Generic Executor ✅
+
+**Проблема:** `cmd/add.go` (1200 LOC), `cmd/update.go` (850 LOC) — 70% boilerplate.
+
+**Решение:** `internal/crud/executor.go` — Go generics `Execute[Req, Resp]` + `DryRun[Req]`.
+Для каждой сущности — единственная `buildXxxReq(cmd, validate bool)` функция, shared между execute и dry-run.
+
+| Шаг | Описание | Статус |
+| --- | --- | --- |
+| 1 | `internal/crud/executor.go` — `Execute[Req, Resp]` + `DryRun[Req]` (79 LOC) | ✅ Done |
+| 2 | `internal/crud/executor_test.go` — 7 тестов (162 LOC) | ✅ Done |
+| 3 | cmd/add.go: 7 buildReq + 7 slim addXxx + 7 slim dryRunXxx | ✅ Done |
+| 4 | cmd/update.go: 6 buildReq + 6 slim updateXxx + 6 slim dryRunXxx | ✅ Done |
+| 5 | cmd/delete.go — уже лаконичен (300 LOC), рефакторинг не требуется | ✅ Skip |
+| 6 | Верификация: 260 тестов PASS, 0 lint issues, vet OK | ✅ Done |
+
+**Результат:**
+- add.go: 1200→1057 LOC (-143, -12%)
+- update.go: 850→697 LOC (-153, -18%)
+- Net: -217 LOC production code + 241 LOC (executor+tests)
+
+---
+
 ## Phase 7 — Closure
 
 - [ ] Обновить docs/reports (quality-metrics, audit-report)

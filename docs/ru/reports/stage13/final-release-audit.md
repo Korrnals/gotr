@@ -355,9 +355,71 @@ pkg/* → (нет внутренних зависимостей)
 
 ### Рекомендуемый дополнительный scope
 
-5. Исправить C-1 (defer в цикле) — реальная production-утечка
-6. Обновить таблицу библиотек в README (D-3)
-7. Обновить golangci-lint до версии, совместимой с Go 1.25
+5. Исправить C-1 (defer в цикле) — реальная production-утечка ✅ Fixed (F-1)
+6. Обновить таблицу библиотек в README (D-3) ✅ Fixed
+7. Обновить golangci-lint до версии, совместимой с Go 1.25 ✅ v2.11.4
+
+---
+
+## 9. Remediation — Phase 6.5 Quality Hardening
+
+**Статус:** В процессе (2026-04-08 — 2026-04-09)
+
+### Закрытые F-findings (Critical/High fixes)
+
+| ID | Описание | Commit | Статус |
+| --- | --- | --- | --- |
+| F-1 | C-1 — defer в цикле (cases.go) | Перенесён ранее | ✅ Verified |
+| F-2 | C-2 — bounded parallelism (migration/import.go, semaphore=10) | `41cf03b` | ✅ Done |
+| F-3 | compare/types.go — GetProjectName принимает ctx | `41cf03b` | ✅ Done |
+| F-4 | sync.go — context.Background()→TODO() | `41cf03b` | ✅ Done |
+| F-5 | concurrent/pool.go — ctx в NewWorkerPool/ParallelMap/ParallelForEach | `41cf03b` | ✅ Done |
+| F-6 | models/config — убран ui.Infof из модели в caller | `41cf03b` | ✅ Done |
+| F-7 | completion.go — Run→RunE с error wrapping | `41cf03b` | ✅ Done |
+
+### Закрытые B-findings (Backlog refactoring)
+
+| ID | Описание | Commit | Статус |
+| --- | --- | --- | --- |
+| B-2 | GetClient/GetClientFromCtx возвращают ClientInterface | `891034d` | ✅ Done |
+| B-3 | Service Output/PrintSuccess прокси удалены, прямые вызовы output | `891034d` | ✅ Done |
+| B-4 | ClientInterface унифицирован по всем cmd/ и service/ | `891034d` | ✅ Done |
+| B-6 | doc.go — 18 пустых удалены, 8 заполнены | `669ef3c` | ✅ Done |
+| B-7 | MarkFlagRequired error wrapping | `891034d` | ✅ Done |
+| i18n | 1738 строк Russian→English в 170+ Go-файлах | `b1dce38`, `f077d8c` | ✅ Done |
+
+### B-1: DRY CRUD — Generic Executor (Go Generics)
+
+**Проблема:** `cmd/add.go` (1100 LOC), `cmd/update.go` (844 LOC) — 70% boilerplate.
+
+**Решение:** `internal/crud/executor.go` — generic `Execute[Req, Resp]` + `DryRun[Req]` (Go 1.18+ generics).
+Общая логика JSON/flags парсинга, API-вызова и вывода — в двух generic-функциях.
+Для каждой сущности — единственная `buildXxxReq(cmd, validate)` функция, shared между execute и dry-run.
+
+| Шаг | Описание | Статус |
+| --- | --- | --- |
+| 1 | `internal/crud/executor.go` — Execute + DryRun generic functions | ✅ Done |
+| 2 | `internal/crud/executor_test.go` — 7 тестов (JSON/flags/errors) | ✅ Done |
+| 3 | Рефакторинг cmd/add.go: 7 buildReq + 7 slim addXxx + 7 slim dryRunXxx | ✅ Done |
+| 4 | Рефакторинг cmd/update.go: 6 buildReq + 6 slim updateXxx + 6 slim dryRunXxx | ✅ Done |
+| 5 | cmd/delete.go — уже лаконичен, не требует рефакторинга | ✅ Skip |
+| 6 | Финальная верификация: 260 тестов PASS, 0 lint issues | ✅ Done |
+
+**Результат:** add.go 1200→1057 LOC (-143), update.go 850→697 LOC (-153), net -217 LOC prod code.
+
+### B-5: Compare Resource Registry
+
+**Проблема:** `cmd/compare/all.go` — 12 хардкодных вызовов compare-функций (тройное дублирование).
+
+**Решение:** `resourceRegistry` — единый массив `resourceEntry` (display, key, accessor, factory).
+
+| Шаг | Описание | Статус |
+| --- | --- | --- |
+| 1 | `resourceEntry` struct + `resourceRegistry` (12 entries) | ✅ Done |
+| 2 | `newSimpleResourceEntry()` factory для 9 simple ресурсов | ✅ Done |
+| 3 | Верификация тестов cmd/compare/ | ✅ Done |
+
+**Результат:** all.go 726→~680 LOC, тройное дублирование устранено, добавление ресурса = 1 строка.
 
 ### Post-release backlog
 

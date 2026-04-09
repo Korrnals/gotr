@@ -522,6 +522,7 @@ Interpretation:
 | Go files total | 411 | 528 |
 | Test files | — | 250 |
 | Test packages (ok) | 42 | **43/43** |
+| Total tests | — | **3615+** |
 | go build | PASS | **PASS** |
 | go vet | PASS | **PASS** |
 | go test -race | PASS | **PASS (0 data races)** |
@@ -531,9 +532,9 @@ Interpretation:
 
 ### Stage 13.5 diff (vs release-3.0.0)
 
-- 25 коммитов
-- 327 файлов затронуто
-- +6 006 / −4 623 строк
+- 28 коммитов
+- 336 файлов затронуто
+- +6 215 / −4 641 строк
 
 ### Выполненные фазы
 
@@ -559,6 +560,8 @@ Interpretation:
 | audit-5 | `1832ca5` | io.LimitReader on all io.ReadAll, fd leak, os.Remove |
 | audit-6 | `2554803` | panic→os.Exit, save-filtered feature, 3 new tests |
 | audit-7 | `c3733ae` | stdin reading for bdds add, 2 new tests |
+| phase-7a | `cc1cc3e` | docs sync: attachments/sync/bdds command guides (EN+RU) |
+| phase-7b | `9abccc5` | harden formatAPIError io.ReadAll, fix markdown report table |
 
 ### Дополнительные работы
 

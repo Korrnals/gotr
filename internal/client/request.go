@@ -21,10 +21,13 @@ type ResponseData struct {
 	Duration   time.Duration       `json:"duration"`
 }
 
+// maxResponseBodySize is the upper limit for reading HTTP response bodies (50 MB).
+const maxResponseBodySize = 50 * 1024 * 1024
+
 // ReadResponse reads any HTTP response into a generic ResponseData struct.
 func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
 	// Read the raw response body
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return ResponseData{}, err
 	}
@@ -59,7 +62,7 @@ func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, err := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 		if err != nil {
 			return fmt.Errorf("API error: %s, failed to read error body: %w", resp.Status, err)
 		}
@@ -76,10 +79,18 @@ func (c *HTTPClient) ReadJSONResponse(ctx context.Context, resp *http.Response, 
 func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseData, outputFormat string) {
 	switch outputFormat {
 	case "json":
-		pretty, _ := json.MarshalIndent(data.Body, "", "  ")
+		pretty, err := json.MarshalIndent(data.Body, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to marshal response body: %v\n", err)
+			return
+		}
 		fmt.Println(string(pretty))
 	case "json-full":
-		pretty, _ := json.MarshalIndent(data, "", "  ")
+		pretty, err := json.MarshalIndent(data, "", "  ")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to marshal response data: %v\n", err)
+			return
+		}
 		fmt.Println(string(pretty))
 	default: // table
 		printTable(data)
@@ -88,15 +99,21 @@ func (c *HTTPClient) PrintResponseFromData(ctx context.Context, data ResponseDat
 
 // SaveResponseToFile saves a generic ResponseData to a file.
 func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, filename, outputFormat string) error {
-	var toSave []byte
+	var (
+		toSave []byte
+		err    error
+	)
 	switch outputFormat {
 	case "json":
-		toSave, _ = json.MarshalIndent(data.Body, "", "  ")
+		toSave, err = json.MarshalIndent(data.Body, "", "  ")
 	case "json-full":
-		toSave, _ = json.MarshalIndent(data, "", "  ")
+		toSave, err = json.MarshalIndent(data, "", "  ")
 	default: // table
 		// For table format, fall back to json-full
-		toSave, _ = json.MarshalIndent(data, "", "  ")
+		toSave, err = json.MarshalIndent(data, "", "  ")
+	}
+	if err != nil {
+		return fmt.Errorf("failed to marshal response data: %w", err)
 	}
 
 	if err := os.WriteFile(filename, toSave, 0o644); err != nil {

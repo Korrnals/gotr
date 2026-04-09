@@ -53,7 +53,10 @@ func (c *HTTPClient) AddGroup(ctx context.Context, projectID int64, name string,
 		"name":     name,
 		"user_ids": userIDs,
 	}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -75,7 +78,10 @@ func (c *HTTPClient) UpdateGroup(ctx context.Context, groupID int64, name string
 		"name":     name,
 		"user_ids": userIDs,
 	}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -190,7 +196,10 @@ func (c *HTTPClient) GetDataset(ctx context.Context, datasetID int64) (*data.Dat
 func (c *HTTPClient) AddDataset(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
 	endpoint := fmt.Sprintf("add_dataset/%d", projectID)
 	req := map[string]string{"name": name}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -209,7 +218,10 @@ func (c *HTTPClient) AddDataset(ctx context.Context, projectID int64, name strin
 func (c *HTTPClient) UpdateDataset(ctx context.Context, datasetID int64, name string) (*data.Dataset, error) {
 	endpoint := fmt.Sprintf("update_dataset/%d", datasetID)
 	req := map[string]string{"name": name}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -258,7 +270,10 @@ func (c *HTTPClient) GetVariables(ctx context.Context, datasetID int64) (data.Ge
 func (c *HTTPClient) AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
 	endpoint := fmt.Sprintf("add_variable/%d", datasetID)
 	req := map[string]string{"name": name}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -277,7 +292,10 @@ func (c *HTTPClient) AddVariable(ctx context.Context, datasetID int64, name stri
 func (c *HTTPClient) UpdateVariable(ctx context.Context, variableID int64, name string) (*data.Variable, error) {
 	endpoint := fmt.Sprintf("update_variable/%d", variableID)
 	req := map[string]string{"name": name}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -326,7 +344,10 @@ func (c *HTTPClient) GetBDD(ctx context.Context, caseID int64) (*data.BDD, error
 func (c *HTTPClient) AddBDD(ctx context.Context, caseID int64, content string) (*data.BDD, error) {
 	endpoint := fmt.Sprintf("add_bdd/%d", caseID)
 	req := map[string]string{"content": content}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -347,7 +368,10 @@ func (c *HTTPClient) AddBDD(ctx context.Context, caseID int64, content string) (
 func (c *HTTPClient) UpdateTestLabels(ctx context.Context, testID int64, labels []string) error {
 	endpoint := fmt.Sprintf("update_test_labels/%d", testID)
 	req := data.UpdateLabelsRequest{Labels: labels}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -365,7 +389,10 @@ func (c *HTTPClient) UpdateTestsLabels(ctx context.Context, runID int64, testIDs
 		TestIDs: testIDs,
 		Labels:  labels,
 	}
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -411,7 +438,10 @@ func (c *HTTPClient) GetLabel(ctx context.Context, labelID int64) (*data.Label, 
 // UpdateLabel updates a label.
 func (c *HTTPClient) UpdateLabel(ctx context.Context, labelID int64, req data.UpdateLabelRequest) (*data.Label, error) {
 	endpoint := fmt.Sprintf("update_label/%d", labelID)
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {

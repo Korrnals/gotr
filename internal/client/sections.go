@@ -141,7 +141,10 @@ func (c *HTTPClient) GetSection(ctx context.Context, sectionID int64) (*data.Sec
 
 // AddSection creates a new section in a project's suite.
 func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_section/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -159,7 +162,10 @@ func (c *HTTPClient) AddSection(ctx context.Context, projectID int64, req *data.
 
 // UpdateSection updates a section (name, description, parent_id for moving).
 func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_section/%d", sectionID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {

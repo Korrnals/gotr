@@ -43,7 +43,10 @@ func (c *HTTPClient) GetPlans(ctx context.Context, projectID int64) (data.GetPla
 func (c *HTTPClient) AddPlan(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan/%d", projectID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error creating plan: %w", err)
@@ -62,7 +65,10 @@ func (c *HTTPClient) AddPlan(ctx context.Context, projectID int64, req *data.Add
 func (c *HTTPClient) UpdatePlan(ctx context.Context, planID int64, req *data.UpdatePlanRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan/%d", planID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan %d: %w", planID, err)
@@ -113,7 +119,10 @@ func (c *HTTPClient) DeletePlan(ctx context.Context, planID int64) error {
 func (c *HTTPClient) AddPlanEntry(ctx context.Context, planID int64, req *data.AddPlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("add_plan_entry/%d", planID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error adding plan entry: %w", err)
@@ -132,7 +141,10 @@ func (c *HTTPClient) AddPlanEntry(ctx context.Context, planID int64, req *data.A
 func (c *HTTPClient) UpdatePlanEntry(ctx context.Context, planID int64, entryID string, req *data.UpdatePlanEntryRequest) (*data.Plan, error) {
 	endpoint := fmt.Sprintf("update_plan_entry/%d/%s", planID, entryID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
 		return nil, fmt.Errorf("error updating plan entry %s: %w", entryID, err)

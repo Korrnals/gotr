@@ -396,14 +396,20 @@ func printIDMappingTable(items []CommonItemInfo) {
 //
 // Deprecated: use ui.JSON(cmd, result) directly in new code
 func printJSON(result CompareResult) error {
-	data, _ := json.MarshalIndent(result, "", "  ")
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal result: %w", err)
+	}
 	fmt.Println(string(data))
 	return nil
 }
 
 // printYAML prints the result as YAML
 func printYAML(result CompareResult) error {
-	data, _ := yaml.Marshal(result)
+	data, err := yaml.Marshal(result)
+	if err != nil {
+		return fmt.Errorf("failed to marshal result: %w", err)
+	}
 	fmt.Println(string(data))
 	return nil
 }

@@ -42,7 +42,10 @@ func (c *HTTPClient) GetRuns(ctx context.Context, projectID int64) (data.GetRuns
 // AddRun creates a new test run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#addrun
 func (c *HTTPClient) AddRun(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_run/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -61,7 +64,10 @@ func (c *HTTPClient) AddRun(ctx context.Context, projectID int64, req *data.AddR
 // UpdateRun updates an existing test run.
 // https://support.testrail.com/hc/en-us/articles/7077816294684-Runs#updaterun
 func (c *HTTPClient) UpdateRun(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_run/%d", runID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {

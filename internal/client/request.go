@@ -137,6 +137,10 @@ func printTable(data ResponseData) {
 		}
 	}
 	fmt.Printf("\nBody:\n")
-	jsonBody, _ := json.MarshalIndent(data.Body, "", "  ")
+	jsonBody, err := json.MarshalIndent(data.Body, "", "  ")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to marshal response body: %v\n", err)
+		return
+	}
 	fmt.Println(string(jsonBody))
 }

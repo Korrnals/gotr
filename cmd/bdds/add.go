@@ -2,6 +2,7 @@ package bdds
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
@@ -94,7 +95,19 @@ func readBDDContent(cmd *cobra.Command) (string, error) {
 		return string(data), nil
 	}
 
-	// TODO: Read from stdin when no file is specified.
-	// For now, return empty string; validation will report the error.
+	// Read from stdin if data is being piped.
+	stat, err := stdinStat()
+	if err == nil && (stat.Mode()&os.ModeCharDevice) == 0 {
+		data, err := io.ReadAll(io.LimitReader(stdinReader(), 10<<20)) // 10 MiB limit
+		if err != nil {
+			return "", fmt.Errorf("failed to read from stdin: %w", err)
+		}
+		return string(data), nil
+	}
+
 	return "", nil
 }
+
+// Indirection points for testing.
+var stdinStat = func() (os.FileInfo, error) { return os.Stdin.Stat() }
+var stdinReader = func() io.Reader { return os.Stdin }

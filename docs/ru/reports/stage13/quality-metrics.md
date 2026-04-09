@@ -513,6 +513,59 @@ Interpretation:
 - Delta vs previous package-local snapshot (87.0%): **+1.2%**
 - COV-5 status: **IN PROGRESS**.
 
+## Stage 13.5 Closure Snapshot (2026-04-09)
+
+### Финальные метрики
+
+| Метрика | Stage 13.0 baseline | Stage 13.5 final |
+|---------|---------------------|------------------|
+| Go files total | 411 | 528 |
+| Test files | — | 250 |
+| Test packages (ok) | 42 | **43/43** |
+| go build | PASS | **PASS** |
+| go vet | PASS | **PASS** |
+| go test -race | PASS | **PASS (0 data races)** |
+| golangci-lint findings | ~290 | **0** |
+| TODO/FIXME/HACK markers | — | **0** |
+| Audit verdict | CONDITIONAL PASS | **UNCONDITIONAL PASS** |
+
+### Stage 13.5 diff (vs release-3.0.0)
+
+- 25 коммитов
+- 327 файлов затронуто
+- +6 006 / −4 623 строк
+
+### Выполненные фазы
+
+| Фаза | Статус | Ключевые результаты |
+|------|--------|---------------------|
+| Phase 1 — api_paths.go | DONE | +14 endpoints, полный реестр |
+| Phase 2 — CLI-обёртки | DONE | `attachments list --for-project` |
+| Phase 3 — Coverage 100% | DONE | cmd/sync,get,run,result,ui @ 100% |
+| Phase 4 — Lint fixes | DONE | 290 → 0 findings (errcheck, staticcheck, gocritic, gocyclo) |
+| Phase 5 — Validation | DONE | 42/42 PASS, race: 0, min coverage 97.4% |
+| Phase 6 — Audit | DONE | 7 audit rounds (audit-1 → audit-7), все findings закрыты |
+| Phase 7 — Closure | DONE | Документация, CHANGELOG, PR |
+
+### Аудит-история (Phase 6)
+
+| Раунд | Коммит | Scope |
+|-------|--------|-------|
+| audit-1 | `41cf03b` | F-2..F-7: context, bounded parallelism, decouple, errors |
+| audit-1b | `891034d` | B-2,B-3,B-4,B-7: ClientInterface, service decouple, unlambda |
+| audit-2 | `de6a195` | E-1..E-4 + I-1..I-3: final hardening pass |
+| audit-3 | `19cab1c` | json.Marshal errors across codebase (45+ fixes, 17 files) |
+| audit-4 | `bab05c3` | safe type assertions + getwd error handling |
+| audit-5 | `1832ca5` | io.LimitReader on all io.ReadAll, fd leak, os.Remove |
+| audit-6 | `2554803` | panic→os.Exit, save-filtered feature, 3 new tests |
+| audit-7 | `c3733ae` | stdin reading for bdds add, 2 new tests |
+
+### Дополнительные работы
+
+- **i18n**: полный перевод Russian→English в Go source (2 прохода, 1738+ строк)
+- **refactor**: generic CRUD executor, compare resource registry
+- **feat**: `save-filtered` для sync shared-steps, stdin для `bdds add`
+
 ---
 
 ← [Stage 13](index.md) · [Отчёты](../index.md) · [Документация](../../index.md)

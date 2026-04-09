@@ -30,7 +30,7 @@ A professional command-line interface for TestRail API v2. Designed for QA engin
 `gotr` provides a comprehensive toolkit for TestRail operations:
 
 - **Data Operations** — Retrieve and manage test cases, suites, sections, shared steps, runs, results, milestones, plans, and more
-- **Complete API Coverage** — All 106 TestRail API v2 endpoints implemented (Stage 4 complete)
+- **Complete API Coverage** — All 121 TestRail API v2 endpoints implemented (Stage 4 complete)
 - **Project Synchronization** — Migrate entities between projects with intelligent duplicate detection
 - **Interactive Workflow** — Guided selection of projects and suites eliminates the need to memorize IDs
 - **Real-time Progress** — Visual progress bars with channel-based updates for all long-running operations
@@ -70,7 +70,7 @@ gotr self-test
 
 | Feature | Description |
 |---------|-------------|
-| **Full API Coverage** | 106/106 TestRail API v2 endpoints implemented |
+| **Full API Coverage** | 121/121 TestRail API v2 endpoints implemented |
 | **Interactive Mode** | Visual selection for projects, suites, and migration targets |
 | **Data Synchronization** | Migrate cases, shared steps, suites, and sections between projects |
 | **Test Run Management** | Create runs, add results, and track test execution |

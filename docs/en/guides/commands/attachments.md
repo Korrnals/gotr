@@ -50,6 +50,7 @@ gotr attachments [command]
 | Subcommand | Description |
 | --- | --- |
 | `add` | Add an attachment to a resource |
+| `list` | List attachments for case, plan, plan-entry, project, run, and test |
 
 ## Flags ⚙️
 
@@ -116,6 +117,17 @@ gotr attachments add --help && gotr attachments add
 
 ---
 
+### ▶️ Scenario 5: List project attachments
+🎯 **Goal:** inspect already uploaded files at project scope.
+
+```bash
+gotr attachments list project 1
+```
+
+✅ **Why this matters:** helps validate migration/upload outcomes without opening UI manually.
+
+---
+
 ## ⚡ Quick Start (30 seconds)
 
 1. Validate syntax and available flags quickly:
@@ -169,7 +181,7 @@ gotr attachments add --help
   > ---
 
 - ❓ **Question:** Which subcommands should be validated first?
-  > ↪️ **Answer:** recommended starting set: add. Begin with the highest-frequency operation in your release workflow.
+  > ↪️ **Answer:** recommended starting set: add, list. Begin with the highest-frequency operation in your release workflow.
   >
   > ---
 

@@ -25,6 +25,7 @@ type ResponseData struct {
 const maxResponseBodySize = 50 * 1024 * 1024
 
 // ReadResponse reads any HTTP response into a generic ResponseData struct.
+// The caller is responsible for closing resp.Body after this call returns.
 func (c *HTTPClient) ReadResponse(ctx context.Context, resp *http.Response, duration time.Duration, outputFormat string) (ResponseData, error) {
 	// Read the raw response body
 	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))

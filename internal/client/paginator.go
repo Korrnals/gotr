@@ -83,7 +83,7 @@ func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, b
 		}
 
 		// Explicit close inside loop body — avoids defer accumulation
-		body, readErr := io.ReadAll(resp.Body)
+		body, readErr := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 		resp.Body.Close()
 		if readErr != nil {
 			return nil, fmt.Errorf("read body %s (offset=%d): %w", endpoint, offset, readErr)

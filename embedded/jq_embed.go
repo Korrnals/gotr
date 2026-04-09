@@ -60,13 +60,13 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 
 	// Write the embedded binary to the temp file with restricted permissions
 	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0o700); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath) // best-effort cleanup
 		return err
 	}
 
 	// Explicitly set the executable permission
 	if err := os.Chmod(tmpPath, 0o755); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath) // best-effort cleanup
 		return fmt.Errorf("{jq_embed} - failed to set executable permissions: %w", err)
 	}
 
@@ -77,12 +77,14 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath) // best-effort cleanup
 		return fmt.Errorf("{jq_embed} - embedded jq error: %w", err)
 	}
 
 	// Clean up the temp binary
-	os.Remove(tmpPath)
+	if err := os.Remove(tmpPath); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to remove temp jq binary %s: %v\n", tmpPath, err)
+	}
 
 	return nil
 }

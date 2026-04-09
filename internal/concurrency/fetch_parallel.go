@@ -143,7 +143,7 @@ func FetchParallel[T any](
 	}
 
 	if len(collectedErrors) > 0 {
-		return results, fmt.Errorf("%d errors during parallel fetch: %v", len(collectedErrors), collectedErrors[0])
+		return results, fmt.Errorf("%d errors during parallel fetch: %w", len(collectedErrors), collectedErrors[0])
 	}
 
 	return results, nil

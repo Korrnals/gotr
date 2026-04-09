@@ -445,12 +445,19 @@ func printCSV(result CompareResult) error {
 // saveCompareResult saves the result to a file
 func saveCompareResult(result CompareResult, format, savePath string) error {
 	var data []byte
+	var err error
 
 	switch format {
 	case "json":
-		data, _ = json.MarshalIndent(result, "", "  ")
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
 	case "yaml":
-		data, _ = yaml.Marshal(result)
+		data, err = yaml.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("failed to marshal YAML: %w", err)
+		}
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
@@ -580,17 +587,27 @@ func saveTableToFile(cmd *cobra.Command, result CompareResult, project1Name, pro
 // saveToFileWithPath saves the result to a specific file path
 func saveToFileWithPath(result CompareResult, format, savePath string) error {
 	var data []byte
+	var err error
 
 	switch format {
 	case "json":
-		data, _ = json.MarshalIndent(result, "", "  ")
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
 	case "yaml":
-		data, _ = yaml.Marshal(result)
+		data, err = yaml.Marshal(result)
+		if err != nil {
+			return fmt.Errorf("failed to marshal YAML: %w", err)
+		}
 	case "csv":
 		return saveCSV(result, savePath)
 	default:
 		// Default to JSON for unknown formats
-		data, _ = json.MarshalIndent(result, "", "  ")
+		data, err = json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
 	}
 
 	return saveToFile(data, savePath)

@@ -35,7 +35,7 @@ func TestVersion_Properties(t *testing.T) {
 // TestGetClient_NotNilContext verifies that GetClient requires a context
 func TestGetClient_NotNilContext(t *testing.T) {
 	// GetClient requires a context with a client
-	// If the context is empty, the function panics
+	// If the context is empty, the function exits with code 1
 	// We only verify that the function exists
 	assert.NotNil(t, GetClient)
 }
@@ -43,7 +43,7 @@ func TestGetClient_NotNilContext(t *testing.T) {
 // TestGetClientInterface_NotNilContext verifies that GetClient requires a context
 func TestGetClientInterface_NotNilContext(t *testing.T) {
 	// GetClient requires a context with a client
-	// If the context is empty, the function panics
+	// If the context is empty, the function exits with code 1
 	// We only verify that the function exists
 	assert.NotNil(t, GetClient)
 }
@@ -56,12 +56,18 @@ func TestRootCmd_NonInteractiveFlagRegistered(t *testing.T) {
 }
 
 func TestGetClient_PanicWithoutClient(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
 	assert.Panics(t, func() {
 		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
 func TestGetClient_Success(t *testing.T) {
@@ -74,12 +80,18 @@ func TestGetClient_Success(t *testing.T) {
 }
 
 func TestGetClient_PanicOnUnexpectedType(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, struct{}{}))
 
 	assert.Panics(t, func() {
 		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
 // TestGetClient_WithMock verifies that GetClient works with a mock client
@@ -94,21 +106,33 @@ func TestGetClient_WithMock(t *testing.T) {
 }
 
 func TestGetClientInterface_PanicWithoutClient(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.Background())
 
 	assert.Panics(t, func() {
 		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
 func TestGetClientInterface_PanicOnUnexpectedType(t *testing.T) {
+	var exitCode int
+	old := processExit
+	processExit = func(code int) { exitCode = code; panic("exit") }
+	defer func() { processExit = old }()
+
 	cmd := &cobra.Command{}
 	cmd.SetContext(context.WithValue(context.Background(), httpClientKey, struct{}{}))
 
 	assert.Panics(t, func() {
 		_ = GetClient(cmd)
 	})
+	assert.Equal(t, 1, exitCode)
 }
 
 func TestExecute_SuccessPath(t *testing.T) {

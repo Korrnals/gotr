@@ -204,9 +204,16 @@ func (c *HTTPClient) uploadAttachment(ctx context.Context, endpoint, filePath st
 
 	// Add the file to the form
 	fileName := filepath.Base(filePath)
-	part, _ := writer.CreateFormFile("attachment", fileName)
-	_, _ = io.Copy(part, file)
-	_ = writer.Close()
+	part, err := writer.CreateFormFile("attachment", fileName)
+	if err != nil {
+		return nil, fmt.Errorf("error creating form file: %w", err)
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return nil, fmt.Errorf("error copying file to form: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("error closing multipart writer: %w", err)
+	}
 
 	// Use DoRequest for the upload
 	resp, err := c.DoRequest(ctx, "POST", endpoint, &requestBody, map[string]string{

@@ -58,8 +58,8 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	tmpPath := tmpFile.Name()
 	tmpFile.Close() // close before writing to avoid "text file busy"
 
-	// Write the embedded binary to the temp file
-	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0o644); err != nil {
+	// Write the embedded binary to the temp file with restricted permissions
+	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0o700); err != nil {
 		os.Remove(tmpPath)
 		return err
 	}

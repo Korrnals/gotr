@@ -58,7 +58,7 @@ var testClientKey = &struct{}{}
 func SetTestClient(cmd *cobra.Command, mockClient client.ClientInterface) {
 	ctx := cmd.Context()
 	if ctx == nil {
-		ctx = context.TODO()
+		ctx = context.Background()
 	}
 	cmd.SetContext(context.WithValue(ctx, testClientKey, mockClient))
 }

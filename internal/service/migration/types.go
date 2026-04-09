@@ -70,7 +70,9 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 // Close shuts down the migration, flushing log buffers to disk.
 func (m *Migration) Close() error {
 	if m.logger != nil {
-		_ = m.logger.Sync() // flush zap buffer
+		if err := m.logger.Sync(); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to flush migration log: %v\n", err)
+		}
 	}
 	return nil
 }

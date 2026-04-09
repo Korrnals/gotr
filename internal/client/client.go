@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -98,6 +99,11 @@ func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...Clie
 	for _, o := range opts {
 		o(&cfg)
 	}
+
+	if cfg.insecure {
+		fmt.Fprintln(os.Stderr, "WARNING: TLS certificate verification is disabled (--insecure). Connection is vulnerable to MITM attacks.")
+	}
+
 	// Configure HTTP transport.
 	// MaxConnsPerHost MUST match actual concurrency:
 	// 2 projects × 8 suites × 10 pages = 160 concurrent requests.

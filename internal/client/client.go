@@ -216,7 +216,7 @@ func (c *HTTPClient) Post(ctx context.Context, endpoint string, body io.Reader, 
 func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 	defer resp.Body.Close()
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	bodyBytes, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
 	if err != nil {
 		return fmt.Errorf("API returned %s, failed to read error body: %w", resp.Status, err)
 	}

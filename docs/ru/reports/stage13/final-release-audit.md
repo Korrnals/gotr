@@ -79,7 +79,7 @@ Language: Русский | [English](../../../en/reports/stage13/final-release-a
 
 ### Граф зависимостей
 
-```
+```text
 cmd/* → internal/service, internal/client, internal/output, internal/ui,
         internal/flags, internal/interactive, internal/models/data
 internal/service → internal/client, internal/models/data, internal/output
@@ -310,8 +310,8 @@ pkg/* → (нет внутренних зависимостей)
 
 ### Блокеры (MUST FIX перед PR)
 
-| # | Severity | Область | Описание |
-| --- | --- | --- | --- |
+| # | Severity | Область | Описание | Статус |
+| --- | --- | --- | --- | --- |
 | **R-1** | **CRITICAL** | Race | `TestAggregator_StatsAccuracy` — data race на shared переменной | ✅ Fixed |
 | **R-2** | **CRITICAL** | Race | `TestWithProgressMonitor` — `mockMonitor.count++` без sync | ✅ Fixed |
 | **D-1** | **HIGH** | README | Бейдж версии `2.8.0` → `3.0.0` | ✅ Fixed |

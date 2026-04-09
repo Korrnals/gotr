@@ -24,19 +24,88 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var compareAllStages = []string{
-	"cases",
-	"suites",
-	"sections",
-	"shared steps",
-	"runs",
-	"plans",
-	"milestones",
-	"datasets",
-	"groups",
-	"labels",
-	"templates",
-	"configurations",
+var compareAllStages []string // populated from resourceRegistry in init()
+
+func init() {
+	compareAllStages = make([]string, len(resourceRegistry))
+	for i, r := range resourceRegistry {
+		compareAllStages[i] = r.displayName
+	}
+}
+
+// resourceEntry defines a single compare-all resource with its metadata,
+// field accessor, and comparison function factory.
+type resourceEntry struct {
+	displayName string                           // human-readable name for progress display
+	key         string                           // key for errors and result assignment
+	label       string                           // label for partial/interrupted results
+	field       func(*allResult) **CompareResult // pointer-to-field accessor
+	// newCompare creates a comparison closure bound to specific execution context.
+	// Resources that don't need cmd (simple ones) ignore the cmd parameter.
+	newCompare func(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface,
+		pid1, pid2 int64, quiet bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error)
+}
+
+var resourceRegistry = []resourceEntry{
+	{
+		displayName: "cases", key: "cases", label: "cases",
+		field: func(r *allResult) **CompareResult { return &r.Cases },
+		newCompare: func(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, _ bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				r, _, err := compareAllCasesFn(ctx, cmd, cli, pid1, pid2, "title", preloadedSuites)
+				return r, err
+			}
+		},
+	},
+	{
+		displayName: "suites", key: "suites", label: "suites",
+		field: func(r *allResult) **CompareResult { return &r.Suites },
+		newCompare: func(ctx context.Context, _ *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				return compareAllSuitesFn(ctx, cli, pid1, pid2, quiet, preloadedSuites)
+			}
+		},
+	},
+	{
+		displayName: "sections", key: "sections", label: "sections",
+		field: func(r *allResult) **CompareResult { return &r.Sections },
+		newCompare: func(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, preloadedSuites map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				return compareAllSectionsFn(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites)
+			}
+		},
+	},
+	newSimpleResourceEntry("shared steps", "shared_steps", "sharedsteps",
+		func(r *allResult) **CompareResult { return &r.SharedSteps }, fetchSharedStepItems),
+	newSimpleResourceEntry("runs", "runs", "runs",
+		func(r *allResult) **CompareResult { return &r.Runs }, fetchRunItems),
+	newSimpleResourceEntry("plans", "plans", "plans",
+		func(r *allResult) **CompareResult { return &r.Plans }, fetchPlanItems),
+	newSimpleResourceEntry("milestones", "milestones", "milestones",
+		func(r *allResult) **CompareResult { return &r.Milestones }, fetchMilestoneItems),
+	newSimpleResourceEntry("datasets", "datasets", "datasets",
+		func(r *allResult) **CompareResult { return &r.Datasets }, fetchDatasetItems),
+	newSimpleResourceEntry("groups", "groups", "groups",
+		func(r *allResult) **CompareResult { return &r.Groups }, fetchGroupItems),
+	newSimpleResourceEntry("labels", "labels", "labels",
+		func(r *allResult) **CompareResult { return &r.Labels }, fetchLabelItems),
+	newSimpleResourceEntry("templates", "templates", "templates",
+		func(r *allResult) **CompareResult { return &r.Templates }, fetchTemplateItems),
+	newSimpleResourceEntry("configurations", "configurations", "configurations",
+		func(r *allResult) **CompareResult { return &r.Configurations }, fetchConfigurationItems),
+}
+
+// newSimpleResourceEntry creates a resourceEntry for resources that use the generic
+// compareSimpleInternal pattern (9 out of 12 resources).
+func newSimpleResourceEntry(displayName, key, label string, field func(*allResult) **CompareResult, fetchFn FetchFunc) resourceEntry {
+	return resourceEntry{
+		displayName: displayName, key: key, label: label, field: field,
+		newCompare: func(ctx context.Context, _ *cobra.Command, cli client.ClientInterface, pid1, pid2 int64, quiet bool, _ map[int64]data.GetSuitesResponse) func() (*CompareResult, error) {
+			return func() (*CompareResult, error) {
+				return compareAllSimpleFn(ctx, cli, pid1, pid2, label, fetchFn, quiet)
+			}
+		},
+	}
 }
 
 var (
@@ -139,37 +208,15 @@ func partialResult(resource string, pid1, pid2 int64) *CompareResult {
 	}
 }
 
-// allResultAccessor maps a resource key to its field in allResult.
-type allResultAccessor struct {
-	key   string                           // key for errors/recordErr
-	label string                           // label for partialResult/interruptedResult
-	field func(*allResult) **CompareResult // pointer-to-field accessor
-}
-
-var allResultAccessors = []allResultAccessor{
-	{"cases", "cases", func(r *allResult) **CompareResult { return &r.Cases }},
-	{"suites", "suites", func(r *allResult) **CompareResult { return &r.Suites }},
-	{"sections", "sections", func(r *allResult) **CompareResult { return &r.Sections }},
-	{"shared_steps", "sharedsteps", func(r *allResult) **CompareResult { return &r.SharedSteps }},
-	{"runs", "runs", func(r *allResult) **CompareResult { return &r.Runs }},
-	{"plans", "plans", func(r *allResult) **CompareResult { return &r.Plans }},
-	{"milestones", "milestones", func(r *allResult) **CompareResult { return &r.Milestones }},
-	{"datasets", "datasets", func(r *allResult) **CompareResult { return &r.Datasets }},
-	{"groups", "groups", func(r *allResult) **CompareResult { return &r.Groups }},
-	{"labels", "labels", func(r *allResult) **CompareResult { return &r.Labels }},
-	{"templates", "templates", func(r *allResult) **CompareResult { return &r.Templates }},
-	{"configurations", "configurations", func(r *allResult) **CompareResult { return &r.Configurations }},
-}
-
 func fillResourcePartialResult(result *allResult, resource string, pid1, pid2 int64) {
 	if result == nil {
 		return
 	}
-	for _, a := range allResultAccessors {
-		if a.key == resource {
-			ptr := a.field(result)
+	for _, r := range resourceRegistry {
+		if r.key == resource {
+			ptr := r.field(result)
 			if *ptr == nil {
-				*ptr = partialResult(a.label, pid1, pid2)
+				*ptr = partialResult(r.label, pid1, pid2)
 			}
 			return
 		}
@@ -177,18 +224,18 @@ func fillResourcePartialResult(result *allResult, resource string, pid1, pid2 in
 }
 
 func fillInterruptedResults(result *allResult, pid1, pid2 int64) {
-	for _, a := range allResultAccessors {
-		ptr := a.field(result)
+	for _, r := range resourceRegistry {
+		ptr := r.field(result)
 		if *ptr == nil {
-			*ptr = interruptedResult(a.label, pid1, pid2)
+			*ptr = interruptedResult(r.label, pid1, pid2)
 		}
 	}
 }
 
 func assignCompareResult(result *allResult, key string, r *CompareResult) {
-	for _, a := range allResultAccessors {
-		if a.key == key {
-			*a.field(result) = r
+	for _, entry := range resourceRegistry {
+		if entry.key == key {
+			*entry.field(result) = r
 			return
 		}
 	}
@@ -374,44 +421,14 @@ func runCompareAllResources(ctx context.Context, cmd *cobra.Command, cli client.
 	errs := make(map[string]error)
 	interrupted := false
 
-	steps := []compareAllStep{
-		{"cases", "cases", func() (*CompareResult, error) {
-			r, _, err := compareAllCasesFn(ctx, cmd, cli, pid1, pid2, "title", preloadedSuites)
-			return r, err
-		}},
-		{"suites", "suites", func() (*CompareResult, error) {
-			return compareAllSuitesFn(ctx, cli, pid1, pid2, quiet, preloadedSuites)
-		}},
-		{"sections", "sections", func() (*CompareResult, error) {
-			return compareAllSectionsFn(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites)
-		}},
-		{"shared steps", "shared_steps", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "sharedsteps", fetchSharedStepItems, quiet)
-		}},
-		{"runs", "runs", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "runs", fetchRunItems, quiet)
-		}},
-		{"plans", "plans", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "plans", fetchPlanItems, quiet)
-		}},
-		{"milestones", "milestones", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "milestones", fetchMilestoneItems, quiet)
-		}},
-		{"datasets", "datasets", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "datasets", fetchDatasetItems, quiet)
-		}},
-		{"groups", "groups", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "groups", fetchGroupItems, quiet)
-		}},
-		{"labels", "labels", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "labels", fetchLabelItems, quiet)
-		}},
-		{"templates", "templates", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "templates", fetchTemplateItems, quiet)
-		}},
-		{"configurations", "configurations", func() (*CompareResult, error) {
-			return compareAllSimpleFn(ctx, cli, pid1, pid2, "configurations", fetchConfigurationItems, quiet)
-		}},
+	// Build steps from the unified resource registry
+	steps := make([]compareAllStep, len(resourceRegistry))
+	for i, entry := range resourceRegistry {
+		steps[i] = compareAllStep{
+			displayName: entry.displayName,
+			key:         entry.key,
+			compare:     entry.newCompare(ctx, cmd, cli, pid1, pid2, quiet, preloadedSuites),
+		}
 	}
 
 	for _, step := range steps {

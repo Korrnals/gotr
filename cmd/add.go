@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/crud"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -598,327 +599,214 @@ var addDryRunHandlers = map[string]func(*cobra.Command, *output.DryRunPrinter, i
 	"shared-step": dryRunAddSharedStep,
 }
 
-func dryRunAddProject(cmd *cobra.Command, dr *output.DryRunPrinter, _ int64, jsonData []byte) error {
-	var body interface{}
-	if len(jsonData) > 0 {
-		var req data.AddProjectRequest
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("invalid JSON data: %w", err)
-		}
-		body = req
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		announcement, _ := cmd.Flags().GetString("announcement")
-		showAnn, _ := cmd.Flags().GetBool("show-announcement")
-		body = data.AddProjectRequest{Name: name, Announcement: announcement, ShowAnnouncement: showAnn}
+// --- Request builders (shared between execute and dry-run) ---
+
+func buildAddProjectReq(cmd *cobra.Command, validate bool) (*data.AddProjectRequest, error) {
+	name, _ := cmd.Flags().GetString("name")
+	if validate && name == "" {
+		return nil, fmt.Errorf("--name is required")
 	}
-	dr.PrintOperation("Create Project", "POST", "/index.php?/api/v2/add_project/", body)
-	return nil
+	req := &data.AddProjectRequest{Name: name}
+	req.Announcement, _ = cmd.Flags().GetString("announcement")
+	req.ShowAnnouncement, _ = cmd.Flags().GetBool("show-announcement")
+	return req, nil
+}
+
+func buildAddSuiteReq(cmd *cobra.Command, validate bool) (*data.AddSuiteRequest, error) {
+	name, _ := cmd.Flags().GetString("name")
+	if validate && name == "" {
+		return nil, fmt.Errorf("--name is required")
+	}
+	req := &data.AddSuiteRequest{Name: name}
+	req.Description, _ = cmd.Flags().GetString("description")
+	return req, nil
+}
+
+func buildAddSectionReq(cmd *cobra.Command, validate bool) (*data.AddSectionRequest, error) {
+	name, _ := cmd.Flags().GetString("name")
+	if validate && name == "" {
+		return nil, fmt.Errorf("--name is required")
+	}
+	req := &data.AddSectionRequest{Name: name}
+	req.Description, _ = cmd.Flags().GetString("description")
+	req.SuiteID, _ = cmd.Flags().GetInt64("suite-id")
+	req.ParentID, _ = cmd.Flags().GetInt64("section-id")
+	return req, nil
+}
+
+func buildAddCaseReq(cmd *cobra.Command, validate bool) (*data.AddCaseRequest, error) {
+	title, _ := cmd.Flags().GetString("title")
+	if validate && title == "" {
+		return nil, fmt.Errorf("--title is required")
+	}
+	req := &data.AddCaseRequest{Title: title}
+	req.TemplateID, _ = cmd.Flags().GetInt64("template-id")
+	req.TypeID, _ = cmd.Flags().GetInt64("type-id")
+	req.PriorityID, _ = cmd.Flags().GetInt64("priority-id")
+	req.Refs, _ = cmd.Flags().GetString("refs")
+	return req, nil
+}
+
+func buildAddRunReq(cmd *cobra.Command, validate bool) (*data.AddRunRequest, error) {
+	name, _ := cmd.Flags().GetString("name")
+	if validate && name == "" {
+		return nil, fmt.Errorf("--name is required")
+	}
+	req := &data.AddRunRequest{Name: name}
+	req.Description, _ = cmd.Flags().GetString("description")
+	req.SuiteID, _ = cmd.Flags().GetInt64("suite-id")
+	req.MilestoneID, _ = cmd.Flags().GetInt64("milestone-id")
+	req.AssignedTo, _ = cmd.Flags().GetInt64("assignedto-id")
+	req.IncludeAll, _ = cmd.Flags().GetBool("include-all")
+	caseIDsStr, _ := cmd.Flags().GetString("case-ids")
+	if caseIDsStr != "" {
+		req.CaseIDs = parseCaseIDs(caseIDsStr)
+	}
+	return req, nil
+}
+
+func buildAddResultReq(cmd *cobra.Command, validate bool) (*data.AddResultRequest, error) {
+	statusID, _ := cmd.Flags().GetInt64("status-id")
+	if validate && statusID == 0 {
+		return nil, fmt.Errorf("--status-id is required")
+	}
+	req := &data.AddResultRequest{StatusID: statusID}
+	req.Comment, _ = cmd.Flags().GetString("comment")
+	req.Elapsed, _ = cmd.Flags().GetString("elapsed")
+	req.Defects, _ = cmd.Flags().GetString("defects")
+	req.AssignedTo, _ = cmd.Flags().GetInt64("assignedto-id")
+	req.Version, _ = cmd.Flags().GetString("version")
+	return req, nil
+}
+
+func buildAddSharedStepReq(cmd *cobra.Command, validate bool) (*data.AddSharedStepRequest, error) {
+	title, _ := cmd.Flags().GetString("title")
+	if validate && title == "" {
+		return nil, fmt.Errorf("--title is required")
+	}
+	return &data.AddSharedStepRequest{Title: title}, nil
+}
+
+// --- Dry-run handlers (delegate to crud.DryRun) ---
+
+func dryRunAddProject(cmd *cobra.Command, dr *output.DryRunPrinter, _ int64, jsonData []byte) error {
+	return crud.DryRun(cmd, dr, jsonData, buildAddProjectReq,
+		"Create Project", "POST", "/index.php?/api/v2/add_project/",
+	)
 }
 
 func dryRunAddSuite(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
 	if id == 0 {
 		return fmt.Errorf("project_id required: gotr add suite <project_id> --dry-run")
 	}
-	var body interface{}
-	if len(jsonData) > 0 {
-		var req data.AddSuiteRequest
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("invalid JSON data: %w", err)
-		}
-		body = req
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		description, _ := cmd.Flags().GetString("description")
-		body = data.AddSuiteRequest{Name: name, Description: description}
-	}
-	dr.PrintOperation(fmt.Sprintf("Create Suite in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_suite/%d", id), body)
-	return nil
+	return crud.DryRun(cmd, dr, jsonData, buildAddSuiteReq,
+		fmt.Sprintf("Create Suite in Project %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/add_suite/%d", id),
+	)
 }
 
 func dryRunAddSection(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
 	if id == 0 {
 		return fmt.Errorf("project_id required: gotr add section <project_id> --dry-run")
 	}
-	var body interface{}
-	if len(jsonData) > 0 {
-		var req data.AddSectionRequest
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("invalid JSON data: %w", err)
-		}
-		body = req
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		description, _ := cmd.Flags().GetString("description")
-		suiteID, _ := cmd.Flags().GetInt64("suite-id")
-		sectionID, _ := cmd.Flags().GetInt64("section-id")
-		body = data.AddSectionRequest{Name: name, Description: description, SuiteID: suiteID, ParentID: sectionID}
-	}
-	dr.PrintOperation(fmt.Sprintf("Create Section in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_section/%d", id), body)
-	return nil
+	return crud.DryRun(cmd, dr, jsonData, buildAddSectionReq,
+		fmt.Sprintf("Create Section in Project %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/add_section/%d", id),
+	)
 }
 
 func dryRunAddCase(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
 	if id == 0 {
 		return fmt.Errorf("section_id required: gotr add case <section_id> --dry-run")
 	}
-	var body interface{}
-	if len(jsonData) > 0 {
-		var req data.AddCaseRequest
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("invalid JSON data: %w", err)
-		}
-		body = req
-	} else {
-		title, _ := cmd.Flags().GetString("title")
-		templateID, _ := cmd.Flags().GetInt64("template-id")
-		typeID, _ := cmd.Flags().GetInt64("type-id")
-		priorityID, _ := cmd.Flags().GetInt64("priority-id")
-		refs, _ := cmd.Flags().GetString("refs")
-		body = data.AddCaseRequest{Title: title, TemplateID: templateID, TypeID: typeID, PriorityID: priorityID, Refs: refs}
-	}
-	dr.PrintOperation(fmt.Sprintf("Create Case in Section %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_case/%d", id), body)
-	return nil
+	return crud.DryRun(cmd, dr, jsonData, buildAddCaseReq,
+		fmt.Sprintf("Create Case in Section %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/add_case/%d", id),
+	)
 }
 
 func dryRunAddRun(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
 	if id == 0 {
 		return fmt.Errorf("project_id required: gotr add run <project_id> --dry-run")
 	}
-	var body interface{}
-	if len(jsonData) > 0 {
-		var req data.AddRunRequest
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("invalid JSON data: %w", err)
-		}
-		body = req
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		description, _ := cmd.Flags().GetString("description")
-		suiteID, _ := cmd.Flags().GetInt64("suite-id")
-		milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
-		assignedTo, _ := cmd.Flags().GetInt64("assignedto-id")
-		caseIDsStr, _ := cmd.Flags().GetString("case-ids")
-		includeAll, _ := cmd.Flags().GetBool("include-all")
-		body = data.AddRunRequest{
-			Name: name, Description: description, SuiteID: suiteID,
-			MilestoneID: milestoneID, AssignedTo: assignedTo,
-			IncludeAll: includeAll, CaseIDs: parseCaseIDs(caseIDsStr),
-		}
-	}
-	dr.PrintOperation(fmt.Sprintf("Create Run in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_run/%d", id), body)
-	return nil
+	return crud.DryRun(cmd, dr, jsonData, buildAddRunReq,
+		fmt.Sprintf("Create Run in Project %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/add_run/%d", id),
+	)
 }
 
 func dryRunAddResult(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
 	if id == 0 {
 		return fmt.Errorf("test_id required: gotr add result <test_id> --dry-run")
 	}
-	var body interface{}
-	if len(jsonData) > 0 {
-		var req data.AddResultRequest
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("invalid JSON data: %w", err)
-		}
-		body = req
-	} else {
-		statusID, _ := cmd.Flags().GetInt64("status-id")
-		comment, _ := cmd.Flags().GetString("comment")
-		elapsed, _ := cmd.Flags().GetString("elapsed")
-		defects, _ := cmd.Flags().GetString("defects")
-		assignedTo, _ := cmd.Flags().GetInt64("assignedto-id")
-		body = data.AddResultRequest{StatusID: statusID, Comment: comment, Elapsed: elapsed, Defects: defects, AssignedTo: assignedTo}
-	}
-	dr.PrintOperation(fmt.Sprintf("Add Result for Test %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_result/%d", id), body)
-	return nil
+	return crud.DryRun(cmd, dr, jsonData, buildAddResultReq,
+		fmt.Sprintf("Add Result for Test %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/add_result/%d", id),
+	)
 }
 
 func dryRunAddSharedStep(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
 	if id == 0 {
 		return fmt.Errorf("project_id required: gotr add shared-step <project_id> --dry-run")
 	}
-	var body interface{}
-	if len(jsonData) > 0 {
-		var req data.AddSharedStepRequest
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("invalid JSON data: %w", err)
-		}
-		body = req
-	} else {
-		title, _ := cmd.Flags().GetString("title")
-		body = data.AddSharedStepRequest{Title: title}
-	}
-	dr.PrintOperation(fmt.Sprintf("Create Shared Step in Project %d", id), "POST", fmt.Sprintf("/index.php?/api/v2/add_shared_step/%d", id), body)
-	return nil
+	return crud.DryRun(cmd, dr, jsonData, buildAddSharedStepReq,
+		fmt.Sprintf("Create Shared Step in Project %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/add_shared_step/%d", id),
+	)
 }
 
 func addProject(cli client.ClientInterface, cmd *cobra.Command, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.AddProjectRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name == "" {
-			return fmt.Errorf("--name is required")
-		}
-		req.Name = name
-		req.Announcement, _ = cmd.Flags().GetString("announcement")
-		req.ShowAnnouncement, _ = cmd.Flags().GetBool("show-announcement")
-	}
-
-	project, err := cli.AddProject(ctx, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create project: %w", err)
-	}
-
-	return output.OutputResult(cmd, project, "result")
+	return crud.Execute(cmd, 0, jsonData, buildAddProjectReq,
+		func(ctx context.Context, _ int64, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+			return cli.AddProject(ctx, req)
+		},
+		"failed to create project",
+	)
 }
 
 func addSuite(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.AddSuiteRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name == "" {
-			return fmt.Errorf("--name is required")
-		}
-		req.Name = name
-		req.Description, _ = cmd.Flags().GetString("description")
-	}
-
-	suite, err := cli.AddSuite(ctx, projectID, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create suite: %w", err)
-	}
-
-	return output.OutputResult(cmd, suite, "result")
+	return crud.Execute(cmd, projectID, jsonData, buildAddSuiteReq,
+		func(ctx context.Context, id int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+			return cli.AddSuite(ctx, id, req)
+		},
+		"failed to create suite",
+	)
 }
 
 func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.AddSectionRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name == "" {
-			return fmt.Errorf("--name is required")
-		}
-		req.Name = name
-		req.Description, _ = cmd.Flags().GetString("description")
-		req.SuiteID, _ = cmd.Flags().GetInt64("suite-id")
-		req.ParentID, _ = cmd.Flags().GetInt64("section-id")
-	}
-
-	section, err := cli.AddSection(ctx, projectID, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create section: %w", err)
-	}
-
-	return output.OutputResult(cmd, section, "result")
+	return crud.Execute(cmd, projectID, jsonData, buildAddSectionReq,
+		func(ctx context.Context, id int64, req *data.AddSectionRequest) (*data.Section, error) {
+			return cli.AddSection(ctx, id, req)
+		},
+		"failed to create section",
+	)
 }
 
 func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.AddCaseRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		title, _ := cmd.Flags().GetString("title")
-		if title == "" {
-			return fmt.Errorf("--title is required")
-		}
-		req.Title = title
-		req.TemplateID, _ = cmd.Flags().GetInt64("template-id")
-		req.TypeID, _ = cmd.Flags().GetInt64("type-id")
-		req.PriorityID, _ = cmd.Flags().GetInt64("priority-id")
-		req.Refs, _ = cmd.Flags().GetString("refs")
-	}
-
-	caseResp, err := cli.AddCase(ctx, sectionID, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create case: %w", err)
-	}
-
-	return output.OutputResult(cmd, caseResp, "result")
+	return crud.Execute(cmd, sectionID, jsonData, buildAddCaseReq,
+		func(ctx context.Context, id int64, req *data.AddCaseRequest) (*data.Case, error) {
+			return cli.AddCase(ctx, id, req)
+		},
+		"failed to create case",
+	)
 }
 
 func addRun(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.AddRunRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name == "" {
-			return fmt.Errorf("--name is required")
-		}
-		req.Name = name
-		req.Description, _ = cmd.Flags().GetString("description")
-		req.SuiteID, _ = cmd.Flags().GetInt64("suite-id")
-		req.MilestoneID, _ = cmd.Flags().GetInt64("milestone-id")
-		req.AssignedTo, _ = cmd.Flags().GetInt64("assignedto-id")
-		req.IncludeAll, _ = cmd.Flags().GetBool("include-all")
-
-		caseIDsStr, _ := cmd.Flags().GetString("case-ids")
-		if caseIDsStr != "" {
-			req.CaseIDs = parseCaseIDs(caseIDsStr)
-		}
-	}
-
-	run, err := cli.AddRun(ctx, projectID, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create run: %w", err)
-	}
-
-	return output.OutputResult(cmd, run, "result")
+	return crud.Execute(cmd, projectID, jsonData, buildAddRunReq,
+		func(ctx context.Context, id int64, req *data.AddRunRequest) (*data.Run, error) {
+			return cli.AddRun(ctx, id, req)
+		},
+		"failed to create run",
+	)
 }
 
 func addResult(cli client.ClientInterface, cmd *cobra.Command, testID int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.AddResultRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		statusID, _ := cmd.Flags().GetInt64("status-id")
-		if statusID == 0 {
-			return fmt.Errorf("--status-id is required")
-		}
-		req.StatusID = statusID
-		req.Comment, _ = cmd.Flags().GetString("comment")
-		req.Elapsed, _ = cmd.Flags().GetString("elapsed")
-		req.Defects, _ = cmd.Flags().GetString("defects")
-		req.AssignedTo, _ = cmd.Flags().GetInt64("assignedto-id")
-		req.Version, _ = cmd.Flags().GetString("version")
-	}
-
-	result, err := cli.AddResult(ctx, testID, &req)
-	if err != nil {
-		return fmt.Errorf("failed to add result: %w", err)
-	}
-
-	return output.OutputResult(cmd, result, "result")
+	return crud.Execute(cmd, testID, jsonData, buildAddResultReq,
+		func(ctx context.Context, id int64, req *data.AddResultRequest) (*data.Result, error) {
+			return cli.AddResult(ctx, id, req)
+		},
+		"failed to add result",
+	)
 }
 
 func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, caseID int64, jsonData []byte) error {
@@ -930,15 +818,11 @@ func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, cas
 			return fmt.Errorf("JSON parse error: %w", err)
 		}
 	} else {
-		statusID, _ := cmd.Flags().GetInt64("status-id")
-		if statusID == 0 {
-			return fmt.Errorf("--status-id is required")
+		built, err := buildAddResultReq(cmd, true)
+		if err != nil {
+			return err
 		}
-		req.StatusID = statusID
-		req.Comment, _ = cmd.Flags().GetString("comment")
-		req.Elapsed, _ = cmd.Flags().GetString("elapsed")
-		req.Defects, _ = cmd.Flags().GetString("defects")
-		req.AssignedTo, _ = cmd.Flags().GetInt64("assignedto-id")
+		req = *built
 	}
 
 	result, err := cli.AddResultForCase(ctx, runID, caseID, &req)
@@ -950,27 +834,12 @@ func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, cas
 }
 
 func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.AddSharedStepRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		title, _ := cmd.Flags().GetString("title")
-		if title == "" {
-			return fmt.Errorf("--title is required")
-		}
-		req.Title = title
-	}
-
-	step, err := cli.AddSharedStep(ctx, projectID, &req)
-	if err != nil {
-		return fmt.Errorf("failed to create shared step: %w", err)
-	}
-
-	return output.OutputResult(cmd, step, "result")
+	return crud.Execute(cmd, projectID, jsonData, buildAddSharedStepReq,
+		func(ctx context.Context, id int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			return cli.AddSharedStep(ctx, id, req)
+		},
+		"failed to create shared step",
+	)
 }
 
 func parseCaseIDs(s string) []int64 {

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get projects ====================
+// ==================== Tests for get projects ====================
 
 func TestProjectsCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -65,7 +65,7 @@ func TestProjectsCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "connection refused")
 }
 
-// ==================== Тесты для get project ====================
+// ==================== Tests for get project ====================
 
 func TestProjectCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

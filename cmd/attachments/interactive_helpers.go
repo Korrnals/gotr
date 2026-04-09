@@ -155,13 +155,13 @@ func resolvePlanIDInteractive(ctx context.Context, cli client.ClientInterface) (
 	return selectPlanID(ctx, plans)
 }
 
-func resolvePlanAndEntryIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, string, error) {
-	planID, err := resolvePlanIDInteractive(ctx, cli)
+func resolvePlanAndEntryIDInteractive(ctx context.Context, cli client.ClientInterface) (planID int64, entryID string, err error) {
+	planID, err = resolvePlanIDInteractive(ctx, cli)
 	if err != nil {
 		return 0, "", err
 	}
 
-	entryID, err := resolvePlanEntryIDInteractive(ctx, cli, planID)
+	entryID, err = resolvePlanEntryIDInteractive(ctx, cli, planID)
 	if err != nil {
 		return 0, "", err
 	}

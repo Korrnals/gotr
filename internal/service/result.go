@@ -11,8 +11,6 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
-	"github.com/Korrnals/gotr/internal/output"
-	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
@@ -34,13 +32,8 @@ type ResultService struct {
 }
 
 // NewResultService creates a new service for working with test results.
-func NewResultService(client *client.HTTPClient) *ResultService {
-	return &ResultService{client: client}
-}
-
-// NewResultServiceFromInterface creates a service from a client interface (for testing).
-func NewResultServiceFromInterface(cli client.ClientInterface) *ResultService {
-	return &ResultService{client: cli}
+func NewResultService(c client.ClientInterface) *ResultService {
+	return &ResultService{client: c}
 }
 
 // GetForTest retrieves results for a test ID.
@@ -199,16 +192,6 @@ func (s *ResultService) AddResultsForCases(ctx context.Context, runID int64, req
 	return s.client.AddResultsForCases(ctx, runID, req)
 }
 
-// Output renders the result as JSON and saves to a file (if --output is set).
-func (s *ResultService) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return output.OutputResultWithFlags(cmd, data)
-}
-
-// PrintSuccess prints a success message.
-func (s *ResultService) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	output.PrintSuccess(cmd, format, args...)
-}
-
 // ParseID parses an ID from command arguments.
 func (s *ResultService) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	if index >= len(args) {
@@ -228,10 +211,10 @@ func (s *ResultService) validateID(id int64, fieldName string) error {
 // validateAddResultRequest validates a request to add a result.
 func (s *ResultService) validateAddResultRequest(req *data.AddResultRequest) error {
 	if req == nil {
-		return errors.New("запрос не может быть nil")
+		return errors.New("request cannot be nil")
 	}
 	if req.StatusID <= 0 {
-		return errors.New("status_id обязателен и должен быть положительным числом")
+		return errors.New("status_id is required and must be a positive number")
 	}
 	return nil
 }

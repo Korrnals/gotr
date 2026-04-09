@@ -89,20 +89,21 @@ func TestMain_NoPanic(t *testing.T) {
 }
 
 func TestMain_PanicsOnExecuteError(t *testing.T) {
-	original := executeMain
-	defer func() { executeMain = original }()
-
-	executeMain = func() error { return errors.New("boom") }
-
-	assert.Panics(t, func() {
+	if os.Getenv("GOTR_MAIN_EXIT_CHILD") == "1" {
+		executeMain = func() error { return errors.New("boom") }
 		main()
-	})
+		return
+	}
+
+	cmd := exec.Command(os.Args[0], "-test.run=TestMain_PanicsOnExecuteError", "-test.v")
+	cmd.Env = append(os.Environ(), "GOTR_MAIN_EXIT_CHILD=1")
+	out, err := cmd.CombinedOutput()
+	assert.Error(t, err)
+	assert.Contains(t, string(out), "fatal: boom")
 }
 
 func TestMain_PanicPath(t *testing.T) {
 	if os.Getenv("GOTR_MAIN_PANIC_CHILD") == "1" {
-		original := executeMain
-		defer func() { executeMain = original }()
 		executeMain = func() error { return errors.New("boom") }
 		main()
 		return
@@ -110,8 +111,9 @@ func TestMain_PanicPath(t *testing.T) {
 
 	cmd := exec.Command(os.Args[0], "-test.run=TestMain_PanicPath", "-test.v")
 	cmd.Env = append(os.Environ(), "GOTR_MAIN_PANIC_CHILD=1")
-	err := cmd.Run()
+	out, err := cmd.CombinedOutput()
 	assert.Error(t, err)
+	assert.Contains(t, string(out), "fatal: boom")
 }
 
 func TestExecuteMain_DefaultClosure_HelpPath(t *testing.T) {

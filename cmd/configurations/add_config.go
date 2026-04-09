@@ -17,16 +17,16 @@ import (
 func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add-config [group_id]",
-		Short: "Добавить конфигурацию в группу",
-		Long: `Добавляет новую конфигурацию в существующую группу.
+		Short: "Add a configuration to a group",
+		Long: `Adds a new configuration to an existing group.
 
-Конфигурация — это конкретное значение (например: "Chrome", "Windows 10",
-"iPhone 12") в рамках группы. Конфигурации используются при создании
-тест-планов с множественными конфигурациями.`,
-		Example: `  # Добавить "Chrome" в группу 5
+A configuration is a specific value (e.g., "Chrome", "Windows 10",
+"iPhone 12") within a group. Configurations are used when creating
+test plans with multiple configurations.`,
+		Example: `  # Add "Chrome" to group 5
   gotr configurations add-config 5 --name="Chrome"
 
-  # Проверить перед добавлением
+  # Preview before adding
   gotr configurations add-config 5 --name="Firefox" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -61,7 +61,7 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations add-config")
-				dr.PrintSimple("Добавить конфигурацию", fmt.Sprintf("Group ID: %d, Name: %s", groupID, name))
+				dr.PrintSimple("Add configuration", fmt.Sprintf("Group ID: %d, Name: %s", groupID, name))
 				return nil
 			}
 
@@ -76,9 +76,9 @@ func newAddConfigCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без добавления")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be done without adding")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название конфигурации (обязательно)")
+	cmd.Flags().String("name", "", "Configuration name (required)")
 
 	return cmd
 }

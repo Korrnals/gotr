@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для attachments list case ====================
+// ==================== Tests for attachments list case ====================
 
 func TestListCaseCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -209,7 +209,7 @@ func TestListCaseCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list plan ====================
+// ==================== Tests for attachments list plan ====================
 
 func TestListPlanCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -308,7 +308,7 @@ func TestListPlanCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list plan-entry ====================
+// ==================== Tests for attachments list plan-entry ====================
 
 func TestListPlanEntryCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -464,7 +464,7 @@ func TestListPlanEntryCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list run ====================
+// ==================== Tests for attachments list run ====================
 
 func TestListRunCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -563,7 +563,7 @@ func TestListRunCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для attachments list test ====================
+// ==================== Tests for attachments list test ====================
 
 func TestListTestCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -679,7 +679,7 @@ func TestListTestCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты для outputAttachmentsList ====================
+// ==================== Tests for outputAttachmentsList ====================
 
 func TestOutputAttachmentsList_Empty(t *testing.T) {
 	mock := &client.MockClient{
@@ -759,4 +759,147 @@ cmd.SetArgs([]string{"100"})
 
 err := cmd.Execute()
 assert.Error(t, err)
+}
+
+// ==================== Tests for attachments list project ====================
+
+func TestListProjectCmd_Success(t *testing.T) {
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetAttachmentsResponse{
+				{ID: 10, Name: "report.pdf", Size: 4096, CreatedOn: 1704067200},
+				{ID: 11, Name: "data.csv", Size: 2048, CreatedOn: 1704153600},
+			}, nil
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	out := buf.String()
+	assert.Contains(t, out, "report.pdf")
+	assert.Contains(t, out, "data.csv")
+	assert.Contains(t, out, "4096")
+}
+
+func TestListProjectCmd_EmptyList(t *testing.T) {
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			return data.GetAttachmentsResponse{}, nil
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "No attachments found")
+}
+
+func TestListProjectCmd_Error(t *testing.T) {
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			return nil, fmt.Errorf("api error")
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to list attachments")
+}
+
+func TestListProjectCmd_InvalidID(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"abc"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id")
+}
+
+func TestListProjectCmd_NoArgs_NoInteractive(t *testing.T) {
+	mock := &client.MockClient{}
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "project_id required")
+}
+
+func TestListProjectCmd_WithSaveFlag(t *testing.T) {
+	tempHome := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", tempHome)
+	defer os.Setenv("HOME", origHome)
+
+	mock := &client.MockClient{
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			return data.GetAttachmentsResponse{
+				{ID: 10, Name: "report.pdf", Size: 4096, CreatedOn: 1704067200},
+			}, nil
+		},
+	}
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(testhelper.SetupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"1", "--save"})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	matches, _ := filepath.Glob(filepath.Join(tempHome, ".gotr", "exports", "attachments*"))
+	assert.NotEmpty(t, matches, "expected export file to be created")
+}
+
+func TestListProjectCmd_Interactive(t *testing.T) {
+	mock := &client.MockClient{
+		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {
+			return data.GetProjectsResponse{
+				{ID: 1, Name: "Project Alpha"},
+			}, nil
+		},
+		GetAttachmentsForProjectFunc: func(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+			assert.Equal(t, int64(1), projectID)
+			return data.GetAttachmentsResponse{
+				{ID: 10, Name: "file.txt", Size: 256, CreatedOn: 1704067200},
+			}, nil
+		},
+	}
+
+	p := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newListProjectCmd(testhelper.GetClientForTests)
+	cmd.SetContext(interactive.WithPrompter(testhelper.SetupTestCmd(t, mock).Context(), p))
+	cmd.SetArgs([]string{})
+
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+	assert.Contains(t, buf.String(), "file.txt")
 }

@@ -30,7 +30,7 @@ func selectEmbeddedJQBinary(goos string) ([]byte, error) {
 	case "windows":
 		return jqWindows, nil
 	default:
-		return nil, fmt.Errorf("{jq_embed} - платформа %s не поддерживается встроенным jq", goos)
+		return nil, fmt.Errorf("{jq_embed} - platform %s is not supported by embedded jq", goos)
 	}
 }
 
@@ -58,16 +58,16 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	tmpPath := tmpFile.Name()
 	tmpFile.Close() // close before writing to avoid "text file busy"
 
-	// Write the embedded binary to the temp file
-	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0644); err != nil {
-		os.Remove(tmpPath)
+	// Write the embedded binary to the temp file with restricted permissions
+	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0o700); err != nil {
+		_ = os.Remove(tmpPath) // best-effort cleanup
 		return err
 	}
 
 	// Explicitly set the executable permission
-	if err := os.Chmod(tmpPath, 0755); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("{jq_embed} - не удалось установить права на исполнение: %w", err)
+	if err := os.Chmod(tmpPath, 0o755); err != nil {
+		_ = os.Remove(tmpPath) // best-effort cleanup
+		return fmt.Errorf("{jq_embed} - failed to set executable permissions: %w", err)
 	}
 
 	// Run jq
@@ -77,12 +77,14 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("{jq_embed} - ошибка встроенного jq: %w", err)
+		_ = os.Remove(tmpPath) // best-effort cleanup
+		return fmt.Errorf("{jq_embed} - embedded jq error: %w", err)
 	}
 
 	// Clean up the temp binary
-	os.Remove(tmpPath)
+	if err := os.Remove(tmpPath); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to remove temp jq binary %s: %v\n", tmpPath, err)
+	}
 
 	return nil
 }

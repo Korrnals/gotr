@@ -1,6 +1,7 @@
 package concurrent
 
 import (
+	"context"
 	"errors"
 	"sync/atomic"
 	"testing"
@@ -10,14 +11,14 @@ import (
 )
 
 func TestNewWorkerPool(t *testing.T) {
-	pool := NewWorkerPool()
+	pool := NewWorkerPool(context.Background())
 	assert.NotNil(t, pool)
 	assert.NotNil(t, pool.limiter)
 	assert.Equal(t, 5, pool.maxWorkers)
 }
 
 func TestNewWorkerPool_WithOptions(t *testing.T) {
-	pool := NewWorkerPool(
+	pool := NewWorkerPool(context.Background(),
 		WithMaxWorkers(10),
 		WithRateLimit(300),
 	)
@@ -27,7 +28,7 @@ func TestNewWorkerPool_WithOptions(t *testing.T) {
 }
 
 func TestWorkerPool_Submit(t *testing.T) {
-	pool := NewWorkerPool(WithMaxWorkers(2))
+	pool := NewWorkerPool(context.Background(), WithMaxWorkers(2))
 
 	var counter int32
 	for i := 0; i < 5; i++ {
@@ -43,7 +44,7 @@ func TestWorkerPool_Submit(t *testing.T) {
 }
 
 func TestWorkerPool_SubmitWithError(t *testing.T) {
-	pool := NewWorkerPool(WithMaxWorkers(2))
+	pool := NewWorkerPool(context.Background(), WithMaxWorkers(2))
 
 	expectedErr := errors.New("test error")
 	pool.Submit(func() error {
@@ -58,7 +59,7 @@ func TestWorkerPool_SubmitWithError(t *testing.T) {
 func TestParallelMap(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
 
-	results, err := ParallelMap(items, 3, func(item, index int) (int, error) {
+	results, err := ParallelMap(context.Background(), items, 3, func(item, index int) (int, error) {
 		return item * 2, nil
 	})
 
@@ -73,7 +74,7 @@ func TestParallelMap(t *testing.T) {
 }
 
 func TestParallelMap_EmptySlice(t *testing.T) {
-	results, err := ParallelMap([]int{}, 3, func(item, index int) (int, error) {
+	results, err := ParallelMap(context.Background(), []int{}, 3, func(item, index int) (int, error) {
 		return item, nil
 	})
 
@@ -84,7 +85,7 @@ func TestParallelMap_EmptySlice(t *testing.T) {
 func TestParallelMap_PreservesItemErrors(t *testing.T) {
 	items := []int{1, 2, 3}
 
-	results, err := ParallelMap(items, 2, func(item, index int) (int, error) {
+	results, err := ParallelMap(context.Background(), items, 2, func(item, index int) (int, error) {
 		if item == 2 {
 			return 0, errors.New("item error")
 		}
@@ -101,7 +102,7 @@ func TestParallelMap_PreservesItemErrors(t *testing.T) {
 
 func TestParallelMap_DefaultMaxWorkers(t *testing.T) {
 	items := []int{1, 2, 3, 4}
-	results, err := ParallelMap(items, 0, func(item, index int) (int, error) {
+	results, err := ParallelMap(context.Background(), items, 0, func(item, index int) (int, error) {
 		return item + index, nil
 	})
 
@@ -111,7 +112,7 @@ func TestParallelMap_DefaultMaxWorkers(t *testing.T) {
 
 func TestParallelMap_NegativeMaxWorkers(t *testing.T) {
 	items := []int{1, 2, 3, 4}
-	results, err := ParallelMap(items, -3, func(item, index int) (int, error) {
+	results, err := ParallelMap(context.Background(), items, -3, func(item, index int) (int, error) {
 		return item * 3, nil
 	})
 
@@ -128,7 +129,7 @@ func TestParallelForEach(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
 	var counter int32
 
-	err := ParallelForEach(items, 3, func(item, index int) error {
+	err := ParallelForEach(context.Background(), items, 3, func(item, index int) error {
 		atomic.AddInt32(&counter, 1)
 		return nil
 	})
@@ -141,7 +142,7 @@ func TestParallelForEach_WithError(t *testing.T) {
 	items := []int{1, 2, 3}
 	expectedErr := errors.New("test error")
 
-	err := ParallelForEach(items, 3, func(item, index int) error {
+	err := ParallelForEach(context.Background(), items, 3, func(item, index int) error {
 		if item == 2 {
 			return expectedErr
 		}
@@ -154,7 +155,7 @@ func TestParallelForEach_WithError(t *testing.T) {
 
 func TestParallelForEach_EmptySlice(t *testing.T) {
 	called := false
-	err := ParallelForEach([]int{}, 3, func(item, index int) error {
+	err := ParallelForEach(context.Background(), []int{}, 3, func(item, index int) error {
 		called = true
 		return nil
 	})
@@ -167,7 +168,7 @@ func TestParallelForEach_DefaultMaxWorkers(t *testing.T) {
 	items := []int{1, 2, 3, 4, 5}
 	var counter int32
 
-	err := ParallelForEach(items, 0, func(item, index int) error {
+	err := ParallelForEach(context.Background(), items, 0, func(item, index int) error {
 		atomic.AddInt32(&counter, 1)
 		return nil
 	})
@@ -257,7 +258,7 @@ func (m *mockMonitor) Increment() { m.count.Add(1) }
 
 func TestWithProgressMonitor(t *testing.T) {
 	mon := &mockMonitor{}
-	pool := NewWorkerPool(
+	pool := NewWorkerPool(context.Background(),
 		WithMaxWorkers(2),
 		WithProgressMonitor(mon),
 	)
@@ -271,9 +272,9 @@ func TestWithProgressMonitor(t *testing.T) {
 }
 
 func TestWorkerPool_Context(t *testing.T) {
-	pool := NewWorkerPool(WithMaxWorkers(1))
+	pool := NewWorkerPool(context.Background(), WithMaxWorkers(1))
 	ctx := pool.Context()
-	// Should be a non-nil, non-cancelled context at this point
+	// Should be a non-nil, non-canceled context at this point
 	assert.NotNil(t, ctx)
 	select {
 	case <-ctx.Done():

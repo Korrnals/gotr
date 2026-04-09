@@ -19,7 +19,8 @@ var executeMain = func() error {
 
 func main() {
 	if err := executeMain(); err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "fatal: %v\n", err)
+		os.Exit(1)
 	}
 }
 

@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для result list (direct mode) ====================
+// ==================== Tests for result list (direct mode) ====================
 
 func TestListCmd_Direct_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -92,7 +92,7 @@ func TestListCmd_Direct_EmptyResults(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты для result list (interactive mode) ====================
+// ==================== Tests for result list (interactive mode) ====================
 
 func TestListCmd_Interactive_NoProjects(t *testing.T) {
 	mock := &client.MockClient{
@@ -106,7 +106,7 @@ func TestListCmd_Interactive_NoProjects(t *testing.T) {
 	cmd := newListCmd(testhelper.GetClientForTests)
 	ctx := testhelper.SetupTestCmd(t, mock).Context()
 	cmd.SetContext(interactive.WithPrompter(ctx, p))
-	// Не передаем аргументы - должен включиться интерактивный режим
+	// No arguments passed - should enable interactive mode
 	cmd.SetArgs([]string{})
 
 	err := cmd.Execute()
@@ -114,7 +114,7 @@ func TestListCmd_Interactive_NoProjects(t *testing.T) {
 	assert.Contains(t, err.Error(), "no projects")
 }
 
-// ==================== Тесты для edge cases ====================
+// ==================== Tests for edge cases ====================
 
 func TestListCmd_NilClient(t *testing.T) {
 	cmd := newListCmd(func(cmd *cobra.Command) client.ClientInterface { return nil })

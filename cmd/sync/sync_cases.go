@@ -18,29 +18,29 @@ import (
 
 var casesCmd = &cobra.Command{
 	Use:   "cases",
-	Short: "Синхронизация тест-кейсов между сюитами",
-	Long: `Полная процедура переноса тест-кейсов из одной сюиты в другую.
+	Short: "Synchronize test cases between suites",
+	Long: `Complete procedure for transferring test cases from one suite to another.
 
-Особенности:
-• Автоматический интерактивный выбор проектов и сьютов (если не указаны флаги)
-• Поддержка замены shared_step_id по mapping-файлу
-• Интерактивное подтверждение перед импортом
-• Dry-run режим (без создания объектов)
-• Сохранение JSON-лога результата
+Features:
+• Automatic interactive selection of projects and suites (if flags are not specified)
+• Support for shared_step_id replacement via mapping file
+• Interactive confirmation before import
+• Dry-run mode (without creating objects)
+• Saving JSON result log
 
-Если ID проектов/сьютов не указаны, будет предложено выбрать их из списка.
+If project/suite IDs are not specified, you will be prompted to select them from a list.
 
-Примеры:
-	# Полностью интерактивный режим (выбор всех параметров)
+Examples:
+	# Fully interactive mode (select all parameters)
 	gotr sync cases
 
-	# Частично интерактивный (указан только source проект)
+	# Partially interactive (only source project specified)
 	gotr sync cases --src-project 30
 
-	# Полностью через флаги
+	# Fully via flags
 	gotr sync cases --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859
 
-	# С mapping-файлом и dry-run
+	# With mapping file and dry-run
 	gotr sync cases --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --mapping-file mapping.json --dry-run
 `,
 
@@ -190,7 +190,7 @@ var casesCmd = &cobra.Command{
 			return err
 		}
 		if !ok {
-			ui.Cancelled(os.Stdout)
+			ui.Canceled(os.Stdout)
 			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
 			return nil
 		}
@@ -242,8 +242,15 @@ func saveLog(file string, matches, filtered data.GetCasesResponse, errors []stri
 		"errors":    errors,
 		"mapping":   mapping,
 	}
-	jsonData, _ := json.MarshalIndent(result, "", "  ")
-	os.WriteFile(file, jsonData, 0644)
+	jsonData, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		ui.Warningf(os.Stderr, "Failed to marshal log data: %v", err)
+		return
+	}
+	if err := os.WriteFile(file, jsonData, 0o644); err != nil {
+		ui.Warningf(os.Stderr, "Failed to save log %s: %v", file, err)
+		return
+	}
 	if !quiet {
 		ui.Infof(os.Stdout, "Log saved: %s", file)
 	}

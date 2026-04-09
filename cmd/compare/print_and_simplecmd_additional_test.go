@@ -39,14 +39,14 @@ func captureCompareStderr(t *testing.T, fn func()) string {
 
 func TestWave6G_PrintCompareResult_DefaultStructuredSaveError(t *testing.T) {
 	homeFile := filepath.Join(t.TempDir(), "home-file")
-	require.NoError(t, os.WriteFile(homeFile, []byte("not-a-dir"), 0644))
+	require.NoError(t, os.WriteFile(homeFile, []byte("not-a-dir"), 0o644))
 	t.Setenv("HOME", homeFile)
 
 	cmd := &cobra.Command{Use: "test"}
 
 	err := PrintCompareResult(cmd, CompareResult{Resource: "cases"}, "P1", "P2", "json", "__DEFAULT__")
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "file write error")
+	assert.Contains(t, err.Error(), "failed to create exports directory")
 }
 
 func TestWave6G_PrintCompareResult_SaveToStructuredError(t *testing.T) {

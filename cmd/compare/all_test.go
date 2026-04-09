@@ -18,7 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ==================== Тесты для allResult структуры ====================
+// ==================== Tests for allResult struct ====================
 
 func TestAllResult_Struct(t *testing.T) {
 	result := &allResult{
@@ -39,7 +39,7 @@ func TestAllResult_Struct(t *testing.T) {
 	assert.Equal(t, "cases", result.Cases.Resource)
 }
 
-// ==================== Тесты для saveAllResult ====================
+// ==================== Tests for saveAllResult ====================
 
 func TestSaveAllResult_JSON(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -93,10 +93,10 @@ func TestSaveAllResult_InvalidPathYAML(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты для allCmd с различными сценариями ====================
+// ==================== Tests for allCmd with various scenarios ====================
 
 func TestAllCmd_WithErrors(t *testing.T) {
-	// Мок который возвращает ошибки для некоторых ресурсов
+	// Mock that returns errors for some resources
 	mock := &client.MockClient{
 		GetProjectFunc: func(ctx context.Context, projectID int64) (*data.GetProjectResponse, error) {
 			return &data.GetProjectResponse{ID: projectID, Name: "Test Project"}, nil
@@ -150,7 +150,7 @@ func TestAllCmd_WithErrors(t *testing.T) {
 	cmd.SetOut(&buf)
 
 	err := cmd.Execute()
-	assert.NoError(t, err) // Команда не должна падать из-за ошибок отдельных ресурсов
+	assert.NoError(t, err) // Command should not fail due to errors of individual resources
 }
 
 func TestAllCmd_AllResourceErrorsStillCompletes(t *testing.T) {

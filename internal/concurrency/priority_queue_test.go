@@ -205,7 +205,7 @@ func TestPriorityQueue_Concurrent(t *testing.T) {
 	assert.Equal(t, expectedTotal, pq.Len())
 
 	// Pop all items - should be in priority order
-	var prevPriority Priority = PriorityHigh + 1
+	var prevPriority = PriorityHigh + 1
 	for i := 0; i < expectedTotal; i++ {
 		task, ok := pq.Pop()
 		assert.True(t, ok, "Failed to pop item %d", i)

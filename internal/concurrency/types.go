@@ -175,8 +175,8 @@ func (c *ControllerConfig) WithTimeout(d time.Duration) *ControllerConfig {
 	return c
 }
 
-// Validate validates the configuration
-func (c *ControllerConfig) Validate() error {
+// Normalize applies defaults to zero-value fields.
+func (c *ControllerConfig) Normalize() {
 	if c.MaxConcurrentSuites <= 0 {
 		c.MaxConcurrentSuites = 5
 	}
@@ -196,5 +196,4 @@ func (c *ControllerConfig) Validate() error {
 	if c.MaxConsecutiveErrorWaves <= 0 {
 		c.MaxConsecutiveErrorWaves = 3
 	}
-	return nil
 }

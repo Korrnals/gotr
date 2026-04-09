@@ -17,16 +17,16 @@ import (
 func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add-group [project_id]",
-		Short: "Создать группу конфигураций",
-		Long: `Создаёт новую группу конфигураций в указанном проекте.
+		Short: "Create a configuration group",
+		Long: `Creates a new configuration group in the specified project.
 
-Группа — это контейнер для связанных конфигураций (например: "Browsers",
-"Operating Systems", "Devices"). После создания группы можно добавлять
-в неё отдельные конфигурации.`,
-		Example: `  # Создать группу "Browsers"
+A group is a container for related configurations (e.g., "Browsers",
+"Operating Systems", "Devices"). After creating a group, you can add
+individual configurations to it.`,
+		Example: `  # Create a "Browsers" group
   gotr configurations add-group 1 --name="Browsers"
 
-  # Проверить перед созданием
+  # Preview before creating
   gotr configurations add-group 1 --name="OS" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -61,7 +61,7 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("configurations add-group")
-				dr.PrintSimple("Создать группу", fmt.Sprintf("Project ID: %d, Name: %s", projectID, name))
+				dr.PrintSimple("Create group", fmt.Sprintf("Project ID: %d, Name: %s", projectID, name))
 				return nil
 			}
 
@@ -76,9 +76,9 @@ func newAddGroupCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без создания")
+	cmd.Flags().Bool("dry-run", false, "Preview what would be done without creating")
 	output.AddFlag(cmd)
-	cmd.Flags().String("name", "", "Название группы (обязательно)")
+	cmd.Flags().String("name", "", "Group name (required)")
 
 	return cmd
 }

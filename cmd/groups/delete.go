@@ -15,8 +15,8 @@ import (
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [group_id]",
-		Short: "Удалить группу",
-		Long:  `Удалить группу пользователей.`,
+		Short: "Delete a group",
+		Long:  `Delete a user group.`,
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -58,7 +58,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано, без выполнения")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without executing")
 
 	return cmd
 }

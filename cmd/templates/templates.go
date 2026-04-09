@@ -13,14 +13,14 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	templatesCmd := &cobra.Command{
 		Use:   "templates",
-		Short: "Управление шаблонами тест-кейсов",
-		Long: `Управление шаблонами (templates) — форматами отображения тест-кейсов.
+		Short: "Manage test case templates",
+		Long: `Manage templates — display formats for test cases.
 
-Шаблоны определяют структуру и поля, доступные при создании
-и редактировании тест-кейсов in project.
+Templates define the structure and fields available when creating
+and editing test cases in a project.
 
-Доступные операции:
-  • list   — список шаблонов проекта`,
+Available operations:
+  • list   — list project templates`,
 	}
 
 	// Register subcommands

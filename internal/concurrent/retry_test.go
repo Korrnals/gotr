@@ -103,7 +103,7 @@ func TestRetryWithContext_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestRetryWithContext_Cancelled(t *testing.T) {
+func TestRetryWithContext_Canceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	config := &RetryConfig{
 		MaxRetries:   5,
@@ -121,7 +121,7 @@ func TestRetryWithContext_Cancelled(t *testing.T) {
 
 	err := RetryWithContext(ctx, config, fn)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "context cancelled")
+	assert.Contains(t, err.Error(), "context canceled")
 }
 
 func TestRetryWithContext_NonRetryableError(t *testing.T) {

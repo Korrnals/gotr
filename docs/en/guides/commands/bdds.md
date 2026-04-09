@@ -34,6 +34,7 @@ Language: [Русский](../../../ru/guides/commands/bdds.md) | English
 ## Overview 🎯
 Manage BDD (Behavior Driven Development) scenarios.
 BDD scenarios describe system behavior in the Given-When-Then format
+`bdds add` accepts content from `--file` and from stdin pipe.
 
 > [!TIP]
 > For a quick `bdds` workflow: inspect `--help`, then run a
@@ -113,6 +114,17 @@ gotr bdds add --help && gotr bdds add
 ```
 
 ✅ **Why this matters:** provides a reusable template for runbooks and scripted operations.
+
+---
+
+### ▶️ Scenario 5: Add BDD from stdin
+🎯 **Goal:** feed generated Gherkin content directly from a pipeline.
+
+```bash
+cat scenario.feature | gotr bdds add 12345
+```
+
+✅ **Why this matters:** simplifies CI flows where scenario content is produced dynamically.
 
 ---
 

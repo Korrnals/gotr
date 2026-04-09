@@ -14,15 +14,15 @@ import (
 func newListCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [dataset_id]",
-		Short: "Список переменных датасета",
-		Long: `Выводит список переменных, определённых в указанном датасете.
+		Short: "List dataset variables",
+		Long: `Displays the list of variables defined in the specified dataset.
 
-Переменные используются для параметризованного тестирования
-и представляют собой колонки в таблице тестовых данных.`,
-		Example: `  # Получить список переменных датасета
+Variables are used for parameterized testing
+and represent columns in the test data table.`,
+		Example: `  # Get list of dataset variables
   gotr variables list 123
 
-  # Сохранить в файл
+  # Save to a file
   gotr variables list 456 -o vars.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

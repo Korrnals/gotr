@@ -8,14 +8,11 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service"
-	"github.com/spf13/cobra"
 )
 
 // ResultServiceInterface defines the interface for test result operations.
 type ResultServiceInterface interface {
 	ParseID(ctx context.Context, args []string, index int) (int64, error)
-	PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{})
-	Output(ctx context.Context, cmd *cobra.Command, data interface{}) error
 	AddForTest(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error)
 	AddForCase(ctx context.Context, runID, caseID int64, req *data.AddResultRequest) (*data.Result, error)
 	AddResults(ctx context.Context, runID int64, req *data.AddResultsRequest) (data.GetResultsResponse, error)
@@ -39,16 +36,6 @@ var _ ResultServiceInterface = (*resultServiceWrapper)(nil)
 // ParseID delegates ID parsing to the underlying result service.
 func (w *resultServiceWrapper) ParseID(ctx context.Context, args []string, index int) (int64, error) {
 	return w.svc.ParseID(ctx, args, index)
-}
-
-// PrintSuccess delegates success message formatting to the underlying result service.
-func (w *resultServiceWrapper) PrintSuccess(ctx context.Context, cmd *cobra.Command, format string, args ...interface{}) {
-	w.svc.PrintSuccess(ctx, cmd, format, args...)
-}
-
-// Output delegates command output formatting to the underlying result service.
-func (w *resultServiceWrapper) Output(ctx context.Context, cmd *cobra.Command, data interface{}) error {
-	return w.svc.Output(ctx, cmd, data)
 }
 
 // AddForTest delegates single-test result creation to the underlying result service.
@@ -112,10 +99,5 @@ func (w *resultServiceWrapper) AddBulkResults(ctx context.Context, runID int64, 
 
 // newResultServiceFromInterface creates a result service from a client interface.
 func newResultServiceFromInterface(cli client.ClientInterface) ResultServiceInterface {
-	// Try to cast to *HTTPClient (not a mock)
-	if httpClient, ok := cli.(*client.HTTPClient); ok {
-		return &resultServiceWrapper{svc: service.NewResultService(httpClient)}
-	}
-	// For tests with a mock, use a special constructor
-	return &resultServiceWrapper{svc: service.NewResultServiceFromInterface(cli)}
+	return &resultServiceWrapper{svc: service.NewResultService(cli)}
 }

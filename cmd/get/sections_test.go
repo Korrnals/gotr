@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Тесты для get sections section ====================
+// ==================== Tests for get sections section ====================
 
 func TestSectionGetCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -142,7 +142,7 @@ func TestSectionGetCmd_APIError(t *testing.T) {
 	assert.Contains(t, err.Error(), "not found")
 }
 
-// ==================== Тесты для get sections list ====================
+// ==================== Tests for get sections list ====================
 
 func TestSectionsListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{

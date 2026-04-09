@@ -32,7 +32,10 @@ func (c *HTTPClient) GetConfigs(ctx context.Context, projectID int64) (data.GetC
 func (c *HTTPClient) AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("add_config_group/%d", projectID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -52,7 +55,10 @@ func (c *HTTPClient) AddConfigGroup(ctx context.Context, projectID int64, req *d
 func (c *HTTPClient) AddConfig(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("add_config/%d", groupID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -72,7 +78,10 @@ func (c *HTTPClient) AddConfig(ctx context.Context, groupID int64, req *data.Add
 func (c *HTTPClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *data.UpdateConfigGroupRequest) (*data.ConfigGroup, error) {
 	endpoint := fmt.Sprintf("update_config_group/%d", groupID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {
@@ -92,7 +101,10 @@ func (c *HTTPClient) UpdateConfigGroup(ctx context.Context, groupID int64, req *
 func (c *HTTPClient) UpdateConfig(ctx context.Context, configID int64, req *data.UpdateConfigRequest) (*data.Config, error) {
 	endpoint := fmt.Sprintf("update_config/%d", configID)
 
-	jsonBody, _ := json.Marshal(req)
+	jsonBody, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(jsonBody), nil)
 	if err != nil {

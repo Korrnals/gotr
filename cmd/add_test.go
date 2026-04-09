@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupAddTest настраивает тестовое окружение для add команды
+// setupAddTest sets up the test environment for the add command
 func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
-	// Создаем новую команду для теста
+	// Create a new command for the test
 	cmd := &cobra.Command{
 		Use:   addCmd.Use,
 		Short: addCmd.Short,
@@ -25,30 +25,30 @@ func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 		RunE:  runAdd,
 	}
 
-	// Добавляем флаги
-	cmd.Flags().StringP("name", "n", "", "Название ресурса")
-	cmd.Flags().String("description", "", "Описание/announcement")
-	cmd.Flags().String("announcement", "", "Announcement (для проекта)")
-	cmd.Flags().Bool("show-announcement", false, "Показывать announcement")
-	cmd.Flags().Int64("suite-id", 0, "ID сьюта")
-	cmd.Flags().Int64("section-id", 0, "ID секции")
+	// Add flags
+	cmd.Flags().StringP("name", "n", "", "Resource name")
+	cmd.Flags().String("description", "", "Description/announcement")
+	cmd.Flags().String("announcement", "", "Announcement (for project)")
+	cmd.Flags().Bool("show-announcement", false, "Show announcement")
+	cmd.Flags().Int64("suite-id", 0, "Suite ID")
+	cmd.Flags().Int64("section-id", 0, "Section ID")
 	cmd.Flags().Int64("milestone-id", 0, "ID milestone")
-	cmd.Flags().Int64("template-id", 0, "ID шаблона (для case)")
-	cmd.Flags().Int64("type-id", 0, "ID типа (для case)")
-	cmd.Flags().Int64("priority-id", 0, "ID приоритета (для case)")
-	cmd.Flags().String("title", "", "Заголовок (для case)")
-	cmd.Flags().String("refs", "", "Ссылки (references)")
-	cmd.Flags().String("comment", "", "Комментарий (для result)")
-	cmd.Flags().Int64("status-id", 0, "ID статуса (для result)")
-	cmd.Flags().String("elapsed", "", "Time выполнения (для result)")
-	cmd.Flags().String("defects", "", "Дефекты (для result)")
-	cmd.Flags().Int64("assignedto-id", 0, "ID назначенного пользователя")
-	cmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
-	cmd.Flags().Bool("include-all", true, "Включить все кейсы (для run)")
-	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
+	cmd.Flags().Int64("template-id", 0, "Template ID (for case)")
+	cmd.Flags().Int64("type-id", 0, "Type ID (for case)")
+	cmd.Flags().Int64("priority-id", 0, "Priority ID (for case)")
+	cmd.Flags().String("title", "", "Title (for case)")
+	cmd.Flags().String("refs", "", "References")
+	cmd.Flags().String("comment", "", "Comment (for result)")
+	cmd.Flags().Int64("status-id", 0, "Status ID (for result)")
+	cmd.Flags().String("elapsed", "", "Elapsed time (for result)")
+	cmd.Flags().String("defects", "", "Defects (for result)")
+	cmd.Flags().Int64("assignedto-id", 0, "Assigned user ID")
+	cmd.Flags().String("case-ids", "", "Case IDs comma-separated (for run)")
+	cmd.Flags().Bool("include-all", true, "Include all cases (for run)")
+	cmd.Flags().String("json-file", "", "Path to JSON file with data")
 	output.AddFlag(cmd)
 
-	// Создаем контекст с mock clientом
+	// Create context with mock client
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
 
@@ -90,7 +90,7 @@ func TestParseOptionalID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestAddProjectInteractive_Cancelled(t *testing.T) {
+func TestAddProjectInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -102,7 +102,7 @@ func TestAddProjectInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAddSuiteInteractive_Cancelled(t *testing.T) {
+func TestAddSuiteInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -114,7 +114,7 @@ func TestAddSuiteInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAddCaseInteractive_Cancelled(t *testing.T) {
+func TestAddCaseInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -127,7 +127,7 @@ func TestAddCaseInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestAddRunInteractive_Cancelled(t *testing.T) {
+func TestAddRunInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupAddTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -234,7 +234,7 @@ func TestAddSectionInteractive_ErrorBranches(t *testing.T) {
 		assert.ErrorContains(t, err, "invalid parent section id")
 	})
 
-	t.Run("cancelled", func(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			AddSectionFunc: func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
@@ -280,7 +280,7 @@ func TestAddSharedStepInteractive_ErrorBranches(t *testing.T) {
 		assert.ErrorContains(t, err, "shared step title is required")
 	})
 
-	t.Run("cancelled", func(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
@@ -780,7 +780,7 @@ func TestAddResultForCase_JSONAndClientErrorBranches(t *testing.T) {
 	})
 }
 
-// TestAdd_Project_Success проверяет создание проекта
+// TestAdd_Project_Success verifies project creation
 func TestAdd_Project_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddProjectFunc: func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
@@ -795,7 +795,7 @@ func TestAdd_Project_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_Suite_Success проверяет создание сьюта
+// TestAdd_Suite_Success verifies suite creation
 func TestAdd_Suite_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddSuiteFunc: func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
@@ -811,7 +811,7 @@ func TestAdd_Suite_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_Case_Success проверяет создание кейса
+// TestAdd_Case_Success verifies case creation
 func TestAdd_Case_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
@@ -828,7 +828,7 @@ func TestAdd_Case_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_Run_Success проверяет создание рана
+// TestAdd_Run_Success verifies run creation
 func TestAdd_Run_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddRunFunc: func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
@@ -845,7 +845,7 @@ func TestAdd_Run_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_Result_Success проверяет добавление результата
+// TestAdd_Result_Success verifies adding a result
 func TestAdd_Result_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddResultFunc: func(ctx context.Context, testID int64, req *data.AddResultRequest) (*data.Result, error) {
@@ -1299,7 +1299,7 @@ func TestResolveAddParentID_CaseSelectSectionError(t *testing.T) {
 	assert.Contains(t, err.Error(), "select section")
 }
 
-// TestAdd_SharedStep_Success проверяет создание shared step
+// TestAdd_SharedStep_Success verifies shared step creation
 func TestAdd_SharedStep_Success(t *testing.T) {
 	mock := &client.MockClient{
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
@@ -1315,7 +1315,7 @@ func TestAdd_SharedStep_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_NoEndpoint проверяет ошибку при отсутствии endpoint
+// TestAdd_NoEndpoint verifies error when endpoint is missing
 func TestAdd_NoEndpoint(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -1530,7 +1530,7 @@ func TestRunAdd_RequiredIDAndUnsupportedBranches(t *testing.T) {
 	})
 }
 
-// TestAdd_UnsupportedEndpoint проверяет ошибку при неподдерживаемом endpoint
+// TestAdd_UnsupportedEndpoint verifies error for unsupported endpoint
 func TestAdd_UnsupportedEndpoint(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -1544,9 +1544,9 @@ func TestAdd_UnsupportedEndpoint(t *testing.T) {
 
 // ==================== Attachment Tests ====================
 
-// TestAdd_AttachmentCase_Success проверяет добавление вложения к кейсу
+// TestAdd_AttachmentCase_Success verifies adding attachment to a case
 func TestAdd_AttachmentCase_Success(t *testing.T) {
-	// Создаем временный файл
+	// Create a temporary file
 	tmpFile, err := os.CreateTemp("", "test-attachment-*.txt")
 	assert.NoError(t, err)
 	defer os.Remove(tmpFile.Name())
@@ -1568,7 +1568,7 @@ func TestAdd_AttachmentCase_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_AttachmentPlan_Success проверяет добавление вложения к плану
+// TestAdd_AttachmentPlan_Success verifies adding attachment to a plan
 func TestAdd_AttachmentPlan_Success(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-plan-*.pdf")
 	assert.NoError(t, err)
@@ -1591,7 +1591,7 @@ func TestAdd_AttachmentPlan_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_AttachmentPlanEntry_Success проверяет добавление вложения к plan entry
+// TestAdd_AttachmentPlanEntry_Success verifies adding attachment to a plan entry
 func TestAdd_AttachmentPlanEntry_Success(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-entry-*.doc")
 	assert.NoError(t, err)
@@ -1615,7 +1615,7 @@ func TestAdd_AttachmentPlanEntry_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_AttachmentResult_Success проверяет добавление вложения к результату
+// TestAdd_AttachmentResult_Success verifies adding attachment to a result
 func TestAdd_AttachmentResult_Success(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-result-*.log")
 	assert.NoError(t, err)
@@ -1638,7 +1638,7 @@ func TestAdd_AttachmentResult_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_AttachmentRun_Success проверяет добавление вложения к рану
+// TestAdd_AttachmentRun_Success verifies adding attachment to a run
 func TestAdd_AttachmentRun_Success(t *testing.T) {
 	tmpFile, err := os.CreateTemp("", "test-run-*.png")
 	assert.NoError(t, err)
@@ -1661,7 +1661,7 @@ func TestAdd_AttachmentRun_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestAdd_Attachment_MissingArgs проверяет ошибку при недостаточных аргументах
+// TestAdd_Attachment_MissingArgs verifies error when arguments are insufficient
 func TestAdd_Attachment_MissingArgs(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -1673,7 +1673,7 @@ func TestAdd_Attachment_MissingArgs(t *testing.T) {
 	assert.Contains(t, err.Error(), "attachment type")
 }
 
-// TestAdd_Attachment_InvalidCaseID проверяет ошибку при неверном case_id
+// TestAdd_Attachment_InvalidCaseID verifies error for invalid case_id
 func TestAdd_Attachment_InvalidCaseID(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -1685,7 +1685,7 @@ func TestAdd_Attachment_InvalidCaseID(t *testing.T) {
 	assert.Contains(t, err.Error(), "case_id")
 }
 
-// TestAdd_Attachment_UnsupportedType проверяет ошибку при неподдерживаемом типе
+// TestAdd_Attachment_UnsupportedType verifies error for unsupported type
 func TestAdd_Attachment_UnsupportedType(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -1697,7 +1697,7 @@ func TestAdd_Attachment_UnsupportedType(t *testing.T) {
 	assert.Contains(t, err.Error(), "unsupported attachment type")
 }
 
-// TestAdd_Attachment_MissingFilePath проверяет ошибку при отсутствии пути к файлу
+// TestAdd_Attachment_MissingFilePath verifies error when file path is missing
 func TestAdd_Attachment_MissingFilePath(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -1709,7 +1709,7 @@ func TestAdd_Attachment_MissingFilePath(t *testing.T) {
 	assert.Contains(t, err.Error(), "usage")
 }
 
-// TestAdd_Attachment_MissingPlanEntryArgs проверяет ошибку при недостаточных аргументах для plan-entry
+// TestAdd_Attachment_MissingPlanEntryArgs verifies error when plan-entry arguments are insufficient
 func TestAdd_Attachment_MissingPlanEntryArgs(t *testing.T) {
 	mock := &client.MockClient{}
 

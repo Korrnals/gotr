@@ -14,25 +14,25 @@ import (
 func newListCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [project-id]",
-		Short: "Получить список test runs проекта",
-		Long: `Получает список всех test runs для указанного проекта.
+		Short: "Get list of project test runs",
+		Long: `Gets the list of all test runs for the specified project.
 
-В списке содержатся активные и завершённые runs с базовой информацией:
-ID, название, описание, статистика тестов (passed/failed/blocked).
+The list contains active and completed runs with basic information:
+ID, name, description, test statistics (passed/failed/blocked).
 
-Если project-id не указан, будет предложен интерактивный выбор из списка проектов.
+If project-id is not specified, an interactive selection from the project list will be offered.
 
-Примеры:
-	# Получить список runs проекта (с интерактивным выбором)
+Examples:
+	# Get project runs list (with interactive selection)
 	gotr run list
 
-	# Получить список runs проекта (с явным ID)
+	# Get project runs list (with explicit ID)
 	gotr run list 30
 
-	# Сохранить в файл для дальнейшей обработки
+	# Save to file for further processing
 	gotr run list 30 -o runs.json
 
-	# Dry-run режим
+	# Dry-run mode
 	gotr run list 30 --dry-run
 `,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -79,16 +79,14 @@ ID, название, описание, статистика тестов (passe
 				return fmt.Errorf("failed to get test runs list: %w", err)
 			}
 
-			return svc.Output(ctx, cmd, runs)
+			return output.OutputResultWithFlags(cmd, runs)
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать что будет выполнено без реальных изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 
 	return cmd
 }
 
 // listCmd is the exported command.
-var listCmd = newListCmd(func(cmd *cobra.Command) client.ClientInterface {
-	return getClientSafe(cmd)
-})
+var listCmd = newListCmd(getClientSafe)

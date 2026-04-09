@@ -13,11 +13,11 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [test_id]",
-		Short: "Получить информацию о тесте",
-		Long: `Получить детальную информацию о тесте по его ID.
+		Short: "Get test information",
+		Long: `Get detailed information about a test by its ID.
 
-Тест представляет собой конкретное выполнение тест-кейса
-в рамках тестового прогона.`,
+A test represents a specific execution of a test case
+within a test run.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
@@ -46,7 +46,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			// Check dry-run mode
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("tests get")
-				dr.PrintSimple("Получить информацию о тесте", fmt.Sprintf("Test ID: %d", testID))
+				dr.PrintSimple("Get test information", fmt.Sprintf("Test ID: %d", testID))
 				return nil
 			}
 
@@ -59,7 +59,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
 
 	return cmd

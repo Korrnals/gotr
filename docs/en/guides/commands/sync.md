@@ -121,6 +121,20 @@ gotr sync cases --help && gotr sync cases
 
 ---
 
+### ▶️ Scenario 5: Shared steps with filtered export
+🎯 **Goal:** migrate shared steps and automatically persist filtered candidates.
+
+```bash
+gotr sync shared-steps \
+  --src-project 30 --src-suite 20069 \
+  --dst-project 31 --approve \
+  --save-mapping --save-filtered
+```
+
+✅ **Why this matters:** keeps both mapping and filtered artifacts for follow-up `sync cases` and audit trails.
+
+---
+
 ## ⚡ Quick Start (30 seconds)
 
 1. Validate syntax and available flags quickly:
@@ -174,7 +188,7 @@ gotr sync cases --help
   > ---
 
 - ❓ **Question:** Which subcommands should be validated first?
-  > ↪️ **Answer:** recommended starting set: cases, full, sections, suites. Begin with the highest-frequency operation in your release workflow.
+  > ↪️ **Answer:** recommended starting set: shared-steps, cases, full, sections, suites. Begin with the highest-frequency operation in your release workflow.
   >
   > ---
 

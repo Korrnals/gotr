@@ -38,7 +38,10 @@ func (c *HTTPClient) GetSuite(ctx context.Context, suiteID int64) (*data.Suite, 
 
 // AddSuite creates a new test suite in a project.
 func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("add_suite/%d", projectID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {
@@ -56,7 +59,10 @@ func (c *HTTPClient) AddSuite(ctx context.Context, projectID int64, req *data.Ad
 
 // UpdateSuite updates an existing test suite.
 func (c *HTTPClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
-	bodyBytes, _ := json.Marshal(req)
+	bodyBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
 	endpoint := fmt.Sprintf("update_suite/%d", suiteID)
 	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
 	if err != nil {

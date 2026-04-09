@@ -13,19 +13,18 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	variablesCmd := &cobra.Command{
 		Use:   "variables",
-		Short: "Управление переменными тест-кейсов",
-		Long: `Управление переменными (variables) — конфигурационными значениями
-для тест-кейсов.
+		Short: "Manage test case variables",
+		Long: `Manage variables — configuration values for test cases.
 
-Переменные позволяют создавать гибкие тест-кейсы, которые могут
-адаптироваться под разные условия без создания дубликатов.
-Значения переменных можно изменять на уровне датасета.
+Variables allow creating flexible test cases that can
+adapt to different conditions without creating duplicates.
+Variable values can be modified at the dataset level.
 
-Доступные операции:
-  • list   — список переменных датасета
-  • add    — создать переменную
-  • update — обновить переменную
-  • delete — удалить переменную`,
+Available operations:
+  • list   — list dataset variables
+  • add    — create a variable
+  • update — update a variable
+  • delete — delete a variable`,
 	}
 
 	// Register subcommands

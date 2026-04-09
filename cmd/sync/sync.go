@@ -13,35 +13,31 @@ type GetClientFunc = client.GetClientFunc
 // Cmd is the parent command for migration.
 var Cmd = &cobra.Command{
 	Use:   "sync",
-	Short: "Синхронизация данных TestRail между проектами",
-	Long: `Родительская команда для миграции данных между проектами TestRail.
+	Short: "Synchronize TestRail data between projects",
+	Long: `Parent command for migrating data between TestRail projects.
 
-Поддерживает интерактивный режим выбора проектов и сьютов.
-Если параметры не указаны — будет предложен выбор из списка.
+Supports interactive mode for selecting projects and suites.
+If parameters are not specified, a selection from a list will be offered.
 
-Подкоманды:
-	• shared-steps — миграция общих шагов (генерирует mapping)
-	• cases        — миграция кейсов (требует mapping)
-	• full         — полная миграция (shared-steps + cases за один проход)
-	• suites       — миграция suites между проектами
-	• sections     — миграция sections между сюитами
+Subcommands:
+	• shared-steps — migrate shared steps (generates mapping)
+	• cases        — migrate cases (requires mapping)
+	• full         — full migration (shared-steps + cases in one pass)
+	• suites       — migrate suites between projects
+	• sections     — migrate sections between suites
 
-Логи и mapping сохраняются в директории: .testrail (лог-файлы находятся в .testrail/logs/)
+Logs and mapping are saved in the directory: .testrail (log files are in .testrail/logs/)
 
-Примеры:
-	# Интерактивный режим (выбор всех параметров)
+Examples:
+	# Interactive mode (select all parameters)
 	gotr sync full
 	gotr sync cases
 
-	# Через флаги
+	# Using flags
 	gotr sync full --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve --save-mapping
 	gotr sync cases --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --mapping shared_steps_mapping.json --dry-run
 	gotr sync shared-steps --src-project 30 --src-suite 20069 --dst-project 31 --approve --output shared_steps_mapping.json
 `,
-
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
 }
 
 var clientAccessor *client.Accessor
@@ -69,16 +65,16 @@ func SetTestClient(cmd *cobra.Command, mockClient client.ClientInterface) {
 
 // getClientSafe safely calls getClient with a nil check.
 // Fallback: gets client from context (for tests).
-func getClientSafe(cmd *cobra.Command) *client.HTTPClient {
+func getClientSafe(cmd *cobra.Command) client.ClientInterface {
 	if clientAccessor != nil {
-		if c := clientAccessor.GetClientSafe(cmd); c != nil {
+		if c := clientAccessor.GetClientSafe(cmd.Context()); c != nil {
 			return c
 		}
 	}
 	// Fallback for old tests — get from context by old key
 	if ctx := cmd.Context(); ctx != nil {
 		if v := ctx.Value(testHTTPClientKey); v != nil {
-			if c, ok := v.(*client.HTTPClient); ok {
+			if c, ok := v.(client.ClientInterface); ok {
 				return c
 			}
 		}
@@ -110,43 +106,43 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	Cmd.AddCommand(sectionsCmd)
 
 	// Flags for sync cases
-	casesCmd.Flags().Int64("src-project", 0, "ID source проекта (откуда копировать)")
-	casesCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
-	casesCmd.Flags().Int64("dst-project", 0, "ID destination проекта (куда копировать)")
-	casesCmd.Flags().Int64("dst-suite", 0, "ID destination сьюта")
-	casesCmd.Flags().String("compare-field", "title", "Поле для поиска дубликатов")
-	casesCmd.Flags().String("mapping-file", "", "Файл mapping для замены shared_step_id")
-	casesCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
-	casesCmd.Flags().String("output", "", "Дополнительный JSON файл с результатами")
+	casesCmd.Flags().Int64("src-project", 0, "Source project ID (copy from)")
+	casesCmd.Flags().Int64("src-suite", 0, "Source suite ID")
+	casesCmd.Flags().Int64("dst-project", 0, "Destination project ID (copy to)")
+	casesCmd.Flags().Int64("dst-suite", 0, "Destination suite ID")
+	casesCmd.Flags().String("compare-field", "title", "Field for duplicate detection")
+	casesCmd.Flags().String("mapping-file", "", "Mapping file for shared_step_id replacement")
+	casesCmd.Flags().Bool("dry-run", false, "Preview without importing")
+	casesCmd.Flags().String("output", "", "Additional JSON file with results")
 
 	// Flags for sync shared-steps
-	sharedStepsCmd.Flags().Int64("src-project", 0, "ID source проекта")
-	sharedStepsCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
-	sharedStepsCmd.Flags().Int64("dst-project", 0, "ID destination проекта")
-	sharedStepsCmd.Flags().String("compare-field", "title", "Поле для поиска дубликатов")
-	sharedStepsCmd.Flags().Bool("approve", false, "Автоматическое подтверждение")
-	sharedStepsCmd.Flags().Bool("save-mapping", false, "Сохранить mapping автоматически")
-	sharedStepsCmd.Flags().Bool("save-filtered", false, "Сохранить filtered список автоматически")
-	sharedStepsCmd.Flags().String("output", "", "Файл для сохранения mapping")
-	sharedStepsCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
+	sharedStepsCmd.Flags().Int64("src-project", 0, "Source project ID")
+	sharedStepsCmd.Flags().Int64("src-suite", 0, "Source suite ID")
+	sharedStepsCmd.Flags().Int64("dst-project", 0, "Destination project ID")
+	sharedStepsCmd.Flags().String("compare-field", "title", "Field for duplicate detection")
+	sharedStepsCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
+	sharedStepsCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
+	sharedStepsCmd.Flags().Bool("save-filtered", false, "Save filtered list automatically")
+	sharedStepsCmd.Flags().String("output", "", "File to save mapping to")
+	sharedStepsCmd.Flags().Bool("dry-run", false, "Preview without importing")
 
 	// Flags for sync sections
-	sectionsCmd.Flags().Int64("src-project", 0, "ID source проекта")
-	sectionsCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
-	sectionsCmd.Flags().Int64("dst-project", 0, "ID destination проекта")
-	sectionsCmd.Flags().Int64("dst-suite", 0, "ID destination сьюта")
-	sectionsCmd.Flags().String("compare-field", "title", "Поле для поиска дубликатов")
-	sectionsCmd.Flags().Bool("approve", false, "Автоматическое подтверждение")
-	sectionsCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
-	sectionsCmd.Flags().Bool("save-mapping", false, "Сохранить mapping автоматически")
+	sectionsCmd.Flags().Int64("src-project", 0, "Source project ID")
+	sectionsCmd.Flags().Int64("src-suite", 0, "Source suite ID")
+	sectionsCmd.Flags().Int64("dst-project", 0, "Destination project ID")
+	sectionsCmd.Flags().Int64("dst-suite", 0, "Destination suite ID")
+	sectionsCmd.Flags().String("compare-field", "title", "Field for duplicate detection")
+	sectionsCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
+	sectionsCmd.Flags().Bool("dry-run", false, "Preview without importing")
+	sectionsCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
 
 	// Flags for sync full
-	fullCmd.Flags().Int64("src-project", 0, "ID source проекта")
-	fullCmd.Flags().Int64("src-suite", 0, "ID source сьюта")
-	fullCmd.Flags().Int64("dst-project", 0, "ID destination проекта")
-	fullCmd.Flags().Int64("dst-suite", 0, "ID destination сьюта")
-	fullCmd.Flags().String("compare-field", "title", "Поле для поиска дубликатов")
-	fullCmd.Flags().Bool("approve", false, "Автоматическое подтверждение")
-	fullCmd.Flags().Bool("save-mapping", false, "Сохранить mapping автоматически")
-	fullCmd.Flags().Bool("dry-run", false, "Просмотр без импорта")
+	fullCmd.Flags().Int64("src-project", 0, "Source project ID")
+	fullCmd.Flags().Int64("src-suite", 0, "Source suite ID")
+	fullCmd.Flags().Int64("dst-project", 0, "Destination project ID")
+	fullCmd.Flags().Int64("dst-suite", 0, "Destination suite ID")
+	fullCmd.Flags().String("compare-field", "title", "Field for duplicate detection")
+	fullCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
+	fullCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
+	fullCmd.Flags().Bool("dry-run", false, "Preview without importing")
 }

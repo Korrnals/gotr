@@ -14,14 +14,14 @@ import (
 )
 
 func TestAddBulkCmd_Success(t *testing.T) {
-	// Создаём временный JSON файл с результатами
+	// Create a temporary JSON file with results
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `[
 		{"test_id": 101, "status_id": 1, "comment": "Test 1 passed"},
 		{"test_id": 102, "status_id": 5, "comment": "Test 2 failed"}
 	]`
-	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -45,14 +45,14 @@ func TestAddBulkCmd_Success(t *testing.T) {
 }
 
 func TestAddBulkCmd_WithCases(t *testing.T) {
-	// Создаём временный JSON файл с case-based результатами
+	// Create a temporary JSON file with case-based results
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `[
 		{"case_id": 201, "status_id": 1, "comment": "Case 1 passed"},
 		{"case_id": 202, "status_id": 1, "comment": "Case 2 passed"}
 	]`
-	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -102,7 +102,7 @@ func TestAddBulkCmd_DryRun(t *testing.T) {
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `[{"test_id": 101, "status_id": 1}]`
-	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -120,7 +120,7 @@ func TestAddBulkCmd_InvalidRunID(t *testing.T) {
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `[{"test_id": 101, "status_id": 1}]`
-	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -138,7 +138,7 @@ func TestAddBulkCmd_InvalidJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `invalid json content`
-	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -156,7 +156,7 @@ func TestAddBulkCmd_APIError(t *testing.T) {
 	tmpDir := t.TempDir()
 	resultsFile := filepath.Join(tmpDir, "results.json")
 	jsonContent := `[{"test_id": 101, "status_id": 1}]`
-	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0644); err != nil {
+	if err := os.WriteFile(resultsFile, []byte(jsonContent), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

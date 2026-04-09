@@ -30,7 +30,7 @@ func ensureCompareConfigDefaults() {
 	viper.SetDefault("compare.rate_limit", -1) // -1 = auto: server→0 (unlimited), cloud→by plan tier
 
 	viper.SetDefault("compare.cloud_rate_limit", 300) // enterprise tier
-	viper.SetDefault("compare.server_rate_limit", 0)  // server = unlimited
+	viper.SetDefault("compare.server_rate_limit", 0)  // server: unlimited
 
 	viper.SetDefault("compare.cases.parallel_suites", 10)
 	viper.SetDefault("compare.cases.parallel_pages", 6)
@@ -40,6 +40,24 @@ func ensureCompareConfigDefaults() {
 	viper.SetDefault("compare.cases.retry.workers", 12)
 	viper.SetDefault("compare.cases.retry.delay", "200ms")
 	viper.SetDefault("compare.cases.auto_retry_failed_pages", true)
+}
+
+// flagInt safely extracts an int from cmdFlags. Returns fallback if key is missing or wrong type.
+func flagInt(cmdFlags map[string]any, key string, fallback int) int {
+	v, ok := cmdFlags[key].(int)
+	if !ok {
+		return fallback
+	}
+	return v
+}
+
+// flagDuration safely extracts a time.Duration from cmdFlags. Returns fallback if key is missing or wrong type.
+func flagDuration(cmdFlags map[string]any, key string, fallback time.Duration) time.Duration {
+	v, ok := cmdFlags[key].(time.Duration)
+	if !ok {
+		return fallback
+	}
+	return v
 }
 
 func resolveCompareCasesRuntimeConfig(
@@ -58,7 +76,7 @@ func resolveCompareCasesRuntimeConfig(
 		retryAttempts = 5
 	}
 	if isFlagProvided(cmdFlags, "retry_attempts") {
-		retryAttempts = cmdFlags["retry_attempts"].(int)
+		retryAttempts = flagInt(cmdFlags, "retry_attempts", retryAttempts)
 	}
 
 	retryWorkers := viper.GetInt("compare.cases.retry.workers")
@@ -66,7 +84,7 @@ func resolveCompareCasesRuntimeConfig(
 		retryWorkers = 12
 	}
 	if isFlagProvided(cmdFlags, "retry_workers") {
-		retryWorkers = cmdFlags["retry_workers"].(int)
+		retryWorkers = flagInt(cmdFlags, "retry_workers", retryWorkers)
 	}
 
 	retryDelay := 500 * time.Millisecond
@@ -79,7 +97,7 @@ func resolveCompareCasesRuntimeConfig(
 		retryDelay = parsed
 	}
 	if isFlagProvided(cmdFlags, "retry_delay") {
-		retryDelay = cmdFlags["retry_delay"].(time.Duration)
+		retryDelay = flagDuration(cmdFlags, "retry_delay", retryDelay)
 	}
 
 	autoRetry := viper.GetBool("compare.cases.auto_retry_failed_pages")
@@ -115,7 +133,7 @@ func resolveCompareHeavyRuntimeConfig(
 
 	rateLimit := viper.GetInt("compare.rate_limit")
 	if isFlagProvided(cmdFlags, "rate_limit") {
-		rateLimit = cmdFlags["rate_limit"].(int)
+		rateLimit = flagInt(cmdFlags, "rate_limit", rateLimit)
 	}
 
 	if rateLimit < 0 {
@@ -127,7 +145,7 @@ func resolveCompareHeavyRuntimeConfig(
 		parallelSuites = 12
 	}
 	if isFlagProvided(cmdFlags, "parallel_suites") {
-		parallelSuites = cmdFlags["parallel_suites"].(int)
+		parallelSuites = flagInt(cmdFlags, "parallel_suites", parallelSuites)
 	}
 
 	parallelPages := viper.GetInt("compare.cases.parallel_pages")
@@ -135,7 +153,7 @@ func resolveCompareHeavyRuntimeConfig(
 		parallelPages = 8
 	}
 	if isFlagProvided(cmdFlags, "parallel_pages") {
-		parallelPages = cmdFlags["parallel_pages"].(int)
+		parallelPages = flagInt(cmdFlags, "parallel_pages", parallelPages)
 	}
 
 	pageRetries := viper.GetInt("compare.cases.page_retries")
@@ -143,7 +161,7 @@ func resolveCompareHeavyRuntimeConfig(
 		pageRetries = 5
 	}
 	if isFlagProvided(cmdFlags, "page_retries") {
-		pageRetries = cmdFlags["page_retries"].(int)
+		pageRetries = flagInt(cmdFlags, "page_retries", pageRetries)
 	}
 
 	timeoutText := strings.TrimSpace(viper.GetString("compare.cases.timeout"))
@@ -156,7 +174,7 @@ func resolveCompareHeavyRuntimeConfig(
 		timeout = parsed
 	}
 	if isFlagProvided(cmdFlags, "timeout") {
-		timeout = cmdFlags["timeout"].(time.Duration)
+		timeout = flagDuration(cmdFlags, "timeout", timeout)
 	}
 
 	return compareHeavyRuntimeConfig{

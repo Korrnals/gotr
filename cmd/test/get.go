@@ -14,14 +14,14 @@ import (
 func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [test-id]",
-		Short: "Получить информацию о тесте",
-		Long: `Получает детальную информацию о тесте по его ID.
+		Short: "Get test information",
+		Long: `Retrieves detailed information about a test by its ID.
 
-Примеры:
-	# Получить тест по ID
+Examples:
+	# Get a test by ID
 	gotr test get 12345
 
-	# Получить и сохранить в файл
+	# Get and save to file
 	gotr test get 12345 -o test.json
 `,
 		Args: cobra.MaximumNArgs(1),
@@ -68,12 +68,12 @@ func newGetCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra
 					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
-					svc.PrintSuccess(ctx, cmd, "Тест сохранён в %s", filepath)
+					output.PrintSuccess(cmd, "Test saved to %s", filepath)
 				}
 				return nil
 			}
 
-			return svc.Output(ctx, cmd, test)
+			return output.OutputResultWithFlags(cmd, test)
 		},
 	}
 

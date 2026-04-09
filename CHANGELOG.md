@@ -9,6 +9,17 @@
 
 ## [Unreleased]
 
+### Added
+
+#### Stage 13.5: Quality Hardening & Full Audit
+
+- **`api_paths.go`** — +14 endpoints added to the endpoint registry, complete coverage of TestRail API v2.
+- **`attachments list --for-project`** — new subcommand wrapping `GetAttachmentsForProject()`.
+- **`bdds add`** — stdin reading support: `cat scenario.feature | gotr bdds add 12345`.
+- **`sync shared-steps --save-filtered`** — automatic/interactive saving of filtered shared steps list via `ExportSharedSteps()`.
+- **Generic CRUD executor** (`internal/crud`) — eliminates boilerplate for simple CRUD commands.
+- **Compare resource registry** (`cmd/compare`) — declarative resource registration replacing manual wiring.
+
 ### Changed
 
 - `compare all`: stage-by-stage progress tracker in terminal (`done/active/pending`) for all resources.
@@ -19,12 +30,33 @@
   - `error_summary_count` / `error_resources` for real failures
   - `unsupported_summary_count` / `unsupported_resources` for server-unsupported methods
 - Legacy `internal/progress` package removed; progress/status flow is unified via `internal/ui` runtime.
-- Stage 13: finalized coverage audit completed; hotspots and repository total reached `100.0%` statement coverage (see `docs/reports/stage13/final-coverage-audit-2026-04-05.md`).
+- All Russian text in Go source files translated to English (i18n pass: 1738+ lines across 2 passes).
+- `panic(err)` in `main.go` and `cmd/commands.go` replaced with `fmt.Fprintf(os.Stderr)` + `os.Exit(1)`.
+- `ClientInterface` unified across all service packages (B-2..B-4 audit remediation).
 
 ### Fixed
 
 - `internal/client` paginator: fixed potential infinite loop for flat-array API responses with page size at or above 250.
 - `compare sections`: stabilized loading path via client pagination behavior and added regression coverage in paginator tests.
+- All `io.ReadAll(resp.Body)` calls wrapped with `io.LimitReader` (10 MiB cap) to prevent unbounded memory allocation.
+- File descriptor leak in `migration/types.go` — `logFile` now properly closed in `Migration.Close()`.
+- `os.Remove` error paths in `embedded/jq_embed.go` now checked and logged.
+- All `json.Marshal` errors across the codebase handled (45+ fixes in 17 files).
+- Safe type assertions with comma-ok pattern throughout; `os.Getwd` errors properly handled.
+- Context propagation ensured across all API calls (F-2..F-7 audit findings).
+
+### Security
+
+- Bounded parallelism enforced in all concurrent operations.
+- All HTTP response body reads are size-limited.
+- `ReadResponse` documentation clarifies `resp.Body` ownership contract.
+
+### Quality
+
+- **golangci-lint**: 290 findings → **0** (errcheck, staticcheck, gocritic, gocyclo, misspell, unused, nolintlint, ineffassign).
+- **Test suite**: 43/43 packages pass with race detector, 0 data races.
+- **0 TODO/FIXME/HACK** markers in production code.
+- **Audit verdict**: UNCONDITIONAL PASS (7 audit rounds completed).
 
 ## [3.0.0] - 2026-03-12
 

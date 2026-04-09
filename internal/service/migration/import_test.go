@@ -1,5 +1,5 @@
 // internal/migration/import_test.go
-package migration // white-box тесты — в том же пакете
+package migration // white-box tests — same package
 
 import (
 	"context"
@@ -13,33 +13,33 @@ import (
 )
 
 func TestMigration_ImportSharedSteps(t *testing.T) {
-	// Используем named response-тип напрямую — это отражает реальный контракт clientа
+	// Using named response type directly — this reflects the actual client contract
 	cases := getImportTestCases[data.GetSharedStepsResponse]()
 	for i, base := range cases {
-		tt := base // копия для модификации
+		tt := base // copy for modification
 
-		// Заполняем конкретные данные по индексу кейса
+		// Fill concrete data per test case index
 		switch i {
-		case 0: // dry-run — проверяем безопасность (импорт не происходит, mapping не меняется)
+		case 0: // dry-run — verify safety (no import occurs, mapping unchanged)
 			tt.filtered = data.GetSharedStepsResponse{{ID: 1, Title: "Test"}}
-		case 1: // успешный импорт — проверяем обновление mapping.Count (API работает)
-			tt.filtered = data.GetSharedStepsResponse{{ID: 1, Title: "Test"}}
-			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
-				return &data.SharedStep{ID: 100}, nil // симулируем успешный ответ API
-			}
-		case 2: // ошибка импорта — проверяем устойчивость (не паникуем, mapping не обновляется)
+		case 1: // successful import — verify mapping.Count update (API works)
 			tt.filtered = data.GetSharedStepsResponse{{ID: 1, Title: "Test"}}
 			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
-				return nil, errors.New("API error") // симулируем ошибку API
+				return &data.SharedStep{ID: 100}, nil // simulate successful API response
 			}
-		case 3: // concurrency — много элементов, проверяем параллельный импорт (race detector pass)
+		case 2: // import error — verify resilience (no panic, mapping unchanged)
+			tt.filtered = data.GetSharedStepsResponse{{ID: 1, Title: "Test"}}
+			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+				return nil, errors.New("API error") // simulate API error
+			}
+		case 3: // concurrency — many elements, verify parallel import (race detector pass)
 			tt.filtered = data.GetSharedStepsResponse{
 				{ID: 1, Title: "A"},
 				{ID: 2, Title: "B"},
 				{ID: 3, Title: "C"},
 			}
 			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
-				return &data.SharedStep{ID: int64(len(req.Title)) + 100}, nil // заглушка по длине Title
+				return &data.SharedStep{ID: int64(len(req.Title)) + 100}, nil // stub based on Title length
 			}
 		}
 
@@ -56,7 +56,7 @@ func TestMigration_ImportSharedSteps(t *testing.T) {
 			defer m.Close()
 
 			err = m.ImportSharedSteps(context.Background(), tt.filtered, tt.dryRun)
-			if err != nil && i != 2 { // ошибка ожидаема только в кейсе ошибки
+			if err != nil && i != 2 { // error expected only in the error test case
 				t.Errorf("unexpected error: %v", err)
 			}
 
@@ -72,19 +72,19 @@ func TestMigration_ImportSuites(t *testing.T) {
 	for i, base := range cases {
 		tt := base
 		switch i {
-		case 0: // dry-run — проверяем безопасность
+		case 0: // dry-run — verify safety
 			tt.filtered = data.GetSuitesResponse{{ID: 1, Name: "Test Suite"}}
-		case 1: // успешный импорт — проверяем обновление mapping.Count
+		case 1: // successful import — verify mapping.Count update
 			tt.filtered = data.GetSuitesResponse{{ID: 1, Name: "Test Suite"}}
 			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 				return &data.Suite{ID: 100}, nil
 			}
-		case 2: // ошибка импорта — проверяем устойчивость
+		case 2: // import error — verify resilience
 			tt.filtered = data.GetSuitesResponse{{ID: 1, Name: "Test Suite"}}
 			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 				return nil, errors.New("API error")
 			}
-		case 3: // concurrency — проверяем параллельный импорт
+		case 3: // concurrency — verify parallel import
 			tt.filtered = data.GetSuitesResponse{
 				{ID: 1, Name: "A"},
 				{ID: 2, Name: "B"},
@@ -124,19 +124,19 @@ func TestMigration_ImportCases(t *testing.T) {
 	for i, base := range cases {
 		tt := base
 		switch i {
-		case 0: // dry-run — проверяем безопасность
+		case 0: // dry-run — verify safety
 			tt.filtered = data.GetCasesResponse{{ID: 1, Title: "Test Case"}}
-		case 1: // успешный импорт — проверяем imported (не меняет mapping)
+		case 1: // successful import — verify imported (does not change mapping)
 			tt.filtered = data.GetCasesResponse{{ID: 1, Title: "Test Case"}}
 			tt.mockFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
 				return &data.Case{ID: 100}, nil
 			}
-		case 2: // ошибка импорта — проверяем устойчивость
+		case 2: // import error — verify resilience
 			tt.filtered = data.GetCasesResponse{{ID: 1, Title: "Test Case"}}
 			tt.mockFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
 				return nil, errors.New("API error")
 			}
-		case 3: // concurrency — проверяем параллельный импорт
+		case 3: // concurrency — verify parallel import
 			tt.filtered = data.GetCasesResponse{
 				{ID: 1, Title: "A"},
 				{ID: 2, Title: "B"},
@@ -164,7 +164,7 @@ func TestMigration_ImportCases(t *testing.T) {
 				t.Errorf("unexpected error: %v", err)
 			}
 
-			// Для Cases mapping.Count не меняется — проверяем importedCases (если добавишь counter)
+			// For Cases mapping.Count does not change — verify importedCases
 			assert.Equal(t, tt.wantImported, m.importedCases)
 		})
 	}
@@ -175,19 +175,19 @@ func TestMigration_ImportSections(t *testing.T) {
 	for i, base := range cases {
 		tt := base
 		switch i {
-		case 0: // dry-run — проверяем безопасность
+		case 0: // dry-run — verify safety
 			tt.filtered = data.GetSectionsResponse{{ID: 1, Name: "Test Section"}}
-		case 1: // успешный импорт — проверяем обновление mapping.Count
+		case 1: // successful import — verify mapping.Count update
 			tt.filtered = data.GetSectionsResponse{{ID: 1, Name: "Test Section"}}
 			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 				return &data.Section{ID: 100}, nil
 			}
-		case 2: // ошибка импорта — проверяем устойчивость
+		case 2: // import error — verify resilience
 			tt.filtered = data.GetSectionsResponse{{ID: 1, Name: "Test Section"}}
 			tt.mockFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
 				return nil, errors.New("API error")
 			}
-		case 3: // concurrency — проверяем параллельный импорт
+		case 3: // concurrency — verify parallel import
 			tt.filtered = data.GetSectionsResponse{
 				{ID: 1, Name: "A"},
 				{ID: 2, Name: "B"},

@@ -174,17 +174,17 @@ func TestPrompterFromContext_WithPrompter(t *testing.T) {
 }
 
 func TestPrompterFromContext_NilContext(t *testing.T) {
-	p := PrompterFromContext(nil)
+	p := PrompterFromContext(context.TODO())
 	assert.NotNil(t, p)
 }
 
 func TestWithPrompter_NilContext(t *testing.T) {
-	ctx := WithPrompter(nil, NewMockPrompter())
+	ctx := WithPrompter(context.TODO(), NewMockPrompter())
 	assert.NotNil(t, ctx)
 }
 
 func TestHasPrompterInContext(t *testing.T) {
-	assert.False(t, HasPrompterInContext(nil))
+	assert.False(t, HasPrompterInContext(context.TODO()))
 	assert.False(t, HasPrompterInContext(context.Background()))
 
 	ctx := WithPrompter(context.Background(), NewMockPrompter())
@@ -192,7 +192,7 @@ func TestHasPrompterInContext(t *testing.T) {
 }
 
 func TestIsNonInteractive(t *testing.T) {
-	assert.False(t, IsNonInteractive(nil))
+	assert.False(t, IsNonInteractive(context.TODO()))
 	assert.False(t, IsNonInteractive(context.Background()))
 
 	ctxInteractive := WithPrompter(context.Background(), NewMockPrompter())

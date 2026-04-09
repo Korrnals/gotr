@@ -13,19 +13,19 @@ import (
 
 var fullCmd = &cobra.Command{
 	Use:   "full",
-	Short: "Полная миграция (shared-steps + cases за один проход)",
-	Long: `Выполняет полную миграцию: сначала переносит shared steps (формирует mapping), затем переносит cases.
+	Short: "Full migration (shared-steps + cases in one pass)",
+	Long: `Performs a full migration: first transfers shared steps (generates mapping), then transfers cases.
 
-Особенности:
-• Автоматический интерактивный выбор проектов и сьютов
-• Выполняет двухэтапную миграцию за один вызов
-• Сохраняет mapping автоматически (с --save-mapping)
+Features:
+• Automatic interactive selection of projects and suites
+• Executes two-stage migration in a single call
+• Saves mapping automatically (with --save-mapping)
 
-Примеры:
-	# Полностью интерактивный режим
+Examples:
+	# Fully interactive mode
 	gotr sync full
 
-	# Через флаги
+	# Using flags
 	gotr sync full --src-project 30 --src-suite 20069 --dst-project 31 --dst-suite 19859 --approve --save-mapping
 `,
 
@@ -89,7 +89,7 @@ var fullCmd = &cobra.Command{
 		defer m.Close()
 
 		op := newSyncOperation("Full migration", quiet)
-		defer op.Finish()
+defer op.Finish()
 
 		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
@@ -115,7 +115,7 @@ var fullCmd = &cobra.Command{
 		}
 
 		if autoSaveMapping {
-			m.ExportMapping(logDir)
+			_ = m.ExportMapping(logDir)
 		}
 
 		ui.Success(os.Stdout, "Full migration complete!")

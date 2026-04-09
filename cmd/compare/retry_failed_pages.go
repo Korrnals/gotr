@@ -147,6 +147,78 @@ func resolveRetryFailedPagesOptionsFromConfig(cmd *cobra.Command) (retryFailedPa
 	}, nil
 }
 
+// retryResult holds the outcome of a single page retry attempt.
+// Sent from retryWorker goroutines back to the collector in executeRetryFailedPages.
+type retryResult struct {
+	page  concurrency.FailedPage // original page descriptor (with Error updated on failure)
+	err   error                  // nil on success, last attempt error on failure
+	count int                    // number of cases fetched on success
+}
+
+// retryWorker reads pages from jobs, retries each up to the given number of attempts,
+// and sends results to the results channel.
+// Extracted from the inline goroutine in executeRetryFailedPages to reduce CC.
+// Each worker is independent: it pulls pages from a shared buffered channel,
+// performs up to `attempts` fetches with an inter-attempt delay, and pushes
+// a retryResult with either the fetched count or the last error.
+func retryWorker(ctx context.Context, cli client.ClientInterface, jobs <-chan concurrency.FailedPage, results chan<- retryResult, attempts int, delay time.Duration) {
+	for page := range jobs {
+		var lastErr error
+		var fetched int
+
+		// Retry loop: break on first success, sleep between failures.
+		for attempt := 1; attempt <= attempts; attempt++ {
+			cases, err := cli.GetCasesPage(ctx, page.ProjectID, page.SuiteID, page.Offset, page.Limit)
+			if err == nil {
+				fetched = len(cases)
+				lastErr = nil
+				break
+			}
+			lastErr = err
+			if attempt < attempts && delay > 0 {
+				time.Sleep(delay)
+			}
+		}
+
+		results <- retryResult{page: page, err: lastErr, count: fetched}
+	}
+}
+
+// reportRemainingPages displays, saves and returns remaining failed pages after retry.
+// Extracted from the tail of executeRetryFailedPages to reduce CC.
+// When remaining is empty it prints a success message and returns (nil, nil).
+// Otherwise it shows up to 10 pages, persists the full list to JSON,
+// and returns the remaining slice (caller decides what to do with it).
+func reportRemainingPages(remaining []concurrency.FailedPage, saveRemainingPath string, stats *retryFailedPagesStats) ([]concurrency.FailedPage, error) {
+	stats.RemainingPages = len(remaining)
+	if len(remaining) == 0 {
+		ui.Successf(os.Stderr, "All failed pages were recovered successfully")
+		return nil, nil
+	}
+
+	ui.Warningf(os.Stderr, "Failed pages still remaining: %d", len(remaining))
+	showLimit := 10
+	if len(remaining) < showLimit {
+		showLimit = len(remaining)
+	}
+	for i := 0; i < showLimit; i++ {
+		fp := remaining[i]
+		ui.Infof(os.Stderr, "  - project=%d suite=%d page=%d offset=%d limit=%d", fp.ProjectID, fp.SuiteID, fp.PageNum, fp.Offset, fp.Limit)
+	}
+	if len(remaining) > showLimit {
+		ui.Infof(os.Stderr, "  ... and %d more pages", len(remaining)-showLimit)
+	}
+
+	reportPath, saveErr := saveFailedPagesReport(remaining, saveRemainingPath)
+	if saveErr != nil {
+		return remaining, fmt.Errorf("save remaining failed pages error: %w", saveErr)
+	}
+	stats.SaveRemainingTo = reportPath
+	ui.Infof(os.Stderr, "Remaining failed pages saved to: %s", reportPath)
+
+	return remaining, nil
+}
+
 // executeRetryFailedPages retries each unique failed page and returns remaining failures.
 func executeRetryFailedPages(
 	ctx context.Context,
@@ -185,12 +257,8 @@ func executeRetryFailedPages(
 	ui.Infof(os.Stderr, "Pages in report: %d (unique: %d)", len(failedPages), len(uniquePages))
 	ui.Infof(os.Stderr, "Parameters: attempts=%d, workers=%d, retry-delay=%s", opts.Attempts, opts.Workers, opts.Delay)
 
-	type retryResult struct {
-		page  concurrency.FailedPage
-		err   error
-		count int
-	}
-
+	// Fan-out/fan-in: buffer all jobs, then spawn workers.
+	// Buffered channels ensure no goroutine blocks on send.
 	jobs := make(chan concurrency.FailedPage, len(uniquePages))
 	results := make(chan retryResult, len(uniquePages))
 
@@ -199,28 +267,9 @@ func executeRetryFailedPages(
 	}
 	close(jobs)
 
+	// Launch worker pool — each worker drains jobs independently.
 	for i := 0; i < opts.Workers; i++ {
-		go func() {
-			for page := range jobs {
-				var lastErr error
-				var fetched int
-
-				for attempt := 1; attempt <= opts.Attempts; attempt++ {
-					cases, err := cli.GetCasesPage(ctx, page.ProjectID, page.SuiteID, page.Offset, page.Limit)
-					if err == nil {
-						fetched = len(cases)
-						lastErr = nil
-						break
-					}
-					lastErr = err
-					if attempt < opts.Attempts && opts.Delay > 0 {
-						time.Sleep(opts.Delay)
-					}
-				}
-
-				results <- retryResult{page: page, err: lastErr, count: fetched}
-			}
-		}()
+		go retryWorker(ctx, cli, jobs, results, opts.Attempts, opts.Delay)
 	}
 
 	remaining := make([]concurrency.FailedPage, 0)
@@ -257,33 +306,11 @@ func executeRetryFailedPages(
 	ui.Stat(os.Stderr, "INFO", "Cases fetched by retry", fmt.Sprintf("%d", recoveredCases))
 	stats.RecoveredPages = recoveredPages
 	stats.RecoveredCases = recoveredCases
-	stats.RemainingPages = len(remaining)
-	if len(remaining) == 0 {
-		ui.Successf(os.Stderr, "All failed pages were recovered successfully")
-		return nil, stats, nil
-	}
 
-	ui.Warningf(os.Stderr, "Failed pages still remaining: %d", len(remaining))
-	showLimit := 10
-	if len(remaining) < showLimit {
-		showLimit = len(remaining)
-	}
-	for i := 0; i < showLimit; i++ {
-		fp := remaining[i]
-		ui.Infof(os.Stderr, "  - project=%d suite=%d page=%d offset=%d limit=%d", fp.ProjectID, fp.SuiteID, fp.PageNum, fp.Offset, fp.Limit)
-	}
-	if len(remaining) > showLimit {
-		ui.Infof(os.Stderr, "  ... and %d more pages", len(remaining)-showLimit)
-	}
-
-	reportPath, saveErr := saveFailedPagesReport(remaining, saveRemainingPath)
-	if saveErr != nil {
-		return remaining, stats, fmt.Errorf("save remaining failed pages error: %w", saveErr)
-	}
-	stats.SaveRemainingTo = reportPath
-	ui.Infof(os.Stderr, "Remaining failed pages saved to: %s", reportPath)
-
-	return remaining, stats, nil
+	// Delegate remaining-pages display and persistence to a helper
+	// (extracted to keep executeRetryFailedPages under the CC threshold).
+	rem, err := reportRemainingPages(remaining, saveRemainingPath, &stats)
+	return rem, stats, err
 }
 
 // loadFailedPages reads and parses a failed-pages report file.

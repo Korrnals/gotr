@@ -16,18 +16,18 @@ import (
 func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "delete [dataset_id]",
-		Short: "Удалить датасет",
-		Long: `Удаляет датасет по его ID.
+		Short: "Delete a dataset",
+		Long: `Deletes a dataset by its ID.
 
-⚠️ Внимание: удаление нельзя отменить! Все данные из датасета
-будут безвозвратно удалены. Убедитесь, что датасет не используется
-в активных тест-планах перед удалением.
+⚠️ Warning: deletion cannot be undone! All data in the dataset
+will be permanently removed. Make sure the dataset is not used
+in active test plans before deleting.
 
-Используйте --dry-run для проверки перед удалением.`,
-		Example: `  # Удалить датасет
+Use --dry-run to preview before deleting.`,
+		Example: `  # Delete a dataset
   gotr datasets delete 123
 
-  # Проверить перед удалением
+  # Preview before deleting
   gotr datasets delete 123 --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -54,7 +54,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			// Check dry-run
 			if isDryRun, _ := cmd.Flags().GetBool("dry-run"); isDryRun {
 				dr := output.NewDryRunPrinter("datasets delete")
-				dr.PrintSimple("Удалить датасет", fmt.Sprintf("Dataset ID: %d", datasetID))
+				dr.PrintSimple("Delete dataset", fmt.Sprintf("Dataset ID: %d", datasetID))
 				return nil
 			}
 
@@ -67,7 +67,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет удалено без реального удаления")
+	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
 
 	return cmd
 }

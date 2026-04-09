@@ -20,7 +20,7 @@ func GetExportsDir(resource string) (string, error) {
 // EnsureDir ensures that the given directory exists, creating it if necessary.
 // Creates parent directories as needed with permissions 0755.
 func EnsureDir(path string) error {
-	if err := os.MkdirAll(path, 0755); err != nil {
+	if err := os.MkdirAll(path, 0o755); err != nil {
 		return fmt.Errorf("error creating directory %s: %w", path, err)
 	}
 	return nil

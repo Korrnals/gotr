@@ -15,24 +15,24 @@ import (
 func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list [run-id]",
-		Short: "Получить список тестов в ране",
-		Long: `Получает список всех тестов для указанного тест-рана.
+		Short: "List tests in a run",
+		Long: `Retrieves a list of all tests for the specified test run.
 
-Можно применять фильтры:
-	--status-id      Фильтр по статусу (1=passed, 5=failed, etc.)
-	--assigned-to    Фильтр по назначенному пользователю
+Filters can be applied:
+	--status-id      Filter by status (1=passed, 5=failed, etc.)
+	--assigned-to    Filter by assigned user
 
-Примеры:
-	# Получить все тесты в ране
+Examples:
+	# Get all tests in a run
 	gotr test list 100
 
-	# Получить только failed тесты
+	# Get only failed tests
 	gotr test list 100 --status-id 5
 
-	# Получить тесты, назначенные на пользователя
+	# Get tests assigned to a user
 	gotr test list 100 --assigned-to 10
 
-	# Сохранить в файл
+	# Save to file
 	gotr test list 100 -o tests.json
 `,
 		Args: cobra.MaximumNArgs(1),
@@ -92,18 +92,18 @@ func newListCmd(getClient func(cmd *cobra.Command) client.ClientInterface) *cobr
 					return fmt.Errorf("save error: %w", err)
 				}
 				if filepath != "" {
-					svc.PrintSuccess(ctx, cmd, "Список тестов (%d) сохранён в %s", len(tests), filepath)
+					output.PrintSuccess(cmd, "Test list (%d) saved to %s", len(tests), filepath)
 				}
 				return nil
 			}
 
-			return svc.Output(ctx, cmd, tests)
+			return output.OutputResultWithFlags(cmd, tests)
 		},
 	}
 
 	output.AddFlag(cmd)
-	cmd.Flags().Int64("status-id", 0, "Фильтр по ID статуса")
-	cmd.Flags().Int64("assigned-to", 0, "Фильтр по ID назначенного пользователя")
+	cmd.Flags().Int64("status-id", 0, "Filter by status ID")
+	cmd.Flags().Int64("assigned-to", 0, "Filter by assigned user ID")
 
 	return cmd
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -148,7 +148,7 @@ func TestListCmd_SaveProjectUsers(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestListCmd_InvalidProjectID(t *testing.T) {
 	mock := &client.MockClient{}

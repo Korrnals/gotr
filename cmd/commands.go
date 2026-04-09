@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/bdds"
 	"github.com/Korrnals/gotr/cmd/cases"
@@ -44,27 +47,36 @@ func init() {
 	registerCompletionCmd()
 
 	// Register subpackage commands (pass GetClient* accessor)
-	attachments.Register(rootCmd, GetClientInterface)
-	bdds.Register(rootCmd, GetClientInterface)
-	cases.Register(rootCmd, GetClientInterface)
-	compare.Register(rootCmd, GetClientInterface)
-	configurations.Register(rootCmd, GetClientInterface)
-	datasets.Register(rootCmd, GetClientInterface)
+	attachments.Register(rootCmd, GetClient)
+	bdds.Register(rootCmd, GetClient)
+	cases.Register(rootCmd, GetClient)
+	compare.Register(rootCmd, GetClient)
+	configurations.Register(rootCmd, GetClient)
+	datasets.Register(rootCmd, GetClient)
 	get.Register(rootCmd, GetClient)
-	groups.Register(rootCmd, GetClientInterface)
-	labels.Register(rootCmd, GetClientInterface)
-	milestones.Register(rootCmd, GetClientInterface)
-	plans.Register(rootCmd, GetClientInterface)
-	reports.Register(rootCmd, GetClientInterface)
-	run.Register(rootCmd, GetClient)
-	result.Register(rootCmd, GetClient)
-	roles.Register(rootCmd, GetClientInterface)
-	sync.Register(rootCmd, GetClient)
-	test.Register(rootCmd, GetClient)
-	templates.Register(rootCmd, GetClientInterface)
-	tests.Register(rootCmd, GetClientInterface)
-	users.Register(rootCmd, GetClientInterface)
-	variables.Register(rootCmd, GetClientInterface)
+	groups.Register(rootCmd, GetClient)
+	labels.Register(rootCmd, GetClient)
+	milestones.Register(rootCmd, GetClient)
+	plans.Register(rootCmd, GetClient)
+	reports.Register(rootCmd, GetClient)
+	run.Register(rootCmd, GetClientFromCtx)
+	result.Register(rootCmd, GetClientFromCtx)
+	roles.Register(rootCmd, GetClient)
+	sync.Register(rootCmd, GetClientFromCtx)
+	test.Register(rootCmd, GetClientFromCtx)
+	templates.Register(rootCmd, GetClient)
+	tests.Register(rootCmd, GetClient)
+	users.Register(rootCmd, GetClient)
+	variables.Register(rootCmd, GetClient)
+}
+
+// must terminates the process if err is non-nil. Used for init-time bindings
+// that indicate a programming error (e.g. binding a non-existent flag).
+func must(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "fatal: init error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 // initGlobalFlags registers persistent flags shared by all subcommands.
@@ -78,7 +90,7 @@ func initGlobalFlags() {
 
 	// Hidden debug flag
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug output")
-	rootCmd.PersistentFlags().MarkHidden("debug")
+	must(rootCmd.PersistentFlags().MarkHidden("debug"))
 
 	// Quiet mode (suppress informational output for CI/CD)
 	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Suppress progress, stats, and save messages")
@@ -90,11 +102,11 @@ func initGlobalFlags() {
 	rootCmd.PersistentFlags().StringP("format", "f", "table", "Output format: table, json, csv, md, html")
 
 	// Bind flags to Viper
-	viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url"))
-	viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username"))
-	viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key"))
-	viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure"))
-	viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug"))
+	must(viper.BindPFlag("base_url", rootCmd.PersistentFlags().Lookup("url")))
+	must(viper.BindPFlag("username", rootCmd.PersistentFlags().Lookup("username")))
+	must(viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")))
+	must(viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")))
+	must(viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")))
 }
 
 // ============================================

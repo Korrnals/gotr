@@ -1,11 +1,12 @@
 package cmd
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/crud"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -85,7 +86,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the client
-	cli := GetClientInterface(cmd)
+	cli := GetClient(cmd)
 
 	// Read JSON from file if specified
 	jsonFile, _ := cmd.Flags().GetString("json-file")
@@ -198,7 +199,7 @@ func updateSectionInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -240,7 +241,7 @@ func updateProjectInteractive(cli client.ClientInterface, cmd *cobra.Command, id
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -280,7 +281,7 @@ func updateSuiteInteractive(cli client.ClientInterface, cmd *cobra.Command, id i
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -319,7 +320,7 @@ func updateCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, id in
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -359,7 +360,7 @@ func updateRunInteractive(cli client.ClientInterface, cmd *cobra.Command, id int
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -401,7 +402,7 @@ func updateSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command,
 
 	confirmed, err := interactive.AskConfirmWithPrompter(p, "Confirm update?")
 	if err != nil || !confirmed {
-		ui.Cancelled(os.Stdout)
+		ui.Canceled(os.Stdout)
 		return nil
 	}
 
@@ -419,356 +420,232 @@ func updateSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command,
 
 // runUpdateDryRun performs a dry-run for the update command.
 func runUpdateDryRun(cmd *cobra.Command, dr *output.DryRunPrinter, endpoint string, id int64, jsonData []byte) error {
-	// Read flags
-	name, _ := cmd.Flags().GetString("name")
-	title, _ := cmd.Flags().GetString("title")
-	description, _ := cmd.Flags().GetString("description")
-	announcement, _ := cmd.Flags().GetString("announcement")
-	showAnn, _ := cmd.Flags().GetBool("show-announcement")
-	isCompleted, _ := cmd.Flags().GetBool("is-completed")
-	milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
-	assignedToID, _ := cmd.Flags().GetInt64("assignedto-id")
-	includeAll, _ := cmd.Flags().GetBool("include-all")
-	typeID, _ := cmd.Flags().GetInt64("type-id")
-	priorityID, _ := cmd.Flags().GetInt64("priority-id")
-	refs, _ := cmd.Flags().GetString("refs")
-	caseIDsStr, _ := cmd.Flags().GetString("case-ids")
-
-	var method, url string
-	var body interface{}
-
-	switch endpoint {
-	case "project":
-		if len(jsonData) > 0 {
-			var req data.UpdateProjectRequest
-			json.Unmarshal(jsonData, &req)
-			body = req
-		} else {
-			req := data.UpdateProjectRequest{
-				ShowAnnouncement: showAnn,
-				IsCompleted:      isCompleted,
-			}
-			if name != "" {
-				req.Name = name
-			}
-			if announcement != "" {
-				req.Announcement = announcement
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_project/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Project %d", id), method, url, body)
-
-	case "suite":
-		if len(jsonData) > 0 {
-			var req data.UpdateSuiteRequest
-			json.Unmarshal(jsonData, &req)
-			body = req
-		} else {
-			req := data.UpdateSuiteRequest{
-				IsCompleted: isCompleted,
-			}
-			if name != "" {
-				req.Name = name
-			}
-			if description != "" {
-				req.Description = description
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_suite/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Suite %d", id), method, url, body)
-
-	case "section":
-		if len(jsonData) > 0 {
-			var req data.UpdateSectionRequest
-			json.Unmarshal(jsonData, &req)
-			body = req
-		} else {
-			req := data.UpdateSectionRequest{}
-			if name != "" {
-				req.Name = name
-			}
-			if description != "" {
-				req.Description = description
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_section/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Section %d", id), method, url, body)
-
-	case "case":
-		if len(jsonData) > 0 {
-			var req data.UpdateCaseRequest
-			json.Unmarshal(jsonData, &req)
-			body = req
-		} else {
-			req := data.UpdateCaseRequest{}
-			if title != "" {
-				req.Title = &title
-			}
-			if typeID > 0 {
-				req.TypeID = &typeID
-			}
-			if priorityID > 0 {
-				req.PriorityID = &priorityID
-			}
-			if refs != "" {
-				req.Refs = &refs
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_case/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Case %d", id), method, url, body)
-
-	case "run":
-		if len(jsonData) > 0 {
-			var req data.UpdateRunRequest
-			json.Unmarshal(jsonData, &req)
-			body = req
-		} else {
-			req := data.UpdateRunRequest{
-				IncludeAll: &includeAll,
-			}
-			if name != "" {
-				req.Name = &name
-			}
-			if description != "" {
-				req.Description = &description
-			}
-			if milestoneID > 0 {
-				req.MilestoneID = &milestoneID
-			}
-			if assignedToID > 0 {
-				req.AssignedTo = &assignedToID
-			}
-			if caseIDsStr != "" {
-				caseIDs := parseCaseIDs(caseIDsStr)
-				req.CaseIDs = caseIDs
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_run/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Run %d", id), method, url, body)
-
-	case "shared-step":
-		if len(jsonData) > 0 {
-			var req data.UpdateSharedStepRequest
-			json.Unmarshal(jsonData, &req)
-			body = req
-		} else {
-			req := data.UpdateSharedStepRequest{}
-			if title != "" {
-				req.Title = title
-			}
-			body = req
-		}
-		method = "POST"
-		url = fmt.Sprintf("/index.php?/api/v2/update_shared_step/%d", id)
-		dr.PrintOperation(fmt.Sprintf("Update Shared Step %d", id), method, url, body)
-
-	case "labels":
-		labels, _ := cmd.Flags().GetString("labels")
-		dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %s", id, labels))
-
-	default:
+	handler, ok := updateDryRunHandlers[endpoint]
+	if !ok {
 		return fmt.Errorf("unsupported endpoint for dry-run: %s", endpoint)
 	}
+	return handler(cmd, dr, id, jsonData)
+}
 
+var updateDryRunHandlers = map[string]func(*cobra.Command, *output.DryRunPrinter, int64, []byte) error{
+	"project":     dryRunUpdateProject,
+	"suite":       dryRunUpdateSuite,
+	"section":     dryRunUpdateSection,
+	"case":        dryRunUpdateCase,
+	"run":         dryRunUpdateRun,
+	"shared-step": dryRunUpdateSharedStep,
+	"labels":      dryRunUpdateLabels,
+}
+
+// --- Request builders (shared between execute and dry-run) ---
+
+func buildUpdateProjectReq(cmd *cobra.Command, _ bool) (*data.UpdateProjectRequest, error) {
+	req := &data.UpdateProjectRequest{}
+	name, _ := cmd.Flags().GetString("name")
+	if name != "" {
+		req.Name = name
+	}
+	announcement, _ := cmd.Flags().GetString("announcement")
+	if announcement != "" {
+		req.Announcement = announcement
+	}
+	req.ShowAnnouncement, _ = cmd.Flags().GetBool("show-announcement")
+	req.IsCompleted, _ = cmd.Flags().GetBool("is-completed")
+	return req, nil
+}
+
+func buildUpdateSuiteReq(cmd *cobra.Command, _ bool) (*data.UpdateSuiteRequest, error) {
+	req := &data.UpdateSuiteRequest{}
+	name, _ := cmd.Flags().GetString("name")
+	if name != "" {
+		req.Name = name
+	}
+	description, _ := cmd.Flags().GetString("description")
+	if description != "" {
+		req.Description = description
+	}
+	req.IsCompleted, _ = cmd.Flags().GetBool("is-completed")
+	return req, nil
+}
+
+func buildUpdateSectionReq(cmd *cobra.Command, _ bool) (*data.UpdateSectionRequest, error) {
+	req := &data.UpdateSectionRequest{}
+	name, _ := cmd.Flags().GetString("name")
+	if name != "" {
+		req.Name = name
+	}
+	description, _ := cmd.Flags().GetString("description")
+	if description != "" {
+		req.Description = description
+	}
+	return req, nil
+}
+
+func buildUpdateCaseReq(cmd *cobra.Command, _ bool) (*data.UpdateCaseRequest, error) {
+	req := &data.UpdateCaseRequest{}
+	title, _ := cmd.Flags().GetString("title")
+	if title != "" {
+		req.Title = &title
+	}
+	typeID, _ := cmd.Flags().GetInt64("type-id")
+	if typeID > 0 {
+		req.TypeID = &typeID
+	}
+	priorityID, _ := cmd.Flags().GetInt64("priority-id")
+	if priorityID > 0 {
+		req.PriorityID = &priorityID
+	}
+	refs, _ := cmd.Flags().GetString("refs")
+	if refs != "" {
+		req.Refs = &refs
+	}
+	return req, nil
+}
+
+func buildUpdateRunReq(cmd *cobra.Command, _ bool) (*data.UpdateRunRequest, error) {
+	req := &data.UpdateRunRequest{}
+	name, _ := cmd.Flags().GetString("name")
+	if name != "" {
+		req.Name = &name
+	}
+	description, _ := cmd.Flags().GetString("description")
+	if description != "" {
+		req.Description = &description
+	}
+	milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
+	if milestoneID > 0 {
+		req.MilestoneID = &milestoneID
+	}
+	assignedToID, _ := cmd.Flags().GetInt64("assignedto-id")
+	if assignedToID > 0 {
+		req.AssignedTo = &assignedToID
+	}
+	includeAll, _ := cmd.Flags().GetBool("include-all")
+	req.IncludeAll = &includeAll
+	caseIDsStr, _ := cmd.Flags().GetString("case-ids")
+	if caseIDsStr != "" {
+		req.CaseIDs = parseCaseIDs(caseIDsStr)
+	}
+	return req, nil
+}
+
+func buildUpdateSharedStepReq(cmd *cobra.Command, _ bool) (*data.UpdateSharedStepRequest, error) {
+	req := &data.UpdateSharedStepRequest{}
+	title, _ := cmd.Flags().GetString("title")
+	if title != "" {
+		req.Title = title
+	}
+	return req, nil
+}
+
+// --- Dry-run handlers (delegate to crud.DryRun) ---
+
+func dryRunUpdateProject(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	return crud.DryRun(cmd, dr, jsonData, buildUpdateProjectReq,
+		fmt.Sprintf("Update Project %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/update_project/%d", id),
+	)
+}
+
+func dryRunUpdateSuite(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	return crud.DryRun(cmd, dr, jsonData, buildUpdateSuiteReq,
+		fmt.Sprintf("Update Suite %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/update_suite/%d", id),
+	)
+}
+
+func dryRunUpdateSection(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	return crud.DryRun(cmd, dr, jsonData, buildUpdateSectionReq,
+		fmt.Sprintf("Update Section %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/update_section/%d", id),
+	)
+}
+
+func dryRunUpdateCase(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	return crud.DryRun(cmd, dr, jsonData, buildUpdateCaseReq,
+		fmt.Sprintf("Update Case %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/update_case/%d", id),
+	)
+}
+
+func dryRunUpdateRun(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	return crud.DryRun(cmd, dr, jsonData, buildUpdateRunReq,
+		fmt.Sprintf("Update Run %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/update_run/%d", id),
+	)
+}
+
+func dryRunUpdateSharedStep(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, jsonData []byte) error {
+	return crud.DryRun(cmd, dr, jsonData, buildUpdateSharedStepReq,
+		fmt.Sprintf("Update Shared Step %d", id), "POST",
+		fmt.Sprintf("/index.php?/api/v2/update_shared_step/%d", id),
+	)
+}
+
+func dryRunUpdateLabels(cmd *cobra.Command, dr *output.DryRunPrinter, id int64, _ []byte) error {
+	labels, _ := cmd.Flags().GetString("labels")
+	dr.PrintSimple("Update Test Labels", fmt.Sprintf("Test ID: %d, Labels: %s", id, labels))
 	return nil
 }
 
+// --- Update handlers (delegate to crud.Execute) ---
+
 func updateProject(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.UpdateProjectRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name != "" {
-			req.Name = name
-		}
-		announcement, _ := cmd.Flags().GetString("announcement")
-		if announcement != "" {
-			req.Announcement = announcement
-		}
-		req.ShowAnnouncement, _ = cmd.Flags().GetBool("show-announcement")
-		req.IsCompleted, _ = cmd.Flags().GetBool("is-completed")
-	}
-
-	project, err := cli.UpdateProject(ctx, id, &req)
-	if err != nil {
-		return fmt.Errorf("failed to update project: %w", err)
-	}
-
-	return outputUpdateResult(cmd, project)
+	return crud.Execute(cmd, id, jsonData, buildUpdateProjectReq,
+		func(ctx context.Context, id int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
+			return cli.UpdateProject(ctx, id, req)
+		},
+		"failed to update project",
+	)
 }
 
 func updateSuite(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.UpdateSuiteRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name != "" {
-			req.Name = name
-		}
-		description, _ := cmd.Flags().GetString("description")
-		if description != "" {
-			req.Description = description
-		}
-		req.IsCompleted, _ = cmd.Flags().GetBool("is-completed")
-	}
-
-	suite, err := cli.UpdateSuite(ctx, id, &req)
-	if err != nil {
-		return fmt.Errorf("failed to update suite: %w", err)
-	}
-
-	return outputUpdateResult(cmd, suite)
+	return crud.Execute(cmd, id, jsonData, buildUpdateSuiteReq,
+		func(ctx context.Context, id int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
+			return cli.UpdateSuite(ctx, id, req)
+		},
+		"failed to update suite",
+	)
 }
 
 func updateSection(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.UpdateSectionRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name != "" {
-			req.Name = name
-		}
-		description, _ := cmd.Flags().GetString("description")
-		if description != "" {
-			req.Description = description
-		}
-	}
-
-	section, err := cli.UpdateSection(ctx, id, &req)
-	if err != nil {
-		return fmt.Errorf("failed to update section: %w", err)
-	}
-
-	return outputUpdateResult(cmd, section)
+	return crud.Execute(cmd, id, jsonData, buildUpdateSectionReq,
+		func(ctx context.Context, id int64, req *data.UpdateSectionRequest) (*data.Section, error) {
+			return cli.UpdateSection(ctx, id, req)
+		},
+		"failed to update section",
+	)
 }
 
 func updateCase(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.UpdateCaseRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		title, _ := cmd.Flags().GetString("title")
-		if title != "" {
-			req.Title = &title
-		}
-		typeID, _ := cmd.Flags().GetInt64("type-id")
-		if typeID > 0 {
-			req.TypeID = &typeID
-		}
-		priorityID, _ := cmd.Flags().GetInt64("priority-id")
-		if priorityID > 0 {
-			req.PriorityID = &priorityID
-		}
-		refs, _ := cmd.Flags().GetString("refs")
-		if refs != "" {
-			req.Refs = &refs
-		}
-	}
-
-	caseResp, err := cli.UpdateCase(ctx, id, &req)
-	if err != nil {
-		return fmt.Errorf("failed to update case: %w", err)
-	}
-
-	return outputUpdateResult(cmd, caseResp)
+	return crud.Execute(cmd, id, jsonData, buildUpdateCaseReq,
+		func(ctx context.Context, id int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+			return cli.UpdateCase(ctx, id, req)
+		},
+		"failed to update case",
+	)
 }
 
 func updateRun(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.UpdateRunRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		name, _ := cmd.Flags().GetString("name")
-		if name != "" {
-			req.Name = &name
-		}
-		description, _ := cmd.Flags().GetString("description")
-		if description != "" {
-			req.Description = &description
-		}
-		milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
-		if milestoneID > 0 {
-			req.MilestoneID = &milestoneID
-		}
-		assignedToID, _ := cmd.Flags().GetInt64("assignedto-id")
-		if assignedToID > 0 {
-			req.AssignedTo = &assignedToID
-		}
-		includeAll, _ := cmd.Flags().GetBool("include-all")
-		req.IncludeAll = &includeAll
-
-		caseIDsStr, _ := cmd.Flags().GetString("case-ids")
-		if caseIDsStr != "" {
-			req.CaseIDs = parseCaseIDs(caseIDsStr)
-		}
-	}
-
-	run, err := cli.UpdateRun(ctx, id, &req)
-	if err != nil {
-		return fmt.Errorf("failed to update run: %w", err)
-	}
-
-	return outputUpdateResult(cmd, run)
+	return crud.Execute(cmd, id, jsonData, buildUpdateRunReq,
+		func(ctx context.Context, id int64, req *data.UpdateRunRequest) (*data.Run, error) {
+			return cli.UpdateRun(ctx, id, req)
+		},
+		"failed to update run",
+	)
 }
 
 func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonData []byte) error {
-	ctx := cmd.Context()
-	var req data.UpdateSharedStepRequest
-
-	if len(jsonData) > 0 {
-		if err := json.Unmarshal(jsonData, &req); err != nil {
-			return fmt.Errorf("JSON parse error: %w", err)
-		}
-	} else {
-		title, _ := cmd.Flags().GetString("title")
-		if title != "" {
-			req.Title = title
-		}
-	}
-
-	step, err := cli.UpdateSharedStep(ctx, id, &req)
-	if err != nil {
-		return fmt.Errorf("failed to update shared step: %w", err)
-	}
-
-	return outputUpdateResult(cmd, step)
+	return crud.Execute(cmd, id, jsonData, buildUpdateSharedStepReq,
+		func(ctx context.Context, id int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
+			return cli.UpdateSharedStep(ctx, id, req)
+		},
+		"failed to update shared step",
+	)
 }
 
-func outputUpdateResult(cmd *cobra.Command, data interface{}) error {
-	_, err := output.Output(cmd, data, "result", "json")
+func outputUpdateResult(cmd *cobra.Command, v interface{}) error {
+	_, err := output.Output(cmd, v, "result", "json")
 	return err
 }
 

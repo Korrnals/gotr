@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// setupUpdateTest настраивает тестовое окружение для update команды
+// setupUpdateTest sets up the test environment for the update command
 func setupUpdateTest(t *testing.T, mock *client.MockClient) *cobra.Command {
-	// Создаем новую команду для теста
+	// Create a new command for the test
 	cmd := &cobra.Command{
 		Use:   updateCmd.Use,
 		Short: updateCmd.Short,
@@ -25,25 +25,25 @@ func setupUpdateTest(t *testing.T, mock *client.MockClient) *cobra.Command {
 		RunE:  runUpdate,
 	}
 
-	// Добавляем флаги
-	cmd.Flags().StringP("name", "n", "", "Название ресурса")
-	cmd.Flags().String("description", "", "Описание")
-	cmd.Flags().String("announcement", "", "Announcement (для проекта)")
-	cmd.Flags().Bool("show-announcement", false, "Показывать announcement")
-	cmd.Flags().Bool("is-completed", false, "Отметить как завершённый")
-	cmd.Flags().String("title", "", "Заголовок (для case)")
-	cmd.Flags().Int64("type-id", 0, "ID типа (для case)")
-	cmd.Flags().Int64("priority-id", 0, "ID приоритета (для case)")
-	cmd.Flags().String("refs", "", "Ссылки (references)")
-	cmd.Flags().Int64("suite-id", 0, "ID сьюта")
+	// Add flags
+	cmd.Flags().StringP("name", "n", "", "Resource name")
+	cmd.Flags().String("description", "", "Description")
+	cmd.Flags().String("announcement", "", "Announcement (for project)")
+	cmd.Flags().Bool("show-announcement", false, "Show announcement")
+	cmd.Flags().Bool("is-completed", false, "Mark as completed")
+	cmd.Flags().String("title", "", "Title (for case)")
+	cmd.Flags().Int64("type-id", 0, "Type ID (for case)")
+	cmd.Flags().Int64("priority-id", 0, "Priority ID (for case)")
+	cmd.Flags().String("refs", "", "References")
+	cmd.Flags().Int64("suite-id", 0, "Suite ID")
 	cmd.Flags().Int64("milestone-id", 0, "ID milestone")
-	cmd.Flags().Int64("assignedto-id", 0, "ID назначенного пользователя")
-	cmd.Flags().String("case-ids", "", "ID кейсов через запятую (для run)")
-	cmd.Flags().Bool("include-all", false, "Включить все кейсы (для run)")
-	cmd.Flags().String("json-file", "", "Путь к JSON-файлу с данными")
+	cmd.Flags().Int64("assignedto-id", 0, "Assigned user ID")
+	cmd.Flags().String("case-ids", "", "Case IDs comma-separated (for run)")
+	cmd.Flags().Bool("include-all", false, "Include all cases (for run)")
+	cmd.Flags().String("json-file", "", "Path to JSON file with data")
 	output.AddFlag(cmd)
 
-	// Создаем контекст с mock clientом
+	// Create context with mock client
 	ctx := context.WithValue(context.Background(), httpClientKey, mock)
 	cmd.SetContext(ctx)
 
@@ -57,7 +57,7 @@ func TestParseLabels(t *testing.T) {
 	assert.Equal(t, []string{"a", "b"}, parseLabels("a,,b"))
 }
 
-// TestUpdate_Project_Success проверяет обновление проекта
+// TestUpdate_Project_Success verifies project update
 func TestUpdate_Project_Success(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateProjectFunc: func(ctx context.Context, projectID int64, req *data.UpdateProjectRequest) (*data.GetProjectResponse, error) {
@@ -74,7 +74,7 @@ func TestUpdate_Project_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestUpdate_Suite_Success проверяет обновление сьюта
+// TestUpdate_Suite_Success verifies suite update
 func TestUpdate_Suite_Success(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateSuiteFunc: func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error) {
@@ -91,7 +91,7 @@ func TestUpdate_Suite_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestUpdate_Section_Success проверяет обновление секции
+// TestUpdate_Section_Success verifies section update
 func TestUpdate_Section_Success(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
@@ -108,12 +108,12 @@ func TestUpdate_Section_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestUpdate_Case_Success проверяет обновление кейса
+// TestUpdate_Case_Success verifies case update
 func TestUpdate_Case_Success(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(12345), caseID)
-			// Title передается как указатель
+			// Title is passed as a pointer
 			assert.NotNil(t, req.Title)
 			assert.Equal(t, "Updated Case", *req.Title)
 			return &data.Case{ID: caseID, Title: *req.Title}, nil
@@ -127,12 +127,12 @@ func TestUpdate_Case_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestUpdate_Run_Success проверяет обновление рана
+// TestUpdate_Run_Success verifies run update
 func TestUpdate_Run_Success(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
 			assert.Equal(t, int64(1000), runID)
-			// Name передается как указатель
+			// Name is passed as a pointer
 			assert.NotNil(t, req.Name)
 			assert.Equal(t, "Updated Run", *req.Name)
 			return &data.Run{ID: runID, Name: *req.Name}, nil
@@ -287,7 +287,7 @@ func TestUpdateRun_JSONSuccess(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestUpdate_SharedStep_Success проверяет обновление shared step
+// TestUpdate_SharedStep_Success verifies shared step update
 func TestUpdate_SharedStep_Success(t *testing.T) {
 	mock := &client.MockClient{
 		UpdateSharedStepFunc: func(ctx context.Context, stepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {
@@ -304,7 +304,7 @@ func TestUpdate_SharedStep_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// TestUpdate_NoArgs проверяет ошибку при отсутствии аргументов
+// TestUpdate_NoArgs verifies error when arguments are missing
 func TestUpdate_NoArgs(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -377,7 +377,7 @@ func TestUpdate_SharedStep_NonInteractive_AutoWizard_NoMutatingCall(t *testing.T
 	assert.False(t, called)
 }
 
-// TestUpdate_InvalidID проверяет ошибку при неверном ID
+// TestUpdate_InvalidID verifies error for invalid ID
 func TestUpdate_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -389,7 +389,7 @@ func TestUpdate_InvalidID(t *testing.T) {
 	assert.Contains(t, err.Error(), "ID")
 }
 
-// TestUpdate_UnsupportedEndpoint проверяет ошибку при неподдерживаемом endpoint
+// TestUpdate_UnsupportedEndpoint verifies error for unsupported endpoint
 func TestUpdate_UnsupportedEndpoint(t *testing.T) {
 	mock := &client.MockClient{}
 
@@ -473,7 +473,7 @@ func TestRunUpdate_LabelsRouting_Success(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateProjectInteractive_Cancelled(t *testing.T) {
+func TestUpdateProjectInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupUpdateTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -485,7 +485,7 @@ func TestUpdateProjectInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateSuiteInteractive_Cancelled(t *testing.T) {
+func TestUpdateSuiteInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupUpdateTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -497,7 +497,7 @@ func TestUpdateSuiteInteractive_Cancelled(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestUpdateCaseInteractive_Cancelled(t *testing.T) {
+func TestUpdateCaseInteractive_Canceled(t *testing.T) {
 	mock := &client.MockClient{}
 	cmd := setupUpdateTest(t, mock)
 	p := interactive.NewMockPrompter().
@@ -653,7 +653,7 @@ func TestUpdateInteractive_ClientErrorBranches(t *testing.T) {
 	})
 }
 
-func TestUpdateRunInteractive_Cancelled(t *testing.T) {
+func TestUpdateRunInteractive_Canceled(t *testing.T) {
 	called := false
 	mock := &client.MockClient{
 		UpdateRunFunc: func(ctx context.Context, runID int64, req *data.UpdateRunRequest) (*data.Run, error) {
@@ -991,7 +991,7 @@ func TestUpdateSectionInteractive_ErrorBranches(t *testing.T) {
 		assert.ErrorContains(t, err, "at least one field is required")
 	})
 
-	t.Run("cancelled", func(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			UpdateSectionFunc: func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error) {
@@ -1043,8 +1043,8 @@ func TestUpdateRunInteractive_ClientError(t *testing.T) {
 	assert.ErrorContains(t, err, "failed to update run")
 }
 
-func TestUpdateSharedStepInteractive_CancelledAndClientError(t *testing.T) {
-	t.Run("cancelled", func(t *testing.T) {
+func TestUpdateSharedStepInteractive_CanceledAndClientError(t *testing.T) {
+	t.Run("canceled", func(t *testing.T) {
 		called := false
 		mock := &client.MockClient{
 			UpdateSharedStepFunc: func(ctx context.Context, sharedStepID int64, req *data.UpdateSharedStepRequest) (*data.SharedStep, error) {

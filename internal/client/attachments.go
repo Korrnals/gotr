@@ -118,6 +118,24 @@ func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (dat
 	return attachments, nil
 }
 
+// GetAttachmentsForProject fetches attachments for a project.
+// https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforproject
+func (c *HTTPClient) GetAttachmentsForProject(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
+	endpoint := fmt.Sprintf("get_attachments_for_project/%d", projectID)
+	resp, err := c.Get(ctx, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error getting attachments for project %d: %w", projectID, err)
+	}
+	defer resp.Body.Close()
+
+	var attachments data.GetAttachmentsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
+		return nil, fmt.Errorf("error decoding attachments for project %d: %w", projectID, err)
+	}
+
+	return attachments, nil
+}
+
 // GetAttachmentsForTest fetches attachments for a test.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsfortest
 func (c *HTTPClient) GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
@@ -152,7 +170,7 @@ func (c *HTTPClient) AddAttachmentToPlan(ctx context.Context, planID int64, file
 
 // AddAttachmentToPlanEntry uploads an attachment to a plan entry.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#addattachmenttoplanentry
-func (c *HTTPClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID string, filePath string) (*data.AttachmentResponse, error) {
+func (c *HTTPClient) AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID, filePath string) (*data.AttachmentResponse, error) {
 	endpoint := fmt.Sprintf("add_attachment_to_plan_entry/%d/%s", planID, entryID)
 	return c.uploadAttachment(ctx, endpoint, filePath)
 }
@@ -186,9 +204,16 @@ func (c *HTTPClient) uploadAttachment(ctx context.Context, endpoint, filePath st
 
 	// Add the file to the form
 	fileName := filepath.Base(filePath)
-	part, _ := writer.CreateFormFile("attachment", fileName)
-	_, _ = io.Copy(part, file)
-	_ = writer.Close()
+	part, err := writer.CreateFormFile("attachment", fileName)
+	if err != nil {
+		return nil, fmt.Errorf("error creating form file: %w", err)
+	}
+	if _, err := io.Copy(part, file); err != nil {
+		return nil, fmt.Errorf("error copying file to form: %w", err)
+	}
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("error closing multipart writer: %w", err)
+	}
 
 	// Use DoRequest for the upload
 	resp, err := c.DoRequest(ctx, "POST", endpoint, &requestBody, map[string]string{
@@ -200,7 +225,10 @@ func (c *HTTPClient) uploadAttachment(ctx context.Context, endpoint, filePath st
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+		body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodySize))
+		if err != nil {
+			return nil, fmt.Errorf("API returned %s, failed to read error body: %w", resp.Status, err)
+		}
 		return nil, fmt.Errorf("API returned %s: %s", resp.Status, string(body))
 	}
 

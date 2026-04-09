@@ -15,22 +15,22 @@ import (
 
 var sharedStepsCmd = &cobra.Command{
 	Use:   "shared-steps",
-	Short: "Миграция общих шагов (shared steps)",
-	Long: `Перенос общих шагов (shared steps) из source проекта в destination проект.
+	Short: "Migrate shared steps",
+	Long: `Transfer shared steps from source project to destination project.
 
-Особенности:
-• Автоматический интерактивный выбор проектов и сьютов (если не указаны флаги)
-• Генерация mapping для замены shared_step_id при миграции кейсов
-• Подтверждение перед импортом
+Features:
+• Automatic interactive selection of projects and suites (if flags are not specified)
+• Generates mapping for shared_step_id replacement during case migration
+• Confirmation before import
 
-Примеры:
-	# Полностью интерактивный режим
+Examples:
+	# Fully interactive mode
 	gotr sync shared-steps
 
-	# Частично интерактивный
+	# Partially interactive
 	gotr sync shared-steps --src-project 30
 
-	# Полностью через флаги
+	# Fully via flags
 	gotr sync shared-steps --src-project 30 --src-suite 20069 --dst-project 31 --approve --save-mapping
 `,
 
@@ -95,7 +95,7 @@ var sharedStepsCmd = &cobra.Command{
 		defer m.Close()
 
 		op := newSyncOperation("Sync shared steps", quiet)
-		defer op.Finish()
+defer op.Finish()
 
 		op.Phase("Loading shared steps")
 		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", quiet, func(ctx context.Context) (struct {
@@ -160,7 +160,7 @@ var sharedStepsCmd = &cobra.Command{
 				return err
 			}
 			if !ok {
-				ui.Cancelled(os.Stdout)
+				ui.Canceled(os.Stdout)
 				return nil
 			}
 		}
@@ -176,20 +176,25 @@ var sharedStepsCmd = &cobra.Command{
 
 		// Step 6) Save mapping/filtered if requested
 		if autoSaveMapping {
-			m.ExportMapping(logDir)
+			_ = m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
 			ok, err := p.Confirm("Save mapping?", false)
 			if err == nil && ok {
-				m.ExportMapping(logDir)
+				_ = m.ExportMapping(logDir)
 			}
 		}
 
+		// Step 7) Save filtered shared steps list if requested
 		if autoSaveFiltered {
-			// Save filtered list
+			if err := m.ExportSharedSteps(filtered, true, logDir); err != nil {
+				ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
+			}
 		} else if len(filtered) > 0 {
-			ok, err := p.Confirm("Save filtered shared steps?", false)
+			ok, err := p.Confirm("Save filtered shared steps list?", false)
 			if err == nil && ok {
-				// Save
+				if err := m.ExportSharedSteps(filtered, true, logDir); err != nil {
+					ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
+				}
 			}
 		}
 

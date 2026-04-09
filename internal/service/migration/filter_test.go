@@ -13,7 +13,7 @@ type filterTestEntity struct {
 }
 
 func TestFieldValue(t *testing.T) {
-	t.Run("прямой матч поля", func(t *testing.T) {
+	t.Run("direct field match", func(t *testing.T) {
 		obj := filterTestEntity{Title: "Case A"}
 
 		value := fieldValue(obj, "Title")
@@ -21,7 +21,7 @@ func TestFieldValue(t *testing.T) {
 		assert.Equal(t, "Case A", value)
 	})
 
-	t.Run("case-insensitive матч", func(t *testing.T) {
+	t.Run("case-insensitive match", func(t *testing.T) {
 		obj := filterTestEntity{Name: "Smoke"}
 
 		value := fieldValue(obj, "name")
@@ -43,7 +43,7 @@ func TestFieldValue(t *testing.T) {
 		assert.Equal(t, "", value)
 	})
 
-	t.Run("несуществующее поле", func(t *testing.T) {
+	t.Run("non-existent field", func(t *testing.T) {
 		obj := filterTestEntity{Title: "Case B", Name: "Regression"}
 
 		value := fieldValue(obj, "UnknownField")

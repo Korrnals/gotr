@@ -78,7 +78,7 @@ func createLogger(cfg Config) (*zap.Logger, error) {
 
 	// Create log directory if needed
 	if cfg.LogDir != "" {
-		if err := os.MkdirAll(cfg.LogDir, 0755); err != nil {
+		if err := os.MkdirAll(cfg.LogDir, 0o755); err != nil {
 			return nil, fmt.Errorf("failed to create log directory: %w", err)
 		}
 	}
@@ -114,13 +114,13 @@ func createLogger(cfg Config) (*zap.Logger, error) {
 	// Create writers
 	var writers []zapcore.WriteSyncer
 
-	//stdout
+	// stdout
 	writers = append(writers, zapcore.AddSync(os.Stdout))
 
 	// Log file
 	if cfg.LogDir != "" {
 		logFile := filepath.Join(cfg.LogDir, fmt.Sprintf("gotr_%s.log", time.Now().Format("2006-01-02")))
-		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+		file, err := os.OpenFile(logFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
 		if err != nil {
 			return nil, fmt.Errorf("failed to open log file: %w", err)
 		}

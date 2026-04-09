@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// ==================== Функциональные тесты с моком ====================
+// ==================== Functional tests with mock ====================
 
 func TestListCmd_Success(t *testing.T) {
 	mock := &client.MockClient{
@@ -96,7 +96,7 @@ func TestListCmd_ClientError(t *testing.T) {
 	assert.Contains(t, err.Error(), "project not found")
 }
 
-// ==================== Тесты валидации ====================
+// ==================== Validation tests ====================
 
 func TestListCmd_InvalidID(t *testing.T) {
 	mock := &client.MockClient{}
@@ -152,7 +152,7 @@ func TestListCmd_NoArgs_NonInteractive_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "non-interactive mode")
 }
 
-// ==================== Тесты вспомогательных функций ====================
+// ==================== Helper function tests ====================
 
 func TestGetClientForTests_NilCmd(t *testing.T) {
 	result := getClientForTests(nil)
@@ -167,14 +167,14 @@ func TestGetClientForTests_NilContext(t *testing.T) {
 
 func TestGetClientForTests_NoMockInContext(t *testing.T) {
 	cmd := &cobra.Command{}
-	ctx := context.WithValue(context.Background(), "other_key", "value")
+	ctx := context.WithValue(context.Background(), testContextKey("other_key"), "value")
 	cmd.SetContext(ctx)
 
 	result := getClientForTests(cmd)
 	assert.Nil(t, result)
 }
 
-// ==================== Тесты outputResult ====================
+// ==================== outputResult tests ====================
 
 func TestOutputResult_JSONError(t *testing.T) {
 	badData := make(chan int)
@@ -186,7 +186,7 @@ func TestOutputResult_JSONError(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// ==================== Тесты регистрации ====================
+// ==================== Registration tests ====================
 
 func TestRegister(t *testing.T) {
 	root := &cobra.Command{}
@@ -194,13 +194,13 @@ func TestRegister(t *testing.T) {
 		return &client.MockClient{}
 	})
 
-	// Проверяем что команда добавлена
+	// Verify the command is registered
 	configsCmd, _, err := root.Find([]string{"configurations"})
 	assert.NoError(t, err)
 	assert.NotNil(t, configsCmd)
 	assert.Equal(t, "configurations", configsCmd.Name())
 
-	// Проверяем что подкоманда list существует
+	// Verify the list subcommand exists
 	listCmd, _, err := root.Find([]string{"configurations", "list"})
 	assert.NoError(t, err)
 	assert.NotNil(t, listCmd)

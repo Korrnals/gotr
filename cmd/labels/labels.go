@@ -13,11 +13,11 @@ type GetClientFunc func(cmd *cobra.Command) client.ClientInterface
 func Register(root *cobra.Command, getClient GetClientFunc) {
 	labelsCmd := &cobra.Command{
 		Use:   "labels",
-		Short: "Управление метками тестов",
-		Long: `Обновление меток (labels) для тестов и тестовых прогонов.
+		Short: "Manage test labels",
+		Long: `Manage labels for tests and test runs.
 
-Метки позволяют категоризировать и группировать тесты для удобного анализа.
-Можно обновлять метки как для одного теста, так и для всех тестов в прогоне.`,
+Labels allow you to categorize and group tests for convenient analysis.
+You can update labels for a single test or for all tests in a run.`,
 	}
 
 	// Add get and management subcommands
@@ -28,16 +28,16 @@ func Register(root *cobra.Command, getClient GetClientFunc) {
 	// Create the parent 'update' command
 	updateCmd := &cobra.Command{
 		Use:   "update",
-		Short: "Обновить метки для тестов",
-		Long: `Обновляет метки для одного теста или сразу для всех тестов в прогоне.
+		Short: "Update labels for tests",
+		Long: `Updates labels for a single test or for all tests in a run.
 
-Доступные подкоманды:
-  • test  — обновить метки одного теста по ID
-  • tests — обновить метки всех тестов в прогоне`,
+Available subcommands:
+  • test  — update labels for a single test by ID
+  • tests — update labels for all tests in a run`,
 	}
 
 	// Shared flags for all update subcommands
-	updateCmd.PersistentFlags().Bool("dry-run", false, "Показать, что будет сделано без изменений")
+	updateCmd.PersistentFlags().Bool("dry-run", false, "Show what would be done without making changes")
 
 	// Add subcommands to 'update'
 	updateCmd.AddCommand(newUpdateTestCmd(getClient))

@@ -17,17 +17,17 @@ import (
 func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "update [user_id]",
-		Short: "Обновить пользователя",
-		Long: `Обновляет существующего пользователя в системе TestRail.
+		Short: "Update a user",
+		Long: `Updates an existing user in the TestRail system.
 
-Требуются административные права для изменения пользователей.`,
-		Example: `  # Обновить имя пользователя
+Administrative privileges are required to modify users.`,
+		Example: `  # Update user name
   gotr users update 123 --name "New Name"
 
-  # Сделать пользователя администратором
+  # Make a user an administrator
   gotr users update 123 --admin
 
-  # Заблокировать пользователя
+  # Deactivate a user
   gotr users update 123 --inactive`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -102,12 +102,12 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("name", "", "Имя пользователя")
-	cmd.Flags().String("email", "", "Email пользователя")
-	cmd.Flags().Int64("role", 0, "ID роли пользователя")
-	cmd.Flags().Bool("admin", false, "Сделать пользователя администратором")
-	cmd.Flags().Bool("inactive", false, "Заблокировать пользователя")
-	cmd.Flags().Bool("dry-run", false, "Показать, что будет сделано без обновления пользователя")
+	cmd.Flags().String("name", "", "User name")
+	cmd.Flags().String("email", "", "User email")
+	cmd.Flags().Int64("role", 0, "User role ID")
+	cmd.Flags().Bool("admin", false, "Make the user an administrator")
+	cmd.Flags().Bool("inactive", false, "Deactivate the user")
+	cmd.Flags().Bool("dry-run", false, "Show what would be done without updating the user")
 	output.AddFlag(cmd)
 
 	return cmd

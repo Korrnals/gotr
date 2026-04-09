@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/debug"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
@@ -36,7 +37,10 @@ Examples:
 			return err
 		}
 
-		client := GetClient(cmd)
+		httpClient, ok := GetClient(cmd).(*client.HTTPClient)
+		if !ok {
+			return fmt.Errorf("export requires full HTTP client (not available with mock)")
+		}
 
 		// Build full endpoint path and query parameters
 		fullEndpoint, queryParams, err := buildRequestParams(endpoint, mainID, cmd)
@@ -49,13 +53,13 @@ Examples:
 
 		// Request
 		start := time.Now()
-		resp, err := client.Get(ctx, fullEndpoint, queryParams)
+		resp, err := httpClient.Get(ctx, fullEndpoint, queryParams)
 		if err != nil {
 			return err
 		}
 		defer resp.Body.Close()
 
-		data, err := client.ReadResponse(ctx, resp, time.Since(start), "json")
+		data, err := httpClient.ReadResponse(ctx, resp, time.Since(start), "json")
 		if err != nil {
 			return fmt.Errorf("response reading error: %w", err)
 		}
@@ -76,14 +80,14 @@ Examples:
 		} else {
 			// Save to .testrail/ (legacy behavior)
 			exportDir := ".testrail"
-			if err := os.MkdirAll(exportDir, 0755); err != nil {
+			if err := os.MkdirAll(exportDir, 0o755); err != nil {
 				return fmt.Errorf("failed to create directory %s: %w", exportDir, err)
 			}
 			filename := fmt.Sprintf("%s/%s_%s.json", exportDir, resource, time.Now().Format("20060102_150405"))
 			if mainID != "" {
 				filename = fmt.Sprintf("%s/%s_%s_%s.json", exportDir, resource, mainID, time.Now().Format("20060102_150405"))
 			}
-			if err := client.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
+			if err := httpClient.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
 				return fmt.Errorf("file export error %s: %w", filename, err)
 			}
 			if !quiet {
@@ -95,11 +99,10 @@ Examples:
 	},
 }
 
-func resolveExportInputs(cmd *cobra.Command, args []string) (string, string, string, error) {
+func resolveExportInputs(cmd *cobra.Command, args []string) (resource, endpoint, id string, err error) {
 	ctx := cmd.Context()
 	p := interactive.PrompterFromContext(ctx)
 
-	resource := ""
 	if len(args) > 0 {
 		resource = strings.ToLower(args[0])
 	} else {
@@ -113,14 +116,16 @@ func resolveExportInputs(cmd *cobra.Command, args []string) (string, string, str
 		resource = strings.ToLower(ValidResources[idx])
 	}
 
-	endpoint := ""
 	if len(args) > 1 {
 		endpoint = args[1]
 	} else {
 		if !interactive.HasPrompterInContext(ctx) {
 			return "", "", "", fmt.Errorf("endpoint required: gotr export <resource> <endpoint> [id]")
 		}
-		endpointOptions, _ := getResourceEndpoints(resource, "list")
+		endpointOptions, endpointsErr := getResourceEndpoints(resource, "list")
+		if endpointsErr != nil {
+			return "", "", "", fmt.Errorf("failed to get endpoints for %s: %w", resource, endpointsErr)
+		}
 		endpointOptions = filterEmpty(endpointOptions)
 		if len(endpointOptions) == 0 {
 			return "", "", "", fmt.Errorf("no export endpoints found for resource: %s", resource)

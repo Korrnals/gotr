@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -32,16 +33,21 @@ Fish:
 		// Override parent PersistentPreRunE (no-op)
 	},
 	PersistentPreRunE: nil,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
+		var err error
 		switch args[0] {
 		case "bash":
-			_ = cmd.Root().GenBashCompletion(os.Stdout)
+			err = cmd.Root().GenBashCompletion(os.Stdout)
 		case "zsh":
-			_ = cmd.Root().GenZshCompletion(os.Stdout)
+			err = cmd.Root().GenZshCompletion(os.Stdout)
 		case "fish":
-			_ = cmd.Root().GenFishCompletion(os.Stdout, true)
+			err = cmd.Root().GenFishCompletion(os.Stdout, true)
 		case "powershell":
-			_ = cmd.Root().GenPowerShellCompletion(os.Stdout)
+			err = cmd.Root().GenPowerShellCompletion(os.Stdout)
 		}
+		if err != nil {
+			return fmt.Errorf("failed to generate %s completion: %w", args[0], err)
+		}
+		return nil
 	},
 }

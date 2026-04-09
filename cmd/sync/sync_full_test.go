@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// resetFullFlags сбрасывает и пересоздаёт флаги для fullCmd
+// resetFullFlags resets and recreates flags for fullCmd
 func resetFullFlags() {
 	fullCmd.ResetFlags()
 	fullCmd.Flags().Int64("src-project", 0, "")
@@ -24,7 +24,7 @@ func resetFullFlags() {
 	fullCmd.Flags().Bool("save-mapping", false, "")
 }
 
-// TestSyncFull_DryRun_NoAdds проверяет, что dry-run не вызывает создания сущностей
+// TestSyncFull_DryRun_NoAdds verifies that dry-run does not trigger entity creation
 func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	addShared := false
 	addCase := false
@@ -67,11 +67,11 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.False(t, addShared, "AddSharedStep не должен вызываться в dry-run")
-	assert.False(t, addCase, "AddCase не должен вызываться в dry-run")
+	assert.False(t, addShared, "AddSharedStep should not be called in dry-run")
+	assert.False(t, addCase, "AddCase should not be called in dry-run")
 }
 
-// TestSyncFull_AutoApprove_PerformsMigration проверяет, что при авто-подтверждении запускается полный процесс
+// TestSyncFull_AutoApprove_PerformsMigration verifies that auto-approve triggers the full process
 func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 	addShared := false
 	addCase := false
@@ -116,8 +116,8 @@ func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.True(t, addShared, "AddSharedStep должен вызываться при авто-подтверждении")
-	assert.True(t, addCase, "AddCase должен вызываться при авто-подтверждении")
+	assert.True(t, addShared, "AddSharedStep should be called on auto-approve")
+	assert.True(t, addCase, "AddCase should be called on auto-approve")
 }
 
 func TestSyncFull_NoFlags_NonInteractive_Error(t *testing.T) {
@@ -150,8 +150,8 @@ func TestSyncFull_NoFlags_NonInteractive_Error(t *testing.T) {
 	err := cmd.RunE(cmd, []string{})
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
-	assert.False(t, addShared, "AddSharedStep не должен вызываться в non-interactive")
-	assert.False(t, addCase, "AddCase не должен вызываться в non-interactive")
+	assert.False(t, addShared, "AddSharedStep should not be called in non-interactive")
+	assert.False(t, addCase, "AddCase should not be called in non-interactive")
 }
 
 func TestSyncFull_NoFlags_InteractiveSuccess(t *testing.T) {
@@ -205,6 +205,6 @@ func TestSyncFull_NoFlags_InteractiveSuccess(t *testing.T) {
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)
-	assert.True(t, addShared, "AddSharedStep должен вызываться после интерактивного выбора")
-	assert.True(t, addCase, "AddCase должен вызываться после интерактивного выбора")
+	assert.True(t, addShared, "AddSharedStep should be called after interactive selection")
+	assert.True(t, addCase, "AddCase should be called after interactive selection")
 }

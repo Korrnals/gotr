@@ -15,12 +15,12 @@ import (
 func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "test [test_id]",
-		Short: "Обновить метки одного теста",
-		Long:  `Обновляет метки для конкретного теста по его ID.`,
-		Example: `  # Добавить метки smoke и critical
+		Short: "Update labels for a single test",
+		Long:  `Updates labels for a specific test by its ID.`,
+		Example: `  # Add labels smoke and critical
   gotr labels update test 12345 --labels="smoke,critical"
 
-  # Проверить без изменений
+  # Preview without making changes
   gotr labels update test 99999 --labels="regression" --dry-run`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -67,8 +67,8 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
-	cmd.MarkFlagRequired("labels")
+	cmd.Flags().String("labels", "", "Comma-separated list of labels (required)")
+	_ = cmd.MarkFlagRequired("labels")
 
 	return cmd
 }
@@ -78,12 +78,12 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "tests",
-		Short: "Обновить метки нескольких тестов в прогоне",
-		Long:  `Обновляет метки для нескольких тестов в рамках одного тестового прогона.`,
-		Example: `  # Обновить метки для тестов 1,2,3 в прогоне 100
+		Short: "Update labels for multiple tests in a run",
+		Long:  `Updates labels for multiple tests within a single test run.`,
+		Example: `  # Update labels for tests 1,2,3 in run 100
   gotr labels update tests --run-id=100 --test-ids=1,2,3 --labels="smoke,critical"
 
-  # Проверить без изменений
+  # Preview without making changes
   gotr labels update tests --run-id=200 --test-ids=10,20 --labels="regression" --dry-run`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			runID, _ := cmd.Flags().GetInt64("run-id")
@@ -124,13 +124,13 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().Int64("run-id", 0, "ID тестового прогона (обязательно)")
-	cmd.Flags().String("test-ids", "", "Список ID тестов через запятую (обязательно)")
-	cmd.Flags().String("labels", "", "Список меток через запятую (обязательно)")
+	cmd.Flags().Int64("run-id", 0, "Test run ID (required)")
+	cmd.Flags().String("test-ids", "", "Comma-separated list of test IDs (required)")
+	cmd.Flags().String("labels", "", "Comma-separated list of labels (required)")
 
-	cmd.MarkFlagRequired("run-id")
-	cmd.MarkFlagRequired("test-ids")
-	cmd.MarkFlagRequired("labels")
+	_ = cmd.MarkFlagRequired("run-id")
+	_ = cmd.MarkFlagRequired("test-ids")
+	_ = cmd.MarkFlagRequired("labels")
 
 	return cmd
 }

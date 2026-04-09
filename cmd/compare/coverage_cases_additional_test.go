@@ -281,7 +281,7 @@ func TestNewCasesCmd_EmptyFieldFlagDefaultsToTitle(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 // TestCompareCasesInternal_InterruptedStatusSet verifies that when the context
-// is already cancelled but the mock ignores it (returning data anyway), the
+// is already canceled but the mock ignores it (returning data anyway), the
 // result gets status = CompareStatusInterrupted.
 func TestCompareCasesInternal_InterruptedStatusSet(t *testing.T) {
 	// Pre-cancel the context so ctx.Err() != nil when the goroutines finish.

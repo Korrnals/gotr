@@ -14,15 +14,15 @@ import (
 func newGetCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "get [dataset_id]",
-		Short: "Получить датасет по ID",
-		Long: `Получает детальную информацию о датасете по его ID.
+		Short: "Get a dataset by ID",
+		Long: `Retrieves detailed information about a dataset by its ID.
 
-Включает название, структуру таблицы (колонки) и все строки
-с тестовыми данными для параметризованного тестирования.`,
-		Example: `  # Получить информацию о датасете
+Includes the name, table structure (columns), and all rows
+with test data for parameterized testing.`,
+		Example: `  # Get dataset information
   gotr datasets get 123
 
-  # Сохранить в файл
+  # Save to file
   gotr datasets get 456 -o dataset.json`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

@@ -27,12 +27,12 @@ func runAttachmentUpload(cmd *cobra.Command, upload attachmentUploadFunc) (*data
 func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "case [case_id] <file_path>",
-		Short: "Добавить вложение к тест-кейсу",
-		Long:  `Загружает файл и прикрепляет его к указанному тест-кейсу.`,
-		Example: `  # Прикрепить скриншот к тест-кейсу
+		Short: "Add attachment to a test case",
+		Long:  `Uploads a file and attaches it to the specified test case.`,
+		Example: `  # Attach a screenshot to a test case
   gotr attachments add case 12345 ./screenshot.png
 
-  # Проверить без реальной загрузки
+  # Preview without actual upload
   gotr attachments add case 99999 ./test-data.json --dry-run`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -91,12 +91,12 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan [plan_id] <file_path>",
-		Short: "Добавить вложение к тест-плану",
-		Long:  `Загружает файл и прикрепляет его к указанному тест-плану.`,
-		Example: `  # Прикрепить отчёт к плану
+		Short: "Add attachment to a test plan",
+		Long:  `Uploads a file and attaches it to the specified test plan.`,
+		Example: `  # Attach a report to a plan
   gotr attachments add plan 100 ./report.pdf
 
-  # Прикрепить документ
+  # Attach a document
   gotr attachments add plan 200 ./summary.docx`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -153,12 +153,12 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "plan-entry [plan_id] [entry_id] <file_path>",
-		Short: "Добавить вложение к записи плана",
-		Long:  `Загружает файл и прикрепляет его к записи (entry) в тест-плане.`,
-		Example: `  # Прикрепить данные к записи плана
+		Short: "Add attachment to a plan entry",
+		Long:  `Uploads a file and attaches it to a plan entry.`,
+		Example: `  # Attach data to a plan entry
   gotr attachments add plan-entry 100 entry-abc123 ./data.csv
 
-  # Прикрепить заметки
+  # Attach notes
   gotr attachments add plan-entry 200 def456 ./notes.txt`,
 		Args: cobra.RangeArgs(1, 3),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -232,12 +232,12 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "result [result_id] <file_path>",
-		Short: "Добавить вложение к результату теста",
-		Long:  `Загружает файл и прикрепляет его к результату выполнения теста.`,
-		Example: `  # Прикрепить лог к результату
+		Short: "Add attachment to a test result",
+		Long:  `Uploads a file and attaches it to a test result.`,
+		Example: `  # Attach a log to a result
   gotr attachments add result 98765 ./log.txt
 
-  # Прикрепить скриншот ошибки
+  # Attach an error screenshot
   gotr attachments add result 54321 ./screenshot.png`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -294,12 +294,12 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run [run_id] <file_path>",
-		Short: "Добавить вложение к тестовому прогону",
-		Long:  `Загружает файл и прикрепляет его к тестовому прогону.`,
-		Example: `  # Прикрепить HTML-отчёт к прогону
+		Short: "Add attachment to a test run",
+		Long:  `Uploads a file and attaches it to a test run.`,
+		Example: `  # Attach an HTML report to a run
   gotr attachments add run 555 ./report.html
 
-  # Прикрепить PDF-сводку
+  # Attach a PDF summary
   gotr attachments add run 777 ./summary.pdf`,
 		Args: cobra.RangeArgs(1, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {

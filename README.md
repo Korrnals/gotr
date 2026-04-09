@@ -47,6 +47,7 @@ A professional command-line interface for TestRail API v2. Designed for QA engin
     - [Progress](docs/en/guides/progress.md)
     - [Commands Index](docs/en/guides/commands/index.md)
       - [Command groups](docs/en/guides/commands/index.md#command-groups-and-subgroups)
+    - [Instructions](docs/en/guides/instructions/index.md)
   - [Architecture](docs/en/architecture/index.md)
   - [Operations](docs/en/operations/index.md)
   - [Reports](docs/en/reports/index.md)

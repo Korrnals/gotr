@@ -11,6 +11,7 @@ Language: [Русский](../../ru/guides/interactive-mode.md) | English
     - [Interactive Mode](interactive-mode.md)
     - [Progress](progress.md)
     - [Commands Index](commands/index.md)
+    - [Instructions](instructions/index.md)
   - [Architecture](../architecture/index.md)
   - [Operations](../operations/index.md)
   - [Reports](../reports/index.md)

@@ -232,6 +232,10 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 - [x] Обновить docs/reports (quality-metrics, audit-report)
 - [x] Финализировать CHANGELOG
+- [x] Синхронизировать command guides с CLI (attachments, sync, bdds — EN+RU)
+- [x] Финальный комплексный аудит (automated gates + static scan + deep audit + security scan)
+- [x] Hardening: `formatAPIError()` — `io.LimitReader` на response body
+- [x] Зафиксировать результаты Phase 7 в отчётах
 - [ ] Создать PR: stage-13.5 → release-3.0.0
 - [ ] Создать PR: release-3.0.0 → main
 - [ ] Tag v3.0.0 после мерджа в main

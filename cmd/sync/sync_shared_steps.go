@@ -46,8 +46,7 @@ Examples:
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
-		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered") // TODO: use when save-filtered is implemented
-		_ = autoSaveFiltered
+		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
@@ -185,7 +184,19 @@ defer op.Finish()
 			}
 		}
 
-		// TODO: implement saving filtered shared steps list (autoSaveFiltered / interactive confirm)
+		// Step 7) Save filtered shared steps list if requested
+		if autoSaveFiltered {
+			if err := m.ExportSharedSteps(filtered, true, logDir); err != nil {
+				ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
+			}
+		} else if len(filtered) > 0 {
+			ok, err := p.Confirm("Save filtered shared steps list?", false)
+			if err == nil && ok {
+				if err := m.ExportSharedSteps(filtered, true, logDir); err != nil {
+					ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
+				}
+			}
+		}
 
 		return nil
 	},

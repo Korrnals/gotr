@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/bdds"
 	"github.com/Korrnals/gotr/cmd/cases"
@@ -67,11 +70,12 @@ func init() {
 	variables.Register(rootCmd, GetClient)
 }
 
-// must panics if err is non-nil. Used for init-time bindings that
-// indicate a programming error (e.g. binding a non-existent flag).
+// must terminates the process if err is non-nil. Used for init-time bindings
+// that indicate a programming error (e.g. binding a non-existent flag).
 func must(err error) {
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "fatal: init error: %v\n", err)
+		os.Exit(1)
 	}
 }
 

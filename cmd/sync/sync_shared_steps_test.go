@@ -472,3 +472,142 @@ func TestSyncSharedSteps_NoFlags_InteractiveSuccess(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, addCalled, "AddSharedStep should be called after interactive selection")
 }
+
+func TestSyncSharedSteps_SaveFilteredFlag_WritesFilteredFile(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	mock := &client.MockClient{
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
+				return data.GetSharedStepsResponse{{ID: 1, Title: "Step A"}}, nil
+			}
+			return data.GetSharedStepsResponse{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, nil
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			return &data.SharedStep{ID: 200, Title: r.Title}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetSharedStepsFlags()
+	cmd := sharedStepsCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("approve", "true")
+	cmd.Flags().Set("save-filtered", "true")
+
+	cmd.SetContext(interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter()))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.NoError(t, err)
+
+	logsDir := filepath.Join(homeDir, ".gotr", "logs")
+	files, globErr := filepath.Glob(filepath.Join(logsDir, "shared_steps_filtered_*.json"))
+	assert.NoError(t, globErr)
+	assert.NotEmpty(t, files, "expected a saved filtered shared steps file")
+
+	raw, readErr := os.ReadFile(files[0])
+	assert.NoError(t, readErr)
+
+	var steps []map[string]interface{}
+	assert.NoError(t, json.Unmarshal(raw, &steps))
+	assert.Len(t, steps, 1)
+	assert.Equal(t, "Step A", steps[0]["title"])
+}
+
+func TestSyncSharedSteps_SaveFilteredPromptAccepted_WritesFilteredFile(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	mock := &client.MockClient{
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
+				return data.GetSharedStepsResponse{{ID: 1, Title: "Step B"}}, nil
+			}
+			return data.GetSharedStepsResponse{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, nil
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			return &data.SharedStep{ID: 201, Title: r.Title}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetSharedStepsFlags()
+	cmd := sharedStepsCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("approve", "true")
+
+	// Confirm prompts: "Save mapping?" → false, "Save filtered shared steps list?" → true
+	p := interactive.NewMockPrompter().WithConfirmResponses(false).WithConfirmResponses(true)
+	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.NoError(t, err)
+
+	logsDir := filepath.Join(homeDir, ".gotr", "logs")
+	files, globErr := filepath.Glob(filepath.Join(logsDir, "shared_steps_filtered_*.json"))
+	assert.NoError(t, globErr)
+	assert.NotEmpty(t, files, "expected a saved filtered file after prompt confirmation")
+}
+
+func TestSyncSharedSteps_SaveFilteredPromptDeclined_NoFile(t *testing.T) {
+	homeDir := t.TempDir()
+	t.Setenv("HOME", homeDir)
+
+	mock := &client.MockClient{
+		GetSharedStepsFunc: func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error) {
+			if projectID == 1 {
+				return data.GetSharedStepsResponse{{ID: 1, Title: "Step C"}}, nil
+			}
+			return data.GetSharedStepsResponse{}, nil
+		},
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			return data.GetCasesResponse{}, nil
+		},
+		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
+			return &data.SharedStep{ID: 202, Title: r.Title}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetSharedStepsFlags()
+	cmd := sharedStepsCmd
+	SetTestClient(cmd, mock)
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("approve", "true")
+
+	// Confirm prompts: "Save mapping?" → false, "Save filtered shared steps list?" → false
+	p := interactive.NewMockPrompter().WithConfirmResponses(false).WithConfirmResponses(false)
+	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
+
+	err := cmd.RunE(cmd, []string{})
+	assert.NoError(t, err)
+
+	logsDir := filepath.Join(homeDir, ".gotr", "logs")
+	files, globErr := filepath.Glob(filepath.Join(logsDir, "shared_steps_filtered_*.json"))
+	assert.NoError(t, globErr)
+	assert.Empty(t, files, "filtered file should not be saved when prompt is declined")
+}

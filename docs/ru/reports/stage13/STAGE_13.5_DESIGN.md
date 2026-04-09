@@ -230,8 +230,8 @@ Language: Русский | [English](../../../en/reports/stage13/STAGE_13.5_DESI
 
 ## Phase 7 — Closure
 
-- [ ] Обновить docs/reports (quality-metrics, audit-report)
-- [ ] Финализировать CHANGELOG
+- [x] Обновить docs/reports (quality-metrics, audit-report)
+- [x] Финализировать CHANGELOG
 - [ ] Создать PR: stage-13.5 → release-3.0.0
 - [ ] Создать PR: release-3.0.0 → main
 - [ ] Tag v3.0.0 после мерджа в main

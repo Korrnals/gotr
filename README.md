@@ -23,7 +23,7 @@
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v3.0.0** — Stage 13 Complete: Final refactoring, full API coverage, architecture cleanup. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v3.0.0** — Stage 13.5 Complete: Quality hardening, 7 audit rounds, 0 lint findings, full test coverage. See [CHANGELOG](CHANGELOG.md) for details
 
 ## Overview
 

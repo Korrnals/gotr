@@ -20,6 +20,7 @@ Language: [Русский](../../../ru/guides/commands/export.md) | English
         - [export](export.md)
       - [Core Resources](get.md)
       - [Special Resources](bdds.md)
+    - [Instructions](../instructions/index.md)
   - [Architecture](../../architecture/index.md)
   - [Operations](../../operations/index.md)
   - [Reports](../../reports/index.md)

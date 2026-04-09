@@ -436,6 +436,7 @@ func (r *Labels) Paths() []APIPath {
 	return []APIPath{
 		{Method: "GET", URI: "index.php?/api/v2/get_label/{label_id}", Description: "Get single label", Params: map[string]string{"label_id": "Required"}},
 		{Method: "GET", URI: "index.php?/api/v2/get_labels/{project_id}", Description: "Get labels for project", Params: map[string]string{"project_id": "Required"}},
+		{Method: "POST", URI: "index.php?/api/v2/update_label/{label_id}", Description: "Update label", Params: map[string]string{"label_id": "Required"}},
 		{Method: "POST", URI: "index.php?/api/v2/update_test_labels/{test_id}", Description: "Update labels for test"},
 		{Method: "POST", URI: "index.php?/api/v2/update_tests_labels/{run_id}", Description: "Bulk update labels for tests in run"},
 	}

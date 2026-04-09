@@ -3,8 +3,10 @@ package bdds
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -197,4 +199,67 @@ cmd.SetArgs([]string{"--file", bddFile})
 err = cmd.Execute()
 assert.Error(t, err)
 assert.Contains(t, err.Error(), "projects unavailable")
+}
+
+// ============= LAYER 3: stdin reading =============
+
+func TestAddCmd_Stdin_Success(t *testing.T) {
+	content := "Feature: Login\n  Given user is on login page"
+
+	// Stub stdinStat to report pipe mode (no ModeCharDevice).
+	origStat := stdinStat
+	origReader := stdinReader
+	t.Cleanup(func() { stdinStat = origStat; stdinReader = origReader })
+
+	stdinStat = func() (os.FileInfo, error) {
+		// Create a temp file so we can return valid FileInfo with pipe-like mode.
+		f, err := os.CreateTemp(t.TempDir(), "stdin")
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		return f.Stat() // regular file → ModeCharDevice bit is 0 → treated as pipe
+	}
+	stdinReader = func() io.Reader { return strings.NewReader(content) }
+
+	mock := &client.MockClient{
+		AddBDDFunc: func(ctx context.Context, caseID int64, c string) (*data.BDD, error) {
+			assert.Equal(t, int64(12345), caseID)
+			assert.Contains(t, c, "Feature: Login")
+			return &data.BDD{ID: 1, CaseID: caseID, Content: c}, nil
+		},
+	}
+
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"12345"}) // no --file → falls through to stdin
+
+	err := cmd.Execute()
+	assert.NoError(t, err)
+}
+
+func TestAddCmd_Stdin_Empty(t *testing.T) {
+	// Stub stdin as pipe but empty → should get "cannot be empty" error.
+	origStat := stdinStat
+	origReader := stdinReader
+	t.Cleanup(func() { stdinStat = origStat; stdinReader = origReader })
+
+	stdinStat = func() (os.FileInfo, error) {
+		f, err := os.CreateTemp(t.TempDir(), "stdin")
+		if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		return f.Stat()
+	}
+	stdinReader = func() io.Reader { return strings.NewReader("") }
+
+	mock := &client.MockClient{}
+	cmd := newAddCmd(getClientForTests)
+	cmd.SetContext(setupTestCmd(t, mock).Context())
+	cmd.SetArgs([]string{"12345"})
+
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "cannot be empty")
 }

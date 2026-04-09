@@ -298,12 +298,18 @@ func countMatches(s, substr string) int {
 func getProjectRoot() string {
 	// Try to find project root
 	if _, err := os.Stat("go.mod"); err == nil {
-		wd, _ := os.Getwd()
+		wd, err := os.Getwd()
+		if err != nil {
+			return "."
+		}
 		return wd
 	}
 
 	// Walk up the directory tree
-	wd, _ := os.Getwd()
+	wd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
 	for wd != "/" {
 		parent := filepath.Dir(wd)
 		if _, err := os.Stat(filepath.Join(parent, "go.mod")); err == nil {

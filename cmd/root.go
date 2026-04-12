@@ -18,7 +18,7 @@ import (
 
 var (
 	// Version is populated at build time via -ldflags.
-	Version = "3.0.0" // default value for local development
+	Version = "3.0.1" // default value for local development
 	Commit  = "unknown"
 	Date    = "unknown"
 	userHomeDir = os.UserHomeDir

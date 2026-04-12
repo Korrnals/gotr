@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -62,7 +63,14 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			req := data.UpdateConfigGroupRequest{Name: name}
-			resp, err := cli.UpdateConfigGroup(ctx, groupID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating config group",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.ConfigGroup, error) {
+				return cli.UpdateConfigGroup(ctx, groupID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update group: %w", err)
 			}

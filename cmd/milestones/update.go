@@ -1,6 +1,7 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -79,7 +80,14 @@ All flags are optional — only specified fields will be changed.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.UpdateMilestone(ctx, milestoneID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating milestone",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Milestone, error) {
+				return cli.UpdateMilestone(ctx, milestoneID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update milestone: %w", err)
 			}

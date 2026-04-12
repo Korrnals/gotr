@@ -1,11 +1,15 @@
 package cases
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +51,14 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			suiteID, _ := cmd.Flags().GetInt64("suite-id")
 			sectionID, _ := cmd.Flags().GetInt64("section-id")
 
-			resp, err := cli.GetCases(ctx, projectID, suiteID, sectionID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading cases",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetCasesResponse, error) {
+				return cli.GetCases(ctx, projectID, suiteID, sectionID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list cases: %w", err)
 			}

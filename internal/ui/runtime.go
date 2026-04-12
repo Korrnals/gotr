@@ -84,6 +84,9 @@ func RunWithStatus[T any](ctx context.Context, cfg StatusConfig, fn func(context
 			defer ticker.Stop()
 			frames := []string{"|", "/", "-", `\\`}
 			frame := 0
+			// Render first frame immediately (no 200ms delay)
+			fmt.Fprintf(writer, "\r\033[2K📥 %s %s ⏱ %s", cfg.Title, frames[0], fmtDuration(time.Since(start)))
+			frame = 1
 			for {
 				select {
 				case <-stop:

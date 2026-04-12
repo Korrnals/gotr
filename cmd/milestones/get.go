@@ -1,11 +1,15 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +52,14 @@ number of associated test runs, etc.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.GetMilestone(ctx, milestoneID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading milestone",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Milestone, error) {
+				return cli.GetMilestone(ctx, milestoneID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get milestone: %w", err)
 			}

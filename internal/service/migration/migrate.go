@@ -22,6 +22,7 @@ func (m *Migration) MigrateSharedSteps(ctx context.Context, dryRun bool) error {
 	}
 
 	filtered, _ := m.FilterSharedSteps(source, target, caseIDsSet)
+	m.lastFilteredSteps = filtered
 
 	return m.ImportSharedSteps(ctx, filtered, dryRun)
 }

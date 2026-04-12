@@ -3,6 +3,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/Korrnals/gotr/internal/selftest"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -86,7 +88,16 @@ var selfTestCheckers = func() []selftest.Checker {
 }
 
 func runSelfTest(cmd *cobra.Command, args []string) error {
-	report := buildSelfTestReport()
+	report, err := ui.RunWithStatus(cmd.Context(), ui.StatusConfig{
+		Title:  "Running self-tests",
+		Writer: os.Stderr,
+		Quiet:  false,
+	}, func(ctx context.Context) (*selftest.Report, error) {
+		return buildSelfTestReport(), nil
+	})
+	if err != nil {
+		return err
+	}
 
 	// Output results
 	jsonOutput, _ := cmd.Flags().GetBool("json")

@@ -25,8 +25,9 @@ Supported endpoints:
   case <id>          Delete a test case
   run <id>           Delete a test run
   shared-step <id>   Delete a shared step
-  milestone <id>     Delete a milestone
-  plan <id>          Delete a test plan
+
+For milestones use: gotr milestones delete
+For plans use: gotr plans delete
 
 Examples:
   gotr delete project 1
@@ -40,7 +41,6 @@ Dry-run mode:
 
 func init() {
 	deleteCmd.Flags().Bool("dry-run", false, "Show what would be executed without making changes")
-	deleteCmd.Flags().Bool("soft", false, "Soft delete (where supported)")
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {

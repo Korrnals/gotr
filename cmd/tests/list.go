@@ -1,11 +1,15 @@
 package tests
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +64,14 @@ Use the --status-id flag to filter by status.`,
 				return nil
 			}
 
-			tests, err := client.GetTests(ctx, runID, filters)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			tests, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading tests",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) ([]data.Test, error) {
+				return client.GetTests(ctx, runID, filters)
+			})
 			if err != nil {
 				return err
 			}

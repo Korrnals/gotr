@@ -80,6 +80,12 @@ gotr delete shared-step 456
 gotr delete milestone 50
 ```
 
+> [!NOTE]
+> Диспетчер `gotr delete` не поддерживает endpoint'ы `milestone` и `plan` напрямую.
+> Используйте выделенные подкоманды:
+> - `gotr milestones delete <id>` — удалить milestone
+> - `gotr plans delete <id>` — удалить plan
+
 ### Мягкое удаление
 
 ```bash

@@ -123,7 +123,6 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	sharedStepsCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
 	sharedStepsCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
 	sharedStepsCmd.Flags().Bool("save-filtered", false, "Save filtered list automatically")
-	sharedStepsCmd.Flags().String("output", "", "File to save mapping to")
 	sharedStepsCmd.Flags().Bool("dry-run", false, "Preview without importing")
 
 	// Flags for sync sections
@@ -144,5 +143,6 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	fullCmd.Flags().String("compare-field", "title", "Field for duplicate detection")
 	fullCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
 	fullCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
+	fullCmd.Flags().Bool("save-filtered", false, "Save filtered list automatically")
 	fullCmd.Flags().Bool("dry-run", false, "Preview without importing")
 }

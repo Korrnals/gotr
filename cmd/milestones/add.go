@@ -1,6 +1,7 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -79,7 +80,14 @@ Usage examples:
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.AddMilestone(ctx, projectID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Creating milestone",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Milestone, error) {
+				return cli.AddMilestone(ctx, projectID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to create milestone: %w", err)
 			}

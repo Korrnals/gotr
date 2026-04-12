@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -91,7 +92,14 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.AddPlanEntry(ctx, planID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Adding plan entry",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Plan, error) {
+				return cli.AddPlanEntry(ctx, planID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add plan entry: %w", err)
 			}
@@ -169,7 +177,14 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.UpdatePlanEntry(ctx, planID, entryID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating plan entry",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Plan, error) {
+				return cli.UpdatePlanEntry(ctx, planID, entryID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update plan entry: %w", err)
 			}
@@ -242,7 +257,15 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			if err := cli.DeletePlanEntry(ctx, planID, entryID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting plan entry",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeletePlanEntry(ctx, planID, entryID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete plan entry: %w", err)
 			}
 

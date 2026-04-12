@@ -1,11 +1,15 @@
 package reports
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +54,14 @@ Supports JSON output for automation.`,
 				}
 			}
 
-			resp, err := cli.GetReports(ctx, projectID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading reports",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetReportsResponse, error) {
+				return cli.GetReports(ctx, projectID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list reports: %w", err)
 			}

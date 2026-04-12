@@ -1,10 +1,14 @@
 package run
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -60,7 +64,14 @@ Examples:
 				return nil
 			}
 
-			run, err := svc.Close(ctx, runID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			run, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Closing run",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Run, error) {
+				return svc.Close(ctx, runID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to close test run: %w", err)
 			}

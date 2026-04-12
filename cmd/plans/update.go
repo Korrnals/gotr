@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -65,7 +66,14 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.UpdatePlan(ctx, planID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating plan",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Plan, error) {
+				return cli.UpdatePlan(ctx, planID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update plan: %w", err)
 			}

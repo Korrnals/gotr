@@ -42,6 +42,7 @@ Examples:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
+		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
@@ -116,6 +117,14 @@ defer op.Finish()
 
 		if autoSaveMapping {
 			_ = m.ExportMapping(logDir)
+		}
+
+		if autoSaveFiltered {
+			if filtered := m.FilteredSharedSteps(); len(filtered) > 0 {
+				if err := m.ExportSharedSteps(filtered, true, logDir); err != nil {
+					ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
+				}
+			}
 		}
 
 		ui.Success(os.Stdout, "Full migration complete!")

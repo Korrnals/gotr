@@ -204,13 +204,14 @@ func (r *Report) PrintHuman() {
 
 	fmt.Println()
 	fmt.Println("╠══════════════════════════════════════════════════════════════╣")
-	fmt.Printf("║  Results:  %s %d passed  %s %d failed  %s %d warn  %s %d skip   ║\n",
+	results := fmt.Sprintf("%s %d passed  %s %d failed  %s %d warn  %s %d skip",
 		ResultPass.String(), r.TotalPassed,
 		ResultFail.String(), r.TotalFailed,
 		ResultWarn.String(), r.TotalWarn,
 		ResultSkip.String(), r.TotalSkip,
 	)
-	fmt.Printf("║  Overall:  %s%-56s%s║\n",
+	fmt.Printf("║  Results:  %-50s║\n", results)
+	fmt.Printf("║  Overall:  %s%-50s%s║\n",
 		r.Health.Color(), r.OverallStatus(), r.Health.ResetColor())
 	fmt.Printf("║  Duration: %-50s║\n", r.Duration.Round(time.Millisecond))
 	fmt.Println("╚══════════════════════════════════════════════════════════════╝")

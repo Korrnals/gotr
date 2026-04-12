@@ -35,6 +35,13 @@ Language: Русский | [English](../../../en/guides/instructions/crud-add.md
 > [!WARNING]
 > `add` **изменяет данные** в TestRail. Всегда используйте `--dry-run` для проверки перед созданием.
 
+> [!NOTE]
+> Диспетчер `gotr add` не поддерживает endpoint'ы `milestone`, `plan` и `entry` напрямую.
+> Используйте выделенные подкоманды:
+> - `gotr milestones add <project_id> --name "..."` — создать milestone
+> - `gotr plans add <project_id> --name "..."` — создать plan
+> - `gotr plans entry add <plan_id>` — добавить entry в plan
+
 ## Примеры 🚀
 
 ### Создание проекта

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -25,6 +26,8 @@ type Migration struct {
 	mapping  *SharedStepMapping // shared step ID mapping (see mapping.go)
 	logger   *zap.SugaredLogger
 	logFile  *os.File // log file handle, closed in Close()
+
+	lastFilteredSteps data.GetSharedStepsResponse // filtered shared steps from last MigrateSharedSteps run
 }
 
 // NewMigration creates a new Migration instance with a zap logger.
@@ -82,6 +85,11 @@ func (m *Migration) Close() error {
 		}
 	}
 	return nil
+}
+
+// FilteredSharedSteps returns the filtered shared steps from the last MigrateSharedSteps run.
+func (m *Migration) FilteredSharedSteps() data.GetSharedStepsResponse {
+	return m.lastFilteredSteps
 }
 
 // Mapping returns a simple map[sourceID]=targetID for external use

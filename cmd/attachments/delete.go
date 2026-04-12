@@ -4,11 +4,14 @@
 package attachments
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +60,15 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			if err := client.DeleteAttachment(ctx, attachmentID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting attachment",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, client.DeleteAttachment(ctx, attachmentID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete attachment: %w", err)
 			}
 

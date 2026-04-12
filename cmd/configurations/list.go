@@ -1,11 +1,15 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +58,14 @@ parameters when creating plan entries with configurations.`,
 				}
 			}
 
-			resp, err := cli.GetConfigs(ctx, projectID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading configurations",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetConfigsResponse, error) {
+				return cli.GetConfigs(ctx, projectID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get configurations: %w", err)
 			}

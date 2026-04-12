@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -59,7 +60,15 @@ in active test plans.`,
 				return nil
 			}
 
-			if err := cli.DeleteConfigGroup(ctx, groupID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting config group",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeleteConfigGroup(ctx, groupID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete group: %w", err)
 			}
 

@@ -1,6 +1,7 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -58,7 +59,15 @@ Use --dry-run to verify before deleting.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			if err := cli.DeleteMilestone(ctx, milestoneID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting milestone",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeleteMilestone(ctx, milestoneID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete milestone: %w", err)
 			}
 

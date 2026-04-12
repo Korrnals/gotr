@@ -4,12 +4,15 @@
 package labels
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -71,7 +74,14 @@ Maximum label name length is 20 characters.`,
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
-			resp, err := client.UpdateLabel(ctx, labelID, req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating label",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Label, error) {
+				return client.UpdateLabel(ctx, labelID, req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update label: %w", err)
 			}

@@ -4,11 +4,15 @@
 package labels
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -47,7 +51,14 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
 			client := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := client.GetLabel(ctx, labelID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading label",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Label, error) {
+				return client.GetLabel(ctx, labelID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get label: %w", err)
 			}

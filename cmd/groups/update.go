@@ -1,11 +1,13 @@
 package groups
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -50,7 +52,14 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			group, err := client.UpdateGroup(ctx, groupID, name, nil)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			group, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating group",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Group, error) {
+				return client.UpdateGroup(ctx, groupID, name, nil)
+			})
 			if err != nil {
 				return err
 			}

@@ -80,6 +80,12 @@ gotr delete shared-step 456
 gotr delete milestone 50
 ```
 
+> [!NOTE]
+> The `gotr delete` dispatcher does not support `milestone` and `plan` endpoints directly.
+> Use dedicated subcommands instead:
+> - `gotr milestones delete <id>` — delete a milestone
+> - `gotr plans delete <id>` — delete a plan
+
 ### Soft Deletion
 
 ```bash

@@ -3,11 +3,13 @@ package run
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -112,7 +114,15 @@ Examples:
 				return nil
 			}
 
-			if err := svc.Delete(ctx, runID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting run",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, svc.Delete(ctx, runID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete test run: %w", err)
 			}
 

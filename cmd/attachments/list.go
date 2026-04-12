@@ -4,7 +4,9 @@
 package attachments
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
@@ -81,7 +83,14 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			attachments, err := client.GetAttachmentsForCase(ctx, caseID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			attachments, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading attachments",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetAttachmentsResponse, error) {
+				return client.GetAttachmentsForCase(ctx, caseID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -120,7 +129,14 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			attachments, err := client.GetAttachmentsForPlan(ctx, planID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			attachments, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading attachments",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetAttachmentsResponse, error) {
+				return client.GetAttachmentsForPlan(ctx, planID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -174,7 +190,14 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			attachments, err := client.GetAttachmentsForPlanEntry(ctx, planID, entryID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			attachments, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading attachments",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetAttachmentsResponse, error) {
+				return client.GetAttachmentsForPlanEntry(ctx, planID, entryID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -214,7 +237,14 @@ func newListProjectCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			attachments, err := client.GetAttachmentsForProject(ctx, projectID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			attachments, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading attachments",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetAttachmentsResponse, error) {
+				return client.GetAttachmentsForProject(ctx, projectID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -253,7 +283,14 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			attachments, err := client.GetAttachmentsForRun(ctx, runID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			attachments, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading attachments",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetAttachmentsResponse, error) {
+				return client.GetAttachmentsForRun(ctx, runID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}
@@ -292,7 +329,14 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			attachments, err := client.GetAttachmentsForTest(ctx, testID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			attachments, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading attachments",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetAttachmentsResponse, error) {
+				return client.GetAttachmentsForTest(ctx, testID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list attachments: %w", err)
 			}

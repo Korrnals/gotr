@@ -98,6 +98,12 @@ gotr update run 789 --assignedto-id 10
 gotr update milestone 50 --name "Релиз 3.1" --description "Новый milestone"
 ```
 
+> [!NOTE]
+> Диспетчер `gotr update` не поддерживает endpoint'ы `milestone` и `plan` напрямую.
+> Используйте выделенные подкоманды:
+> - `gotr milestones update <id> --name "..."` — обновить milestone
+> - `gotr plans update <id> --name "..."` — обновить plan
+
 ## Режимы обновления 🧩
 
 ### Флаги (inline)

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -51,22 +52,27 @@ Examples:
 		debug.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)
 		debug.DebugPrint("{exportCmd} - Query params: %v", queryParams)
 
-		// Request
-		start := time.Now()
-		resp, err := httpClient.Get(ctx, fullEndpoint, queryParams)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		data, err := httpClient.ReadResponse(ctx, resp, time.Since(start), "json")
-		if err != nil {
-			return fmt.Errorf("response reading error: %w", err)
-		}
-
 		// Flags
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		saveFlag, _ := cmd.Flags().GetBool("save")
+
+		// Request
+		data, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+			Title:  "Exporting data",
+			Writer: os.Stderr,
+			Quiet:  quiet,
+		}, func(ctx context.Context) (client.ResponseData, error) {
+			start := time.Now()
+			resp, err := httpClient.Get(ctx, fullEndpoint, queryParams)
+			if err != nil {
+				return client.ResponseData{}, err
+			}
+			defer resp.Body.Close()
+			return httpClient.ReadResponse(ctx, resp, time.Since(start), "json")
+		})
+		if err != nil {
+			return fmt.Errorf("response reading error: %w", err)
+		}
 
 		if saveFlag {
 			// Save via output.Output to ~/.gotr/exports/export/

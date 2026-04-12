@@ -1,11 +1,14 @@
 package run
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -87,7 +90,14 @@ Examples:
 				return nil
 			}
 
-			run, err := svc.Update(ctx, runID, req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			run, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating run",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Run, error) {
+				return svc.Update(ctx, runID, req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update test run: %w", err)
 			}

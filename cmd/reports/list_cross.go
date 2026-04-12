@@ -4,8 +4,11 @@
 package reports
 
 import (
+	"context"
 	"fmt"
+	"os"
 
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -27,7 +30,14 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := getClient(cmd)
 			ctx := cmd.Context()
-			reports, err := client.GetCrossProjectReports(ctx)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			reports, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading reports",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetReportsResponse, error) {
+				return client.GetCrossProjectReports(ctx)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list cross-project reports: %w", err)
 			}

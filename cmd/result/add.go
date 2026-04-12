@@ -1,6 +1,7 @@
 package result
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -96,7 +98,14 @@ Examples:
 				return nil
 			}
 
-			result, err := svc.AddForTest(ctx, testID, req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			result, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Adding result",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Result, error) {
+				return svc.AddForTest(ctx, testID, req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add result: %w", err)
 			}
@@ -188,7 +197,14 @@ Examples:
 				return nil
 			}
 
-			result, err := svc.AddForCase(ctx, runID, caseID, req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			result, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Adding result",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Result, error) {
+				return svc.AddForCase(ctx, runID, caseID, req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add result: %w", err)
 			}

@@ -1,11 +1,15 @@
 package milestones
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -48,7 +52,14 @@ Supports JSON output for automation.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.GetMilestones(ctx, projectID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading milestones",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) ([]data.Milestone, error) {
+				return cli.GetMilestones(ctx, projectID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list milestones: %w", err)
 			}

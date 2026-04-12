@@ -174,9 +174,9 @@ For each shared step in the source project:
 
 | File | Contents |
 | --- | --- |
-| `mapping.json` | `{ "source_id": 123, "target_id": 456, "status": "created" }` — for new ones |
-| `mapping.json` | `{ "source_id": 789, "target_id": 101, "status": "existing" }` — for duplicates |
-| `filtered.json` | List of shared steps that passed filtering |
+| `shared_steps_mapping_YYYY-MM-DD_HH-MM-SS.json` | `{ "source_id": 123, "target_id": 456, "status": "created" }` — for new ones |
+| `shared_steps_mapping_YYYY-MM-DD_HH-MM-SS.json` | `{ "source_id": 789, "target_id": 101, "status": "existing" }` — for duplicates |
+| `shared_steps_filtered_YYYY-MM-DD_HH-MM-SS.json` | List of shared steps that passed filtering |
 
 ## FAQ ❓
 

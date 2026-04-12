@@ -1,11 +1,15 @@
 package tests
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -50,7 +54,14 @@ within a test run.`,
 				return nil
 			}
 
-			test, err := client.GetTest(ctx, testID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			test, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading test",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Test, error) {
+				return client.GetTest(ctx, testID)
+			})
 			if err != nil {
 				return err
 			}

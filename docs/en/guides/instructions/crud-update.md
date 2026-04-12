@@ -98,6 +98,12 @@ gotr update run 789 --assignedto-id 10
 gotr update milestone 50 --name "Release 3.1" --description "New milestone"
 ```
 
+> [!NOTE]
+> The `gotr update` dispatcher does not support `milestone` and `plan` endpoints directly.
+> Use dedicated subcommands instead:
+> - `gotr milestones update <id> --name "..."` — update a milestone
+> - `gotr plans update <id> --name "..."` — update a plan
+
 ## Update Modes 🧩
 
 ### Flags (inline)

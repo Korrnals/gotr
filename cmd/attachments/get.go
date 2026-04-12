@@ -4,11 +4,15 @@
 package attachments
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +53,14 @@ Displays: ID, filename, size, MIME type, creation date, and resource bindings.`,
 				}
 			}
 
-			resp, err := client.GetAttachment(ctx, attachmentID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading attachment",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Attachment, error) {
+				return client.GetAttachment(ctx, attachmentID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get attachment: %w", err)
 			}

@@ -83,6 +83,16 @@ gotr compare [command]
 --timeout duration       Timeout for compare operation (default 30m0s)
 ```
 
+### Retry & Rate Limiting
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `--rate-limit` | API request limit per minute (-1 = auto, 0 = no limit, >0 = fixed) | `-1` |
+| `--page-retries` | Number of retries per page in the main loading phase | `5` |
+| `--retry-attempts` | Number of attempts for auto-retry of failed pages | `5` |
+| `--retry-workers` | Number of parallel workers during auto-retry | `12` |
+| `--retry-delay` | Delay between retries for a single page | `200ms` |
+
 ## Global Flags 🌐
 
 ```text

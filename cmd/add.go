@@ -31,9 +31,6 @@ Supported endpoints:
   result <test_id>     Add a test result
   result-for-case <run_id> <case_id>  Add a result for a case
   shared-step <project_id>  Create a shared step
-  milestone <project_id>    Create a milestone
-  plan <project_id>         Create a test plan
-  entry <plan_id>           Add an entry to a plan
   attachment case <case_id> <file>    Attach a file to a case
   attachment plan <plan_id> <file>    Attach a file to a plan
   attachment plan-entry <plan_id> <entry_id> <file>  Attach a file to an entry
@@ -49,6 +46,9 @@ Examples:
   gotr add attachment case 12345 ./screenshot.png
   gotr add attachment plan 100 ./report.pdf
   gotr add attachment result 98765 ./log.txt
+
+For milestones, plans, and entries use dedicated commands:
+  gotr milestones add, gotr plans add, gotr plans entry add
 
 Interactive mode (wizard):
   gotr add project -i
@@ -89,7 +89,7 @@ func init() {
 
 func runAdd(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("endpoint required: project, suite, section, case, run, result, result-for-case, shared-step, milestone, plan, entry, attachment")
+		return fmt.Errorf("endpoint required: project, suite, section, case, run, result, result-for-case, shared-step, attachment")
 	}
 
 	endpoint := args[0]

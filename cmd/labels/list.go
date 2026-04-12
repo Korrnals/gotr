@@ -6,6 +6,7 @@ package labels
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
@@ -52,7 +53,14 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
 			client := getClient(cmd)
 			ctx := cmd.Context()
-			labels, err := client.GetLabels(ctx, projectID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			labels, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading labels",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetLabelsResponse, error) {
+				return client.GetLabels(ctx, projectID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to list labels: %w", err)
 			}

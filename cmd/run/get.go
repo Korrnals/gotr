@@ -1,10 +1,14 @@
 package run
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +61,14 @@ Examples:
 				return nil
 			}
 
-			run, err := svc.Get(ctx, runID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			run, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading run",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Run, error) {
+				return svc.Get(ctx, runID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get test run: %w", err)
 			}

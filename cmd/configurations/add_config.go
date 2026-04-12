@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -66,7 +67,14 @@ test plans with multiple configurations.`,
 			}
 
 			req := data.AddConfigRequest{Name: name}
-			resp, err := cli.AddConfig(ctx, groupID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Creating configuration",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Config, error) {
+				return cli.AddConfig(ctx, groupID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to add configuration: %w", err)
 			}

@@ -35,6 +35,13 @@ Supports interactive mode (wizard), dry-run, and creation from JSON file.
 > [!WARNING]
 > `add` **modifies data** in TestRail. Always use `--dry-run` to verify before creating.
 
+> [!NOTE]
+> The `gotr add` dispatcher does not support `milestone`, `plan`, or `entry` endpoints directly.
+> Use dedicated subcommands instead:
+> - `gotr milestones add <project_id> --name "..."` — create a milestone
+> - `gotr plans add <project_id> --name "..."` — create a plan
+> - `gotr plans entry add <plan_id>` — add a plan entry
+
 ## Examples 🚀
 
 ### Creating a Project

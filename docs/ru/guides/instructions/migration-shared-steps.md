@@ -174,9 +174,9 @@ gotr sync shared-steps \
 
 | Файл | Содержимое |
 | --- | --- |
-| `mapping.json` | `{ "source_id": 123, "target_id": 456, "status": "created" }` — для новых |
-| `mapping.json` | `{ "source_id": 789, "target_id": 101, "status": "existing" }` — для дубликатов |
-| `filtered.json` | Список shared steps, прошедших фильтрацию |
+| `shared_steps_mapping_YYYY-MM-DD_HH-MM-SS.json` | `{ "source_id": 123, "target_id": 456, "status": "created" }` — для новых |
+| `shared_steps_mapping_YYYY-MM-DD_HH-MM-SS.json` | `{ "source_id": 789, "target_id": 101, "status": "existing" }` — для дубликатов |
+| `shared_steps_filtered_YYYY-MM-DD_HH-MM-SS.json` | Список shared steps, прошедших фильтрацию |
 
 ## FAQ ❓
 

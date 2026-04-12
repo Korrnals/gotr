@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -52,7 +53,15 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			if err := cli.DeletePlan(ctx, planID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting plan",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeletePlan(ctx, planID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete plan: %w", err)
 			}
 

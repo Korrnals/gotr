@@ -1,6 +1,7 @@
 package plans
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -69,7 +70,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
-			resp, err := cli.AddPlan(ctx, projectID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Creating plan",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Plan, error) {
+				return cli.AddPlan(ctx, projectID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to create plan: %w", err)
 			}

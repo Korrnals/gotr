@@ -11,6 +11,29 @@
 
 ---
 
+## [3.0.1] - 2026-04-12
+
+### Fixed
+
+- Removed dead `--soft` flag from `gotr delete` (was declared but never used).
+- Removed misleading milestone/plan/entry references from `gotr add` and `gotr update` help text.
+- Fixed `--save-filtered` flag: wired into `sync full` command to actually save filtered shared steps list after migration.
+- Fixed self-test table alignment for dynamic content widths.
+- Fixed spinner first-frame delay in `ui.RunWithStatus` (immediate render before ticker).
+
+### Added
+
+- Progress spinners for all API-calling commands (~48 commands across cases, attachments, configurations, milestones, plans, groups, labels, run, result, tests, reports, export).
+- Spinner wrapper for `gotr self-test` execution.
+
+### Changed
+
+- Documentation: added missing compare flags (`--include-refs`, `--include-custom-statuses`, `--include-custom-steps`, `--include-updated-by`, `--include-details`) to EN/RU guides.
+- Documentation: corrected CRUD instruction redirects for milestones/plans.
+- Documentation: fixed artifact filenames in migration-shared-steps guide.
+
+---
+
 ## [3.0.0] - 2026-04-09
 
 ### Added

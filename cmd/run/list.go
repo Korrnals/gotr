@@ -1,12 +1,16 @@
 package run
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -74,7 +78,14 @@ Examples:
 				return nil
 			}
 
-			runs, err := svc.GetByProject(ctx, projectID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			runs, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading runs",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetRunsResponse, error) {
+				return svc.GetByProject(ctx, projectID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get test runs list: %w", err)
 			}

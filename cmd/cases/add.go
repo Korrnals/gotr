@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -79,7 +80,14 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			resp, err := cli.AddCase(ctx, sectionID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Creating case",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Case, error) {
+				return cli.AddCase(ctx, sectionID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to create case: %w", err)
 			}

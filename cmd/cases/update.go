@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -82,7 +83,14 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			resp, err := cli.UpdateCase(ctx, caseID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating case",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Case, error) {
+				return cli.UpdateCase(ctx, caseID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update case: %w", err)
 			}

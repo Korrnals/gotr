@@ -1,6 +1,7 @@
 package cases
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -53,7 +54,15 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			if err := cli.DeleteCase(ctx, caseID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting case",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeleteCase(ctx, caseID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete case: %w", err)
 			}
 

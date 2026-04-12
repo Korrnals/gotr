@@ -1,11 +1,15 @@
 package cases
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -44,7 +48,14 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				}
 			}
 
-			resp, err := cli.GetCase(ctx, caseID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading case",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Case, error) {
+				return cli.GetCase(ctx, caseID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get case: %w", err)
 			}

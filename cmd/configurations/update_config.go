@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -62,7 +63,14 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			req := data.UpdateConfigRequest{Name: name}
-			resp, err := cli.UpdateConfig(ctx, configID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Updating configuration",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.Config, error) {
+				return cli.UpdateConfig(ctx, configID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to update configuration: %w", err)
 			}

@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -58,7 +59,15 @@ is not used in active test plans.`,
 				return nil
 			}
 
-			if err := cli.DeleteConfig(ctx, configID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting configuration",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, cli.DeleteConfig(ctx, configID)
+			})
+			if err != nil {
 				return fmt.Errorf("failed to delete configuration: %w", err)
 			}
 

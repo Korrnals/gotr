@@ -28,9 +28,10 @@ Supported endpoints:
   case <id>          Update a test case
   run <id>           Update a test run
   shared-step <id>   Update a shared step
-  milestone <id>     Update a milestone
-  plan <id>          Update a test plan
   labels <test_id>   Update test labels (deprecated: use 'gotr labels update')
+
+For milestones use: gotr milestones update
+For plans use: gotr plans update
 
 Examples:
   gotr update project 1 --name "Updated Project"

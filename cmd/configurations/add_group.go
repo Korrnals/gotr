@@ -1,6 +1,7 @@
 package configurations
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -66,7 +67,14 @@ individual configurations to it.`,
 			}
 
 			req := data.AddConfigGroupRequest{Name: name}
-			resp, err := cli.AddConfigGroup(ctx, projectID, &req)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Creating config group",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (*data.ConfigGroup, error) {
+				return cli.AddConfigGroup(ctx, projectID, &req)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to create group: %w", err)
 			}

@@ -1,6 +1,7 @@
 package groups
 
 import (
+	"context"
 	"fmt"
 	"os"
 
@@ -45,11 +46,18 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
-			if err := client.DeleteGroup(ctx, groupID); err != nil {
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Deleting group",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (struct{}, error) {
+				return struct{}{}, client.DeleteGroup(ctx, groupID)
+			})
+			if err != nil {
 				return err
 			}
 
-			quiet, _ := cmd.Flags().GetBool("quiet")
 			if !quiet {
 				color.New(color.FgGreen).Fprintf(cmd.OutOrStdout(), "✓ Group %d deleted\n", groupID)
 			}

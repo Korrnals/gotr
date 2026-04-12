@@ -1,12 +1,16 @@
 package result
 
 import (
+	"context"
 	"fmt"
+	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -75,7 +79,14 @@ Examples:
 				}
 			}
 
-			results, err := svc.GetForRun(ctx, runID)
+			quiet, _ := cmd.Flags().GetBool("quiet")
+			results, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+				Title:  "Loading results",
+				Writer: os.Stderr,
+				Quiet:  quiet,
+			}, func(ctx context.Context) (data.GetResultsResponse, error) {
+				return svc.GetForRun(ctx, runID)
+			})
 			if err != nil {
 				return fmt.Errorf("failed to get results: %w", err)
 			}

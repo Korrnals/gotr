@@ -1,0 +1,71 @@
+package snap
+
+import (
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+)
+
+// FlagSnapshot is the flag name for explicit snapshot override.
+const FlagSnapshot = "snapshot"
+
+// FlagSnapName is the flag name for custom snapshot name.
+const FlagSnapName = "snap-name"
+
+// RegisterFlags adds --snapshot and --snap-name to the given command.
+func RegisterFlags(cmd *cobra.Command) {
+	cmd.Flags().Bool(FlagSnapshot, false, "Force snapshot on/off (overrides config)")
+	cmd.Flags().String(FlagSnapName, "", "Custom snapshot name (default: auto-generated)")
+}
+
+// ResolveDecision determines whether to take a snapshot.
+// Priority: explicit --snapshot flag > config snap.enabled > default true.
+func ResolveDecision(cmd *cobra.Command) bool {
+	// 1. Explicit flag has highest priority.
+	if cmd.Flags().Changed(FlagSnapshot) {
+		val, _ := cmd.Flags().GetBool(FlagSnapshot)
+		return val
+	}
+
+	// 2. Config value (viper).
+	if viper.IsSet("snap.enabled") {
+		return viper.GetBool("snap.enabled")
+	}
+
+	// 3. Default: enabled.
+	return true
+}
+
+// ResolveName returns the custom name from --snap-name or empty string.
+func ResolveName(cmd *cobra.Command) string {
+	name, _ := cmd.Flags().GetString(FlagSnapName)
+	return name
+}
+
+// ReadConfig loads snap configuration from Viper with defaults.
+func ReadConfig() SnapConfig {
+	cfg := DefaultConfig()
+
+	if viper.IsSet("snap.enabled") {
+		cfg.Enabled = viper.GetBool("snap.enabled")
+	}
+	if viper.IsSet("snap.retention_days") {
+		cfg.RetentionDays = viper.GetInt("snap.retention_days")
+	}
+	if viper.IsSet("snap.max_snapshots") {
+		cfg.MaxSnapshots = viper.GetInt("snap.max_snapshots")
+	}
+	if viper.IsSet("snap.attachments.save_binary") {
+		cfg.AttachSaveBinary = viper.GetString("snap.attachments.save_binary")
+	}
+	if viper.IsSet("snap.attachments.max_file_mb") {
+		cfg.AttachMaxFileMB = viper.GetInt("snap.attachments.max_file_mb")
+	}
+	if viper.IsSet("snap.attachments.compress") {
+		cfg.AttachCompress = viper.GetBool("snap.attachments.compress")
+	}
+	if viper.IsSet("snap.attachments.prompt_above_threshold") {
+		cfg.AttachPromptAboveThresh = viper.GetBool("snap.attachments.prompt_above_threshold")
+	}
+
+	return cfg
+}

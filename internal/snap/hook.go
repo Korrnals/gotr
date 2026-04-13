@@ -59,3 +59,14 @@ func (h *Hook) FinalizeAdd(createdID int64) {
 		ui.Warning(os.Stderr, fmt.Sprintf("snap: finalize: %v", err))
 	}
 }
+
+// FinalizeSyncData writes sync result data (created entities mapping) to the snapshot.
+func (h *Hook) FinalizeSyncData(data interface{}) {
+	if !h.Enabled || h.Snap == nil {
+		return
+	}
+	meta := h.Snap.Meta
+	if _, err := h.Store.SaveData(meta.ID, meta.DataFile, data); err != nil {
+		ui.Warning(os.Stderr, fmt.Sprintf("snap: save sync data: %v", err))
+	}
+}

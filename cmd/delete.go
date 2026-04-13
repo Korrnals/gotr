@@ -3,12 +3,14 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
 )
 
@@ -41,6 +43,9 @@ Dry-run mode:
 
 func init() {
 	deleteCmd.Flags().Bool("dry-run", false, "Show what would be executed without making changes")
+	deleteCmd.Flags().Int64("project-id", 0, "Project ID (required for section cascade snapshot)")
+	deleteCmd.Flags().Int64("suite-id", 0, "Suite ID (required for section cascade snapshot)")
+	snap.RegisterFlags(deleteCmd)
 }
 
 func runDelete(cmd *cobra.Command, args []string) error {
@@ -88,9 +93,9 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	case "suite":
 		return cli.DeleteSuite(ctx, id)
 	case "section":
-		return cli.DeleteSection(ctx, id)
+		return deleteSectionWithSnap(cmd, cli, ctx, id)
 	case "case":
-		return cli.DeleteCase(ctx, id)
+		return deleteCaseWithSnap(cmd, cli, ctx, id)
 	case "run":
 		return cli.DeleteRun(ctx, id)
 	case "shared-step":
@@ -99,6 +104,65 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	default:
 		return fmt.Errorf("unsupported endpoint: %s", endpoint)
 	}
+}
+
+// deleteSectionWithSnap creates a cascade snapshot before deleting a section.
+func deleteSectionWithSnap(cmd *cobra.Command, cli client.ClientInterface, ctx context.Context, sectionID int64) error {
+	hook := snap.NewHook(cmd)
+
+	projectID, _ := cmd.Flags().GetInt64("project-id")
+	suiteID, _ := cmd.Flags().GetInt64("suite-id")
+
+	hook.Before(ctx, snap.BuildMeta(
+		snap.OpDelete, "section", []int64{sectionID},
+		snap.Tier2, projectID, suiteID, snap.ResolveName(cmd), os.Args[1:],
+	), func(ctx context.Context) (interface{}, error) {
+		section, err := cli.GetSection(ctx, sectionID)
+		if err != nil {
+			return nil, err
+		}
+		if section == nil {
+			return nil, fmt.Errorf("section %d not found", sectionID)
+		}
+
+		cascade := snap.CascadeData{Section: *section}
+
+		// Fetch child cases if projectID is available.
+		pid := projectID
+		sid := suiteID
+		if sid == 0 {
+			sid = section.SuiteID
+		}
+		if pid > 0 && sid > 0 {
+			cases, err := cli.GetCases(ctx, pid, sid, sectionID)
+			if err == nil {
+				cascade.Cases = cases
+			}
+		}
+		return cascade, nil
+	})
+
+	return cli.DeleteSection(ctx, sectionID)
+}
+
+// deleteCaseWithSnap creates a snapshot before deleting a case.
+func deleteCaseWithSnap(cmd *cobra.Command, cli client.ClientInterface, ctx context.Context, caseID int64) error {
+	hook := snap.NewHook(cmd)
+	hook.Before(ctx, snap.BuildMeta(
+		snap.OpDelete, "case", []int64{caseID},
+		snap.Tier2, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+	), func(ctx context.Context) (interface{}, error) {
+		c, err := cli.GetCase(ctx, caseID)
+		if err != nil {
+			return nil, err
+		}
+		if c == nil {
+			return nil, fmt.Errorf("case %d not found", caseID)
+		}
+		return c, nil
+	})
+
+	return cli.DeleteCase(ctx, caseID)
 }
 
 func parseDeleteIDArg(args []string) (int64, error) {

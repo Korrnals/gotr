@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -80,6 +81,13 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			// Snapshot before mutation (add = no pre-fetch, finalize after).
+			hook := snap.NewHook(cmd)
+			hook.Before(ctx, snap.BuildMeta(
+				snap.OpAdd, "case", nil,
+				snap.Tier2, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+			), nil)
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Creating case",
@@ -91,6 +99,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("failed to create case: %w", err)
 			}
+
+			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Case created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "cases")
@@ -105,6 +115,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("type-id", 0, "Test type ID")
 	cmd.Flags().Int64("priority-id", 0, "Priority ID")
 	cmd.Flags().String("refs", "", "References")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

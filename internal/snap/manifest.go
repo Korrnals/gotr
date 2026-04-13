@@ -195,6 +195,15 @@ func (m *Manifest) Len() int {
 	return len(m.Entries)
 }
 
+// All returns a copy of all entries (thread-safe).
+func (m *Manifest) All() []ManifestEntry {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	result := make([]ManifestEntry, len(m.Entries))
+	copy(result, m.Entries)
+	return result
+}
+
 func (m *Manifest) save() error {
 	return atomicWriteJSON(m.path, m)
 }

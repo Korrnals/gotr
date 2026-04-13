@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -54,6 +55,15 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			// Snapshot before mutation.
+			hook := snap.NewHook(cmd)
+			hook.Before(ctx, snap.BuildMeta(
+				snap.OpDelete, "case", []int64{caseID},
+				snap.Tier2, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+			), func(ctx context.Context) (interface{}, error) {
+				return cli.GetCase(ctx, caseID)
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting case",
@@ -72,6 +82,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Preview what will be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	snaplib "github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
@@ -189,6 +190,13 @@ func TestCLI_SnapInfo_NotFound(t *testing.T) {
 // CLI Smoke: snap rollback
 // ---------------------------------------------------------------------------
 
+// nonInteractiveCtx returns a context with non-interactive prompter and mock client.
+func nonInteractiveCtx(mock client.ClientInterface) context.Context {
+	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx = interactive.WithPrompter(ctx, &interactive.NonInteractivePrompter{})
+	return ctx
+}
+
 func TestCLI_SnapRollback_Update(t *testing.T) {
 	redirectHome(t)
 
@@ -205,7 +213,7 @@ func TestCLI_SnapRollback_Update(t *testing.T) {
 	}
 
 	cmd := newRollbackCmd(getClientForTests)
-	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx := nonInteractiveCtx(mock)
 	cmd.SetContext(ctx)
 
 	old := os.Stdout
@@ -249,7 +257,7 @@ func TestCLI_SnapRollback_Delete(t *testing.T) {
 	}
 
 	cmd := newRollbackCmd(getClientForTests)
-	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx := nonInteractiveCtx(mock)
 	cmd.SetContext(ctx)
 
 	old := os.Stdout
@@ -292,7 +300,7 @@ func TestCLI_SnapRollback_Add(t *testing.T) {
 	}
 
 	cmd := newRollbackCmd(getClientForTests)
-	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx := nonInteractiveCtx(mock)
 	cmd.SetContext(ctx)
 
 	old := os.Stdout
@@ -318,7 +326,7 @@ func TestCLI_SnapRollback_NotFound(t *testing.T) {
 
 	mock := &client.MockClient{}
 	cmd := newRollbackCmd(getClientForTests)
-	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx := nonInteractiveCtx(mock)
 	cmd.SetContext(ctx)
 
 	cmd.SetArgs([]string{"nonexistent/snap"})
@@ -340,7 +348,7 @@ func TestCLI_SnapRollback_AlreadyRolledBack(t *testing.T) {
 
 	// First rollback.
 	cmd1 := newRollbackCmd(getClientForTests)
-	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx := nonInteractiveCtx(mock)
 	cmd1.SetContext(ctx)
 
 	old := os.Stdout
@@ -486,7 +494,7 @@ func TestCLI_FullCycle_ListRollbackList(t *testing.T) {
 		},
 	}
 	rbCmd := newRollbackCmd(getClientForTests)
-	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx := nonInteractiveCtx(mock)
 	rbCmd.SetContext(ctx)
 
 	old := os.Stdout
@@ -523,7 +531,7 @@ func TestCLI_SnapRollback_APIError(t *testing.T) {
 	}
 
 	cmd := newRollbackCmd(getClientForTests)
-	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx := nonInteractiveCtx(mock)
 	cmd.SetContext(ctx)
 	cmd.SetArgs([]string{snapID})
 	err := cmd.Execute()

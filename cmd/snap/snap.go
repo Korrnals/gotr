@@ -23,6 +23,7 @@ Available operations:
   • list     — list all snapshots
   • info     — show snapshot details
   • rollback — reverse a mutation using saved data
+  • export   — export snapshot to a portable JSON file
   • delete   — remove a snapshot
   • gc       — clean up orphaned snapshots`,
 	}
@@ -30,6 +31,7 @@ Available operations:
 	snapCmd.AddCommand(newListCmd())
 	snapCmd.AddCommand(newInfoCmd())
 	snapCmd.AddCommand(newRollbackCmd(getClient))
+	snapCmd.AddCommand(newExportCmd())
 	snapCmd.AddCommand(newDeleteCmd())
 	snapCmd.AddCommand(newGCCmd())
 

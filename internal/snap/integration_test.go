@@ -153,6 +153,31 @@ func (a *statefulCasesAPI) DeleteCase(_ context.Context, caseID int64) error {
 	return nil
 }
 
+func (a *statefulCasesAPI) GetSection(_ context.Context, sectionID int64) (*data.Section, error) {
+	a.log("GetSection", sectionID)
+	return &data.Section{ID: sectionID, Name: fmt.Sprintf("Section %d", sectionID)}, nil
+}
+
+func (a *statefulCasesAPI) AddSection(_ context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+	a.log("AddSection", projectID)
+	return &data.Section{ID: a.nextID, Name: req.Name}, nil
+}
+
+func (a *statefulCasesAPI) DeleteSection(_ context.Context, sectionID int64) error {
+	a.log("DeleteSection", sectionID)
+	return nil
+}
+
+func (a *statefulCasesAPI) DeleteSharedStep(_ context.Context, stepID int64, _ int) error {
+	a.log("DeleteSharedStep", stepID)
+	return nil
+}
+
+func (a *statefulCasesAPI) DeleteSuite(_ context.Context, suiteID int64) error {
+	a.log("DeleteSuite", suiteID)
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // Helper: create store + manifest in t.TempDir
 // ---------------------------------------------------------------------------

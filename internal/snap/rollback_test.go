@@ -19,6 +19,12 @@ type mockCasesAPI struct {
 	updateCaseFunc func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
 	addCaseFunc    func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	deleteCaseFunc func(ctx context.Context, caseID int64) error
+
+	getSectionFunc     func(ctx context.Context, sectionID int64) (*data.Section, error)
+	addSectionFunc     func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
+	deleteSectionFunc  func(ctx context.Context, sectionID int64) error
+	deleteSharedFunc   func(ctx context.Context, stepID int64, keep int) error
+	deleteSuiteFunc    func(ctx context.Context, suiteID int64) error
 }
 
 func (m *mockCasesAPI) GetCase(ctx context.Context, caseID int64) (*data.Case, error) {
@@ -44,6 +50,36 @@ func (m *mockCasesAPI) DeleteCase(ctx context.Context, caseID int64) error {
 		return m.deleteCaseFunc(ctx, caseID)
 	}
 	return fmt.Errorf("DeleteCase not mocked")
+}
+func (m *mockCasesAPI) GetSection(ctx context.Context, sectionID int64) (*data.Section, error) {
+	if m.getSectionFunc != nil {
+		return m.getSectionFunc(ctx, sectionID)
+	}
+	return nil, fmt.Errorf("GetSection not mocked")
+}
+func (m *mockCasesAPI) AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+	if m.addSectionFunc != nil {
+		return m.addSectionFunc(ctx, projectID, req)
+	}
+	return nil, fmt.Errorf("AddSection not mocked")
+}
+func (m *mockCasesAPI) DeleteSection(ctx context.Context, sectionID int64) error {
+	if m.deleteSectionFunc != nil {
+		return m.deleteSectionFunc(ctx, sectionID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) DeleteSharedStep(ctx context.Context, stepID int64, keep int) error {
+	if m.deleteSharedFunc != nil {
+		return m.deleteSharedFunc(ctx, stepID, keep)
+	}
+	return nil
+}
+func (m *mockCasesAPI) DeleteSuite(ctx context.Context, suiteID int64) error {
+	if m.deleteSuiteFunc != nil {
+		return m.deleteSuiteFunc(ctx, suiteID)
+	}
+	return nil
 }
 
 func TestRollback_CaseUpdate(t *testing.T) {
@@ -264,12 +300,12 @@ func TestRollback_UnsupportedEntityType(t *testing.T) {
 	manifest, err := LoadManifest(store)
 	require.NoError(t, err)
 
-	snapID := "sections/20260413T120000_update_1"
+	snapID := "milestones/20260413T120000_update_1"
 	meta := &Meta{
 		ID:         snapID,
-		Category:   Category("sections"),
+		Category:   Category("milestones"),
 		Operation:  OpUpdate,
-		EntityType: "section",
+		EntityType: "milestone",
 		Status:     StatusAvailable,
 		Timestamp:  time.Now().UTC(),
 	}
@@ -675,4 +711,277 @@ func TestStore_Export(t *testing.T) {
 	assert.Equal(t, snapID, envelope.Meta.ID)
 	assert.Equal(t, "Original", envelope.Data.Title)
 	assert.Equal(t, int64(42), envelope.Data.ID)
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3 tests: cascade section rollback
+// ---------------------------------------------------------------------------
+
+func TestRollback_SectionCascade_Delete(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	cascade := CascadeData{
+		Section: data.Section{ID: 10, Name: "Auth", SuiteID: 1, Description: "Auth tests"},
+		Cases: []data.Case{
+			{ID: 100, Title: "Login", SectionID: 10, PriorityID: 3},
+			{ID: 101, Title: "Logout", SectionID: 10, PriorityID: 2},
+		},
+	}
+	snapID := "sections/20260413T120000_delete_10"
+	meta := &Meta{
+		ID: snapID, Category: Category("sections"), Operation: OpDelete,
+		EntityType: "section", EntityIDs: []int64{10, 100, 101},
+		Status: StatusAvailable, DataFile: "data.json",
+		RollbackTier: Tier2, ProjectID: 1,
+		Entities: []Entity{
+			{Type: "section", ID: 10},
+			{Type: "case", ID: 100, ParentID: 10},
+			{Type: "case", ID: 101, ParentID: 10},
+		},
+		Timestamp: time.Now().UTC(),
+	}
+
+	require.NoError(t, store.SaveMeta(meta))
+	_, err = store.SaveData(snapID, "data.json", cascade)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Add(meta))
+
+	var createdSectionReq *data.AddSectionRequest
+	var createdCases []*data.AddCaseRequest
+	api := &mockCasesAPI{
+		addSectionFunc: func(_ context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+			assert.Equal(t, int64(1), projectID)
+			createdSectionReq = req
+			return &data.Section{ID: 50, Name: req.Name}, nil
+		},
+		addCaseFunc: func(_ context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+			assert.Equal(t, int64(50), sectionID) // should use new section ID
+			createdCases = append(createdCases, req)
+			return &data.Case{ID: 200 + int64(len(createdCases)), Title: req.Title}, nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(50), result.NewEntityID)
+
+	require.NotNil(t, createdSectionReq)
+	assert.Equal(t, "Auth", createdSectionReq.Name)
+	assert.Len(t, createdCases, 2)
+	assert.Equal(t, "Login", createdCases[0].Title)
+	assert.Equal(t, "Logout", createdCases[1].Title)
+}
+
+func TestRollback_SectionCascade_DryRun(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	cascade := CascadeData{
+		Section: data.Section{ID: 10, Name: "Auth"},
+		Cases:   []data.Case{{ID: 100, Title: "Login"}, {ID: 101, Title: "Logout"}},
+	}
+	snapID := "sections/20260413T120000_delete_10"
+	meta := &Meta{
+		ID: snapID, Category: Category("sections"), Operation: OpDelete,
+		EntityType: "section", EntityIDs: []int64{10}, Status: StatusAvailable,
+		DataFile: "data.json", ProjectID: 1, Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	_, err = store.SaveData(snapID, "data.json", cascade)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{} // No API calls expected
+	result, err := Rollback(context.Background(), api, store, manifest, snapID, RollbackOpts{DryRun: true})
+	require.NoError(t, err)
+	assert.True(t, result.DryRun)
+	assert.Len(t, result.Preview, 3) // 1 section + 2 cases
+	assert.Contains(t, result.Preview[0].Saved, "RE-CREATE SECTION")
+}
+
+func TestRollback_SectionCascade_EntityFilter(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	cascade := CascadeData{
+		Section: data.Section{ID: 10, Name: "Auth", SuiteID: 1},
+		Cases: []data.Case{
+			{ID: 100, Title: "Login", SectionID: 10},
+			{ID: 101, Title: "Logout", SectionID: 10},
+		},
+	}
+	snapID := "sections/20260413T120000_delete_10"
+	meta := &Meta{
+		ID: snapID, Category: Category("sections"), Operation: OpDelete,
+		EntityType: "section", EntityIDs: []int64{10, 100, 101},
+		Status: StatusAvailable, DataFile: "data.json", ProjectID: 1,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	_, err = store.SaveData(snapID, "data.json", cascade)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Add(meta))
+
+	createdCaseCount := 0
+	api := &mockCasesAPI{
+		addSectionFunc: func(_ context.Context, _ int64, req *data.AddSectionRequest) (*data.Section, error) {
+			return &data.Section{ID: 50, Name: req.Name}, nil
+		},
+		addCaseFunc: func(_ context.Context, _ int64, req *data.AddCaseRequest) (*data.Case, error) {
+			createdCaseCount++
+			return &data.Case{ID: 200, Title: req.Title}, nil
+		},
+	}
+
+	// Only restore case 100.
+	result, err := Rollback(context.Background(), api, store, manifest, snapID, RollbackOpts{EntityIDs: []int64{100}})
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, 1, createdCaseCount, "should only restore filtered case")
+}
+
+// ---------------------------------------------------------------------------
+// Sync rollback tests
+// ---------------------------------------------------------------------------
+
+func TestRollback_Sync_DeleteCreatedEntities(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	syncData := SyncData{
+		SrcProject: 1, DstProject: 2,
+		SrcSuite: 10, DstSuite: 20,
+		Created: []SyncCreatedEntity{
+			{Type: "suite", SourceID: 10, TargetID: 200},
+			{Type: "section", SourceID: 11, TargetID: 201},
+			{Type: "shared_step", SourceID: 12, TargetID: 202},
+			{Type: "case", SourceID: 13, TargetID: 203},
+			{Type: "case", SourceID: 14, TargetID: 204},
+		},
+	}
+
+	snapID := "sync/20260413T120000_sync_full_1"
+	meta := &Meta{
+		ID: snapID, Category: CatSync, Operation: OpSyncFull,
+		EntityType: "sync", Status: StatusAvailable,
+		DataFile: "data.json", Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+	_, err = store.SaveData(snapID, "data.json", syncData)
+	require.NoError(t, err)
+
+	var deletedIDs []int64
+	api := &mockCasesAPI{
+		deleteCaseFunc: func(_ context.Context, id int64) error {
+			deletedIDs = append(deletedIDs, id)
+			return nil
+		},
+		deleteSectionFunc: func(_ context.Context, id int64) error {
+			deletedIDs = append(deletedIDs, id)
+			return nil
+		},
+		deleteSharedFunc: func(_ context.Context, id int64, _ int) error {
+			deletedIDs = append(deletedIDs, id)
+			return nil
+		},
+		deleteSuiteFunc: func(_ context.Context, id int64) error {
+			deletedIDs = append(deletedIDs, id)
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Contains(t, result.Message, "5/5")
+	// Verify deletion order: cases first, then sections, then shared_steps, then suites.
+	assert.Equal(t, []int64{203, 204, 201, 202, 200}, deletedIDs)
+}
+
+func TestRollback_Sync_DryRun(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	syncData := SyncData{
+		Created: []SyncCreatedEntity{
+			{Type: "case", SourceID: 1, TargetID: 100},
+			{Type: "section", SourceID: 2, TargetID: 200},
+		},
+	}
+
+	snapID := "sync/20260413T120000_sync_cases_1"
+	meta := &Meta{
+		ID: snapID, Category: CatSync, Operation: OpSyncCases,
+		EntityType: "sync", Status: StatusAvailable,
+		DataFile: "data.json", Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+	_, err = store.SaveData(snapID, "data.json", syncData)
+	require.NoError(t, err)
+
+	api := &mockCasesAPI{}
+	result, err := Rollback(context.Background(), api, store, manifest, snapID, RollbackOpts{DryRun: true})
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.True(t, result.DryRun)
+	assert.Len(t, result.Preview, 2)
+}
+
+func TestRollback_Sync_EntityFilter(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	syncData := SyncData{
+		Created: []SyncCreatedEntity{
+			{Type: "case", SourceID: 1, TargetID: 100},
+			{Type: "case", SourceID: 2, TargetID: 200},
+			{Type: "case", SourceID: 3, TargetID: 300},
+		},
+	}
+
+	snapID := "sync/20260413T120000_sync_cases_1"
+	meta := &Meta{
+		ID: snapID, Category: CatSync, Operation: OpSyncCases,
+		EntityType: "sync", Status: StatusAvailable,
+		DataFile: "data.json", Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+	_, err = store.SaveData(snapID, "data.json", syncData)
+	require.NoError(t, err)
+
+	var deletedIDs []int64
+	api := &mockCasesAPI{
+		deleteCaseFunc: func(_ context.Context, id int64) error {
+			deletedIDs = append(deletedIDs, id)
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID, RollbackOpts{EntityIDs: []int64{100, 300}})
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, []int64{100, 300}, deletedIDs, "should only delete filtered entities")
 }

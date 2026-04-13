@@ -4,6 +4,7 @@ package client
 
 import (
 	"context"
+	"io"
 
 	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -144,6 +145,7 @@ type AttachmentsAPI interface {
 	AddAttachmentToResult(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToRun(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error)
 	DeleteAttachment(ctx context.Context, attachmentID int64) error
+	DownloadAttachment(ctx context.Context, attachmentID int64) (io.ReadCloser, error)
 	GetAttachment(ctx context.Context, attachmentID int64) (*data.Attachment, error)
 	GetAttachmentsForCase(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForPlan(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error)

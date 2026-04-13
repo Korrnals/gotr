@@ -6,6 +6,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -89,6 +90,13 @@ Examples:
 		}
 		defer m.Close()
 
+		// Pre-sync snapshot (meta only, data after sync).
+		hook := snap.NewHook(cmd)
+		hook.Before(ctx, snap.BuildMeta(
+			snap.OpSyncFull, "sync", nil,
+			snap.Tier2, srcProject, srcSuite, snap.ResolveName(cmd), os.Args[1:],
+		), nil)
+
 		op := newSyncOperation("Full migration", quiet)
 defer op.Finish()
 
@@ -126,6 +134,9 @@ defer op.Finish()
 				}
 			}
 		}
+
+		// Save sync mapping to snapshot for rollback.
+		hook.FinalizeSyncData(buildSyncDataFromMapping(m.Mapping(), srcProject, dstProject, srcSuite, dstSuite))
 
 		ui.Success(os.Stdout, "Full migration complete!")
 		return nil

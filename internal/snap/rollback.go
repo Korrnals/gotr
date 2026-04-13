@@ -51,11 +51,15 @@ func Rollback(ctx context.Context, api CasesAPI, store *Store, manifest *Manifes
 	}
 
 	if err != nil {
+		meta.Status = StatusRollbackPartial
+		_ = store.SaveMeta(meta)
 		_ = manifest.UpdateStatus(snapID, StatusRollbackPartial)
 		return result, err
 	}
 
 	result.Success = true
+	meta.Status = StatusRolledBack
+	_ = store.SaveMeta(meta)
 	_ = manifest.UpdateStatus(snapID, StatusRolledBack)
 	return result, nil
 }

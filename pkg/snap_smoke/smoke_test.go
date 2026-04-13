@@ -4,6 +4,7 @@ package snap_smoke
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 
@@ -15,7 +16,13 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Test suite setup: shared client, config, section
+// Test suite setup
+//
+// Default mode: starts an in-memory FakeTestRail (no external deps).
+// Real-server mode: set GOTR_SMOKE_URL + GOTR_SMOKE_USER + GOTR_SMOKE_KEY +
+//
+//	GOTR_SMOKE_PROJECT to hit a live TestRail instance instead.
+//
 // ---------------------------------------------------------------------------
 
 var (
@@ -23,16 +30,32 @@ var (
 	smokeCli     *client.HTTPClient
 	smokeSectID  int64
 	smokeSetupOK bool
+	fakeServer   *FakeTestRail // non-nil when using the built-in mock
 )
 
 func TestMain(m *testing.M) {
 	cfg, err := LoadConfig()
 	if err != nil {
-		// Not configured — skip gracefully (printed to stderr for visibility).
-		os.Stderr.WriteString("smoke: skipping — " + err.Error() + "\n")
-		os.Stderr.WriteString("Set GOTR_SMOKE_URL, GOTR_SMOKE_USER, GOTR_SMOKE_KEY, GOTR_SMOKE_PROJECT to enable.\n")
-		os.Exit(0)
+		// No env configured — spin up FakeTestRail.
+		fake := NewFakeTestRail()
+		fakeServer = fake
+
+		cfg = &SmokeConfig{
+			BaseURL:   fake.URL(),
+			Username:  "smoke@test.local",
+			APIKey:    "fakekey",
+			ProjectID: 3,
+			SuiteID:   1,
+		}
+
+		// Pre-seed a section so testSection() can find it.
+		fake.SeedSection(100, "[smoke] snap-rollback-tests", cfg.SuiteID)
+
+		fmt.Fprintln(os.Stderr, "smoke: using built-in FakeTestRail at", fake.URL())
+	} else {
+		fmt.Fprintln(os.Stderr, "smoke: using real server at", cfg.BaseURL)
 	}
+
 	smokeCfg = cfg
 
 	cli, err := NewClient(cfg)
@@ -43,14 +66,12 @@ func TestMain(m *testing.M) {
 	smokeCli = cli
 	smokeSetupOK = true
 
-	os.Exit(m.Run())
-}
+	code := m.Run()
 
-func skipIfNotConfigured(t *testing.T) {
-	t.Helper()
-	if !smokeSetupOK {
-		t.Skip("smoke: not configured (env vars not set)")
+	if fakeServer != nil {
+		fakeServer.Close()
 	}
+	os.Exit(code)
 }
 
 func ensureSection(t *testing.T) int64 {
@@ -67,7 +88,6 @@ func ensureSection(t *testing.T) int64 {
 // ---------------------------------------------------------------------------
 
 func TestSmoke_UpdateRollback(t *testing.T) {
-	skipIfNotConfigured(t)
 	ctx := context.Background()
 	sectionID := ensureSection(t)
 
@@ -128,7 +148,6 @@ func TestSmoke_UpdateRollback(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSmoke_DeleteRollback(t *testing.T) {
-	skipIfNotConfigured(t)
 	ctx := context.Background()
 	sectionID := ensureSection(t)
 
@@ -187,7 +206,6 @@ func TestSmoke_DeleteRollback(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSmoke_AddRollback(t *testing.T) {
-	skipIfNotConfigured(t)
 	ctx := context.Background()
 	sectionID := ensureSection(t)
 
@@ -236,7 +254,6 @@ func TestSmoke_AddRollback(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSmoke_SnapManagementCycle(t *testing.T) {
-	skipIfNotConfigured(t)
 	ctx := context.Background()
 	sectionID := ensureSection(t)
 
@@ -287,7 +304,6 @@ func TestSmoke_SnapManagementCycle(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSmoke_DoubleRollbackBlocked(t *testing.T) {
-	skipIfNotConfigured(t)
 	ctx := context.Background()
 	sectionID := ensureSection(t)
 
@@ -330,7 +346,6 @@ func TestSmoke_DoubleRollbackBlocked(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestSmoke_GCOrphans(t *testing.T) {
-	skipIfNotConfigured(t)
 	ctx := context.Background()
 	sectionID := ensureSection(t)
 

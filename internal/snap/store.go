@@ -173,6 +173,44 @@ func (s *Store) Exists(snapID string) bool {
 	return err == nil && info.IsDir()
 }
 
+// SnapDir returns the full filesystem path for a snapshot ID.
+func (s *Store) SnapDir(snapID string) string {
+	return s.snapDir(snapID)
+}
+
+// Export copies meta.json and data files from a snapshot into a single JSON file.
+// The exported file contains {"meta": {...}, "data": {...}} for portability.
+func (s *Store) Export(snapID string, outPath string) error {
+	meta, err := s.LoadMeta(snapID)
+	if err != nil {
+		return fmt.Errorf("snap export: %w", err)
+	}
+
+	var data json.RawMessage
+	if meta.DataFile != "" {
+		p := filepath.Join(s.snapDir(snapID), meta.DataFile)
+		raw, err := os.ReadFile(p)
+		if err != nil {
+			return fmt.Errorf("snap export: read data %s: %w", meta.DataFile, err)
+		}
+		data = raw
+	}
+
+	envelope := struct {
+		Meta *Meta           `json:"meta"`
+		Data json.RawMessage `json:"data,omitempty"`
+	}{Meta: meta, Data: data}
+
+	dir := filepath.Dir(outPath)
+	if dir != "." && dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return fmt.Errorf("snap export: create output dir: %w", err)
+		}
+	}
+
+	return atomicWriteJSON(outPath, envelope)
+}
+
 // CollectOrphans returns snapshot IDs on disk that are not present in the manifest.
 func (s *Store) CollectOrphans(manifestIDs map[string]struct{}) ([]string, error) {
 	all, err := s.List()

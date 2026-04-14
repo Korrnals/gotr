@@ -3,7 +3,9 @@ package snap
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	snaplib "github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -17,7 +19,7 @@ func newExportCmd() *cobra.Command {
 
 The output contains {"meta": {...}, "data": {...}}.
 If snapshot_id is omitted, shows an interactive picker.
-If output_path is omitted, defaults to snapshot_<id>.json.`,
+If output_path is omitted, prompts for filename and directory interactively.`,
 		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snaplib.NewStore()
@@ -44,6 +46,15 @@ If output_path is omitted, defaults to snapshot_<id>.json.`,
 			if len(args) >= 2 {
 				outPath = args[1]
 			}
+
+			// Interactive prompt for output path if not provided.
+			if outPath == "" && !interactive.IsNonInteractive(cmd.Context()) {
+				outPath, err = promptExportPath(cmd, snapID)
+				if err != nil {
+					return err
+				}
+			}
+
 			if outPath == "" {
 				safe := sanitizeFilename(snapID)
 				outPath = "snapshot_" + safe + ".json"
@@ -59,6 +70,30 @@ If output_path is omitted, defaults to snapshot_<id>.json.`,
 	}
 
 	return cmd
+}
+
+// promptExportPath interactively asks for export filename and directory.
+func promptExportPath(cmd *cobra.Command, snapID string) (string, error) {
+	p := interactive.PrompterFromContext(cmd.Context())
+
+	defaultName := "snapshot_" + sanitizeFilename(snapID) + ".json"
+	name, err := p.Input("Export filename:", defaultName)
+	if err != nil {
+		return "", err
+	}
+	if name == "" {
+		name = defaultName
+	}
+
+	dir, err := p.Input("Export directory:", ".")
+	if err != nil {
+		return "", err
+	}
+	if dir == "" {
+		dir = "."
+	}
+
+	return filepath.Join(dir, name), nil
 }
 
 // sanitizeFilename replaces path separators with underscores.

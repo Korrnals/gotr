@@ -3,7 +3,6 @@ package snap
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"testing"
@@ -86,29 +85,19 @@ func execCmd(t *testing.T, cmd *cobra.Command, args []string) (string, error) {
 func TestCLI_SnapList_Empty(t *testing.T) {
 	redirectHome(t)
 
-	cmd := newListCmd()
-	// Override stdout to capture.
-	buf := &bytes.Buffer{}
-	cmd.SetOut(buf)
-	// Create store dir so it doesn't error.
 	_, err := snaplib.NewStore()
 	require.NoError(t, err)
 
-	// Redirect os.Stdout for this test (list writes to os.Stdout directly).
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
+	cmd := newListCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	ctx := interactive.WithPrompter(context.Background(), &interactive.NonInteractivePrompter{})
+	cmd.SetContext(ctx)
 	cmd.SetArgs([]string{})
 	err = cmd.Execute()
 	require.NoError(t, err)
 
-	w.Close()
-	var captured bytes.Buffer
-	captured.ReadFrom(r)
-	os.Stdout = old
-
-	assert.Contains(t, captured.String(), "No snapshots found")
+	assert.Contains(t, buf.String(), "No snapshots found")
 }
 
 func TestCLI_SnapList_WithEntries(t *testing.T) {
@@ -120,21 +109,15 @@ func TestCLI_SnapList_WithEntries(t *testing.T) {
 	seedSnapshot(t, snaplib.OpDelete, "case", []int64{99}, snaplib.Tier2, "", c)
 
 	cmd := newListCmd()
-
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	ctx := interactive.WithPrompter(context.Background(), &interactive.NonInteractivePrompter{})
+	cmd.SetContext(ctx)
 	cmd.SetArgs([]string{})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
-	w.Close()
-	var captured bytes.Buffer
-	captured.ReadFrom(r)
-	os.Stdout = old
-
-	out := captured.String()
+	out := buf.String()
 	assert.Contains(t, out, "update")
 	assert.Contains(t, out, "delete")
 	assert.Contains(t, out, "case")
@@ -166,13 +149,12 @@ func TestCLI_SnapInfo(t *testing.T) {
 	captured.ReadFrom(r)
 	os.Stdout = old
 
-	// Output is JSON — parse it.
-	var meta snaplib.Meta
-	require.NoError(t, json.Unmarshal(captured.Bytes(), &meta))
-	assert.Equal(t, snapID, meta.ID)
-	assert.Equal(t, snaplib.OpUpdate, meta.Operation)
-	assert.Equal(t, "case", meta.EntityType)
-	assert.Equal(t, snaplib.StatusAvailable, meta.Status)
+	// Output is now a table card. Verify key fields are present.
+	out := captured.String()
+	assert.Contains(t, out, snapID)
+	assert.Contains(t, out, "update")
+	assert.Contains(t, out, "case")
+	assert.Contains(t, out, "available")
 }
 
 func TestCLI_SnapInfo_NotFound(t *testing.T) {
@@ -578,10 +560,11 @@ func TestCLI_SnapInfo_Interactive(t *testing.T) {
 	captured.ReadFrom(r)
 	os.Stdout = old
 
-	var meta snaplib.Meta
-	require.NoError(t, json.Unmarshal(captured.Bytes(), &meta))
-	assert.Equal(t, snapID, meta.ID)
-	assert.Equal(t, snaplib.OpUpdate, meta.Operation)
+	// Output is now a table card (not JSON). Verify key fields are present.
+	out := captured.String()
+	assert.Contains(t, out, snapID)
+	assert.Contains(t, out, "update")
+	assert.Contains(t, out, "case")
 }
 
 func TestCLI_SnapDelete_Interactive(t *testing.T) {
@@ -674,7 +657,8 @@ func TestCLI_SnapExport_Interactive(t *testing.T) {
 	_, _, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{77}, snaplib.Tier1, "", c)
 
 	mp := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0})
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithInputResponses("", "")
 
 	cmd := newExportCmd()
 	ctx := interactive.WithPrompter(context.Background(), mp)

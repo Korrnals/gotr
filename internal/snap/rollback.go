@@ -3,6 +3,7 @@ package snap
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Korrnals/gotr/internal/concurrent"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -142,6 +143,16 @@ func entityAllowed(id int64, filter []int64) bool {
 	return false
 }
 
+// isGoneError returns true if the error indicates entity was already deleted (400/404).
+func isGoneError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "400") || strings.Contains(msg, "404") ||
+		strings.Contains(msg, "not found") || strings.Contains(msg, "no longer exists")
+}
+
 // logEntry finds or creates a RollbackLogEntry for the given entity in meta.
 func logEntry(meta *Meta, entityType string, id int64) *RollbackLogEntry {
 	for i := range meta.RollbackLog {
@@ -237,6 +248,12 @@ func rollbackCaseDelete(ctx context.Context, api CasesAPI, store *Store, meta *M
 	req := caseToAddRequest(&saved)
 	created, err := api.AddCase(ctx, saved.SectionID, req)
 	if err != nil {
+		if isGoneError(err) {
+			entry.Status = RBFailed
+			entry.Error = fmt.Sprintf("section %d not found, cannot re-create case", saved.SectionID)
+			result.Message = fmt.Sprintf("Case %d: section %d no longer exists, skipping re-create", saved.ID, saved.SectionID)
+			return nil
+		}
 		entry.Status = RBFailed
 		entry.Error = err.Error()
 		return fmt.Errorf("API add_case (re-create): %w", err)
@@ -275,6 +292,11 @@ func rollbackCaseAdd(ctx context.Context, api CasesAPI, _ *Store, meta *Meta, re
 	}
 
 	if err := api.DeleteCase(ctx, caseID); err != nil {
+		if isGoneError(err) {
+			entry.Status = RBRestored
+			result.Message = fmt.Sprintf("Case %d already deleted, skipping (undo add)", caseID)
+			return nil
+		}
 		entry.Status = RBFailed
 		entry.Error = err.Error()
 		return fmt.Errorf("API delete_case %d: %w", caseID, err)

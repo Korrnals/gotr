@@ -48,10 +48,10 @@ gotr snap <subcommand> [args] [flags]
 
 | Подкоманда | Описание |
 | ---------- | -------- |
-| `list` | Таблица всех снапшотов из манифеста |
-| `info [id]` | JSON-вывод метаданных конкретного снапшота |
+| `list` | Таблица снапшотов с группировкой по серверам; интерактивный двухуровневый выбор |
+| `info [id]` | Табличная карточка метаданных снапшота (JSON через `--format json`) |
 | `rollback [id]` | Откат мутации по сохранённым данным |
-| `export [id]` | Экспорт снапшота в портативный JSON-файл |
+| `export [id]` | Экспорт снапшота в портативный JSON-файл (с интерактивным выбором пути) |
 | `delete [id]` | Удаление снапшота с диска и из манифеста |
 | `gc` | Очистка orphan-снапшотов (есть на диске, нет в манифесте) |
 
@@ -70,6 +70,7 @@ gotr snap <subcommand> [args] [flags]
 ### export
 
 Второй позиционный аргумент — путь к файлу вывода (по умолчанию: `snapshot_<id>.json`).
+В интерактивном режиме, если путь не указан, запрашиваются имя файла и директория.
 
 ## Глобальные флаги 🌐
 
@@ -103,12 +104,19 @@ gotr snap <subcommand> [args] [flags]
 gotr snap list
 ```
 
-Пример вывода:
+В интерактивном режиме выполняется двухуровневый выбор: сначала сервер, затем снапшот.
+В non-interactive режиме или при `--format` выводится таблица с колонкой SERVER:
 
 ```text
-ID                              OPERATION  ENTITY   CATEGORY  STATUS     TIMESTAMP
-cases/1718000000_update_42      update     case     cases     available  2025-06-10 12:00:00
-custom/my_backup                delete     suite    custom    available  2025-06-10 12:05:00
+ #  ID                              SERVER                    OP      ENTITY  CATEGORY  STATUS     TIMESTAMP
+ 1  cases/1718000000_update_42      https://my.testrail.io    update  case    cases     available  2025-06-10 12:00:00
+ 2  custom/my_backup                https://my.testrail.io    delete  suite   custom    available  2025-06-10 12:05:00
+```
+
+Для JSON-вывода (скрипты, пайплайны):
+
+```bash
+gotr snap list --format json
 ```
 
 ---
@@ -121,7 +129,25 @@ custom/my_backup                delete     suite    custom    available  2025-06
 gotr snap info cases/1718000000_update_42
 ```
 
-Возвращает JSON с полями: `id`, `operation`, `entity_type`, `entity_ids`, `tier`, `status`, `timestamp`, `command`, `data_size`.
+Выводит форматированную карточку:
+
+```text
+┌──────────── Snapshot Info ────────────┐
+│ ID         │ cases/1718000000_update_42 │
+│ Server     │ https://my.testrail.io     │
+│ Operation  │ update case                │
+│ Tier       │ T1 (full rollback)         │
+│ Status     │ available                  │
+│ Entity IDs │ 42                         │
+│ ...        │ ...                        │
+└────────────┴────────────────────────────┘
+```
+
+Для JSON-вывода (скрипты):
+
+```bash
+gotr snap info cases/1718000000_update_42 --format json
+```
 
 ---
 
@@ -133,15 +159,21 @@ gotr snap info cases/1718000000_update_42
 gotr snap rollback cases/1718000000_update_42 --dry-run
 ```
 
-Пример вывода:
+Пример вывода (с контекстом сервера):
 
 ```text
-Dry-run preview: would rollback update for case 42
+Server:    https://my.testrail.io
+Snapshot:  cases/1718000000_update_42 (update case, T1)
+
+The following changes will be applied:
 
 ENTITY ID  FIELD     CURRENT           SNAPSHOT
 42         title     Changed Title     Original Title
 42         priority  3                 2
 ```
+
+> При откате `delete`, если секция уже удалена на сервере (404/400),
+> откат мягко пропускает re-create и продолжает работу.
 
 ---
 

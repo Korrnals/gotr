@@ -16,6 +16,7 @@ Language: Русский | [English](../../../en/guides/commands/global-flags.md
         - [config](config.md)
         - [completion](completion.md)
         - [self-test](self-test.md)
+        - [snap](snap.md)
       - [CRUD операции](add.md)
       - [Основные ресурсы](get.md)
       - [Специальные ресурсы](bdds.md)

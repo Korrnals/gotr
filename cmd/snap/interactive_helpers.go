@@ -9,6 +9,7 @@ import (
 )
 
 // selectSnapshot shows an interactive picker for available snapshots.
+// Entries are shown with their server URL context.
 // Returns the selected snapshot ID. If no snapshots exist, returns an error.
 func selectSnapshot(ctx context.Context, manifest *snaplib.Manifest, prompt string) (string, error) {
 	entries := manifest.All()
@@ -20,8 +21,17 @@ func selectSnapshot(ctx context.Context, manifest *snaplib.Manifest, prompt stri
 
 	options := make([]string, 0, len(entries))
 	for i, e := range entries {
-		options = append(options, fmt.Sprintf("[%d] %s | %s %s | %s | %s",
-			i+1, e.ID, e.Operation, e.EntityType, e.Status, e.Timestamp.Format("2006-01-02 15:04:05")))
+		server := e.ServerURL
+		if server == "" {
+			server = "(unknown)"
+		}
+		name := ""
+		if e.Name != "" {
+			name = fmt.Sprintf(" %q", e.Name)
+		}
+		options = append(options, fmt.Sprintf("[%d] %s %s%s | %s | T%d | %s | %s",
+			i+1, e.Operation, e.EntityType, name, e.Status,
+			e.RollbackTier, e.Timestamp.Format("2006-01-02 15:04"), server))
 	}
 
 	idx, _, err := p.Select(prompt, options)

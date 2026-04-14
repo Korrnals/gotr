@@ -74,13 +74,16 @@ Partial failures are resumable: re-run the same rollback to retry failed entitie
 				if err != nil {
 					return fmt.Errorf("dry-run failed: %w", err)
 				}
-				printDiffPreview(result)
+				printRollbackHeader(cmd, entry)
+				printDiffPreview(cmd, result)
 				return nil
 			}
 
 			// Interactive mode: show preview + confirm.
 			prompter := interactive.PrompterFromContext(ctx)
 			if !interactive.IsNonInteractive(ctx) {
+				printRollbackHeader(cmd, entry)
+
 				previewOpts := opts
 				previewOpts.DryRun = true
 				preview, err := snaplib.Rollback(ctx, cli, store, manifest, snapID, previewOpts)
@@ -89,7 +92,7 @@ Partial failures are resumable: re-run the same rollback to retry failed entitie
 				}
 
 				if len(preview.Preview) > 0 {
-					printDiffPreview(preview)
+					printDiffPreview(cmd, preview)
 					confirmed, err := prompter.Confirm("Apply this rollback?", true)
 					if err != nil || !confirmed {
 						fmt.Fprintln(os.Stdout, "Rollback cancelled.")
@@ -143,19 +146,31 @@ func parseEntityIDs(raw string) ([]int64, error) {
 	return ids, nil
 }
 
+// printRollbackHeader shows server and snapshot context before rollback.
+func printRollbackHeader(cmd *cobra.Command, entry *snaplib.ManifestEntry) {
+	out := cmd.OutOrStdout()
+	server := entry.ServerURL
+	if server == "" {
+		server = "(unknown)"
+	}
+	fmt.Fprintf(out, "\nServer:    %s\n", server)
+	fmt.Fprintf(out, "Snapshot:  %s (%s %s, T%d)\n\n", entry.ID, entry.Operation, entry.EntityType, entry.RollbackTier)
+}
+
 // printDiffPreview renders a diff table to stdout.
-func printDiffPreview(result *snaplib.RollbackResult) {
+func printDiffPreview(cmd *cobra.Command, result *snaplib.RollbackResult) {
+	out := cmd.OutOrStdout()
 	if result.DryRun {
-		fmt.Fprintf(os.Stdout, "Dry-run preview: %s\n", result.Message)
+		fmt.Fprintf(out, "The following changes will be applied:\n")
 	}
 
 	if len(result.Preview) == 0 {
-		fmt.Fprintln(os.Stdout, "No differences found — snapshot matches current state.")
+		fmt.Fprintln(out, "No differences found — snapshot matches current state.")
 		return
 	}
 
-	fmt.Fprintln(os.Stdout, "")
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(out, "")
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "ENTITY ID\tFIELD\tCURRENT\tSNAPSHOT")
 	for _, d := range result.Preview {
 		cur := truncate(d.Current, 50)
@@ -163,7 +178,7 @@ func printDiffPreview(result *snaplib.RollbackResult) {
 		fmt.Fprintf(w, "%d\t%s\t%s\t%s\n", d.EntityID, d.Field, cur, sav)
 	}
 	_ = w.Flush()
-	fmt.Fprintln(os.Stdout, "")
+	fmt.Fprintln(out, "")
 }
 
 // truncate shortens a string to maxLen, adding "..." if needed.

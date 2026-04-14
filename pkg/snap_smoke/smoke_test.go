@@ -166,7 +166,7 @@ func TestSmoke_DeleteRollback(t *testing.T) {
 	require.NoError(t, err)
 
 	// 3. Snapshot before delete.
-	meta := snap.BuildMeta(snap.OpDelete, "case", []int64{origID}, snap.Tier2, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "delete"})
+	meta := snap.BuildMeta(snap.OpDelete, "case", []int64{origID}, snap.Tier2, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "delete"}, "")
 	snapObj, err := snap.TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return smokeCli.GetCase(ctx, origID)
 	})
@@ -219,7 +219,7 @@ func TestSmoke_AddRollback(t *testing.T) {
 	require.NoError(t, err)
 
 	// 2. Snapshot for add (no fetchFn).
-	meta := snap.BuildMeta(snap.OpAdd, "case", nil, snap.Tier2, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "add"})
+	meta := snap.BuildMeta(snap.OpAdd, "case", nil, snap.Tier2, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "add"}, "")
 	snapObj, err := snap.TakeSnapshot(ctx, store, manifest, meta, nil)
 	require.NoError(t, err)
 	snapID := snapObj.Meta.ID
@@ -269,7 +269,7 @@ func TestSmoke_SnapManagementCycle(t *testing.T) {
 	manifest, err := snap.LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := snap.BuildMeta(snap.OpUpdate, "case", []int64{c.ID}, snap.Tier1, smokeCfg.ProjectID, smokeCfg.SuiteID, "before-smoke-test", []string{"cases", "update"})
+	meta := snap.BuildMeta(snap.OpUpdate, "case", []int64{c.ID}, snap.Tier1, smokeCfg.ProjectID, smokeCfg.SuiteID, "before-smoke-test", []string{"cases", "update"}, "")
 	snapObj, err := snap.TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return smokeCli.GetCase(ctx, c.ID)
 	})
@@ -317,7 +317,7 @@ func TestSmoke_DoubleRollbackBlocked(t *testing.T) {
 	manifest, err := snap.LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := snap.BuildMeta(snap.OpUpdate, "case", []int64{c.ID}, snap.Tier1, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "update"})
+	meta := snap.BuildMeta(snap.OpUpdate, "case", []int64{c.ID}, snap.Tier1, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "update"}, "")
 	snapObj, err := snap.TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return smokeCli.GetCase(ctx, c.ID)
 	})
@@ -360,7 +360,7 @@ func TestSmoke_GCOrphans(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a tracked snapshot.
-	meta := snap.BuildMeta(snap.OpUpdate, "case", []int64{c.ID}, snap.Tier1, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "update"})
+	meta := snap.BuildMeta(snap.OpUpdate, "case", []int64{c.ID}, snap.Tier1, smokeCfg.ProjectID, smokeCfg.SuiteID, "", []string{"cases", "update"}, "")
 	_, err = snap.TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return smokeCli.GetCase(ctx, c.ID)
 	})

@@ -217,7 +217,7 @@ func TestIntegration_UpdateRollback(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Take snapshot (simulates hook.Before).
-	meta := BuildMeta(OpUpdate, "case", []int64{42}, Tier1, 1, 1, "", []string{"cases", "update", "42"})
+	meta := BuildMeta(OpUpdate, "case", []int64{42}, Tier1, 1, 1, "", []string{"cases", "update", "42"}, "")
 	snap, err := TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 42)
 	})
@@ -281,7 +281,7 @@ func TestIntegration_DeleteRollback(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Take snapshot before delete.
-	meta := BuildMeta(OpDelete, "case", []int64{99}, Tier2, 1, 1, "", []string{"cases", "delete", "99"})
+	meta := BuildMeta(OpDelete, "case", []int64{99}, Tier2, 1, 1, "", []string{"cases", "delete", "99"}, "")
 	snap, err := TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 99)
 	})
@@ -332,7 +332,7 @@ func TestIntegration_AddRollback(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Take snapshot for add (no fetchFn).
-	meta := BuildMeta(OpAdd, "case", nil, Tier2, 1, 1, "", []string{"cases", "add"})
+	meta := BuildMeta(OpAdd, "case", nil, Tier2, 1, 1, "", []string{"cases", "add"}, "")
 	snapObj, err := TakeSnapshot(ctx, store, manifest, meta, nil)
 	require.NoError(t, err)
 	snapID := snapObj.Meta.ID
@@ -380,7 +380,7 @@ func TestIntegration_DoubleRollbackRejected(t *testing.T) {
 	api := newStatefulAPI(original)
 	ctx := context.Background()
 
-	meta := BuildMeta(OpUpdate, "case", []int64{10}, Tier1, 1, 1, "", []string{"cases", "update", "10"})
+	meta := BuildMeta(OpUpdate, "case", []int64{10}, Tier1, 1, 1, "", []string{"cases", "update", "10"}, "")
 	snap, err := TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 10)
 	})
@@ -414,7 +414,7 @@ func TestIntegration_CustomNameCategory(t *testing.T) {
 	api := newStatefulAPI(original)
 	ctx := context.Background()
 
-	meta := BuildMeta(OpUpdate, "case", []int64{7}, Tier1, 1, 1, "before-refactor", []string{"cases", "update", "7", "--snap-name=before-refactor"})
+	meta := BuildMeta(OpUpdate, "case", []int64{7}, Tier1, 1, 1, "before-refactor", []string{"cases", "update", "7", "--snap-name=before-refactor"}, "")
 	snap, err := TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 7)
 	})
@@ -445,7 +445,7 @@ func TestIntegration_APIErrorPartialRollback(t *testing.T) {
 	api := newStatefulAPI(original)
 	ctx := context.Background()
 
-	meta := BuildMeta(OpUpdate, "case", []int64{55}, Tier1, 1, 1, "", []string{"cases", "update", "55"})
+	meta := BuildMeta(OpUpdate, "case", []int64{55}, Tier1, 1, 1, "", []string{"cases", "update", "55"}, "")
 	snap, err := TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 55)
 	})
@@ -479,7 +479,7 @@ func TestIntegration_GCOrphans(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Create a tracked snapshot.
-	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 1, "", []string{"cases", "update", "1"})
+	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 1, "", []string{"cases", "update", "1"}, "")
 	_, err := TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 1)
 	})
@@ -526,21 +526,21 @@ func TestIntegration_ManifestFiltering(t *testing.T) {
 	ctx := context.Background()
 
 	// Snapshot 1: update case 1.
-	m1 := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 1, "", []string{"cases", "update", "1"})
+	m1 := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 1, "", []string{"cases", "update", "1"}, "")
 	_, err := TakeSnapshot(ctx, store, manifest, m1, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 1)
 	})
 	require.NoError(t, err)
 
 	// Snapshot 2: delete case 2.
-	m2 := BuildMeta(OpDelete, "case", []int64{2}, Tier2, 1, 1, "", []string{"cases", "delete", "2"})
+	m2 := BuildMeta(OpDelete, "case", []int64{2}, Tier2, 1, 1, "", []string{"cases", "delete", "2"}, "")
 	_, err = TakeSnapshot(ctx, store, manifest, m2, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 2)
 	})
 	require.NoError(t, err)
 
 	// Snapshot 3: custom name.
-	m3 := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 1, "my-backup", []string{"cases", "update", "1", "--snap-name=my-backup"})
+	m3 := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 1, "my-backup", []string{"cases", "update", "1", "--snap-name=my-backup"}, "")
 	_, err = TakeSnapshot(ctx, store, manifest, m3, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 1)
 	})
@@ -582,7 +582,7 @@ func TestIntegration_PersistenceAcrossReload(t *testing.T) {
 	api := newStatefulAPI(original)
 	ctx := context.Background()
 
-	meta := BuildMeta(OpUpdate, "case", []int64{77}, Tier1, 1, 1, "", []string{"cases", "update", "77"})
+	meta := BuildMeta(OpUpdate, "case", []int64{77}, Tier1, 1, 1, "", []string{"cases", "update", "77"}, "")
 	snap, err := TakeSnapshot(ctx, store1, manifest1, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 77)
 	})
@@ -630,7 +630,7 @@ func TestIntegration_FullCycleDeleteAndReuse(t *testing.T) {
 	ctx := context.Background()
 
 	// 1. Snapshot + delete.
-	meta := BuildMeta(OpDelete, "case", []int64{200}, Tier2, 1, 1, "", []string{"cases", "delete", "200"})
+	meta := BuildMeta(OpDelete, "case", []int64{200}, Tier2, 1, 1, "", []string{"cases", "delete", "200"}, "")
 	snap, err := TakeSnapshot(ctx, store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return api.GetCase(ctx, 200)
 	})

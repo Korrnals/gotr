@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // Hook is a convenience wrapper for pre-mutation snapshot operations.
@@ -94,6 +95,7 @@ func HookMutation(ctx context.Context, m Mutation) *Hook {
 		m.Op, m.EntityType, m.EntityIDs,
 		m.Tier, m.ProjectID, m.SuiteID,
 		ResolveName(m.Cmd), os.Args[1:],
+		viper.GetString("base_url"),
 	), m.FetchFn)
 	return hook
 }

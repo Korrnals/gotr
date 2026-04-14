@@ -8,7 +8,13 @@ import (
 	"time"
 
 	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/spf13/viper"
 )
+
+// CurrentServerURL returns the configured base_url from viper.
+func CurrentServerURL() string {
+	return viper.GetString("base_url")
+}
 
 // Snapshot is the handle returned after a successful pre-mutation save.
 type Snapshot struct {
@@ -94,9 +100,11 @@ func BuildMeta(
 	suiteID int64,
 	customName string,
 	cliArgs []string,
+	serverURL string,
 ) Meta {
 	meta := Meta{
 		Name:         customName,
+		ServerURL:    serverURL,
 		Operation:    op,
 		EntityType:   entityType,
 		EntityIDs:    entityIDs,

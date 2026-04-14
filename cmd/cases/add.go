@@ -86,6 +86,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			hook.Before(ctx, snap.BuildMeta(
 				snap.OpAdd, "case", nil,
 				snap.Tier2, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+				snap.CurrentServerURL(),
 			), nil)
 
 			quiet, _ := cmd.Flags().GetBool("quiet")

@@ -55,7 +55,7 @@ func seedSnapshot(t *testing.T, op snaplib.Operation, entityType string, entityI
 	manifest, err := snaplib.LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := snaplib.BuildMeta(op, entityType, entityIDs, tier, 1, 1, customName, []string{"test"})
+	meta := snaplib.BuildMeta(op, entityType, entityIDs, tier, 1, 1, customName, []string{"test"}, "")
 	var fetchFn func(context.Context) (interface{}, error)
 	if fetchData != nil {
 		fetchFn = func(ctx context.Context) (interface{}, error) {
@@ -285,7 +285,7 @@ func TestCLI_SnapRollback_Add(t *testing.T) {
 	manifest, err := snaplib.LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := snaplib.BuildMeta(snaplib.OpAdd, "case", nil, snaplib.Tier2, 1, 1, "", []string{"cases", "add"})
+	meta := snaplib.BuildMeta(snaplib.OpAdd, "case", nil, snaplib.Tier2, 1, 1, "", []string{"cases", "add"}, "")
 	snap, err := snaplib.TakeSnapshot(context.Background(), store, manifest, meta, nil)
 	require.NoError(t, err)
 	require.NoError(t, snap.FinalizeAdd(500))

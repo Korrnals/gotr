@@ -127,6 +127,7 @@ func deleteSectionWithSnap(cmd *cobra.Command, cli client.ClientInterface, ctx c
 	hook.Before(ctx, snap.BuildMeta(
 		snap.OpDelete, "section", []int64{sectionID},
 		snap.Tier2, projectID, suiteID, snap.ResolveName(cmd), os.Args[1:],
+		snap.CurrentServerURL(),
 	), func(ctx context.Context) (interface{}, error) {
 		section, err := cli.GetSection(ctx, sectionID)
 		if err != nil {
@@ -162,6 +163,7 @@ func deleteCaseWithSnap(cmd *cobra.Command, cli client.ClientInterface, ctx cont
 	hook.Before(ctx, snap.BuildMeta(
 		snap.OpDelete, "case", []int64{caseID},
 		snap.Tier2, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+		snap.CurrentServerURL(),
 	), func(ctx context.Context) (interface{}, error) {
 		c, err := cli.GetCase(ctx, caseID)
 		if err != nil {

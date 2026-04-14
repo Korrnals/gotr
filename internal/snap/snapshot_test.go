@@ -19,7 +19,7 @@ func TestTakeSnapshot_WithFetch(t *testing.T) {
 	manifest, err := LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := BuildMeta(OpUpdate, "case", []int64{42}, Tier1, 30, 100, "", []string{"cases", "update", "42"})
+	meta := BuildMeta(OpUpdate, "case", []int64{42}, Tier1, 30, 100, "", []string{"cases", "update", "42"}, "")
 
 	fetchData := map[string]interface{}{"id": float64(42), "title": "Original"}
 	fetchFn := func(ctx context.Context) (interface{}, error) {
@@ -52,7 +52,7 @@ func TestTakeSnapshot_AddNoFetch(t *testing.T) {
 	manifest, err := LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := BuildMeta(OpAdd, "case", nil, Tier2, 30, 100, "", []string{"add", "case"})
+	meta := BuildMeta(OpAdd, "case", nil, Tier2, 30, 100, "", []string{"add", "case"}, "")
 
 	s, err := TakeSnapshot(context.Background(), store, manifest, meta, nil)
 	require.NoError(t, err)
@@ -71,7 +71,7 @@ func TestTakeSnapshot_FinalizeAdd(t *testing.T) {
 	manifest, err := LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := BuildMeta(OpAdd, "section", nil, Tier2, 30, 0, "", []string{"add", "section"})
+	meta := BuildMeta(OpAdd, "section", nil, Tier2, 30, 0, "", []string{"add", "section"}, "")
 
 	s, err := TakeSnapshot(context.Background(), store, manifest, meta, nil)
 	require.NoError(t, err)
@@ -96,7 +96,7 @@ func TestTakeSnapshot_FetchError(t *testing.T) {
 	manifest, err := LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 30, 0, "", nil)
+	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 30, 0, "", nil, "")
 
 	fetchFn := func(ctx context.Context) (interface{}, error) {
 		return nil, errors.New("API error 404")
@@ -117,7 +117,7 @@ func TestTakeSnapshot_CustomName(t *testing.T) {
 	manifest, err := LoadManifest(store)
 	require.NoError(t, err)
 
-	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 30, 0, "before-migration", nil)
+	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 30, 0, "before-migration", nil, "")
 
 	fetchFn := func(ctx context.Context) (interface{}, error) {
 		return map[string]string{"hello": "world"}, nil
@@ -131,7 +131,7 @@ func TestTakeSnapshot_CustomName(t *testing.T) {
 }
 
 func TestBuildMeta(t *testing.T) {
-	meta := BuildMeta(OpDelete, "section", []int64{10, 20}, Tier2, 3, 100, "", []string{"delete", "section", "10,20"})
+	meta := BuildMeta(OpDelete, "section", []int64{10, 20}, Tier2, 3, 100, "", []string{"delete", "section", "10,20"}, "")
 	assert.Equal(t, OpDelete, meta.Operation)
 	assert.Equal(t, "section", meta.EntityType)
 	assert.Equal(t, Tier2, meta.RollbackTier)
@@ -176,7 +176,7 @@ func TestTimestampInMeta(t *testing.T) {
 	require.NoError(t, err)
 
 	before := time.Now().UTC().Add(-time.Second)
-	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 0, "", nil)
+	meta := BuildMeta(OpUpdate, "case", []int64{1}, Tier1, 1, 0, "", nil, "")
 	s, err := TakeSnapshot(context.Background(), store, manifest, meta, func(ctx context.Context) (interface{}, error) {
 		return "data", nil
 	})

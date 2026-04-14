@@ -11,16 +11,15 @@ import (
 
 func newExportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "export <snapshot_id>",
+		Use:   "export [snapshot_id] [output_path]",
 		Short: "Export a snapshot to a JSON file",
 		Long: `Exports snapshot metadata and entity data into a single portable JSON file.
 
 The output contains {"meta": {...}, "data": {...}}.
-Use -o/--output to specify the destination path (default: snapshot_<id>.json).`,
-		Args: cobra.ExactArgs(1),
+If snapshot_id is omitted, shows an interactive picker.
+If output_path is omitted, defaults to snapshot_<id>.json.`,
+		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snapID := args[0]
-
 			store, err := snaplib.NewStore()
 			if err != nil {
 				return err
@@ -31,14 +30,21 @@ Use -o/--output to specify the destination path (default: snapshot_<id>.json).`,
 				return err
 			}
 
+			snapID, err := resolveSnapshotID(cmd.Context(), args, manifest, "Select snapshot to export:")
+			if err != nil {
+				return err
+			}
+
 			entry := manifest.Find(snapID)
 			if entry == nil {
 				return fmt.Errorf("snapshot %q not found in manifest", snapID)
 			}
 
-			outPath, _ := cmd.Flags().GetString("output")
+			outPath := ""
+			if len(args) >= 2 {
+				outPath = args[1]
+			}
 			if outPath == "" {
-				// Default filename: replace "/" in snapID with "_"
 				safe := sanitizeFilename(snapID)
 				outPath = "snapshot_" + safe + ".json"
 			}
@@ -51,8 +57,6 @@ Use -o/--output to specify the destination path (default: snapshot_<id>.json).`,
 			return nil
 		},
 	}
-
-	cmd.Flags().StringP("output", "o", "", "Output file path (default: snapshot_<id>.json)")
 
 	return cmd
 }

@@ -23,6 +23,8 @@ Available operations:
   • list     — list all snapshots
   • info     — show snapshot details
   • rollback — reverse a mutation using saved data
+    • rollback list — browse rolled-back snapshots
+    • rollback undo — undo a previous rollback
   • export   — export snapshot to a portable JSON file
   • delete   — remove a snapshot
   • gc       — clean up orphaned snapshots`,

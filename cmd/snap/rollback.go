@@ -30,7 +30,11 @@ Flags:
   --dry-run       Preview changes without applying them (shows diff table)
   --entity-ids    Limit rollback to specific entity IDs (comma-separated)
 
-Partial failures are resumable: re-run the same rollback to retry failed entities.`,
+Partial failures are resumable: re-run the same rollback to retry failed entities.
+
+Subcommands:
+  list   Browse rolled-back snapshots interactively
+  undo   Undo a previous rollback (delete re-created entities)`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cli := getClient(cmd)
@@ -46,7 +50,9 @@ Partial failures are resumable: re-run the same rollback to retry failed entitie
 				return err
 			}
 
-			snapID, err := resolveSnapshotID(ctx, args, manifest, "Select snapshot to rollback:")
+			snapID, err := resolveSnapshotIDWith(ctx, args, manifest, "Select snapshot to rollback:", &pickerOpts{
+				statusFilter: []snaplib.Status{snaplib.StatusAvailable, snaplib.StatusRollbackPartial},
+			})
 			if err != nil {
 				return err
 			}
@@ -94,7 +100,10 @@ Partial failures are resumable: re-run the same rollback to retry failed entitie
 				if len(preview.Preview) > 0 {
 					printDiffPreview(cmd, preview)
 					confirmed, err := prompter.Confirm("Apply this rollback?", true)
-					if err != nil || !confirmed {
+					if err != nil {
+						return wrapInterrupt(err)
+					}
+					if !confirmed {
 						fmt.Fprintln(os.Stdout, "Rollback cancelled.")
 						return nil
 					}
@@ -121,6 +130,9 @@ Partial failures are resumable: re-run the same rollback to retry failed entitie
 
 	cmd.Flags().Bool("dry-run", false, "Preview changes without applying them")
 	cmd.Flags().String("entity-ids", "", "Limit rollback to specific entity IDs (comma-separated)")
+
+	cmd.AddCommand(newRollbackListCmd(getClient))
+	cmd.AddCommand(newRollbackUndoCmd(getClient))
 
 	return cmd
 }
@@ -149,11 +161,7 @@ func parseEntityIDs(raw string) ([]int64, error) {
 // printRollbackHeader shows server and snapshot context before rollback.
 func printRollbackHeader(cmd *cobra.Command, entry *snaplib.ManifestEntry) {
 	out := cmd.OutOrStdout()
-	server := entry.ServerURL
-	if server == "" {
-		server = "(unknown)"
-	}
-	fmt.Fprintf(out, "\nServer:    %s\n", server)
+	fmt.Fprintf(out, "\nServer:    %s\n", serverLabel(entry.ServerURL))
 	fmt.Fprintf(out, "Snapshot:  %s (%s %s, T%d)\n\n", entry.ID, entry.Operation, entry.EntityType, entry.RollbackTier)
 }
 

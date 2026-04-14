@@ -15,23 +15,65 @@ const concurrentThreshold = 10
 // defaultParallelism is the default number of concurrent workers.
 const defaultParallelism = 4
 
-// CasesAPI defines the API methods needed for rollback operations.
+// RollbackAPI defines the API methods needed for rollback operations.
 // client.ClientInterface satisfies this interface.
-type CasesAPI interface {
+type RollbackAPI interface {
+	// Case operations.
 	GetCase(ctx context.Context, caseID int64) (*data.Case, error)
 	UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
 	AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	DeleteCase(ctx context.Context, caseID int64) error
 
-	// Section operations for cascade rollback.
+	// Section operations.
 	GetSection(ctx context.Context, sectionID int64) (*data.Section, error)
 	AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
 	DeleteSection(ctx context.Context, sectionID int64) error
 
-	// Sync rollback operations.
-	DeleteSharedStep(ctx context.Context, stepID int64, keepInCases int) error
+	// Suite operations.
+	AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error)
 	DeleteSuite(ctx context.Context, suiteID int64) error
+
+	// Shared step operations.
+	DeleteSharedStep(ctx context.Context, stepID int64, keepInCases int) error
+
+	// Run operations.
+	AddRun(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error)
+	DeleteRun(ctx context.Context, runID int64) error
+
+	// Milestone operations.
+	AddMilestone(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error)
+	DeleteMilestone(ctx context.Context, milestoneID int64) error
+
+	// Plan operations.
+	AddPlan(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error)
+	DeletePlan(ctx context.Context, planID int64) error
+
+	// Project operations.
+	AddProject(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error)
+	DeleteProject(ctx context.Context, projectID int64) error
+
+	// Configuration operations.
+	AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error)
+	AddConfig(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error)
+	DeleteConfigGroup(ctx context.Context, groupID int64) error
+	DeleteConfig(ctx context.Context, configID int64) error
+
+	// Group operations.
+	AddGroup(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error)
+	DeleteGroup(ctx context.Context, groupID int64) error
+
+	// Dataset operations.
+	AddDataset(ctx context.Context, projectID int64, name string) (*data.Dataset, error)
+	DeleteDataset(ctx context.Context, datasetID int64) error
+
+	// Variable operations.
+	AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error)
+	DeleteVariable(ctx context.Context, variableID int64) error
 }
+
+// CasesAPI is an alias for backward compatibility.
+// Deprecated: use RollbackAPI.
+type CasesAPI = RollbackAPI
 
 // RollbackOpts configures rollback behavior.
 type RollbackOpts struct {
@@ -92,7 +134,25 @@ func Rollback(ctx context.Context, api CasesAPI, store *Store, manifest *Manifes
 	case meta.EntityType == "case":
 		err = rollbackCase(ctx, api, store, meta, result, opt)
 	case meta.EntityType == "section":
-		err = rollbackSectionCascade(ctx, api, store, meta, result, opt)
+		err = rollbackSection(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "project":
+		err = rollbackProject(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "run":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "milestone":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "plan":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "suite":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "group":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "variable":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "dataset":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case meta.EntityType == "configuration":
+		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
 	case meta.IsSyncOp():
 		err = rollbackSync(ctx, api, store, meta, result, opt)
 	default:
@@ -260,6 +320,7 @@ func rollbackCaseDelete(ctx context.Context, api CasesAPI, store *Store, meta *M
 	}
 
 	entry.Status = RBRestored
+	entry.NewID = created.ID
 	result.NewEntityID = created.ID
 	result.Message = fmt.Sprintf("Case re-created as ID %d (original: %d, Tier 2: new ID)", created.ID, saved.ID)
 	return nil
@@ -406,6 +467,259 @@ func caseToAddRequest(c *data.Case) *data.AddCaseRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Section rollback: routes by operation
+// ---------------------------------------------------------------------------
+
+// rollbackSection routes section rollback by operation.
+func rollbackSection(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	switch meta.Operation {
+	case OpDelete:
+		return rollbackSectionCascade(ctx, api, store, meta, result, opt)
+	case OpAdd, OpCopy:
+		return rollbackSectionAdd(ctx, api, meta, result, opt)
+	default:
+		return fmt.Errorf("unsupported operation for section rollback: %q", meta.Operation)
+	}
+}
+
+// rollbackSectionAdd deletes a section that was created by an add/copy operation.
+func rollbackSectionAdd(ctx context.Context, api RollbackAPI, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	if len(meta.EntityIDs) == 0 {
+		return fmt.Errorf("no created entity ID in snapshot meta")
+	}
+	sectionID := meta.EntityIDs[0]
+
+	if !entityAllowed(sectionID, opt.EntityIDs) {
+		result.Message = fmt.Sprintf("Section %d skipped (not in --entity-ids filter)", sectionID)
+		result.Success = true
+		return nil
+	}
+
+	entry := logEntry(meta, "section", sectionID)
+	if entry.Status == RBRestored {
+		result.Message = fmt.Sprintf("Section %d already rolled back (resume skip)", sectionID)
+		result.Success = true
+		return nil
+	}
+
+	if opt.DryRun {
+		result.Preview = []DiffEntry{{EntityID: sectionID, Field: "action", Current: "exists", Saved: "DELETE"}}
+		result.Message = fmt.Sprintf("Dry-run: Section %d would be deleted (undo %s)", sectionID, meta.Operation)
+		return nil
+	}
+
+	if err := api.DeleteSection(ctx, sectionID); err != nil {
+		if isGoneError(err) {
+			entry.Status = RBRestored
+			result.Message = fmt.Sprintf("Section %d already deleted (undo %s)", sectionID, meta.Operation)
+			return nil
+		}
+		entry.Status = RBFailed
+		entry.Error = err.Error()
+		return fmt.Errorf("API delete_section %d: %w", sectionID, err)
+	}
+
+	entry.Status = RBRestored
+	result.Message = fmt.Sprintf("Section %d deleted (undo %s)", sectionID, meta.Operation)
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Project rollback
+// ---------------------------------------------------------------------------
+
+// rollbackProject handles project-level rollback.
+func rollbackProject(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	switch meta.Operation {
+	case OpDelete:
+		return rollbackProjectDelete(ctx, api, store, meta, result, opt)
+	case OpAdd:
+		return rollbackProjectAdd(ctx, api, meta, result, opt)
+	default:
+		return fmt.Errorf("unsupported operation for project rollback: %q", meta.Operation)
+	}
+}
+
+// ProjectData stores project state for rollback of deletion.
+type ProjectData struct {
+	Project data.Project `json:"project"`
+}
+
+// rollbackProjectDelete re-creates a deleted project from snapshot data.
+func rollbackProjectDelete(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	var saved ProjectData
+	if err := store.LoadData(meta.ID, meta.DataFile, &saved); err != nil {
+		return fmt.Errorf("load project data: %w", err)
+	}
+
+	projectID := saved.Project.ID
+
+	entry := logEntry(meta, "project", projectID)
+	if entry.Status == RBRestored {
+		result.Message = fmt.Sprintf("Project %d already restored (resume skip)", projectID)
+		result.Success = true
+		return nil
+	}
+
+	if opt.DryRun {
+		result.Preview = []DiffEntry{
+			{EntityID: projectID, Field: "action", Current: "DELETED", Saved: "RE-CREATE"},
+			{EntityID: projectID, Field: "name", Current: "—", Saved: saved.Project.Name},
+			{EntityID: projectID, Field: "suite_mode", Current: "—", Saved: fmt.Sprintf("%d", saved.Project.SuiteMode)},
+		}
+		result.Message = fmt.Sprintf("Dry-run: Project %d (%s) would be re-created (Tier 2 — new ID)", projectID, saved.Project.Name)
+		return nil
+	}
+
+	req := &data.AddProjectRequest{
+		Name:             saved.Project.Name,
+		Announcement:     saved.Project.Announcement,
+		ShowAnnouncement: saved.Project.ShowAnnouncement,
+		SuiteMode:        saved.Project.SuiteMode,
+	}
+
+	created, err := api.AddProject(ctx, req)
+	if err != nil {
+		entry.Status = RBFailed
+		entry.Error = err.Error()
+		return fmt.Errorf("API add_project (re-create %d): %w", projectID, err)
+	}
+
+	entry.Status = RBRestored
+	entry.NewID = created.ID
+	result.NewEntityID = created.ID
+	result.Message = fmt.Sprintf("Project re-created as ID %d (original: %d, Tier 2: new ID)", created.ID, projectID)
+	return nil
+}
+
+// rollbackProjectAdd deletes a project that was created by an add operation.
+func rollbackProjectAdd(ctx context.Context, api RollbackAPI, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	if len(meta.EntityIDs) == 0 {
+		return fmt.Errorf("no created entity ID in snapshot meta")
+	}
+	projectID := meta.EntityIDs[0]
+
+	entry := logEntry(meta, "project", projectID)
+	if entry.Status == RBRestored {
+		result.Message = fmt.Sprintf("Project %d already rolled back (resume skip)", projectID)
+		result.Success = true
+		return nil
+	}
+
+	if opt.DryRun {
+		result.Preview = []DiffEntry{{EntityID: projectID, Field: "action", Current: "exists", Saved: "DELETE"}}
+		result.Message = fmt.Sprintf("Dry-run: Project %d would be deleted (undo add)", projectID)
+		return nil
+	}
+
+	if err := api.DeleteProject(ctx, projectID); err != nil {
+		if isGoneError(err) {
+			entry.Status = RBRestored
+			result.Message = fmt.Sprintf("Project %d already deleted (undo add)", projectID)
+			return nil
+		}
+		entry.Status = RBFailed
+		entry.Error = err.Error()
+		return fmt.Errorf("API delete_project %d: %w", projectID, err)
+	}
+
+	entry.Status = RBRestored
+	result.Message = fmt.Sprintf("Project %d deleted (undo add)", projectID)
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Generic simple entity rollback (add → delete)
+// Covers: run, milestone, plan, suite, group, variable, dataset, configuration
+// ---------------------------------------------------------------------------
+
+// rollbackSimpleEntity handles undo-add for entities with a simple delete API.
+func rollbackSimpleEntity(ctx context.Context, api RollbackAPI, _ *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	if meta.Operation != OpAdd {
+		return fmt.Errorf("unsupported operation for %s rollback: %q (only add is supported)", meta.EntityType, meta.Operation)
+	}
+
+	if len(meta.EntityIDs) == 0 {
+		return fmt.Errorf("no created entity ID in snapshot meta for %s", meta.EntityType)
+	}
+	entityID := meta.EntityIDs[0]
+
+	if !entityAllowed(entityID, opt.EntityIDs) {
+		result.Message = fmt.Sprintf("%s %d skipped (not in --entity-ids filter)", meta.EntityType, entityID)
+		result.Success = true
+		return nil
+	}
+
+	entry := logEntry(meta, meta.EntityType, entityID)
+	if entry.Status == RBRestored {
+		result.Message = fmt.Sprintf("%s %d already rolled back (resume skip)", meta.EntityType, entityID)
+		result.Success = true
+		return nil
+	}
+
+	if opt.DryRun {
+		result.Preview = []DiffEntry{{EntityID: entityID, Field: "action", Current: "exists", Saved: "DELETE"}}
+		result.Message = fmt.Sprintf("Dry-run: %s %d would be deleted (undo add)", meta.EntityType, entityID)
+		return nil
+	}
+
+	deleteFn, err := resolveDeleteFn(api, meta.EntityType)
+	if err != nil {
+		return err
+	}
+
+	if err := deleteFn(ctx, entityID); err != nil {
+		if isGoneError(err) {
+			entry.Status = RBRestored
+			result.Message = fmt.Sprintf("%s %d already deleted (undo add)", meta.EntityType, entityID)
+			return nil
+		}
+		entry.Status = RBFailed
+		entry.Error = err.Error()
+		return fmt.Errorf("API delete_%s %d: %w", meta.EntityType, entityID, err)
+	}
+
+	entry.Status = RBRestored
+	result.Message = fmt.Sprintf("%s %d deleted (undo add)", meta.EntityType, entityID)
+	return nil
+}
+
+// deleteFn is a function that deletes an entity by ID.
+type deleteFn func(ctx context.Context, id int64) error
+
+// resolveDeleteFn returns the appropriate delete function for the entity type.
+func resolveDeleteFn(api RollbackAPI, entityType string) (deleteFn, error) {
+	switch entityType {
+	case "run":
+		return api.DeleteRun, nil
+	case "milestone":
+		return api.DeleteMilestone, nil
+	case "plan":
+		return api.DeletePlan, nil
+	case "suite":
+		return api.DeleteSuite, nil
+	case "group":
+		return api.DeleteGroup, nil
+	case "variable":
+		return api.DeleteVariable, nil
+	case "dataset":
+		return api.DeleteDataset, nil
+	case "configuration":
+		return func(ctx context.Context, id int64) error {
+			// configuration snapshots may be config or config_group;
+			// try config_group first (it cascades).
+			err := api.DeleteConfigGroup(ctx, id)
+			if err != nil && isGoneError(err) {
+				return api.DeleteConfig(ctx, id)
+			}
+			return err
+		}, nil
+	default:
+		return nil, fmt.Errorf("no delete handler for entity type %q", entityType)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Cascade rollback: section delete → re-create section + child cases
 // ---------------------------------------------------------------------------
 
@@ -416,10 +730,7 @@ type CascadeData struct {
 }
 
 // rollbackSectionCascade re-creates a deleted section and its child cases.
-func rollbackSectionCascade(ctx context.Context, api CasesAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
-	if meta.Operation != OpDelete {
-		return fmt.Errorf("section cascade rollback only supports delete, got %q", meta.Operation)
-	}
+func rollbackSectionCascade(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
 
 	var cascade CascadeData
 	if err := store.LoadData(meta.ID, meta.DataFile, &cascade); err != nil {
@@ -453,6 +764,7 @@ func rollbackSectionCascade(ctx context.Context, api CasesAPI, store *Store, met
 			return fmt.Errorf("API add_section (re-create %d): %w", sectionID, err)
 		}
 		sectionEntry.Status = RBRestored
+		sectionEntry.NewID = created.ID
 		newSectionID = created.ID
 	}
 
@@ -508,6 +820,7 @@ func rollbackSectionCascade(ctx context.Context, api CasesAPI, store *Store, met
 			lastErr = r.Error
 		} else {
 			entry.Status = RBRestored
+			entry.NewID = r.Data.CreatedID
 			restored++
 		}
 	}

@@ -14,11 +14,17 @@ import (
 func newListCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "list",
-		Short: "List all snapshots",
-		Long: `Displays snapshots grouped by server.
+		Short: "Browse and inspect snapshots",
+		Long: `Interactive snapshot browser with three-level navigation:
 
-In interactive mode: two-level picker (server → snapshot).
-With --format or in non-interactive mode: table with SERVER column.`,
+  1. Server — pick the TestRail instance
+  2. Operation — filter by action (add, update, delete, …)
+  3. Snapshot — choose a specific snapshot to inspect
+
+After selecting a snapshot, its details are shown (same as 'gotr snap info').
+Use "← Back" to navigate between levels.
+
+With --format or in non-interactive mode: flat table with all columns.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snaplib.NewStore()
 			if err != nil {
@@ -41,8 +47,8 @@ With --format or in non-interactive mode: table with SERVER column.`,
 				return listTable(cmd, entries)
 			}
 
-			// Interactive mode: two-level picker.
-			return listInteractive(cmd, entries)
+			// Interactive: full three-level browser.
+			return listInteractive(cmd, store, manifest)
 		},
 	}
 }
@@ -65,14 +71,11 @@ func listTable(cmd *cobra.Command, entries []snaplib.ManifestEntry) error {
 	}
 
 	t := ui.NewTable(cmd)
-	t.AppendHeader(table.Row{"#", "ID", "SERVER", "OP", "ENTITY", "CATEGORY", "STATUS", "TIMESTAMP"})
+	t.AppendHeader(table.Row{"#", "ID", "SERVER", "OP", "ENTITY", "IDS", "CATEGORY", "STATUS", "TIMESTAMP"})
 	for i, e := range entries {
-		server := e.ServerURL
-		if server == "" {
-			server = "(unknown)"
-		}
 		t.AppendRow(table.Row{
-			i + 1, e.ID, server, e.Operation, e.EntityType,
+			i + 1, e.ID, serverLabel(e.ServerURL),
+			e.Operation, e.EntityType, entityIDsLabel(e.EntityIDs),
 			e.Category, e.Status,
 			e.Timestamp.Format("2006-01-02 15:04:05"),
 		})
@@ -104,55 +107,8 @@ func groupByServer(entries []snaplib.ManifestEntry) []serverGroup {
 	return groups
 }
 
-// formatEntryLabel creates a display label for a snapshot entry in select picker.
-func formatEntryLabel(idx int, e snaplib.ManifestEntry) string {
-	name := ""
-	if e.Name != "" {
-		name = fmt.Sprintf(" %q", e.Name)
-	}
-	return fmt.Sprintf("[%d] %s %s%s | %s | T%d | %s",
-		idx, e.Operation, e.EntityType, name, e.Status,
-		e.RollbackTier, e.Timestamp.Format("2006-01-02 15:04"))
-}
-
-// listInteractive performs two-level interactive selection: server → snapshot.
-func listInteractive(cmd *cobra.Command, entries []snaplib.ManifestEntry) error {
-	p := interactive.PrompterFromContext(cmd.Context())
-	groups := groupByServer(entries)
-
-	var selected serverGroup
-	if len(groups) == 1 {
-		selected = groups[0]
-	} else {
-		options := make([]string, len(groups))
-		for i, g := range groups {
-			label := g.URL
-			if label == "" {
-				label = "(unknown server)"
-			}
-			options[i] = fmt.Sprintf("%s — %d snapshots", label, len(g.Entries))
-		}
-
-		idx, _, err := p.Select("Select server:", options)
-		if err != nil {
-			return err
-		}
-		selected = groups[idx]
-	}
-
-	// Show snapshot picker within selected server.
-	options := make([]string, len(selected.Entries))
-	for i, e := range selected.Entries {
-		options[i] = formatEntryLabel(i+1, e)
-	}
-
-	idx, _, err := p.Select("Select snapshot:", options)
-	if err != nil {
-		return err
-	}
-
-	snapID := selected.Entries[idx].ID
-	fmt.Fprintf(cmd.OutOrStdout(), "\nSelected: %s\n", snapID)
-	fmt.Fprintf(cmd.OutOrStdout(), "Run: gotr snap info %s\n", snapID)
-	return nil
+// listInteractive opens three-level browser: server → operation → snapshot → info card.
+// After viewing a card the user is returned to the snapshot list.
+func listInteractive(cmd *cobra.Command, store *snaplib.Store, manifest *snaplib.Manifest) error {
+	return browseSnapshots(cmd, store, manifest)
 }

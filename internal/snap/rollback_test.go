@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockCasesAPI is a test double for CasesAPI.
+// mockCasesAPI is a test double for RollbackAPI.
 type mockCasesAPI struct {
 	getCaseFunc    func(ctx context.Context, caseID int64) (*data.Case, error)
 	updateCaseFunc func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
@@ -25,6 +25,43 @@ type mockCasesAPI struct {
 	deleteSectionFunc  func(ctx context.Context, sectionID int64) error
 	deleteSharedFunc   func(ctx context.Context, stepID int64, keep int) error
 	deleteSuiteFunc    func(ctx context.Context, suiteID int64) error
+
+	// Suite add
+	addSuiteFunc func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error)
+
+	// Run
+	addRunFunc    func(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error)
+	deleteRunFunc func(ctx context.Context, runID int64) error
+
+	// Milestone
+	addMilestoneFunc    func(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error)
+	deleteMilestoneFunc func(ctx context.Context, milestoneID int64) error
+
+	// Plan
+	addPlanFunc    func(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error)
+	deletePlanFunc func(ctx context.Context, planID int64) error
+
+	// Project
+	addProjectFunc    func(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error)
+	deleteProjectFunc func(ctx context.Context, projectID int64) error
+
+	// Configuration
+	addConfigGroupFunc    func(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error)
+	addConfigFunc         func(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error)
+	deleteConfigGroupFunc func(ctx context.Context, groupID int64) error
+	deleteConfigFunc      func(ctx context.Context, configID int64) error
+
+	// Group
+	addGroupFunc    func(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error)
+	deleteGroupFunc func(ctx context.Context, groupID int64) error
+
+	// Dataset
+	addDatasetFunc    func(ctx context.Context, projectID int64, name string) (*data.Dataset, error)
+	deleteDatasetFunc func(ctx context.Context, datasetID int64) error
+
+	// Variable
+	addVariableFunc    func(ctx context.Context, datasetID int64, name string) (*data.Variable, error)
+	deleteVariableFunc func(ctx context.Context, variableID int64) error
 }
 
 func (m *mockCasesAPI) GetCase(ctx context.Context, caseID int64) (*data.Case, error) {
@@ -78,6 +115,120 @@ func (m *mockCasesAPI) DeleteSharedStep(ctx context.Context, stepID int64, keep 
 func (m *mockCasesAPI) DeleteSuite(ctx context.Context, suiteID int64) error {
 	if m.deleteSuiteFunc != nil {
 		return m.deleteSuiteFunc(ctx, suiteID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
+	if m.addSuiteFunc != nil {
+		return m.addSuiteFunc(ctx, projectID, req)
+	}
+	return &data.Suite{ID: 1}, nil
+}
+func (m *mockCasesAPI) AddRun(ctx context.Context, projectID int64, req *data.AddRunRequest) (*data.Run, error) {
+	if m.addRunFunc != nil {
+		return m.addRunFunc(ctx, projectID, req)
+	}
+	return &data.Run{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeleteRun(ctx context.Context, runID int64) error {
+	if m.deleteRunFunc != nil {
+		return m.deleteRunFunc(ctx, runID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddMilestone(ctx context.Context, projectID int64, req *data.AddMilestoneRequest) (*data.Milestone, error) {
+	if m.addMilestoneFunc != nil {
+		return m.addMilestoneFunc(ctx, projectID, req)
+	}
+	return &data.Milestone{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeleteMilestone(ctx context.Context, milestoneID int64) error {
+	if m.deleteMilestoneFunc != nil {
+		return m.deleteMilestoneFunc(ctx, milestoneID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddPlan(ctx context.Context, projectID int64, req *data.AddPlanRequest) (*data.Plan, error) {
+	if m.addPlanFunc != nil {
+		return m.addPlanFunc(ctx, projectID, req)
+	}
+	return &data.Plan{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeletePlan(ctx context.Context, planID int64) error {
+	if m.deletePlanFunc != nil {
+		return m.deletePlanFunc(ctx, planID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddProject(ctx context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+	if m.addProjectFunc != nil {
+		return m.addProjectFunc(ctx, req)
+	}
+	return &data.GetProjectResponse{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeleteProject(ctx context.Context, projectID int64) error {
+	if m.deleteProjectFunc != nil {
+		return m.deleteProjectFunc(ctx, projectID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddConfigGroup(ctx context.Context, projectID int64, req *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+	if m.addConfigGroupFunc != nil {
+		return m.addConfigGroupFunc(ctx, projectID, req)
+	}
+	return &data.ConfigGroup{ID: 1}, nil
+}
+func (m *mockCasesAPI) AddConfig(ctx context.Context, groupID int64, req *data.AddConfigRequest) (*data.Config, error) {
+	if m.addConfigFunc != nil {
+		return m.addConfigFunc(ctx, groupID, req)
+	}
+	return &data.Config{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeleteConfigGroup(ctx context.Context, groupID int64) error {
+	if m.deleteConfigGroupFunc != nil {
+		return m.deleteConfigGroupFunc(ctx, groupID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) DeleteConfig(ctx context.Context, configID int64) error {
+	if m.deleteConfigFunc != nil {
+		return m.deleteConfigFunc(ctx, configID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddGroup(ctx context.Context, projectID int64, name string, userIDs []int64) (*data.Group, error) {
+	if m.addGroupFunc != nil {
+		return m.addGroupFunc(ctx, projectID, name, userIDs)
+	}
+	return &data.Group{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeleteGroup(ctx context.Context, groupID int64) error {
+	if m.deleteGroupFunc != nil {
+		return m.deleteGroupFunc(ctx, groupID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddDataset(ctx context.Context, projectID int64, name string) (*data.Dataset, error) {
+	if m.addDatasetFunc != nil {
+		return m.addDatasetFunc(ctx, projectID, name)
+	}
+	return &data.Dataset{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeleteDataset(ctx context.Context, datasetID int64) error {
+	if m.deleteDatasetFunc != nil {
+		return m.deleteDatasetFunc(ctx, datasetID)
+	}
+	return nil
+}
+func (m *mockCasesAPI) AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error) {
+	if m.addVariableFunc != nil {
+		return m.addVariableFunc(ctx, datasetID, name)
+	}
+	return &data.Variable{ID: 1}, nil
+}
+func (m *mockCasesAPI) DeleteVariable(ctx context.Context, variableID int64) error {
+	if m.deleteVariableFunc != nil {
+		return m.deleteVariableFunc(ctx, variableID)
 	}
 	return nil
 }
@@ -300,12 +451,12 @@ func TestRollback_UnsupportedEntityType(t *testing.T) {
 	manifest, err := LoadManifest(store)
 	require.NoError(t, err)
 
-	snapID := "milestones/20260413T120000_update_1"
+	snapID := "unknown/20260413T120000_update_1"
 	meta := &Meta{
 		ID:         snapID,
-		Category:   Category("milestones"),
+		Category:   Category("unknown"),
 		Operation:  OpUpdate,
-		EntityType: "milestone",
+		EntityType: "unknown_entity",
 		Status:     StatusAvailable,
 		Timestamp:  time.Now().UTC(),
 	}
@@ -1122,4 +1273,516 @@ func TestRollbackCaseDelete_GracefulSkip_SectionGone(t *testing.T) {
 	require.Len(t, updatedMeta.RollbackLog, 1)
 	assert.Equal(t, RBFailed, updatedMeta.RollbackLog[0].Status)
 	assert.Contains(t, updatedMeta.RollbackLog[0].Error, "section")
+}
+
+// ---------------------------------------------------------------------------
+// New entity type rollback tests
+// ---------------------------------------------------------------------------
+
+func TestRollback_SectionAdd(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "sections/20260413T120000_add_20"
+	meta := &Meta{
+		ID: snapID, Category: Category("sections"), Operation: OpAdd,
+		EntityType: "section", EntityIDs: []int64{20}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deleteSectionFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(20), deletedID)
+	assert.Contains(t, result.Message, "deleted (undo add)")
+}
+
+func TestRollback_SectionAdd_DryRun(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "sections/20260413T120000_add_30"
+	meta := &Meta{
+		ID: snapID, Category: Category("sections"), Operation: OpAdd,
+		EntityType: "section", EntityIDs: []int64{30}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{}
+	result, err := Rollback(context.Background(), api, store, manifest, snapID, RollbackOpts{DryRun: true})
+	require.NoError(t, err)
+	assert.True(t, result.DryRun)
+	require.NotEmpty(t, result.Preview)
+	assert.Equal(t, "DELETE", result.Preview[0].Saved)
+}
+
+func TestRollback_SectionAdd_GoneSkip(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "sections/20260413T120000_add_40"
+	meta := &Meta{
+		ID: snapID, Category: Category("sections"), Operation: OpAdd,
+		EntityType: "section", EntityIDs: []int64{40}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{
+		deleteSectionFunc: func(_ context.Context, _ int64) error {
+			return fmt.Errorf("API returned 404: Not Found")
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Contains(t, result.Message, "already deleted")
+}
+
+func TestRollback_ProjectAdd(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "projects/20260413T120000_add_5"
+	meta := &Meta{
+		ID: snapID, Category: Category("projects"), Operation: OpAdd,
+		EntityType: "project", EntityIDs: []int64{5}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deleteProjectFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(5), deletedID)
+	assert.Contains(t, result.Message, "deleted (undo add)")
+}
+
+func TestRollback_ProjectDelete(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	projectData := ProjectData{
+		Project: data.Project{ID: 7, Name: "Test Project", SuiteMode: 1},
+	}
+	snapID := "projects/20260413T120000_delete_7"
+	meta := &Meta{
+		ID: snapID, Category: Category("projects"), Operation: OpDelete,
+		EntityType: "project", EntityIDs: []int64{7}, Status: StatusAvailable,
+		DataFile: "data.json", RollbackTier: Tier2, Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	_, err = store.SaveData(snapID, "data.json", projectData)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Add(meta))
+
+	var capturedReq *data.AddProjectRequest
+	api := &mockCasesAPI{
+		addProjectFunc: func(_ context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+			capturedReq = req
+			return &data.GetProjectResponse{ID: 50}, nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(50), result.NewEntityID)
+	require.NotNil(t, capturedReq)
+	assert.Equal(t, "Test Project", capturedReq.Name)
+	assert.Equal(t, 1, capturedReq.SuiteMode)
+	assert.Contains(t, result.Message, "re-created as ID 50")
+}
+
+func TestRollback_ProjectDelete_DryRun(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	projectData := ProjectData{
+		Project: data.Project{ID: 7, Name: "Test Project", SuiteMode: 1},
+	}
+	snapID := "projects/20260413T120000_delete_7"
+	meta := &Meta{
+		ID: snapID, Category: Category("projects"), Operation: OpDelete,
+		EntityType: "project", EntityIDs: []int64{7}, Status: StatusAvailable,
+		DataFile: "data.json", Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	_, err = store.SaveData(snapID, "data.json", projectData)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{}
+	result, err := Rollback(context.Background(), api, store, manifest, snapID, RollbackOpts{DryRun: true})
+	require.NoError(t, err)
+	assert.True(t, result.DryRun)
+	require.NotEmpty(t, result.Preview)
+	assert.Equal(t, "RE-CREATE", result.Preview[0].Saved)
+	assert.Contains(t, result.Message, "Dry-run")
+}
+
+func TestRollback_SimpleEntity_Milestone(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "milestones/20260413T120000_add_10"
+	meta := &Meta{
+		ID: snapID, Category: Category("milestones"), Operation: OpAdd,
+		EntityType: "milestone", EntityIDs: []int64{10}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deleteMilestoneFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(10), deletedID)
+	assert.Contains(t, result.Message, "milestone 10 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_Run(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "runs/20260413T120000_add_15"
+	meta := &Meta{
+		ID: snapID, Category: Category("runs"), Operation: OpAdd,
+		EntityType: "run", EntityIDs: []int64{15}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deleteRunFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(15), deletedID)
+	assert.Contains(t, result.Message, "run 15 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_Plan(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "plans/20260413T120000_add_3"
+	meta := &Meta{
+		ID: snapID, Category: Category("plans"), Operation: OpAdd,
+		EntityType: "plan", EntityIDs: []int64{3}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deletePlanFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(3), deletedID)
+	assert.Contains(t, result.Message, "plan 3 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_Group(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "groups/20260413T120000_add_8"
+	meta := &Meta{
+		ID: snapID, Category: Category("groups"), Operation: OpAdd,
+		EntityType: "group", EntityIDs: []int64{8}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deleteGroupFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(8), deletedID)
+	assert.Contains(t, result.Message, "group 8 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_Variable(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "variables/20260413T120000_add_12"
+	meta := &Meta{
+		ID: snapID, Category: Category("variables"), Operation: OpAdd,
+		EntityType: "variable", EntityIDs: []int64{12}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deleteVariableFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(12), deletedID)
+	assert.Contains(t, result.Message, "variable 12 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_Dataset(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "datasets/20260413T120000_add_4"
+	meta := &Meta{
+		ID: snapID, Category: Category("datasets"), Operation: OpAdd,
+		EntityType: "dataset", EntityIDs: []int64{4}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedID int64
+	api := &mockCasesAPI{
+		deleteDatasetFunc: func(_ context.Context, id int64) error {
+			deletedID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(4), deletedID)
+	assert.Contains(t, result.Message, "dataset 4 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_Configuration(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "configurations/20260413T120000_add_6"
+	meta := &Meta{
+		ID: snapID, Category: Category("configurations"), Operation: OpAdd,
+		EntityType: "configuration", EntityIDs: []int64{6}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedConfigGroupID int64
+	api := &mockCasesAPI{
+		deleteConfigGroupFunc: func(_ context.Context, id int64) error {
+			deletedConfigGroupID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(6), deletedConfigGroupID)
+	assert.Contains(t, result.Message, "configuration 6 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_Configuration_FallbackToConfig(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "configurations/20260413T120000_add_9"
+	meta := &Meta{
+		ID: snapID, Category: Category("configurations"), Operation: OpAdd,
+		EntityType: "configuration", EntityIDs: []int64{9}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	var deletedConfigID int64
+	api := &mockCasesAPI{
+		deleteConfigGroupFunc: func(_ context.Context, _ int64) error {
+			return fmt.Errorf("API returned 404: Not Found") // not a config group
+		},
+		deleteConfigFunc: func(_ context.Context, id int64) error {
+			deletedConfigID = id
+			return nil
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Equal(t, int64(9), deletedConfigID)
+	assert.Contains(t, result.Message, "configuration 9 deleted (undo add)")
+}
+
+func TestRollback_SimpleEntity_DryRun(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "milestones/20260413T120000_add_10"
+	meta := &Meta{
+		ID: snapID, Category: Category("milestones"), Operation: OpAdd,
+		EntityType: "milestone", EntityIDs: []int64{10}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{}
+	result, err := Rollback(context.Background(), api, store, manifest, snapID, RollbackOpts{DryRun: true})
+	require.NoError(t, err)
+	assert.True(t, result.DryRun)
+	require.NotEmpty(t, result.Preview)
+	assert.Equal(t, "DELETE", result.Preview[0].Saved)
+}
+
+func TestRollback_SimpleEntity_UnsupportedOp(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "milestones/20260413T120000_update_10"
+	meta := &Meta{
+		ID: snapID, Category: Category("milestones"), Operation: OpUpdate,
+		EntityType: "milestone", EntityIDs: []int64{10}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{}
+	_, err = Rollback(context.Background(), api, store, manifest, snapID)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unsupported operation for milestone rollback")
+}
+
+func TestRollback_SimpleEntity_GoneSkip(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "runs/20260413T120000_add_25"
+	meta := &Meta{
+		ID: snapID, Category: Category("runs"), Operation: OpAdd,
+		EntityType: "run", EntityIDs: []int64{25}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{
+		deleteRunFunc: func(_ context.Context, _ int64) error {
+			return fmt.Errorf("API returned 404: Not Found")
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Contains(t, result.Message, "already deleted")
 }

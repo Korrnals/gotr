@@ -178,6 +178,124 @@ func (a *statefulCasesAPI) DeleteSuite(_ context.Context, suiteID int64) error {
 	return nil
 }
 
+// --- Extended RollbackAPI stubs ---
+
+func (a *statefulCasesAPI) AddSuite(_ context.Context, projectID int64, _ *data.AddSuiteRequest) (*data.Suite, error) {
+	a.log("AddSuite", projectID)
+	id := a.nextID
+	a.nextID++
+	return &data.Suite{ID: id}, nil
+}
+
+func (a *statefulCasesAPI) AddRun(_ context.Context, projectID int64, _ *data.AddRunRequest) (*data.Run, error) {
+	a.log("AddRun", projectID)
+	id := a.nextID
+	a.nextID++
+	return &data.Run{ID: id}, nil
+}
+
+func (a *statefulCasesAPI) DeleteRun(_ context.Context, runID int64) error {
+	a.log("DeleteRun", runID)
+	return nil
+}
+
+func (a *statefulCasesAPI) AddMilestone(_ context.Context, projectID int64, _ *data.AddMilestoneRequest) (*data.Milestone, error) {
+	a.log("AddMilestone", projectID)
+	id := a.nextID
+	a.nextID++
+	return &data.Milestone{ID: id}, nil
+}
+
+func (a *statefulCasesAPI) DeleteMilestone(_ context.Context, milestoneID int64) error {
+	a.log("DeleteMilestone", milestoneID)
+	return nil
+}
+
+func (a *statefulCasesAPI) AddPlan(_ context.Context, projectID int64, _ *data.AddPlanRequest) (*data.Plan, error) {
+	a.log("AddPlan", projectID)
+	id := a.nextID
+	a.nextID++
+	return &data.Plan{ID: id}, nil
+}
+
+func (a *statefulCasesAPI) DeletePlan(_ context.Context, planID int64) error {
+	a.log("DeletePlan", planID)
+	return nil
+}
+
+func (a *statefulCasesAPI) AddProject(_ context.Context, req *data.AddProjectRequest) (*data.GetProjectResponse, error) {
+	a.log("AddProject", 0)
+	id := a.nextID
+	a.nextID++
+	resp := data.GetProjectResponse(data.Project{ID: id, Name: req.Name, SuiteMode: req.SuiteMode})
+	return &resp, nil
+}
+
+func (a *statefulCasesAPI) DeleteProject(_ context.Context, projectID int64) error {
+	a.log("DeleteProject", projectID)
+	return nil
+}
+
+func (a *statefulCasesAPI) AddConfigGroup(_ context.Context, projectID int64, _ *data.AddConfigGroupRequest) (*data.ConfigGroup, error) {
+	a.log("AddConfigGroup", projectID)
+	id := a.nextID
+	a.nextID++
+	return &data.ConfigGroup{ID: id}, nil
+}
+
+func (a *statefulCasesAPI) AddConfig(_ context.Context, groupID int64, _ *data.AddConfigRequest) (*data.Config, error) {
+	a.log("AddConfig", groupID)
+	id := a.nextID
+	a.nextID++
+	return &data.Config{ID: id}, nil
+}
+
+func (a *statefulCasesAPI) DeleteConfigGroup(_ context.Context, groupID int64) error {
+	a.log("DeleteConfigGroup", groupID)
+	return nil
+}
+
+func (a *statefulCasesAPI) DeleteConfig(_ context.Context, configID int64) error {
+	a.log("DeleteConfig", configID)
+	return nil
+}
+
+func (a *statefulCasesAPI) AddGroup(_ context.Context, projectID int64, name string, _ []int64) (*data.Group, error) {
+	a.log("AddGroup", projectID)
+	id := a.nextID
+	a.nextID++
+	return &data.Group{ID: id, Name: name}, nil
+}
+
+func (a *statefulCasesAPI) DeleteGroup(_ context.Context, groupID int64) error {
+	a.log("DeleteGroup", groupID)
+	return nil
+}
+
+func (a *statefulCasesAPI) AddDataset(_ context.Context, projectID int64, name string) (*data.Dataset, error) {
+	a.log("AddDataset", projectID)
+	id := a.nextID
+	a.nextID++
+	return &data.Dataset{ID: id, Name: name}, nil
+}
+
+func (a *statefulCasesAPI) DeleteDataset(_ context.Context, datasetID int64) error {
+	a.log("DeleteDataset", datasetID)
+	return nil
+}
+
+func (a *statefulCasesAPI) AddVariable(_ context.Context, datasetID int64, name string) (*data.Variable, error) {
+	a.log("AddVariable", datasetID)
+	id := a.nextID
+	a.nextID++
+	return &data.Variable{ID: id, Name: name}, nil
+}
+
+func (a *statefulCasesAPI) DeleteVariable(_ context.Context, variableID int64) error {
+	a.log("DeleteVariable", variableID)
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // Helper: create store + manifest in t.TempDir
 // ---------------------------------------------------------------------------

@@ -74,6 +74,7 @@ type Entity struct {
 type RollbackLogEntry struct {
 	Type   string         `json:"type"`
 	ID     int64          `json:"id"`
+	NewID  int64          `json:"new_id,omitempty"` // ID of re-created entity (for delete rollbacks)
 	Status RollbackStatus `json:"status"`
 	Error  string         `json:"error,omitempty"`
 }

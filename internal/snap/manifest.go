@@ -21,6 +21,7 @@ type ManifestEntry struct {
 	Category     Category  `json:"category"`
 	Operation    Operation `json:"operation"`
 	EntityType   string    `json:"entity_type"`
+	EntityIDs    []int64   `json:"entity_ids,omitempty"`
 	RollbackTier Tier      `json:"rollback_tier"`
 	Status       Status    `json:"status"`
 	Timestamp    time.Time `json:"timestamp"`
@@ -67,6 +68,7 @@ func (m *Manifest) Add(meta *Meta) error {
 		Category:     meta.Category,
 		Operation:    meta.Operation,
 		EntityType:   meta.EntityType,
+		EntityIDs:    meta.EntityIDs,
 		RollbackTier: meta.RollbackTier,
 		Status:       meta.Status,
 		Timestamp:    meta.Timestamp,

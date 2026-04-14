@@ -79,7 +79,7 @@ func promptExportPath(cmd *cobra.Command, snapID string) (string, error) {
 	defaultName := "snapshot_" + sanitizeFilename(snapID) + ".json"
 	name, err := p.Input("Export filename:", defaultName)
 	if err != nil {
-		return "", err
+		return "", wrapInterrupt(err)
 	}
 	if name == "" {
 		name = defaultName
@@ -87,7 +87,7 @@ func promptExportPath(cmd *cobra.Command, snapID string) (string, error) {
 
 	dir, err := p.Input("Export directory:", ".")
 	if err != nil {
-		return "", err
+		return "", wrapInterrupt(err)
 	}
 	if dir == "" {
 		dir = "."

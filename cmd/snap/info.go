@@ -2,8 +2,10 @@ package snap
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	snaplib "github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -30,22 +32,28 @@ Use --format json for machine-readable JSON output.`,
 				return err
 			}
 
-			snapID, err := resolveSnapshotID(cmd.Context(), args, manifest, "Select snapshot to inspect:")
-			if err != nil {
-				return err
+			// Non-interactive or explicit ID: show once and exit.
+			if len(args) > 0 || interactive.IsNonInteractive(cmd.Context()) {
+				snapID, err := resolveSnapshotID(cmd.Context(), args, manifest, "Select snapshot to inspect:")
+				if err != nil {
+					return err
+				}
+
+				meta, err := store.LoadMeta(snapID)
+				if err != nil {
+					return fmt.Errorf("snapshot %q not found: %w", snapID, err)
+				}
+
+				if ui.IsJSON(cmd) {
+					return ui.JSON(cmd, meta)
+				}
+
+				renderInfoCard(cmd, meta)
+				return nil
 			}
 
-			meta, err := store.LoadMeta(snapID)
-			if err != nil {
-				return fmt.Errorf("snapshot %q not found: %w", snapID, err)
-			}
-
-			if ui.IsJSON(cmd) {
-				return ui.JSON(cmd, meta)
-			}
-
-			renderInfoCard(cmd, meta)
-			return nil
+			// Interactive browse: pick → view → back to list.
+			return browseSnapshots(cmd, store, manifest)
 		},
 	}
 }
@@ -80,11 +88,6 @@ func humanSize(b int64) string {
 func renderInfoCard(cmd *cobra.Command, meta *snaplib.Meta) {
 	out := cmd.OutOrStdout()
 
-	server := meta.ServerURL
-	if server == "" {
-		server = "(unknown)"
-	}
-
 	entityIDs := "-"
 	if len(meta.EntityIDs) > 0 {
 		ids := make([]string, len(meta.EntityIDs))
@@ -99,7 +102,7 @@ func renderInfoCard(cmd *cobra.Command, meta *snaplib.Meta) {
 	t.SetTitle("Snapshot Info")
 	t.AppendRows([]table.Row{
 		{"ID", meta.ID},
-		{"Server", server},
+		{"Server", serverLabel(meta.ServerURL)},
 		{"Operation", fmt.Sprintf("%s %s", meta.Operation, meta.EntityType)},
 		{"Category", meta.Category},
 		{"Tier", tierLabel(meta.RollbackTier)},
@@ -144,7 +147,29 @@ func renderInfoCard(cmd *cobra.Command, meta *snaplib.Meta) {
 			rt.AppendRow(table.Row{i + 1, r.Type, r.ID, r.Status, errMsg})
 		}
 		fmt.Fprintln(out, rt.Render())
-	} else {
-		fmt.Fprintln(out, "(no rollback attempts)")
+	}
+
+	// Status summary.
+	renderStatusSummary(out, meta)
+}
+
+// renderStatusSummary prints a human-readable interpretation of the snapshot state.
+func renderStatusSummary(out io.Writer, meta *snaplib.Meta) {
+	switch meta.Status {
+	case snaplib.StatusRolledBack:
+		fmt.Fprintln(out, "✓ Snapshot has been fully rolled back.")
+	case snaplib.StatusRollbackPartial:
+		failed := 0
+		for _, r := range meta.RollbackLog {
+			if r.Status == snaplib.RBFailed {
+				failed++
+			}
+		}
+		fmt.Fprintf(out, "⚠ Partial rollback: %d of %d entities failed. Run `gotr snap rollback %s` to retry.\n",
+			failed, len(meta.RollbackLog), meta.ID)
+	case snaplib.StatusExpired:
+		fmt.Fprintln(out, "Snapshot expired — data may have been cleaned up.")
+	case snaplib.StatusAvailable:
+		fmt.Fprintln(out, "✓ Snapshot is available for rollback.")
 	}
 }

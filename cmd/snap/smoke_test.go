@@ -538,30 +538,23 @@ func TestCLI_SnapInfo_Interactive(t *testing.T) {
 	c := &data.Case{ID: 42, Title: "Interactive info", SectionID: 1}
 	_, _, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{42}, snaplib.Tier1, "", c)
 
-	// Mock prompter: select index 0 (the only snapshot).
+	// browseSnapshots: single server + single op → direct to snapshot picker.
+	// Options: ✕ Exit(0), [1] snapshot(1). Select index 1 to view card.
+	// On next loop iteration mock exhausts → graceful exit.
 	mp := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0})
+		WithSelectResponses(interactive.SelectResponse{Index: 1})
 
 	cmd := newInfoCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
 	ctx := interactive.WithPrompter(context.Background(), mp)
 	cmd.SetContext(ctx)
 
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	// No args — should trigger interactive picker.
 	cmd.SetArgs([]string{})
 	err := cmd.Execute()
 	require.NoError(t, err)
 
-	w.Close()
-	var captured bytes.Buffer
-	captured.ReadFrom(r)
-	os.Stdout = old
-
-	// Output is now a table card (not JSON). Verify key fields are present.
-	out := captured.String()
+	out := buf.String()
 	assert.Contains(t, out, snapID)
 	assert.Contains(t, out, "update")
 	assert.Contains(t, out, "case")
@@ -611,7 +604,7 @@ func TestCLI_SnapRollback_Interactive(t *testing.T) {
 		},
 	}
 
-	// MockPrompter: select snapshot (index 0), then confirm rollback.
+	// MockPrompter: select snapshot (index 0 — header in prompt), then confirm rollback.
 	mp := interactive.NewMockPrompter().
 		WithSelectResponses(interactive.SelectResponse{Index: 0}).
 		WithConfirmResponses(true)
@@ -732,24 +725,26 @@ func TestGroupByServer_SingleServer(t *testing.T) {
 // Phase 7: formatEntryLabel unit tests
 // ---------------------------------------------------------------------------
 
-func TestFormatEntryLabel_WithName(t *testing.T) {
+func TestFormatPickerLabel_WithName(t *testing.T) {
 	e := snaplib.ManifestEntry{
 		Operation:    snaplib.OpUpdate,
 		EntityType:   "case",
 		Name:         "my-snap",
 		Status:       snaplib.StatusAvailable,
 		RollbackTier: snaplib.Tier1,
+		EntityIDs:    []int64{42},
 		Timestamp:    time.Date(2026, 4, 14, 7, 38, 0, 0, time.UTC),
 	}
-	label := formatEntryLabel(1, e)
+	label := formatPickerLabel(1, e)
 	assert.Contains(t, label, "[1]")
 	assert.Contains(t, label, "update case")
+	assert.Contains(t, label, "#42")
 	assert.Contains(t, label, `"my-snap"`)
 	assert.Contains(t, label, "T1")
 	assert.Contains(t, label, "2026-04-14 07:38")
 }
 
-func TestFormatEntryLabel_WithoutName(t *testing.T) {
+func TestFormatPickerLabel_WithoutName(t *testing.T) {
 	e := snaplib.ManifestEntry{
 		Operation:    snaplib.OpDelete,
 		EntityType:   "section",
@@ -757,7 +752,7 @@ func TestFormatEntryLabel_WithoutName(t *testing.T) {
 		RollbackTier: snaplib.Tier2,
 		Timestamp:    time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
-	label := formatEntryLabel(3, e)
+	label := formatPickerLabel(3, e)
 	assert.Contains(t, label, "[3]")
 	assert.Contains(t, label, "delete section")
 	assert.NotContains(t, label, `"`)
@@ -817,11 +812,13 @@ func TestCLI_SnapList_Interactive_MultiServer(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Mock: select server 0, then snapshot 0.
+	// Mock: browseSnapshots — select server (index 1: skip ✕ Exit at 0),
+	// then snapshot (index 2: skip ← Back at 0, ✕ Exit at 1).
+	// After viewing card, mock exhausts → graceful exit.
 	mp := interactive.NewMockPrompter().
 		WithSelectResponses(
-			interactive.SelectResponse{Index: 0},
-			interactive.SelectResponse{Index: 0},
+			interactive.SelectResponse{Index: 1},
+			interactive.SelectResponse{Index: 2},
 		)
 
 	cmd := newListCmd()
@@ -834,8 +831,9 @@ func TestCLI_SnapList_Interactive_MultiServer(t *testing.T) {
 	require.NoError(t, err)
 
 	out := buf.String()
-	assert.Contains(t, out, "Selected:")
-	assert.Contains(t, out, "gotr snap info")
+	// list shows info card via browseSnapshots.
+	assert.Contains(t, out, "Snapshot Info")
+	assert.Contains(t, out, "update")
 }
 
 // ---------------------------------------------------------------------------
@@ -904,14 +902,14 @@ func TestPrintRollbackHeader_UnknownServer(t *testing.T) {
 	cmd.SetOut(buf)
 
 	printRollbackHeader(cmd, entry)
-	assert.Contains(t, buf.String(), "(unknown)")
+	assert.Contains(t, buf.String(), "(server not recorded)")
 }
 
 // ---------------------------------------------------------------------------
 // Phase 7: selectSnapshot server-aware picker options
 // ---------------------------------------------------------------------------
 
-func TestSelectSnapshot_ShowsServerInOptions(t *testing.T) {
+func TestSelectSnapshot_ShowsSnapshotInOptions(t *testing.T) {
 	redirectHome(t)
 
 	store, err := snaplib.NewStore()
@@ -925,25 +923,27 @@ func TestSelectSnapshot_ShowsServerInOptions(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// Mock: select index 0. Capture selected value.
-	var capturedOptions []string
+	// Mock: select index 0 (no back for single server/op, header is in prompt text).
 	mp := &captureSelectPrompter{index: 0}
 
 	ctx := interactive.WithPrompter(context.Background(), mp)
 
-	snapID, err := selectSnapshot(ctx, manifest, "Pick:")
+	snapID, err := selectSnapshot(ctx, manifest, "Pick:", nil)
 	require.NoError(t, err)
 	assert.NotEmpty(t, snapID)
 
-	capturedOptions = mp.options
-	require.Len(t, capturedOptions, 1)
-	assert.Contains(t, capturedOptions[0], "https://demo.testrail.io")
-	assert.Contains(t, capturedOptions[0], "update case")
+	// Single server, single op → 1 data option.
+	require.Len(t, mp.options, 1)
+	assert.Contains(t, mp.options[0], "update case")
+	assert.Contains(t, mp.options[0], "#1")
+	// Prompt contains snapshot count.
+	assert.Contains(t, mp.message, "1 snapshots")
 }
 
 // captureSelectPrompter records options passed to Select.
 type captureSelectPrompter struct {
 	index   int
+	message string
 	options []string
 }
 
@@ -954,6 +954,7 @@ func (c *captureSelectPrompter) Confirm(message string, def bool) (bool, error) 
 	return def, nil
 }
 func (c *captureSelectPrompter) Select(message string, options []string) (int, string, error) {
+	c.message = message
 	c.options = options
 	if c.index >= len(options) {
 		return 0, "", fmt.Errorf("index out of range")
@@ -1030,4 +1031,135 @@ func TestSanitizeFilename(t *testing.T) {
 	assert.Equal(t, "cases_snap_1", sanitizeFilename("cases/snap_1"))
 	assert.Equal(t, "no_slashes", sanitizeFilename("no_slashes"))
 	assert.Equal(t, "a_b_c", sanitizeFilename("a/b/c"))
+}
+
+// ---------------------------------------------------------------------------
+// serverLabel URL normalization
+// ---------------------------------------------------------------------------
+
+func TestServerLabel_URLNormalization(t *testing.T) {
+	tests := []struct {
+		input string
+		want  string
+	}{
+		{"", "(server not recorded)"},
+		{"https://testrail.komus.net/index.php?/api/v2/", "https://testrail.komus.net"},
+		{"https://demo.testrail.io/api/v2", "https://demo.testrail.io"},
+		{"https://my.testrail.io", "https://my.testrail.io"},
+		{"test", "test"}, // non-URL string preserved as-is
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			assert.Equal(t, tt.want, serverLabel(tt.input))
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// groupByOperation
+// ---------------------------------------------------------------------------
+
+func TestGroupByOperation(t *testing.T) {
+	entries := []snaplib.ManifestEntry{
+		{ID: "a", Operation: snaplib.OpUpdate},
+		{ID: "b", Operation: snaplib.OpDelete},
+		{ID: "c", Operation: snaplib.OpUpdate},
+		{ID: "d", Operation: snaplib.OpAdd},
+	}
+
+	groups := groupByOperation(entries)
+	require.Len(t, groups, 3)
+
+	// Sorted: add < delete < update
+	assert.Equal(t, "add", groups[0].Label)
+	assert.Len(t, groups[0].Entries, 1)
+	assert.Equal(t, "delete", groups[1].Label)
+	assert.Len(t, groups[1].Entries, 1)
+	assert.Equal(t, "update", groups[2].Label)
+	assert.Len(t, groups[2].Entries, 2)
+}
+
+// ---------------------------------------------------------------------------
+// alignedPickerLabels
+// ---------------------------------------------------------------------------
+
+func TestAlignedPickerLabels(t *testing.T) {
+	entries := []snaplib.ManifestEntry{
+		{
+			ID: "cases/20260101T000000_update_42",
+			Operation: snaplib.OpUpdate, EntityType: "case",
+			EntityIDs: []int64{42}, Status: snaplib.StatusAvailable,
+			RollbackTier: snaplib.Tier1, Category: "cases",
+			Timestamp:    time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			ID: "sections/20260102T000000_delete_7",
+			Operation: snaplib.OpDelete, EntityType: "section",
+			Name: "my-snap", Status: snaplib.StatusRolledBack,
+			RollbackTier: snaplib.Tier2, Category: "sections",
+			Timestamp:    time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	header, labels := alignedPickerLabels(entries)
+	require.Len(t, labels, 2)
+	// Header has column titles.
+	assert.Contains(t, header, "OPERATION")
+	assert.Contains(t, header, "IDS")
+	assert.Contains(t, header, "CATEGORY")
+	assert.Contains(t, header, "STATUS")
+	assert.Contains(t, header, "SNAPSHOT ID")
+	// Data rows.
+	assert.Contains(t, labels[0], "update case")
+	assert.Contains(t, labels[0], "#42")
+	assert.Contains(t, labels[0], "cases")
+	assert.Contains(t, labels[0], "20260101T000000_update_42")
+	assert.Contains(t, labels[1], "delete section")
+	assert.Contains(t, labels[1], `"my-snap"`)
+	assert.Contains(t, labels[1], "sections")
+	assert.Contains(t, labels[1], "–") // no IDs → dash
+	assert.Contains(t, labels[1], "20260102T000000_delete_7")
+	// IDS separated with │ from OPERATION.
+	assert.Contains(t, labels[0], "│ #42")
+	assert.Contains(t, labels[1], "│ –")
+}
+
+func TestShortID(t *testing.T) {
+	assert.Equal(t, "20260413T194322_add_bulk_0", shortID("cases/20260413T194322_add_bulk_0"))
+	assert.Equal(t, "snap_1", shortID("sections/snap_1"))
+	assert.Equal(t, "no_slash", shortID("no_slash"))
+}
+
+// ---------------------------------------------------------------------------
+// Post-card action menu
+// ---------------------------------------------------------------------------
+
+func TestCLI_SnapInfo_Interactive_BackAfterCard(t *testing.T) {
+	redirectHome(t)
+
+	c := &data.Case{ID: 77, Title: "Back after card", SectionID: 1}
+	_, _, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{77}, snaplib.Tier1, "", c)
+
+	// browseSnapshots: single server + single op → direct to snapshot picker.
+	// Select index 1 (skip ✕ Exit at 0) to view card.
+	// Post-card menu: select 0 = ← Back → loops to snapshot list.
+	// Mock then exhausts on next snapshot picker → graceful exit.
+	mp := interactive.NewMockPrompter().
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 1}, // pick snapshot
+			interactive.SelectResponse{Index: 0}, // ← Back (post-card)
+		)
+
+	cmd := newInfoCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	ctx := interactive.WithPrompter(context.Background(), mp)
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, snapID)
+	assert.Contains(t, out, "Snapshot Info")
 }

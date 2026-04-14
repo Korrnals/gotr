@@ -49,11 +49,14 @@ gotr snap <subcommand> [args] [flags]
 | Subcommand | Description |
 | ---------- | ----------- |
 | `list` | Table of all snapshots from the manifest |
-| `info <id>` | JSON output of snapshot metadata |
-| `rollback <id>` | Rollback a mutation using saved data |
-| `export <id>` | Export snapshot to a portable JSON file |
-| `delete <id>` | Delete snapshot from disk and manifest |
+| `info [id]` | JSON output of snapshot metadata |
+| `rollback [id]` | Rollback a mutation using saved data |
+| `export [id]` | Export snapshot to a portable JSON file |
+| `delete [id]` | Delete snapshot from disk and manifest |
 | `gc` | Clean up orphaned snapshots (on disk but not in manifest) |
+
+> All subcommands that accept `[id]` support interactive selection:
+> if `id` is omitted, an interactive picker with available snapshots is shown.
 
 ## Subcommand Flags ⚙️
 
@@ -66,9 +69,7 @@ gotr snap <subcommand> [args] [flags]
 
 ### export
 
-```text
--o, --output string    Output file path (default: snapshot_<id>.json)
-```
+Second positional argument is the output file path (default: `snapshot_<id>.json`).
 
 ## Global Flags 🌐
 
@@ -172,7 +173,7 @@ gotr snap rollback sync/1718000000_sync_cases --entity-ids 42,43,44
 
 ```bash
 # Export
-gotr snap export cases/1718000000_update_42 -o backup.json
+gotr snap export cases/1718000000_update_42 backup.json
 
 # Delete a specific snapshot
 gotr snap delete cases/1718000000_update_42

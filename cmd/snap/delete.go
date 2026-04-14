@@ -11,19 +11,22 @@ import (
 
 func newDeleteCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "delete <snapshot_id>",
+		Use:   "delete [snapshot_id]",
 		Short: "Delete a snapshot",
-		Long:  "Removes a snapshot from disk and the manifest index.",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Removes a snapshot from disk and the manifest index.\nIf snapshot_id is omitted, shows an interactive picker.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snapID := args[0]
-
 			store, err := snaplib.NewStore()
 			if err != nil {
 				return err
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
+			if err != nil {
+				return err
+			}
+
+			snapID, err := resolveSnapshotID(cmd.Context(), args, manifest, "Select snapshot to delete:")
 			if err != nil {
 				return err
 			}

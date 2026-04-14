@@ -11,14 +11,22 @@ import (
 
 func newInfoCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "info <snapshot_id>",
+		Use:   "info [snapshot_id]",
 		Short: "Show snapshot details",
-		Long:  "Displays the full metadata of a snapshot as JSON.",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Displays the full metadata of a snapshot as JSON.\nIf snapshot_id is omitted, shows an interactive picker.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snapID := args[0]
-
 			store, err := snaplib.NewStore()
+			if err != nil {
+				return err
+			}
+
+			manifest, err := snaplib.LoadManifest(store)
+			if err != nil {
+				return err
+			}
+
+			snapID, err := resolveSnapshotID(cmd.Context(), args, manifest, "Select snapshot to inspect:")
 			if err != nil {
 				return err
 			}

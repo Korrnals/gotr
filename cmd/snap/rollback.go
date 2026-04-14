@@ -16,7 +16,7 @@ import (
 
 func newRollbackCmd(getClient GetClientFunc) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "rollback <snapshot_id>",
+		Use:   "rollback [snapshot_id]",
 		Short: "Rollback a mutation using a snapshot",
 		Long: `Reverses a mutation by applying the saved pre-mutation state.
 
@@ -24,14 +24,15 @@ For update operations: restores original field values (Tier 1 — full rollback)
 For delete operations: re-creates the entity with a new ID (Tier 2).
 For add operations: deletes the created entity.
 
+If snapshot_id is omitted, shows an interactive picker.
+
 Flags:
   --dry-run       Preview changes without applying them (shows diff table)
   --entity-ids    Limit rollback to specific entity IDs (comma-separated)
 
 Partial failures are resumable: re-run the same rollback to retry failed entities.`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			snapID := args[0]
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 
@@ -41,6 +42,11 @@ Partial failures are resumable: re-run the same rollback to retry failed entitie
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
+			if err != nil {
+				return err
+			}
+
+			snapID, err := resolveSnapshotID(ctx, args, manifest, "Select snapshot to rollback:")
 			if err != nil {
 				return err
 			}

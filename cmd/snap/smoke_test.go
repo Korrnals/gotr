@@ -538,3 +538,171 @@ func TestCLI_SnapRollback_APIError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "rollback failed")
 }
+
+// ---------------------------------------------------------------------------
+// CLI Interactive: snapshot selection picker
+// ---------------------------------------------------------------------------
+
+// interactiveCtx returns a context with MockPrompter and mock client.
+func interactiveCtx(mock client.ClientInterface, prompter *interactive.MockPrompter) context.Context {
+	ctx := context.WithValue(context.Background(), testClientKey, mock)
+	ctx = interactive.WithPrompter(ctx, prompter)
+	return ctx
+}
+
+func TestCLI_SnapInfo_Interactive(t *testing.T) {
+	redirectHome(t)
+
+	c := &data.Case{ID: 42, Title: "Interactive info", SectionID: 1}
+	_, _, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{42}, snaplib.Tier1, "", c)
+
+	// Mock prompter: select index 0 (the only snapshot).
+	mp := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newInfoCmd()
+	ctx := interactive.WithPrompter(context.Background(), mp)
+	cmd.SetContext(ctx)
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// No args — should trigger interactive picker.
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	w.Close()
+	var captured bytes.Buffer
+	captured.ReadFrom(r)
+	os.Stdout = old
+
+	var meta snaplib.Meta
+	require.NoError(t, json.Unmarshal(captured.Bytes(), &meta))
+	assert.Equal(t, snapID, meta.ID)
+	assert.Equal(t, snaplib.OpUpdate, meta.Operation)
+}
+
+func TestCLI_SnapDelete_Interactive(t *testing.T) {
+	redirectHome(t)
+
+	c := &data.Case{ID: 99, Title: "Delete interactive", SectionID: 1}
+	seedSnapshot(t, snaplib.OpDelete, "case", []int64{99}, snaplib.Tier2, "", c)
+
+	mp := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newDeleteCmd()
+	ctx := interactive.WithPrompter(context.Background(), mp)
+	cmd.SetContext(ctx)
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	w.Close()
+	var captured bytes.Buffer
+	captured.ReadFrom(r)
+	os.Stdout = old
+
+	assert.Contains(t, captured.String(), "deleted")
+}
+
+func TestCLI_SnapRollback_Interactive(t *testing.T) {
+	redirectHome(t)
+
+	original := &data.Case{ID: 42, Title: "Original", SectionID: 1, PriorityID: 2}
+	_, _, _ = seedSnapshot(t, snaplib.OpUpdate, "case", []int64{42}, snaplib.Tier1, "", original)
+
+	mock := &client.MockClient{
+		GetCaseFunc: func(ctx context.Context, caseID int64) (*data.Case, error) {
+			return &data.Case{ID: 42, Title: "Changed", SectionID: 1, PriorityID: 3}, nil
+		},
+		UpdateCaseFunc: func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error) {
+			return &data.Case{ID: 42, Title: "Original", SectionID: 1, PriorityID: 2}, nil
+		},
+	}
+
+	// MockPrompter: select snapshot (index 0), then confirm rollback.
+	mp := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithConfirmResponses(true)
+
+	cmd := newRollbackCmd(getClientForTests)
+	ctx := interactiveCtx(mock, mp)
+	cmd.SetContext(ctx)
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// No args — interactive selection.
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	w.Close()
+	var captured bytes.Buffer
+	captured.ReadFrom(r)
+	os.Stdout = old
+
+	assert.Contains(t, captured.String(), "Rollback complete")
+}
+
+func TestCLI_SnapInfo_NonInteractive_NoArgs(t *testing.T) {
+	redirectHome(t)
+	_, _ = snaplib.NewStore()
+
+	cmd := newInfoCmd()
+	ctx := interactive.WithPrompter(context.Background(), &interactive.NonInteractivePrompter{})
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "non-interactive")
+}
+
+func TestCLI_SnapExport_Interactive(t *testing.T) {
+	redirectHome(t)
+
+	c := &data.Case{ID: 77, Title: "Export me", SectionID: 1}
+	_, _, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{77}, snaplib.Tier1, "", c)
+
+	mp := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0})
+
+	cmd := newExportCmd()
+	ctx := interactive.WithPrompter(context.Background(), mp)
+	cmd.SetContext(ctx)
+
+	// Use a temp working directory so the default output file lands there.
+	workDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	require.NoError(t, os.Chdir(workDir))
+	t.Cleanup(func() { os.Chdir(origDir) })
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// No args — interactive picker, default output filename.
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	w.Close()
+	var captured bytes.Buffer
+	captured.ReadFrom(r)
+	os.Stdout = old
+
+	assert.Contains(t, captured.String(), "Exported snapshot")
+
+	// Verify default file was created.
+	expectedFile := "snapshot_" + sanitizeFilename(snapID) + ".json"
+	assert.FileExists(t, expectedFile)
+}

@@ -690,3 +690,344 @@ func TestCLI_SnapExport_Interactive(t *testing.T) {
 	expectedFile := "snapshot_" + sanitizeFilename(snapID) + ".json"
 	assert.FileExists(t, expectedFile)
 }
+
+// ---------------------------------------------------------------------------
+// Phase 7: groupByServer unit tests
+// ---------------------------------------------------------------------------
+
+func TestGroupByServer_MultipleServers(t *testing.T) {
+	entries := []snaplib.ManifestEntry{
+		{ID: "a", ServerURL: "https://b.testrail.io", Operation: snaplib.OpUpdate},
+		{ID: "b", ServerURL: "https://a.testrail.io", Operation: snaplib.OpDelete},
+		{ID: "c", ServerURL: "https://b.testrail.io", Operation: snaplib.OpAdd},
+		{ID: "d", ServerURL: "", Operation: snaplib.OpUpdate},
+	}
+
+	groups := groupByServer(entries)
+	require.Len(t, groups, 3)
+
+	// Sorted by URL: "" < "https://a..." < "https://b..."
+	assert.Equal(t, "", groups[0].URL)
+	assert.Len(t, groups[0].Entries, 1)
+
+	assert.Equal(t, "https://a.testrail.io", groups[1].URL)
+	assert.Len(t, groups[1].Entries, 1)
+
+	assert.Equal(t, "https://b.testrail.io", groups[2].URL)
+	assert.Len(t, groups[2].Entries, 2)
+}
+
+func TestGroupByServer_SingleServer(t *testing.T) {
+	entries := []snaplib.ManifestEntry{
+		{ID: "a", ServerURL: "https://x.testrail.io"},
+		{ID: "b", ServerURL: "https://x.testrail.io"},
+	}
+
+	groups := groupByServer(entries)
+	require.Len(t, groups, 1)
+	assert.Len(t, groups[0].Entries, 2)
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: formatEntryLabel unit tests
+// ---------------------------------------------------------------------------
+
+func TestFormatEntryLabel_WithName(t *testing.T) {
+	e := snaplib.ManifestEntry{
+		Operation:    snaplib.OpUpdate,
+		EntityType:   "case",
+		Name:         "my-snap",
+		Status:       snaplib.StatusAvailable,
+		RollbackTier: snaplib.Tier1,
+		Timestamp:    time.Date(2026, 4, 14, 7, 38, 0, 0, time.UTC),
+	}
+	label := formatEntryLabel(1, e)
+	assert.Contains(t, label, "[1]")
+	assert.Contains(t, label, "update case")
+	assert.Contains(t, label, `"my-snap"`)
+	assert.Contains(t, label, "T1")
+	assert.Contains(t, label, "2026-04-14 07:38")
+}
+
+func TestFormatEntryLabel_WithoutName(t *testing.T) {
+	e := snaplib.ManifestEntry{
+		Operation:    snaplib.OpDelete,
+		EntityType:   "section",
+		Status:       snaplib.StatusRolledBack,
+		RollbackTier: snaplib.Tier2,
+		Timestamp:    time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+	label := formatEntryLabel(3, e)
+	assert.Contains(t, label, "[3]")
+	assert.Contains(t, label, "delete section")
+	assert.NotContains(t, label, `"`)
+	assert.Contains(t, label, "T2")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: listTable table output
+// ---------------------------------------------------------------------------
+
+func TestCLI_SnapList_TableOutput(t *testing.T) {
+	redirectHome(t)
+
+	c := &data.Case{ID: 42, Title: "Test", SectionID: 1}
+	seedSnapshot(t, snaplib.OpUpdate, "case", []int64{42}, snaplib.Tier1, "", c)
+
+	cmd := newListCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	ctx := interactive.WithPrompter(context.Background(), &interactive.NonInteractivePrompter{})
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	out := buf.String()
+	// Table should include header columns.
+	assert.Contains(t, out, "ID")
+	assert.Contains(t, out, "SERVER")
+	assert.Contains(t, out, "OP")
+	assert.Contains(t, out, "STATUS")
+	assert.Contains(t, out, "update")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: listInteractive two-level picker
+// ---------------------------------------------------------------------------
+
+func TestCLI_SnapList_Interactive_MultiServer(t *testing.T) {
+	redirectHome(t)
+
+	store, err := snaplib.NewStore()
+	require.NoError(t, err)
+	manifest, err := snaplib.LoadManifest(store)
+	require.NoError(t, err)
+
+	// Seed two snapshots with different server URLs.
+	meta1 := snaplib.BuildMeta(snaplib.OpUpdate, "case", []int64{1}, snaplib.Tier1, 1, 1, "", []string{"test"}, "https://server-a.testrail.io")
+	_, err = snaplib.TakeSnapshot(context.Background(), store, manifest, meta1, func(ctx context.Context) (interface{}, error) {
+		return &data.Case{ID: 1, Title: "Case A", SectionID: 1}, nil
+	})
+	require.NoError(t, err)
+
+	meta2 := snaplib.BuildMeta(snaplib.OpDelete, "case", []int64{2}, snaplib.Tier2, 1, 1, "", []string{"test"}, "https://server-b.testrail.io")
+	_, err = snaplib.TakeSnapshot(context.Background(), store, manifest, meta2, func(ctx context.Context) (interface{}, error) {
+		return &data.Case{ID: 2, Title: "Case B", SectionID: 1}, nil
+	})
+	require.NoError(t, err)
+
+	// Mock: select server 0, then snapshot 0.
+	mp := interactive.NewMockPrompter().
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 0},
+			interactive.SelectResponse{Index: 0},
+		)
+
+	cmd := newListCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	ctx := interactive.WithPrompter(context.Background(), mp)
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{})
+	err = cmd.Execute()
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "Selected:")
+	assert.Contains(t, out, "gotr snap info")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: renderInfoCard output verification
+// ---------------------------------------------------------------------------
+
+func TestCLI_SnapInfo_CardContainsFields(t *testing.T) {
+	redirectHome(t)
+
+	c := &data.Case{ID: 42, Title: "Card test", SectionID: 1, PriorityID: 3}
+	_, _, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{42}, snaplib.Tier1, "my-named-snap", c)
+
+	cmd := newInfoCmd()
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+	ctx := interactive.WithPrompter(context.Background(), &interactive.NonInteractivePrompter{})
+	cmd.SetContext(ctx)
+	cmd.SetArgs([]string{snapID})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, "Snapshot Info")
+	assert.Contains(t, out, snapID)
+	assert.Contains(t, out, "update case")
+	assert.Contains(t, out, "T1 (full rollback)")
+	assert.Contains(t, out, "available")
+	assert.Contains(t, out, "my-named-snap")
+	assert.Contains(t, out, "42")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: printRollbackHeader output
+// ---------------------------------------------------------------------------
+
+func TestPrintRollbackHeader(t *testing.T) {
+	entry := &snaplib.ManifestEntry{
+		ID:           "cases/test_snap",
+		ServerURL:    "https://my.testrail.io",
+		Operation:    snaplib.OpUpdate,
+		EntityType:   "case",
+		RollbackTier: snaplib.Tier1,
+	}
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	printRollbackHeader(cmd, entry)
+	out := buf.String()
+
+	assert.Contains(t, out, "https://my.testrail.io")
+	assert.Contains(t, out, "cases/test_snap")
+	assert.Contains(t, out, "update case")
+	assert.Contains(t, out, "T1")
+}
+
+func TestPrintRollbackHeader_UnknownServer(t *testing.T) {
+	entry := &snaplib.ManifestEntry{
+		ID:        "cases/test_snap",
+		ServerURL: "",
+	}
+
+	cmd := &cobra.Command{}
+	buf := &bytes.Buffer{}
+	cmd.SetOut(buf)
+
+	printRollbackHeader(cmd, entry)
+	assert.Contains(t, buf.String(), "(unknown)")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: selectSnapshot server-aware picker options
+// ---------------------------------------------------------------------------
+
+func TestSelectSnapshot_ShowsServerInOptions(t *testing.T) {
+	redirectHome(t)
+
+	store, err := snaplib.NewStore()
+	require.NoError(t, err)
+	manifest, err := snaplib.LoadManifest(store)
+	require.NoError(t, err)
+
+	meta := snaplib.BuildMeta(snaplib.OpUpdate, "case", []int64{1}, snaplib.Tier1, 1, 1, "", []string{"test"}, "https://demo.testrail.io")
+	_, err = snaplib.TakeSnapshot(context.Background(), store, manifest, meta, func(ctx context.Context) (interface{}, error) {
+		return &data.Case{ID: 1, Title: "Test", SectionID: 1}, nil
+	})
+	require.NoError(t, err)
+
+	// Mock: select index 0. Capture selected value.
+	var capturedOptions []string
+	mp := &captureSelectPrompter{index: 0}
+
+	ctx := interactive.WithPrompter(context.Background(), mp)
+
+	snapID, err := selectSnapshot(ctx, manifest, "Pick:")
+	require.NoError(t, err)
+	assert.NotEmpty(t, snapID)
+
+	capturedOptions = mp.options
+	require.Len(t, capturedOptions, 1)
+	assert.Contains(t, capturedOptions[0], "https://demo.testrail.io")
+	assert.Contains(t, capturedOptions[0], "update case")
+}
+
+// captureSelectPrompter records options passed to Select.
+type captureSelectPrompter struct {
+	index   int
+	options []string
+}
+
+func (c *captureSelectPrompter) Input(message, defaultVal string) (string, error) {
+	return defaultVal, nil
+}
+func (c *captureSelectPrompter) Confirm(message string, def bool) (bool, error) {
+	return def, nil
+}
+func (c *captureSelectPrompter) Select(message string, options []string) (int, string, error) {
+	c.options = options
+	if c.index >= len(options) {
+		return 0, "", fmt.Errorf("index out of range")
+	}
+	return c.index, options[c.index], nil
+}
+func (c *captureSelectPrompter) MultilineInput(message, defVal string) (string, error) {
+	return defVal, nil
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: export interactive prompt with custom values
+// ---------------------------------------------------------------------------
+
+func TestCLI_SnapExport_Interactive_CustomPath(t *testing.T) {
+	redirectHome(t)
+
+	c := &data.Case{ID: 88, Title: "Custom export", SectionID: 1}
+	seedSnapshot(t, snaplib.OpUpdate, "case", []int64{88}, snaplib.Tier1, "", c)
+
+	workDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	require.NoError(t, os.Chdir(workDir))
+	t.Cleanup(func() { os.Chdir(origDir) })
+
+	mp := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0}).
+		WithInputResponses("custom_export.json", ".")
+
+	cmd := newExportCmd()
+	ctx := interactive.WithPrompter(context.Background(), mp)
+	cmd.SetContext(ctx)
+
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd.SetArgs([]string{})
+	err := cmd.Execute()
+	require.NoError(t, err)
+
+	w.Close()
+	var captured bytes.Buffer
+	captured.ReadFrom(r)
+	os.Stdout = old
+
+	assert.Contains(t, captured.String(), "Exported snapshot")
+	assert.FileExists(t, "custom_export.json")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: tierLabel and humanSize helpers
+// ---------------------------------------------------------------------------
+
+func TestTierLabel(t *testing.T) {
+	assert.Equal(t, "T1 (full rollback)", tierLabel(snaplib.Tier1))
+	assert.Equal(t, "T2 (new ID on rollback)", tierLabel(snaplib.Tier2))
+	assert.Equal(t, "T3 (info only)", tierLabel(snaplib.Tier3))
+	assert.Equal(t, "T0", tierLabel(snaplib.Tier(0)))
+}
+
+func TestHumanSize(t *testing.T) {
+	assert.Equal(t, "0 B", humanSize(0))
+	assert.Equal(t, "512 B", humanSize(512))
+	assert.Contains(t, humanSize(1024), "KB")
+	assert.Contains(t, humanSize(1024*1024), "MB")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: sanitizeFilename
+// ---------------------------------------------------------------------------
+
+func TestSanitizeFilename(t *testing.T) {
+	assert.Equal(t, "cases_snap_1", sanitizeFilename("cases/snap_1"))
+	assert.Equal(t, "no_slashes", sanitizeFilename("no_slashes"))
+	assert.Equal(t, "a_b_c", sanitizeFilename("a/b/c"))
+}

@@ -985,3 +985,141 @@ func TestRollback_Sync_EntityFilter(t *testing.T) {
 	assert.True(t, result.Success)
 	assert.Equal(t, []int64{100, 300}, deletedIDs, "should only delete filtered entities")
 }
+
+// ---------------------------------------------------------------------------
+// Phase 7: isGoneError
+// ---------------------------------------------------------------------------
+
+func TestIsGoneError(t *testing.T) {
+	tests := []struct {
+		name   string
+		err    error
+		expect bool
+	}{
+		{"nil error", nil, false},
+		{"400 error", fmt.Errorf("API returned 400: Bad Request"), true},
+		{"404 error", fmt.Errorf("API returned 404: Not Found"), true},
+		{"not found lower", fmt.Errorf("entity not found"), true},
+		{"no longer exists", fmt.Errorf("The case no longer exists"), true},
+		{"500 error", fmt.Errorf("API returned 500: Internal Server Error"), false},
+		{"timeout", fmt.Errorf("connection timeout"), false},
+		{"generic", fmt.Errorf("something went wrong"), false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.expect, isGoneError(tc.err))
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: rollbackCaseAdd graceful skip on 404
+// ---------------------------------------------------------------------------
+
+func TestRollbackCaseAdd_GracefulSkip_404(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "cases/20260414T120000_add_bulk_0"
+	meta := &Meta{
+		ID: snapID, Category: Category("cases"), Operation: OpAdd,
+		EntityType: "case", EntityIDs: []int64{500}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	// DeleteCase returns 404 → should skip gracefully.
+	api := &mockCasesAPI{
+		deleteCaseFunc: func(_ context.Context, caseID int64) error {
+			return fmt.Errorf("API returned 404: Not Found")
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Contains(t, result.Message, "already deleted")
+
+	// Log entry should be marked as restored (not failed).
+	updatedMeta, err := store.LoadMeta(snapID)
+	require.NoError(t, err)
+	require.Len(t, updatedMeta.RollbackLog, 1)
+	assert.Equal(t, RBRestored, updatedMeta.RollbackLog[0].Status)
+}
+
+func TestRollbackCaseAdd_GracefulSkip_400(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	snapID := "cases/20260414T120000_add_bulk_1"
+	meta := &Meta{
+		ID: snapID, Category: Category("cases"), Operation: OpAdd,
+		EntityType: "case", EntityIDs: []int64{600}, Status: StatusAvailable,
+		Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Add(meta))
+
+	api := &mockCasesAPI{
+		deleteCaseFunc: func(_ context.Context, caseID int64) error {
+			return fmt.Errorf("API returned 400: Bad Request")
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Contains(t, result.Message, "already deleted")
+}
+
+// ---------------------------------------------------------------------------
+// Phase 7: rollbackCaseDelete graceful skip on 404 (section gone)
+// ---------------------------------------------------------------------------
+
+func TestRollbackCaseDelete_GracefulSkip_SectionGone(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	savedCase := data.Case{ID: 99, Title: "Deleted Case", SectionID: 200, TypeID: 2}
+	snapID := "cases/20260414T120000_delete_99"
+	meta := &Meta{
+		ID: snapID, Category: Category("cases"), Operation: OpDelete,
+		EntityType: "case", EntityIDs: []int64{99}, Status: StatusAvailable,
+		DataFile: "data.json", RollbackTier: Tier2, Timestamp: time.Now().UTC(),
+	}
+	require.NoError(t, store.SaveMeta(meta))
+	_, err = store.SaveData(snapID, "data.json", savedCase)
+	require.NoError(t, err)
+	require.NoError(t, manifest.Add(meta))
+
+	// AddCase returns 404 (section deleted) → should skip gracefully.
+	api := &mockCasesAPI{
+		addCaseFunc: func(_ context.Context, sectionID int64, _ *data.AddCaseRequest) (*data.Case, error) {
+			return nil, fmt.Errorf("API returned 404: section not found")
+		},
+	}
+
+	result, err := Rollback(context.Background(), api, store, manifest, snapID)
+	require.NoError(t, err)
+	assert.True(t, result.Success)
+	assert.Contains(t, result.Message, "section")
+	assert.Contains(t, result.Message, "no longer exists")
+
+	// Log entry should be marked as failed (not restored, since the entity couldn't be re-created).
+	updatedMeta, err := store.LoadMeta(snapID)
+	require.NoError(t, err)
+	require.Len(t, updatedMeta.RollbackLog, 1)
+	assert.Equal(t, RBFailed, updatedMeta.RollbackLog[0].Status)
+	assert.Contains(t, updatedMeta.RollbackLog[0].Error, "section")
+}

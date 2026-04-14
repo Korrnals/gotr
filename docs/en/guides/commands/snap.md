@@ -48,10 +48,10 @@ gotr snap <subcommand> [args] [flags]
 
 | Subcommand | Description |
 | ---------- | ----------- |
-| `list` | Table of all snapshots from the manifest |
-| `info [id]` | JSON output of snapshot metadata |
+| `list` | Snapshot table grouped by server; interactive two-level picker |
+| `info [id]` | Formatted metadata card (JSON via `--format json`) |
 | `rollback [id]` | Rollback a mutation using saved data |
-| `export [id]` | Export snapshot to a portable JSON file |
+| `export [id]` | Export snapshot to a portable JSON file (interactive path prompt) |
 | `delete [id]` | Delete snapshot from disk and manifest |
 | `gc` | Clean up orphaned snapshots (on disk but not in manifest) |
 
@@ -70,6 +70,7 @@ gotr snap <subcommand> [args] [flags]
 ### export
 
 Second positional argument is the output file path (default: `snapshot_<id>.json`).
+In interactive mode, if path is omitted, prompts for filename and directory.
 
 ## Global Flags 🌐
 
@@ -103,12 +104,19 @@ Second positional argument is the output file path (default: `snapshot_<id>.json
 gotr snap list
 ```
 
-Example output:
+In interactive mode, performs two-level selection: first server, then snapshot.
+In non-interactive mode or with `--format`, displays a table with a SERVER column:
 
 ```text
-ID                              OPERATION  ENTITY   CATEGORY  STATUS     TIMESTAMP
-cases/1718000000_update_42      update     case     cases     available  2025-06-10 12:00:00
-custom/my_backup                delete     suite    custom    available  2025-06-10 12:05:00
+ #  ID                              SERVER                    OP      ENTITY  CATEGORY  STATUS     TIMESTAMP
+ 1  cases/1718000000_update_42      https://my.testrail.io    update  case    cases     available  2025-06-10 12:00:00
+ 2  custom/my_backup                https://my.testrail.io    delete  suite   custom    available  2025-06-10 12:05:00
+```
+
+For JSON output (scripts, pipelines):
+
+```bash
+gotr snap list --format json
 ```
 
 ---
@@ -121,7 +129,25 @@ custom/my_backup                delete     suite    custom    available  2025-06
 gotr snap info cases/1718000000_update_42
 ```
 
-Returns JSON with fields: `id`, `operation`, `entity_type`, `entity_ids`, `tier`, `status`, `timestamp`, `command`, `data_size`.
+Displays a formatted card:
+
+```text
+┌──────────── Snapshot Info ────────────┐
+│ ID         │ cases/1718000000_update_42 │
+│ Server     │ https://my.testrail.io     │
+│ Operation  │ update case                │
+│ Tier       │ T1 (full rollback)         │
+│ Status     │ available                  │
+│ Entity IDs │ 42                         │
+│ ...        │ ...                        │
+└────────────┴────────────────────────────┘
+```
+
+For JSON output (scripts):
+
+```bash
+gotr snap info cases/1718000000_update_42 --format json
+```
 
 ---
 
@@ -133,15 +159,21 @@ Returns JSON with fields: `id`, `operation`, `entity_type`, `entity_ids`, `tier`
 gotr snap rollback cases/1718000000_update_42 --dry-run
 ```
 
-Example output:
+Example output (with server context):
 
 ```text
-Dry-run preview: would rollback update for case 42
+Server:    https://my.testrail.io
+Snapshot:  cases/1718000000_update_42 (update case, T1)
+
+The following changes will be applied:
 
 ENTITY ID  FIELD     CURRENT           SNAPSHOT
 42         title     Changed Title     Original Title
 42         priority  3                 2
 ```
+
+> When rolling back a `delete` and the target section is already deleted on the server (404/400),
+> the rollback gracefully skips re-creation and continues.
 
 ---
 

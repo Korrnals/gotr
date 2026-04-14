@@ -60,6 +60,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			hook.Before(ctx, snap.BuildMeta(
 				snap.OpDelete, "case", []int64{caseID},
 				snap.Tier2, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+				snap.CurrentServerURL(),
 			), func(ctx context.Context) (interface{}, error) {
 				return cli.GetCase(ctx, caseID)
 			})

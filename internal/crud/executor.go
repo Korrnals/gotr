@@ -70,6 +70,7 @@ func Execute[Req any, Resp any](
 			h.Op, h.EntityType, h.EntityIDs,
 			h.Tier, h.ProjectID, h.SuiteID,
 			snap.ResolveName(cmd), cmdArgs(cmd),
+			snap.CurrentServerURL(),
 		), h.FetchFn)
 	}
 

@@ -89,6 +89,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			hook.Before(ctx, snap.BuildMeta(
 				snap.OpUpdate, "case", []int64{caseID},
 				snap.Tier1, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+				snap.CurrentServerURL(),
 			), func(ctx context.Context) (interface{}, error) {
 				return cli.GetCase(ctx, caseID)
 			})

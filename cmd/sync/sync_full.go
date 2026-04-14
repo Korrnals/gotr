@@ -95,6 +95,7 @@ Examples:
 		hook.Before(ctx, snap.BuildMeta(
 			snap.OpSyncFull, "sync", nil,
 			snap.Tier2, srcProject, srcSuite, snap.ResolveName(cmd), os.Args[1:],
+			snap.CurrentServerURL(),
 		), nil)
 
 		op := newSyncOperation("Full migration", quiet)

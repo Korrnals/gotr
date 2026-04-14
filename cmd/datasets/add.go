@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -61,10 +62,14 @@ or other API methods.`,
 				return nil
 			}
 
+			hook := snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "dataset", Tier: snap.Tier2})
+
 			resp, err := cli.AddDataset(ctx, projectID, name)
 			if err != nil {
 				return fmt.Errorf("failed to create dataset: %w", err)
 			}
+
+			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Dataset created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "datasets")
@@ -74,6 +79,7 @@ or other API methods.`,
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Dataset name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

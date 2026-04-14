@@ -70,3 +70,30 @@ func (h *Hook) FinalizeSyncData(data interface{}) {
 		ui.Warning(os.Stderr, fmt.Sprintf("snap: save sync data: %v", err))
 	}
 }
+
+// Mutation describes a single mutating operation for snap auto-hooking.
+// Used by HookMutation to reduce boilerplate in commands.
+type Mutation struct {
+	Cmd        *cobra.Command
+	Op         Operation
+	EntityType string
+	EntityIDs  []int64
+	Tier       Tier
+	ProjectID  int64
+	SuiteID    int64
+	// FetchFn returns current entity state before mutation (nil for add ops).
+	FetchFn func(ctx context.Context) (interface{}, error)
+}
+
+// HookMutation creates a Hook, takes a pre-mutation snapshot, and returns the hook.
+// Caller can then call hook.FinalizeAdd() after the mutation if needed.
+// This is a single-call convenience for commands with custom RunE.
+func HookMutation(ctx context.Context, m Mutation) *Hook {
+	hook := NewHook(m.Cmd)
+	hook.Before(ctx, BuildMeta(
+		m.Op, m.EntityType, m.EntityIDs,
+		m.Tier, m.ProjectID, m.SuiteID,
+		ResolveName(m.Cmd), os.Args[1:],
+	), m.FetchFn)
+	return hook
+}

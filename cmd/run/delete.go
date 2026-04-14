@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -114,6 +115,13 @@ Examples:
 				return nil
 			}
 
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpDelete, EntityType: "run",
+				EntityIDs: []int64{runID}, Tier: snap.Tier2,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return svc.Get(ctx, runID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting run",
@@ -132,6 +140,7 @@ Examples:
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

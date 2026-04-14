@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -152,6 +153,9 @@ defer op.Finish()
 		}
 
 		op.Phase("Importing sections")
+
+		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2})
+
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSections(ctx, filtered, false)
 		})

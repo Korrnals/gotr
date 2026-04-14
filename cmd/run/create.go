@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -116,6 +117,12 @@ Examples:
 				return nil
 			}
 
+			// Snapshot before mutation (add = no pre-fetch, finalize after).
+			hook := snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpAdd, EntityType: "run",
+				EntityIDs: nil, Tier: snap.Tier2,
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			run, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Creating run",
@@ -127,6 +134,8 @@ Examples:
 			if err != nil {
 				return fmt.Errorf("failed to create test run: %w", err)
 			}
+
+			hook.FinalizeAdd(run.ID)
 
 			output.PrintSuccess(cmd, "Test run created successfully (ID: %d):", run.ID)
 			return output.OutputResultWithFlags(cmd, run)
@@ -143,6 +152,7 @@ Examples:
 	cmd.Flags().Bool("include-all", true, "Include all suite cases")
 	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 	_ = cmd.MarkFlagRequired("name")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

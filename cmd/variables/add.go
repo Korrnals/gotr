@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -62,10 +63,15 @@ the TestRail web interface.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			hook := snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "variable", Tier: snap.Tier2})
+
 			resp, err := cli.AddVariable(ctx, datasetID, name)
 			if err != nil {
 				return fmt.Errorf("failed to create variable: %w", err)
 			}
+
+			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Variable created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "variables")
@@ -75,6 +81,7 @@ the TestRail web interface.`,
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Variable name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

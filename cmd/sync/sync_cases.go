@@ -11,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -196,6 +197,9 @@ Examples:
 		}
 
 		op.Phase("Importing cases")
+
+		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync_entity", Tier: snap.Tier2})
+
 		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), quiet, func(ctx context.Context) (struct {
 			IDs    []int64
 			Errors []string

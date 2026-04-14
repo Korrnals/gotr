@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -93,6 +94,9 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
+
+			snap.HookMutation(cmd.Context(), snap.Mutation{Cmd: cmd, Op: snap.OpBulk, EntityType: "case", EntityIDs: caseIDs, Tier: snap.Tier1})
+
 			resp, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (*data.GetCasesResponse, error) {
 				return cli.UpdateCases(ctx, suiteID, &req)
 			})
@@ -110,6 +114,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
 	cmd.Flags().Int64("priority-id", 0, "Priority ID to set")
 	cmd.Flags().String("estimate", "", "Time estimate (e.g. '1h 30m')")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }
@@ -158,6 +163,9 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
+
+			snap.HookMutation(cmd.Context(), snap.Mutation{Cmd: cmd, Op: snap.OpBulk, EntityType: "case", EntityIDs: caseIDs, Tier: snap.Tier2})
+
 			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
 				return struct{}{}, cli.DeleteCases(ctx, suiteID, &req)
 			})
@@ -172,6 +180,7 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 	cmd.Flags().Bool("dry-run", false, "Preview what will be deleted")
 	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }
@@ -220,6 +229,9 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
+
+			snap.HookMutation(cmd.Context(), snap.Mutation{Cmd: cmd, Op: snap.OpCopy, EntityType: "case", EntityIDs: caseIDs, Tier: snap.Tier2})
+
 			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
 				return struct{}{}, cli.CopyCasesToSection(ctx, sectionID, &req)
 			})
@@ -234,6 +246,7 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 
 	cmd.Flags().Bool("dry-run", false, "Preview the action without making changes")
 	cmd.Flags().Int64("section-id", 0, "Target section ID (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }
@@ -282,6 +295,9 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			cli := getClient(cmd)
+
+			snap.HookMutation(cmd.Context(), snap.Mutation{Cmd: cmd, Op: snap.OpMove, EntityType: "case", EntityIDs: caseIDs, Tier: snap.Tier2})
+
 			_, err := runBulkStatus(cmd, len(caseIDs), func(ctx context.Context) (struct{}, error) {
 				return struct{}{}, cli.MoveCasesToSection(ctx, sectionID, &req)
 			})
@@ -296,6 +312,7 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 
 	cmd.Flags().Bool("dry-run", false, "Preview the action without making changes")
 	cmd.Flags().Int64("section-id", 0, "Target section ID (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

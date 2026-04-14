@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -60,6 +61,8 @@ in active test plans.`,
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "config_group", EntityIDs: []int64{groupID}, Tier: snap.Tier2, FetchFn: nil})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting config group",
@@ -78,6 +81,7 @@ in active test plans.`,
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Preview what would be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

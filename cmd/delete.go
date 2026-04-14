@@ -89,17 +89,28 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	// Route by endpoint
 	switch endpoint {
 	case "project":
+		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "project",
+			EntityIDs: []int64{id}, Tier: snap.Tier2,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetProject(ctx, id) }})
 		return cli.DeleteProject(ctx, id)
 	case "suite":
+		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "suite",
+			EntityIDs: []int64{id}, Tier: snap.Tier2,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetSuite(ctx, id) }})
 		return cli.DeleteSuite(ctx, id)
 	case "section":
 		return deleteSectionWithSnap(cmd, cli, ctx, id)
 	case "case":
 		return deleteCaseWithSnap(cmd, cli, ctx, id)
 	case "run":
+		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "run",
+			EntityIDs: []int64{id}, Tier: snap.Tier2,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetRun(ctx, id) }})
 		return cli.DeleteRun(ctx, id)
 	case "shared-step":
-		// Shared step has a special keep_in_cases flag
+		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "shared_step",
+			EntityIDs: []int64{id}, Tier: snap.Tier2,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetSharedStep(ctx, id) }})
 		return cli.DeleteSharedStep(ctx, id, 0)
 	default:
 		return fmt.Errorf("unsupported endpoint: %s", endpoint)

@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -58,6 +59,8 @@ Use --dry-run to preview before deleting.`,
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "dataset", EntityIDs: []int64{datasetID}, Tier: snap.Tier2, FetchFn: nil})
+
 			if err := cli.DeleteDataset(ctx, datasetID); err != nil {
 				return fmt.Errorf("failed to delete dataset: %w", err)
 			}
@@ -68,6 +71,7 @@ Use --dry-run to preview before deleting.`,
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -67,6 +68,8 @@ Content can be provided via a file or directly.`,
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "bdd", Tier: snap.Tier2})
+
 			resp, err := cli.AddBDD(ctx, caseID, content)
 			if err != nil {
 				return fmt.Errorf("failed to add BDD: %w", err)
@@ -80,6 +83,7 @@ Content can be provided via a file or directly.`,
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("file", "", "Path to a Gherkin scenario file")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

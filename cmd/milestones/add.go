@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -80,6 +81,8 @@ Usage examples:
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			hook := snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "milestone", Tier: snap.Tier2})
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Creating milestone",
@@ -92,12 +95,15 @@ Usage examples:
 				return fmt.Errorf("failed to create milestone: %w", err)
 			}
 
+			hook.FinalizeAdd(int64(resp.ID))
+
 			ui.Successf(os.Stdout, "Milestone created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "milestones")
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without actually executing")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Milestone name (required)")
 	cmd.Flags().String("description", "", "Milestone description")

@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -167,6 +168,9 @@ defer op.Finish()
 
 		// Step 5) Import
 		op.Phase("Importing shared steps")
+
+		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSharedSteps, EntityType: "sync_entity", Tier: snap.Tier2})
+
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSharedSteps(ctx, filtered, false)
 		})

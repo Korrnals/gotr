@@ -45,6 +45,7 @@ A professional command-line interface for TestRail API v2. Designed for QA engin
     - [Configuration](docs/en/guides/configuration.md)
     - [Interactive Mode](docs/en/guides/interactive-mode.md)
     - [Progress](docs/en/guides/progress.md)
+    - [Smoke Testing](docs/en/guides/smoke-testing.md)
     - [Commands Index](docs/en/guides/commands/index.md)
       - [Command groups](docs/en/guides/commands/index.md#command-groups-and-subgroups)
     - [Instructions](docs/en/guides/instructions/index.md)

@@ -128,6 +128,52 @@ go test -tags smoke ./pkg/snap_smoke/ -v
 
 Все файлы имеют тег `//go:build smoke`. Тесты не попадают в обычный `go test ./...`.
 
+## CLI Smoke-тесты (cmd/snap)
+
+Помимо E2E-тестов в `pkg/snap_smoke`, существуют CLI-level smoke-тесты в `cmd/snap/smoke_test.go`.
+Они проверяют корректность Cobra-команд `gotr snap *` без реального API — используя mock-клиент
+и изолированное snap-хранилище.
+
+### Запуск
+
+```bash
+go test -tags smoke ./cmd/snap/ -v
+```
+
+### Тестовые сценарии
+
+| # | Тест | Что проверяет |
+| - | ---- | ------------- |
+| 1 | `TestCLI_SnapList_Empty` | Пустой список при отсутствии снапшотов |
+| 2 | `TestCLI_SnapList_WithEntries` | Табличный вывод с данными |
+| 3 | `TestCLI_SnapInfo` | JSON-вывод метаданных |
+| 4 | `TestCLI_SnapInfo_NotFound` | Обработка ошибки "не найден" |
+| 5 | `TestCLI_SnapRollback_Update` | Откат update-операции |
+| 6 | `TestCLI_SnapRollback_Delete` | Откат delete с re-create (Tier 2) |
+| 7 | `TestCLI_SnapRollback_Add` | Откат add-операции |
+| 8 | `TestCLI_SnapRollback_NotFound` | Обработка ошибки при отсутствии снапшота |
+| 9 | `TestCLI_SnapRollback_AlreadyRolledBack` | Защита от двойного rollback |
+| 10 | `TestCLI_SnapDelete` | Удаление снапшота через CLI |
+| 11 | `TestCLI_SnapGC_NoOrphans` | GC при отсутствии orphans |
+| 12 | `TestCLI_SnapGC_CleansOrphans` | GC удаляет orphan-директории |
+| 13 | `TestCLI_FullCycle_ListRollbackList` | Полный цикл list → rollback → list с проверкой статуса |
+
+### Отличия от pkg/snap_smoke
+
+| Аспект | `pkg/snap_smoke` | `cmd/snap/smoke_test.go` |
+| ------ | ---------------- | ------------------------ |
+| Уровень | Engine-level (API пакет) | CLI-level (Cobra команды) |
+| Сервер | FakeTestRail (httptest) | Mock-клиент (без HTTP) |
+| Фокус | Корректность snap/rollback логики | Корректность CLI-обёрток |
+| Скорость | ~0.03 с | ~0.01 с |
+| Когда использовать | Проверка snap-движка | Проверка snap-команд |
+
+### Полный прогон обоих уровней
+
+```bash
+go test -tags smoke ./pkg/snap_smoke/ ./cmd/snap/ -v
+```
+
 ---
 
 ← [Гайды](index.md)

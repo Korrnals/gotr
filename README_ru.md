@@ -45,6 +45,7 @@
     - [Конфигурация](docs/ru/guides/configuration.md)
     - [Интерактивный режим](docs/ru/guides/interactive-mode.md)
     - [Прогресс](docs/ru/guides/progress.md)
+    - [Smoke-тестирование](docs/ru/guides/smoke-testing.md)
     - [Каталог команд](docs/ru/guides/commands/index.md)
       - [Группы команд](docs/ru/guides/commands/index.md#группы-команд-и-подгруппы)
     - [Инструкции](docs/ru/guides/instructions/index.md)

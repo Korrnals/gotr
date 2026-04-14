@@ -128,6 +128,52 @@ To support new endpoints:
 
 All files have the `//go:build smoke` tag. Tests are excluded from regular `go test ./...`.
 
+## CLI Smoke Tests (cmd/snap)
+
+Besides the E2E tests in `pkg/snap_smoke`, there are CLI-level smoke tests in `cmd/snap/smoke_test.go`.
+They verify the correctness of `gotr snap *` Cobra commands without a real API — using a mock client
+and an isolated snap store.
+
+### Running
+
+```bash
+go test -tags smoke ./cmd/snap/ -v
+```
+
+### Test Scenarios
+
+| # | Test | What it verifies |
+| - | ---- | ---------------- |
+| 1 | `TestCLI_SnapList_Empty` | Empty list when no snapshots exist |
+| 2 | `TestCLI_SnapList_WithEntries` | Table output with data |
+| 3 | `TestCLI_SnapInfo` | JSON metadata output |
+| 4 | `TestCLI_SnapInfo_NotFound` | Error handling for missing snapshot |
+| 5 | `TestCLI_SnapRollback_Update` | Rollback of an update operation |
+| 6 | `TestCLI_SnapRollback_Delete` | Rollback of delete with re-create (Tier 2) |
+| 7 | `TestCLI_SnapRollback_Add` | Rollback of an add operation |
+| 8 | `TestCLI_SnapRollback_NotFound` | Error handling for missing snapshot |
+| 9 | `TestCLI_SnapRollback_AlreadyRolledBack` | Protection against double rollback |
+| 10 | `TestCLI_SnapDelete` | Snapshot deletion via CLI |
+| 11 | `TestCLI_SnapGC_NoOrphans` | GC when no orphans exist |
+| 12 | `TestCLI_SnapGC_CleansOrphans` | GC removes orphan directories |
+| 13 | `TestCLI_FullCycle_ListRollbackList` | Full cycle list → rollback → list with status check |
+
+### Differences from pkg/snap_smoke
+
+| Aspect | `pkg/snap_smoke` | `cmd/snap/smoke_test.go` |
+| ------ | ---------------- | ------------------------ |
+| Level | Engine-level (API package) | CLI-level (Cobra commands) |
+| Server | FakeTestRail (httptest) | Mock client (no HTTP) |
+| Focus | Correctness of snap/rollback logic | Correctness of CLI wrappers |
+| Speed | ~0.03 s | ~0.01 s |
+| When to use | Verify snap engine | Verify snap commands |
+
+### Full Run of Both Levels
+
+```bash
+go test -tags smoke ./pkg/snap_smoke/ ./cmd/snap/ -v
+```
+
 ---
 
 ← [Guides](index.md)

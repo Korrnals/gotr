@@ -114,6 +114,7 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 		ids      string
 		cat      string
 		name     string
+		label    string
 		status   string
 		tier     string
 		ts       string
@@ -121,10 +122,11 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 	}
 
 	rows := make([]row, len(entries))
-	maxIdx, maxOp, maxIDs, maxCat, maxName, maxStatus, maxTier, maxTs, maxSnap := 0, 0, 0, 0, 0, 0, 0, 0, 0
+	maxIdx, maxOp, maxIDs, maxCat, maxName, maxLabel, maxStatus, maxTier, maxTs, maxSnap := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 	// Header widths.
 	hIdx, hOp, hIDs, hCat, hName := "#", "OPERATION", "IDS", "CATEGORY", ""
+	hLabel := ""
 	hStatus, hTier, hTs, hSnap := "STATUS", "TIER", "DATE", "SNAPSHOT ID"
 
 	for i, e := range entries {
@@ -145,6 +147,9 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 		if e.Name != "" {
 			r.name = fmt.Sprintf("%q", e.Name)
 		}
+		if e.Label != "" {
+			r.label = fmt.Sprintf("🏷 %s", e.Label)
+		}
 		rows[i] = r
 
 		if len(r.idx) > maxIdx { maxIdx = len(r.idx) }
@@ -152,6 +157,7 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 		if len(r.ids) > maxIDs { maxIDs = len(r.ids) }
 		if len(r.cat) > maxCat { maxCat = len(r.cat) }
 		if len(r.name) > maxName { maxName = len(r.name) }
+		if len(r.label) > maxLabel { maxLabel = len(r.label) }
 		if len(r.status) > maxStatus { maxStatus = len(r.status) }
 		if len(r.tier) > maxTier { maxTier = len(r.tier) }
 		if len(r.ts) > maxTs { maxTs = len(r.ts) }
@@ -163,18 +169,22 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 	if len(hOp) > maxOp { maxOp = len(hOp) }
 	if len(hIDs) > maxIDs { maxIDs = len(hIDs) }
 	if len(hCat) > maxCat { maxCat = len(hCat) }
+	if len(hLabel) > maxLabel { maxLabel = len(hLabel) }
 	if len(hStatus) > maxStatus { maxStatus = len(hStatus) }
 	if len(hTier) > maxTier { maxTier = len(hTier) }
 	if len(hTs) > maxTs { maxTs = len(hTs) }
 	if len(hSnap) > maxSnap { maxSnap = len(hSnap) }
 
 	// Build format function — all columns separated by │.
-	fmtRow := func(idx, op, ids, cat, name, status, tier, ts, snap string) string {
+	fmtRow := func(idx, op, ids, cat, name, label, status, tier, ts, snap string) string {
 		var b strings.Builder
 		fmt.Fprintf(&b, "%-*s %-*s │ %-*s │ %-*s",
 			maxIdx, idx, maxOp, op, maxIDs, ids, maxCat, cat)
 		if maxName > 0 {
 			fmt.Fprintf(&b, " │ %-*s", maxName, name)
+		}
+		if maxLabel > 0 {
+			fmt.Fprintf(&b, " │ %-*s", maxLabel, label)
 		}
 		fmt.Fprintf(&b, " │ %-*s │ %-*s │ %-*s │ %-*s",
 			maxStatus, status, maxTier, tier, maxTs, ts, maxSnap, snap)
@@ -182,12 +192,12 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 	}
 
 	// Header.
-	header = fmtRow(hIdx, hOp, hIDs, hCat, hName, hStatus, hTier, hTs, hSnap)
+	header = fmtRow(hIdx, hOp, hIDs, hCat, hName, hLabel, hStatus, hTier, hTs, hSnap)
 
 	// Data rows.
 	labels = make([]string, len(entries))
 	for i, r := range rows {
-		labels[i] = fmtRow(r.idx, r.opEntity, r.ids, r.cat, r.name, r.status, r.tier, r.ts, r.snapID)
+		labels[i] = fmtRow(r.idx, r.opEntity, r.ids, r.cat, r.name, r.label, r.status, r.tier, r.ts, r.snapID)
 	}
 	return header, labels
 }

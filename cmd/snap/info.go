@@ -117,6 +117,9 @@ func renderInfoCard(cmd *cobra.Command, meta *snaplib.Meta) {
 	if meta.Name != "" {
 		t.AppendRow(table.Row{"Name", meta.Name})
 	}
+	if meta.Label != "" {
+		t.AppendRow(table.Row{"Label", meta.Label})
+	}
 	fmt.Fprintln(out, t.Render())
 
 	// Entities sub-table.

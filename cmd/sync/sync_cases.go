@@ -199,8 +199,9 @@ Examples:
 		op.Phase("Importing cases")
 
 		var snapHook *snap.Hook
-		if confirmSnapshot(ctx, cmd) {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync_entity", Tier: snap.Tier2})
+		sd := confirmSnapshot(ctx, cmd)
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), quiet, func(ctx context.Context) (struct {

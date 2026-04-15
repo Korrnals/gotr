@@ -155,8 +155,9 @@ defer op.Finish()
 		op.Phase("Importing sections")
 
 		var snapHook *snap.Hook
-		if confirmSnapshot(ctx, cmd) {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2})
+		sd := confirmSnapshot(ctx, cmd)
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {

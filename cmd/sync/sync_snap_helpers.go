@@ -14,23 +14,51 @@ import (
 	"github.com/spf13/viper"
 )
 
+// snapshotDecision holds the result of the pre-migration snapshot prompt.
+type snapshotDecision struct {
+	Create bool
+	Label  string
+}
+
 // confirmSnapshot implements smart confirm for snapshot creation before sync.
 // Priority: explicit --snapshot flag > config snap.enabled > interactive prompt.
 // Default answer is true (create snapshot).
-func confirmSnapshot(ctx context.Context, cmd *cobra.Command) bool {
-	// If explicitly set via flag or config — use existing resolution, no prompt.
+// When a snapshot will be created, prompts for an optional label.
+func confirmSnapshot(ctx context.Context, cmd *cobra.Command) snapshotDecision {
+	p := interactive.PrompterFromContext(ctx)
+
+	var create bool
 	if cmd.Flags().Changed(snap.FlagSnapshot) || viper.IsSet("snap.enabled") {
-		return snap.ResolveDecision(cmd)
+		create = snap.ResolveDecision(cmd)
+		if create {
+			ui.Info(os.Stdout, "📦 Snapshot will be created automatically")
+		}
+	} else {
+		// Smart: ask user interactively.
+		ok, err := p.Confirm("📦 Create snapshot before migration? (recommended)", true)
+		if err != nil {
+			// On error (e.g. non-interactive mode) default to creating snapshot.
+			create = true
+			ui.Info(os.Stdout, "📦 Snapshot will be created automatically")
+		} else {
+			create = ok
+		}
 	}
 
-	// Smart: ask user interactively.
-	p := interactive.PrompterFromContext(ctx)
-	ok, err := p.Confirm("📦 Create snapshot before migration? (recommended)", true)
-	if err != nil {
-		// On error (e.g. non-interactive mode) default to creating snapshot.
-		return true
+	if !create {
+		return snapshotDecision{}
 	}
-	return ok
+
+	// Ask for optional label (from flag or interactively).
+	label := snap.ResolveLabel(cmd)
+	if label == "" {
+		val, err := p.Input("🏷  Snapshot label (optional, press Enter to skip):", "")
+		if err == nil {
+			label = val
+		}
+	}
+
+	return snapshotDecision{Create: true, Label: label}
 }
 
 // syncPostAction shows a post-migration action menu when a snapshot was taken.
@@ -42,7 +70,12 @@ func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cl
 	}
 
 	snapID := hook.Snap.Meta.ID
-	ui.Infof(os.Stdout, "📦 Snapshot saved: %s", snapID)
+	label := hook.Snap.Meta.Label
+	if label != "" {
+		ui.Infof(os.Stdout, "📦 Snapshot saved: %s (🏷 %s)", snapID, label)
+	} else {
+		ui.Infof(os.Stdout, "📦 Snapshot saved: %s", snapID)
+	}
 
 	p := interactive.PrompterFromContext(ctx)
 

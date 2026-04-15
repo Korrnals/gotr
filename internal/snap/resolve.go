@@ -11,10 +11,14 @@ const FlagSnapshot = "snapshot"
 // FlagSnapName is the flag name for custom snapshot name.
 const FlagSnapName = "snap-name"
 
-// RegisterFlags adds --snapshot and --snap-name to the given command.
+// FlagSnapLabel is the flag name for a user-defined snapshot label (searchable tag).
+const FlagSnapLabel = "snap-label"
+
+// RegisterFlags adds --snapshot, --snap-name, and --snap-label to the given command.
 func RegisterFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool(FlagSnapshot, false, "Force snapshot on/off (overrides config)")
 	cmd.Flags().String(FlagSnapName, "", "Custom snapshot name (default: auto-generated)")
+	cmd.Flags().String(FlagSnapLabel, "", "Custom label for the snapshot (searchable tag)")
 }
 
 // ResolveDecision determines whether to take a snapshot.
@@ -39,6 +43,12 @@ func ResolveDecision(cmd *cobra.Command) bool {
 func ResolveName(cmd *cobra.Command) string {
 	name, _ := cmd.Flags().GetString(FlagSnapName)
 	return name
+}
+
+// ResolveLabel returns the custom label from --snap-label or empty string.
+func ResolveLabel(cmd *cobra.Command) string {
+	label, _ := cmd.Flags().GetString(FlagSnapLabel)
+	return label
 }
 
 // ReadConfig loads snap configuration from Viper with defaults.

@@ -12,6 +12,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -233,22 +234,21 @@ func printSeparator(widths []int) {
 	fmt.Println("├" + strings.Join(parts, "┼") + "┤")
 }
 
-// printTable prints the result in table format
+// printTable prints the result in table format.
+// If stdout is a TTY and the output is long, uses the interactive pager.
 func printTable(result CompareResult, project1Name, project2Name string) error {
-	fmt.Printf("\n=== Comparison: %s (projects %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
+	lines := renderTableLines(result, project1Name, project2Name)
 
-	// Table 1: Only in Project 1
-	printOnlyInProjectTable(result.OnlyInFirst, result.Project1ID, project1Name)
+	if interactive.ShouldPage(len(lines)) {
+		return interactive.Pager(interactive.PagerConfig{
+			Lines:  lines,
+			Header: fmt.Sprintf("=== Comparison: %s (projects %d ↔ %d) ===", result.Resource, result.Project1ID, result.Project2ID),
+		})
+	}
 
-	// Table 2: Only in Project 2
-	printOnlyInProjectTable(result.OnlyInSecond, result.Project2ID, project2Name)
-
-	// Table 3: Common items
-	printCommonTable(result.Common, result.Project1ID, result.Project2ID)
-
-	// Table 4: ID Mapping (for items with different IDs)
-	printIDMappingTable(result.Common)
-
+	for _, line := range lines {
+		fmt.Println(line)
+	}
 	return nil
 }
 

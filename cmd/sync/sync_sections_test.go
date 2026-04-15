@@ -97,6 +97,7 @@ func TestSyncSections_Confirm_TriggersAddSection(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
@@ -160,6 +161,7 @@ func TestSyncSections_ConfirmDeclined_SkipsImport(t *testing.T) {
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(false)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))

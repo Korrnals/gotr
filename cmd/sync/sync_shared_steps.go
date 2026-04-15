@@ -96,7 +96,7 @@ Examples:
 		defer m.Close()
 
 		op := newSyncOperation("Sync shared steps", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		op.Phase("Loading shared steps")
 		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", quiet, func(ctx context.Context) (struct {
@@ -140,7 +140,7 @@ defer op.Finish()
 			return err
 		}
 
-		ui.Infof(os.Stdout, "Ready to import: %d new shared steps", len(filtered))
+		printFilterSummary("shared steps", m.LastFilterStats())
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import skipped")
@@ -152,10 +152,13 @@ defer op.Finish()
 			return nil
 		}
 
+		// Snapshot decision + confirmation
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "shared steps", sd)
+
 		// Step 4) Confirm import
-		op.Phase("Awaiting confirmation")
 		if !autoApprove {
-			ui.Infof(os.Stdout, "Confirm import of %d shared steps...", len(filtered))
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
 				return err
@@ -167,10 +170,10 @@ defer op.Finish()
 		}
 
 		// Step 5) Import
-		op.Phase("Importing shared steps")
+		op = newSyncOperation("Importing shared steps", quiet)
+		defer op.Finish()
 
 		var snapHook *snap.Hook
-		sd := confirmSnapshot(ctx, cmd)
 		if sd.Create {
 			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSharedSteps, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
 		}

@@ -66,6 +66,7 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("dry-run", "true")
+	cmd.Flags().Set("snapshot", "false")
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)

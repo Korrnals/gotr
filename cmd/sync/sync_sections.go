@@ -93,7 +93,7 @@ Examples:
 		defer m.Close()
 
 		op := newSyncOperation("Sync sections", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		// Step 1) Fetch sections from source and target
 		op.Phase("Loading sections")
@@ -125,7 +125,7 @@ defer op.Finish()
 			return err
 		}
 
-		ui.Infof(os.Stdout, "Ready to import: %d new sections", len(filtered))
+		printFilterSummary("sections", m.LastFilterStats())
 
 		// Step 3) Handle dry-run
 		if dryRun {
@@ -138,10 +138,12 @@ defer op.Finish()
 			return nil
 		}
 
-		// Step 4) Confirmation and import
-		op.Phase("Awaiting confirmation")
+		// Step 4) Snapshot decision + confirmation
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "sections", sd)
+
 		if !autoApprove {
-			ui.Infof(os.Stdout, "Confirm import of %d sections...", len(filtered))
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
 				return err
@@ -152,10 +154,10 @@ defer op.Finish()
 			}
 		}
 
-		op.Phase("Importing sections")
+		op = newSyncOperation("Importing sections", quiet)
+		defer op.Finish()
 
 		var snapHook *snap.Hook
-		sd := confirmSnapshot(ctx, cmd)
 		if sd.Create {
 			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
 		}

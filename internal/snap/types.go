@@ -83,6 +83,7 @@ type RollbackLogEntry struct {
 type Meta struct {
 	ID              string    `json:"id"`
 	Name            string    `json:"name,omitempty"`
+	Label           string    `json:"label,omitempty"`
 	ServerURL       string    `json:"server_url,omitempty"`
 	Category        Category  `json:"category"`
 	Operation       Operation `json:"operation"`

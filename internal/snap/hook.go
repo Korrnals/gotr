@@ -17,6 +17,7 @@ type Hook struct {
 	Manifest *Manifest
 	Snap     *Snapshot
 	Enabled  bool
+	label    string // resolved from --snap-label
 }
 
 // NewHook creates a snapshot hook based on the command's flags and config.
@@ -38,7 +39,7 @@ func NewHook(cmd *cobra.Command) *Hook {
 		return &Hook{Enabled: false}
 	}
 
-	return &Hook{Store: store, Manifest: manifest, Enabled: true}
+	return &Hook{Store: store, Manifest: manifest, Enabled: true, label: ResolveLabel(cmd)}
 }
 
 // Before takes a pre-mutation snapshot.
@@ -47,6 +48,9 @@ func NewHook(cmd *cobra.Command) *Hook {
 func (h *Hook) Before(ctx context.Context, meta Meta, fetchFn func(ctx context.Context) (interface{}, error)) {
 	if !h.Enabled {
 		return
+	}
+	if meta.Label == "" && h.label != "" {
+		meta.Label = h.label
 	}
 	h.Snap = SnapOrWarn(ctx, h.Store, h.Manifest, meta, fetchFn)
 }
@@ -82,6 +86,7 @@ type Mutation struct {
 	Tier       Tier
 	ProjectID  int64
 	SuiteID    int64
+	Label      string // User-defined searchable label.
 	// FetchFn returns current entity state before mutation (nil for add ops).
 	FetchFn func(ctx context.Context) (interface{}, error)
 }
@@ -91,11 +96,17 @@ type Mutation struct {
 // This is a single-call convenience for commands with custom RunE.
 func HookMutation(ctx context.Context, m Mutation) *Hook {
 	hook := NewHook(m.Cmd)
-	hook.Before(ctx, BuildMeta(
+	meta := BuildMeta(
 		m.Op, m.EntityType, m.EntityIDs,
 		m.Tier, m.ProjectID, m.SuiteID,
 		ResolveName(m.Cmd), os.Args[1:],
 		viper.GetString("base_url"),
-	), m.FetchFn)
+	)
+	if m.Label != "" {
+		meta.Label = m.Label
+	} else {
+		meta.Label = ResolveLabel(m.Cmd)
+	}
+	hook.Before(ctx, meta, m.FetchFn)
 	return hook
 }

@@ -3,6 +3,7 @@ package snap
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	snaplib "github.com/Korrnals/gotr/internal/snap"
@@ -12,7 +13,7 @@ import (
 )
 
 func newListCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Browse and inspect snapshots",
 		Long: `Interactive snapshot browser with three-level navigation:
@@ -37,6 +38,12 @@ With --format or in non-interactive mode: flat table with all columns.`,
 			}
 
 			entries := manifest.All()
+
+			// Filter by label if --label is set.
+			if labelFilter, _ := cmd.Flags().GetString("label"); labelFilter != "" {
+				entries = filterByLabel(entries, labelFilter)
+			}
+
 			if len(entries) == 0 {
 				fmt.Fprintln(cmd.OutOrStdout(), "No snapshots found.")
 				return nil
@@ -51,6 +58,9 @@ With --format or in non-interactive mode: flat table with all columns.`,
 			return listInteractive(cmd, store, manifest)
 		},
 	}
+
+	cmd.Flags().String("label", "", "Filter snapshots by label (substring match)")
+	return cmd
 }
 
 // hasExplicitFormat returns true if --format was explicitly set by the user.
@@ -64,6 +74,18 @@ func hasExplicitFormat(cmd *cobra.Command) bool {
 	return false
 }
 
+// filterByLabel returns entries whose Label contains the query (case-insensitive).
+func filterByLabel(entries []snaplib.ManifestEntry, query string) []snaplib.ManifestEntry {
+	q := strings.ToLower(query)
+	var result []snaplib.ManifestEntry
+	for _, e := range entries {
+		if strings.Contains(strings.ToLower(e.Label), q) {
+			result = append(result, e)
+		}
+	}
+	return result
+}
+
 // listTable renders snapshot entries as a table or JSON.
 func listTable(cmd *cobra.Command, entries []snaplib.ManifestEntry) error {
 	if ui.IsJSON(cmd) {
@@ -71,12 +93,12 @@ func listTable(cmd *cobra.Command, entries []snaplib.ManifestEntry) error {
 	}
 
 	t := ui.NewTable(cmd)
-	t.AppendHeader(table.Row{"#", "ID", "SERVER", "OP", "ENTITY", "IDS", "CATEGORY", "STATUS", "TIMESTAMP"})
+	t.AppendHeader(table.Row{"#", "ID", "SERVER", "OP", "ENTITY", "IDS", "CATEGORY", "LABEL", "STATUS", "TIMESTAMP"})
 	for i, e := range entries {
 		t.AppendRow(table.Row{
 			i + 1, e.ID, serverLabel(e.ServerURL),
 			e.Operation, e.EntityType, entityIDsLabel(e.EntityIDs),
-			e.Category, e.Status,
+			e.Category, e.Label, e.Status,
 			e.Timestamp.Format("2006-01-02 15:04:05"),
 		})
 	}

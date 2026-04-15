@@ -92,13 +92,16 @@ Examples:
 
 		// Pre-sync snapshot (meta only, data after sync).
 		var hook *snap.Hook
-		if confirmSnapshot(ctx, cmd) {
+		sd := confirmSnapshot(ctx, cmd)
+		if sd.Create {
 			hook = snap.NewHook(cmd)
-			hook.Before(ctx, snap.BuildMeta(
+			meta := snap.BuildMeta(
 				snap.OpSyncFull, "sync", nil,
 				snap.Tier2, srcProject, srcSuite, snap.ResolveName(cmd), os.Args[1:],
 				snap.CurrentServerURL(),
-			), nil)
+			)
+			meta.Label = sd.Label
+			hook.Before(ctx, meta, nil)
 		} else {
 			hook = &snap.Hook{Enabled: false}
 		}

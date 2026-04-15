@@ -170,8 +170,9 @@ defer op.Finish()
 		op.Phase("Importing shared steps")
 
 		var snapHook *snap.Hook
-		if confirmSnapshot(ctx, cmd) {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSharedSteps, EntityType: "sync_entity", Tier: snap.Tier2})
+		sd := confirmSnapshot(ctx, cmd)
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSharedSteps, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {

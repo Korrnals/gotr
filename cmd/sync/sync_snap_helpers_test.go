@@ -25,10 +25,12 @@ func TestConfirmSnapshot_ExplicitFlagTrue(t *testing.T) {
 	cmd := newTestCmd()
 	_ = cmd.Flags().Set("snapshot", "true")
 
-	// No prompter needed — flag is explicit.
-	ctx := context.Background()
+	// Need Input mock for label prompt.
+	p := interactive.NewMockPrompter().WithInputResponses("")
+	ctx := interactive.WithPrompter(context.Background(), p)
 	result := confirmSnapshot(ctx, cmd)
-	assert.True(t, result)
+	assert.True(t, result.Create)
+	assert.Empty(t, result.Label)
 }
 
 func TestConfirmSnapshot_ExplicitFlagFalse(t *testing.T) {
@@ -37,7 +39,7 @@ func TestConfirmSnapshot_ExplicitFlagFalse(t *testing.T) {
 
 	ctx := context.Background()
 	result := confirmSnapshot(ctx, cmd)
-	assert.False(t, result)
+	assert.False(t, result.Create)
 }
 
 func TestConfirmSnapshot_ConfigEnabled(t *testing.T) {
@@ -45,9 +47,10 @@ func TestConfirmSnapshot_ConfigEnabled(t *testing.T) {
 	viper.Set("snap.enabled", true)
 	defer viper.Reset()
 
-	ctx := context.Background()
+	p := interactive.NewMockPrompter().WithInputResponses("")
+	ctx := interactive.WithPrompter(context.Background(), p)
 	result := confirmSnapshot(ctx, cmd)
-	assert.True(t, result)
+	assert.True(t, result.Create)
 }
 
 func TestConfirmSnapshot_ConfigDisabled(t *testing.T) {
@@ -57,18 +60,18 @@ func TestConfirmSnapshot_ConfigDisabled(t *testing.T) {
 
 	ctx := context.Background()
 	result := confirmSnapshot(ctx, cmd)
-	assert.False(t, result)
+	assert.False(t, result.Create)
 }
 
 func TestConfirmSnapshot_SmartPrompt_UserAccepts(t *testing.T) {
 	cmd := newTestCmd()
 	viper.Reset()
 
-	p := interactive.NewMockPrompter().WithConfirmResponses(true)
+	p := interactive.NewMockPrompter().WithConfirmResponses(true).WithInputResponses("")
 	ctx := interactive.WithPrompter(context.Background(), p)
 
 	result := confirmSnapshot(ctx, cmd)
-	assert.True(t, result)
+	assert.True(t, result.Create)
 }
 
 func TestConfirmSnapshot_SmartPrompt_UserDeclines(t *testing.T) {
@@ -79,7 +82,7 @@ func TestConfirmSnapshot_SmartPrompt_UserDeclines(t *testing.T) {
 	ctx := interactive.WithPrompter(context.Background(), p)
 
 	result := confirmSnapshot(ctx, cmd)
-	assert.False(t, result)
+	assert.False(t, result.Create)
 }
 
 func TestConfirmSnapshot_NonInteractive_DefaultsTrue(t *testing.T) {
@@ -90,7 +93,31 @@ func TestConfirmSnapshot_NonInteractive_DefaultsTrue(t *testing.T) {
 	ctx := interactive.WithPrompter(context.Background(), p)
 
 	result := confirmSnapshot(ctx, cmd)
-	assert.True(t, result, "Non-interactive mode should default to creating snapshot")
+	assert.True(t, result.Create, "Non-interactive mode should default to creating snapshot")
+}
+
+func TestConfirmSnapshot_LabelFromPrompt(t *testing.T) {
+	cmd := newTestCmd()
+	viper.Reset()
+
+	p := interactive.NewMockPrompter().WithConfirmResponses(true).WithInputResponses("migration-v2")
+	ctx := interactive.WithPrompter(context.Background(), p)
+
+	result := confirmSnapshot(ctx, cmd)
+	assert.True(t, result.Create)
+	assert.Equal(t, "migration-v2", result.Label)
+}
+
+func TestConfirmSnapshot_LabelFromFlag(t *testing.T) {
+	cmd := newTestCmd()
+	_ = cmd.Flags().Set("snapshot", "true")
+	_ = cmd.Flags().Set("snap-label", "my-label")
+
+	// Input not called when label comes from flag.
+	ctx := context.Background()
+	result := confirmSnapshot(ctx, cmd)
+	assert.True(t, result.Create)
+	assert.Equal(t, "my-label", result.Label)
 }
 
 // ==================== syncPostAction ====================

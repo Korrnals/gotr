@@ -17,6 +17,7 @@ const ManifestFile = "manifest.json"
 type ManifestEntry struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name,omitempty"`
+	Label        string    `json:"label,omitempty"`
 	ServerURL    string    `json:"server_url,omitempty"`
 	Category     Category  `json:"category"`
 	Operation    Operation `json:"operation"`
@@ -64,6 +65,7 @@ func (m *Manifest) Add(meta *Meta) error {
 	entry := ManifestEntry{
 		ID:           meta.ID,
 		Name:         meta.Name,
+		Label:        meta.Label,
 		ServerURL:    meta.ServerURL,
 		Category:     meta.Category,
 		Operation:    meta.Operation,

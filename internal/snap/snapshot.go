@@ -12,8 +12,12 @@ import (
 )
 
 // CurrentServerURL returns the configured base_url from viper.
+// Falls back to "https://localhost" if not configured.
 func CurrentServerURL() string {
-	return viper.GetString("base_url")
+	if u := viper.GetString("base_url"); u != "" {
+		return u
+	}
+	return "https://localhost"
 }
 
 // Snapshot is the handle returned after a successful pre-mutation save.
@@ -90,7 +94,11 @@ func (s *Snapshot) FinalizeAdd(createdID int64) error {
 	return s.store.SaveMeta(s.Meta)
 }
 
+// MockServerURL is the canonical URL used in tests.
+const MockServerURL = "https://mock.testrail.local"
+
 // BuildMeta is a helper to construct Meta for common operations.
+// If serverURL is empty, falls back to CurrentServerURL().
 func BuildMeta(
 	op Operation,
 	entityType string,
@@ -102,6 +110,9 @@ func BuildMeta(
 	cliArgs []string,
 	serverURL string,
 ) Meta {
+	if serverURL == "" {
+		serverURL = CurrentServerURL()
+	}
 	meta := Meta{
 		Name:         customName,
 		ServerURL:    serverURL,

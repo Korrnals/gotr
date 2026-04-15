@@ -25,10 +25,10 @@ var errGoBack = fmt.Errorf("go back")
 var errExit = fmt.Errorf("exit")
 
 // serverLabel returns a normalised display string for a server URL.
-// Strips API path, shows only scheme+host. Empty → "(server not recorded)".
+// Strips API path, shows only scheme+host. Empty → "(legacy)" for old snapshots.
 func serverLabel(rawURL string) string {
 	if rawURL == "" {
-		return "(server not recorded)"
+		return "(legacy)"
 	}
 	u, err := url.Parse(rawURL)
 	if err != nil || u.Host == "" {

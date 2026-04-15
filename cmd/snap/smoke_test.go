@@ -902,7 +902,7 @@ func TestPrintRollbackHeader_UnknownServer(t *testing.T) {
 	cmd.SetOut(buf)
 
 	printRollbackHeader(cmd, entry)
-	assert.Contains(t, buf.String(), "(server not recorded)")
+	assert.Contains(t, buf.String(), "(legacy)")
 }
 
 // ---------------------------------------------------------------------------
@@ -1042,7 +1042,7 @@ func TestServerLabel_URLNormalization(t *testing.T) {
 		input string
 		want  string
 	}{
-		{"", "(server not recorded)"},
+		{"", "(legacy)"},
 		{"https://testrail.komus.net/index.php?/api/v2/", "https://testrail.komus.net"},
 		{"https://demo.testrail.io/api/v2", "https://demo.testrail.io"},
 		{"https://my.testrail.io", "https://my.testrail.io"},

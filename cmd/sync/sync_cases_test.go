@@ -97,6 +97,7 @@ func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
@@ -194,6 +195,7 @@ func TestSyncCases_ConfirmDeclined_SkipsImportAndWritesLog(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("output", outputFile)
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(false)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
@@ -406,6 +408,7 @@ func TestSyncCases_ImportWithErrors_WritesErrorsToLog(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("output", outputFile)
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
@@ -488,6 +491,7 @@ func TestSyncCases_NoFlags_InteractiveSelection_DeclineConfirm(t *testing.T) {
 	resetCasesFlags()
 	cmd := casesCmd
 	SetTestClient(cmd, mock)
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().
 		WithSelectResponses(interactive.SelectResponse{Index: 0}).

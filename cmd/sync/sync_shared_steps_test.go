@@ -104,6 +104,7 @@ func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 	cmd.Flags().Set("src-suite", "10") // Explicitly specify suite to avoid interactive selection
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
@@ -206,6 +207,7 @@ func TestSyncSharedSteps_ConfirmDeclined_SkipsImport(t *testing.T) {
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(false)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))

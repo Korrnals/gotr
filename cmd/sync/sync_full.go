@@ -92,7 +92,23 @@ Examples:
 
 		// Pre-sync snapshot (meta only, data after sync).
 		var hook *snap.Hook
-		sd := confirmSnapshot(ctx, cmd)
+		var sd snapshotDecision
+		if !dryRun {
+			sd = confirmSnapshot(ctx, cmd)
+			printPreConfirmSummary(0, "full migration", sd)
+
+			if !autoApprove {
+				ok, err := p.Confirm("Continue?", false)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					ui.Canceled(os.Stdout)
+					return nil
+				}
+			}
+		}
+
 		if sd.Create {
 			hook = snap.NewHook(cmd)
 			meta := snap.BuildMeta(
@@ -107,7 +123,7 @@ Examples:
 		}
 
 		op := newSyncOperation("Full migration", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")

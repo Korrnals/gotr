@@ -198,7 +198,10 @@ Examples:
 
 		op.Phase("Importing cases")
 
-		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync_entity", Tier: snap.Tier2})
+		var snapHook *snap.Hook
+		if confirmSnapshot(ctx, cmd) {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync_entity", Tier: snap.Tier2})
+		}
 
 		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), quiet, func(ctx context.Context) (struct {
 			IDs    []int64
@@ -234,6 +237,7 @@ Examples:
 		// Save log and mapping
 		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)
 
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

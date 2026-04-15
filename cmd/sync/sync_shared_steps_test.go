@@ -9,6 +9,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/snap"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,7 @@ func resetSharedStepsFlags() {
 	sharedStepsCmd.Flags().Bool("save-mapping", false, "")
 	sharedStepsCmd.Flags().Bool("save-filtered", false, "")
 	sharedStepsCmd.Flags().String("output", "", "")
+	snap.RegisterFlags(sharedStepsCmd)
 }
 
 // TestSyncSharedSteps_DryRun_NoAddSharedSteps verifies that dry-run does not call AddSharedStep
@@ -368,6 +370,7 @@ func TestSyncSharedSteps_SaveMappingPromptAccepted_WritesMappingFile(t *testing.
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("approve", "true")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true).WithConfirmResponses(false)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
@@ -554,6 +557,7 @@ func TestSyncSharedSteps_SaveFilteredPromptAccepted_WritesFilteredFile(t *testin
 	cmd.Flags().Set("src-suite", "10")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("approve", "true")
+	cmd.Flags().Set("snapshot", "false")
 
 	// Confirm prompts: "Save mapping?" → false, "Save filtered shared steps list?" → true
 	p := interactive.NewMockPrompter().WithConfirmResponses(false).WithConfirmResponses(true)

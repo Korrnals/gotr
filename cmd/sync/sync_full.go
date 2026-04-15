@@ -91,12 +91,17 @@ Examples:
 		defer m.Close()
 
 		// Pre-sync snapshot (meta only, data after sync).
-		hook := snap.NewHook(cmd)
-		hook.Before(ctx, snap.BuildMeta(
-			snap.OpSyncFull, "sync", nil,
-			snap.Tier2, srcProject, srcSuite, snap.ResolveName(cmd), os.Args[1:],
-			snap.CurrentServerURL(),
-		), nil)
+		var hook *snap.Hook
+		if confirmSnapshot(ctx, cmd) {
+			hook = snap.NewHook(cmd)
+			hook.Before(ctx, snap.BuildMeta(
+				snap.OpSyncFull, "sync", nil,
+				snap.Tier2, srcProject, srcSuite, snap.ResolveName(cmd), os.Args[1:],
+				snap.CurrentServerURL(),
+			), nil)
+		} else {
+			hook = &snap.Hook{Enabled: false}
+		}
 
 		op := newSyncOperation("Full migration", quiet)
 defer op.Finish()
@@ -140,6 +145,7 @@ defer op.Finish()
 		hook.FinalizeSyncData(buildSyncDataFromMapping(m.Mapping(), srcProject, dstProject, srcSuite, dstSuite))
 
 		ui.Success(os.Stdout, "Full migration complete!")
+		syncPostAction(ctx, cmd, hook, cli)
 		return nil
 	},
 }

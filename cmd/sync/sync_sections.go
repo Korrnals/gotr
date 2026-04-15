@@ -154,7 +154,10 @@ defer op.Finish()
 
 		op.Phase("Importing sections")
 
-		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2})
+		var snapHook *snap.Hook
+		if confirmSnapshot(ctx, cmd) {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2})
+		}
 
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSections(ctx, filtered, false)
@@ -173,6 +176,7 @@ defer op.Finish()
 			}
 		}
 
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

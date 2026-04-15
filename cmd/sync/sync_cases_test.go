@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service/migration"
+	"github.com/Korrnals/gotr/internal/snap"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,7 @@ func resetCasesFlags() {
 	casesCmd.Flags().Bool("dry-run", false, "")
 	casesCmd.Flags().String("output", "", "")
 	casesCmd.Flags().String("mapping-file", "", "")
+	snap.RegisterFlags(casesCmd)
 }
 
 // TestSyncCases_DryRun_NoAddCase verifies that AddCase is not called in dry-run mode

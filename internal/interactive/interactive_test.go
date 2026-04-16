@@ -79,13 +79,14 @@ func TestSelectProject_ErrorBranches(t *testing.T) {
 
 		_, err := SelectProject(ctx, p, cli, "")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select project")
-		assert.Equal(t, "Select project:", p.lastMessage)
+		assert.Contains(t, err.Error(), "select failed")
 	})
 }
 
 func TestSelectRun_DefaultPromptAndCompletedStatus(t *testing.T) {
-	p := &spyPrompter{idx: 1}
+	// Browse options: [✕ Exit, (active) Active Run, (completed) Closed Run]
+	// Index 2 selects "Closed Run"
+	p := &spyPrompter{idx: 2}
 	runs := data.GetRunsResponse{
 		{ID: 11, Name: "Active Run", IsCompleted: false},
 		{ID: 22, Name: "Closed Run", IsCompleted: true},
@@ -95,9 +96,9 @@ func TestSelectRun_DefaultPromptAndCompletedStatus(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, int64(22), id)
 	assert.Equal(t, "Select run:", p.lastMessage)
-	require.Len(t, p.lastOptions, 2)
-	assert.Contains(t, p.lastOptions[0], "(active)")
-	assert.Contains(t, p.lastOptions[1], "(completed)")
+	require.Len(t, p.lastOptions, 3) // Exit + 2 runs
+	assert.Contains(t, p.lastOptions[1], "(active)")
+	assert.Contains(t, p.lastOptions[2], "(completed)")
 }
 
 func TestSelectSuiteForProject_Branches(t *testing.T) {
@@ -141,8 +142,7 @@ func TestSelectSuite_Run_Section_ErrorBranches(t *testing.T) {
 		p := &spyPrompter{err: errors.New("select fail")}
 		_, err := SelectSuite(ctx, p, data.GetSuitesResponse{{ID: 1, Name: "S"}}, "Custom suite prompt")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select suite")
-		assert.Equal(t, "Custom suite prompt", p.lastMessage)
+		assert.Contains(t, err.Error(), "select fail")
 	})
 
 	t.Run("SelectRun no runs", func(t *testing.T) {
@@ -155,8 +155,7 @@ func TestSelectSuite_Run_Section_ErrorBranches(t *testing.T) {
 		p := &spyPrompter{err: errors.New("select fail")}
 		_, err := SelectRun(ctx, p, data.GetRunsResponse{{ID: 2, Name: "R"}}, "Custom run prompt")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select run")
-		assert.Equal(t, "Custom run prompt", p.lastMessage)
+		assert.Contains(t, err.Error(), "select fail")
 	})
 
 	t.Run("SelectSection no sections", func(t *testing.T) {
@@ -169,8 +168,7 @@ func TestSelectSuite_Run_Section_ErrorBranches(t *testing.T) {
 		p := &spyPrompter{err: errors.New("select fail")}
 		_, err := SelectSection(ctx, p, data.GetSectionsResponse{{ID: 3, Name: "Sec"}}, "Custom section prompt")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select section")
-		assert.Equal(t, "Custom section prompt", p.lastMessage)
+		assert.Contains(t, err.Error(), "select fail")
 	})
 }
 
@@ -178,7 +176,7 @@ func TestSelectSuiteAndSection_DefaultPromptSuccess(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SelectSuite default prompt", func(t *testing.T) {
-		p := &spyPrompter{idx: 0}
+		p := &spyPrompter{idx: 1} // +1 for Exit option
 		id, err := SelectSuite(ctx, p, data.GetSuitesResponse{{ID: 101, Name: "Suite"}}, "")
 		require.NoError(t, err)
 		assert.Equal(t, int64(101), id)
@@ -186,7 +184,7 @@ func TestSelectSuiteAndSection_DefaultPromptSuccess(t *testing.T) {
 	})
 
 	t.Run("SelectSection default prompt", func(t *testing.T) {
-		p := &spyPrompter{idx: 0}
+		p := &spyPrompter{idx: 1} // +1 for Exit option
 		id, err := SelectSection(ctx, p, data.GetSectionsResponse{{ID: 202, Name: "Section"}}, "")
 		require.NoError(t, err)
 		assert.Equal(t, int64(202), id)

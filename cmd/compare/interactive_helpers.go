@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/interactive"
+	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -31,9 +32,11 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 	p := interactive.PrompterFromContext(ctx)
 
 	hasDifferences := len(result.OnlyInFirst) > 0 || len(result.OnlyInSecond) > 0
+	hasData := hasDifferences || len(result.Common) > 0
 
 	options := []interactive.ActionOption{
 		{Label: interactive.OptExit, Key: actionExit},
+		{Label: "📋 View detailed results", Key: actionDrillRes, Disabled: !hasData, Hint: "no data"},
 		{Label: "💾 Save results to file", Key: actionSave},
 		{Label: "→ Sync: migrate differences", Key: actionSync, Disabled: !hasDifferences, Hint: "no differences found"},
 	}
@@ -44,15 +47,150 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 	}
 
 	switch key {
+	case actionDrillRes:
+		lines := renderTableLines(result, p1Name, p2Name)
+		if interactive.ShouldPage(len(lines)) {
+			_ = interactive.Pager(interactive.PagerConfig{
+				Lines:  lines,
+				Header: fmt.Sprintf("=== %s (projects %d ↔ %d) ===", result.Resource, result.Project1ID, result.Project2ID),
+			})
+		} else {
+			for _, line := range lines {
+				fmt.Println(line)
+			}
+		}
+		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
 	case actionSave:
 		if err := promptAndSave(ctx, p, cmd, result, p1Name, p2Name); err != nil {
 			ui.Error(os.Stdout, fmt.Sprintf("Save failed: %v", err))
 		}
 		// After save, show menu again.
 		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
+	case actionSync:
+		runSyncFromCompare(ctx, cmd, result)
+		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
 	default:
 		return key
 	}
+}
+
+// syncMenuEntry describes a sync subcommand shown in the selection menu.
+type syncMenuEntry struct {
+	label      string // Display label for the menu.
+	subcommand string // Cobra subcommand name under "sync".
+}
+
+// syncMenuEntries defines available sync modes presented to the user.
+var syncMenuEntries = []syncMenuEntry{
+	{"Full migration (cases + shared steps)", "full"},
+	{"Suites", "suites"},
+	{"Sections", "sections"},
+	{"Shared steps", "shared-steps"},
+}
+
+// recommendedSyncIndex returns the index in syncMenuEntries best matching
+// the compare resource, or 0 (full) when nothing matches specifically.
+func recommendedSyncIndex(resource string) int {
+	switch resource {
+	case "suites":
+		return 1
+	case "sections":
+		return 2
+	case "shared_steps", "shared-steps":
+		return 3
+	default: // cases, "" or anything else → full
+		return 0
+	}
+}
+
+// runSyncFromCompare shows a sync-mode selection menu and invokes the
+// chosen sync subcommand with --src-project/--dst-project pre-filled.
+// Remaining interactive questions (suite, backup, etc.) are handled by sync.
+func runSyncFromCompare(ctx context.Context, compareCmd *cobra.Command, result CompareResult) {
+	if compareCmd == nil {
+		ui.Infof(os.Stdout, "Sync is not available (no command context).")
+		fmt.Println()
+		return
+	}
+
+	p := interactive.PrompterFromContext(ctx)
+
+	// Build the menu labels, marking the recommended option.
+	recommended := recommendedSyncIndex(result.Resource)
+	labels := make([]string, len(syncMenuEntries))
+	for i, e := range syncMenuEntries {
+		if i == recommended {
+			labels[i] = e.label + " ★"
+		} else {
+			labels[i] = e.label
+		}
+	}
+
+	fmt.Println()
+	ui.Infof(os.Stdout, "Pre-filled from compare: src-project=%d, dst-project=%d",
+		result.Project1ID, result.Project2ID)
+
+	idx, _, err := p.Select("What do you want to migrate?", labels)
+	if err != nil {
+		if interactive.IsGoBack(err) || interactive.IsExit(err) {
+			return
+		}
+		ui.Error(os.Stdout, fmt.Sprintf("Selection failed: %v", err))
+		return
+	}
+
+	syncSub := syncMenuEntries[idx].subcommand
+
+	root := compareCmd.Root()
+	syncCmd, _, err := root.Find([]string{"sync", syncSub})
+	if err != nil || syncCmd == nil || syncCmd.Name() == root.Name() {
+		fmt.Println()
+		ui.Error(os.Stdout, fmt.Sprintf("Could not find 'gotr sync %s' command.", syncSub))
+		fmt.Println()
+		return
+	}
+
+	fmt.Println()
+	ui.Infof(os.Stdout, "Starting: gotr sync %s (src-project=%d, dst-project=%d)",
+		syncSub, result.Project1ID, result.Project2ID)
+	fmt.Println()
+
+	// Pre-fill flags known from compare. Reset them after sync finishes
+	// to avoid stale state on repeated invocations.
+	setFlag := func(name, value string) {
+		if syncCmd.Flags().Lookup(name) != nil {
+			_ = syncCmd.Flags().Set(name, value)
+		}
+	}
+	resetFlag := func(name, zero string) {
+		if f := syncCmd.Flags().Lookup(name); f != nil {
+			_ = syncCmd.Flags().Set(name, zero)
+			f.Changed = false
+		}
+	}
+
+	setFlag("src-project", fmt.Sprintf("%d", result.Project1ID))
+	setFlag("dst-project", fmt.Sprintf("%d", result.Project2ID))
+
+	defer func() {
+		resetFlag("src-project", "0")
+		resetFlag("dst-project", "0")
+		resetFlag("src-suite", "0")
+		resetFlag("dst-suite", "0")
+	}()
+
+	// Propagate context (prompter, client, cancellation).
+	syncCmd.SetContext(ctx)
+
+	// RunE handles the rest interactively (suite selection, snapshot,
+	// confirmation, etc.) — the full protection chain of the sync command.
+	if err := syncCmd.RunE(syncCmd, nil); err != nil {
+		if interactive.IsGoBack(err) || interactive.IsExit(err) {
+			return
+		}
+		ui.Error(os.Stdout, fmt.Sprintf("Sync failed: %v", err))
+	}
+	fmt.Println()
 }
 
 // compareAllPostAction shows a post-action menu for compare-all with drill-down.
@@ -177,11 +315,23 @@ func promptAndSave(ctx context.Context, p interactive.Prompter, cmd *cobra.Comma
 		return err
 	}
 	savePath := strings.TrimSpace(input)
+
+	// Resolve __DEFAULT__ to a real path so we can show it to the user.
 	if savePath == "" {
-		savePath = "__DEFAULT__"
+		ext := format
+		if ext == "table" {
+			ext = "txt"
+		}
+		exportsDir, _ := outpututils.GetExportsDir("compare")
+		_ = os.MkdirAll(exportsDir, 0o755)
+		savePath = exportsDir + "/" + outpututils.GenerateFilename("compare", ext)
 	}
 
-	return PrintCompareResult(cmd, result, p1Name, p2Name, format, savePath)
+	if err := PrintCompareResult(cmd, result, p1Name, p2Name, format, savePath); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // renderTableLines builds the compare table as a slice of strings (one per line)
@@ -201,12 +351,24 @@ func renderTableLines(result CompareResult, p1Name, p2Name string) []string {
 // --- Line rendering helpers (mirror the existing print* functions but return []string) ---
 
 func renderOnlyInProjectLines(items []ItemInfo, projectID int64, projectName string) []string {
-	idWidth := 8
-	nameWidth := 70
-	widths := []int{idWidth, nameWidth}
-	totalInnerWidth := idWidth + nameWidth + 3*len(widths) - 1
+	numWidth := 5  // row number "#"
+	idWidth := 8   // TestRail ID
+	// Adaptive name width: fill remaining terminal space.
+	// Layout: │ # │ ID │ Name │  →  1 + (numW+2) + 1 + (idW+2) + 1 + (nameW+2) + 1
+	termW := interactive.TerminalWidth()
+	nameWidth := termW - numWidth - idWidth - 10 // 10 = borders + padding
+	if nameWidth < 30 {
+		nameWidth = 30
+	}
 
-	title := fmt.Sprintf("Only in project %d - %q", projectID, projectName)
+	widths := []int{numWidth, idWidth, nameWidth}
+	totalInnerWidth := 0
+	for _, w := range widths {
+		totalInnerWidth += w + 3
+	}
+	totalInnerWidth-- // correct for last column
+
+	title := fmt.Sprintf("Only in project %d — %q (%d items)", projectID, projectName, len(items))
 	var lines []string
 	lines = append(lines, hBorder("┌", "┬", "┐", widths))
 	lines = append(lines, headerLine(title, totalInnerWidth))
@@ -220,11 +382,15 @@ func renderOnlyInProjectLines(items []ItemInfo, projectID int64, projectName str
 	}
 
 	lines = append(lines, separatorLine(widths))
-	lines = append(lines, rowLine([]string{"ID", "Name"}, widths))
+	lines = append(lines, rowLine([]string{"#", "ID", "Name"}, widths))
 	lines = append(lines, separatorLine(widths))
 
-	for _, item := range items {
-		lines = append(lines, rowLine([]string{fmt.Sprintf("%d", item.ID), item.Name}, widths))
+	for i, item := range items {
+		lines = append(lines, rowLine([]string{
+			fmt.Sprintf("%d", i+1),
+			fmt.Sprintf("%d", item.ID),
+			item.Name,
+		}, widths))
 	}
 
 	lines = append(lines, hBorder("└", "┴", "┘", widths))
@@ -233,16 +399,29 @@ func renderOnlyInProjectLines(items []ItemInfo, projectID int64, projectName str
 }
 
 func renderCommonLines(items []CommonItemInfo, pid1, pid2 int64) []string {
-	nameWidth := 50
-	id1Width := 12
-	id2Width := 12
-	statusWidth := 20
-	widths := []int{nameWidth, id1Width, id2Width, statusWidth}
-	totalInnerWidth := nameWidth + id1Width + id2Width + statusWidth + 3*len(widths) - 1
+	numWidth := 5
+	id1Width := 10
+	id2Width := 10
+	statusWidth := 10
+	fixedCols := numWidth + id1Width + id2Width + statusWidth
+	// Adaptive name: terminal width minus fixed columns minus borders/padding.
+	// 5 columns → 5*3-1 = 14 for borders+padding
+	termW := interactive.TerminalWidth()
+	nameWidth := termW - fixedCols - 16
+	if nameWidth < 30 {
+		nameWidth = 30
+	}
+	widths := []int{numWidth, nameWidth, id1Width, id2Width, statusWidth}
+	totalInnerWidth := 0
+	for _, w := range widths {
+		totalInnerWidth += w + 3
+	}
+	totalInnerWidth--
 
+	title := fmt.Sprintf("Common in both projects (%d items)", len(items))
 	var lines []string
 	lines = append(lines, hBorder("┌", "┬", "┐", widths))
-	lines = append(lines, headerLine("Common in both projects", totalInnerWidth))
+	lines = append(lines, headerLine(title, totalInnerWidth))
 
 	if len(items) == 0 {
 		lines = append(lines, separatorLine(widths))
@@ -254,19 +433,21 @@ func renderCommonLines(items []CommonItemInfo, pid1, pid2 int64) []string {
 
 	lines = append(lines, separatorLine(widths))
 	lines = append(lines, rowLine([]string{
+		"#",
 		"Name",
-		fmt.Sprintf("ID proj %d", pid1),
-		fmt.Sprintf("ID proj %d", pid2),
-		"ID status",
+		fmt.Sprintf("ID P%d", pid1),
+		fmt.Sprintf("ID P%d", pid2),
+		"Status",
 	}, widths))
 	lines = append(lines, separatorLine(widths))
 
-	for _, item := range items {
+	for i, item := range items {
 		status := "✓ Match"
 		if !item.IDsMatch {
 			status = "⚠ Differ"
 		}
 		lines = append(lines, rowLine([]string{
+			fmt.Sprintf("%d", i+1),
 			item.Name,
 			fmt.Sprintf("%d", item.ID1),
 			fmt.Sprintf("%d", item.ID2),
@@ -287,15 +468,25 @@ func renderIDMappingLines(items []CommonItemInfo) []string {
 		}
 	}
 
-	sourceWidth := 12
-	targetWidth := 12
-	nameWidth := 70
-	widths := []int{sourceWidth, targetWidth, nameWidth}
-	totalInnerWidth := sourceWidth + targetWidth + nameWidth + 3*len(widths) - 1
+	numWidth := 5
+	sourceWidth := 10
+	targetWidth := 10
+	termW := interactive.TerminalWidth()
+	nameWidth := termW - numWidth - sourceWidth - targetWidth - 13
+	if nameWidth < 30 {
+		nameWidth = 30
+	}
+	widths := []int{numWidth, sourceWidth, targetWidth, nameWidth}
+	totalInnerWidth := 0
+	for _, w := range widths {
+		totalInnerWidth += w + 3
+	}
+	totalInnerWidth--
 
+	title := fmt.Sprintf("ID mapping — for updates (%d items)", len(mappings))
 	var lines []string
 	lines = append(lines, hBorder("┌", "┬", "┐", widths))
-	lines = append(lines, headerLine("ID mapping (for updates)", totalInnerWidth))
+	lines = append(lines, headerLine(title, totalInnerWidth))
 
 	if len(mappings) == 0 {
 		lines = append(lines, separatorLine(widths))
@@ -306,11 +497,12 @@ func renderIDMappingLines(items []CommonItemInfo) []string {
 	}
 
 	lines = append(lines, separatorLine(widths))
-	lines = append(lines, rowLine([]string{"Source ID", "Target ID", "Name"}, widths))
+	lines = append(lines, rowLine([]string{"#", "Source ID", "Target ID", "Name"}, widths))
 	lines = append(lines, separatorLine(widths))
 
-	for _, item := range mappings {
+	for i, item := range mappings {
 		lines = append(lines, rowLine([]string{
+			fmt.Sprintf("%d", i+1),
 			fmt.Sprintf("%d", item.ID1),
 			fmt.Sprintf("%d", item.ID2),
 			item.Name,

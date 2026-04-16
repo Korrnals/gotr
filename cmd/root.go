@@ -113,6 +113,10 @@ func Execute(ctx context.Context) {
 			fmt.Fprintln(os.Stderr, "\nInterrupted.")
 			os.Exit(130)
 		}
+		// Silent exit from interactive navigation (Back/Exit).
+		if interactive.IsGoBack(err) || interactive.IsExit(err) {
+			return
+		}
 		fmt.Fprintln(os.Stderr, "Error:", err)
 		os.Exit(1)
 	}

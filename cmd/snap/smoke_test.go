@@ -542,7 +542,7 @@ func TestCLI_SnapInfo_Interactive(t *testing.T) {
 	// Options: ✕ Exit(0), [1] snapshot(1). Select index 1 to view card.
 	// On next loop iteration mock exhausts → graceful exit.
 	mp := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 1})
+		WithSelectResponses(interactive.SelectResponse{Index: 1, Raw: true})
 
 	cmd := newInfoCmd()
 	buf := &bytes.Buffer{}
@@ -817,8 +817,8 @@ func TestCLI_SnapList_Interactive_MultiServer(t *testing.T) {
 	// After viewing card, mock exhausts → graceful exit.
 	mp := interactive.NewMockPrompter().
 		WithSelectResponses(
-			interactive.SelectResponse{Index: 1},
-			interactive.SelectResponse{Index: 2},
+			interactive.SelectResponse{Index: 1, Raw: true},
+			interactive.SelectResponse{Index: 2, Raw: true},
 		)
 
 	cmd := newListCmd()
@@ -1146,8 +1146,8 @@ func TestCLI_SnapInfo_Interactive_BackAfterCard(t *testing.T) {
 	// Mock then exhausts on next snapshot picker → graceful exit.
 	mp := interactive.NewMockPrompter().
 		WithSelectResponses(
-			interactive.SelectResponse{Index: 1}, // pick snapshot
-			interactive.SelectResponse{Index: 0}, // ← Back (post-card)
+			interactive.SelectResponse{Index: 1, Raw: true}, // pick snapshot
+			interactive.SelectResponse{Index: 0, Raw: true}, // ← Back (post-card)
 		)
 
 	cmd := newInfoCmd()

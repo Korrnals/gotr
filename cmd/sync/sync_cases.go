@@ -58,6 +58,7 @@ Examples:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error

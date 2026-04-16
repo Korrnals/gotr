@@ -9,6 +9,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	snaplib "github.com/Korrnals/gotr/internal/snap"
+	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -56,6 +57,21 @@ func entityIDsLabel(ids []int64) string {
 	return fmt.Sprintf(" #%d,…(+%d)", ids[0], len(ids)-1)
 }
 
+// projectLabel formats source → destination project IDs for display.
+// Returns "–" when no project info is available (legacy snapshots).
+func projectLabel(srcProjectID, dstProjectID int64) string {
+	if srcProjectID > 0 && dstProjectID > 0 {
+		return fmt.Sprintf("P%d → P%d", srcProjectID, dstProjectID)
+	}
+	if dstProjectID > 0 {
+		return fmt.Sprintf("P%d", dstProjectID)
+	}
+	if srcProjectID > 0 {
+		return fmt.Sprintf("P%d", srcProjectID)
+	}
+	return "–"
+}
+
 // isInterruptError returns true if the error is caused by user pressing Ctrl+C.
 func isInterruptError(err error) bool {
 	if err == nil {
@@ -93,6 +109,11 @@ func formatPickerLabel(idx int, e snaplib.ManifestEntry) string {
 	fmt.Fprintf(&b, "[%d] %s %s", idx, e.Operation, e.EntityType)
 	b.WriteString(entityIDsLabel(e.EntityIDs))
 
+	proj := projectLabel(e.SourceProjectID, e.ProjectID)
+	if proj != "–" {
+		fmt.Fprintf(&b, " (%s)", proj)
+	}
+
 	if e.Name != "" {
 		fmt.Fprintf(&b, " %q", e.Name)
 	}
@@ -112,6 +133,7 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 		idx      string
 		opEntity string
 		ids      string
+		project  string
 		cat      string
 		name     string
 		label    string
@@ -122,10 +144,10 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 	}
 
 	rows := make([]row, len(entries))
-	maxIdx, maxOp, maxIDs, maxCat, maxName, maxLabel, maxStatus, maxTier, maxTs, maxSnap := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	maxIdx, maxOp, maxIDs, maxProj, maxCat, maxName, maxLabel, maxStatus, maxTier, maxTs, maxSnap := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
 	// Header widths.
-	hIdx, hOp, hIDs, hCat, hName := "#", "OPERATION", "IDS", "CATEGORY", ""
+	hIdx, hOp, hIDs, hProj, hCat, hName := "#", "OPERATION", "IDS", "PROJECT", "CATEGORY", ""
 	hLabel := ""
 	hStatus, hTier, hTs, hSnap := "STATUS", "TIER", "DATE", "SNAPSHOT ID"
 
@@ -138,6 +160,7 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 			idx:      fmt.Sprintf("[%d]", i+1),
 			opEntity: fmt.Sprintf("%s %s", e.Operation, e.EntityType),
 			ids:      idsLabel,
+			project:  projectLabel(e.SourceProjectID, e.ProjectID),
 			cat:      string(e.Category),
 			status:   string(e.Status),
 			tier:     fmt.Sprintf("T%d", e.RollbackTier),
@@ -155,6 +178,7 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 		if len(r.idx) > maxIdx { maxIdx = len(r.idx) }
 		if len(r.opEntity) > maxOp { maxOp = len(r.opEntity) }
 		if len(r.ids) > maxIDs { maxIDs = len(r.ids) }
+		if len(r.project) > maxProj { maxProj = len(r.project) }
 		if len(r.cat) > maxCat { maxCat = len(r.cat) }
 		if len(r.name) > maxName { maxName = len(r.name) }
 		if len(r.label) > maxLabel { maxLabel = len(r.label) }
@@ -168,6 +192,7 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 	if len(hIdx) > maxIdx { maxIdx = len(hIdx) }
 	if len(hOp) > maxOp { maxOp = len(hOp) }
 	if len(hIDs) > maxIDs { maxIDs = len(hIDs) }
+	if len(hProj) > maxProj { maxProj = len(hProj) }
 	if len(hCat) > maxCat { maxCat = len(hCat) }
 	if len(hLabel) > maxLabel { maxLabel = len(hLabel) }
 	if len(hStatus) > maxStatus { maxStatus = len(hStatus) }
@@ -176,10 +201,14 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 	if len(hSnap) > maxSnap { maxSnap = len(hSnap) }
 
 	// Build format function — all columns separated by │.
-	fmtRow := func(idx, op, ids, cat, name, label, status, tier, ts, snap string) string {
+	fmtRow := func(idx, op, ids, proj, cat, name, label, status, tier, ts, snap string) string {
 		var b strings.Builder
-		fmt.Fprintf(&b, "%-*s %-*s │ %-*s │ %-*s",
-			maxIdx, idx, maxOp, op, maxIDs, ids, maxCat, cat)
+		fmt.Fprintf(&b, "%-*s %-*s │ %-*s",
+			maxIdx, idx, maxOp, op, maxIDs, ids)
+		if maxProj > 0 {
+			fmt.Fprintf(&b, " │ %-*s", maxProj, proj)
+		}
+		fmt.Fprintf(&b, " │ %-*s", maxCat, cat)
 		if maxName > 0 {
 			fmt.Fprintf(&b, " │ %-*s", maxName, name)
 		}
@@ -192,12 +221,12 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 	}
 
 	// Header.
-	header = fmtRow(hIdx, hOp, hIDs, hCat, hName, hLabel, hStatus, hTier, hTs, hSnap)
+	header = fmtRow(hIdx, hOp, hIDs, hProj, hCat, hName, hLabel, hStatus, hTier, hTs, hSnap)
 
 	// Data rows.
 	labels = make([]string, len(entries))
 	for i, r := range rows {
-		labels[i] = fmtRow(r.idx, r.opEntity, r.ids, r.cat, r.name, r.label, r.status, r.tier, r.ts, r.snapID)
+		labels[i] = fmtRow(r.idx, r.opEntity, r.ids, r.project, r.cat, r.name, r.label, r.status, r.tier, r.ts, r.snapID)
 	}
 	return header, labels
 }
@@ -712,6 +741,12 @@ func browseSnapList(cmd *cobra.Command, store *snaplib.Store, p interactive.Prom
 		case postActionRollback:
 			executeRollbackFromBrowser(cmd, entry.ID)
 			continue // back to snapshot list after rollback
+		case postActionCompare:
+			runCompareFromSnap(cmd)
+			continue
+		case postActionSync:
+			runSyncFromSnap(cmd)
+			continue
 		}
 	}
 }
@@ -726,40 +761,73 @@ const (
 	postActionBack postAction = iota
 	postActionExit
 	postActionRollback
+	postActionCompare
+	postActionSync
 )
 
 // postCardAction shows a mini-menu after viewing a snapshot info card.
 // Returns the chosen action.
 func postCardAction(cmd *cobra.Command, p interactive.Prompter, meta *snaplib.Meta) (postAction, error) {
 	out := cmd.OutOrStdout()
-	options := []string{backOption, exitOption}
 
-	// Show rollback option only for actionable statuses;
-	// for terminal statuses print a hint instead.
+	type menuItem struct {
+		label  string
+		action postAction
+	}
+	items := []menuItem{
+		{backOption, postActionBack},
+		{exitOption, postActionExit},
+	}
+
+	// Rollback option — only for actionable statuses.
 	canRollback := meta.Status == snaplib.StatusAvailable || meta.Status == snaplib.StatusRollbackPartial
 	if canRollback {
-		options = append(options, "↻ Rollback this snapshot")
+		items = append(items, menuItem{"↻ Rollback this snapshot", postActionRollback})
 	} else if meta.Status == snaplib.StatusRolledBack {
 		fmt.Fprintln(out, "  ✓ Snapshot already rolled back.")
 	} else if meta.Status == snaplib.StatusExpired {
 		fmt.Fprintln(out, "  ⚠ Snapshot expired — rollback unavailable.")
 	}
 
+	// Cross-navigation transitions (full navigation level).
+	items = append(items,
+		menuItem{"📊 Compare: verify current state", postActionCompare},
+		menuItem{"🔄 Sync: migrate data", postActionSync},
+	)
+
+	options := make([]string, len(items))
+	for i, it := range items {
+		options[i] = it.label
+	}
+
 	idx, _, err := p.Select("Action:", options)
 	if err != nil {
 		return postActionExit, err
 	}
-
-	switch idx {
-	case 0:
-		return postActionBack, nil
-	case 1:
-		return postActionExit, nil
-	case 2:
-		return postActionRollback, nil
-	default:
-		return postActionBack, nil
+	if idx >= 0 && idx < len(items) {
+		return items[idx].action, nil
 	}
+	return postActionBack, nil
+}
+
+// runCompareFromSnap launches compare all from the snap browser.
+func runCompareFromSnap(cmd *cobra.Command) {
+	ctx := cmd.Context()
+	fmt.Println()
+	if err := interactive.RunSubcommand(ctx, cmd.Root(), "compare", "all"); err != nil {
+		ui.Error(cmd.OutOrStdout(), err.Error())
+	}
+	fmt.Println()
+}
+
+// runSyncFromSnap launches the sync hub from the snap browser.
+func runSyncFromSnap(cmd *cobra.Command) {
+	ctx := cmd.Context()
+	fmt.Println()
+	if err := interactive.RunSubcommand(ctx, cmd.Root(), "sync", "full"); err != nil {
+		ui.Error(cmd.OutOrStdout(), err.Error())
+	}
+	fmt.Println()
 }
 
 // executeRollbackFromBrowser finds and runs the rollback subcommand for the given snapshot.

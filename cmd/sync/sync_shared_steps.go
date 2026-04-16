@@ -48,6 +48,7 @@ Examples:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error

@@ -1,6 +1,13 @@
 package interactive
 
-import "errors"
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
 
 // Navigation sentinel errors for multi-level interactive flows.
 var (
@@ -25,4 +32,32 @@ func IsGoBack(err error) bool {
 // IsExit returns true if the error is an exit sentinel.
 func IsExit(err error) bool {
 	return errors.Is(err, ErrExit)
+}
+
+// FindSubcommand locates a subcommand by path via Cobra tree traversal.
+// Returns an error if the command is not found.
+func FindSubcommand(root *cobra.Command, path ...string) (*cobra.Command, error) {
+	target, _, err := root.Find(path)
+	if err != nil || target == nil || target.Name() == root.Name() {
+		return nil, fmt.Errorf("could not find 'gotr %s' command", strings.Join(path, " "))
+	}
+	return target, nil
+}
+
+// RunSubcommand finds a subcommand by path, propagates context, and runs it.
+// GoBack/Exit sentinel errors are absorbed (return nil).
+// Real execution errors are returned as-is.
+func RunSubcommand(ctx context.Context, root *cobra.Command, path ...string) error {
+	target, err := FindSubcommand(root, path...)
+	if err != nil {
+		return err
+	}
+	target.SetContext(ctx)
+	if err := target.RunE(target, nil); err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }

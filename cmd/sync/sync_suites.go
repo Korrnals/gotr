@@ -46,6 +46,7 @@ Flags:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
+		applySessionFallback(ctx, &srcProject, &dstProject, new(int64), new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error

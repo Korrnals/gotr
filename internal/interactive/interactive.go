@@ -8,8 +8,9 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
-// SelectProject selects a project using unified prompter.
-func SelectProject(ctx context.Context, p Prompter, httpClient client.ClientInterface, prompt string) (int64, error) {
+// SelectProject selects a project using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectProject(ctx context.Context, p Prompter, httpClient client.ClientInterface, prompt string, allowBack ...bool) (int64, error) {
 	projects, err := httpClient.GetProjects(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get projects list: %w", err)
@@ -28,17 +29,25 @@ func SelectProject(ctx context.Context, p Prompter, httpClient client.ClientInte
 		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, p.ID, p.Name))
 	}
 
-	idx, _, err := p.Select(prompt, options)
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Items:     options,
+		AllowBack: back,
+	})
 	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
 		return 0, fmt.Errorf("failed to select project: %w", err)
 	}
 
 	return projects[idx].ID, nil
 }
 
-// SelectSuite selects a suite using unified prompter.
-func SelectSuite(ctx context.Context, p Prompter, suites data.GetSuitesResponse, prompt string) (int64, error) {
-	_ = ctx
+// SelectSuite selects a suite using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectSuite(ctx context.Context, p Prompter, suites data.GetSuitesResponse, prompt string, allowBack ...bool) (int64, error) {
 	if len(suites) == 0 {
 		return 0, fmt.Errorf("no suites found")
 	}
@@ -53,17 +62,25 @@ func SelectSuite(ctx context.Context, p Prompter, suites data.GetSuitesResponse,
 		options = append(options, line)
 	}
 
-	idx, _, err := p.Select(prompt, options)
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Items:     options,
+		AllowBack: back,
+	})
 	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
 		return 0, fmt.Errorf("failed to select suite: %w", err)
 	}
 
 	return suites[idx].ID, nil
 }
 
-// SelectRun selects a run using unified prompter.
-func SelectRun(ctx context.Context, p Prompter, runs data.GetRunsResponse, prompt string) (int64, error) {
-	_ = ctx
+// SelectRun selects a run using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectRun(ctx context.Context, p Prompter, runs data.GetRunsResponse, prompt string, allowBack ...bool) (int64, error) {
 	if len(runs) == 0 {
 		return 0, fmt.Errorf("no runs found")
 	}
@@ -82,17 +99,25 @@ func SelectRun(ctx context.Context, p Prompter, runs data.GetRunsResponse, promp
 		options = append(options, line)
 	}
 
-	idx, _, err := p.Select(prompt, options)
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Items:     options,
+		AllowBack: back,
+	})
 	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
 		return 0, fmt.Errorf("failed to select run: %w", err)
 	}
 
 	return runs[idx].ID, nil
 }
 
-// SelectSection selects a section using unified prompter.
-func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsResponse, prompt string) (int64, error) {
-	_ = ctx
+// SelectSection selects a section using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsResponse, prompt string, allowBack ...bool) (int64, error) {
 	if len(sections) == 0 {
 		return 0, fmt.Errorf("no sections found")
 	}
@@ -107,8 +132,16 @@ func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsRes
 		options = append(options, line)
 	}
 
-	idx, _, err := p.Select(prompt, options)
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Items:     options,
+		AllowBack: back,
+	})
 	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
 		return 0, fmt.Errorf("failed to select section: %w", err)
 	}
 
@@ -116,10 +149,11 @@ func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsRes
 }
 
 // SelectSuiteForProject fetches suites for a project and selects one using the prompter.
-func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInterface, projectID int64, prompt string) (int64, error) {
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInterface, projectID int64, prompt string, allowBack ...bool) (int64, error) {
 	suites, err := cli.GetSuites(ctx, projectID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
 	}
-	return SelectSuite(ctx, p, suites, prompt)
+	return SelectSuite(ctx, p, suites, prompt, allowBack...)
 }

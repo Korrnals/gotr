@@ -236,43 +236,67 @@ func resolveAddParentID(ctx context.Context, p interactive.Prompter, cli client.
 		}
 		return projectID, nil
 	case "case":
-		projectID, err := interactive.SelectProject(ctx, p, cli, "")
-		if err != nil {
-			return 0, err
-		}
+		var projectID, suiteID int64
+		step := 0 // 0=project, 1=suite, 2=section
+		for {
+			switch step {
+			case 0:
+				var err error
+				projectID, err = interactive.SelectProject(ctx, p, cli, "")
+				if err != nil {
+					return 0, err
+				}
 
-		suites, err := cli.GetSuites(ctx, projectID)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
-		}
+				suites, err := cli.GetSuites(ctx, projectID)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+				}
 
-		var suiteID int64
-		switch len(suites) {
-		case 0:
-			suiteID = 0
-		case 1:
-			suiteID = suites[0].ID
-		default:
-			suiteID, err = interactive.SelectSuite(ctx, p, suites, "")
-			if err != nil {
-				return 0, err
+				switch len(suites) {
+				case 0:
+					suiteID = 0
+				case 1:
+					suiteID = suites[0].ID
+				default:
+					step = 1
+					continue
+				}
+				step = 2
+			case 1:
+				suites, err := cli.GetSuites(ctx, projectID)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+				}
+				suiteID, err = interactive.SelectSuite(ctx, p, suites, "", true)
+				if err != nil {
+					if interactive.IsGoBack(err) {
+						step = 0
+						continue
+					}
+					return 0, err
+				}
+				step = 2
+			case 2:
+				sections, err := cli.GetSections(ctx, projectID, suiteID)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get sections for project %d: %w", projectID, err)
+				}
+
+				if len(sections) == 1 {
+					return sections[0].ID, nil
+				}
+
+				sectionID, err := interactive.SelectSection(ctx, p, sections, "", true)
+				if err != nil {
+					if interactive.IsGoBack(err) {
+						step = 1
+						continue
+					}
+					return 0, err
+				}
+				return sectionID, nil
 			}
 		}
-
-		sections, err := cli.GetSections(ctx, projectID, suiteID)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get sections for project %d: %w", projectID, err)
-		}
-
-		if len(sections) == 1 {
-			return sections[0].ID, nil
-		}
-
-		sectionID, err := interactive.SelectSection(ctx, p, sections, "")
-		if err != nil {
-			return 0, err
-		}
-		return sectionID, nil
 	default:
 		return currentID, nil
 	}

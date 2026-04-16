@@ -68,10 +68,12 @@ func Pager(cfg PagerConfig) error {
 
 	for {
 		// Clear screen and render current page.
+		// In raw mode \n is just LF (move down); we need \r\n (CR+LF)
+		// to avoid the "staircase" / diagonal rendering artifact.
 		fmt.Print("\033[2J\033[H") // clear + move to top
 
 		if cfg.Header != "" {
-			fmt.Println(cfg.Header)
+			fmt.Print(cfg.Header + "\r\n")
 		}
 
 		start := page * contentPerPage
@@ -81,11 +83,11 @@ func Pager(cfg PagerConfig) error {
 		}
 
 		for _, line := range cfg.Lines[start:end] {
-			fmt.Println(line)
+			fmt.Print(line + "\r\n")
 		}
 
 		// Status bar.
-		fmt.Printf("\n\033[7m Page %d/%d │ [Enter/Space] next │ [b] prev │ [q] quit \033[0m", page+1, totalPages)
+		fmt.Printf("\r\n\033[7m Page %d/%d │ [Enter/Space] next │ [b] prev │ [q] quit \033[0m", page+1, totalPages)
 
 		// Read single key.
 		buf := make([]byte, 3)
@@ -139,6 +141,15 @@ func detectPageSize() int {
 		return 24 // safe default
 	}
 	return h
+}
+
+// TerminalWidth returns the current terminal width or a safe default.
+func TerminalWidth() int {
+	w, _, err := term.GetSize(int(os.Stdout.Fd()))
+	if err != nil || w < 40 {
+		return 120 // safe default
+	}
+	return w
 }
 
 func pagerFallback(cfg PagerConfig) error {

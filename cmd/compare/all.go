@@ -519,22 +519,41 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 
 	pid1Str, _ := cmd.Flags().GetString("pid1")
 	pid1, _ = flags.ParseID(pid1Str)
-	if pid1 <= 0 {
-		pid1, err = interactive.SelectProject(ctx, p, cli, "Select first project (pid1):")
-		if err != nil {
-			return 0, 0, "", "", fmt.Errorf("pid1 not specified and interactive selection failed: %w", err)
-		}
-		usedInteractivePID = true
-	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
 	pid2, _ = flags.ParseID(pid2Str)
-	if pid2 <= 0 {
-		pid2, err = interactive.SelectProject(ctx, p, cli, "Select second project (pid2):")
-		if err != nil {
-			return 0, 0, "", "", fmt.Errorf("pid2 not specified and interactive selection failed: %w", err)
+
+	// Interactive project selection with back-navigation loop.
+	if pid1 <= 0 || pid2 <= 0 {
+	selectLoop:
+		for {
+			if pid1 <= 0 {
+				pid1, err = interactive.SelectProject(ctx, p, cli, "Select first project (pid1):")
+				if err != nil {
+					if interactive.IsGoBack(err) || interactive.IsExit(err) {
+						return 0, 0, "", "", err
+					}
+					return 0, 0, "", "", fmt.Errorf("pid1 not specified and interactive selection failed: %w", err)
+				}
+				usedInteractivePID = true
+			}
+
+			if pid2 <= 0 {
+				pid2, err = interactive.SelectProject(ctx, p, cli, "Select second project (pid2):", true)
+				if err != nil {
+					if interactive.IsExit(err) {
+						return 0, 0, "", "", err
+					}
+					if interactive.IsGoBack(err) {
+						pid1 = 0
+						continue selectLoop
+					}
+					return 0, 0, "", "", fmt.Errorf("pid2 not specified and interactive selection failed: %w", err)
+				}
+				usedInteractivePID = true
+			}
+			break
 		}
-		usedInteractivePID = true
 	}
 
 	format, _ = cmd.Flags().GetString("format")

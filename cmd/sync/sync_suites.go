@@ -47,11 +47,24 @@ Flags:
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 
-		if srcProject == 0 || dstProject == 0 {
-			return fmt.Errorf("required IDs: --src-project and --dst-project")
+		p := interactive.PrompterFromContext(ctx)
+		var err error
+
+		// Interactive source project selection
+		if srcProject == 0 {
+			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
+			if err != nil {
+				return err
+			}
 		}
 
-		p := interactive.PrompterFromContext(ctx)
+		// Interactive destination project selection
+		if dstProject == 0 {
+			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
+			if err != nil {
+				return err
+			}
+		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {

@@ -285,7 +285,7 @@ func TestComparePostAction_NonInteractive(t *testing.T) {
 
 func TestComparePostAction_Exit(t *testing.T) {
 	mock := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0, Value: interactive.OptExit})
+		WithSelectResponses(interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true})
 	ctx := interactive.WithPrompter(context.Background(), mock)
 
 	result := CompareResult{Resource: "cases"}
@@ -295,23 +295,29 @@ func TestComparePostAction_Exit(t *testing.T) {
 
 func TestComparePostAction_Sync(t *testing.T) {
 	mock := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 2, Value: "→ Sync: migrate differences"})
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 3, Value: "→ Sync: migrate differences", Raw: true},
+			interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true},
+		)
 	ctx := interactive.WithPrompter(context.Background(), mock)
 
 	result := CompareResult{
 		Resource:    "cases",
+		Project1ID:  30,
+		Project2ID:  31,
 		OnlyInFirst: []ItemInfo{{ID: 1, Name: "A"}},
 	}
 	action := comparePostAction(ctx, nil, result, "P1", "P2")
-	assert.Equal(t, actionSync, action)
+	// Sync now shows a hint and returns to the menu; next selection is Exit.
+	assert.Equal(t, actionExit, action)
 }
 
 func TestComparePostAction_SyncDisabledNoDiffs(t *testing.T) {
 	// When no differences, sync is disabled → disabled re-prompt loop → exit.
 	mock := interactive.NewMockPrompter().
 		WithSelectResponses(
-			interactive.SelectResponse{Index: 2, Value: "→ Sync: migrate differences"},
-			interactive.SelectResponse{Index: 0, Value: interactive.OptExit},
+			interactive.SelectResponse{Index: 3, Value: "→ Sync: migrate differences", Raw: true},
+			interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true},
 		)
 	ctx := interactive.WithPrompter(context.Background(), mock)
 
@@ -344,7 +350,7 @@ func TestCollectDrillDownResources_SomeComplete(t *testing.T) {
 
 func TestCompareAllPostAction_Exit(t *testing.T) {
 	mock := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0, Value: interactive.OptExit})
+		WithSelectResponses(interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true})
 	ctx := interactive.WithPrompter(context.Background(), mock)
 
 	result := &allResult{}
@@ -354,7 +360,7 @@ func TestCompareAllPostAction_Exit(t *testing.T) {
 
 func TestCompareAllPostAction_Save(t *testing.T) {
 	mock := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 2, Value: "💾 Save results to file"})
+		WithSelectResponses(interactive.SelectResponse{Index: 2, Value: "💾 Save results to file", Raw: true})
 	ctx := interactive.WithPrompter(context.Background(), mock)
 
 	result := &allResult{}

@@ -115,7 +115,11 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Entry added to plan %d", planID)
-			return output.OutputResult(cmd, resp, "plans")
+			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -209,7 +213,11 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Entry %s updated in plan %d", entryID, planID)
-			return output.OutputResult(cmd, resp, "plans")
+			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -298,6 +306,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Entry %s deleted from plan %d", entryID, planID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

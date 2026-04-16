@@ -67,7 +67,11 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
-			return output.OutputResult(cmd, group, "groups")
+			if err := output.OutputResult(cmd, group, "groups"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

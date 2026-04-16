@@ -75,6 +75,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Plan %d deleted", planID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

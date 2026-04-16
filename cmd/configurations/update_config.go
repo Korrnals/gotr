@@ -79,7 +79,11 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Configuration %d updated", configID)
-			return output.OutputResult(cmd, resp, "configurations")
+			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

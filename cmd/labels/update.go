@@ -67,6 +67,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "✅ Labels updated for test %d: %v\n", testID, labels)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
@@ -128,6 +129,7 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "✅ Labels updated for %d tests in run %d: %v\n", len(testIDs), runID, labels)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

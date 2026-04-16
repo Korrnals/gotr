@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/snap"
@@ -101,7 +102,11 @@ Administrative privileges are required to modify users.`,
 			}
 
 			_, err = output.Output(cmd, user, "users", "json")
-			return err
+			if err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

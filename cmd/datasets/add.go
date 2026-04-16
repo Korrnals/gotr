@@ -72,7 +72,11 @@ or other API methods.`,
 			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Dataset created (ID: %d)", resp.ID)
-			return output.OutputResult(cmd, resp, "datasets")
+			if err := output.OutputResult(cmd, resp, "datasets"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

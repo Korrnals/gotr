@@ -65,6 +65,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				color.New(color.FgGreen).Fprintf(cmd.OutOrStdout(), "✓ Group %d deleted\n", groupID)
 			}
 
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

@@ -74,7 +74,11 @@ the TestRail web interface.`,
 			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Variable created (ID: %d)", resp.ID)
-			return output.OutputResult(cmd, resp, "variables")
+			if err := output.OutputResult(cmd, resp, "variables"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

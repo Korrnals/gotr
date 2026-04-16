@@ -69,7 +69,11 @@ To modify values, use the TestRail web interface.`,
 			}
 
 			ui.Successf(os.Stdout, "Variable %d updated", variableID)
-			return output.OutputResult(cmd, resp, "variables")
+			if err := output.OutputResult(cmd, resp, "variables"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

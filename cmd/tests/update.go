@@ -80,7 +80,11 @@ assign an executor.`,
 			}
 
 			ui.Successf(os.Stdout, "Test %d updated", testID)
-			return printJSON(cmd, resp, time.Now())
+			if err := printJSON(cmd, resp, time.Now()); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

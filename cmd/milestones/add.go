@@ -98,7 +98,11 @@ Usage examples:
 			hook.FinalizeAdd(int64(resp.ID))
 
 			ui.Successf(os.Stdout, "Milestone created (ID: %d)", resp.ID)
-			return output.OutputResult(cmd, resp, "milestones")
+			if err := output.OutputResult(cmd, resp, "milestones"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

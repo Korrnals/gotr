@@ -105,7 +105,11 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Updated %d cases", len(caseIDs))
-			return output.OutputResult(cmd, resp, "cases")
+			if err := output.OutputResult(cmd, resp, "cases"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(cmd.Context(), cmd)
+			return nil
 		},
 	}
 
@@ -174,6 +178,7 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Deleted %d cases", len(caseIDs))
+			interactive.MutationPostAction(cmd.Context(), cmd)
 			return nil
 		},
 	}
@@ -240,6 +245,7 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Copied %d cases to section %d", len(caseIDs), sectionID)
+			interactive.MutationPostAction(cmd.Context(), cmd)
 			return nil
 		},
 	}
@@ -306,6 +312,7 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Moved %d cases to section %d", len(caseIDs), sectionID)
+			interactive.MutationPostAction(cmd.Context(), cmd)
 			return nil
 		},
 	}

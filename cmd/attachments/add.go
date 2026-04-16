@@ -82,7 +82,11 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
-			return output.OutputResult(cmd, resp, "attachments")
+			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)
@@ -147,7 +151,11 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
-			return output.OutputResult(cmd, resp, "attachments")
+			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)
@@ -229,7 +237,11 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
-			return output.OutputResult(cmd, resp, "attachments")
+			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)
@@ -294,7 +306,11 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
-			return output.OutputResult(cmd, resp, "attachments")
+			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)
@@ -359,7 +375,11 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
-			return output.OutputResult(cmd, resp, "attachments")
+			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 	output.AddFlag(cmd)

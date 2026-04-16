@@ -93,7 +93,11 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Plan created (ID: %d)", resp.ID)
-			return output.OutputResult(cmd, resp, "plans")
+			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

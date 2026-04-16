@@ -66,6 +66,7 @@ Use --dry-run to preview before deleting.`,
 			}
 
 			ui.Successf(os.Stdout, "Dataset %d deleted", datasetID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

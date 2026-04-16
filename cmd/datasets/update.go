@@ -70,7 +70,11 @@ use the TestRail web interface.`,
 			}
 
 			ui.Successf(os.Stdout, "Dataset %d updated", datasetID)
-			return output.OutputResult(cmd, resp, "datasets")
+			if err := output.OutputResult(cmd, resp, "datasets"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

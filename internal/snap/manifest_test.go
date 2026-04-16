@@ -186,3 +186,116 @@ func TestManifest_EmptyDir(t *testing.T) {
 	assert.Equal(t, 0, manifest.Len())
 	assert.Nil(t, manifest.Latest())
 }
+
+func TestManifest_Add_CopiesProjectIDs(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	meta := &Meta{
+		ID:              "cases/proj_test",
+		Category:        Category("cases"),
+		Operation:       OpUpdate,
+		EntityType:      "case",
+		Status:          StatusAvailable,
+		ProjectID:       42,
+		SourceProjectID: 10,
+	}
+
+	require.NoError(t, manifest.Add(meta))
+
+	entry := manifest.Find("cases/proj_test")
+	require.NotNil(t, entry)
+	assert.Equal(t, int64(42), entry.ProjectID, "ProjectID should be copied from Meta")
+	assert.Equal(t, int64(10), entry.SourceProjectID, "SourceProjectID should be copied from Meta")
+}
+
+func TestManifest_LegacyEntry_ZeroProjectIDs(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	// Legacy meta without project IDs.
+	meta := &Meta{
+		ID:         "suites/legacy_1",
+		Category:   Category("suites"),
+		Operation:  OpUpdate,
+		EntityType: "suite",
+		Status:     StatusAvailable,
+	}
+
+	require.NoError(t, manifest.Add(meta))
+
+	entry := manifest.Find("suites/legacy_1")
+	require.NotNil(t, entry)
+	assert.Equal(t, int64(0), entry.ProjectID, "legacy entry should have zero ProjectID")
+	assert.Equal(t, int64(0), entry.SourceProjectID, "legacy entry should have zero SourceProjectID")
+}
+
+func TestManifest_ProjectIDs_PersistRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	meta := &Meta{
+		ID:              "cases/roundtrip_1",
+		Category:        Category("cases"),
+		Operation:       OpUpdate,
+		EntityType:      "case",
+		Status:          StatusAvailable,
+		ProjectID:       100,
+		SourceProjectID: 50,
+	}
+	require.NoError(t, manifest.Add(meta))
+
+	// Reload from disk.
+	manifest2, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	entry := manifest2.Find("cases/roundtrip_1")
+	require.NotNil(t, entry)
+	assert.Equal(t, int64(100), entry.ProjectID, "ProjectID should survive round-trip")
+	assert.Equal(t, int64(50), entry.SourceProjectID, "SourceProjectID should survive round-trip")
+}
+
+func TestManifest_OmitEmpty_LegacyRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	// Legacy meta without project IDs — they should not appear in JSON.
+	meta := &Meta{
+		ID:         "suites/omit_1",
+		Category:   Category("suites"),
+		Operation:  OpDelete,
+		EntityType: "suite",
+		Status:     StatusAvailable,
+	}
+	require.NoError(t, manifest.Add(meta))
+
+	// Read raw JSON to verify omitempty.
+	raw, err := os.ReadFile(store.BaseDir() + "/" + ManifestFile)
+	require.NoError(t, err)
+	assert.NotContains(t, string(raw), "project_id", "zero ProjectID should be omitted from JSON")
+	assert.NotContains(t, string(raw), "source_project_id", "zero SourceProjectID should be omitted from JSON")
+
+	// Reload and verify zero values.
+	manifest2, err := LoadManifest(store)
+	require.NoError(t, err)
+	entry := manifest2.Find("suites/omit_1")
+	require.NotNil(t, entry)
+	assert.Equal(t, int64(0), entry.ProjectID)
+	assert.Equal(t, int64(0), entry.SourceProjectID)
+}

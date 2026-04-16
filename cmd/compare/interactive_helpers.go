@@ -31,6 +31,11 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 	}
 	p := interactive.PrompterFromContext(ctx)
 
+	// Persist project IDs for downstream commands (session inheritance).
+	if s := interactive.SessionFromContext(ctx); s != nil {
+		s.SetProjects(result.Project1ID, result.Project2ID)
+	}
+
 	hasDifferences := len(result.OnlyInFirst) > 0 || len(result.OnlyInSecond) > 0
 	hasData := hasDifferences || len(result.Common) > 0
 
@@ -39,6 +44,7 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 		{Label: "📋 View detailed results", Key: actionDrillRes, Disabled: !hasData, Hint: "no data"},
 		{Label: "💾 Save results to file", Key: actionSave},
 		{Label: "→ Sync: migrate differences", Key: actionSync, Disabled: !hasDifferences, Hint: "no differences found"},
+		{Label: "📦 Snap: manage snapshots", Key: actionSnap},
 	}
 
 	key, err := interactive.ActionMenu(ctx, p, "Comparison complete. What next?", options)
@@ -68,6 +74,9 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
 	case actionSync:
 		runSyncFromCompare(ctx, cmd, result)
+		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
+	case actionSnap:
+		runSnapFromPostAction(ctx, cmd)
 		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
 	default:
 		return key
@@ -130,6 +139,11 @@ func runSyncFromCompare(ctx context.Context, compareCmd *cobra.Command, result C
 	ui.Infof(os.Stdout, "Pre-filled from compare: src-project=%d, dst-project=%d",
 		result.Project1ID, result.Project2ID)
 
+	// Persist project IDs for downstream commands (session inheritance).
+	if s := interactive.SessionFromContext(ctx); s != nil {
+		s.SetProjects(result.Project1ID, result.Project2ID)
+	}
+
 	idx, _, err := p.Select("What do you want to migrate?", labels)
 	if err != nil {
 		if interactive.IsGoBack(err) || interactive.IsExit(err) {
@@ -142,10 +156,10 @@ func runSyncFromCompare(ctx context.Context, compareCmd *cobra.Command, result C
 	syncSub := syncMenuEntries[idx].subcommand
 
 	root := compareCmd.Root()
-	syncCmd, _, err := root.Find([]string{"sync", syncSub})
-	if err != nil || syncCmd == nil || syncCmd.Name() == root.Name() {
+	syncCmd, err := interactive.FindSubcommand(root, "sync", syncSub)
+	if err != nil {
 		fmt.Println()
-		ui.Error(os.Stdout, fmt.Sprintf("Could not find 'gotr sync %s' command.", syncSub))
+		ui.Error(os.Stdout, err.Error())
 		fmt.Println()
 		return
 	}
@@ -193,6 +207,15 @@ func runSyncFromCompare(ctx context.Context, compareCmd *cobra.Command, result C
 	fmt.Println()
 }
 
+// runSnapFromPostAction launches the snap list command from a post-action menu.
+func runSnapFromPostAction(ctx context.Context, cmd *cobra.Command) {
+	fmt.Println()
+	if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
+		ui.Error(os.Stdout, err.Error())
+	}
+	fmt.Println()
+}
+
 // compareAllPostAction shows a post-action menu for compare-all with drill-down.
 // resources maps resource display names to their CompareResult.
 func compareAllPostAction(ctx context.Context, cmd *cobra.Command, result *allResult, p1Name, p2Name string, pid1, pid2 int64) string {
@@ -201,10 +224,16 @@ func compareAllPostAction(ctx context.Context, cmd *cobra.Command, result *allRe
 	}
 	p := interactive.PrompterFromContext(ctx)
 
+	// Persist project IDs for downstream commands (session inheritance).
+	if s := interactive.SessionFromContext(ctx); s != nil {
+		s.SetProjects(pid1, pid2)
+	}
+
 	options := []interactive.ActionOption{
 		{Label: interactive.OptExit, Key: actionExit},
 		{Label: "🔍 Drill-down: view resource details", Key: actionDrillRes},
 		{Label: "💾 Save results to file", Key: actionSave},
+		{Label: "📦 Snap: manage snapshots", Key: actionSnap},
 	}
 
 	key, err := interactive.ActionMenu(ctx, p, "Compare all complete. What next?", options)
@@ -219,6 +248,9 @@ func compareAllPostAction(ctx context.Context, cmd *cobra.Command, result *allRe
 	case actionSave:
 		// Save is handled by caller (save flags).
 		return actionSave
+	case actionSnap:
+		runSnapFromPostAction(ctx, cmd)
+		return compareAllPostAction(ctx, cmd, result, p1Name, p2Name, pid1, pid2)
 	default:
 		return key
 	}

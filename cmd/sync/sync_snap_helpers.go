@@ -85,31 +85,42 @@ func printPreConfirmSummary(count int, entityName string, sd snapshotDecision) {
 	}
 }
 
-// syncPostAction shows a post-migration action menu when a snapshot was taken.
+// syncPostAction shows a post-migration action menu.
 // hook is the Hook returned by HookMutation (may be nil or disabled).
 // cli is the API client for rollback operations.
 func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cli client.ClientInterface) {
-	if hook == nil || !hook.Enabled || hook.Snap == nil {
+	if !interactive.HasPrompterInContext(ctx) || interactive.IsNonInteractive(ctx) {
 		return
-	}
-
-	snapID := hook.Snap.Meta.ID
-	label := hook.Snap.Meta.Label
-	if label != "" {
-		ui.Infof(os.Stdout, "📦 Snapshot saved: %s (🏷 %s)", snapID, label)
-	} else {
-		ui.Infof(os.Stdout, "📦 Snapshot saved: %s", snapID)
 	}
 
 	p := interactive.PrompterFromContext(ctx)
 
+	hasSnap := hook != nil && hook.Enabled && hook.Snap != nil
+	if hasSnap {
+		snapID := hook.Snap.Meta.ID
+		label := hook.Snap.Meta.Label
+		if label != "" {
+			ui.Infof(os.Stdout, "📦 Snapshot saved: %s (🏷 %s)", snapID, label)
+		} else {
+			ui.Infof(os.Stdout, "📦 Snapshot saved: %s", snapID)
+		}
+	}
+
 	const (
 		optExit     = "✕ Exit"
 		optRollback = "↻ Rollback this migration"
+		optCompare  = "📊 Compare: verify sync results"
+		optSnap     = "📦 Snap: manage snapshots"
 	)
 
 	for {
-		_, choice, err := p.Select("Post-migration:", []string{optExit, optRollback})
+		options := []string{optExit}
+		if hasSnap {
+			options = append(options, optRollback)
+		}
+		options = append(options, optCompare, optSnap)
+
+		_, choice, err := p.Select("Post-migration:", options)
 		if err != nil {
 			return
 		}
@@ -121,7 +132,7 @@ func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cl
 				continue
 			}
 
-			result, err := snap.Rollback(ctx, cli, hook.Store, hook.Manifest, snapID)
+			result, err := snap.Rollback(ctx, cli, hook.Store, hook.Manifest, hook.Snap.Meta.ID)
 			if err != nil {
 				ui.Error(os.Stdout, fmt.Sprintf("Rollback failed: %v", err))
 				return
@@ -129,8 +140,34 @@ func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cl
 			ui.Successf(os.Stdout, "✓ Rollback complete: %s", result.Message)
 			return
 
+		case optCompare:
+			runCompareFromPostAction(ctx, cmd)
+			continue
+
+		case optSnap:
+			runSnapListFromPostAction(ctx, cmd)
+			continue
+
 		default: // Exit
 			return
 		}
 	}
+}
+
+// runCompareFromPostAction launches compare all from a post-action menu.
+func runCompareFromPostAction(ctx context.Context, cmd *cobra.Command) {
+	fmt.Println()
+	if err := interactive.RunSubcommand(ctx, cmd.Root(), "compare", "all"); err != nil {
+		ui.Error(os.Stdout, err.Error())
+	}
+	fmt.Println()
+}
+
+// runSnapListFromPostAction launches snap list from a post-action menu.
+func runSnapListFromPostAction(ctx context.Context, cmd *cobra.Command) {
+	fmt.Println()
+	if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
+		ui.Error(os.Stdout, err.Error())
+	}
+	fmt.Println()
 }

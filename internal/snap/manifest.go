@@ -15,18 +15,20 @@ const ManifestFile = "manifest.json"
 
 // ManifestEntry is a lightweight index entry for a snapshot.
 type ManifestEntry struct {
-	ID           string    `json:"id"`
-	Name         string    `json:"name,omitempty"`
-	Label        string    `json:"label,omitempty"`
-	ServerURL    string    `json:"server_url,omitempty"`
-	Category     Category  `json:"category"`
-	Operation    Operation `json:"operation"`
-	EntityType   string    `json:"entity_type"`
-	EntityIDs    []int64   `json:"entity_ids,omitempty"`
-	RollbackTier Tier      `json:"rollback_tier"`
-	Status       Status    `json:"status"`
-	Timestamp    time.Time `json:"timestamp"`
-	DataSize     int64     `json:"data_size_bytes"`
+	ID              string    `json:"id"`
+	Name            string    `json:"name,omitempty"`
+	Label           string    `json:"label,omitempty"`
+	ServerURL       string    `json:"server_url,omitempty"`
+	Category        Category  `json:"category"`
+	Operation       Operation `json:"operation"`
+	EntityType      string    `json:"entity_type"`
+	EntityIDs       []int64   `json:"entity_ids,omitempty"`
+	ProjectID       int64     `json:"project_id,omitempty"`
+	SourceProjectID int64     `json:"source_project_id,omitempty"`
+	RollbackTier    Tier      `json:"rollback_tier"`
+	Status          Status    `json:"status"`
+	Timestamp       time.Time `json:"timestamp"`
+	DataSize        int64     `json:"data_size_bytes"`
 }
 
 // Manifest is the top-level snapshot index stored in manifest.json.
@@ -63,18 +65,20 @@ func (m *Manifest) Add(meta *Meta) error {
 	defer m.mu.Unlock()
 
 	entry := ManifestEntry{
-		ID:           meta.ID,
-		Name:         meta.Name,
-		Label:        meta.Label,
-		ServerURL:    meta.ServerURL,
-		Category:     meta.Category,
-		Operation:    meta.Operation,
-		EntityType:   meta.EntityType,
-		EntityIDs:    meta.EntityIDs,
-		RollbackTier: meta.RollbackTier,
-		Status:       meta.Status,
-		Timestamp:    meta.Timestamp,
-		DataSize:     meta.DataSizeBytes,
+		ID:              meta.ID,
+		Name:            meta.Name,
+		Label:           meta.Label,
+		ServerURL:       meta.ServerURL,
+		Category:        meta.Category,
+		Operation:       meta.Operation,
+		EntityType:      meta.EntityType,
+		EntityIDs:       meta.EntityIDs,
+		ProjectID:       meta.ProjectID,
+		SourceProjectID: meta.SourceProjectID,
+		RollbackTier:    meta.RollbackTier,
+		Status:          meta.Status,
+		Timestamp:       meta.Timestamp,
+		DataSize:        meta.DataSizeBytes,
 	}
 
 	m.Entries = append(m.Entries, entry)

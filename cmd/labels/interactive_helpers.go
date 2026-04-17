@@ -38,11 +38,22 @@ func selectLabelID(ctx context.Context, labels data.GetLabelsResponse) (int64, e
 	if len(labels) == 0 {
 		return 0, fmt.Errorf("no labels found")
 	}
-	items := make([]string, len(labels))
-	for i, l := range labels {
-		items[i] = fmt.Sprintf("[%d] ID: %d | %s", i+1, l.ID, l.Name)
+
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
 	}
-	idx, _, err := p.Select("Select label:", items)
+	rows := make([][]string, len(labels))
+	for i, l := range labels {
+		rows[i] = []string{fmt.Sprintf("%d", l.ID), l.Name}
+	}
+	header, items := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select label:",
+		Header: header,
+		Items:  items,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select label: %w", err)
 	}
@@ -77,13 +88,5 @@ func selectTestID(ctx context.Context, tests []data.Test) (int64, error) {
 	if len(tests) == 0 {
 		return 0, fmt.Errorf("no tests found")
 	}
-	items := make([]string, len(tests))
-	for i, t := range tests {
-		items[i] = fmt.Sprintf("[%d] ID: %d | %s", i+1, t.ID, t.Title)
-	}
-	idx, _, err := p.Select("Select test:", items)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select test: %w", err)
-	}
-	return tests[idx].ID, nil
+	return interactive.SelectTest(ctx, p, tests, "")
 }

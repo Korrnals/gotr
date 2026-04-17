@@ -8,7 +8,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
@@ -312,7 +311,7 @@ func resolveDeleteCase(ctx context.Context, p interactive.Prompter, cli client.C
 			if err != nil {
 				return 0, fmt.Errorf("failed to get cases for project %d suite %d: %w", projectID, suiteID, err)
 			}
-			caseID, err := selectCaseID(ctx, p, cases)
+			caseID, err := interactive.SelectCase(ctx, p, cases, "", true)
 			if err != nil {
 				if interactive.IsGoBack(err) {
 					step = 1
@@ -356,7 +355,7 @@ func resolveDeleteSharedStep(ctx context.Context, p interactive.Prompter, cli cl
 		if err != nil {
 			return 0, fmt.Errorf("failed to get shared steps for project %d: %w", projectID, err)
 		}
-		stepID, err := selectSharedStepID(p, steps)
+		stepID, err := interactive.SelectSharedStep(ctx, p, steps, "", true)
 		if err != nil {
 			if interactive.IsGoBack(err) {
 				continue
@@ -365,43 +364,6 @@ func resolveDeleteSharedStep(ctx context.Context, p interactive.Prompter, cli cl
 		}
 		return stepID, nil
 	}
-}
-
-func selectCaseID(ctx context.Context, p interactive.Prompter, cases data.GetCasesResponse) (int64, error) {
-	_ = ctx
-	if len(cases) == 0 {
-		return 0, fmt.Errorf("no cases found")
-	}
-
-	options := make([]string, 0, len(cases))
-	for i, kase := range cases {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, kase.ID, kase.Title))
-	}
-
-	idx, _, err := p.Select("Select case:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select case: %w", err)
-	}
-
-	return cases[idx].ID, nil
-}
-
-func selectSharedStepID(p interactive.Prompter, steps data.GetSharedStepsResponse) (int64, error) {
-	if len(steps) == 0 {
-		return 0, fmt.Errorf("no shared steps found")
-	}
-
-	options := make([]string, 0, len(steps))
-	for i, step := range steps {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, step.ID, step.Title))
-	}
-
-	idx, _, err := p.Select("Select shared step:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select shared step: %w", err)
-	}
-
-	return steps[idx].ID, nil
 }
 
 // runDeleteDryRun performs a dry-run for the delete command.

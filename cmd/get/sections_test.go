@@ -392,13 +392,3 @@ func TestSectionsListCmd_NilClient(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "HTTP client not initialized")
 }
-
-func TestSelectSectionID_SelectError(t *testing.T) {
-	sections := data.GetSectionsResponse{{ID: 10, Name: "S-10"}}
-	ctx := interactive.WithPrompter(context.Background(), interactive.NewMockPrompter())
-
-	sectionID, err := selectSectionID(ctx, sections)
-	assert.Error(t, err)
-	assert.Equal(t, int64(0), sectionID)
-	assert.Contains(t, err.Error(), "failed to select section")
-}

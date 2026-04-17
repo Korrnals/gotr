@@ -24,14 +24,20 @@ func SelectProject(ctx context.Context, p Prompter, httpClient client.ClientInte
 		prompt = "Select project:"
 	}
 
-	options := make([]string, 0, len(projects))
-	for i, p := range projects {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, p.ID, p.Name))
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
 	}
+	rows := make([][]string, len(projects))
+	for i, proj := range projects {
+		rows[i] = []string{fmt.Sprintf("%d", proj.ID), proj.Name}
+	}
+	header, options := AlignedLabels(cols, rows)
 
 	back := len(allowBack) > 0 && allowBack[0]
 	idx, err := Browse(ctx, p, BrowseConfig{
 		Prompt:    prompt,
+		Header:    header,
 		Items:     options,
 		AllowBack: back,
 	})
@@ -56,15 +62,20 @@ func SelectSuite(ctx context.Context, p Prompter, suites data.GetSuitesResponse,
 		prompt = "Select suite:"
 	}
 
-	options := make([]string, 0, len(suites))
-	for i, suite := range suites {
-		line := fmt.Sprintf("[%d] ID: %d | %s", i+1, suite.ID, suite.Name)
-		options = append(options, line)
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
 	}
+	rows := make([][]string, len(suites))
+	for i, s := range suites {
+		rows[i] = []string{fmt.Sprintf("%d", s.ID), s.Name}
+	}
+	header, options := AlignedLabels(cols, rows)
 
 	back := len(allowBack) > 0 && allowBack[0]
 	idx, err := Browse(ctx, p, BrowseConfig{
 		Prompt:    prompt,
+		Header:    header,
 		Items:     options,
 		AllowBack: back,
 	})
@@ -89,19 +100,25 @@ func SelectRun(ctx context.Context, p Prompter, runs data.GetRunsResponse, promp
 		prompt = "Select run:"
 	}
 
-	options := make([]string, 0, len(runs))
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Status", MinWidth: 10},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(runs))
 	for i, run := range runs {
 		status := "active"
 		if run.IsCompleted {
 			status = "completed"
 		}
-		line := fmt.Sprintf("[%d] (%s) ID: %d | %s", i+1, status, run.ID, run.Name)
-		options = append(options, line)
+		rows[i] = []string{fmt.Sprintf("%d", run.ID), status, run.Name}
 	}
+	header, options := AlignedLabels(cols, rows)
 
 	back := len(allowBack) > 0 && allowBack[0]
 	idx, err := Browse(ctx, p, BrowseConfig{
 		Prompt:    prompt,
+		Header:    header,
 		Items:     options,
 		AllowBack: back,
 	})
@@ -126,15 +143,20 @@ func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsRes
 		prompt = "Select section:"
 	}
 
-	options := make([]string, 0, len(sections))
-	for i, section := range sections {
-		line := fmt.Sprintf("[%d] ID: %d | %s", i+1, section.ID, section.Name)
-		options = append(options, line)
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
 	}
+	rows := make([][]string, len(sections))
+	for i, sec := range sections {
+		rows[i] = []string{fmt.Sprintf("%d", sec.ID), sec.Name}
+	}
+	header, options := AlignedLabels(cols, rows)
 
 	back := len(allowBack) > 0 && allowBack[0]
 	idx, err := Browse(ctx, p, BrowseConfig{
 		Prompt:    prompt,
+		Header:    header,
 		Items:     options,
 		AllowBack: back,
 	})
@@ -146,6 +168,82 @@ func SelectSection(ctx context.Context, p Prompter, sections data.GetSectionsRes
 	}
 
 	return sections[idx].ID, nil
+}
+
+// SelectCase selects a case using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectCase(ctx context.Context, p Prompter, cases data.GetCasesResponse, prompt string, allowBack ...bool) (int64, error) {
+	if len(cases) == 0 {
+		return 0, fmt.Errorf("no cases found")
+	}
+
+	if prompt == "" {
+		prompt = "Select case:"
+	}
+
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Title"},
+	}
+	rows := make([][]string, len(cases))
+	for i, c := range cases {
+		rows[i] = []string{fmt.Sprintf("%d", c.ID), c.Title}
+	}
+	header, options := AlignedLabels(cols, rows)
+
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Header:    header,
+		Items:     options,
+		AllowBack: back,
+	})
+	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
+		return 0, fmt.Errorf("failed to select case: %w", err)
+	}
+
+	return cases[idx].ID, nil
+}
+
+// SelectSharedStep selects a shared step using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectSharedStep(ctx context.Context, p Prompter, steps data.GetSharedStepsResponse, prompt string, allowBack ...bool) (int64, error) {
+	if len(steps) == 0 {
+		return 0, fmt.Errorf("no shared steps found")
+	}
+
+	if prompt == "" {
+		prompt = "Select shared step:"
+	}
+
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Title"},
+	}
+	rows := make([][]string, len(steps))
+	for i, s := range steps {
+		rows[i] = []string{fmt.Sprintf("%d", s.ID), s.Title}
+	}
+	header, options := AlignedLabels(cols, rows)
+
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Header:    header,
+		Items:     options,
+		AllowBack: back,
+	})
+	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
+		return 0, fmt.Errorf("failed to select shared step: %w", err)
+	}
+
+	return steps[idx].ID, nil
 }
 
 // SelectSuiteForProject fetches suites for a project and selects one using the prompter.

@@ -95,10 +95,10 @@ func TestSelectRun_DefaultPromptAndCompletedStatus(t *testing.T) {
 	id, err := SelectRun(context.Background(), p, runs, "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(22), id)
-	assert.Equal(t, "Select run:", p.lastMessage)
+	assert.Contains(t, p.lastMessage, "Select run:")
 	require.Len(t, p.lastOptions, 3) // Exit + 2 runs
-	assert.Contains(t, p.lastOptions[1], "(active)")
-	assert.Contains(t, p.lastOptions[2], "(completed)")
+	assert.Contains(t, p.lastOptions[1], "active")
+	assert.Contains(t, p.lastOptions[2], "completed")
 }
 
 func TestSelectSuiteForProject_Branches(t *testing.T) {
@@ -180,7 +180,7 @@ func TestSelectSuiteAndSection_DefaultPromptSuccess(t *testing.T) {
 		id, err := SelectSuite(ctx, p, data.GetSuitesResponse{{ID: 101, Name: "Suite"}}, "")
 		require.NoError(t, err)
 		assert.Equal(t, int64(101), id)
-		assert.Equal(t, "Select suite:", p.lastMessage)
+		assert.Contains(t, p.lastMessage, "Select suite:")
 	})
 
 	t.Run("SelectSection default prompt", func(t *testing.T) {
@@ -188,6 +188,106 @@ func TestSelectSuiteAndSection_DefaultPromptSuccess(t *testing.T) {
 		id, err := SelectSection(ctx, p, data.GetSectionsResponse{{ID: 202, Name: "Section"}}, "")
 		require.NoError(t, err)
 		assert.Equal(t, int64(202), id)
-		assert.Equal(t, "Select section:", p.lastMessage)
+		assert.Contains(t, p.lastMessage, "Select section:")
+	})
+}
+
+func TestSelectCase(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success selects correct case", func(t *testing.T) {
+		cases := data.GetCasesResponse{
+			{ID: 100, Title: "Case A"},
+			{ID: 200, Title: "Case B"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+		id, err := SelectCase(ctx, p, cases, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(200), id)
+	})
+
+	t.Run("empty list returns error", func(t *testing.T) {
+		p := NewMockPrompter()
+		id, err := SelectCase(ctx, p, data.GetCasesResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no cases found")
+		assert.Zero(t, id)
+	})
+
+	t.Run("select error propagates", func(t *testing.T) {
+		cases := data.GetCasesResponse{{ID: 1, Title: "C"}}
+		p := NewNonInteractivePrompter()
+		id, err := SelectCase(ctx, p, cases, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to select case")
+		assert.Zero(t, id)
+	})
+
+	t.Run("custom prompt is used", func(t *testing.T) {
+		cases := data.GetCasesResponse{{ID: 1, Title: "C"}}
+		p := &spyPrompter{idx: 1} // +1 for Exit
+		id, err := SelectCase(ctx, p, cases, "Pick a case:")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), id)
+		assert.Contains(t, p.lastMessage, "Pick a case:")
+	})
+
+	t.Run("exit returns ErrExit", func(t *testing.T) {
+		cases := data.GetCasesResponse{{ID: 1, Title: "C"}}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Raw: true}) // Exit
+		_, err := SelectCase(ctx, p, cases, "")
+		assert.True(t, IsExit(err))
+	})
+
+	t.Run("aligned labels have header", func(t *testing.T) {
+		cases := data.GetCasesResponse{
+			{ID: 100, Title: "Login Test"},
+			{ID: 200, Title: "Logout Test"},
+		}
+		p := &spyPrompter{idx: 1} // +1 for Exit
+		_, err := SelectCase(ctx, p, cases, "")
+		require.NoError(t, err)
+		assert.Contains(t, p.lastMessage, "ID")
+		assert.Contains(t, p.lastMessage, "Title")
+	})
+}
+
+func TestSelectSharedStep(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success selects correct step", func(t *testing.T) {
+		steps := data.GetSharedStepsResponse{
+			{ID: 555, Title: "Step A"},
+			{ID: 666, Title: "Step B"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		id, err := SelectSharedStep(ctx, p, steps, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(555), id)
+	})
+
+	t.Run("empty list returns error", func(t *testing.T) {
+		p := NewMockPrompter()
+		id, err := SelectSharedStep(ctx, p, data.GetSharedStepsResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no shared steps found")
+		assert.Zero(t, id)
+	})
+
+	t.Run("select error propagates", func(t *testing.T) {
+		steps := data.GetSharedStepsResponse{{ID: 1, Title: "S"}}
+		p := NewNonInteractivePrompter()
+		id, err := SelectSharedStep(ctx, p, steps, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to select shared step")
+		assert.Zero(t, id)
+	})
+
+	t.Run("default prompt", func(t *testing.T) {
+		steps := data.GetSharedStepsResponse{{ID: 1, Title: "S"}}
+		p := &spyPrompter{idx: 1} // +1 for Exit
+		_, err := SelectSharedStep(ctx, p, steps, "")
+		require.NoError(t, err)
+		assert.Contains(t, p.lastMessage, "Select shared step:")
 	})
 }

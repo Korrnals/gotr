@@ -76,7 +76,9 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 		runSyncFromCompare(ctx, cmd, result)
 		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
 	case actionSnap:
-		runSnapFromPostAction(ctx, cmd)
+		if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
+			ui.Error(os.Stdout, err.Error())
+		}
 		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
 	default:
 		return key
@@ -207,15 +209,6 @@ func runSyncFromCompare(ctx context.Context, compareCmd *cobra.Command, result C
 	fmt.Println()
 }
 
-// runSnapFromPostAction launches the snap list command from a post-action menu.
-func runSnapFromPostAction(ctx context.Context, cmd *cobra.Command) {
-	fmt.Println()
-	if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
-		ui.Error(os.Stdout, err.Error())
-	}
-	fmt.Println()
-}
-
 // compareAllPostAction shows a post-action menu for compare-all with drill-down.
 // resources maps resource display names to their CompareResult.
 func compareAllPostAction(ctx context.Context, cmd *cobra.Command, result *allResult, p1Name, p2Name string, pid1, pid2 int64) string {
@@ -249,7 +242,9 @@ func compareAllPostAction(ctx context.Context, cmd *cobra.Command, result *allRe
 		// Save is handled by caller (save flags).
 		return actionSave
 	case actionSnap:
-		runSnapFromPostAction(ctx, cmd)
+		if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
+			ui.Error(os.Stdout, err.Error())
+		}
 		return compareAllPostAction(ctx, cmd, result, p1Name, p2Name, pid1, pid2)
 	default:
 		return key

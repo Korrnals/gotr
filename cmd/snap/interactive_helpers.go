@@ -9,7 +9,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	snaplib "github.com/Korrnals/gotr/internal/snap"
-	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
 
@@ -742,10 +741,14 @@ func browseSnapList(cmd *cobra.Command, store *snaplib.Store, p interactive.Prom
 			executeRollbackFromBrowser(cmd, entry.ID)
 			continue // back to snapshot list after rollback
 		case postActionCompare:
-			runCompareFromSnap(cmd)
+			if err := interactive.RunSubcommand(cmd.Context(), cmd.Root(), "compare", "all"); err != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "Compare failed: %v\n", err)
+			}
 			continue
 		case postActionSync:
-			runSyncFromSnap(cmd)
+			if err := interactive.RunSubcommand(cmd.Context(), cmd.Root(), "sync", "full"); err != nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "Sync failed: %v\n", err)
+			}
 			continue
 		}
 	}
@@ -808,26 +811,6 @@ func postCardAction(cmd *cobra.Command, p interactive.Prompter, meta *snaplib.Me
 		return items[idx].action, nil
 	}
 	return postActionBack, nil
-}
-
-// runCompareFromSnap launches compare all from the snap browser.
-func runCompareFromSnap(cmd *cobra.Command) {
-	ctx := cmd.Context()
-	fmt.Println()
-	if err := interactive.RunSubcommand(ctx, cmd.Root(), "compare", "all"); err != nil {
-		ui.Error(cmd.OutOrStdout(), err.Error())
-	}
-	fmt.Println()
-}
-
-// runSyncFromSnap launches the sync hub from the snap browser.
-func runSyncFromSnap(cmd *cobra.Command) {
-	ctx := cmd.Context()
-	fmt.Println()
-	if err := interactive.RunSubcommand(ctx, cmd.Root(), "sync", "full"); err != nil {
-		ui.Error(cmd.OutOrStdout(), err.Error())
-	}
-	fmt.Println()
 }
 
 // executeRollbackFromBrowser finds and runs the rollback subcommand for the given snapshot.

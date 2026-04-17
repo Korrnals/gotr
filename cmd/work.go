@@ -55,7 +55,7 @@ func runWorkHub(cmd *cobra.Command) error {
 	p := interactive.PrompterFromContext(ctx)
 
 	// Server confirmation — first step before any work.
-	baseURL := viper.GetString("base_url")
+	baseURL := GetServerURLFromCtx(ctx)
 	serverURL, err := interactive.SelectServer(ctx, p, baseURL)
 	if err != nil {
 		if interactive.IsGoBack(err) || interactive.IsExit(err) || interactive.IsInterrupt(err) {

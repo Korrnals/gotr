@@ -461,3 +461,37 @@ func TestInitConfig_ReadsConfigFromCurrentDirWhenHomeHasNoConfig(t *testing.T) {
 	initConfig()
 	assert.Equal(t, wdConfig, viper.ConfigFileUsed())
 }
+
+func TestGetServerURL_Success(t *testing.T) {
+	cmd := &cobra.Command{}
+	ctx := context.WithValue(context.Background(), serverURLKey, "https://example.testrail.io")
+	cmd.SetContext(ctx)
+
+	got := GetServerURL(cmd)
+	assert.Equal(t, "https://example.testrail.io", got)
+}
+
+func TestGetServerURLFromCtx_Empty(t *testing.T) {
+	got := GetServerURLFromCtx(context.Background())
+	assert.Equal(t, "", got)
+}
+
+func TestRootPersistentPreRunE_SetsServerURL(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+
+	viper.Set("base_url", "https://example.com")
+	viper.Set("username", "qa@example.com")
+	viper.Set("api_key", "api-key")
+
+	cmd := &cobra.Command{Use: "test-cmd"}
+	cmd.Flags().Bool("quiet", false, "")
+	cmd.Flags().Bool("non-interactive", false, "")
+	require.NoError(t, cmd.Flags().Set("non-interactive", "true"))
+	cmd.SetContext(context.Background())
+
+	err := rootCmd.PersistentPreRunE(cmd, nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, "https://example.com", GetServerURLFromCtx(cmd.Context()))
+}

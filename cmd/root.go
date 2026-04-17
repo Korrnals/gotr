@@ -86,6 +86,9 @@ Supports browsing available endpoints, executing requests, and more.`,
 		// Store the client in context so it is available in all subcommands
 		ctx := context.WithValue(cmd.Context(), httpClientKey, httpClient)
 
+		// Store the server URL in context for easy access by any command.
+		ctx = context.WithValue(ctx, serverURLKey, baseURL)
+
 		// Inject Prompter into context (TerminalPrompter or NonInteractivePrompter)
 		nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
 		var p interactive.Prompter
@@ -95,6 +98,11 @@ Supports browsing available endpoints, executing requests, and more.`,
 			p = interactive.NewTerminalPrompter()
 		}
 		ctx = interactive.WithPrompter(ctx, p)
+
+		// Show server URL banner in interactive mode.
+		if !nonInteractive {
+			ui.Infof(os.Stderr, "Server: %s", baseURL)
+		}
 
 		cmd.SetContext(ctx)
 
@@ -145,6 +153,18 @@ func GetClientFromCtx(ctx context.Context) client.ClientInterface {
 		return nil // unreachable
 	}
 	return cli
+}
+
+// GetServerURL retrieves the configured server URL from the command context.
+func GetServerURL(cmd *cobra.Command) string {
+	return GetServerURLFromCtx(cmd.Context())
+}
+
+// GetServerURLFromCtx retrieves the configured server URL from a context.
+// Returns an empty string if the value is not set.
+func GetServerURLFromCtx(ctx context.Context) string {
+	s, _ := ctx.Value(serverURLKey).(string)
+	return s
 }
 
 func initConfig() {

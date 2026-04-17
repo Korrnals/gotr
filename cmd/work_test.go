@@ -40,7 +40,8 @@ func TestRunWorkHub_ServerConfirmReject(t *testing.T) {
 	defer viper.Set("base_url", "")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(false)
-	ctx := interactive.WithPrompter(context.Background(), p)
+	ctx := context.WithValue(context.Background(), serverURLKey, "https://test.testrail.io")
+	ctx = interactive.WithPrompter(ctx, p)
 
 	cmd := &cobra.Command{Use: "work"}
 	cmd.SetContext(ctx)
@@ -57,7 +58,8 @@ func TestRunWorkHub_ServerConfirmAccept_ThenExit(t *testing.T) {
 	p := interactive.NewMockPrompter().
 		WithConfirmResponses(true).
 		WithSelectResponses(interactive.SelectResponse{Index: -1}) // Browse exhausts → error → exit
-	ctx := interactive.WithPrompter(context.Background(), p)
+	ctx := context.WithValue(context.Background(), serverURLKey, "https://test.testrail.io")
+	ctx = interactive.WithPrompter(ctx, p)
 
 	cmd := &cobra.Command{Use: "work"}
 	cmd.SetContext(ctx)
@@ -74,7 +76,8 @@ func TestRunWorkHub_SessionInjected(t *testing.T) {
 	p := interactive.NewMockPrompter().
 		WithConfirmResponses(true).
 		WithSelectResponses(interactive.SelectResponse{Index: -1})
-	ctx := interactive.WithPrompter(context.Background(), p)
+	ctx := context.WithValue(context.Background(), serverURLKey, "https://session.testrail.io")
+	ctx = interactive.WithPrompter(ctx, p)
 
 	cmd := &cobra.Command{Use: "work"}
 	cmd.SetContext(ctx)

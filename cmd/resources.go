@@ -55,6 +55,9 @@ type contextKey string
 // httpClientKey is used to store/retrieve the HTTP client from context.
 const httpClientKey contextKey = "httpClient"
 
+// serverURLKey is used to store/retrieve the base server URL from context.
+const serverURLKey contextKey = "serverURL"
+
 // ValidResources is a dynamically generated list of all resource names.
 var ValidResources []string
 

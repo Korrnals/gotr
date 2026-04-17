@@ -18,7 +18,6 @@ const (
 	actionBack     = "back"
 	actionSave     = "save"
 	actionSync     = "sync"
-	actionSnap     = "snap"
 	actionDrillRes = "drill_resource"
 )
 
@@ -44,8 +43,8 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 		{Label: "📋 View detailed results", Key: actionDrillRes, Disabled: !hasData, Hint: "no data"},
 		{Label: "💾 Save results to file", Key: actionSave},
 		{Label: "→ Sync: migrate differences", Key: actionSync, Disabled: !hasDifferences, Hint: "no differences found"},
-		{Label: "📦 Snap: manage snapshots", Key: actionSnap},
 	}
+	options = append(options, interactive.CrossNavOptions()...)
 
 	key, err := interactive.ActionMenu(ctx, p, "Comparison complete. What next?", options)
 	if err != nil {
@@ -75,12 +74,11 @@ func comparePostAction(ctx context.Context, cmd *cobra.Command, result CompareRe
 	case actionSync:
 		runSyncFromCompare(ctx, cmd, result)
 		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
-	case actionSnap:
-		if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
-			ui.Error(os.Stdout, err.Error())
-		}
-		return comparePostAction(ctx, cmd, result, p1Name, p2Name)
 	default:
+		// Cross-navigation keys (nav:compare, nav:sync, nav:snap).
+		if interactive.HandleCrossNav(ctx, cmd, key) {
+			return comparePostAction(ctx, cmd, result, p1Name, p2Name)
+		}
 		return key
 	}
 }
@@ -226,8 +224,8 @@ func compareAllPostAction(ctx context.Context, cmd *cobra.Command, result *allRe
 		{Label: interactive.OptExit, Key: actionExit},
 		{Label: "🔍 Drill-down: view resource details", Key: actionDrillRes},
 		{Label: "💾 Save results to file", Key: actionSave},
-		{Label: "📦 Snap: manage snapshots", Key: actionSnap},
 	}
+	options = append(options, interactive.CrossNavOptions()...)
 
 	key, err := interactive.ActionMenu(ctx, p, "Compare all complete. What next?", options)
 	if err != nil {
@@ -241,12 +239,10 @@ func compareAllPostAction(ctx context.Context, cmd *cobra.Command, result *allRe
 	case actionSave:
 		// Save is handled by caller (save flags).
 		return actionSave
-	case actionSnap:
-		if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
-			ui.Error(os.Stdout, err.Error())
-		}
-		return compareAllPostAction(ctx, cmd, result, p1Name, p2Name, pid1, pid2)
 	default:
+		if interactive.HandleCrossNav(ctx, cmd, key) {
+			return compareAllPostAction(ctx, cmd, result, p1Name, p2Name, pid1, pid2)
+		}
 		return key
 	}
 }

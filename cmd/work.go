@@ -56,25 +56,18 @@ func runWorkHub(cmd *cobra.Command) error {
 
 	// Server confirmation — first step before any work.
 	baseURL := viper.GetString("base_url")
-	if baseURL == "" {
-		return fmt.Errorf("no server configured; run 'gotr config init' first")
-	}
-	ok, err := p.Confirm(fmt.Sprintf("⚡ You are connecting to: %s. Continue?", baseURL), true)
+	serverURL, err := interactive.SelectServer(ctx, p, baseURL)
 	if err != nil {
 		if interactive.IsGoBack(err) || interactive.IsExit(err) || interactive.IsInterrupt(err) {
 			return nil
 		}
-		return fmt.Errorf("server confirmation: %w", err)
-	}
-	if !ok {
-		ui.Infof(os.Stdout, "Session cancelled. Configure another server with 'gotr config init'.")
-		return nil
+		return err
 	}
 
 	printWorkHeader()
 
 	// Create a work session and inject into context for parameter inheritance.
-	session := &interactive.WorkSession{ServerURL: baseURL}
+	session := &interactive.WorkSession{ServerURL: serverURL}
 	ctx = interactive.WithSession(ctx, session)
 
 	labels := make([]string, len(workGroups))

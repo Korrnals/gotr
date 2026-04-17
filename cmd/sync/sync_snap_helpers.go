@@ -141,33 +141,19 @@ func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cl
 			return
 
 		case optCompare:
-			runCompareFromPostAction(ctx, cmd)
+			if err := interactive.RunSubcommand(ctx, cmd.Root(), "compare", "all"); err != nil {
+				ui.Error(os.Stdout, err.Error())
+			}
 			continue
 
 		case optSnap:
-			runSnapListFromPostAction(ctx, cmd)
+			if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
+				ui.Error(os.Stdout, err.Error())
+			}
 			continue
 
 		default: // Exit
 			return
 		}
 	}
-}
-
-// runCompareFromPostAction launches compare all from a post-action menu.
-func runCompareFromPostAction(ctx context.Context, cmd *cobra.Command) {
-	fmt.Println()
-	if err := interactive.RunSubcommand(ctx, cmd.Root(), "compare", "all"); err != nil {
-		ui.Error(os.Stdout, err.Error())
-	}
-	fmt.Println()
-}
-
-// runSnapListFromPostAction launches snap list from a post-action menu.
-func runSnapListFromPostAction(ctx context.Context, cmd *cobra.Command) {
-	fmt.Println()
-	if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
-		ui.Error(os.Stdout, err.Error())
-	}
-	fmt.Println()
 }

@@ -246,6 +246,121 @@ func SelectSharedStep(ctx context.Context, p Prompter, steps data.GetSharedSteps
 	return steps[idx].ID, nil
 }
 
+// SelectTest selects a test using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectTest(ctx context.Context, p Prompter, tests data.GetTestsResponse, prompt string, allowBack ...bool) (int64, error) {
+	if len(tests) == 0 {
+		return 0, fmt.Errorf("no tests found")
+	}
+
+	if prompt == "" {
+		prompt = "Select test:"
+	}
+
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Case", MinWidth: 6},
+		{Header: "Title"},
+	}
+	rows := make([][]string, len(tests))
+	for i, t := range tests {
+		rows[i] = []string{fmt.Sprintf("%d", t.ID), fmt.Sprintf("%d", t.CaseID), t.Title}
+	}
+	header, options := AlignedLabels(cols, rows)
+
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Header:    header,
+		Items:     options,
+		AllowBack: back,
+	})
+	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
+		return 0, fmt.Errorf("failed to select test: %w", err)
+	}
+
+	return tests[idx].ID, nil
+}
+
+// SelectPlan selects a plan using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectPlan(ctx context.Context, p Prompter, plans data.GetPlansResponse, prompt string, allowBack ...bool) (int64, error) {
+	if len(plans) == 0 {
+		return 0, fmt.Errorf("no plans found")
+	}
+
+	if prompt == "" {
+		prompt = "Select plan:"
+	}
+
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(plans))
+	for i, plan := range plans {
+		rows[i] = []string{fmt.Sprintf("%d", plan.ID), plan.Name}
+	}
+	header, options := AlignedLabels(cols, rows)
+
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Header:    header,
+		Items:     options,
+		AllowBack: back,
+	})
+	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
+		return 0, fmt.Errorf("failed to select plan: %w", err)
+	}
+
+	return plans[idx].ID, nil
+}
+
+// SelectPlanEntry selects a plan entry using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectPlanEntry(ctx context.Context, p Prompter, entries []data.PlanEntry, prompt string, allowBack ...bool) (string, error) {
+	if len(entries) == 0 {
+		return "", fmt.Errorf("no plan entries found")
+	}
+
+	if prompt == "" {
+		prompt = "Select plan entry:"
+	}
+
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(entries))
+	for i, e := range entries {
+		rows[i] = []string{e.ID, e.Name}
+	}
+	header, options := AlignedLabels(cols, rows)
+
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Header:    header,
+		Items:     options,
+		AllowBack: back,
+	})
+	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return "", err
+		}
+		return "", fmt.Errorf("failed to select plan entry: %w", err)
+	}
+
+	return entries[idx].ID, nil
+}
+
 // SelectSuiteForProject fetches suites for a project and selects one using the prompter.
 // Pass allowBack=true to show "← Back" in addition to "✕ Exit".
 func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInterface, projectID int64, prompt string, allowBack ...bool) (int64, error) {

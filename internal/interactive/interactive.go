@@ -361,6 +361,44 @@ func SelectPlanEntry(ctx context.Context, p Prompter, entries []data.PlanEntry, 
 	return entries[idx].ID, nil
 }
 
+// SelectDataset selects a dataset using unified prompter with Browse navigation.
+// Pass allowBack=true to show "← Back" in addition to "✕ Exit".
+func SelectDataset(ctx context.Context, p Prompter, datasets data.GetDatasetsResponse, prompt string, allowBack ...bool) (int64, error) {
+	if len(datasets) == 0 {
+		return 0, fmt.Errorf("no datasets found")
+	}
+
+	if prompt == "" {
+		prompt = "Select dataset:"
+	}
+
+	cols := []Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(datasets))
+	for i, ds := range datasets {
+		rows[i] = []string{fmt.Sprintf("%d", ds.ID), ds.Name}
+	}
+	header, options := AlignedLabels(cols, rows)
+
+	back := len(allowBack) > 0 && allowBack[0]
+	idx, err := Browse(ctx, p, BrowseConfig{
+		Prompt:    prompt,
+		Header:    header,
+		Items:     options,
+		AllowBack: back,
+	})
+	if err != nil {
+		if IsGoBack(err) || IsExit(err) {
+			return 0, err
+		}
+		return 0, fmt.Errorf("failed to select dataset: %w", err)
+	}
+
+	return datasets[idx].ID, nil
+}
+
 // SelectSuiteForProject fetches suites for a project and selects one using the prompter.
 // Pass allowBack=true to show "← Back" in addition to "✕ Exit".
 func SelectSuiteForProject(ctx context.Context, p Prompter, cli client.ClientInterface, projectID int64, prompt string, allowBack ...bool) (int64, error) {

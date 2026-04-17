@@ -19,11 +19,23 @@ func resolveUserIDInteractive(ctx context.Context, cli client.ClientInterface) (
 	if len(users) == 0 {
 		return 0, fmt.Errorf("no users found")
 	}
-	items := make([]string, len(users))
-	for i, user := range users {
-		items[i] = fmt.Sprintf("[%d] ID: %d | %s | %s", i+1, user.ID, user.Name, user.Email)
+
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+		{Header: "Email"},
 	}
-	idx, _, err := p.Select("Select user:", items)
+	rows := make([][]string, len(users))
+	for i, user := range users {
+		rows[i] = []string{fmt.Sprintf("%d", user.ID), user.Name, user.Email}
+	}
+	header, items := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select user:",
+		Header: header,
+		Items:  items,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select user: %w", err)
 	}
@@ -40,11 +52,22 @@ func resolveEmailInteractive(ctx context.Context, cli client.ClientInterface) (s
 	if len(users) == 0 {
 		return "", fmt.Errorf("no users found")
 	}
-	items := make([]string, len(users))
-	for i, user := range users {
-		items[i] = fmt.Sprintf("[%d] %s | %s", i+1, user.Email, user.Name)
+
+	cols := []interactive.Column{
+		{Header: "Email"},
+		{Header: "Name"},
 	}
-	idx, _, err := p.Select("Select user:", items)
+	rows := make([][]string, len(users))
+	for i, user := range users {
+		rows[i] = []string{user.Email, user.Name}
+	}
+	header, items := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select user:",
+		Header: header,
+		Items:  items,
+	})
 	if err != nil {
 		return "", fmt.Errorf("failed to select user: %w", err)
 	}

@@ -728,27 +728,21 @@ func browseSnapList(cmd *cobra.Command, store *snaplib.Store, p interactive.Prom
 		fmt.Fprintln(cmd.OutOrStdout())
 
 		// Post-card action menu.
-		action, err := postCardAction(cmd, p, meta)
+		key, err := postCardAction(cmd, p, meta)
 		if err != nil {
 			return errExit
 		}
-		switch action {
-		case postActionBack:
+		switch key {
+		case "back":
 			continue // back to snapshot list
-		case postActionExit:
+		case "exit":
 			return errExit
-		case postActionRollback:
+		case "rollback":
 			executeRollbackFromBrowser(cmd, entry.ID)
 			continue // back to snapshot list after rollback
-		case postActionCompare:
-			if err := interactive.RunSubcommand(cmd.Context(), cmd.Root(), "compare", "all"); err != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "Compare failed: %v\n", err)
-			}
-			continue
-		case postActionSync:
-			if err := interactive.RunSubcommand(cmd.Context(), cmd.Root(), "sync", "full"); err != nil {
-				fmt.Fprintf(cmd.OutOrStdout(), "Sync failed: %v\n", err)
-			}
+		default:
+			// Cross-navigation keys (nav:compare, nav:sync, nav:snap).
+			interactive.HandleCrossNav(cmd.Context(), cmd, key)
 			continue
 		}
 	}
@@ -758,59 +752,50 @@ func browseSnapList(cmd *cobra.Command, store *snaplib.Store, p interactive.Prom
 // Post-card action menu
 // ---------------------------------------------------------------------------
 
+// postAction is a local enum used by undo.go for its simpler card menus.
 type postAction int
 
 const (
 	postActionBack postAction = iota
 	postActionExit
 	postActionRollback
-	postActionCompare
-	postActionSync
 )
 
 // postCardAction shows a mini-menu after viewing a snapshot info card.
-// Returns the chosen action.
-func postCardAction(cmd *cobra.Command, p interactive.Prompter, meta *snaplib.Meta) (postAction, error) {
+// Returns the chosen action key.
+func postCardAction(cmd *cobra.Command, p interactive.Prompter, meta *snaplib.Meta) (string, error) {
 	out := cmd.OutOrStdout()
+	ctx := cmd.Context()
 
-	type menuItem struct {
-		label  string
-		action postAction
-	}
-	items := []menuItem{
-		{backOption, postActionBack},
-		{exitOption, postActionExit},
+	const (
+		keyBack     = "back"
+		keyExit     = "exit"
+		keyRollback = "rollback"
+	)
+
+	options := []interactive.ActionOption{
+		{Label: backOption, Key: keyBack},
+		{Label: exitOption, Key: keyExit},
 	}
 
 	// Rollback option — only for actionable statuses.
 	canRollback := meta.Status == snaplib.StatusAvailable || meta.Status == snaplib.StatusRollbackPartial
 	if canRollback {
-		items = append(items, menuItem{"↻ Rollback this snapshot", postActionRollback})
+		options = append(options, interactive.ActionOption{Label: "↻ Rollback this snapshot", Key: keyRollback})
 	} else if meta.Status == snaplib.StatusRolledBack {
 		fmt.Fprintln(out, "  ✓ Snapshot already rolled back.")
 	} else if meta.Status == snaplib.StatusExpired {
 		fmt.Fprintln(out, "  ⚠ Snapshot expired — rollback unavailable.")
 	}
 
-	// Cross-navigation transitions (full navigation level).
-	items = append(items,
-		menuItem{"📊 Compare: verify current state", postActionCompare},
-		menuItem{"🔄 Sync: migrate data", postActionSync},
-	)
+	// Cross-navigation transitions.
+	options = append(options, interactive.CrossNavOptions()...)
 
-	options := make([]string, len(items))
-	for i, it := range items {
-		options[i] = it.label
-	}
-
-	idx, _, err := p.Select("Action:", options)
+	key, err := interactive.ActionMenu(ctx, p, "Action:", options)
 	if err != nil {
-		return postActionExit, err
+		return keyExit, err
 	}
-	if idx >= 0 && idx < len(items) {
-		return items[idx].action, nil
-	}
-	return postActionBack, nil
+	return key, nil
 }
 
 // executeRollbackFromBrowser finds and runs the rollback subcommand for the given snapshot.

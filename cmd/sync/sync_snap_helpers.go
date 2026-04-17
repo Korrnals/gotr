@@ -107,25 +107,27 @@ func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cl
 	}
 
 	const (
-		optExit     = "✕ Exit"
-		optRollback = "↻ Rollback this migration"
-		optCompare  = "📊 Compare: verify sync results"
-		optSnap     = "📦 Snap: manage snapshots"
+		optExit     = "exit"
+		optRollback = "rollback"
 	)
 
 	for {
-		options := []string{optExit}
-		if hasSnap {
-			options = append(options, optRollback)
+		options := []interactive.ActionOption{
+			{Label: interactive.OptExit, Key: optExit},
 		}
-		options = append(options, optCompare, optSnap)
+		if hasSnap {
+			options = append(options, interactive.ActionOption{Label: "↻ Rollback this migration", Key: optRollback})
+		}
+		options = append(options, interactive.CrossNavOptions()...)
 
-		_, choice, err := p.Select("Post-migration:", options)
+		key, err := interactive.ActionMenu(ctx, p, "Post-migration:", options)
 		if err != nil {
 			return
 		}
 
-		switch choice {
+		switch key {
+		case optExit:
+			return
 		case optRollback:
 			ok, err := p.Confirm("⚠ Are you sure you want to rollback?", false)
 			if err != nil || !ok {
@@ -139,21 +141,9 @@ func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cl
 			}
 			ui.Successf(os.Stdout, "✓ Rollback complete: %s", result.Message)
 			return
-
-		case optCompare:
-			if err := interactive.RunSubcommand(ctx, cmd.Root(), "compare", "all"); err != nil {
-				ui.Error(os.Stdout, err.Error())
-			}
+		default:
+			interactive.HandleCrossNav(ctx, cmd, key)
 			continue
-
-		case optSnap:
-			if err := interactive.RunSubcommand(ctx, cmd.Root(), "snap", "list"); err != nil {
-				ui.Error(os.Stdout, err.Error())
-			}
-			continue
-
-		default: // Exit
-			return
 		}
 	}
 }

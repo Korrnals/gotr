@@ -38,7 +38,7 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCaseHistoryCmd.func: %w", err)
 				}
 
 				suites, err := cli.GetSuites(ctx, projectID)
@@ -51,7 +51,7 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 				suiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCaseHistoryCmd.func: %w", err)
 				}
 
 				cases, err := cli.GetCases(ctx, projectID, suiteID, 0)
@@ -64,13 +64,13 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 
 				id, err = interactive.SelectCase(ctx, interactive.PrompterFromContext(ctx), cases, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCaseHistoryCmd.func: %w", err)
 				}
 			}
 
 			history, err := cli.GetHistoryForCase(ctx, id)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCaseHistoryCmd.func: %w", err)
 			}
 
 			return handleOutput(command, history, start)
@@ -106,7 +106,7 @@ func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterfa
 
 				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSharedStepHistoryCmd.func: %w", err)
 				}
 
 				steps, err := cli.GetSharedSteps(ctx, projectID)
@@ -119,13 +119,13 @@ func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterfa
 
 				id, err = interactive.SelectSharedStep(ctx, interactive.PrompterFromContext(ctx), steps, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSharedStepHistoryCmd.func: %w", err)
 				}
 			}
 
 			history, err := cli.GetSharedStepHistory(ctx, id)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSharedStepHistoryCmd.func: %w", err)
 			}
 
 			return handleOutput(command, history, start)

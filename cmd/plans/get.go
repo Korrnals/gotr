@@ -32,7 +32,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -41,7 +41,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

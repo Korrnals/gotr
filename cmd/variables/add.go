@@ -37,7 +37,7 @@ the TestRail web interface.`,
 				var err error
 				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -46,7 +46,7 @@ the TestRail web interface.`,
 				var err error
 				datasetID, err = resolveDatasetIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
@@ -75,7 +75,7 @@ the TestRail web interface.`,
 
 			ui.Successf(os.Stdout, "Variable created (ID: %d)", resp.ID)
 			if err := output.OutputResult(cmd, resp, "variables"); err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

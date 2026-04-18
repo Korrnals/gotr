@@ -97,7 +97,7 @@ func TestRunSubcommand_RealError(t *testing.T) {
 	root.AddCommand(child)
 
 	err := RunSubcommand(context.Background(), root, "child")
-	assert.EqualError(t, err, "boom")
+	assert.EqualError(t, err, "RunSubcommand: boom")
 }
 
 func TestRunSubcommand_NotFound(t *testing.T) {

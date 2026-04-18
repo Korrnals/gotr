@@ -37,7 +37,7 @@ To check report readiness status, run the command again.`,
 			if len(args) > 0 {
 				templateID, err = flags.ValidateRequiredID(args, 0, "template_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newRunCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -49,7 +49,7 @@ To check report readiness status, run the command again.`,
 
 				templateID, err = resolveReportTemplateIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newRunCmd.func: %w", err)
 				}
 			}
 

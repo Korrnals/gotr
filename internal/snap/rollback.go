@@ -89,7 +89,7 @@ type RollbackResult struct {
 	Operation   Operation
 	EntityType  string
 	Success     bool
-	NewEntityID int64  // non-zero if a new entity was created (e.g. delete rollback)
+	NewEntityID int64 // non-zero if a new entity was created (e.g. delete rollback)
 	Message     string
 	DryRun      bool
 
@@ -665,7 +665,7 @@ func rollbackSimpleEntity(ctx context.Context, api RollbackAPI, _ *Store, meta *
 
 	deleteFn, err := resolveDeleteFn(api, meta.EntityType)
 	if err != nil {
-		return err
+		return fmt.Errorf("rollbackSimpleEntity: %w", err)
 	}
 
 	if err := deleteFn(ctx, entityID); err != nil {

@@ -35,7 +35,7 @@ number of associated test runs, etc.`,
 				var err error
 				milestoneID, err = flags.ValidateRequiredID(args, 0, "milestone_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				ctx := cmd.Context()
@@ -46,7 +46,7 @@ number of associated test runs, etc.`,
 				var err error
 				milestoneID, err = resolveMilestoneIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

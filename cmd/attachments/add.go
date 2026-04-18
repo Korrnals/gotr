@@ -46,7 +46,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) == 2 {
 				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCaseCmd.func: %w", err)
 				}
 				filePath = args[1]
 			} else {
@@ -56,7 +56,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				caseID, err = resolveCaseIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCaseCmd.func: %w", err)
 				}
 			}
 
@@ -69,7 +69,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 
 			// Validate file exists
 			if err := validateFileExists(filePath); err != nil {
-				return err
+				return fmt.Errorf("newAddCaseCmd.func: %w", err)
 			}
 
 			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
@@ -83,7 +83,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
-				return err
+				return fmt.Errorf("newAddCaseCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -117,7 +117,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) == 2 {
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddPlanCmd.func: %w", err)
 				}
 				filePath = args[1]
 			} else {
@@ -127,7 +127,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				planID, err = resolvePlanIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddPlanCmd.func: %w", err)
 				}
 			}
 
@@ -138,7 +138,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if err := validateFileExists(filePath); err != nil {
-				return err
+				return fmt.Errorf("newAddPlanCmd.func: %w", err)
 			}
 
 			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
@@ -152,7 +152,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
-				return err
+				return fmt.Errorf("newAddPlanCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -189,14 +189,14 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			case 3:
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddPlanEntryCmd.func: %w", err)
 				}
 				entryID = args[1]
 				filePath = args[2]
 			case 2:
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddPlanEntryCmd.func: %w", err)
 				}
 				filePath = args[1]
 				if !interactive.HasPrompterInContext(ctx) {
@@ -204,7 +204,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				entryID, err = resolvePlanEntryIDInteractive(ctx, cli, planID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddPlanEntryCmd.func: %w", err)
 				}
 			default:
 				filePath = args[0]
@@ -213,7 +213,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				planID, entryID, err = resolvePlanAndEntryIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddPlanEntryCmd.func: %w", err)
 				}
 			}
 
@@ -224,7 +224,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if err := validateFileExists(filePath); err != nil {
-				return err
+				return fmt.Errorf("newAddPlanEntryCmd.func: %w", err)
 			}
 
 			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
@@ -238,7 +238,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
-				return err
+				return fmt.Errorf("newAddPlanEntryCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -272,7 +272,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) == 2 {
 				resultID, err = flags.ValidateRequiredID(args, 0, "result_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddResultCmd.func: %w", err)
 				}
 				filePath = args[1]
 			} else {
@@ -282,7 +282,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				resultID, err = resolveResultIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddResultCmd.func: %w", err)
 				}
 			}
 
@@ -293,7 +293,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if err := validateFileExists(filePath); err != nil {
-				return err
+				return fmt.Errorf("newAddResultCmd.func: %w", err)
 			}
 
 			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
@@ -307,7 +307,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
-				return err
+				return fmt.Errorf("newAddResultCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -341,7 +341,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) == 2 {
 				runID, err = flags.ValidateRequiredID(args, 0, "run_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddRunCmd.func: %w", err)
 				}
 				filePath = args[1]
 			} else {
@@ -351,7 +351,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				runID, err = resolveRunIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddRunCmd.func: %w", err)
 				}
 			}
 
@@ -362,7 +362,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			if err := validateFileExists(filePath); err != nil {
-				return err
+				return fmt.Errorf("newAddRunCmd.func: %w", err)
 			}
 
 			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
@@ -376,7 +376,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Attachment added (ID: %d)\n   URL: %s", resp.AttachmentID, resp.URL)
 			if err := output.OutputResult(cmd, resp, "attachments"); err != nil {
-				return err
+				return fmt.Errorf("newAddRunCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

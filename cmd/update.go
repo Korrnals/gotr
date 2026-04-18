@@ -85,7 +85,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	endpoint := args[0]
 	id, err := flags.ValidateRequiredID(args, 1, "ID")
 	if err != nil {
-		return err
+		return fmt.Errorf("runUpdate: %w", err)
 	}
 
 	// Get the client

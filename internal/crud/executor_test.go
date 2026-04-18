@@ -19,6 +19,55 @@ type testResp struct {
 	ID int64 `json:"id"`
 }
 
+func TestExecute_HappyPath_JSON(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	output.AddFlag(cmd)
+
+	jsonData, _ := json.Marshal(testReq{Name: "test"})
+	err := crud.Execute(cmd, 1, jsonData,
+		func(_ *cobra.Command, _ bool) (*testReq, error) {
+			t.Fatal("buildReq should not be called when JSON data is provided")
+			return nil, nil
+		},
+		func(_ context.Context, id int64, req *testReq) (*testResp, error) {
+			if id != 1 {
+				t.Fatalf("expected id=1, got %d", id)
+			}
+			return &testResp{ID: 42}, nil
+		},
+		"failed to create",
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestExecute_HappyPath_Flags(t *testing.T) {
+	cmd := &cobra.Command{}
+	cmd.SetContext(context.Background())
+	output.AddFlag(cmd)
+
+	err := crud.Execute(cmd, 0, nil,
+		func(_ *cobra.Command, validate bool) (*testReq, error) {
+			if !validate {
+				t.Fatal("Execute should call buildReq with validate=true")
+			}
+			return &testReq{Name: "built"}, nil
+		},
+		func(_ context.Context, _ int64, req *testReq) (*testResp, error) {
+			if req.Name != "built" {
+				t.Fatalf("expected name=built, got %s", req.Name)
+			}
+			return &testResp{ID: 99}, nil
+		},
+		"failed",
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 // --- DryRun tests ---
 
 func TestDryRun_WithJSON(t *testing.T) {
@@ -94,7 +143,7 @@ func TestExecute_BuildReqError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if err.Error() != "--name is required" {
+	if err.Error() != "Execute: --name is required" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
@@ -156,7 +205,7 @@ func TestExecute_ValidateCalledWithTrue(t *testing.T) {
 		},
 		"failed",
 	)
-	if err == nil || err.Error() != "stop here" {
+	if err == nil || err.Error() != "Execute: stop here" {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

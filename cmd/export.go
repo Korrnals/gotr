@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -14,6 +15,13 @@ import (
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// rawExporter is the interface needed by export command for raw HTTP access.
+type rawExporter interface {
+	Get(ctx context.Context, endpoint string, queryParams map[string]string) (*http.Response, error)
+	ReadResponse(ctx context.Context, resp *http.Response, duration time.Duration, outputFormat string) (client.ResponseData, error)
+	SaveResponseToFile(ctx context.Context, data client.ResponseData, filename, outputFormat string) error
+}
 
 // exportCmd exports data from TestRail.
 var exportCmd = &cobra.Command{
@@ -35,10 +43,10 @@ Examples:
 
 		resource, endpoint, mainID, err := resolveExportInputs(cmd, args)
 		if err != nil {
-			return err
+			return fmt.Errorf("exportCmd.func: %w", err)
 		}
 
-		httpClient, ok := GetClient(cmd).(*client.HTTPClient)
+		httpClient, ok := GetClient(cmd).(rawExporter)
 		if !ok {
 			return fmt.Errorf("export requires full HTTP client (not available with mock)")
 		}
@@ -46,7 +54,7 @@ Examples:
 		// Build full endpoint path and query parameters
 		fullEndpoint, queryParams, err := buildRequestParams(endpoint, mainID, cmd)
 		if err != nil {
-			return err
+			return fmt.Errorf("exportCmd.func: %w", err)
 		}
 
 		debug.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)

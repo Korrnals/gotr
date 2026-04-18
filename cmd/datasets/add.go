@@ -38,7 +38,7 @@ or other API methods.`,
 			if len(args) > 0 {
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -46,7 +46,7 @@ or other API methods.`,
 				}
 				projectID, err = resolveProjectIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
@@ -73,7 +73,7 @@ or other API methods.`,
 
 			ui.Successf(os.Stdout, "Dataset created (ID: %d)", resp.ID)
 			if err := output.OutputResult(cmd, resp, "datasets"); err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

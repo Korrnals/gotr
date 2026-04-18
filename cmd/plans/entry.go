@@ -55,7 +55,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -64,7 +64,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryAddCmd.func: %w", err)
 				}
 			}
 
@@ -116,7 +116,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Entry added to plan %d", planID)
 			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
-				return err
+				return fmt.Errorf("newEntryAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -149,7 +149,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -157,7 +157,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -170,7 +170,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
 				}
 			}
 			if entryID == "" {
@@ -214,7 +214,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Entry %s updated in plan %d", entryID, planID)
 			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
-				return err
+				return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -248,7 +248,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -256,7 +256,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryDeleteCmd.func: %w", err)
 				}
 			}
 
@@ -269,7 +269,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryDeleteCmd.func: %w", err)
 				}
 			}
 			if entryID == "" {

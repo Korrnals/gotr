@@ -31,15 +31,15 @@ role, role ID, MFA status, and administrator flag.`,
 			if len(args) > 0 {
 				userID, err = flags.ValidateRequiredID(args, 0, "user_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if err := requireInteractiveUserArg(cmd.Context(), "gotr users get [user_id]"); err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 				userID, err = resolveUserIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

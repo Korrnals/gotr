@@ -80,7 +80,7 @@ func (c *HTTPClient) GetCasesParallel(ctx context.Context, projectID int64, suit
 				errMu.Lock()
 				errs = append(errs, fmt.Errorf("suite %d: %w", sid, err))
 				errMu.Unlock()
-				return err
+				return fmt.Errorf("GetCasesParallel.func: %w", err)
 			}
 
 			// Store result
@@ -148,7 +148,7 @@ func (c *HTTPClient) GetSuitesParallel(ctx context.Context, projectIDs []int64, 
 				errMu.Lock()
 				errs = append(errs, fmt.Errorf("project %d: %w", pid, err))
 				errMu.Unlock()
-				return err
+				return fmt.Errorf("GetSuitesParallel.func: %w", err)
 			}
 
 			// Store result

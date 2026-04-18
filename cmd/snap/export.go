@@ -24,17 +24,17 @@ If output_path is omitted, prompts for filename and directory interactively.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newExportCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newExportCmd.func: %w", err)
 			}
 
 			snapID, err := resolveSnapshotID(cmd.Context(), args, manifest, "Select snapshot to export:")
 			if err != nil {
-				return err
+				return fmt.Errorf("newExportCmd.func: %w", err)
 			}
 
 			entry := manifest.Find(snapID)
@@ -51,7 +51,7 @@ If output_path is omitted, prompts for filename and directory interactively.`,
 			if outPath == "" && !interactive.IsNonInteractive(cmd.Context()) {
 				outPath, err = promptExportPath(cmd, snapID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newExportCmd.func: %w", err)
 				}
 			}
 

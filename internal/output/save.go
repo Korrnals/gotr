@@ -81,7 +81,7 @@ func OutputGetResult(cmd *cobra.Command, data any, start time.Time) error {
 
 	savePath, err := resolveSavePath(cmd, saveFlag)
 	if err != nil {
-		return err
+		return fmt.Errorf("OutputGetResult: %w", err)
 	}
 
 	if savePath != "" {
@@ -156,7 +156,7 @@ func Output(cmd *cobra.Command, data interface{}, resource, format string) (stri
 	if err != nil {
 		return "", fmt.Errorf("error marshaling to JSON: %w", err)
 	}
- 	fmt.Fprintln(cmd.OutOrStdout(), string(content))
+	fmt.Fprintln(cmd.OutOrStdout(), string(content))
 	return "", nil
 }
 
@@ -405,7 +405,7 @@ func OutputResultWithFlags(cmd *cobra.Command, data interface{}) error {
 
 	if outputPath != "" {
 		if err := SaveJSONToFile(outputPath, data); err != nil {
-			return err
+			return fmt.Errorf("OutputResultWithFlags: %w", err)
 		}
 		if !quiet {
 			ui.Infof(os.Stdout, "Response saved to %s", outputPath)

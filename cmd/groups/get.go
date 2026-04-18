@@ -34,7 +34,7 @@ belonging to the group with their roles and contact information.`,
 			if len(args) > 0 {
 				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -42,7 +42,7 @@ belonging to the group with their roles and contact information.`,
 				}
 				groupID, err = resolveGroupIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

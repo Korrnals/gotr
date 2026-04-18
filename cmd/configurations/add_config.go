@@ -40,7 +40,7 @@ test plans with multiple configurations.`,
 			if len(args) > 0 {
 				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddConfigCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -52,7 +52,7 @@ test plans with multiple configurations.`,
 
 				groupID, err = resolveGroupIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddConfigCmd.func: %w", err)
 				}
 			}
 
@@ -86,7 +86,7 @@ test plans with multiple configurations.`,
 
 			ui.Successf(os.Stdout, "Configuration added (ID: %d)", resp.ID)
 			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
-				return err
+				return fmt.Errorf("newAddConfigCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

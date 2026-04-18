@@ -24,19 +24,19 @@ Use --format json for machine-readable JSON output.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newInfoCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newInfoCmd.func: %w", err)
 			}
 
 			// Non-interactive or explicit ID: show once and exit.
 			if len(args) > 0 || interactive.IsNonInteractive(cmd.Context()) {
 				snapID, err := resolveSnapshotID(cmd.Context(), args, manifest, "Select snapshot to inspect:")
 				if err != nil {
-					return err
+					return fmt.Errorf("newInfoCmd.func: %w", err)
 				}
 
 				meta, err := store.LoadMeta(snapID)

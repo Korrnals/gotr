@@ -57,7 +57,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy shared steps from):")
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 		}
 
@@ -66,12 +66,12 @@ Examples:
 			// Ask if suite is needed
 			specifySuite, err := p.Confirm("Specify source suite?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 			if specifySuite {
 				srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 				if err != nil {
-					return err
+					return fmt.Errorf("sharedStepsCmd.func: %w", err)
 				}
 			}
 		}
@@ -80,19 +80,19 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy shared steps to):")
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 		}
 
 		// Log directory and migration initialization
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 		// Step 1) Initialize migration object (logging, client, parameters)
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, 0, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -117,7 +117,7 @@ Examples:
 			}{Source: sourceSteps, Target: targetSteps}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 		sourceSteps := loadedSteps.Source
 		targetSteps := loadedSteps.Target
@@ -132,7 +132,7 @@ Examples:
 				return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 		} else {
 			suites, sErr := m.Client.GetSuites(ctx, srcProject)
@@ -157,7 +157,7 @@ Examples:
 		// Step 3) Filter candidates (exclude used and duplicates)
 		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 
 		printFilterSummary("shared steps", m.LastFilterStats())
@@ -181,7 +181,7 @@ Examples:
 		if !autoApprove {
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 			if !ok {
 				ui.Canceled(os.Stdout)
@@ -202,7 +202,7 @@ Examples:
 			return struct{}{}, m.ImportSharedSteps(ctx, filtered, false)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 
 		// Step 6) Save mapping/filtered if requested

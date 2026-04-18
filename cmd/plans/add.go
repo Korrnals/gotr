@@ -33,7 +33,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -42,7 +42,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				projectID, err = resolveProjectIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
@@ -94,7 +94,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Plan created (ID: %d)", resp.ID)
 			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

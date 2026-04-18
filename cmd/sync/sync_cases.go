@@ -67,7 +67,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy from):")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
@@ -75,7 +75,7 @@ Examples:
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
@@ -83,7 +83,7 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy to):")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
@@ -91,14 +91,14 @@ Examples:
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
 		// Log directory
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		logFile := filepath.Join(logDir, fmt.Sprintf("sync_cases_%s.json", timestamp))
@@ -110,7 +110,7 @@ Examples:
 		// Create migration object
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -149,14 +149,14 @@ Examples:
 			}{Source: sourceCases, Target: targetCases}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		sourceCases := loaded.Source
 		targetCases := loaded.Target
 
 		filtered, err := m.FilterCases(sourceCases, targetCases)
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 
 		// Count matches for log
@@ -186,7 +186,7 @@ Examples:
 
 		ok, err := p.Confirm("Continue?", false)
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		if !ok {
 			ui.Canceled(os.Stdout)
@@ -219,7 +219,7 @@ Examples:
 			}{IDs: createdIDs, Errors: importErrors}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		createdIDs := imported.IDs
 		importErrors := imported.Errors

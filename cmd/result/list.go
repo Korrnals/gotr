@@ -52,14 +52,14 @@ Examples:
 				// Explicit run-id provided
 				runID, err = flags.ValidateRequiredID(args, 0, "run")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				// Interactive selection: project -> run
 				p := interactive.PrompterFromContext(ctx)
 				projectID, err := interactive.SelectProject(ctx, p, cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 
 				// Fetch project runs
@@ -75,7 +75,7 @@ Examples:
 				// Select run interactively
 				runID, err = interactive.SelectRun(ctx, p, runs, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 

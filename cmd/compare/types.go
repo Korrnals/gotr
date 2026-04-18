@@ -124,7 +124,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 				}
 				filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
 				if err := saveToFileWithPath(result, format, filePath); err != nil {
-					return err
+					return fmt.Errorf("PrintCompareResult: %w", err)
 				}
 				// Message is printed by saveToFile
 				return nil
@@ -143,7 +143,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 		switch format {
 		case "json", "yaml", "csv":
 			if err := saveToFileWithPath(result, format, savePath); err != nil {
-				return err
+				return fmt.Errorf("PrintCompareResult: %w", err)
 			}
 			if q, _ := cmd.Flags().GetBool("quiet"); !q {
 				fmt.Println()
@@ -421,27 +421,27 @@ func printCSV(result CompareResult) error {
 
 	// Header
 	if err := writer.Write([]string{"Type", "Name", "ID Project 1", "ID Project 2"}); err != nil {
-		return err
+		return fmt.Errorf("printCSV: %w", err)
 	}
 
 	// Only in first
 	for _, item := range result.OnlyInFirst {
 		if err := writer.Write([]string{"Only in Project 1", item.Name, fmt.Sprintf("%d", item.ID), ""}); err != nil {
-			return err
+			return fmt.Errorf("printCSV: %w", err)
 		}
 	}
 
 	// Only in second
 	for _, item := range result.OnlyInSecond {
 		if err := writer.Write([]string{"Only in Project 2", item.Name, "", fmt.Sprintf("%d", item.ID)}); err != nil {
-			return err
+			return fmt.Errorf("printCSV: %w", err)
 		}
 	}
 
 	// Common
 	for _, item := range result.Common {
 		if err := writer.Write([]string{"Common", item.Name, fmt.Sprintf("%d", item.ID1), fmt.Sprintf("%d", item.ID2)}); err != nil {
-			return err
+			return fmt.Errorf("printCSV: %w", err)
 		}
 	}
 
@@ -486,27 +486,27 @@ func saveCSV(result CompareResult, savePath string) error {
 
 	// Header
 	if err := writer.Write([]string{"Type", "Name", "ID Project 1", "ID Project 2"}); err != nil {
-		return err
+		return fmt.Errorf("saveCSV: %w", err)
 	}
 
 	// Only in first
 	for _, item := range result.OnlyInFirst {
 		if err := writer.Write([]string{"Only in Project 1", item.Name, fmt.Sprintf("%d", item.ID), ""}); err != nil {
-			return err
+			return fmt.Errorf("saveCSV: %w", err)
 		}
 	}
 
 	// Only in second
 	for _, item := range result.OnlyInSecond {
 		if err := writer.Write([]string{"Only in Project 2", item.Name, "", fmt.Sprintf("%d", item.ID)}); err != nil {
-			return err
+			return fmt.Errorf("saveCSV: %w", err)
 		}
 	}
 
 	// Common
 	for _, item := range result.Common {
 		if err := writer.Write([]string{"Common", item.Name, fmt.Sprintf("%d", item.ID1), fmt.Sprintf("%d", item.ID2)}); err != nil {
-			return err
+			return fmt.Errorf("saveCSV: %w", err)
 		}
 	}
 

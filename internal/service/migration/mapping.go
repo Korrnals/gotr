@@ -81,7 +81,7 @@ func (sm *SharedStepMapping) Save(dir string) error {
 	}
 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("Save: %w", err)
 	}
 
 	sm.SortPairs()
@@ -91,7 +91,7 @@ func (sm *SharedStepMapping) Save(dir string) error {
 
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("Save: %w", err)
 	}
 
 	return os.WriteFile(file, jsonData, 0o644)

@@ -33,12 +33,12 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 
 			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSimpleCompareCmd.func: %w", err)
 			}
 
 			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSimpleCompareCmd.func: %w", err)
 			}
 
 			startTime := time.Now()
@@ -58,7 +58,7 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 
 			if !isInteractiveTable {
 				if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
-					return err
+					return fmt.Errorf("newSimpleCompareCmd.func: %w", err)
 				}
 			}
 

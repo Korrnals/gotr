@@ -45,7 +45,7 @@ If project_id is specified — returns only project users.`,
 
 			projectID, err := flags.ValidateRequiredID(args, 0, "project_id")
 			if err != nil {
-				return err
+				return fmt.Errorf("newListCmd.func: %w", err)
 			}
 
 			return listProjectUsers(ctx, cmd, cli, projectID)

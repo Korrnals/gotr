@@ -12,6 +12,7 @@ Language: [Русский](../../../ru/guides/instructions/crud-add.md) | Englis
     - [Progress](../progress.md)
     - [Commands Index](../commands/index.md)
     - [Instructions](index.md)
+      - [Interactive Migration Walkthrough](migration-interactive-walkthrough.md)
       - [Full Migration](migration-full.md)
       - [Partial Migration](migration-partial.md)
       - [Shared Steps Migration](migration-shared-steps.md)

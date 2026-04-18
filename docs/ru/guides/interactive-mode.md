@@ -22,102 +22,357 @@ Language: Русский | [English](../../en/guides/interactive-mode.md)
 Если обязательный параметр не указан, утилита автоматически:
 
 1. Получает список доступных сущностей из API
-2. Показывает нумерованный список
-3. Просит выбрать номер
-4. Использует выбранное значение
+2. Показывает интерактивное меню выбора с навигацией
+3. Просит выбрать элемент из списка
+4. Использует выбранное значение и переходит к следующему шагу
+
+Три режима работы:
+
+- **Auto-interactive** (по умолчанию) — промпты появляются только для неуказанных параметров
+- **Manual** — все параметры через флаги, промптов нет
+- **Non-interactive** (`--non-interactive`) — промпты запрещены; ошибка если требуется ввод (для CI/CD)
+
+## Навигация в интерактивных меню
+
+Все интерактивные списки содержат элементы навигации:
+
+```text
+? Select project:
+  ← Back                    ← вернуться к предыдущему шагу
+  ✕ Exit                    ← выйти из интерактива
+  ──────────────────────
+  ID: 1  | SAP Hybris
+  ID: 2  | SAP CRM
+  ID: 30 | R189
+  ...
+  ← Back                    ← дублируется внизу списка (если >5 элементов)
+```
+
+- **← Back** — возврат к предыдущему шагу выбора (если доступен)
+- **✕ Exit** — завершение работы без ошибки
+- Элементы отображаются с выравниванием колонок (ID + название)
+- Если в проекте **один suite** — он выбирается автоматически (без промпта)
 
 ## Команды с интерактивным режимом
 
-### get cases
+### get — чтение данных
 
 ```bash
 # Полностью интерактивно
 gotr get cases
-# → Показывает список проектов → выбираем проект
-# → Показывает список сьютов → выбираем сьют
-# → Получаем кейсы
+# → Select project: → Select suite: → [JSON с кейсами]
 
-# Частично интерактивно
+# Частично интерактивно (проект указан)
 gotr get cases 30
-# → Проект указан, показывает только список сьютов
+# → Select suite: → [JSON с кейсами]
+
+# Полностью ручной
+gotr get cases 30 --suite-id 20069
 ```
 
-### Особенности
+Интерактивный режим доступен для:
 
-- Если в проекте только один сьют — выбирается автоматически
-- Флаг `--all-suites` отменяет выбор (получает из всех сьютов)
+| Команда | Промпт 1 | Промпт 2 | Промпт 3 |
+| --- | --- | --- | --- |
+| `get cases` | Select project | Select suite | — |
+| `get case` | Select project | Select suite | Select case |
+| `get suites` | Select project | — | — |
+| `get suite` | Select project | Select suite | — |
+| `get sharedsteps` | Select project | — | — |
+| `get sharedstep` | Select project | Select shared step | — |
+| `get case-history` | Select project | Select suite → Select case | — |
+| `get sharedstep-history` | Select project | Select shared step | — |
+| `get project` | Select project | — | — |
+| `get sections list` | Select project | — | — |
 
-### get suites
+Особенности `get cases`:
+
+- Если в проекте **один suite** — выбирается автоматически
+- Флаг `--all-suites` загружает кейсы из всех наборов (без выбора)
+
+### export — экспорт данных
 
 ```bash
-gotr get suites
-# → Показывает список проектов → выводит сьюты выбранного
+# Полностью интерактивно
+gotr export
+# → Select export resource: → Select export endpoint: → [результат]
+
+# Частично
+gotr export cases get_cases 30 --suite-id 20069 --save --format json
 ```
 
-### get sharedsteps
+Промпты export (каждый следующий — только если не указан):
+
+1. `Select export resource:` — выбор типа ресурса (cases, suites, sharedsteps...)
+2. `Select export endpoint:` — выбор API-эндпоинта
+3. `Enter main ID:` — ввод ID (если эндпоинт содержит `{id}`)
+
+### compare — сравнение проектов
 
 ```bash
-gotr get sharedsteps
-# → Показывает список проектов → выводит shared steps
+# Полностью интерактивно
+gotr compare cases
+# → Select first project (pid1): → Select second project (pid2):
+# → [результат сравнения]
+# → Comparison complete. What next?
+
+# Ручной
+gotr compare all --pid1 30 --pid2 34 --save
 ```
 
-### sync cases
+Промпты compare:
 
-```bash
-gotr sync cases
-# → Source проект → Source сьют
-# → Destination проект → Destination сьют
-# → Подтверждение миграции
-```
+1. `Select first project (pid1):` — выбор первого проекта
+2. `Select second project (pid2):` — выбор второго (← Back возвращает к шагу 1)
+3. `Save compare result to file?` — предложение сохранить (если выбран интерактивно)
 
-### sync shared-steps
+### sync — миграция данных
 
-```bash
-gotr sync shared-steps
-# → Source проект → (опционально) Source сьют
-# → Destination проект
-```
+Все sync-подкоманды поддерживают полный интерактивный режим.
 
-### sync sections
-
-```bash
-gotr sync sections
-# → Source проект → Source сьют
-# → Destination проект → Destination сьют
-```
-
-### sync full
+#### sync full
 
 ```bash
 gotr sync full
-# → Source проект → Source сьют
-# → Destination проект → Destination сьют
-# → Миграция shared steps + cases
+# → Select SOURCE project:
+# → Select SOURCE suite:
+# → Select DESTINATION project:
+# → Select DESTINATION suite:
+# → 📦 Create snapshot before migration? (recommended) [Y/n]
+# → 🏷  Snapshot label (optional, press Enter to skip):
+# → [сводка миграции]
+# → Continue? [y/N]
+# → [выполнение: shared steps → cases]
+# → [post-action меню]
+```
+
+#### sync cases
+
+```bash
+gotr sync cases
+# → Select SOURCE project (copy from):
+# → Select SOURCE suite:
+# → Select DESTINATION project (copy to):
+# → Select DESTINATION suite:
+# → 📦 Create snapshot before migration? (recommended) [Y/n]
+# → Continue? [y/N]
+# → [выполнение миграции кейсов]
+# → [post-action меню]
+```
+
+#### sync shared-steps
+
+```bash
+gotr sync shared-steps
+# → Select SOURCE project (copy shared steps from):
+# → Specify source suite? [y/N]
+#   (если да) → Select SOURCE suite:
+# → Select DESTINATION project (copy shared steps to):
+# → [фильтрация и сводка]
+# → 📦 Create snapshot before migration? (recommended) [Y/n]
+# → Continue? [y/N]
+# → [импорт shared steps]
+# → Save mapping? [y/N]
+# → Save filtered shared steps list? [y/N]
+# → [post-action меню]
+```
+
+#### sync sections
+
+```bash
+gotr sync sections
+# → Select SOURCE project:
+# → Select SOURCE suite:
+# → Select DESTINATION project:
+# → Select DESTINATION suite:
+# → 📦 Create snapshot before migration? (recommended) [Y/n]
+# → Continue? [y/N]
+# → [перенос секций]
+# → Save mapping? [y/N]
+# → [post-action меню]
+```
+
+#### sync suites
+
+```bash
+gotr sync suites
+# → Select SOURCE project:
+# → Select DESTINATION project:
+# → 📦 Create snapshot before migration? (recommended) [Y/n]
+# → Continue? [y/N]
+# → [перенос наборов]
+# → Save mapping? [y/N]
+# → [post-action меню]
+```
+
+## Post-action меню и кросс-навигация
+
+После завершения sync- и compare-операций появляется интерактивное меню действий.
+
+### После sync
+
+```text
+? What next?
+  ✕ Exit
+  ↻ Rollback this migration          ← (только если был создан snapshot)
+  📊 Compare: verify current state    ← кросс-навигация → gotr compare all
+  🔄 Sync: migrate data              ← кросс-навигация → gotr sync full
+  📦 Snap: manage snapshots          ← кросс-навигация → gotr snap list
+```
+
+- **Rollback** — откатывает миграцию через ранее созданный snapshot
+- **Кросс-навигация** — прямой переход к связанным командам без выхода
+
+### После compare
+
+```text
+? Comparison complete. What next?
+  ✕ Exit
+  📋 View detailed results
+  💾 Save results to file
+  → Sync: migrate differences        ← (если есть расхождения)
+  📊 Compare: verify current state
+  🔄 Sync: migrate data
+  📦 Snap: manage snapshots
+```
+
+- **Sync: migrate differences** — запускает sync с передачей project ID из compare
+- **Save results to file** — выбор формата (json/yaml/csv/table) и пути сохранения
+
+### Наследование параметров (WorkSession)
+
+Параметры `src-project`, `dst-project`, `src-suite`, `dst-suite` передаются через сессию:
+
+```text
+compare → sync:  project ID из compare подставляются в sync автоматически
+sync → compare:  project ID из sync подставляются в compare автоматически
+```
+
+Это означает что при кросс-навигации **не нужно повторно выбирать проекты** — они
+наследуются из предыдущей команды.
+
+## Snapshot-подтверждение
+
+Перед mutating-операциями (sync) gotr предлагает создать snapshot:
+
+```text
+📦 Create snapshot before migration? (recommended) [Y/n]
+```
+
+Логика приоритетов:
+
+1. Флаг `--snapshot` — принудительно включает/выключает
+2. Параметр конфигурации `snap.enabled` — если задан
+3. Интерактивный промпт — если ни (1) ни (2) не заданы (по умолчанию: **да**)
+
+При создании snapshot предлагается ввести метку:
+
+```text
+🏷  Snapshot label (optional, press Enter to skip):
 ```
 
 ## Примеры интерактивной работы
 
-```bash
-$ gotr get cases
-Доступные проекты:
-----------------------------------------------------------------------
-  [1] ID: 1 | SAP Hybris
-  [2] ID: 2 | SAP CRM
-  ...
-  [17] ID: 30 | R189
-----------------------------------------------------------------------
-Выберите номер проекта (1-28): 17
+### Пример 1: get cases
 
-В проекте найдено несколько сьютов:
-------------------------------------------------------------
-  [1] ID: 8411 | R189 ИТ Наборы и кейсы
-  [2] ID: 9709 | R189 ПТ Наборы и кейсы
+```text
+$ gotr get cases
+
+? Select project:
+  ← Back
+  ✕ Exit
+  ──────────────────────
+  ID: 1  | SAP Hybris
+  ID: 2  | SAP CRM
   ...
-  [10] ID: 20069 | Временный набор кейсов
-------------------------------------------------------------
-Выберите номер сьюта (1-10): 10
+  ID: 30 | R189
+  ← Back
+
+→ Выбираем: ID: 30 | R189
+
+? Select suite:
+  ← Back
+  ✕ Exit
+  ──────────────────────
+  ID: 8411  | R189 ИТ Наборы и кейсы
+  ID: 9709  | R189 ПТ Наборы и кейсы
+  ...
+  ID: 20069 | Временный набор кейсов
+  ← Back
+
+→ Выбираем: ID: 20069 | Временный набор кейсов
 
 [JSON с кейсами]
+```
+
+### Пример 2: sync full (полная миграция)
+
+```text
+$ gotr sync full
+
+? Select SOURCE project:
+→ ID: 30 | R189
+
+? Select SOURCE suite:
+→ ID: 20069 | Временный набор кейсов
+
+? Select DESTINATION project:
+→ ID: 34 | Тестирование E2E сценариев
+
+? Select DESTINATION suite:
+→ ID: 19859 | Сценарии R189 (перенос)
+
+? 📦 Create snapshot before migration? (recommended) Yes
+? 🏷  Snapshot label (optional): R189 → E2E migration
+
+  ┌─────────────────────────────────────┐
+  │ Migration summary                   │
+  │ Shared steps: 12 new, 3 existing    │
+  │ Cases: 47 to migrate                │
+  └─────────────────────────────────────┘
+
+? Continue? Yes
+
+✓ Shared steps migrated (12 created, 3 mapped)
+✓ Cases migrated (47 created)
+
+? What next?
+→ ✕ Exit
+```
+
+### Пример 3: compare → sync (кросс-навигация)
+
+```text
+$ gotr compare cases --pid1 30 --pid2 34
+
+  Cases comparison:
+  Project 30: 147 cases
+  Project 34: 100 cases
+  Differences: 47 missing in project 34
+
+? Comparison complete. What next?
+→ → Sync: migrate differences
+
+? What do you want to migrate?
+→ Full migration (cases + shared steps)
+
+# Проекты наследуются из compare → запускается sync full
+# с --src-project 30 --dst-project 34
+```
+
+## Частичный интерактив (гибридный режим)
+
+Можно указать **часть** параметров флагами, а остальные выбрать интерактивно:
+
+```bash
+# Только source задан — destination выбираем интерактивно
+gotr sync full --src-project 30 --src-suite 20069
+
+# Только проекты заданы — suite выбираем интерактивно
+gotr sync cases --src-project 30 --dst-project 34
+
+# Mapping-файл задан, остальное — интерактивно
+gotr sync cases --mapping-file mapping.json
 ```
 
 ## Преимущества
@@ -126,6 +381,9 @@ $ gotr get cases
 2. **Визуальный контроль** — видите названия проектов и сьютов
 3. **Гибкость** — можно смешивать: часть параметров через флаги, часть интерактивно
 4. **Автоматизация** — все те же команды работают в скриптах с флагами
+5. **Кросс-навигация** — переход между compare/sync/snap без выхода
+6. **Наследование параметров** — проекты передаются между командами через сессию
+7. **Snapshot safety** — автоматическое предложение создать точку отката перед миграцией
 
 ## Дорожная карта Stage 12 (Interactive System Unification)
 

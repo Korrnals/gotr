@@ -51,7 +51,10 @@ Useful for finding a user when the email is known but not the ID.`,
 			}
 
 			_, err = output.Output(cmd, resp, "users", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output users: %w", err)
+			}
+			return nil
 		},
 	}
 

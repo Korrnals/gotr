@@ -661,7 +661,10 @@ func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, 
 
 func outputUpdateResult(cmd *cobra.Command, v interface{}) error {
 	_, err := output.Output(cmd, v, "result", "json")
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to output result: %w", err)
+	}
+	return nil
 }
 
 // updateLabels updates test labels (DEPRECATED: use 'gotr labels update' instead).

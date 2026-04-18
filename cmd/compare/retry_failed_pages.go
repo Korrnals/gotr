@@ -115,7 +115,10 @@ func runRetryFailedPages(cmd *cobra.Command, _ []string) error {
 	}
 
 	_, _, err = executeRetryFailedPages(ctx, cli, failedPages, resolvedOpts, fromPath, saveRemainingPath)
-	return err
+	if err != nil {
+		return fmt.Errorf("runRetryFailedPages: %w", err)
+	}
+	return nil
 }
 
 // resolveRetryFailedPagesOptionsFromConfig merges flags with compare retry config defaults.

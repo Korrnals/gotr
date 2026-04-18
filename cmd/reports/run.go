@@ -75,7 +75,10 @@ To check report readiness status, run the command again.`,
 			}
 
 			_, err = output.Output(cmd, resp, "reports", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output reports: %w", err)
+			}
+			return nil
 		},
 	}
 

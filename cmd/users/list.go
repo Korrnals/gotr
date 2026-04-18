@@ -76,7 +76,10 @@ func listAllUsers(ctx context.Context, cmd *cobra.Command, cli usersClient) erro
 	saveFlag, _ := cmd.Flags().GetBool("save")
 	if saveFlag {
 		_, err := output.Output(cmd, users, "users", "json")
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to output users: %w", err)
+		}
+		return nil
 	}
 
 	if len(users) == 0 {
@@ -107,7 +110,10 @@ func listProjectUsers(ctx context.Context, cmd *cobra.Command, cli usersClient, 
 	saveFlag, _ := cmd.Flags().GetBool("save")
 	if saveFlag {
 		_, err := output.Output(cmd, users, "users", "json")
-		return err
+		if err != nil {
+			return fmt.Errorf("failed to output users: %w", err)
+		}
+		return nil
 	}
 
 	if len(users) == 0 {

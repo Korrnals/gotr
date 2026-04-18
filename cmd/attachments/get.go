@@ -66,7 +66,10 @@ Displays: ID, filename, size, MIME type, creation date, and resource bindings.`,
 			}
 
 			_, err = output.Output(cmd, resp, "attachments", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output attachments: %w", err)
+			}
+			return nil
 		},
 	}
 	output.AddFlag(cmd)

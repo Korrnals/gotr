@@ -57,7 +57,10 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			_, err = output.Output(cmd, resp, "plans", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output plans: %w", err)
+			}
+			return nil
 		},
 	}
 

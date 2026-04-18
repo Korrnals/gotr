@@ -12,6 +12,7 @@ Language: Русский | [English](../../../en/guides/instructions/crud-get.md
     - [Прогресс](../progress.md)
     - [Каталог команд](../commands/index.md)
     - [Инструкции](index.md)
+      - [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md)
       - [Полная миграция](migration-full.md)
       - [Частичная миграция](migration-partial.md)
       - [Миграция shared steps](migration-shared-steps.md)

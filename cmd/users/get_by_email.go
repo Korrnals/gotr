@@ -31,12 +31,12 @@ Useful for finding a user when the email is known but not the ID.`,
 				email = args[0]
 			} else {
 				if err := requireInteractiveUserArg(cmd.Context(), "gotr users get-by-email [email]"); err != nil {
-					return err
+					return fmt.Errorf("newGetByEmailCmd.func: %w", err)
 				}
 				var err error
 				email, err = resolveEmailInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetByEmailCmd.func: %w", err)
 				}
 			}
 			if email == "" {

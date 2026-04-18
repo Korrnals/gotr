@@ -328,14 +328,14 @@ func promptAndSave(ctx context.Context, p interactive.Prompter, cmd *cobra.Comma
 	formats := []string{"json", "yaml", "csv", "table (text)"}
 	idx, _, err := p.Select("Save format:", formats)
 	if err != nil {
-		return err
+		return fmt.Errorf("promptAndSave: %w", err)
 	}
 
 	format := []string{"json", "yaml", "csv", "table"}[idx]
 
 	input, err := p.Input("File path (or empty for default):", "")
 	if err != nil {
-		return err
+		return fmt.Errorf("promptAndSave: %w", err)
 	}
 	savePath := strings.TrimSpace(input)
 
@@ -351,7 +351,7 @@ func promptAndSave(ctx context.Context, p interactive.Prompter, cmd *cobra.Comma
 	}
 
 	if err := PrintCompareResult(cmd, result, p1Name, p2Name, format, savePath); err != nil {
-		return err
+		return fmt.Errorf("promptAndSave: %w", err)
 	}
 
 	return nil
@@ -374,8 +374,8 @@ func renderTableLines(result CompareResult, p1Name, p2Name string) []string {
 // --- Line rendering helpers (mirror the existing print* functions but return []string) ---
 
 func renderOnlyInProjectLines(items []ItemInfo, projectID int64, projectName string) []string {
-	numWidth := 5  // row number "#"
-	idWidth := 8   // TestRail ID
+	numWidth := 5 // row number "#"
+	idWidth := 8  // TestRail ID
 	// Adaptive name width: fill remaining terminal space.
 	// Layout: │ # │ ID │ Name │  →  1 + (numW+2) + 1 + (idW+2) + 1 + (nameW+2) + 1
 	termW := interactive.TerminalWidth()

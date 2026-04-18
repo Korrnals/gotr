@@ -42,7 +42,7 @@ All flags are optional — only specified fields will be changed.`,
 				var err error
 				milestoneID, err = flags.ValidateRequiredID(args, 0, "milestone_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				ctx := cmd.Context()
@@ -53,7 +53,7 @@ All flags are optional — only specified fields will be changed.`,
 				var err error
 				milestoneID, err = resolveMilestoneIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -99,7 +99,7 @@ All flags are optional — only specified fields will be changed.`,
 
 			ui.Successf(os.Stdout, "Milestone %d updated", milestoneID)
 			if err := output.OutputResult(cmd, resp, "milestones"); err != nil {
-				return err
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

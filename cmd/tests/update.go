@@ -42,7 +42,7 @@ assign an executor.`,
 			if len(args) > 0 {
 				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -53,7 +53,7 @@ assign an executor.`,
 				}
 				testID, err = resolveTestIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -81,7 +81,7 @@ assign an executor.`,
 
 			ui.Successf(os.Stdout, "Test %d updated", testID)
 			if err := printJSON(cmd, resp, time.Now()); err != nil {
-				return err
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

@@ -31,7 +31,7 @@ and represent columns in the test data table.`,
 				var err error
 				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -40,7 +40,7 @@ and represent columns in the test data table.`,
 				var err error
 				datasetID, err = resolveDatasetIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 

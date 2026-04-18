@@ -40,7 +40,7 @@ Use --dry-run to preview before deleting.`,
 			if len(args) > 0 {
 				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -48,7 +48,7 @@ Use --dry-run to preview before deleting.`,
 				}
 				datasetID, err = resolveDatasetIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			}
 

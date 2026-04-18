@@ -37,7 +37,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				sectionID, err = flags.ValidateRequiredID(args, 0, "section_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -46,7 +46,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 				sectionID, err = resolveSectionIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
@@ -105,7 +105,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Case created (ID: %d)", resp.ID)
 			if err := output.OutputResult(cmd, resp, "cases"); err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

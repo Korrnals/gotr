@@ -70,7 +70,7 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCaseCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -79,7 +79,7 @@ func newListCaseCmd(getClient GetClientFunc) *cobra.Command {
 
 				caseID, err = resolveCaseIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCaseCmd.func: %w", err)
 				}
 			}
 
@@ -116,7 +116,7 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListPlanCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -125,7 +125,7 @@ func newListPlanCmd(getClient GetClientFunc) *cobra.Command {
 
 				planID, err = resolvePlanIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListPlanCmd.func: %w", err)
 				}
 			}
 
@@ -165,20 +165,20 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 			case 2:
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListPlanEntryCmd.func: %w", err)
 				}
 				entryID = args[1]
 			case 1:
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListPlanEntryCmd.func: %w", err)
 				}
 				if !interactive.HasPrompterInContext(ctx) {
 					return fmt.Errorf("entry_id required: gotr attachments list plan-entry [plan_id] [entry_id]")
 				}
 				entryID, err = resolvePlanEntryIDInteractive(ctx, client, planID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListPlanEntryCmd.func: %w", err)
 				}
 			default:
 				if !interactive.HasPrompterInContext(ctx) {
@@ -186,7 +186,7 @@ func newListPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				planID, entryID, err = resolvePlanAndEntryIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListPlanEntryCmd.func: %w", err)
 				}
 			}
 
@@ -223,7 +223,7 @@ func newListProjectCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListProjectCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -233,7 +233,7 @@ func newListProjectCmd(getClient GetClientFunc) *cobra.Command {
 				p := interactive.PrompterFromContext(ctx)
 				projectID, err = interactive.SelectProject(ctx, p, client, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListProjectCmd.func: %w", err)
 				}
 			}
 
@@ -270,7 +270,7 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				runID, err = flags.ValidateRequiredID(args, 0, "run_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListRunCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -279,7 +279,7 @@ func newListRunCmd(getClient GetClientFunc) *cobra.Command {
 
 				runID, err = resolveRunIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListRunCmd.func: %w", err)
 				}
 			}
 
@@ -316,7 +316,7 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListTestCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -325,7 +325,7 @@ func newListTestCmd(getClient GetClientFunc) *cobra.Command {
 
 				testID, err = resolveTestIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListTestCmd.func: %w", err)
 				}
 			}
 

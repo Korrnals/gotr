@@ -55,7 +55,7 @@ Flags:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("suitesCmd.func: %w", err)
 			}
 		}
 
@@ -63,17 +63,17 @@ Flags:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("suitesCmd.func: %w", err)
 			}
 		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, 0, dstProject, 0, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -98,14 +98,14 @@ Flags:
 			}{Source: sourceSuites, Target: targetSuites}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		sourceSuites := loaded.Source
 		targetSuites := loaded.Target
 
 		filtered, err := m.FilterSuites(sourceSuites, targetSuites)
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 
 		printFilterSummary("suites", m.LastFilterStats())
@@ -128,7 +128,7 @@ Flags:
 		if !autoApprove {
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("suitesCmd.func: %w", err)
 			}
 			if !ok {
 				ui.Canceled(os.Stdout)
@@ -149,7 +149,7 @@ Flags:
 			return struct{}{}, m.ImportSuites(ctx, filtered, false)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 
 		// Step 4) Save mapping if requested

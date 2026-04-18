@@ -40,7 +40,7 @@ Displays: ID, filename, size, MIME type, creation date, and resource bindings.`,
 			if len(args) > 0 {
 				attachmentID, err = flags.ValidateRequiredID(args, 0, "attachment_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -49,7 +49,7 @@ Displays: ID, filename, size, MIME type, creation date, and resource bindings.`,
 
 				attachmentID, err = resolveAttachmentIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

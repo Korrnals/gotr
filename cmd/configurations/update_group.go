@@ -36,7 +36,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateGroupCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -48,7 +48,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 				groupID, err = resolveGroupIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateGroupCmd.func: %w", err)
 				}
 			}
 
@@ -80,7 +80,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Group %d updated", groupID)
 			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
-				return err
+				return fmt.Errorf("newUpdateGroupCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

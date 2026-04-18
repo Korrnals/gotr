@@ -42,18 +42,18 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 
 	jqBin, err := selectEmbeddedJQBinaryFunc(runtime.GOOS)
 	if err != nil {
-		return err
+		return fmt.Errorf("RunEmbeddedJQ: %w", err)
 	}
 
 	// Create a temp file in the current working directory
 	dir, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("RunEmbeddedJQ: %w", err)
 	}
 
 	tmpFile, err := os.CreateTemp(dir, "jq-*")
 	if err != nil {
-		return err
+		return fmt.Errorf("RunEmbeddedJQ: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 	tmpFile.Close() // close before writing to avoid "text file busy"
@@ -61,7 +61,7 @@ func RunEmbeddedJQ(rawBody []byte, filterStr string) error {
 	// Write the embedded binary to the temp file with restricted permissions
 	if err := writeEmbeddedBinaryFile(tmpPath, jqBin, 0o700); err != nil {
 		_ = os.Remove(tmpPath) // best-effort cleanup
-		return err
+		return fmt.Errorf("RunEmbeddedJQ: %w", err)
 	}
 
 	// Explicitly set the executable permission

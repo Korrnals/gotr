@@ -38,7 +38,7 @@ use the TestRail web interface.`,
 			if len(args) > 0 {
 				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -46,7 +46,7 @@ use the TestRail web interface.`,
 				}
 				datasetID, err = resolveDatasetIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -71,7 +71,7 @@ use the TestRail web interface.`,
 
 			ui.Successf(os.Stdout, "Dataset %d updated", datasetID)
 			if err := output.OutputResult(cmd, resp, "datasets"); err != nil {
-				return err
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

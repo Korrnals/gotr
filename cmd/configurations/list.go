@@ -42,7 +42,7 @@ parameters when creating plan entries with configurations.`,
 			if len(args) > 0 {
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -54,7 +54,7 @@ parameters when creating plan entries with configurations.`,
 
 				projectID, err = resolveProjectIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 

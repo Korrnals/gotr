@@ -2,6 +2,7 @@ package snap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -19,10 +20,10 @@ const backOption = "← Back"
 const exitOption = "✕ Exit"
 
 // errGoBack is a sentinel to signal user chose "← Back".
-var errGoBack = fmt.Errorf("go back")
+var errGoBack = errors.New("go back")
 
 // errExit is a sentinel to signal user chose "✕ Exit".
-var errExit = fmt.Errorf("exit")
+var errExit = errors.New("exit")
 
 // serverLabel returns a normalised display string for a server URL.
 // Strips API path, shows only scheme+host. Empty → "(legacy)" for old snapshots.

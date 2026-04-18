@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/interactive"
@@ -53,7 +54,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -61,7 +62,7 @@ Examples:
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -69,7 +70,7 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -77,17 +78,17 @@ Examples:
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -101,7 +102,7 @@ Examples:
 			if !autoApprove {
 				ok, err := p.Confirm("Continue?", false)
 				if err != nil {
-					return err
+					return fmt.Errorf("fullCmd.func: %w", err)
 				}
 				if !ok {
 					ui.Canceled(os.Stdout)
@@ -132,7 +133,7 @@ Examples:
 			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun || !autoApprove)
 		})
 		if err != nil { // if dry-run — no import
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 
 		if dryRun {
@@ -146,7 +147,7 @@ Examples:
 			return struct{}{}, m.MigrateCases(ctx, dryRun)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 
 		if autoSaveMapping {

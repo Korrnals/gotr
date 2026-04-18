@@ -67,7 +67,7 @@ Examples:
 				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCasesCmd.func: %w", err)
 				}
 			} else {
 				projectID, err = flags.ParseID(projectIDStr)
@@ -109,7 +109,7 @@ Examples:
 			// Multiple suites — interactive selection
 			selectedSuiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 			if err != nil {
-				return err
+				return fmt.Errorf("newCasesCmd.func: %w", err)
 			}
 
 			return fetchAndOutputCases(ctx, command, cli, projectID, selectedSuiteID, sectionID, start)
@@ -153,7 +153,7 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 
 				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCaseCmd.func: %w", err)
 				}
 
 				suites, err := cli.GetSuites(ctx, projectID)
@@ -166,7 +166,7 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 
 				suiteID, err := interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCaseCmd.func: %w", err)
 				}
 
 				cases, err := cli.GetCases(ctx, projectID, suiteID, 0)
@@ -179,13 +179,13 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 
 				id, err = interactive.SelectCase(ctx, interactive.PrompterFromContext(ctx), cases, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCaseCmd.func: %w", err)
 				}
 			}
 
 			kase, err := cli.GetCase(ctx, id)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCaseCmd.func: %w", err)
 			}
 
 			return handleOutput(command, kase, start)
@@ -197,7 +197,7 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 func fetchAndOutputCases(ctx context.Context, cmd *cobra.Command, cli client.ClientInterface, projectID, suiteID, sectionID int64, start time.Time) error {
 	cases, err := cli.GetCases(ctx, projectID, suiteID, sectionID)
 	if err != nil {
-		return err
+		return fmt.Errorf("fetchAndOutputCases: %w", err)
 	}
 
 	return handleOutput(cmd, cases, start)

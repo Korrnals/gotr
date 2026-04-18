@@ -27,12 +27,12 @@ From the snapshot card you can undo the rollback (delete re-created entities).`,
 
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackListCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackListCmd.func: %w", err)
 			}
 
 			return browseUndoSnapshots(cmd, api, store, manifest)
@@ -67,12 +67,12 @@ If snapshot_id is omitted, shows an interactive picker with only rolled-back sna
 
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackUndoCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackUndoCmd.func: %w", err)
 			}
 
 			// Non-interactive or explicit ID: undo directly.
@@ -81,7 +81,7 @@ If snapshot_id is omitted, shows an interactive picker with only rolled-back sna
 					statusFilter: []snaplib.Status{snaplib.StatusRolledBack},
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("newRollbackUndoCmd.func: %w", err)
 				}
 				return executeUndo(cmd, api, store, manifest, snapID)
 			}

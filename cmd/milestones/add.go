@@ -41,7 +41,7 @@ Usage examples:
 				var err error
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				ctx := cmd.Context()
@@ -52,7 +52,7 @@ Usage examples:
 				var err error
 				projectID, err = resolveProjectIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
@@ -99,7 +99,7 @@ Usage examples:
 
 			ui.Successf(os.Stdout, "Milestone created (ID: %d)", resp.ID)
 			if err := output.OutputResult(cmd, resp, "milestones"); err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

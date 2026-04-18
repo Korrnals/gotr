@@ -64,7 +64,10 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			_, err = output.Output(cmd, resp, "labels", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output labels: %w", err)
+			}
+			return nil
 		},
 	}
 	output.AddFlag(cmd)

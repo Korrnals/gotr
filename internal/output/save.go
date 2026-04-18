@@ -27,7 +27,10 @@ func AddFlag(cmd *cobra.Command) {
 // It discards the file path and returns only the error.
 func OutputResult(cmd *cobra.Command, data interface{}, resource string) error {
 	_, err := Output(cmd, data, resource, "json")
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to output %s: %w", resource, err)
+	}
+	return nil
 }
 
 // resolveSavePath determines the save path from flags and interactive prompts.

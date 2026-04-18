@@ -51,7 +51,10 @@ role, role ID, MFA status, and administrator flag.`,
 			}
 
 			_, err = output.Output(cmd, resp, "users", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output users: %w", err)
+			}
+			return nil
 		},
 	}
 

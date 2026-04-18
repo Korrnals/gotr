@@ -44,6 +44,14 @@ Language: Русский | [English](../../../en/guides/instructions/migration-s
 > Используйте `--save-mapping`, чтобы сохранить файл соответствий для последующего
 > `gotr sync cases --mapping-file` — это гарантирует корректные ссылки в кейсах.
 
+## Важно: поведение ID при переносе shared steps
+
+- При переносе shared step исходный ID не сохраняется в target.
+- Утилита отправляет только данные шага (title, steps), а ID возвращается сервером TestRail после создания.
+- Если в target уже есть дубликат (по полю сравнения, обычно `title`), новый шаг не создается; в mapping фиксируется связь source ID с существующим target ID (`status: existing`).
+- Если дубликата нет, создается новый шаг и в mapping фиксируется пара source ID -> created target ID (`status: created`).
+- Даже если в target есть «свободный» номер, совпадающий со source ID, он не резервируется вручную.
+
 ## Предусловия ✅
 
 - [ ] gotr настроен и подключён к TestRail (`gotr self-test`)

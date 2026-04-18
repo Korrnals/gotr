@@ -34,7 +34,7 @@ Language: Русский | [English](../../../en/guides/instructions/migration-f
 Команда `gotr sync full` автоматически:
 
 1. Загружает shared steps из исходного проекта
-2. Фильтрует по привязке к кейсам исходного набора (поле "Used In")
+2. Применяет фильтрацию shared steps с учетом source suite
 3. Исключает дубликаты по `title` с целевым проектом
 4. Импортирует новые shared steps и сохраняет mapping (старый ID → новый ID)
 5. Загружает cases из исходного набора
@@ -43,6 +43,15 @@ Language: Русский | [English](../../../en/guides/instructions/migration-f
 
 > [!TIP]
 > Всегда начинайте с `--dry-run`, чтобы увидеть план миграции без внесения изменений.
+
+## Важно: как назначаются ID shared steps
+
+- ID shared step в source проекте не переносится «как есть» в target.
+- При создании shared step вызывается API `add_shared_step/<project_id>`, а новый ID назначает TestRail.
+- Даже если в target «свободен» такой же числовой ID, утилита не может принудительно занять именно его.
+- Связь кейсов с общими шагами сохраняется через mapping `source_shared_step_id -> target_shared_step_id`.
+- В `sync full` mapping строится на шаге переноса shared steps и автоматически применяется при переносе кейсов.
+- Если shared step уже существует в target (дубликат по полю сравнения, обычно `title`), в mapping пишется статус `existing`, и кейсы перенаправляются на уже существующий target ID.
 
 ## Предусловия ✅
 

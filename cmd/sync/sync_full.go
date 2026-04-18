@@ -130,11 +130,12 @@ Examples:
 		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
 		_, err = runSyncStatus(ctx, "Migrating shared steps...", quiet, func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun || !autoApprove)
+			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun)
 		})
 		if err != nil { // if dry-run — no import
 			return fmt.Errorf("fullCmd.func: %w", err)
 		}
+		sharedFiltered := m.FilteredSharedSteps()
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run complete")
@@ -143,11 +144,27 @@ Examples:
 
 		// Step 2) Migrate cases (Fetch → Filter → Import)
 		op.Phase("Step 2/2: cases")
-		_, err = runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, m.MigrateCases(ctx, dryRun)
+		caseImport, err := runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct {
+			IDs    []int64
+			Errors []string
+		}, error) {
+			createdIDs, importErrors, cErr := m.MigrateCasesReport(ctx, dryRun)
+			if cErr != nil {
+				return struct {
+					IDs    []int64
+					Errors []string
+				}{}, cErr
+			}
+			return struct {
+				IDs    []int64
+				Errors []string
+			}{IDs: createdIDs, Errors: importErrors}, nil
 		})
 		if err != nil {
 			return fmt.Errorf("fullCmd.func: %w", err)
+		}
+		if len(caseImport.Errors) > 0 {
+			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
 		}
 
 		if autoSaveMapping {
@@ -162,8 +179,26 @@ Examples:
 			}
 		}
 
-		// Save sync mapping to snapshot for rollback.
-		hook.FinalizeSyncData(buildSyncDataFromMapping(m.Mapping(), srcProject, dstProject, srcSuite, dstSuite))
+		// Save sync created entities to snapshot for rollback.
+		created := make([]snap.SyncCreatedEntity, 0)
+		mapping := m.Mapping()
+		for _, s := range sharedFiltered {
+			if targetID, ok := mapping[s.ID]; ok {
+				created = append(created, snap.SyncCreatedEntity{
+					Type:     "shared_step",
+					SourceID: s.ID,
+					TargetID: targetID,
+				})
+			}
+		}
+		for _, caseID := range caseImport.IDs {
+			created = append(created, snap.SyncCreatedEntity{
+				Type:     "case",
+				SourceID: 0,
+				TargetID: caseID,
+			})
+		}
+		hook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 
 		ui.Success(os.Stdout, "Full migration complete!")
 		syncPostAction(ctx, cmd, hook, cli)

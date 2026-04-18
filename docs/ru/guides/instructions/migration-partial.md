@@ -166,6 +166,35 @@ gotr sync cases \
   --mapping-file mapping.json
 ```
 
+## Rollback для частичной миграции
+
+Для `sync cases` также работает snapshot rollback.
+
+### Сразу после команды
+
+- В post-action меню выберите `↻ Rollback this migration`
+
+### Позже, по snapshot ID
+
+```bash
+# Просмотр snapshot-ов
+gotr snap list
+
+# Проверка различий перед откатом
+gotr snap rollback <snapshot_id> --dry-run
+
+# Выполнение отката
+gotr snap rollback <snapshot_id>
+```
+
+### Что именно откатывается
+
+- Для `sync cases` удаляются созданные в target кейсы из конкретного запуска.
+- Shared steps, которые были перенесены отдельно, rollback `sync cases` не удаляет.
+- Для отката двухшаговой миграции полностью обычно запускают rollback по обоим snapshot-ам:
+  - сначала для `sync cases`
+  - затем для `sync shared-steps`
+
 ## FAQ ❓
 
 - ❓ **Вопрос:** Что если mapping-файл не указан, а кейсы ссылаются на shared steps?

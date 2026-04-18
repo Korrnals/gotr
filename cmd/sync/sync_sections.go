@@ -160,7 +160,7 @@ Examples:
 
 		var snapHook *snap.Hook
 		if sd.Create {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
@@ -178,6 +178,21 @@ Examples:
 			if err == nil && ok {
 				_ = m.ExportMapping(logDir)
 			}
+		}
+
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(filtered))
+			mapping := m.Mapping()
+			for _, s := range filtered {
+				if targetID, ok := mapping[s.ID]; ok {
+					created = append(created, snap.SyncCreatedEntity{
+						Type:     "section",
+						SourceID: s.ID,
+						TargetID: targetID,
+					})
+				}
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 		}
 
 		syncPostAction(ctx, cmd, snapHook, cli)

@@ -173,6 +173,52 @@ gotr sync full \
 | `mapping.json` | при `--save-mapping` | Соответствие старых ID shared steps → новых |
 | `filtered.json` | при `--save-filtered` | Список кандидатов после фильтрации |
 
+## Rollback миграции
+
+`sync full` поддерживает rollback через snapshot.
+
+### Быстрый откат сразу после миграции
+
+В post-action меню выберите:
+
+- `↻ Rollback this migration`
+
+Утилита удалит созданные в target сущности в безопасном порядке зависимостей:
+
+1. cases
+2. shared steps
+
+### Откат позже по snapshot ID
+
+```bash
+# Найти snapshot
+gotr snap list
+
+# Посмотреть детали
+gotr snap info <snapshot_id>
+
+# Превью отката без изменений
+gotr snap rollback <snapshot_id> --dry-run
+
+# Выполнить откат
+gotr snap rollback <snapshot_id>
+```
+
+### Частичный rollback
+
+Можно откатить только часть созданных target-объектов:
+
+```bash
+gotr snap rollback <snapshot_id> --entity-ids 12345,12346
+```
+
+### Важные границы rollback
+
+- Rollback удаляет только объекты, созданные в рамках этой миграции.
+- Существовавшие ранее объекты в target (дубликаты `existing`) не удаляются.
+- Если часть сущностей уже удалена вручную, rollback продолжит работу и отметит частичный результат как resumable.
+- Повторный запуск того же rollback повторно обработает только неуспешные/необработанные элементы.
+
 ## FAQ ❓
 
 - ❓ **Вопрос:** Что если shared steps уже есть в целевом проекте?
@@ -191,7 +237,7 @@ gotr sync full \
   > ---
 
 - ❓ **Вопрос:** Как откатить миграцию?
-  > ↪️ **Ответ:** TestRail API не поддерживает массовый откат. Используйте `--dry-run` для проверки перед выполнением. При необходимости — удалите перенесённые объекты через `gotr delete`.
+  > ↪️ **Ответ:** через snapshots: `gotr snap rollback <snapshot_id>` или пункт `↻ Rollback this migration` сразу после `sync full`.
 
 ---
 

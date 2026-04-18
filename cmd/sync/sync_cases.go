@@ -199,7 +199,7 @@ Examples:
 
 		var snapHook *snap.Hook
 		if sd.Create {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), quiet, func(ctx context.Context) (struct {
@@ -235,6 +235,18 @@ Examples:
 
 		// Save log and mapping
 		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)
+
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(createdIDs))
+			for _, id := range createdIDs {
+				created = append(created, snap.SyncCreatedEntity{
+					Type:     "case",
+					SourceID: 0,
+					TargetID: id,
+				})
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
+		}
 
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil

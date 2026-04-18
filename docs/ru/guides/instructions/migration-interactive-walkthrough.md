@@ -719,6 +719,61 @@ gotr sync full \
   --approve --save-mapping
 ```
 
+## Rollback миграции: полный и частичный
+
+Если после миграции нужно удалить внесенные изменения в target-проекте,
+используйте rollback через snapshot.
+
+### Вариант A: сразу после миграции (из post-action меню)
+
+После `sync full` / `sync cases` / `sync shared-steps` / `sync sections` / `sync suites`:
+
+```text
+? Post-migration:
+  ✕ Exit
+  ↻ Rollback this migration
+  ...
+→ Выбираем: ↻ Rollback this migration
+```
+
+### Вариант B: позже, по snapshot ID
+
+```bash
+# 1) Найти snapshot
+gotr snap list
+
+# 2) Посмотреть детали
+gotr snap info <snapshot_id>
+
+# 3) Dry-run перед откатом
+gotr snap rollback <snapshot_id> --dry-run
+
+# 4) Выполнить rollback
+gotr snap rollback <snapshot_id>
+```
+
+### Частичный откат
+
+Можно откатить только часть target-объектов текущего snapshot:
+
+```bash
+gotr snap rollback <snapshot_id> --entity-ids 12345,12346
+```
+
+### Что откатывается по командам
+
+- `sync full`: удаляются созданные cases и created shared steps из этого запуска
+- `sync cases`: удаляются созданные cases
+- `sync shared-steps`: удаляются created shared steps (дубликаты `existing` не трогаются)
+- `sync sections`: удаляются созданные sections
+- `sync suites`: удаляются созданные suites
+
+### Границы rollback
+
+- Rollback не удаляет объекты, существовавшие в target до миграции.
+- Если часть объектов уже удалена вручную, rollback пометит такой шаг как обработанный/частичный.
+- Rollback можно безопасно повторить для незавершенных элементов.
+
 ---
 
 ## Карта вариаций миграции

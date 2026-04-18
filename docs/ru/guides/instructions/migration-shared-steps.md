@@ -115,6 +115,23 @@ gotr get sharedsteps 34
 gotr compare sharedsteps --pid1 30 --pid2 34
 ```
 
+## Rollback для `sync shared-steps`
+
+Откат выполняется через snapshot и удаляет только **созданные** shared steps текущего запуска.
+
+```bash
+# Превью
+gotr snap rollback <snapshot_id> --dry-run
+
+# Откат
+gotr snap rollback <snapshot_id>
+```
+
+Важно:
+
+- Shared steps, которые уже существовали в target и были сопоставлены как `existing`, не удаляются rollback-ом.
+- В post-action меню после миграции доступен пункт `↻ Rollback this migration`.
+
 ## Сценарий 2: Перенос ВСЕХ shared steps проекта 🚀
 
 Без указания `--src-suite` переносятся все shared steps проекта:

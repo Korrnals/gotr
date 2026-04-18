@@ -28,21 +28,14 @@ func runSyncStatus[T any](ctx context.Context, title string, quiet bool, fn func
 	}, fn)
 }
 
-// buildSyncDataFromMapping converts a migration mapping into SyncData for snap rollback.
-// The mapping contains sourceID→targetID for entities created during sync.
-func buildSyncDataFromMapping(mapping map[int64]int64, srcProject, dstProject, srcSuite, dstSuite int64) snap.SyncData {
+// buildSyncData builds SyncData for snap rollback from created entities.
+func buildSyncData(created []snap.SyncCreatedEntity, srcProject, dstProject, srcSuite, dstSuite int64) snap.SyncData {
 	sd := snap.SyncData{
 		SrcProject: srcProject,
 		DstProject: dstProject,
 		SrcSuite:   srcSuite,
 		DstSuite:   dstSuite,
-	}
-	for sourceID, targetID := range mapping {
-		sd.Created = append(sd.Created, snap.SyncCreatedEntity{
-			Type:     "sync_entity",
-			SourceID: sourceID,
-			TargetID: targetID,
-		})
+		Created:    created,
 	}
 	return sd
 }

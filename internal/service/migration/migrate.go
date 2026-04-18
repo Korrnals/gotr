@@ -58,6 +58,25 @@ func (m *Migration) MigrateCases(ctx context.Context, dryRun bool) error {
 	return m.ImportCases(ctx, filtered, dryRun)
 }
 
+// MigrateCasesReport runs cases migration and returns created case IDs and per-case errors.
+func (m *Migration) MigrateCasesReport(ctx context.Context, dryRun bool) ([]int64, []string, error) {
+	m.logger.Info("Starting cases migration (report)")
+
+	source, target, err := m.FetchCasesData(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("MigrateCasesReport: %w", err)
+	}
+
+	filtered, _ := m.FilterCases(source, target)
+
+	createdIDs, errs, err := m.ImportCasesReport(ctx, filtered, dryRun)
+	if err != nil {
+		return nil, nil, fmt.Errorf("MigrateCasesReport: %w", err)
+	}
+
+	return createdIDs, errs, nil
+}
+
 // MigrateSections runs the full sections migration cycle: fetch, filter, import.
 func (m *Migration) MigrateSections(ctx context.Context, dryRun bool) error {
 	m.logger.Info("Starting sections migration")

@@ -195,7 +195,7 @@ Examples:
 
 		var snapHook *snap.Hook
 		if sd.Create {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSharedSteps, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSharedSteps, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
@@ -227,6 +227,21 @@ Examples:
 					ui.Warningf(os.Stdout, "Failed to save filtered list: %v", err)
 				}
 			}
+		}
+
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(filtered))
+			mapping := m.Mapping()
+			for _, s := range filtered {
+				if targetID, ok := mapping[s.ID]; ok {
+					created = append(created, snap.SyncCreatedEntity{
+						Type:     "shared_step",
+						SourceID: s.ID,
+						TargetID: targetID,
+					})
+				}
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, 0))
 		}
 
 		syncPostAction(ctx, cmd, snapHook, cli)

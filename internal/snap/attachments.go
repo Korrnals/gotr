@@ -111,6 +111,22 @@ func SaveCaseAttachments(
 		return entry, nil
 	}
 
+	saved, err := runAttachmentDownloads(ctx, toSave, downloadOne)
+	if err != nil {
+		return saved, err
+	}
+
+	if saved > 0 {
+		if err := saveAttachManifest(store, snapID, &manifest); err != nil {
+			return saved, err
+		}
+	}
+
+	return saved, nil
+}
+
+// runAttachmentDownloads executes download tasks sequentially or in parallel.
+func runAttachmentDownloads(ctx context.Context, toSave []data.Attachment, downloadOne func(data.Attachment, int) (*AttachmentEntry, error)) (int, error) {
 	saved := 0
 	if len(toSave) >= concurrentThreshold {
 		results, _ := concurrent.ParallelMap(ctx, toSave, defaultParallelism, downloadOne)
@@ -122,20 +138,12 @@ func SaveCaseAttachments(
 		}
 	} else {
 		for i, att := range toSave {
-			_, err := downloadOne(att, i)
-			if err != nil {
+			if _, err := downloadOne(att, i); err != nil {
 				return saved, fmt.Errorf("save attachment %d (%s): %w", att.ID, att.Name, err)
 			}
 			saved++
 		}
 	}
-
-	if saved > 0 {
-		if err := saveAttachManifest(store, snapID, &manifest); err != nil {
-			return saved, err
-		}
-	}
-
 	return saved, nil
 }
 
@@ -163,19 +171,26 @@ func RestoreCaseAttachments(
 		srcPath := filepath.Join(dir, entry.File)
 
 		uploadPath := srcPath
+		tmpPath := ""
 		if entry.Compressed {
 			// Decompress to temp file for upload.
 			tmp, err := decompressToTemp(srcPath, entry.Name)
 			if err != nil {
 				return restored, fmt.Errorf("decompress attachment %d: %w", entry.ID, err)
 			}
-			defer os.Remove(tmp)
 			uploadPath = tmp
+			tmpPath = tmp
 		}
 
 		_, err := api.AddAttachmentToCase(ctx, caseID, uploadPath)
 		if err != nil {
+			if tmpPath != "" {
+				_ = os.Remove(tmpPath)
+			}
 			return restored, fmt.Errorf("upload attachment %d (%s): %w", entry.ID, entry.Name, err)
+		}
+		if tmpPath != "" {
+			_ = os.Remove(tmpPath)
 		}
 		restored++
 	}
@@ -290,7 +305,7 @@ func loadAttachManifest(store *Store, snapID string) (*AttachmentManifest, error
 	dir := store.SnapDir(snapID)
 	path := filepath.Join(dir, attachManifestFile)
 
-	data, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -299,7 +314,7 @@ func loadAttachManifest(store *Store, snapID string) (*AttachmentManifest, error
 	}
 
 	var manifest AttachmentManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
+	if err := json.Unmarshal(raw, &manifest); err != nil {
 		return nil, fmt.Errorf("decode attachment manifest: %w", err)
 	}
 	return &manifest, nil

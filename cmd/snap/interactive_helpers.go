@@ -108,33 +108,42 @@ func formatPickerLabel(idx int, e snaplib.ManifestEntry) string {
 // alignedPickerLabels returns picker labels with consistent column widths.
 // Includes a header row as the first element.
 func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels []string) {
-	type row struct {
-		idx      string
-		opEntity string
-		ids      string
-		cat      string
-		name     string
-		label    string
-		status   string
-		tier     string
-		ts       string
-		snapID   string
+	rows := buildPickerRows(entries)
+	w := computeColWidths(rows)
+
+	fmtRow := func(r pickerRow) string {
+		return formatPickerRow(r, w)
 	}
 
-	rows := make([]row, len(entries))
-	maxIdx, maxOp, maxIDs, maxCat, maxName, maxLabel, maxStatus, maxTier, maxTs, maxSnap := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	hdr := pickerRow{idx: "#", opEntity: "OPERATION", ids: "IDS", cat: "CATEGORY", status: "STATUS", tier: "TIER", ts: "DATE", snapID: "SNAPSHOT ID"}
+	header = fmtRow(hdr)
 
-	// Header widths.
-	hIdx, hOp, hIDs, hCat, hName := "#", "OPERATION", "IDS", "CATEGORY", ""
-	hLabel := ""
-	hStatus, hTier, hTs, hSnap := "STATUS", "TIER", "DATE", "SNAPSHOT ID"
+	labels = make([]string, len(entries))
+	for i, r := range rows {
+		labels[i] = fmtRow(r)
+	}
+	return header, labels
+}
 
+// pickerRow holds pre-formatted column values for a single snapshot entry.
+type pickerRow struct {
+	idx, opEntity, ids, cat, name, label, status, tier, ts, snapID string
+}
+
+// pickerColWidths holds the maximum column widths across all rows.
+type pickerColWidths struct {
+	idx, op, ids, cat, name, label, status, tier, ts, snap int
+}
+
+// buildPickerRows converts ManifestEntry slice to formatted pickerRow slice.
+func buildPickerRows(entries []snaplib.ManifestEntry) []pickerRow {
+	rows := make([]pickerRow, len(entries))
 	for i, e := range entries {
 		idsLabel := strings.TrimSpace(entityIDsLabel(e.EntityIDs))
 		if idsLabel == "" {
 			idsLabel = "–"
 		}
-		r := row{
+		r := pickerRow{
 			idx:      fmt.Sprintf("[%d]", i+1),
 			opEntity: fmt.Sprintf("%s %s", e.Operation, e.EntityType),
 			ids:      idsLabel,
@@ -151,55 +160,65 @@ func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels
 			r.label = fmt.Sprintf("🏷 %s", e.Label)
 		}
 		rows[i] = r
-
-		if len(r.idx) > maxIdx { maxIdx = len(r.idx) }
-		if len(r.opEntity) > maxOp { maxOp = len(r.opEntity) }
-		if len(r.ids) > maxIDs { maxIDs = len(r.ids) }
-		if len(r.cat) > maxCat { maxCat = len(r.cat) }
-		if len(r.name) > maxName { maxName = len(r.name) }
-		if len(r.label) > maxLabel { maxLabel = len(r.label) }
-		if len(r.status) > maxStatus { maxStatus = len(r.status) }
-		if len(r.tier) > maxTier { maxTier = len(r.tier) }
-		if len(r.ts) > maxTs { maxTs = len(r.ts) }
-		if len(r.snapID) > maxSnap { maxSnap = len(r.snapID) }
 	}
+	return rows
+}
 
-	// Ensure header labels don't shrink columns.
-	if len(hIdx) > maxIdx { maxIdx = len(hIdx) }
-	if len(hOp) > maxOp { maxOp = len(hOp) }
-	if len(hIDs) > maxIDs { maxIDs = len(hIDs) }
-	if len(hCat) > maxCat { maxCat = len(hCat) }
-	if len(hLabel) > maxLabel { maxLabel = len(hLabel) }
-	if len(hStatus) > maxStatus { maxStatus = len(hStatus) }
-	if len(hTier) > maxTier { maxTier = len(hTier) }
-	if len(hTs) > maxTs { maxTs = len(hTs) }
-	if len(hSnap) > maxSnap { maxSnap = len(hSnap) }
-
-	// Build format function — all columns separated by │.
-	fmtRow := func(idx, op, ids, cat, name, label, status, tier, ts, snap string) string {
-		var b strings.Builder
-		fmt.Fprintf(&b, "%-*s %-*s │ %-*s │ %-*s",
-			maxIdx, idx, maxOp, op, maxIDs, ids, maxCat, cat)
-		if maxName > 0 {
-			fmt.Fprintf(&b, " │ %-*s", maxName, name)
+// computeColWidths calculates max column widths from rows, seeded with header widths.
+func computeColWidths(rows []pickerRow) pickerColWidths {
+	w := pickerColWidths{
+		idx: len("#"), op: len("OPERATION"), ids: len("IDS"), cat: len("CATEGORY"),
+		status: len("STATUS"), tier: len("TIER"), ts: len("DATE"), snap: len("SNAPSHOT ID"),
+	}
+	for _, r := range rows {
+		if n := len(r.idx); n > w.idx {
+			w.idx = n
 		}
-		if maxLabel > 0 {
-			fmt.Fprintf(&b, " │ %-*s", maxLabel, label)
+		if n := len(r.opEntity); n > w.op {
+			w.op = n
 		}
-		fmt.Fprintf(&b, " │ %-*s │ %-*s │ %-*s │ %-*s",
-			maxStatus, status, maxTier, tier, maxTs, ts, maxSnap, snap)
-		return b.String()
+		if n := len(r.ids); n > w.ids {
+			w.ids = n
+		}
+		if n := len(r.cat); n > w.cat {
+			w.cat = n
+		}
+		if n := len(r.name); n > w.name {
+			w.name = n
+		}
+		if n := len(r.label); n > w.label {
+			w.label = n
+		}
+		if n := len(r.status); n > w.status {
+			w.status = n
+		}
+		if n := len(r.tier); n > w.tier {
+			w.tier = n
+		}
+		if n := len(r.ts); n > w.ts {
+			w.ts = n
+		}
+		if n := len(r.snapID); n > w.snap {
+			w.snap = n
+		}
 	}
+	return w
+}
 
-	// Header.
-	header = fmtRow(hIdx, hOp, hIDs, hCat, hName, hLabel, hStatus, hTier, hTs, hSnap)
-
-	// Data rows.
-	labels = make([]string, len(entries))
-	for i, r := range rows {
-		labels[i] = fmtRow(r.idx, r.opEntity, r.ids, r.cat, r.name, r.label, r.status, r.tier, r.ts, r.snapID)
+// formatPickerRow renders a single row using precomputed column widths.
+func formatPickerRow(r pickerRow, w pickerColWidths) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "%-*s %-*s │ %-*s │ %-*s",
+		w.idx, r.idx, w.op, r.opEntity, w.ids, r.ids, w.cat, r.cat)
+	if w.name > 0 {
+		fmt.Fprintf(&b, " │ %-*s", w.name, r.name)
 	}
-	return header, labels
+	if w.label > 0 {
+		fmt.Fprintf(&b, " │ %-*s", w.label, r.label)
+	}
+	fmt.Fprintf(&b, " │ %-*s │ %-*s │ %-*s │ %-*s",
+		w.status, r.status, w.tier, r.tier, w.ts, r.ts, w.snap, r.snapID)
+	return b.String()
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +279,7 @@ func groupByCategory(entries []snaplib.ManifestEntry) []categoryGroup {
 // Three-level picker: server → operation → snapshot
 // ---------------------------------------------------------------------------
 
-// pickerOpts configures selectSnapshot behaviour.
+// pickerOpts configures selectSnapshot behavior.
 type pickerOpts struct {
 	// statusFilter limits which statuses are selectable (nil = all).
 	statusFilter []snaplib.Status
@@ -538,48 +557,58 @@ func browseSnapshots(cmd *cobra.Command, store *snaplib.Store, manifest *snaplib
 	}
 }
 
+// selectOpGroup shows the operation picker and returns the selected group entries + label.
+// Returns errGoBack or errExit as sentinel errors for navigation.
+// When only one group exists, returns it immediately without prompting.
+func selectOpGroup(p interactive.Prompter, opGroups []operationGroup, entries []snaplib.ManifestEntry, allowBack bool) ([]snaplib.ManifestEntry, string, error) {
+	if len(opGroups) == 1 {
+		return opGroups[0].Entries, "", nil
+	}
+
+	options := make([]string, 0, len(opGroups)+2)
+	if allowBack {
+		options = append(options, backOption)
+	}
+	options = append(options, exitOption)
+	for _, g := range opGroups {
+		options = append(options, fmt.Sprintf("%-12s — %d snapshots", g.Label, len(g.Entries)))
+	}
+
+	qPrompt := fmt.Sprintf("Select operation (%d types, %d snapshots):", len(opGroups), len(entries))
+	idx, _, err := p.Select(qPrompt, options)
+	if err != nil {
+		return nil, "", errExit
+	}
+
+	if allowBack && idx == 0 {
+		return nil, "", errGoBack
+	}
+	exitIdx := 0
+	if allowBack {
+		exitIdx = 1
+	}
+	if idx == exitIdx {
+		return nil, "", errExit
+	}
+	dataIdx := idx - exitIdx - 1
+	return opGroups[dataIdx].Entries, opGroups[dataIdx].Label, nil
+}
+
 // browseByOperation shows operation picker, then delegates to browseSnapList.
 func browseByOperation(cmd *cobra.Command, store *snaplib.Store, p interactive.Prompter, entries []snaplib.ManifestEntry, allowBack bool) error {
 	opGroups := groupByOperation(entries)
 
 	for { // Operation-level loop.
-		var opEntries []snaplib.ManifestEntry
-
-		if len(opGroups) == 1 {
-			opEntries = opGroups[0].Entries
-		} else {
-			options := make([]string, 0, len(opGroups)+2)
-			if allowBack {
-				options = append(options, backOption)
-			}
-			options = append(options, exitOption)
-			for _, g := range opGroups {
-				options = append(options, fmt.Sprintf("%-12s — %d snapshots", g.Label, len(g.Entries)))
-			}
-
-			qPrompt := fmt.Sprintf("Select operation (%d types, %d snapshots):", len(opGroups), len(entries))
-			idx, _, err := p.Select(qPrompt, options)
-			if err != nil {
-				return errExit // Ctrl+C
-			}
-
-			if allowBack && idx == 0 {
-				return errGoBack
-			}
-			exitIdx := 0
-			if allowBack {
-				exitIdx = 1
-			}
-			if idx == exitIdx {
-				return errExit
-			}
-			offset := exitIdx + 1
-			opEntries = opGroups[idx-offset].Entries
-			fmt.Fprintf(cmd.OutOrStdout(), "  ✓ %s\n", opGroups[idx-offset].Label)
+		opEntries, label, err := selectOpGroup(p, opGroups, entries, allowBack)
+		if err != nil {
+			return err
+		}
+		if label != "" {
+			fmt.Fprintf(cmd.OutOrStdout(), "  ✓ %s\n", label)
 		}
 
-		err := browseByCategory(cmd, store, p, opEntries, len(opGroups) > 1 || allowBack)
-		if err == errGoBack {
+		browseErr := browseByCategory(cmd, store, p, opEntries, len(opGroups) > 1 || allowBack)
+		if browseErr == errGoBack {
 			if len(opGroups) == 1 {
 				if allowBack {
 					return errGoBack
@@ -588,10 +617,10 @@ func browseByOperation(cmd *cobra.Command, store *snaplib.Store, p interactive.P
 			}
 			continue
 		}
-		if err == errExit {
+		if browseErr == errExit {
 			return errExit
 		}
-		if err != nil {
+		if browseErr != nil {
 			return nil
 		}
 	}

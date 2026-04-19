@@ -104,7 +104,7 @@ Subcommands:
 						return wrapInterrupt(err)
 					}
 					if !confirmed {
-						fmt.Fprintln(os.Stdout, "Rollback cancelled.")
+						fmt.Fprintln(os.Stdout, "Rollback canceled.")
 						return nil
 					}
 				}

@@ -70,6 +70,7 @@ func seedSnapshot(t *testing.T, op snaplib.Operation, entityType string, entityI
 }
 
 // execCmd builds a cobra command, sets args, captures stdout, executes.
+//nolint:unused // Helper retained for future smoke scenarios.
 func execCmd(t *testing.T, cmd *cobra.Command, args []string) (string, error) {
 	t.Helper()
 	buf := &bytes.Buffer{}

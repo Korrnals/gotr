@@ -24,7 +24,7 @@ func NewService(reportsDir string) *Service {
 // Save saves a migration report to disk
 func (s *Service) Save(ctx context.Context, report *MigrationReport) (string, error) {
 	// Ensure reports directory exists
-	if err := os.MkdirAll(s.reportsDir, 0755); err != nil {
+	if err := os.MkdirAll(s.reportsDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create reports directory: %w", err)
 	}
 
@@ -36,10 +36,10 @@ func (s *Service) Save(ctx context.Context, report *MigrationReport) (string, er
 		report.Timestamp.Format("20060102T150405Z"),
 		sanitizeSnapshotID(report.SnapshotID),
 	)
-	filepath := filepath.Join(s.reportsDir, filename)
+	reportPath := filepath.Join(s.reportsDir, filename)
 
 	// Write report file
-	if err := os.WriteFile(filepath, []byte(md), 0644); err != nil {
+	if err := os.WriteFile(reportPath, []byte(md), 0o644); err != nil {
 		return "", fmt.Errorf("failed to write report: %w", err)
 	}
 
@@ -49,7 +49,7 @@ func (s *Service) Save(ctx context.Context, report *MigrationReport) (string, er
 		fmt.Fprintf(os.Stderr, "warning: failed to update report index: %v\n", err)
 	}
 
-	return filepath, nil
+	return reportPath, nil
 }
 
 // generateMarkdown generates the markdown content for a report
@@ -57,21 +57,21 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 	var sb strings.Builder
 
 	// Header
-	sb.WriteString(fmt.Sprintf("# Migration Report: `%s`\n", report.SnapshotID))
-	sb.WriteString(fmt.Sprintf("**Date:** %s | **Duration:** %.1fs | **Status:** %s\n\n",
+	fmt.Fprintf(&sb, "# Migration Report: `%s`\n", report.SnapshotID)
+	fmt.Fprintf(&sb, "**Date:** %s | **Duration:** %.1fs | **Status:** %s\n\n",
 		report.Timestamp.Format("2006-01-02 15:04:05 UTC"),
 		report.Duration.Seconds(),
 		statusEmoji(report.Status),
-	))
+	)
 
 	// Configuration Table
 	sb.WriteString("## Configuration\n")
 	sb.WriteString("| Parameter | Value |\n")
 	sb.WriteString("|-----------|-------|\n")
-	sb.WriteString(fmt.Sprintf("| Source Project | %d |\n", report.SourceProjectID))
-	sb.WriteString(fmt.Sprintf("| Target Project | %d |\n", report.TargetProjectID))
-	sb.WriteString(fmt.Sprintf("| Migration Type | `%s` |\n", report.MigrationType))
-	sb.WriteString(fmt.Sprintf("| User | %s |\n\n", report.User))
+	fmt.Fprintf(&sb, "| Source Project | %d |\n", report.SourceProjectID)
+	fmt.Fprintf(&sb, "| Target Project | %d |\n", report.TargetProjectID)
+	fmt.Fprintf(&sb, "| Migration Type | `%s` |\n", report.MigrationType)
+	fmt.Fprintf(&sb, "| User | %s |\n\n", report.User)
 
 	// Summary Table
 	sb.WriteString("## Summary\n")
@@ -89,8 +89,8 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 
 	for _, rt := range resourceTypes {
 		stats := report.Summary[rt]
-		sb.WriteString(fmt.Sprintf("| %s | %d | %d | %d | %d | %d |\n",
-			rt, stats.SourceCount, stats.Created, stats.Updated, stats.Skipped, stats.Failed))
+		fmt.Fprintf(&sb, "| %s | %d | %d | %d | %d | %d |\n",
+			rt, stats.SourceCount, stats.Created, stats.Updated, stats.Skipped, stats.Failed)
 
 		totalSource += stats.SourceCount
 		totalCreated += stats.Created
@@ -99,26 +99,29 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 		totalFailed += stats.Failed
 	}
 
-	sb.WriteString(fmt.Sprintf("| **TOTAL** | **%d** | **%d** | **%d** | **%d** | **%d** |\n\n",
-		totalSource, totalCreated, totalUpdated, totalSkipped, totalFailed))
+	fmt.Fprintf(&sb, "| **TOTAL** | **%d** | **%d** | **%d** | **%d** | **%d** |\n\n",
+		totalSource, totalCreated, totalUpdated, totalSkipped, totalFailed)
 
 	// Details Section
 	if len(report.Skipped) > 0 {
 		sb.WriteString("## Skipped Resources\n")
 		for _, rt := range resourceTypes {
-			if reasons, exists := report.Skipped[rt]; exists && len(reasons) > 0 {
-				sb.WriteString(fmt.Sprintf("\n### %s\n", strings.Title(rt)))
-				sb.WriteString(fmt.Sprintf("**Total Skipped:** %d\n\n", len(reasons)))
+			reasons, exists := report.Skipped[rt]
+			if !exists || len(reasons) == 0 {
+				continue
+			}
 
-				// Group by reason
-				reasonMap := make(map[string]int)
-				for _, reason := range reasons {
-					reasonMap[reason.Reason]++
-				}
+			fmt.Fprintf(&sb, "\n### %s\n", strings.Title(rt))
+			fmt.Fprintf(&sb, "**Total Skipped:** %d\n\n", len(reasons))
 
-				for reason, count := range reasonMap {
-					sb.WriteString(fmt.Sprintf("- %s: %d\n", reason, count))
-				}
+			// Group by reason
+			reasonMap := make(map[string]int)
+			for _, reason := range reasons {
+				reasonMap[reason.Reason]++
+			}
+
+			for reason, count := range reasonMap {
+				fmt.Fprintf(&sb, "- %s: %d\n", reason, count)
 			}
 		}
 		sb.WriteString("\n")
@@ -129,10 +132,10 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 		sb.WriteString("## Rollback\n")
 		sb.WriteString("| Parameter | Value |\n")
 		sb.WriteString("|-----------|-------|\n")
-		sb.WriteString(fmt.Sprintf("| Snapshot ID | `%s` |\n", report.Rollback.SnapshotID))
-		sb.WriteString(fmt.Sprintf("| Enabled | %v |\n", report.Rollback.Enabled))
-		sb.WriteString(fmt.Sprintf("| Deletion Order | %s |\n", strings.Join(report.Rollback.DeleteOrder, " → ")))
-		sb.WriteString(fmt.Sprintf("| Command | `%s` |\n\n", report.Rollback.Command))
+		fmt.Fprintf(&sb, "| Snapshot ID | `%s` |\n", report.Rollback.SnapshotID)
+		fmt.Fprintf(&sb, "| Enabled | %v |\n", report.Rollback.Enabled)
+		fmt.Fprintf(&sb, "| Deletion Order | %s |\n", strings.Join(report.Rollback.DeleteOrder, " → "))
+		fmt.Fprintf(&sb, "| Command | `%s` |\n\n", report.Rollback.Command)
 	}
 
 	// Performance Section
@@ -140,18 +143,18 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 		sb.WriteString("## Performance\n")
 		sb.WriteString("| Metric | Value |\n")
 		sb.WriteString("|--------|-------|\n")
-		sb.WriteString(fmt.Sprintf("| Total Time | %.1fs |\n", report.Duration.Seconds()))
-		sb.WriteString(fmt.Sprintf("| Entities/sec | %.1f |\n", report.Performance.EntitiesPerSec))
+		fmt.Fprintf(&sb, "| Total Time | %.1fs |\n", report.Duration.Seconds())
+		fmt.Fprintf(&sb, "| Entities/sec | %.1f |\n", report.Performance.EntitiesPerSec)
 		if report.Performance.PeakMemoryMB > 0 {
-			sb.WriteString(fmt.Sprintf("| Peak Memory | %d MB |\n", report.Performance.PeakMemoryMB))
+			fmt.Fprintf(&sb, "| Peak Memory | %d MB |\n", report.Performance.PeakMemoryMB)
 		}
 		sb.WriteString("\n")
 	}
 
 	// References Section
 	sb.WriteString("## References\n")
-	sb.WriteString(fmt.Sprintf("- Snapshot: `~/.gotr/snaps/%s`\n", report.SnapshotID))
-	sb.WriteString(fmt.Sprintf("- Report: %s\n", report.ID))
+	fmt.Fprintf(&sb, "- Snapshot: `~/.gotr/snaps/%s`\n", report.SnapshotID)
+	fmt.Fprintf(&sb, "- Report: %s\n", report.ID)
 
 	return sb.String()
 }
@@ -190,7 +193,7 @@ func (s *Service) updateIndex(ctx context.Context) error {
 
 	// Write index file
 	indexPath := filepath.Join(s.reportsDir, "INDEX.md")
-	return os.WriteFile(indexPath, []byte(sb.String()), 0644)
+	return os.WriteFile(indexPath, []byte(sb.String()), 0o644)
 }
 
 // GetReportsDir returns the reports directory path

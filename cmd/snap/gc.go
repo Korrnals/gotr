@@ -12,6 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+//nolint:gocyclo // GC command flow keeps retention rules and preview/apply paths together.
 func newGCCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gc",

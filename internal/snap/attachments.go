@@ -69,25 +69,7 @@ func SaveCaseAttachments(
 		return 0, nil
 	}
 
-	maxBytes := int64(cfg.AttachMaxFileMB) * 1024 * 1024
-
-	// Resolve prompt function.
-	var prompt PromptFunc
-	if len(promptFn) > 0 && promptFn[0] != nil {
-		prompt = promptFn[0]
-	}
-
-	// Filter attachments by config + interactive prompt for over-threshold.
-	var toSave []data.Attachment
-	for _, att := range attachments {
-		if shouldSave(att, cfg, maxBytes) {
-			toSave = append(toSave, att)
-		} else if cfg.AttachSaveBinary == "auto" && att.Size > maxBytes && cfg.AttachPromptAboveThresh && prompt != nil {
-			if prompt(att, cfg.AttachMaxFileMB) {
-				toSave = append(toSave, att)
-			}
-		}
-	}
+	toSave := selectAttachmentsForSave(attachments, cfg, resolvePromptFunc(promptFn))
 	if len(toSave) == 0 {
 		return 0, nil
 	}
@@ -115,14 +97,42 @@ func SaveCaseAttachments(
 	if err != nil {
 		return saved, err
 	}
-
-	if saved > 0 {
-		if err := saveAttachManifest(store, snapID, &manifest); err != nil {
-			return saved, err
-		}
+	if saved == 0 {
+		return 0, nil
+	}
+	if err := saveAttachManifest(store, snapID, &manifest); err != nil {
+		return saved, err
 	}
 
 	return saved, nil
+}
+
+// resolvePromptFunc returns the optional prompt callback when provided.
+func resolvePromptFunc(promptFn []PromptFunc) PromptFunc {
+	if len(promptFn) > 0 && promptFn[0] != nil {
+		return promptFn[0]
+	}
+	return nil
+}
+
+// selectAttachmentsForSave applies snapshot policy and optional prompting.
+func selectAttachmentsForSave(attachments []data.Attachment, cfg SnapConfig, prompt PromptFunc) []data.Attachment {
+	maxBytes := int64(cfg.AttachMaxFileMB) * 1024 * 1024
+	toSave := make([]data.Attachment, 0, len(attachments))
+	for _, att := range attachments {
+		if shouldSave(att, cfg, maxBytes) || shouldPromptSave(att, cfg, maxBytes, prompt) {
+			toSave = append(toSave, att)
+		}
+	}
+	return toSave
+}
+
+// shouldPromptSave checks whether an oversized attachment should be saved after prompt.
+func shouldPromptSave(att data.Attachment, cfg SnapConfig, maxBytes int64, prompt PromptFunc) bool {
+	if cfg.AttachSaveBinary != "auto" || att.Size <= maxBytes || !cfg.AttachPromptAboveThresh || prompt == nil {
+		return false
+	}
+	return prompt(att, cfg.AttachMaxFileMB)
 }
 
 // runAttachmentDownloads executes download tasks sequentially or in parallel.

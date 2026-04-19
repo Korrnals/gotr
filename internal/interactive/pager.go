@@ -22,6 +22,7 @@ type PagerConfig struct {
 // Pager displays lines page by page in the terminal.
 // Navigation: Enter/Space = next page, b = previous page, q = quit.
 // If the output fits in one page, prints directly without pagination.
+//nolint:gocyclo // Interactive key handling is intentionally centralized.
 func Pager(cfg PagerConfig) error {
 	if len(cfg.Lines) == 0 {
 		return nil
@@ -62,7 +63,9 @@ func Pager(cfg PagerConfig) error {
 		// Fallback: print everything.
 		return pagerFallback(cfg)
 	}
-	defer term.Restore(fd, oldState)
+	defer func() {
+		_ = term.Restore(fd, oldState)
+	}()
 
 	page := 0
 

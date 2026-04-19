@@ -140,6 +140,8 @@ func TestRegister(t *testing.T) {
 	assert.Contains(t, subNames, "rollback")
 	assert.Contains(t, subNames, "export")
 	assert.Contains(t, subNames, "delete")
+	assert.Contains(t, subNames, "pin")
+	assert.Contains(t, subNames, "unpin")
 	assert.Contains(t, subNames, "gc")
 }
 
@@ -1409,10 +1411,10 @@ func TestPostCardAction_PartialRollback(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// executeUndoFromBrowser — cancelled by user
+// executeUndoFromBrowser — canceled by user
 // ---------------------------------------------------------------------------
 
-func TestExecuteUndoFromBrowser_Cancelled(t *testing.T) {
+func TestExecuteUndoFromBrowser_Canceled(t *testing.T) {
 	redirectHome(t)
 	store, manifest, snapID := seedRolledBackSnapshot(t)
 	_ = store
@@ -1428,21 +1430,21 @@ func TestExecuteUndoFromBrowser_Cancelled(t *testing.T) {
 	cmd.SetContext(ctx)
 
 	executeUndoFromBrowser(cmd, nil, store, manifest, snapID)
-	assert.Contains(t, buf.String(), "Cancelled")
+	assert.Contains(t, buf.String(), "Canceled")
 }
 
 // ---------------------------------------------------------------------------
-// browseUndoSnapshots — single server, view card + undo cancelled, then exit
+// browseUndoSnapshots — single server, view card + undo canceled, then exit
 // ---------------------------------------------------------------------------
 
-func TestBrowseUndoSnapshots_ViewAndUndoCancelled(t *testing.T) {
+func TestBrowseUndoSnapshots_ViewAndUndoCanceled(t *testing.T) {
 	redirectHome(t)
 	store, manifest, _ := seedRolledBackSnapshot(t)
 
 	// Single server → browseUndoList (allowBack=false).
 	// [✕ Exit, snap...]. Pick snap (index 1 raw).
 	// postUndoCardAction: ↩ Undo rollback (index 2 raw) → postActionRollback.
-	// executeUndoFromBrowser: confirm → No → "Cancelled".
+	// executeUndoFromBrowser: confirm → No → "Canceled".
 	// Re-show list. ✕ Exit (index 0 raw).
 	mp := interactive.NewMockPrompter().
 		WithSelectResponses(
@@ -1460,7 +1462,7 @@ func TestBrowseUndoSnapshots_ViewAndUndoCancelled(t *testing.T) {
 
 	err := browseUndoSnapshots(cmd, nil, store, manifest)
 	assert.NoError(t, err)
-	assert.Contains(t, buf.String(), "Cancelled")
+	assert.Contains(t, buf.String(), "Canceled")
 }
 
 // ---------------------------------------------------------------------------

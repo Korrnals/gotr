@@ -48,6 +48,7 @@ type PromptFunc func(att data.Attachment, maxMB int) bool
 // Respects SnapConfig: save_binary mode, max file size, gzip compression.
 // Use promptFn to interactively ask about large files (pass nil for non-interactive).
 // Returns the number of attachments saved.
+//nolint:gocyclo // Branching is intentional for snapshot policy handling.
 func SaveCaseAttachments(
 	ctx context.Context,
 	api AttachmentsAPI,
@@ -163,19 +164,26 @@ func RestoreCaseAttachments(
 		srcPath := filepath.Join(dir, entry.File)
 
 		uploadPath := srcPath
+		tmpPath := ""
 		if entry.Compressed {
 			// Decompress to temp file for upload.
 			tmp, err := decompressToTemp(srcPath, entry.Name)
 			if err != nil {
 				return restored, fmt.Errorf("decompress attachment %d: %w", entry.ID, err)
 			}
-			defer os.Remove(tmp)
 			uploadPath = tmp
+			tmpPath = tmp
 		}
 
 		_, err := api.AddAttachmentToCase(ctx, caseID, uploadPath)
 		if err != nil {
+			if tmpPath != "" {
+				_ = os.Remove(tmpPath)
+			}
 			return restored, fmt.Errorf("upload attachment %d (%s): %w", entry.ID, entry.Name, err)
+		}
+		if tmpPath != "" {
+			_ = os.Remove(tmpPath)
 		}
 		restored++
 	}
@@ -290,7 +298,7 @@ func loadAttachManifest(store *Store, snapID string) (*AttachmentManifest, error
 	dir := store.SnapDir(snapID)
 	path := filepath.Join(dir, attachManifestFile)
 
-	data, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -299,7 +307,7 @@ func loadAttachManifest(store *Store, snapID string) (*AttachmentManifest, error
 	}
 
 	var manifest AttachmentManifest
-	if err := json.Unmarshal(data, &manifest); err != nil {
+	if err := json.Unmarshal(raw, &manifest); err != nil {
 		return nil, fmt.Errorf("decode attachment manifest: %w", err)
 	}
 	return &manifest, nil

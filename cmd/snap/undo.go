@@ -144,6 +144,7 @@ func browseUndoSnapshots(cmd *cobra.Command, api snaplib.RollbackAPI, store *sna
 }
 
 // browseUndoList shows the snapshot picker → card → undo menu for rolled-back snapshots.
+//nolint:gocyclo // Interactive browser flow keeps explicit menu transitions.
 func browseUndoList(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Store, manifest *snaplib.Manifest, p interactive.Prompter, entries []snaplib.ManifestEntry, allowBack bool) error {
 	labels := undoPickerLabels(store, entries)
 
@@ -285,7 +286,7 @@ func executeUndoFromBrowser(cmd *cobra.Command, api snaplib.RollbackAPI, store *
 	p := interactive.PrompterFromContext(cmd.Context())
 	confirmed, err := p.Confirm("Undo this rollback? Re-created entities will be deleted.", false)
 	if err != nil || !confirmed {
-		fmt.Fprintln(cmd.OutOrStdout(), "  Cancelled.")
+		fmt.Fprintln(cmd.OutOrStdout(), "  Canceled.")
 		return
 	}
 
@@ -333,7 +334,7 @@ func executeUndo(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Sto
 			return wrapInterrupt(err)
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Undo cancelled.")
+			fmt.Fprintln(cmd.OutOrStdout(), "Undo canceled.")
 			return nil
 		}
 	}

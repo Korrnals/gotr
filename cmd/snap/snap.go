@@ -22,6 +22,8 @@ when snap.enabled is true in config or --snapshot flag is set.
 Available operations:
   • list     — list all snapshots
   • info     — show snapshot details
+	• pin      — protect snapshot from retention cleanup
+	• unpin    — remove protection label prefix
   • rollback — reverse a mutation using saved data
     • rollback list — browse rolled-back snapshots
     • rollback undo — undo a previous rollback
@@ -35,6 +37,8 @@ Available operations:
 	snapCmd.AddCommand(newRollbackCmd(getClient))
 	snapCmd.AddCommand(newExportCmd())
 	snapCmd.AddCommand(newDeleteCmd())
+	snapCmd.AddCommand(newPinCmd())
+	snapCmd.AddCommand(newUnpinCmd())
 	snapCmd.AddCommand(newGCCmd())
 
 	root.AddCommand(snapCmd)

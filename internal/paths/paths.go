@@ -15,6 +15,7 @@ const (
 	// Subdirectories
 	ConfigDir   = "config"   // configuration
 	LogsDir     = "logs"     // runtime logs
+	ReportsDir  = "reports"  // migration reports
 	SelftestDir = "selftest" // self-test reports
 	CacheDir    = "cache"    // API cache
 	ExportsDir  = "exports"  // user data exports
@@ -47,6 +48,15 @@ func LogsDirPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(base, LogsDir), nil
+}
+
+// ReportsDirPath returns the path to ~/.gotr/reports.
+func ReportsDirPath() (string, error) {
+	base, err := BaseDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, ReportsDir), nil
 }
 
 // EnsureLogsDirPath returns ~/.gotr/logs and creates it when missing.
@@ -120,6 +130,7 @@ func EnsureAllDirs() error {
 	dirs := []func() (string, error){
 		ConfigDirPath,
 		LogsDirPath,
+		ReportsDirPath,
 		SelftestDirPath,
 		CacheDirPath,
 		ExportsDirPath,

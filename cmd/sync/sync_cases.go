@@ -48,6 +48,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -247,6 +248,10 @@ Examples:
 			}
 			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 		}
+
+		saveMigrationReport(ctx, cmd, "sync_cases", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+			filterStatsToReport("cases", m.LastFilterStats(), int64(len(createdIDs)), int64(len(importErrors))),
+		})
 
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil

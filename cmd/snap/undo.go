@@ -27,12 +27,12 @@ From the snapshot card you can undo the rollback (delete re-created entities).`,
 
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackListCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackListCmd.func: %w", err)
 			}
 
 			return browseUndoSnapshots(cmd, api, store, manifest)
@@ -67,12 +67,12 @@ If snapshot_id is omitted, shows an interactive picker with only rolled-back sna
 
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackUndoCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackUndoCmd.func: %w", err)
 			}
 
 			// Non-interactive or explicit ID: undo directly.
@@ -81,7 +81,7 @@ If snapshot_id is omitted, shows an interactive picker with only rolled-back sna
 					statusFilter: []snaplib.Status{snaplib.StatusRolledBack},
 				})
 				if err != nil {
-					return err
+					return fmt.Errorf("newRollbackUndoCmd.func: %w", err)
 				}
 				return executeUndo(cmd, api, store, manifest, snapID)
 			}
@@ -144,6 +144,7 @@ func browseUndoSnapshots(cmd *cobra.Command, api snaplib.RollbackAPI, store *sna
 }
 
 // browseUndoList shows the snapshot picker → card → undo menu for rolled-back snapshots.
+//nolint:gocyclo // Interactive browser flow keeps explicit menu transitions.
 func browseUndoList(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Store, manifest *snaplib.Manifest, p interactive.Prompter, entries []snaplib.ManifestEntry, allowBack bool) error {
 	labels := undoPickerLabels(store, entries)
 
@@ -285,7 +286,7 @@ func executeUndoFromBrowser(cmd *cobra.Command, api snaplib.RollbackAPI, store *
 	p := interactive.PrompterFromContext(cmd.Context())
 	confirmed, err := p.Confirm("Undo this rollback? Re-created entities will be deleted.", false)
 	if err != nil || !confirmed {
-		fmt.Fprintln(cmd.OutOrStdout(), "  Cancelled.")
+		fmt.Fprintln(cmd.OutOrStdout(), "  Canceled.")
 		return
 	}
 
@@ -333,7 +334,7 @@ func executeUndo(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Sto
 			return wrapInterrupt(err)
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Undo cancelled.")
+			fmt.Fprintln(cmd.OutOrStdout(), "Undo canceled.")
 			return nil
 		}
 	}

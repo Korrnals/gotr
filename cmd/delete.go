@@ -47,6 +47,7 @@ func init() {
 	snap.RegisterFlags(deleteCmd)
 }
 
+//nolint:gocyclo // Endpoint routing with snapshot hooks is intentionally explicit.
 func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	if len(args) == 0 && !interactive.HasPrompterInContext(ctx) {
@@ -62,19 +63,19 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	} else {
 		selectedEndpoint, err := selectDeleteEndpoint(p)
 		if err != nil {
-			return err
+			return fmt.Errorf("runDelete: %w", err)
 		}
 		endpoint = selectedEndpoint
 	}
 
 	id, err := parseDeleteIDArg(args)
 	if err != nil {
-		return err
+		return fmt.Errorf("runDelete: %w", err)
 	}
 	if id == 0 {
 		id, err = resolveDeleteID(ctx, p, cli, endpoint)
 		if err != nil {
-			return err
+			return fmt.Errorf("runDelete: %w", err)
 		}
 	}
 

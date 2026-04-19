@@ -2,6 +2,7 @@ package snap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -19,10 +20,10 @@ const backOption = "← Back"
 const exitOption = "✕ Exit"
 
 // errGoBack is a sentinel to signal user chose "← Back".
-var errGoBack = fmt.Errorf("go back")
+var errGoBack = errors.New("go back")
 
 // errExit is a sentinel to signal user chose "✕ Exit".
-var errExit = fmt.Errorf("exit")
+var errExit = errors.New("exit")
 
 // serverLabel returns a normalised display string for a server URL.
 // Strips API path, shows only scheme+host. Empty → "(legacy)" for old snapshots.
@@ -127,6 +128,7 @@ func formatPickerLabel(idx int, e snaplib.ManifestEntry) string {
 
 // alignedPickerLabels returns picker labels with consistent column widths.
 // Includes a header row as the first element.
+//nolint:gocyclo // Width calculation and column formatting are intentionally explicit.
 func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels []string) {
 	type row struct {
 		idx      string
@@ -288,7 +290,7 @@ func groupByCategory(entries []snaplib.ManifestEntry) []categoryGroup {
 // Three-level picker: server → operation → snapshot
 // ---------------------------------------------------------------------------
 
-// pickerOpts configures selectSnapshot behaviour.
+// pickerOpts configures selectSnapshot behavior.
 type pickerOpts struct {
 	// statusFilter limits which statuses are selectable (nil = all).
 	statusFilter []snaplib.Status
@@ -567,6 +569,7 @@ func browseSnapshots(cmd *cobra.Command, store *snaplib.Store, manifest *snaplib
 }
 
 // browseByOperation shows operation picker, then delegates to browseSnapList.
+//nolint:gocyclo // Interactive operation browsing keeps back/exit handling explicit.
 func browseByOperation(cmd *cobra.Command, store *snaplib.Store, p interactive.Prompter, entries []snaplib.ManifestEntry, allowBack bool) error {
 	opGroups := groupByOperation(entries)
 

@@ -253,6 +253,7 @@ func printTable(result CompareResult, project1Name, project2Name string) error {
 }
 
 // printOnlyInProjectTable prints a table for items only in one project
+//nolint:unused // Kept as legacy renderer for compatibility with older output paths.
 func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName string) {
 	// Column widths are widened for long names.
 	idWidth := 8
@@ -291,6 +292,7 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 }
 
 // printCommonTable prints a table for common items
+//nolint:unused // Kept as legacy renderer for compatibility with older output paths.
 func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 	// Column widths are widened for long names.
 	nameWidth := 50
@@ -344,6 +346,7 @@ func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 }
 
 // printIDMappingTable prints a table for ID mapping (items with different IDs)
+//nolint:unused // Kept as legacy renderer for compatibility with older output paths.
 func printIDMappingTable(items []CommonItemInfo) {
 	// Filter items with different IDs
 	var mappings []CommonItemInfo

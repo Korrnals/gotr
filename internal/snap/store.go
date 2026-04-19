@@ -96,7 +96,7 @@ func (s *Store) SaveMeta(meta *Meta) error {
 }
 
 // SaveData writes entity data to a named JSON file in the snapshot directory using atomic write.
-func (s *Store) SaveData(snapID string, filename string, data interface{}) (int64, error) {
+func (s *Store) SaveData(snapID, filename string, data interface{}) (int64, error) {
 	dir := s.snapDir(snapID)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return 0, fmt.Errorf("snap: create dir %s: %w", snapID, err)
@@ -121,7 +121,7 @@ func (s *Store) LoadMeta(snapID string) (*Meta, error) {
 }
 
 // LoadData reads a named JSON file from a snapshot directory into dst.
-func (s *Store) LoadData(snapID string, filename string, dst interface{}) error {
+func (s *Store) LoadData(snapID, filename string, dst interface{}) error {
 	p := filepath.Join(s.snapDir(snapID), filename)
 	f, err := os.Open(p)
 	if err != nil {
@@ -180,7 +180,7 @@ func (s *Store) SnapDir(snapID string) string {
 
 // Export copies meta.json and data files from a snapshot into a single JSON file.
 // The exported file contains {"meta": {...}, "data": {...}} for portability.
-func (s *Store) Export(snapID string, outPath string) error {
+func (s *Store) Export(snapID, outPath string) error {
 	meta, err := s.LoadMeta(snapID)
 	if err != nil {
 		return fmt.Errorf("snap export: %w", err)
@@ -272,7 +272,7 @@ func atomicWriteJSON(path string, data interface{}) error {
 }
 
 // readJSON is a generic helper to read and decode a JSON file.
-func readJSON[T any](path string, snapID string) (*T, error) {
+func readJSON[T any](path, snapID string) (*T, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("snap: open meta %s: %w", snapID, err)

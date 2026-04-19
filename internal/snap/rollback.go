@@ -72,6 +72,7 @@ type RollbackAPI interface {
 }
 
 // CasesAPI is an alias for backward compatibility.
+//
 // Deprecated: use RollbackAPI.
 type CasesAPI = RollbackAPI
 
@@ -89,7 +90,7 @@ type RollbackResult struct {
 	Operation   Operation
 	EntityType  string
 	Success     bool
-	NewEntityID int64  // non-zero if a new entity was created (e.g. delete rollback)
+	NewEntityID int64 // non-zero if a new entity was created (e.g. delete rollback)
 	Message     string
 	DryRun      bool
 
@@ -107,6 +108,7 @@ type DiffEntry struct {
 
 // Rollback reverses a mutation using the saved snapshot data.
 // Accepts optional RollbackOpts for entity filtering and dry-run mode.
+//nolint:gocyclo // Rollback dispatcher is intentionally exhaustive by entity type.
 func Rollback(ctx context.Context, api CasesAPI, store *Store, manifest *Manifest, snapID string, opts ...RollbackOpts) (*RollbackResult, error) {
 	var opt RollbackOpts
 	if len(opts) > 0 {
@@ -398,12 +400,12 @@ func buildCaseDiff(caseID int64, current, saved *data.Case) []DiffEntry {
 
 // buildCaseAddPreview shows fields that would be restored for a deleted case.
 func buildCaseAddPreview(caseID int64, saved *data.Case) []DiffEntry {
-	var diffs []DiffEntry
-	diffs = append(diffs, DiffEntry{EntityID: caseID, Field: "action", Current: "DELETED", Saved: "RE-CREATE"})
-	diffs = append(diffs, DiffEntry{EntityID: caseID, Field: "title", Current: "—", Saved: saved.Title})
-	diffs = append(diffs, DiffEntry{EntityID: caseID, Field: "section_id", Current: "—", Saved: fmt.Sprintf("%d", saved.SectionID)})
-	diffs = append(diffs, DiffEntry{EntityID: caseID, Field: "priority_id", Current: "—", Saved: fmt.Sprintf("%d", saved.PriorityID)})
-	return diffs
+	return []DiffEntry{
+		{EntityID: caseID, Field: "action", Current: "DELETED", Saved: "RE-CREATE"},
+		{EntityID: caseID, Field: "title", Current: "—", Saved: saved.Title},
+		{EntityID: caseID, Field: "section_id", Current: "—", Saved: fmt.Sprintf("%d", saved.SectionID)},
+		{EntityID: caseID, Field: "priority_id", Current: "—", Saved: fmt.Sprintf("%d", saved.PriorityID)},
+	}
 }
 
 // caseToUpdateRequest converts a saved Case to an UpdateCaseRequest.
@@ -665,7 +667,7 @@ func rollbackSimpleEntity(ctx context.Context, api RollbackAPI, _ *Store, meta *
 
 	deleteFn, err := resolveDeleteFn(api, meta.EntityType)
 	if err != nil {
-		return err
+		return fmt.Errorf("rollbackSimpleEntity: %w", err)
 	}
 
 	if err := deleteFn(ctx, entityID); err != nil {
@@ -730,6 +732,7 @@ type CascadeData struct {
 }
 
 // rollbackSectionCascade re-creates a deleted section and its child cases.
+//nolint:gocyclo // Section cascade rollback contains explicit error handling per phase.
 func rollbackSectionCascade(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
 
 	var cascade CascadeData

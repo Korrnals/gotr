@@ -67,17 +67,6 @@ func seedSnapshot(t *testing.T, op snaplib.Operation, entityType string, entityI
 	return store, manifest, snap.Meta.ID
 }
 
-// execCmd builds a cobra command, sets args, captures stdout, executes.
-func execCmd(t *testing.T, cmd *cobra.Command, args []string) (string, error) {
-	t.Helper()
-	buf := &bytes.Buffer{}
-	cmd.SetOut(buf)
-	cmd.SetErr(&bytes.Buffer{})
-	cmd.SetArgs(args)
-	err := cmd.Execute()
-	return buf.String(), err
-}
-
 // ---------------------------------------------------------------------------
 // CLI Smoke: snap list
 // ---------------------------------------------------------------------------

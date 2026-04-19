@@ -7,6 +7,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Service handles migration report generation and storage
@@ -111,7 +114,7 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 				continue
 			}
 
-			fmt.Fprintf(&sb, "\n### %s\n", strings.Title(rt))
+			fmt.Fprintf(&sb, "\n### %s\n", cases.Title(language.English).String(rt))
 			fmt.Fprintf(&sb, "**Total Skipped:** %d\n\n", len(reasons))
 
 			// Group by reason
@@ -188,7 +191,7 @@ func (s *Service) updateIndex(ctx context.Context) error {
 		}
 		// Extract timestamp from filename for display
 		timestamp := strings.TrimPrefix(strings.TrimSuffix(report, ".md"), "migration-")
-		sb.WriteString(fmt.Sprintf("- [%s](%s)\n", timestamp, report))
+		fmt.Fprintf(&sb, "- [%s](%s)\n", timestamp, report)
 	}
 
 	// Write index file

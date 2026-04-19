@@ -115,7 +115,7 @@ func (m *Manifest) UpdateStatus(snapID string, status Status) error {
 }
 
 // UpdateLabel changes the label of an entry and saves.
-func (m *Manifest) UpdateLabel(snapID string, label string) error {
+func (m *Manifest) UpdateLabel(snapID, label string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 

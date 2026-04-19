@@ -37,14 +37,14 @@ func (s *WorkSession) SetSuites(src, dst int64) {
 }
 
 // Projects returns the stored project IDs (src, dst).
-func (s *WorkSession) Projects() (int64, int64) {
+func (s *WorkSession) Projects() (src, dst int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.SrcProjectID, s.DstProjectID
 }
 
 // Suites returns the stored suite IDs (src, dst).
-func (s *WorkSession) Suites() (int64, int64) {
+func (s *WorkSession) Suites() (src, dst int64) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.SrcSuiteID, s.DstSuiteID

@@ -20,11 +20,12 @@ type PromptResult struct {
 	Label     string
 	Action    string // "use_default", "custom", "pin", "skip"
 	Pinned    bool
-	Cancelled bool
+	Canceled  bool
 }
 
 // PromptForLabel shows an interactive menu for label selection after snapshot creation
 // Returns PromptResult with user's choice
+//nolint:gocyclo // Menu handling intentionally keeps all options in one place.
 func PromptForLabel(ctx context.Context, opts InteractivePromptOptions) (PromptResult, error) {
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -53,7 +54,7 @@ func PromptForLabel(ctx context.Context, opts InteractivePromptOptions) (PromptR
 	fmt.Print("\nChoose [1-4/Q]: ")
 
 	if !scanner.Scan() {
-		result.Cancelled = true
+		result.Canceled = true
 		return result, scanner.Err()
 	}
 
@@ -67,7 +68,7 @@ func PromptForLabel(ctx context.Context, opts InteractivePromptOptions) (PromptR
 	case "2":
 		fmt.Print("Enter custom label (alphanumeric, underscore, dash): ")
 		if !scanner.Scan() {
-			result.Cancelled = true
+			result.Canceled = true
 			return result, scanner.Err()
 		}
 
@@ -90,7 +91,7 @@ func PromptForLabel(ctx context.Context, opts InteractivePromptOptions) (PromptR
 		} else {
 			fmt.Print("Enter storage label prefix (default: pinned_): ")
 			if !scanner.Scan() {
-				result.Cancelled = true
+				result.Canceled = true
 				return result, scanner.Err()
 			}
 
@@ -125,7 +126,7 @@ func PromptForLabel(ctx context.Context, opts InteractivePromptOptions) (PromptR
 		}
 
 	case "q":
-		result.Cancelled = true
+		result.Canceled = true
 
 	default:
 		fmt.Println("Invalid choice, using default")

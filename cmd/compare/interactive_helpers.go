@@ -379,7 +379,7 @@ func renderOnlyInProjectLines(items []ItemInfo, projectID int64, projectName str
 	// Adaptive name width: fill remaining terminal space.
 	// Layout: │ # │ ID │ Name │  →  1 + (numW+2) + 1 + (idW+2) + 1 + (nameW+2) + 1
 	termW := interactive.TerminalWidth()
-	nameWidth := termW - numWidth - idWidth - 10 // 10 = borders + padding
+	nameWidth := termW - numWidth - idWidth - 10
 	if nameWidth < 30 {
 		nameWidth = 30
 	}
@@ -393,20 +393,26 @@ func renderOnlyInProjectLines(items []ItemInfo, projectID int64, projectName str
 
 	title := fmt.Sprintf("Only in project %d — %q (%d items)", projectID, projectName, len(items))
 	var lines []string
-	lines = append(lines, hBorder("┌", "┬", "┐", widths))
-	lines = append(lines, headerLine(title, totalInnerWidth))
+	lines = append(lines,
+		hBorder("┌", "┬", "┐", widths),
+		headerLine(title, totalInnerWidth),
+	)
 
 	if len(items) == 0 {
-		lines = append(lines, separatorLine(widths))
-		lines = append(lines, headerLine("(none)", totalInnerWidth))
-		lines = append(lines, hBorder("└", "┴", "┘", widths))
-		lines = append(lines, "")
+		lines = append(lines,
+			separatorLine(widths),
+			headerLine("(none)", totalInnerWidth),
+			hBorder("└", "┴", "┘", widths),
+			"",
+		)
 		return lines
 	}
 
-	lines = append(lines, separatorLine(widths))
-	lines = append(lines, rowLine([]string{"#", "ID", "Name"}, widths))
-	lines = append(lines, separatorLine(widths))
+	lines = append(lines,
+		separatorLine(widths),
+		rowLine([]string{"#", "ID", "Name"}, widths),
+		separatorLine(widths),
+	)
 
 	for i, item := range items {
 		lines = append(lines, rowLine([]string{
@@ -416,8 +422,10 @@ func renderOnlyInProjectLines(items []ItemInfo, projectID int64, projectName str
 		}, widths))
 	}
 
-	lines = append(lines, hBorder("└", "┴", "┘", widths))
-	lines = append(lines, "")
+	lines = append(lines,
+		hBorder("└", "┴", "┘", widths),
+		"",
+	)
 	return lines
 }
 
@@ -443,26 +451,32 @@ func renderCommonLines(items []CommonItemInfo, pid1, pid2 int64) []string {
 
 	title := fmt.Sprintf("Common in both projects (%d items)", len(items))
 	var lines []string
-	lines = append(lines, hBorder("┌", "┬", "┐", widths))
-	lines = append(lines, headerLine(title, totalInnerWidth))
+	lines = append(lines,
+		hBorder("┌", "┬", "┐", widths),
+		headerLine(title, totalInnerWidth),
+	)
 
 	if len(items) == 0 {
-		lines = append(lines, separatorLine(widths))
-		lines = append(lines, headerLine("(none)", totalInnerWidth))
-		lines = append(lines, hBorder("└", "┴", "┘", widths))
-		lines = append(lines, "")
+		lines = append(lines,
+			separatorLine(widths),
+			headerLine("(none)", totalInnerWidth),
+			hBorder("└", "┴", "┘", widths),
+			"",
+		)
 		return lines
 	}
 
-	lines = append(lines, separatorLine(widths))
-	lines = append(lines, rowLine([]string{
+	lines = append(lines,
+		separatorLine(widths),
+		rowLine([]string{
 		"#",
 		"Name",
 		fmt.Sprintf("ID P%d", pid1),
 		fmt.Sprintf("ID P%d", pid2),
 		"Status",
-	}, widths))
-	lines = append(lines, separatorLine(widths))
+		}, widths),
+		separatorLine(widths),
+	)
 
 	for i, item := range items {
 		status := "✓ Match"
@@ -478,8 +492,10 @@ func renderCommonLines(items []CommonItemInfo, pid1, pid2 int64) []string {
 		}, widths))
 	}
 
-	lines = append(lines, hBorder("└", "┴", "┘", widths))
-	lines = append(lines, "")
+	lines = append(lines,
+		hBorder("└", "┴", "┘", widths),
+		"",
+	)
 	return lines
 }
 
@@ -508,20 +524,26 @@ func renderIDMappingLines(items []CommonItemInfo) []string {
 
 	title := fmt.Sprintf("ID mapping — for updates (%d items)", len(mappings))
 	var lines []string
-	lines = append(lines, hBorder("┌", "┬", "┐", widths))
-	lines = append(lines, headerLine(title, totalInnerWidth))
+	lines = append(lines,
+		hBorder("┌", "┬", "┐", widths),
+		headerLine(title, totalInnerWidth),
+	)
 
 	if len(mappings) == 0 {
-		lines = append(lines, separatorLine(widths))
-		lines = append(lines, headerLine("(all IDs match)", totalInnerWidth))
-		lines = append(lines, hBorder("└", "┴", "┘", widths))
-		lines = append(lines, "")
+		lines = append(lines,
+			separatorLine(widths),
+			headerLine("(all IDs match)", totalInnerWidth),
+			hBorder("└", "┴", "┘", widths),
+			"",
+		)
 		return lines
 	}
 
-	lines = append(lines, separatorLine(widths))
-	lines = append(lines, rowLine([]string{"#", "Source ID", "Target ID", "Name"}, widths))
-	lines = append(lines, separatorLine(widths))
+	lines = append(lines,
+		separatorLine(widths),
+		rowLine([]string{"#", "Source ID", "Target ID", "Name"}, widths),
+		separatorLine(widths),
+	)
 
 	for i, item := range mappings {
 		lines = append(lines, rowLine([]string{
@@ -532,8 +554,10 @@ func renderIDMappingLines(items []CommonItemInfo) []string {
 		}, widths))
 	}
 
-	lines = append(lines, hBorder("└", "┴", "┘", widths))
-	lines = append(lines, "")
+	lines = append(lines,
+		hBorder("└", "┴", "┘", widths),
+		"",
+	)
 	return lines
 }
 

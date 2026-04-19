@@ -512,6 +512,7 @@ var allCmd = newAllCmd()
 //   - "__DEFAULT__" if --save flag was used (save to default location)
 //   - custom path if --save-to flag was used
 //   - "" if neither flag was used
+//nolint:gocyclo // Interactive flag parsing with back-navigation is intentionally explicit.
 func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid2 int64, format, savePath string, err error) {
 	ctx := cmd.Context()
 	p := interactive.PrompterFromContext(ctx)
@@ -525,7 +526,6 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 
 	// Interactive project selection with back-navigation loop.
 	if pid1 <= 0 || pid2 <= 0 {
-	selectLoop:
 		for {
 			if pid1 <= 0 {
 				pid1, err = interactive.SelectProject(ctx, p, cli, "Select first project (pid1):")
@@ -546,7 +546,7 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 					}
 					if interactive.IsGoBack(err) {
 						pid1 = 0
-						continue selectLoop
+						continue
 					}
 					return 0, 0, "", "", fmt.Errorf("pid2 not specified and interactive selection failed: %w", err)
 				}

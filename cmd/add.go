@@ -223,6 +223,7 @@ func shouldAutoRunAddInteractive(cmd *cobra.Command, endpoint string, parentID i
 	}
 }
 
+//nolint:gocyclo // Interactive selection flow intentionally keeps explicit back-navigation states.
 func resolveAddParentID(ctx context.Context, p interactive.Prompter, cli client.ClientInterface, endpoint string, currentID int64) (int64, error) {
 	if currentID != 0 || !interactive.HasPrompterInContext(ctx) {
 		return currentID, nil

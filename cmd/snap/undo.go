@@ -165,50 +165,70 @@ func browseUndoList(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.
 			return errExit
 		}
 
-		if allowBack && (idx == 0 || idx == len(options)-1) {
-			return errGoBack
+		entry, navErr := resolveUndoSelection(idx, entries, allowBack, len(options))
+		if navErr != nil {
+			return navErr
 		}
 
-		exitIdx := 0
-		if allowBack {
-			exitIdx = 1
-		}
-		if idx == exitIdx {
-			return errExit
-		}
-
-		offset := exitIdx + 1
-		entry := entries[idx-offset]
-
-		meta, err := store.LoadMeta(entry.ID)
-		if err != nil {
-			fmt.Fprintf(cmd.OutOrStdout(), "Error loading snapshot: %v\n\n", err)
-			continue
-		}
-
-		renderInfoCard(cmd, meta)
-		fmt.Fprintln(cmd.OutOrStdout())
-
-		action, err := postUndoCardAction(cmd, p, meta)
+		next, err := processUndoEntry(cmd, api, store, manifest, p, entry)
 		if err != nil {
 			return errExit
 		}
-		switch action {
-		case postActionBack:
-			continue
-		case postActionExit:
+		if next == errExit {
 			return errExit
-		case postActionRollback: // reused as "undo" action
-			executeUndoFromBrowser(cmd, api, store, manifest, entry.ID)
-			// Re-fetch entries — status may have changed.
-			entries = manifest.ListByStatus(snaplib.StatusRolledBack)
-			if len(entries) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "  No more rolled-back snapshots.")
-				return errExit
-			}
-			labels = undoPickerLabels(store, entries)
+		}
+		if next == errGoBack {
 			continue
 		}
+		// After undo — re-fetch entries.
+		entries = manifest.ListByStatus(snaplib.StatusRolledBack)
+		if len(entries) == 0 {
+			fmt.Fprintln(cmd.OutOrStdout(), "  No more rolled-back snapshots.")
+			return errExit
+		}
+		labels = undoPickerLabels(store, entries)
+	}
+}
+
+// resolveUndoSelection maps a raw picker index to a ManifestEntry or navigation sentinel error.
+func resolveUndoSelection(idx int, entries []snaplib.ManifestEntry, allowBack bool, optionsLen int) (snaplib.ManifestEntry, error) {
+	if allowBack && (idx == 0 || idx == optionsLen-1) {
+		return snaplib.ManifestEntry{}, errGoBack
+	}
+	exitIdx := 0
+	if allowBack {
+		exitIdx = 1
+	}
+	if idx == exitIdx {
+		return snaplib.ManifestEntry{}, errExit
+	}
+	return entries[idx-exitIdx-1], nil
+}
+
+// processUndoEntry shows the snapshot card and action menu for a single entry.
+// Returns errGoBack (loop again), errExit, or nil after undo executed.
+func processUndoEntry(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Store, manifest *snaplib.Manifest, p interactive.Prompter, entry snaplib.ManifestEntry) (error, error) {
+	meta, err := store.LoadMeta(entry.ID)
+	if err != nil {
+		fmt.Fprintf(cmd.OutOrStdout(), "Error loading snapshot: %v\n\n", err)
+		return errGoBack, nil
+	}
+
+	renderInfoCard(cmd, meta)
+	fmt.Fprintln(cmd.OutOrStdout())
+
+	action, err := postUndoCardAction(cmd, p, meta)
+	if err != nil {
+		return nil, err
+	}
+	switch action {
+	case postActionExit:
+		return errExit, nil
+	case postActionRollback:
+		executeUndoFromBrowser(cmd, api, store, manifest, entry.ID)
+		return nil, nil // caller will re-fetch entries
+	default: // postActionBack
+		return errGoBack, nil
 	}
 }
 
@@ -285,7 +305,7 @@ func executeUndoFromBrowser(cmd *cobra.Command, api snaplib.RollbackAPI, store *
 	p := interactive.PrompterFromContext(cmd.Context())
 	confirmed, err := p.Confirm("Undo this rollback? Re-created entities will be deleted.", false)
 	if err != nil || !confirmed {
-		fmt.Fprintln(cmd.OutOrStdout(), "  Cancelled.")
+		fmt.Fprintln(cmd.OutOrStdout(), "  Canceled.")
 		return
 	}
 
@@ -333,7 +353,7 @@ func executeUndo(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Sto
 			return wrapInterrupt(err)
 		}
 		if !confirmed {
-			fmt.Fprintln(cmd.OutOrStdout(), "Undo cancelled.")
+			fmt.Fprintln(cmd.OutOrStdout(), "Undo canceled.")
 			return nil
 		}
 	}

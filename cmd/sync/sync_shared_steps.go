@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -38,6 +39,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -243,6 +245,10 @@ Examples:
 			}
 			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, 0))
 		}
+
+		saveMigrationReport(ctx, cmd, "sync_shared_steps", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+			filterStatsToReport("shared_steps", m.LastFilterStats(), int64(len(filtered)), 0),
+		})
 
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil

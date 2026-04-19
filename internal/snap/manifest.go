@@ -114,6 +114,20 @@ func (m *Manifest) UpdateStatus(snapID string, status Status) error {
 	return fmt.Errorf("snap: entry %q not found in manifest", snapID)
 }
 
+// UpdateLabel changes the label of an entry and saves.
+func (m *Manifest) UpdateLabel(snapID string, label string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.Entries {
+		if m.Entries[i].ID == snapID {
+			m.Entries[i].Label = label
+			return m.save()
+		}
+	}
+	return fmt.Errorf("snap: entry %q not found in manifest", snapID)
+}
+
 // Find returns the entry with the given ID or name, or nil.
 func (m *Manifest) Find(idOrName string) *ManifestEntry {
 	m.mu.Lock()

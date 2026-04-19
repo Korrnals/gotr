@@ -34,7 +34,7 @@ func (s *Service) Save(ctx context.Context, report *MigrationReport) (string, er
 	// Create filename: migration-{timestamp}-{snapshot-id}.md
 	filename := fmt.Sprintf("migration-%s-%s.md",
 		report.Timestamp.Format("20060102T150405Z"),
-		report.SnapshotID,
+		sanitizeSnapshotID(report.SnapshotID),
 	)
 	filepath := filepath.Join(s.reportsDir, filename)
 
@@ -150,7 +150,7 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 
 	// References Section
 	sb.WriteString("## References\n")
-	sb.WriteString(fmt.Sprintf("- Snapshot: `~/.gotr/snapshots/%s.json`\n", report.SnapshotID))
+	sb.WriteString(fmt.Sprintf("- Snapshot: `~/.gotr/snaps/%s`\n", report.SnapshotID))
 	sb.WriteString(fmt.Sprintf("- Report: %s\n", report.ID))
 
 	return sb.String()
@@ -209,4 +209,13 @@ func statusEmoji(status string) string {
 	default:
 		return status
 	}
+}
+
+func sanitizeSnapshotID(snapshotID string) string {
+	replacer := strings.NewReplacer("/", "_", "\\", "_", " ", "_")
+	clean := replacer.Replace(snapshotID)
+	if clean == "" {
+		return "no_snapshot"
+	}
+	return clean
 }

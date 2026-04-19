@@ -58,8 +58,8 @@ func ReadConfig() SnapConfig {
 	if viper.IsSet("snap.enabled") {
 		cfg.Enabled = viper.GetBool("snap.enabled")
 	}
-	if viper.IsSet("snap.retention_days") {
-		cfg.RetentionDays = viper.GetInt("snap.retention_days")
+	if viper.IsSet("snap.retention.default_ttl_days") {
+		cfg.RetentionDays = viper.GetInt("snap.retention.default_ttl_days")
 	}
 	if viper.IsSet("snap.max_snapshots") {
 		cfg.MaxSnapshots = viper.GetInt("snap.max_snapshots")

@@ -62,7 +62,6 @@ func (sr *SnapshotRetention) Validate() error {
 // SnapshotConfig stores snapshot-related configuration
 type SnapshotConfig struct {
 	Enabled        bool                `yaml:"enabled"`
-	RetentionDays  int                 `yaml:"retention_days"`   // Deprecated, use retention.default_ttl_days
 	MaxSnapshots   int                 `yaml:"max_snapshots"`
 	Retention      *SnapshotRetention  `yaml:"retention"`
 	Attachments    AttachmentConfig    `yaml:"attachments"`
@@ -143,9 +142,8 @@ func (c *Config) WithDefaults() *Config {
 		JqFormat: false,
 		Debug:    false,
 		Snap: &SnapshotConfig{
-			Enabled:       true,
-			RetentionDays: 30,
-			MaxSnapshots:  100,
+			Enabled:      true,
+			MaxSnapshots: 100,
 			Retention: &SnapshotRetention{
 				Enabled:           true,
 				DefaultTTLDays:    30,
@@ -267,10 +265,6 @@ compare:
 # Saves entity state to ~/.gotr/snaps/ for rollback.
 snap:
   enabled: true
-  
-  # Legacy field (use retention.default_ttl_days instead)
-  retention_days: 30
-  
   max_snapshots: 100
 
   # Snapshot retention policy (auto-cleanup of old snapshots)

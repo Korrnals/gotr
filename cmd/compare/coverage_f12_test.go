@@ -2,6 +2,7 @@ package compare
 
 import (
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,66 +11,54 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// printOnlyInProjectTable / printCommonTable / printIDMappingTable
+// renderOnlyInProjectLines / renderCommonLines / renderIDMappingLines
 // ---------------------------------------------------------------------------
 
-func TestPrintOnlyInProjectTable_WithItems(t *testing.T) {
-	out := captureCompareStdout(t, func() {
-		printOnlyInProjectTable([]ItemInfo{
-			{ID: 1, Name: "Alpha"},
-			{ID: 2, Name: "Beta"},
-		}, 10, "TestProject")
-	})
+func TestRenderOnlyInProjectLines_WithItems(t *testing.T) {
+	out := strings.Join(renderOnlyInProjectLines([]ItemInfo{
+		{ID: 1, Name: "Alpha"},
+		{ID: 2, Name: "Beta"},
+	}, 10, "TestProject"), "\n")
 	assert.Contains(t, out, "Only in project 10")
 	assert.Contains(t, out, "Alpha")
 	assert.Contains(t, out, "Beta")
 }
 
-func TestPrintOnlyInProjectTable_Empty(t *testing.T) {
-	out := captureCompareStdout(t, func() {
-		printOnlyInProjectTable(nil, 10, "TestProject")
-	})
+func TestRenderOnlyInProjectLines_Empty(t *testing.T) {
+	out := strings.Join(renderOnlyInProjectLines(nil, 10, "TestProject"), "\n")
 	assert.Contains(t, out, "(none)")
 }
 
-func TestPrintCommonTable_WithItems(t *testing.T) {
-	out := captureCompareStdout(t, func() {
-		printCommonTable([]CommonItemInfo{
-			{Name: "SuiteA", ID1: 1, ID2: 1, IDsMatch: true},
-			{Name: "SuiteB", ID1: 2, ID2: 5, IDsMatch: false},
-		}, 10, 20)
-	})
+func TestRenderCommonLines_WithItems(t *testing.T) {
+	out := strings.Join(renderCommonLines([]CommonItemInfo{
+		{Name: "SuiteA", ID1: 1, ID2: 1, IDsMatch: true},
+		{Name: "SuiteB", ID1: 2, ID2: 5, IDsMatch: false},
+	}, 10, 20), "\n")
 	assert.Contains(t, out, "Common in both projects")
 	assert.Contains(t, out, "SuiteA")
 	assert.Contains(t, out, "✓ Match")
 	assert.Contains(t, out, "⚠ Differ")
 }
 
-func TestPrintCommonTable_Empty(t *testing.T) {
-	out := captureCompareStdout(t, func() {
-		printCommonTable(nil, 10, 20)
-	})
+func TestRenderCommonLines_Empty(t *testing.T) {
+	out := strings.Join(renderCommonLines(nil, 10, 20), "\n")
 	assert.Contains(t, out, "(none)")
 }
 
-func TestPrintIDMappingTable_WithDifferences(t *testing.T) {
-	out := captureCompareStdout(t, func() {
-		printIDMappingTable([]CommonItemInfo{
-			{Name: "SuiteA", ID1: 1, ID2: 1, IDsMatch: true},
-			{Name: "SuiteB", ID1: 2, ID2: 5, IDsMatch: false},
-		})
-	})
+func TestRenderIDMappingLines_WithDifferences(t *testing.T) {
+	out := strings.Join(renderIDMappingLines([]CommonItemInfo{
+		{Name: "SuiteA", ID1: 1, ID2: 1, IDsMatch: true},
+		{Name: "SuiteB", ID1: 2, ID2: 5, IDsMatch: false},
+	}), "\n")
 	assert.Contains(t, out, "ID mapping")
 	assert.Contains(t, out, "SuiteB")
-	assert.NotContains(t, out, "SuiteA") // matching IDs filtered out
+	assert.NotContains(t, out, "SuiteA")
 }
 
-func TestPrintIDMappingTable_AllMatch(t *testing.T) {
-	out := captureCompareStdout(t, func() {
-		printIDMappingTable([]CommonItemInfo{
-			{Name: "SuiteA", ID1: 1, ID2: 1, IDsMatch: true},
-		})
-	})
+func TestRenderIDMappingLines_AllMatch(t *testing.T) {
+	out := strings.Join(renderIDMappingLines([]CommonItemInfo{
+		{Name: "SuiteA", ID1: 1, ID2: 1, IDsMatch: true},
+	}), "\n")
 	assert.Contains(t, out, "(all IDs match)")
 }
 
@@ -161,7 +150,7 @@ func TestSaveToFileWithPath_DefaultFormat(t *testing.T) {
 func TestSaveToFileWithPath_CSV(t *testing.T) {
 	tmp := t.TempDir() + "/out.csv"
 	err := saveToFileWithPath(CompareResult{
-		Resource: "test",
+		Resource:    "test",
 		OnlyInFirst: []ItemInfo{{ID: 1, Name: "A"}},
 	}, "csv", tmp)
 	require.NoError(t, err)

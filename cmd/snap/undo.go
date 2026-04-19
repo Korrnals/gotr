@@ -207,7 +207,7 @@ func resolveUndoSelection(idx int, entries []snaplib.ManifestEntry, allowBack bo
 
 // processUndoEntry shows the snapshot card and action menu for a single entry.
 // Returns errGoBack (loop again), errExit, or nil after undo executed.
-func processUndoEntry(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Store, manifest *snaplib.Manifest, p interactive.Prompter, entry snaplib.ManifestEntry) (error, error) {
+func processUndoEntry(cmd *cobra.Command, api snaplib.RollbackAPI, store *snaplib.Store, manifest *snaplib.Manifest, p interactive.Prompter, entry snaplib.ManifestEntry) (next error, err error) {
 	meta, err := store.LoadMeta(entry.ID)
 	if err != nil {
 		fmt.Fprintf(cmd.OutOrStdout(), "Error loading snapshot: %v\n\n", err)

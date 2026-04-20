@@ -113,7 +113,6 @@ type DiffEntry struct {
 
 // Rollback reverses a mutation using the saved snapshot data.
 // Accepts optional RollbackOpts for entity filtering and dry-run mode.
-//nolint:gocyclo // Rollback dispatcher is intentionally exhaustive by entity type.
 func Rollback(ctx context.Context, api CasesAPI, store *Store, manifest *Manifest, snapID string, opts ...RollbackOpts) (*RollbackResult, error) {
 	var opt RollbackOpts
 	if len(opts) > 0 {
@@ -731,7 +730,6 @@ type CascadeData struct {
 }
 
 // rollbackSectionCascade re-creates a deleted section and its child cases.
-//nolint:gocyclo // Section cascade rollback contains explicit error handling per phase.
 func rollbackSectionCascade(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
 
 	var cascade CascadeData

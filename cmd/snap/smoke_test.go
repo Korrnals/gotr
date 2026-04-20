@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 	snaplib "github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -66,7 +68,6 @@ func seedSnapshot(t *testing.T, op snaplib.Operation, entityType string, entityI
 	require.NoError(t, err)
 	return store, manifest, snap.Meta.ID
 }
-
 // ---------------------------------------------------------------------------
 // CLI Smoke: snap list
 // ---------------------------------------------------------------------------
@@ -383,6 +384,9 @@ func TestCLI_SnapDelete(t *testing.T) {
 
 func TestCLI_SnapGC_NoOrphans(t *testing.T) {
 	redirectHome(t)
+	viper.Reset()
+	defer viper.Reset()
+	viper.Set("snap.retention.default_ttl_days", 30)
 
 	c := &data.Case{ID: 1, Title: "Tracked", SectionID: 1}
 	seedSnapshot(t, snaplib.OpUpdate, "case", []int64{1}, snaplib.Tier1, "", c)
@@ -402,25 +406,25 @@ func TestCLI_SnapGC_NoOrphans(t *testing.T) {
 	captured.ReadFrom(r)
 	os.Stdout = old
 
-	assert.Contains(t, captured.String(), "No orphaned snapshots")
+	assert.Contains(t, captured.String(), "No snapshots eligible for retention cleanup")
 }
 
 func TestCLI_SnapGC_CleansOrphans(t *testing.T) {
 	redirectHome(t)
+	viper.Reset()
+	defer viper.Reset()
+	viper.Set("snap.retention.default_ttl_days", 1)
 
 	c := &data.Case{ID: 1, Title: "Tracked", SectionID: 1}
-	store, _, _ := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{1}, snaplib.Tier1, "", c)
+	store, manifest, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{1}, snaplib.Tier1, "", c)
 
-	// Create an orphan on disk (no manifest entry).
-	orphanMeta := &snaplib.Meta{
-		ID:        "cases/orphan_cli_test",
-		Category:  "cases",
-		Operation: snaplib.OpUpdate,
-		Status:    snaplib.StatusAvailable,
-		Timestamp: time.Now().UTC(),
-	}
-	require.NoError(t, store.SaveMeta(orphanMeta))
-	assert.True(t, store.Exists("cases/orphan_cli_test"))
+	meta, err := store.LoadMeta(snapID)
+	require.NoError(t, err)
+	meta.Timestamp = time.Now().UTC().Add(-48 * time.Hour)
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.Remove(snapID))
+	require.NoError(t, manifest.Add(meta))
+	assert.True(t, store.Exists(snapID))
 
 	cmd := newGCCmd()
 
@@ -429,7 +433,7 @@ func TestCLI_SnapGC_CleansOrphans(t *testing.T) {
 	os.Stdout = w
 
 	cmd.SetArgs([]string{})
-	err := cmd.Execute()
+	err = cmd.Execute()
 	require.NoError(t, err)
 
 	w.Close()
@@ -437,8 +441,60 @@ func TestCLI_SnapGC_CleansOrphans(t *testing.T) {
 	captured.ReadFrom(r)
 	os.Stdout = old
 
-	assert.Contains(t, captured.String(), "Cleaned 1")
-	assert.False(t, store.Exists("cases/orphan_cli_test"))
+	out := captured.String()
+	assert.Contains(t, out, "Would delete 1")
+	assert.Contains(t, out, "Run with --confirm")
+	assert.True(t, store.Exists(snapID))
+
+	cmdConfirm := newGCCmd()
+	cmdConfirm.SetArgs([]string{"--confirm"})
+	err = cmdConfirm.Execute()
+	require.NoError(t, err)
+	assert.False(t, store.Exists(snapID))
+}
+
+func TestCLI_SnapPinAndUnpin(t *testing.T) {
+	redirectHome(t)
+	viper.Reset()
+	defer viper.Reset()
+	viper.Set("snap.retention.protected_prefixes", []string{"pinned_", "archived_"})
+
+	c := &data.Case{ID: 11, Title: "ToPin", SectionID: 1}
+	store, manifest, snapID := seedSnapshot(t, snaplib.OpUpdate, "case", []int64{11}, snaplib.Tier1, "", c)
+
+	meta, err := store.LoadMeta(snapID)
+	require.NoError(t, err)
+	meta.Label = "sync_cases_20260418120000"
+	require.NoError(t, store.SaveMeta(meta))
+	require.NoError(t, manifest.UpdateLabel(snapID, meta.Label))
+
+	pinCmd := newPinCmd()
+	pinCmd.SetArgs([]string{snapID})
+	require.NoError(t, pinCmd.Execute())
+
+	manifestPinned, err := snaplib.LoadManifest(store)
+	require.NoError(t, err)
+	entryPinned := manifestPinned.Find(snapID)
+	require.NotNil(t, entryPinned)
+	assert.True(t, strings.HasPrefix(entryPinned.Label, "pinned_"))
+
+	metaPinned, err := store.LoadMeta(snapID)
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(metaPinned.Label, "pinned_"))
+
+	unpinCmd := newUnpinCmd()
+	unpinCmd.SetArgs([]string{snapID})
+	require.NoError(t, unpinCmd.Execute())
+
+	manifestUnpinned, err := snaplib.LoadManifest(store)
+	require.NoError(t, err)
+	entryUnpinned := manifestUnpinned.Find(snapID)
+	require.NotNil(t, entryUnpinned)
+	assert.Equal(t, "sync_cases_20260418120000", entryUnpinned.Label)
+
+	metaUnpinned, err := store.LoadMeta(snapID)
+	require.NoError(t, err)
+	assert.Equal(t, "sync_cases_20260418120000", metaUnpinned.Label)
 }
 
 // ---------------------------------------------------------------------------

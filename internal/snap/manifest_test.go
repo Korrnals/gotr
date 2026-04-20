@@ -91,6 +91,34 @@ func TestManifest_UpdateStatus(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestManifest_UpdateLabel(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+
+	meta := &Meta{ID: "cases/snap_1", Category: Category("cases"), Operation: OpUpdate, EntityType: "case", Status: StatusAvailable, Label: "old"}
+	require.NoError(t, manifest.Add(meta))
+
+	err = manifest.UpdateLabel("cases/snap_1", "pinned_old")
+	require.NoError(t, err)
+
+	entry := manifest.Find("cases/snap_1")
+	require.NotNil(t, entry)
+	assert.Equal(t, "pinned_old", entry.Label)
+
+	manifest2, err := LoadManifest(store)
+	require.NoError(t, err)
+	entry2 := manifest2.Find("cases/snap_1")
+	require.NotNil(t, entry2)
+	assert.Equal(t, "pinned_old", entry2.Label)
+
+	err = manifest.UpdateLabel("nope", "x")
+	assert.Error(t, err)
+}
+
 func TestManifest_ListByEntity(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStoreAt(dir)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -38,6 +39,7 @@ Flags:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
@@ -176,6 +178,10 @@ Flags:
 			}
 			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, 0, 0))
 		}
+
+		saveMigrationReport(ctx, cmd, "sync_suites", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+			filterStatsToReport("suites", m.LastFilterStats(), int64(len(filtered)), 0),
+		})
 
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil

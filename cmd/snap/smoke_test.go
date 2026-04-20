@@ -68,8 +68,6 @@ func seedSnapshot(t *testing.T, op snaplib.Operation, entityType string, entityI
 	require.NoError(t, err)
 	return store, manifest, snap.Meta.ID
 }
-
-
 // ---------------------------------------------------------------------------
 // CLI Smoke: snap list
 // ---------------------------------------------------------------------------
@@ -1133,18 +1131,18 @@ func TestGroupByOperation(t *testing.T) {
 func TestAlignedPickerLabels(t *testing.T) {
 	entries := []snaplib.ManifestEntry{
 		{
-			ID: "cases/20260101T000000_update_42",
+			ID:        "cases/20260101T000000_update_42",
 			Operation: snaplib.OpUpdate, EntityType: "case",
 			EntityIDs: []int64{42}, Status: snaplib.StatusAvailable,
 			RollbackTier: snaplib.Tier1, Category: "cases",
-			Timestamp:    time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
+			Timestamp: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC),
 		},
 		{
-			ID: "sections/20260102T000000_delete_7",
+			ID:        "sections/20260102T000000_delete_7",
 			Operation: snaplib.OpDelete, EntityType: "section",
 			Name: "my-snap", Status: snaplib.StatusRolledBack,
 			RollbackTier: snaplib.Tier2, Category: "sections",
-			Timestamp:    time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
+			Timestamp: time.Date(2026, 1, 2, 0, 0, 0, 0, time.UTC),
 		},
 	}
 

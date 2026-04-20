@@ -48,6 +48,7 @@ Examples:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
@@ -121,13 +122,32 @@ Examples:
 		sourceSteps := loadedSteps.Source
 		targetSteps := loadedSteps.Target
 
-		// Step 2) Fetch source cases to determine shared steps usage
+		// Step 2) Fetch source cases to determine shared steps usage.
+		// When srcSuite==0 (user opted out of suite selection), load cases
+		// from every suite so filtering works for multi-suite projects.
 		op.Phase("Loading source cases")
-		sourceCases, err := runSyncStatus(ctx, "Loading source cases...", quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
-			return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
-		})
-		if err != nil {
-			return err
+		var sourceCases data.GetCasesResponse
+		if srcSuite != 0 {
+			sourceCases, err = runSyncStatus(ctx, "Loading source cases...", quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
+				return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
+			})
+			if err != nil {
+				return err
+			}
+		} else {
+			suites, sErr := m.Client.GetSuites(ctx, srcProject)
+			if sErr != nil {
+				return fmt.Errorf("failed to load suites for project %d: %w", srcProject, sErr)
+			}
+			for _, s := range suites {
+				cases, cErr := runSyncStatus(ctx, fmt.Sprintf("Loading cases from suite %d...", s.ID), quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
+					return m.Client.GetCases(ctx, srcProject, s.ID, 0)
+				})
+				if cErr != nil {
+					return fmt.Errorf("failed to load cases for suite %d: %w", s.ID, cErr)
+				}
+				sourceCases = append(sourceCases, cases...)
+			}
 		}
 		caseIDsSet := make(map[int64]struct{})
 		for _, c := range sourceCases {

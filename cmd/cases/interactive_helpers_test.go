@@ -123,16 +123,6 @@ func TestResolveCaseIDInteractive_Success(t *testing.T) {
 	assert.Equal(t, int64(200), id)
 }
 
-func TestSelectCaseID_NonInteractive(t *testing.T) {
-	ctx := interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter())
-	cases := data.GetCasesResponse{{ID: 100, Title: "Case A"}}
-
-	id, err := selectCaseID(ctx, cases)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to select case")
-	assert.Zero(t, id)
-}
-
 // ============= LAYER 2: SelectProject and SelectSuite error paths =============
 
 func TestResolveCaseIDInteractive_SelectProjectError(t *testing.T) {

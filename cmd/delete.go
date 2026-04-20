@@ -8,7 +8,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
@@ -48,6 +47,7 @@ func init() {
 	snap.RegisterFlags(deleteCmd)
 }
 
+//nolint:gocyclo // Endpoint routing with snapshot hooks is intentionally explicit.
 func runDelete(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
 	if len(args) == 0 && !interactive.HasPrompterInContext(ctx) {
@@ -63,19 +63,19 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	} else {
 		selectedEndpoint, err := selectDeleteEndpoint(p)
 		if err != nil {
-			return err
+			return fmt.Errorf("runDelete: %w", err)
 		}
 		endpoint = selectedEndpoint
 	}
 
 	id, err := parseDeleteIDArg(args)
 	if err != nil {
-		return err
+		return fmt.Errorf("runDelete: %w", err)
 	}
 	if id == 0 {
 		id, err = resolveDeleteID(ctx, p, cli, endpoint)
 		if err != nil {
-			return err
+			return fmt.Errorf("runDelete: %w", err)
 		}
 	}
 
@@ -87,34 +87,41 @@ func runDelete(cmd *cobra.Command, args []string) error {
 	}
 
 	// Route by endpoint
+	var deleteErr error
 	switch endpoint {
 	case "project":
 		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "project",
 			EntityIDs: []int64{id}, Tier: snap.Tier2,
 			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetProject(ctx, id) }})
-		return cli.DeleteProject(ctx, id)
+		deleteErr = cli.DeleteProject(ctx, id)
 	case "suite":
 		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "suite",
 			EntityIDs: []int64{id}, Tier: snap.Tier2,
 			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetSuite(ctx, id) }})
-		return cli.DeleteSuite(ctx, id)
+		deleteErr = cli.DeleteSuite(ctx, id)
 	case "section":
-		return deleteSectionWithSnap(cmd, cli, ctx, id)
+		deleteErr = deleteSectionWithSnap(cmd, cli, ctx, id)
 	case "case":
-		return deleteCaseWithSnap(cmd, cli, ctx, id)
+		deleteErr = deleteCaseWithSnap(cmd, cli, ctx, id)
 	case "run":
 		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "run",
 			EntityIDs: []int64{id}, Tier: snap.Tier2,
 			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetRun(ctx, id) }})
-		return cli.DeleteRun(ctx, id)
+		deleteErr = cli.DeleteRun(ctx, id)
 	case "shared-step":
 		snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "shared_step",
 			EntityIDs: []int64{id}, Tier: snap.Tier2,
 			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetSharedStep(ctx, id) }})
-		return cli.DeleteSharedStep(ctx, id, 0)
+		deleteErr = cli.DeleteSharedStep(ctx, id, 0)
 	default:
 		return fmt.Errorf("unsupported endpoint: %s", endpoint)
 	}
+	if deleteErr != nil {
+		return deleteErr
+	}
+
+	interactive.MutationPostAction(ctx, cmd)
+	return nil
 }
 
 // deleteSectionWithSnap creates a cascade snapshot before deleting a section.
@@ -223,108 +230,148 @@ func resolveDeleteProject(ctx context.Context, p interactive.Prompter, cli clien
 }
 
 func resolveDeleteSuite(ctx context.Context, p interactive.Prompter, cli client.ClientInterface) (int64, error) {
-	projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for suite deletion:")
-	if err != nil {
-		return 0, err
+	for {
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for suite deletion:")
+		if err != nil {
+			return 0, err
+		}
+		suites, err := cli.GetSuites(ctx, projectID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+		}
+		suiteID, err := interactive.SelectSuite(ctx, p, suites, "", true)
+		if err != nil {
+			if interactive.IsGoBack(err) {
+				continue
+			}
+			return 0, err
+		}
+		return suiteID, nil
 	}
-	suites, err := cli.GetSuites(ctx, projectID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
-	}
-	return interactive.SelectSuite(ctx, p, suites, "")
 }
 
 func resolveDeleteSection(ctx context.Context, p interactive.Prompter, cli client.ClientInterface) (int64, error) {
-	projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for section deletion:")
-	if err != nil {
-		return 0, err
+	var projectID, suiteID int64
+	step := 0 // 0=project, 1=suite, 2=section
+	for {
+		switch step {
+		case 0:
+			var err error
+			projectID, err = interactive.SelectProject(ctx, p, cli, "Select project for section deletion:")
+			if err != nil {
+				return 0, err
+			}
+			step = 1
+		case 1:
+			var err error
+			suiteID, err = interactive.SelectSuiteForProject(ctx, p, cli, projectID, "Select suite for section deletion:", true)
+			if err != nil {
+				if interactive.IsGoBack(err) {
+					step = 0
+					continue
+				}
+				return 0, err
+			}
+			step = 2
+		case 2:
+			sections, err := cli.GetSections(ctx, projectID, suiteID)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get sections for project %d suite %d: %w", projectID, suiteID, err)
+			}
+			sectionID, err := interactive.SelectSection(ctx, p, sections, "", true)
+			if err != nil {
+				if interactive.IsGoBack(err) {
+					step = 1
+					continue
+				}
+				return 0, err
+			}
+			return sectionID, nil
+		}
 	}
-	suiteID, err := interactive.SelectSuiteForProject(ctx, p, cli, projectID, "Select suite for section deletion:")
-	if err != nil {
-		return 0, err
-	}
-	sections, err := cli.GetSections(ctx, projectID, suiteID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get sections for project %d suite %d: %w", projectID, suiteID, err)
-	}
-	return interactive.SelectSection(ctx, p, sections, "")
 }
 
 func resolveDeleteCase(ctx context.Context, p interactive.Prompter, cli client.ClientInterface) (int64, error) {
-	projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for case deletion:")
-	if err != nil {
-		return 0, err
+	var projectID, suiteID int64
+	step := 0 // 0=project, 1=suite, 2=case
+	for {
+		switch step {
+		case 0:
+			var err error
+			projectID, err = interactive.SelectProject(ctx, p, cli, "Select project for case deletion:")
+			if err != nil {
+				return 0, err
+			}
+			step = 1
+		case 1:
+			var err error
+			suiteID, err = interactive.SelectSuiteForProject(ctx, p, cli, projectID, "Select suite for case deletion:", true)
+			if err != nil {
+				if interactive.IsGoBack(err) {
+					step = 0
+					continue
+				}
+				return 0, err
+			}
+			step = 2
+		case 2:
+			cases, err := cli.GetCases(ctx, projectID, suiteID, 0)
+			if err != nil {
+				return 0, fmt.Errorf("failed to get cases for project %d suite %d: %w", projectID, suiteID, err)
+			}
+			caseID, err := interactive.SelectCase(ctx, p, cases, "", true)
+			if err != nil {
+				if interactive.IsGoBack(err) {
+					step = 1
+					continue
+				}
+				return 0, err
+			}
+			return caseID, nil
+		}
 	}
-	suiteID, err := interactive.SelectSuiteForProject(ctx, p, cli, projectID, "Select suite for case deletion:")
-	if err != nil {
-		return 0, err
-	}
-	cases, err := cli.GetCases(ctx, projectID, suiteID, 0)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get cases for project %d suite %d: %w", projectID, suiteID, err)
-	}
-	return selectCaseID(ctx, p, cases)
 }
 
 func resolveDeleteRun(ctx context.Context, p interactive.Prompter, cli client.ClientInterface) (int64, error) {
-	projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for run deletion:")
-	if err != nil {
-		return 0, err
+	for {
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for run deletion:")
+		if err != nil {
+			return 0, err
+		}
+		runs, err := cli.GetRuns(ctx, projectID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get runs for project %d: %w", projectID, err)
+		}
+		runID, err := interactive.SelectRun(ctx, p, runs, "", true)
+		if err != nil {
+			if interactive.IsGoBack(err) {
+				continue
+			}
+			return 0, err
+		}
+		return runID, nil
 	}
-	runs, err := cli.GetRuns(ctx, projectID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get runs for project %d: %w", projectID, err)
-	}
-	return interactive.SelectRun(ctx, p, runs, "")
 }
 
 func resolveDeleteSharedStep(ctx context.Context, p interactive.Prompter, cli client.ClientInterface) (int64, error) {
-	projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for shared-step deletion:")
-	if err != nil {
-		return 0, err
+	for {
+		projectID, err := interactive.SelectProject(ctx, p, cli, "Select project for shared-step deletion:")
+		if err != nil {
+			return 0, err
+		}
+		steps, err := cli.GetSharedSteps(ctx, projectID)
+		if err != nil {
+			return 0, fmt.Errorf("failed to get shared steps for project %d: %w", projectID, err)
+		}
+		stepID, err := interactive.SelectSharedStep(ctx, p, steps, "", true)
+		if err != nil {
+			if interactive.IsGoBack(err) {
+				continue
+			}
+			return 0, err
+		}
+		return stepID, nil
 	}
-	steps, err := cli.GetSharedSteps(ctx, projectID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get shared steps for project %d: %w", projectID, err)
-	}
-	return selectSharedStepID(p, steps)
-}
-
-func selectCaseID(ctx context.Context, p interactive.Prompter, cases data.GetCasesResponse) (int64, error) {
-	_ = ctx
-	if len(cases) == 0 {
-		return 0, fmt.Errorf("no cases found")
-	}
-
-	options := make([]string, 0, len(cases))
-	for i, kase := range cases {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, kase.ID, kase.Title))
-	}
-
-	idx, _, err := p.Select("Select case:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select case: %w", err)
-	}
-
-	return cases[idx].ID, nil
-}
-
-func selectSharedStepID(p interactive.Prompter, steps data.GetSharedStepsResponse) (int64, error) {
-	if len(steps) == 0 {
-		return 0, fmt.Errorf("no shared steps found")
-	}
-
-	options := make([]string, 0, len(steps))
-	for i, step := range steps {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, step.ID, step.Title))
-	}
-
-	idx, _, err := p.Select("Select shared step:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select shared step: %w", err)
-	}
-
-	return steps[idx].ID, nil
 }
 
 // runDeleteDryRun performs a dry-run for the delete command.

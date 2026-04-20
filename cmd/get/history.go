@@ -4,12 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"context"
-
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
 
@@ -65,7 +62,7 @@ func newCaseHistoryCmd(getClient func(*cobra.Command) client.ClientInterface) *c
 					return fmt.Errorf("no cases found in suite %d", suiteID)
 				}
 
-				id, err = selectCaseID(ctx, cases)
+				id, err = interactive.SelectCase(ctx, interactive.PrompterFromContext(ctx), cases, "")
 				if err != nil {
 					return err
 				}
@@ -120,7 +117,7 @@ func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterfa
 					return fmt.Errorf("no shared steps found in project %d", projectID)
 				}
 
-				id, err = selectSharedStepID(ctx, steps)
+				id, err = interactive.SelectSharedStep(ctx, interactive.PrompterFromContext(ctx), steps, "")
 				if err != nil {
 					return err
 				}
@@ -134,21 +131,6 @@ func newSharedStepHistoryCmd(getClient func(*cobra.Command) client.ClientInterfa
 			return handleOutput(command, history, start)
 		},
 	}
-}
-
-func selectCaseID(ctx context.Context, cases data.GetCasesResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(cases))
-	for i, kase := range cases {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, kase.ID, kase.Title))
-	}
-
-	idx, _, err := p.Select("Select case:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select case: %w", err)
-	}
-
-	return cases[idx].ID, nil
 }
 
 // caseHistoryCmd is the exported command registered with the root.

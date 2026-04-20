@@ -85,52 +85,65 @@ func printPreConfirmSummary(count int, entityName string, sd snapshotDecision) {
 	}
 }
 
-// syncPostAction shows a post-migration action menu when a snapshot was taken.
+// syncPostAction shows a post-migration action menu.
 // hook is the Hook returned by HookMutation (may be nil or disabled).
 // cli is the API client for rollback operations.
 func syncPostAction(ctx context.Context, cmd *cobra.Command, hook *snap.Hook, cli client.ClientInterface) {
-	if hook == nil || !hook.Enabled || hook.Snap == nil {
+	if !interactive.HasPrompterInContext(ctx) || interactive.IsNonInteractive(ctx) {
 		return
-	}
-
-	snapID := hook.Snap.Meta.ID
-	label := hook.Snap.Meta.Label
-	if label != "" {
-		ui.Infof(os.Stdout, "📦 Snapshot saved: %s (🏷 %s)", snapID, label)
-	} else {
-		ui.Infof(os.Stdout, "📦 Snapshot saved: %s", snapID)
 	}
 
 	p := interactive.PrompterFromContext(ctx)
 
+	hasSnap := hook != nil && hook.Enabled && hook.Snap != nil
+	if hasSnap {
+		snapID := hook.Snap.Meta.ID
+		label := hook.Snap.Meta.Label
+		if label != "" {
+			ui.Infof(os.Stdout, "📦 Snapshot saved: %s (🏷 %s)", snapID, label)
+		} else {
+			ui.Infof(os.Stdout, "📦 Snapshot saved: %s", snapID)
+		}
+	}
+
 	const (
-		optExit     = "✕ Exit"
-		optRollback = "↻ Rollback this migration"
+		optExit     = "exit"
+		optRollback = "rollback"
 	)
 
 	for {
-		_, choice, err := p.Select("Post-migration:", []string{optExit, optRollback})
+		options := []interactive.ActionOption{
+			{Label: interactive.OptExit, Key: optExit},
+		}
+		if hasSnap {
+			options = append(options, interactive.ActionOption{Label: "↻ Rollback this migration", Key: optRollback})
+		}
+		options = append(options, interactive.CrossNavOptions()...)
+
+		key, err := interactive.ActionMenu(ctx, p, "Post-migration:", options)
 		if err != nil {
 			return
 		}
 
-		switch choice {
+		switch key {
+		case optExit:
+			return
 		case optRollback:
 			ok, err := p.Confirm("⚠ Are you sure you want to rollback?", false)
 			if err != nil || !ok {
 				continue
 			}
 
-			result, err := snap.Rollback(ctx, cli, hook.Store, hook.Manifest, snapID)
+			result, err := snap.Rollback(ctx, cli, hook.Store, hook.Manifest, hook.Snap.Meta.ID)
 			if err != nil {
 				ui.Error(os.Stdout, fmt.Sprintf("Rollback failed: %v", err))
 				return
 			}
 			ui.Successf(os.Stdout, "✓ Rollback complete: %s", result.Message)
 			return
-
-		default: // Exit
-			return
+		default:
+			interactive.HandleCrossNav(ctx, cmd, key)
+			continue
 		}
 	}
 }

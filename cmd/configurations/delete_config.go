@@ -75,6 +75,7 @@ is not used in active test plans.`,
 			}
 
 			ui.Successf(os.Stdout, "Configuration %d deleted", configID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

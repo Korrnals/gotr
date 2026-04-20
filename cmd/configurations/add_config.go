@@ -85,7 +85,11 @@ test plans with multiple configurations.`,
 			hook.FinalizeAdd(resp.ID)
 
 			ui.Successf(os.Stdout, "Configuration added (ID: %d)", resp.ID)
-			return output.OutputResult(cmd, resp, "configurations")
+			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

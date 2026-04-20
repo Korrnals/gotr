@@ -182,12 +182,23 @@ func selectTestIDForRun(ctx context.Context, cli client.ClientInterface, runID i
 	}
 
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(tests))
-	for i, test := range tests {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | Case: %d | %s", i+1, test.ID, test.CaseID, test.Title))
-	}
 
-	idx, _, err := p.Select("Select test:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Case", MinWidth: 6},
+		{Header: "Title"},
+	}
+	rows := make([][]string, len(tests))
+	for i, test := range tests {
+		rows[i] = []string{fmt.Sprintf("%d", test.ID), fmt.Sprintf("%d", test.CaseID), test.Title}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select test:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select test: %w", err)
 	}
@@ -218,13 +229,24 @@ func selectCaseIDForRun(ctx context.Context, cli client.ClientInterface, runID i
 	sort.Slice(caseIDs, func(i, j int) bool { return caseIDs[i] < caseIDs[j] })
 
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(caseIDs))
+
+	cols := []interactive.Column{
+		{Header: "Case", MinWidth: 6},
+		{Header: "Test", MinWidth: 6},
+		{Header: "Title"},
+	}
+	rows := make([][]string, len(caseIDs))
 	for i, caseID := range caseIDs {
 		test := byCase[caseID]
-		options = append(options, fmt.Sprintf("[%d] Case: %d | Test: %d | %s", i+1, caseID, test.ID, test.Title))
+		rows[i] = []string{fmt.Sprintf("%d", caseID), fmt.Sprintf("%d", test.ID), test.Title}
 	}
+	header, options := interactive.AlignedLabels(cols, rows)
 
-	idx, _, err := p.Select("Select case:", options)
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select case:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select case: %w", err)
 	}

@@ -138,7 +138,11 @@ Examples:
 			hook.FinalizeAdd(run.ID)
 
 			output.PrintSuccess(cmd, "Test run created successfully (ID: %d):", run.ID)
-			return output.OutputResultWithFlags(cmd, run)
+			if err := output.OutputResultWithFlags(cmd, run); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

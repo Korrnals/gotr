@@ -114,7 +114,11 @@ Examples:
 			}
 
 			output.PrintSuccess(cmd, "Result added successfully:")
-			return output.OutputResultWithFlags(cmd, result)
+			if err := output.OutputResultWithFlags(cmd, result); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -216,7 +220,11 @@ Examples:
 			}
 
 			output.PrintSuccess(cmd, "Result added successfully:")
-			return output.OutputResultWithFlags(cmd, result)
+			if err := output.OutputResultWithFlags(cmd, result); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -306,7 +314,11 @@ Examples:
 			}
 
 			output.PrintSuccess(cmd, "Results added successfully:")
-			return output.OutputResultWithFlags(cmd, results)
+			if err := output.OutputResultWithFlags(cmd, results); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

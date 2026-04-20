@@ -2,6 +2,7 @@ package snap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"sort"
@@ -19,10 +20,10 @@ const backOption = "← Back"
 const exitOption = "✕ Exit"
 
 // errGoBack is a sentinel to signal user chose "← Back".
-var errGoBack = fmt.Errorf("go back")
+var errGoBack = errors.New("go back")
 
 // errExit is a sentinel to signal user chose "✕ Exit".
-var errExit = fmt.Errorf("exit")
+var errExit = errors.New("exit")
 
 // serverLabel returns a normalised display string for a server URL.
 // Strips API path, shows only scheme+host. Empty → "(legacy)" for old snapshots.
@@ -54,6 +55,21 @@ func entityIDsLabel(ids []int64) string {
 		return fmt.Sprintf(" #%s", strings.Join(parts, ","))
 	}
 	return fmt.Sprintf(" #%d,…(+%d)", ids[0], len(ids)-1)
+}
+
+// projectLabel formats source → destination project IDs for display.
+// Returns "–" when no project info is available (legacy snapshots).
+func projectLabel(srcProjectID, dstProjectID int64) string {
+	if srcProjectID > 0 && dstProjectID > 0 {
+		return fmt.Sprintf("P%d → P%d", srcProjectID, dstProjectID)
+	}
+	if dstProjectID > 0 {
+		return fmt.Sprintf("P%d", dstProjectID)
+	}
+	if srcProjectID > 0 {
+		return fmt.Sprintf("P%d", srcProjectID)
+	}
+	return "–"
 }
 
 // isInterruptError returns true if the error is caused by user pressing Ctrl+C.
@@ -93,6 +109,11 @@ func formatPickerLabel(idx int, e snaplib.ManifestEntry) string {
 	fmt.Fprintf(&b, "[%d] %s %s", idx, e.Operation, e.EntityType)
 	b.WriteString(entityIDsLabel(e.EntityIDs))
 
+	proj := projectLabel(e.SourceProjectID, e.ProjectID)
+	if proj != "–" {
+		fmt.Fprintf(&b, " (%s)", proj)
+	}
+
 	if e.Name != "" {
 		fmt.Fprintf(&b, " %q", e.Name)
 	}
@@ -107,46 +128,40 @@ func formatPickerLabel(idx int, e snaplib.ManifestEntry) string {
 
 // alignedPickerLabels returns picker labels with consistent column widths.
 // Includes a header row as the first element.
+//nolint:gocyclo // Width calculation and column formatting are intentionally explicit.
 func alignedPickerLabels(entries []snaplib.ManifestEntry) (header string, labels []string) {
-	rows := buildPickerRows(entries)
-	w := computeColWidths(rows)
-
-	fmtRow := func(r pickerRow) string {
-		return formatPickerRow(r, w)
+	type row struct {
+		idx      string
+		opEntity string
+		ids      string
+		project  string
+		cat      string
+		name     string
+		label    string
+		status   string
+		tier     string
+		ts       string
+		snapID   string
 	}
 
-	hdr := pickerRow{idx: "#", opEntity: "OPERATION", ids: "IDS", cat: "CATEGORY", status: "STATUS", tier: "TIER", ts: "DATE", snapID: "SNAPSHOT ID"}
-	header = fmtRow(hdr)
+	rows := make([]row, len(entries))
+	maxIdx, maxOp, maxIDs, maxProj, maxCat, maxName, maxLabel, maxStatus, maxTier, maxTs, maxSnap := 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 
-	labels = make([]string, len(entries))
-	for i, r := range rows {
-		labels[i] = fmtRow(r)
-	}
-	return header, labels
-}
+	// Header widths.
+	hIdx, hOp, hIDs, hProj, hCat, hName := "#", "OPERATION", "IDS", "PROJECT", "CATEGORY", ""
+	hLabel := ""
+	hStatus, hTier, hTs, hSnap := "STATUS", "TIER", "DATE", "SNAPSHOT ID"
 
-// pickerRow holds pre-formatted column values for a single snapshot entry.
-type pickerRow struct {
-	idx, opEntity, ids, cat, name, label, status, tier, ts, snapID string
-}
-
-// pickerColWidths holds the maximum column widths across all rows.
-type pickerColWidths struct {
-	idx, op, ids, cat, name, label, status, tier, ts, snap int
-}
-
-// buildPickerRows converts ManifestEntry slice to formatted pickerRow slice.
-func buildPickerRows(entries []snaplib.ManifestEntry) []pickerRow {
-	rows := make([]pickerRow, len(entries))
 	for i, e := range entries {
 		idsLabel := strings.TrimSpace(entityIDsLabel(e.EntityIDs))
 		if idsLabel == "" {
 			idsLabel = "–"
 		}
-		r := pickerRow{
+		r := row{
 			idx:      fmt.Sprintf("[%d]", i+1),
 			opEntity: fmt.Sprintf("%s %s", e.Operation, e.EntityType),
 			ids:      idsLabel,
+			project:  projectLabel(e.SourceProjectID, e.ProjectID),
 			cat:      string(e.Category),
 			status:   string(e.Status),
 			tier:     fmt.Sprintf("T%d", e.RollbackTier),
@@ -160,65 +175,61 @@ func buildPickerRows(entries []snaplib.ManifestEntry) []pickerRow {
 			r.label = fmt.Sprintf("🏷 %s", e.Label)
 		}
 		rows[i] = r
-	}
-	return rows
-}
 
-// computeColWidths calculates max column widths from rows, seeded with header widths.
-func computeColWidths(rows []pickerRow) pickerColWidths {
-	w := pickerColWidths{
-		idx: len("#"), op: len("OPERATION"), ids: len("IDS"), cat: len("CATEGORY"),
-		status: len("STATUS"), tier: len("TIER"), ts: len("DATE"), snap: len("SNAPSHOT ID"),
+		if len(r.idx) > maxIdx { maxIdx = len(r.idx) }
+		if len(r.opEntity) > maxOp { maxOp = len(r.opEntity) }
+		if len(r.ids) > maxIDs { maxIDs = len(r.ids) }
+		if len(r.project) > maxProj { maxProj = len(r.project) }
+		if len(r.cat) > maxCat { maxCat = len(r.cat) }
+		if len(r.name) > maxName { maxName = len(r.name) }
+		if len(r.label) > maxLabel { maxLabel = len(r.label) }
+		if len(r.status) > maxStatus { maxStatus = len(r.status) }
+		if len(r.tier) > maxTier { maxTier = len(r.tier) }
+		if len(r.ts) > maxTs { maxTs = len(r.ts) }
+		if len(r.snapID) > maxSnap { maxSnap = len(r.snapID) }
 	}
-	for _, r := range rows {
-		if n := len(r.idx); n > w.idx {
-			w.idx = n
-		}
-		if n := len(r.opEntity); n > w.op {
-			w.op = n
-		}
-		if n := len(r.ids); n > w.ids {
-			w.ids = n
-		}
-		if n := len(r.cat); n > w.cat {
-			w.cat = n
-		}
-		if n := len(r.name); n > w.name {
-			w.name = n
-		}
-		if n := len(r.label); n > w.label {
-			w.label = n
-		}
-		if n := len(r.status); n > w.status {
-			w.status = n
-		}
-		if n := len(r.tier); n > w.tier {
-			w.tier = n
-		}
-		if n := len(r.ts); n > w.ts {
-			w.ts = n
-		}
-		if n := len(r.snapID); n > w.snap {
-			w.snap = n
-		}
-	}
-	return w
-}
 
-// formatPickerRow renders a single row using precomputed column widths.
-func formatPickerRow(r pickerRow, w pickerColWidths) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "%-*s %-*s │ %-*s │ %-*s",
-		w.idx, r.idx, w.op, r.opEntity, w.ids, r.ids, w.cat, r.cat)
-	if w.name > 0 {
-		fmt.Fprintf(&b, " │ %-*s", w.name, r.name)
+	// Ensure header labels don't shrink columns.
+	if len(hIdx) > maxIdx { maxIdx = len(hIdx) }
+	if len(hOp) > maxOp { maxOp = len(hOp) }
+	if len(hIDs) > maxIDs { maxIDs = len(hIDs) }
+	if len(hProj) > maxProj { maxProj = len(hProj) }
+	if len(hCat) > maxCat { maxCat = len(hCat) }
+	if len(hLabel) > maxLabel { maxLabel = len(hLabel) }
+	if len(hStatus) > maxStatus { maxStatus = len(hStatus) }
+	if len(hTier) > maxTier { maxTier = len(hTier) }
+	if len(hTs) > maxTs { maxTs = len(hTs) }
+	if len(hSnap) > maxSnap { maxSnap = len(hSnap) }
+
+	// Build format function — all columns separated by │.
+	fmtRow := func(idx, op, ids, proj, cat, name, label, status, tier, ts, snap string) string {
+		var b strings.Builder
+		fmt.Fprintf(&b, "%-*s %-*s │ %-*s",
+			maxIdx, idx, maxOp, op, maxIDs, ids)
+		if maxProj > 0 {
+			fmt.Fprintf(&b, " │ %-*s", maxProj, proj)
+		}
+		fmt.Fprintf(&b, " │ %-*s", maxCat, cat)
+		if maxName > 0 {
+			fmt.Fprintf(&b, " │ %-*s", maxName, name)
+		}
+		if maxLabel > 0 {
+			fmt.Fprintf(&b, " │ %-*s", maxLabel, label)
+		}
+		fmt.Fprintf(&b, " │ %-*s │ %-*s │ %-*s │ %-*s",
+			maxStatus, status, maxTier, tier, maxTs, ts, maxSnap, snap)
+		return b.String()
 	}
-	if w.label > 0 {
-		fmt.Fprintf(&b, " │ %-*s", w.label, r.label)
+
+	// Header.
+	header = fmtRow(hIdx, hOp, hIDs, hProj, hCat, hName, hLabel, hStatus, hTier, hTs, hSnap)
+
+	// Data rows.
+	labels = make([]string, len(entries))
+	for i, r := range rows {
+		labels[i] = fmtRow(r.idx, r.opEntity, r.ids, r.project, r.cat, r.name, r.label, r.status, r.tier, r.ts, r.snapID)
 	}
-	fmt.Fprintf(&b, " │ %-*s │ %-*s │ %-*s │ %-*s",
-		w.status, r.status, w.tier, r.tier, w.ts, r.ts, w.snap, r.snapID)
-	return b.String()
+	return header, labels
 }
 
 // ---------------------------------------------------------------------------
@@ -557,58 +568,49 @@ func browseSnapshots(cmd *cobra.Command, store *snaplib.Store, manifest *snaplib
 	}
 }
 
-// selectOpGroup shows the operation picker and returns the selected group entries + label.
-// Returns errGoBack or errExit as sentinel errors for navigation.
-// When only one group exists, returns it immediately without prompting.
-func selectOpGroup(p interactive.Prompter, opGroups []operationGroup, entries []snaplib.ManifestEntry, allowBack bool) ([]snaplib.ManifestEntry, string, error) {
-	if len(opGroups) == 1 {
-		return opGroups[0].Entries, "", nil
-	}
-
-	options := make([]string, 0, len(opGroups)+2)
-	if allowBack {
-		options = append(options, backOption)
-	}
-	options = append(options, exitOption)
-	for _, g := range opGroups {
-		options = append(options, fmt.Sprintf("%-12s — %d snapshots", g.Label, len(g.Entries)))
-	}
-
-	qPrompt := fmt.Sprintf("Select operation (%d types, %d snapshots):", len(opGroups), len(entries))
-	idx, _, err := p.Select(qPrompt, options)
-	if err != nil {
-		return nil, "", errExit
-	}
-
-	if allowBack && idx == 0 {
-		return nil, "", errGoBack
-	}
-	exitIdx := 0
-	if allowBack {
-		exitIdx = 1
-	}
-	if idx == exitIdx {
-		return nil, "", errExit
-	}
-	dataIdx := idx - exitIdx - 1
-	return opGroups[dataIdx].Entries, opGroups[dataIdx].Label, nil
-}
-
 // browseByOperation shows operation picker, then delegates to browseSnapList.
+//nolint:gocyclo // Interactive operation browsing keeps back/exit handling explicit.
 func browseByOperation(cmd *cobra.Command, store *snaplib.Store, p interactive.Prompter, entries []snaplib.ManifestEntry, allowBack bool) error {
 	opGroups := groupByOperation(entries)
 
 	for { // Operation-level loop.
-		opEntries, label, err := selectOpGroup(p, opGroups, entries, allowBack)
-		if err != nil {
-			return err
-		}
-		if label != "" {
-			fmt.Fprintf(cmd.OutOrStdout(), "  ✓ %s\n", label)
+		var opEntries []snaplib.ManifestEntry
+
+		if len(opGroups) == 1 {
+			opEntries = opGroups[0].Entries
+		} else {
+			options := make([]string, 0, len(opGroups)+2)
+			if allowBack {
+				options = append(options, backOption)
+			}
+			options = append(options, exitOption)
+			for _, g := range opGroups {
+				options = append(options, fmt.Sprintf("%-12s — %d snapshots", g.Label, len(g.Entries)))
+			}
+
+			qPrompt := fmt.Sprintf("Select operation (%d types, %d snapshots):", len(opGroups), len(entries))
+			idx, _, err := p.Select(qPrompt, options)
+			if err != nil {
+				return errExit // Ctrl+C
+			}
+
+			if allowBack && idx == 0 {
+				return errGoBack
+			}
+			exitIdx := 0
+			if allowBack {
+				exitIdx = 1
+			}
+			if idx == exitIdx {
+				return errExit
+			}
+			offset := exitIdx + 1
+			opEntries = opGroups[idx-offset].Entries
+			fmt.Fprintf(cmd.OutOrStdout(), "  ✓ %s\n", opGroups[idx-offset].Label)
 		}
 
-		browseErr := browseByCategory(cmd, store, p, opEntries, len(opGroups) > 1 || allowBack)
-		if browseErr == errGoBack {
+		err := browseByCategory(cmd, store, p, opEntries, len(opGroups) > 1 || allowBack)
+		if err == errGoBack {
 			if len(opGroups) == 1 {
 				if allowBack {
 					return errGoBack
@@ -617,10 +619,10 @@ func browseByOperation(cmd *cobra.Command, store *snaplib.Store, p interactive.P
 			}
 			continue
 		}
-		if browseErr == errExit {
+		if err == errExit {
 			return errExit
 		}
-		if browseErr != nil {
+		if err != nil {
 			return nil
 		}
 	}
@@ -729,18 +731,22 @@ func browseSnapList(cmd *cobra.Command, store *snaplib.Store, p interactive.Prom
 		fmt.Fprintln(cmd.OutOrStdout())
 
 		// Post-card action menu.
-		action, err := postCardAction(cmd, p, meta)
+		key, err := postCardAction(cmd, p, meta)
 		if err != nil {
 			return errExit
 		}
-		switch action {
-		case postActionBack:
+		switch key {
+		case "back":
 			continue // back to snapshot list
-		case postActionExit:
+		case "exit":
 			return errExit
-		case postActionRollback:
+		case "rollback":
 			executeRollbackFromBrowser(cmd, entry.ID)
 			continue // back to snapshot list after rollback
+		default:
+			// Cross-navigation keys (nav:compare, nav:sync, nav:snap).
+			interactive.HandleCrossNav(cmd.Context(), cmd, key)
+			continue
 		}
 	}
 }
@@ -749,6 +755,7 @@ func browseSnapList(cmd *cobra.Command, store *snaplib.Store, p interactive.Prom
 // Post-card action menu
 // ---------------------------------------------------------------------------
 
+// postAction is a local enum used by undo.go for its simpler card menus.
 type postAction int
 
 const (
@@ -758,37 +765,40 @@ const (
 )
 
 // postCardAction shows a mini-menu after viewing a snapshot info card.
-// Returns the chosen action.
-func postCardAction(cmd *cobra.Command, p interactive.Prompter, meta *snaplib.Meta) (postAction, error) {
+// Returns the chosen action key.
+func postCardAction(cmd *cobra.Command, p interactive.Prompter, meta *snaplib.Meta) (string, error) {
 	out := cmd.OutOrStdout()
-	options := []string{backOption, exitOption}
+	ctx := cmd.Context()
 
-	// Show rollback option only for actionable statuses;
-	// for terminal statuses print a hint instead.
+	const (
+		keyBack     = "back"
+		keyExit     = "exit"
+		keyRollback = "rollback"
+	)
+
+	options := []interactive.ActionOption{
+		{Label: backOption, Key: keyBack},
+		{Label: exitOption, Key: keyExit},
+	}
+
+	// Rollback option — only for actionable statuses.
 	canRollback := meta.Status == snaplib.StatusAvailable || meta.Status == snaplib.StatusRollbackPartial
 	if canRollback {
-		options = append(options, "↻ Rollback this snapshot")
+		options = append(options, interactive.ActionOption{Label: "↻ Rollback this snapshot", Key: keyRollback})
 	} else if meta.Status == snaplib.StatusRolledBack {
 		fmt.Fprintln(out, "  ✓ Snapshot already rolled back.")
 	} else if meta.Status == snaplib.StatusExpired {
 		fmt.Fprintln(out, "  ⚠ Snapshot expired — rollback unavailable.")
 	}
 
-	idx, _, err := p.Select("Action:", options)
-	if err != nil {
-		return postActionExit, err
-	}
+	// Cross-navigation transitions.
+	options = append(options, interactive.CrossNavOptions()...)
 
-	switch idx {
-	case 0:
-		return postActionBack, nil
-	case 1:
-		return postActionExit, nil
-	case 2:
-		return postActionRollback, nil
-	default:
-		return postActionBack, nil
+	key, err := interactive.ActionMenu(ctx, p, "Action:", options)
+	if err != nil {
+		return keyExit, err
 	}
+	return key, nil
 }
 
 // executeRollbackFromBrowser finds and runs the rollback subcommand for the given snapshot.

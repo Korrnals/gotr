@@ -77,6 +77,7 @@ Use --dry-run to verify before deleting.`,
 			}
 
 			ui.Successf(os.Stdout, "Milestone %d deleted", milestoneID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

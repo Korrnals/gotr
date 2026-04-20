@@ -93,11 +93,12 @@ func listTable(cmd *cobra.Command, entries []snaplib.ManifestEntry) error {
 	}
 
 	t := ui.NewTable(cmd)
-	t.AppendHeader(table.Row{"#", "ID", "SERVER", "OP", "ENTITY", "IDS", "CATEGORY", "LABEL", "STATUS", "TIMESTAMP"})
+	t.AppendHeader(table.Row{"#", "ID", "SERVER", "OP", "ENTITY", "IDS", "PROJECT", "CATEGORY", "LABEL", "STATUS", "TIMESTAMP"})
 	for i, e := range entries {
 		t.AppendRow(table.Row{
 			i + 1, e.ID, serverLabel(e.ServerURL),
 			e.Operation, e.EntityType, entityIDsLabel(e.EntityIDs),
+			projectLabel(e.SourceProjectID, e.ProjectID),
 			e.Category, e.Label, e.Status,
 			e.Timestamp.Format("2006-01-02 15:04:05"),
 		})

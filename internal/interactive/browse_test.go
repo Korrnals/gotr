@@ -9,8 +9,8 @@ import (
 )
 
 func TestBrowse_SelectItem(t *testing.T) {
-	// Options will be: [Exit, Alpha, Bravo] → index 2 = Bravo
-	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 2})
+	// Items: [Alpha, Bravo]. Mock index 1 = Bravo (auto-adjusted past Exit).
+	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
 
 	idx, err := Browse(context.Background(), mock, BrowseConfig{
 		Prompt: "Pick one:",
@@ -21,8 +21,8 @@ func TestBrowse_SelectItem(t *testing.T) {
 }
 
 func TestBrowse_Exit(t *testing.T) {
-	// Options: [Exit, A] → index 0 = Exit
-	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+	// Raw index 0 = Exit (skip auto-adjustment)
+	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Raw: true})
 
 	_, err := Browse(context.Background(), mock, BrowseConfig{
 		Prompt: "Pick:",
@@ -32,8 +32,8 @@ func TestBrowse_Exit(t *testing.T) {
 }
 
 func TestBrowse_Back(t *testing.T) {
-	// Options: [Back, Exit, A] → index 0 = Back
-	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+	// Raw index 0 = Back (skip auto-adjustment)
+	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Raw: true})
 
 	_, err := Browse(context.Background(), mock, BrowseConfig{
 		Prompt:    "Pick:",

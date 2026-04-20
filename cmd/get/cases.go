@@ -177,7 +177,7 @@ func newCaseCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra.Co
 					return fmt.Errorf("no cases found in suite %d", suiteID)
 				}
 
-				id, err = selectCaseID(ctx, cases)
+				id, err = interactive.SelectCase(ctx, interactive.PrompterFromContext(ctx), cases, "")
 				if err != nil {
 					return err
 				}

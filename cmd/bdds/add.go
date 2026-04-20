@@ -76,7 +76,11 @@ Content can be provided via a file or directly.`,
 			}
 
 			ui.Successf(os.Stdout, "BDD added to case %d", caseID)
-			return output.OutputResult(cmd, resp, "bdds")
+			if err := output.OutputResult(cmd, resp, "bdds"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

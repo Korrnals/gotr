@@ -47,6 +47,7 @@ Examples:
 
 		var err error
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
 

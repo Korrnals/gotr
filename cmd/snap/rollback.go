@@ -42,19 +42,19 @@ Subcommands:
 
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackCmd.func: %w", err)
 			}
 
 			snapID, err := resolveSnapshotIDWith(ctx, args, manifest, "Select snapshot to rollback:", &pickerOpts{
 				statusFilter: []snaplib.Status{snaplib.StatusAvailable, snaplib.StatusRollbackPartial},
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newRollbackCmd.func: %w", err)
 			}
 
 			entry := manifest.Find(snapID)

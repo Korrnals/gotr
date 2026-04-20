@@ -76,6 +76,7 @@ in active test plans.`,
 			}
 
 			ui.Successf(os.Stdout, "Group %d deleted", groupID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

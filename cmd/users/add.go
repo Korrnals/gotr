@@ -8,6 +8,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
 )
 
@@ -56,6 +57,8 @@ Administrative privileges are required to create users.`,
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "user", Tier: snap.Tier2})
+
 			user, err := cli.AddUser(ctx, req)
 			if err != nil {
 				return fmt.Errorf("failed to add user: %w", err)
@@ -73,6 +76,7 @@ Administrative privileges are required to create users.`,
 	cmd.Flags().String("password", "", "User password")
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating the user")
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 
 	_ = cmd.MarkFlagRequired("name")
 	_ = cmd.MarkFlagRequired("email")

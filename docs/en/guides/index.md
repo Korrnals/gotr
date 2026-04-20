@@ -10,6 +10,7 @@ Language: [Русский](../../ru/guides/index.md) | English
     - [Configuration](configuration.md)
     - [Interactive Mode](interactive-mode.md)
     - [Progress](progress.md)
+    - [Smoke Testing](smoke-testing.md)
     - [Commands Index](commands/index.md)
     - [Instructions](instructions/index.md)
   - [Architecture](../architecture/index.md)
@@ -42,6 +43,10 @@ Ready-to-use step-by-step recipes for common tasks.
 
 - [Interactive Mode](interactive-mode.md) — dialog mode with autocompletion
 - [Progress](progress.md) — track long-running operations
+
+### Testing
+
+- [Smoke Testing](smoke-testing.md) — E2E snap/rollback tests on built-in mock server or live TestRail
 
 ---
 

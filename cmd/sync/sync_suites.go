@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -63,7 +64,7 @@ Flags:
 		defer m.Close()
 
 		op := newSyncOperation("Sync suites", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		op.Phase("Loading suites")
 		loaded, err := runSyncStatus(ctx, "Loading suites...", quiet, func(ctx context.Context) (struct {
@@ -93,7 +94,7 @@ defer op.Finish()
 			return err
 		}
 
-		ui.Infof(os.Stdout, "Ready to import: %d new suites", len(filtered))
+		printFilterSummary("suites", m.LastFilterStats())
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import skipped")
@@ -105,9 +106,12 @@ defer op.Finish()
 			return nil
 		}
 
-		op.Phase("Awaiting confirmation")
+		// Snapshot decision + confirmation
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "suites", sd)
+
 		if !autoApprove {
-			ui.Infof(os.Stdout, "Confirm import of %d suites...", len(filtered))
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
 				return err
@@ -118,8 +122,15 @@ defer op.Finish()
 			}
 		}
 
-		// Step 3) Confirmation and import
-		op.Phase("Importing suites")
+		// Step 3) Import
+		op = newSyncOperation("Importing suites", quiet)
+		defer op.Finish()
+
+		var snapHook *snap.Hook
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSuites, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
+		}
+
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d suites...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSuites(ctx, filtered, false)
 		})
@@ -137,6 +148,7 @@ defer op.Finish()
 			}
 		}
 
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -157,7 +158,7 @@ Examples:
 			return err
 		}
 
-		// Count matches
+		// Count matches for log
 		var matches data.GetCasesResponse
 		filteredIDs := make(map[int64]struct{})
 		for _, f := range filtered {
@@ -169,13 +170,7 @@ Examples:
 			}
 		}
 
-		if !quiet {
-			if !quiet {
-				fmt.Printf("\nAnalysis result:\n")
-				fmt.Printf("  Matches: %d\n", len(matches))
-				fmt.Printf("  New: %d\n", len(filtered))
-			}
-		}
+		printFilterSummary("cases", m.LastFilterStats())
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import NOT performed (safe).")
@@ -183,8 +178,11 @@ Examples:
 			return nil
 		}
 
-		op.Phase("Awaiting confirmation")
-		ui.Infof(os.Stdout, "Confirm import of %d new cases...", len(filtered))
+		// Snapshot decision + summary
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "cases", sd)
+
 		ok, err := p.Confirm("Continue?", false)
 		if err != nil {
 			return err
@@ -195,7 +193,14 @@ Examples:
 			return nil
 		}
 
-		op.Phase("Importing cases")
+		op = newSyncOperation("Importing cases", quiet)
+		defer op.Finish()
+
+		var snapHook *snap.Hook
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
+		}
+
 		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), quiet, func(ctx context.Context) (struct {
 			IDs    []int64
 			Errors []string
@@ -230,6 +235,7 @@ Examples:
 		// Save log and mapping
 		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)
 
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

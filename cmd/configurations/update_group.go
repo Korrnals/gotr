@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -62,6 +63,8 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "config_group", EntityIDs: []int64{groupID}, Tier: snap.Tier1, FetchFn: nil})
+
 			req := data.UpdateConfigGroupRequest{Name: name}
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
@@ -83,6 +86,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Bool("dry-run", false, "Preview what would be done without applying changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New group name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

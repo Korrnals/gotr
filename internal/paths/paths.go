@@ -19,6 +19,7 @@ const (
 	CacheDir    = "cache"    // API cache
 	ExportsDir  = "exports"  // user data exports
 	TempDir     = "temp"     // temporary files
+	SnapsDir    = "snaps"    // pre-mutation snapshots
 )
 
 // BaseDir returns the path to ~/.gotr.
@@ -96,6 +97,15 @@ func TempDirPath() (string, error) {
 	return filepath.Join(base, TempDir), nil
 }
 
+// SnapsDirPath returns the path to ~/.gotr/snaps.
+func SnapsDirPath() (string, error) {
+	base, err := BaseDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, SnapsDir), nil
+}
+
 // ConfigFile returns the path to the main config file ~/.gotr/config/default.yaml.
 func ConfigFile() (string, error) {
 	dir, err := ConfigDirPath()
@@ -114,6 +124,7 @@ func EnsureAllDirs() error {
 		CacheDirPath,
 		ExportsDirPath,
 		TempDirPath,
+		SnapsDirPath,
 	}
 
 	for _, dirFunc := range dirs {

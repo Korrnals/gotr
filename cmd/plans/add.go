@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -70,6 +71,13 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation (add = no pre-fetch, finalize after).
+			hook := snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpAdd, EntityType: "plan",
+				EntityIDs: nil, Tier: snap.Tier2,
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Creating plan",
@@ -82,12 +90,15 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to create plan: %w", err)
 			}
 
+			hook.FinalizeAdd(resp.ID)
+
 			ui.Successf(os.Stdout, "Plan created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without creating")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Plan name (required)")
 	cmd.Flags().String("description", "", "Plan description")

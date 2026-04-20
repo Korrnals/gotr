@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/snap"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -22,6 +23,7 @@ func resetFullFlags() {
 	fullCmd.Flags().Bool("dry-run", false, "")
 	fullCmd.Flags().Bool("approve", false, "")
 	fullCmd.Flags().Bool("save-mapping", false, "")
+	snap.RegisterFlags(fullCmd)
 }
 
 // TestSyncFull_DryRun_NoAdds verifies that dry-run does not trigger entity creation
@@ -64,6 +66,7 @@ func TestSyncFull_DryRun_NoAdds(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("dry-run", "true")
+	cmd.Flags().Set("snapshot", "false")
 
 	err := cmd.RunE(cmd, []string{})
 	assert.NoError(t, err)

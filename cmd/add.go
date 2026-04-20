@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -85,6 +86,7 @@ func init() {
 	output.AddFlag(addCmd)
 	addCmd.Flags().Bool("dry-run", false, "Show what would be executed without making changes")
 	addCmd.Flags().BoolP("interactive", "i", false, "Interactive mode (wizard)")
+	snap.RegisterFlags(addCmd)
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
@@ -761,6 +763,7 @@ func addProject(cli client.ClientInterface, cmd *cobra.Command, jsonData []byte)
 			return cli.AddProject(ctx, req)
 		},
 		"failed to create project",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "project", Tier: snap.Tier2},
 	)
 }
 
@@ -770,6 +773,7 @@ func addSuite(cli client.ClientInterface, cmd *cobra.Command, projectID int64, j
 			return cli.AddSuite(ctx, id, req)
 		},
 		"failed to create suite",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "suite", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 
@@ -779,6 +783,7 @@ func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64,
 			return cli.AddSection(ctx, id, req)
 		},
 		"failed to create section",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "section", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 
@@ -788,6 +793,7 @@ func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, js
 			return cli.AddCase(ctx, id, req)
 		},
 		"failed to create case",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "case", Tier: snap.Tier2},
 	)
 }
 
@@ -797,6 +803,7 @@ func addRun(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jso
 			return cli.AddRun(ctx, id, req)
 		},
 		"failed to create run",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "run", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 
@@ -806,6 +813,7 @@ func addResult(cli client.ClientInterface, cmd *cobra.Command, testID int64, jso
 			return cli.AddResult(ctx, id, req)
 		},
 		"failed to add result",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "result", Tier: snap.Tier3},
 	)
 }
 
@@ -839,6 +847,7 @@ func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int
 			return cli.AddSharedStep(ctx, id, req)
 		},
 		"failed to create shared step",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "shared_step", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 

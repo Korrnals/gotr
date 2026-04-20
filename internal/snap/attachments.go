@@ -48,7 +48,6 @@ type PromptFunc func(att data.Attachment, maxMB int) bool
 // Respects SnapConfig: save_binary mode, max file size, gzip compression.
 // Use promptFn to interactively ask about large files (pass nil for non-interactive).
 // Returns the number of attachments saved.
-//nolint:gocyclo // Branching is intentional for snapshot policy handling.
 func SaveCaseAttachments(
 	ctx context.Context,
 	api AttachmentsAPI,

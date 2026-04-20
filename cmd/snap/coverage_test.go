@@ -140,8 +140,6 @@ func TestRegister(t *testing.T) {
 	assert.Contains(t, subNames, "rollback")
 	assert.Contains(t, subNames, "export")
 	assert.Contains(t, subNames, "delete")
-	assert.Contains(t, subNames, "pin")
-	assert.Contains(t, subNames, "unpin")
 	assert.Contains(t, subNames, "gc")
 }
 
@@ -209,20 +207,20 @@ func TestRenderInfoCard(t *testing.T) {
 	cmd.SetContext(ctx)
 
 	meta := &snaplib.Meta{
-		ID:          "cases/20260418T120000_update_0",
-		ServerURL:   "https://example.com",
-		Operation:   snaplib.OpUpdate,
-		EntityType:  "case",
-		Category:    "cases",
+		ID:           "cases/20260418T120000_update_0",
+		ServerURL:    "https://example.com",
+		Operation:    snaplib.OpUpdate,
+		EntityType:   "case",
+		Category:     "cases",
 		RollbackTier: snaplib.Tier1,
-		Status:      snaplib.StatusAvailable,
-		EntityIDs:   []int64{42, 99},
-		ProjectID:   3,
-		SuiteID:     10,
-		CLICommand:  "gotr cases update",
-		Timestamp:   time.Date(2026, 4, 18, 12, 0, 0, 0, time.UTC),
-		Name:        "test-snap",
-		Label:       "my-label",
+		Status:       snaplib.StatusAvailable,
+		EntityIDs:    []int64{42, 99},
+		ProjectID:    3,
+		SuiteID:      10,
+		CLICommand:   "gotr cases update",
+		Timestamp:    time.Date(2026, 4, 18, 12, 0, 0, 0, time.UTC),
+		Name:         "test-snap",
+		Label:        "my-label",
 	}
 
 	renderInfoCard(cmd, meta)
@@ -241,12 +239,12 @@ func TestRenderInfoCard_WithEntities(t *testing.T) {
 	cmd.SetContext(ctx)
 
 	meta := &snaplib.Meta{
-		ID:          "test-snap",
-		Operation:   snaplib.OpDelete,
-		EntityType:  "case",
-		Status:      snaplib.StatusAvailable,
+		ID:           "test-snap",
+		Operation:    snaplib.OpDelete,
+		EntityType:   "case",
+		Status:       snaplib.StatusAvailable,
 		RollbackTier: snaplib.Tier2,
-		Timestamp:   time.Now(),
+		Timestamp:    time.Now(),
 		Entities: []snaplib.Entity{
 			{Type: "case", ID: 42, ParentID: 10},
 			{Type: "section", ID: 10, ParentID: 0},
@@ -266,12 +264,12 @@ func TestRenderInfoCard_WithRollbackLog(t *testing.T) {
 	cmd.SetContext(ctx)
 
 	meta := &snaplib.Meta{
-		ID:          "test-snap",
-		Operation:   snaplib.OpUpdate,
-		EntityType:  "case",
-		Status:      snaplib.StatusRolledBack,
+		ID:           "test-snap",
+		Operation:    snaplib.OpUpdate,
+		EntityType:   "case",
+		Status:       snaplib.StatusRolledBack,
 		RollbackTier: snaplib.Tier1,
-		Timestamp:   time.Now(),
+		Timestamp:    time.Now(),
 		RollbackLog: []snaplib.RollbackLogEntry{
 			{Type: "case", ID: 42, Status: snaplib.RBRestored},
 			{Type: "case", ID: 99, Status: snaplib.RBFailed, Error: "not found"},
@@ -312,8 +310,6 @@ func TestCLI_SnapList_FilterByLabel(t *testing.T) {
 // ---------------------------------------------------------------------------
 // shortID
 // ---------------------------------------------------------------------------
-
-
 
 // ---------------------------------------------------------------------------
 // CLI snap info — non-interactive with real snapshot

@@ -2,12 +2,17 @@ package snap
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/concurrent"
 	"github.com/Korrnals/gotr/internal/models/data"
 )
+
+// errUnsupportedEntity signals that the entity type has no rollback handler.
+// It is never wrapped, so callers can use errors.Is.
+var errUnsupportedEntity = errors.New("unsupported entity type for rollback")
 
 // concurrentThreshold is the minimum entity count to trigger parallel processing.
 const concurrentThreshold = 10
@@ -132,35 +137,10 @@ func Rollback(ctx context.Context, api CasesAPI, store *Store, manifest *Manifes
 		DryRun:     opt.DryRun,
 	}
 
-	switch {
-	case meta.EntityType == "case":
-		err = rollbackCase(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "section":
-		err = rollbackSection(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "project":
-		err = rollbackProject(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "run":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "milestone":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "plan":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "suite":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "group":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "variable":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "dataset":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.EntityType == "configuration":
-		err = rollbackSimpleEntity(ctx, api, store, meta, result, opt)
-	case meta.IsSyncOp():
-		err = rollbackSync(ctx, api, store, meta, result, opt)
-	default:
-		return nil, fmt.Errorf("unsupported entity type for rollback: %q", meta.EntityType)
+	err = dispatchRollback(ctx, api, store, meta, result, opt)
+	if errors.Is(err, errUnsupportedEntity) {
+		return nil, err
 	}
-
 	if err != nil {
 		meta.Status = StatusRollbackPartial
 		_ = store.SaveMeta(meta)
@@ -177,6 +157,25 @@ func Rollback(ctx context.Context, api CasesAPI, store *Store, manifest *Manifes
 		result.Success = true
 	}
 	return result, nil
+}
+
+// dispatchRollback routes rollback to the correct entity handler.
+// Returns errUnsupportedEntity (unwrapped) when no handler exists for the entity type.
+func dispatchRollback(ctx context.Context, api CasesAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	switch meta.EntityType {
+	case "case":
+		return rollbackCase(ctx, api, store, meta, result, opt)
+	case "section":
+		return rollbackSection(ctx, api, store, meta, result, opt)
+	case "project":
+		return rollbackProject(ctx, api, store, meta, result, opt)
+	case "run", "milestone", "plan", "suite", "group", "variable", "dataset", "configuration":
+		return rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	}
+	if meta.IsSyncOp() {
+		return rollbackSync(ctx, api, store, meta, result, opt)
+	}
+	return fmt.Errorf("%w: %q", errUnsupportedEntity, meta.EntityType)
 }
 
 func rollbackCase(ctx context.Context, api CasesAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
@@ -749,70 +748,97 @@ func rollbackSectionCascade(ctx context.Context, api RollbackAPI, store *Store, 
 		return nil
 	}
 
-	sectionEntry := logEntry(meta, "section", sectionID)
-	var newSectionID int64
-
-	if sectionEntry.Status != RBRestored {
-		req := &data.AddSectionRequest{
-			Name:        cascade.Section.Name,
-			Description: cascade.Section.Description,
-			SuiteID:     cascade.Section.SuiteID,
-			ParentID:    cascade.Section.ParentID,
-		}
-
-		created, err := api.AddSection(ctx, meta.ProjectID, req)
-		if err != nil {
-			sectionEntry.Status = RBFailed
-			sectionEntry.Error = err.Error()
-			return fmt.Errorf("API add_section (re-create %d): %w", sectionID, err)
-		}
-		sectionEntry.Status = RBRestored
-		sectionEntry.NewID = created.ID
-		newSectionID = created.ID
+	newSectionID, err := restoreCascadeSection(ctx, api, meta, cascade.Section)
+	if err != nil {
+		return err
 	}
 
-	// Re-create child cases in the new section.
-	// Filter applicable cases first.
-	var toRestore []data.Case
-	for _, c := range cascade.Cases {
-		if !entityAllowed(c.ID, opt.EntityIDs) {
+	toRestore := filterCasesForCascade(meta, cascade.Cases, opt.EntityIDs)
+	restored, lastErr := runCascadeCases(ctx, api, meta, toRestore, newSectionID)
+	restored += countPreRestored(meta, cascade.Cases, opt.EntityIDs)
+
+	if newSectionID > 0 {
+		result.NewEntityID = newSectionID
+	}
+	result.Message = fmt.Sprintf("Section re-created as ID %d, %d/%d cases restored", newSectionID, restored, len(cascade.Cases))
+
+	if lastErr != nil {
+		return fmt.Errorf("cascade rollback partial: %w", lastErr)
+	}
+	return nil
+}
+
+// restoreCascadeSection creates a section from snapshot data (skips if already restored).
+// Returns the new section ID (0 if the section was already restored earlier).
+func restoreCascadeSection(ctx context.Context, api RollbackAPI, meta *Meta, section data.Section) (int64, error) {
+	sectionEntry := logEntry(meta, "section", section.ID)
+	if sectionEntry.Status == RBRestored {
+		return 0, nil
+	}
+
+	req := &data.AddSectionRequest{
+		Name:        section.Name,
+		Description: section.Description,
+		SuiteID:     section.SuiteID,
+		ParentID:    section.ParentID,
+	}
+	created, err := api.AddSection(ctx, meta.ProjectID, req)
+	if err != nil {
+		sectionEntry.Status = RBFailed
+		sectionEntry.Error = err.Error()
+		return 0, fmt.Errorf("API add_section (re-create %d): %w", section.ID, err)
+	}
+	sectionEntry.Status = RBRestored
+	sectionEntry.NewID = created.ID
+	return created.ID, nil
+}
+
+// filterCasesForCascade returns cases that are allowed and not yet restored.
+func filterCasesForCascade(meta *Meta, cases []data.Case, filterIDs []int64) []data.Case {
+	out := make([]data.Case, 0, len(cases))
+	for _, c := range cases {
+		if !entityAllowed(c.ID, filterIDs) {
 			continue
 		}
-		entry := logEntry(meta, "case", c.ID)
-		if entry.Status == RBRestored {
+		if logEntry(meta, "case", c.ID).Status == RBRestored {
 			continue
 		}
-		toRestore = append(toRestore, c)
+		out = append(out, c)
 	}
+	return out
+}
 
-	type caseResult struct {
-		CaseID    int64
-		CreatedID int64
-	}
+// cascadeCaseResult holds the outcome of a single case re-create attempt.
+type cascadeCaseResult struct {
+	CaseID    int64
+	CreatedID int64
+}
 
-	restoreOne := func(c data.Case, _ int) (caseResult, error) {
+// runCascadeCases re-creates cases in the new section, updating the rollback log.
+// Returns (number restored, last error encountered).
+func runCascadeCases(ctx context.Context, api RollbackAPI, meta *Meta, toRestore []data.Case, newSectionID int64) (int, error) {
+	restoreOne := func(c data.Case, _ int) (cascadeCaseResult, error) {
 		req := caseToAddRequest(&c)
 		if newSectionID > 0 {
 			req.SectionID = newSectionID
 		}
 		created, err := api.AddCase(ctx, req.SectionID, req)
 		if err != nil {
-			return caseResult{CaseID: c.ID}, err
+			return cascadeCaseResult{CaseID: c.ID}, err
 		}
-		return caseResult{CaseID: c.ID, CreatedID: created.ID}, nil
+		return cascadeCaseResult{CaseID: c.ID, CreatedID: created.ID}, nil
 	}
 
-	var results []concurrent.Result[caseResult]
+	var results []concurrent.Result[cascadeCaseResult]
 	if len(toRestore) >= concurrentThreshold {
 		results, _ = concurrent.ParallelMap(ctx, toRestore, defaultParallelism, restoreOne)
 	} else {
 		for i, c := range toRestore {
 			r, err := restoreOne(c, i)
-			results = append(results, concurrent.Result[caseResult]{Data: r, Error: err, Index: i})
+			results = append(results, concurrent.Result[cascadeCaseResult]{Data: r, Error: err, Index: i})
 		}
 	}
 
-	// Update rollback log from results.
 	restored := 0
 	var lastErr error
 	for _, r := range results {
@@ -827,25 +853,18 @@ func rollbackSectionCascade(ctx context.Context, api RollbackAPI, store *Store, 
 			restored++
 		}
 	}
-	// Count pre-restored (skipped by resume).
-	for _, c := range cascade.Cases {
-		if entityAllowed(c.ID, opt.EntityIDs) {
-			e := logEntry(meta, "case", c.ID)
-			if e.Status == RBRestored {
-				restored++
-			}
+	return restored, lastErr
+}
+
+// countPreRestored counts cases that were already restored (resume/skip).
+func countPreRestored(meta *Meta, cases []data.Case, filterIDs []int64) int {
+	n := 0
+	for _, c := range cases {
+		if entityAllowed(c.ID, filterIDs) && logEntry(meta, "case", c.ID).Status == RBRestored {
+			n++
 		}
 	}
-
-	if newSectionID > 0 {
-		result.NewEntityID = newSectionID
-	}
-	result.Message = fmt.Sprintf("Section re-created as ID %d, %d/%d cases restored", newSectionID, restored, len(cascade.Cases))
-
-	if lastErr != nil {
-		return fmt.Errorf("cascade rollback partial: %w", lastErr)
-	}
-	return nil
+	return n
 }
 
 // buildCascadePreview builds diff entries for a section cascade rollback.

@@ -52,7 +52,7 @@ Examples:
 				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSharedStepsCmd.func: %w", err)
 				}
 			} else {
 				projectID, err = flags.ParseID(projectIDStr)
@@ -65,7 +65,7 @@ Examples:
 				return cli.GetSharedSteps(ctx, projectID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newSharedStepsCmd.func: %w", err)
 			}
 
 			return handleOutput(command, steps, start)
@@ -106,7 +106,7 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 
 				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSharedStepCmd.func: %w", err)
 				}
 
 				steps, err := cli.GetSharedSteps(ctx, projectID)
@@ -119,13 +119,13 @@ func newSharedStepCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 
 				id, err = interactive.SelectSharedStep(ctx, interactive.PrompterFromContext(ctx), steps, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSharedStepCmd.func: %w", err)
 				}
 			}
 
 			step, err := cli.GetSharedStep(ctx, id)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSharedStepCmd.func: %w", err)
 			}
 
 			return handleOutput(command, step, start)

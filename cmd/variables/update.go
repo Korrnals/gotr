@@ -34,7 +34,7 @@ To modify values, use the TestRail web interface.`,
 				var err error
 				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -43,7 +43,7 @@ To modify values, use the TestRail web interface.`,
 				var err error
 				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -70,7 +70,7 @@ To modify values, use the TestRail web interface.`,
 
 			ui.Successf(os.Stdout, "Variable %d updated", variableID)
 			if err := output.OutputResult(cmd, resp, "variables"); err != nil {
-				return err
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

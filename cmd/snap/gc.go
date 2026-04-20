@@ -26,12 +26,12 @@ To see what would be cleaned without deleting, use --dry-run.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snaplib.NewStore()
 			if err != nil {
-				return err
+				return fmt.Errorf("newGCCmd.func: %w", err)
 			}
 
 			manifest, err := snaplib.LoadManifest(store)
 			if err != nil {
-				return err
+				return fmt.Errorf("newGCCmd.func: %w", err)
 			}
 
 			ids := manifest.ManifestIDs()
@@ -78,4 +78,3 @@ To see what would be cleaned without deleting, use --dry-run.`,
 	cmd.Flags().Bool("dry-run", false, "Show orphans without deleting them")
 	return cmd
 }
-

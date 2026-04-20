@@ -50,14 +50,14 @@ func FindSubcommand(root *cobra.Command, path ...string) (*cobra.Command, error)
 func RunSubcommand(ctx context.Context, root *cobra.Command, path ...string) error {
 	target, err := FindSubcommand(root, path...)
 	if err != nil {
-		return err
+		return fmt.Errorf("RunSubcommand: %w", err)
 	}
 	target.SetContext(ctx)
 	if err := target.RunE(target, nil); err != nil {
 		if IsGoBack(err) || IsExit(err) {
 			return nil
 		}
-		return err
+		return fmt.Errorf("RunSubcommand: %w", err)
 	}
 	return nil
 }

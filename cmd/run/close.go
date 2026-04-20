@@ -87,7 +87,7 @@ Examples:
 
 			output.PrintSuccess(cmd, "Test run closed successfully:")
 			if err := output.OutputResultWithFlags(cmd, run); err != nil {
-				return err
+				return fmt.Errorf("newCloseCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

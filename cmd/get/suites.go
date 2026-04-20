@@ -52,7 +52,7 @@ Examples:
 				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSuitesCmd.func: %w", err)
 				}
 			} else {
 				projectID, err = flags.ParseID(projectIDStr)
@@ -65,7 +65,7 @@ Examples:
 				return cli.GetSuites(ctx, projectID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newSuitesCmd.func: %w", err)
 			}
 
 			return handleOutput(command, suites, start)
@@ -110,7 +110,7 @@ Example:
 
 				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSuiteCmd.func: %w", err)
 				}
 
 				suites, err := cli.GetSuites(ctx, projectID)
@@ -123,13 +123,13 @@ Example:
 
 				id, err = interactive.SelectSuite(ctx, interactive.PrompterFromContext(ctx), suites, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSuiteCmd.func: %w", err)
 				}
 			}
 
 			suite, err := cli.GetSuite(ctx, id)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSuiteCmd.func: %w", err)
 			}
 
 			return handleOutput(command, suite, start)

@@ -67,7 +67,7 @@ Examples:
 				}
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCreateCmd.func: %w", err)
 				}
 			}
 
@@ -84,7 +84,7 @@ Examples:
 				}
 				suiteID, err = interactive.SelectSuiteForProject(ctx, interactive.PrompterFromContext(ctx), cli, projectID, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCreateCmd.func: %w", err)
 				}
 			}
 			milestoneID, _ := cmd.Flags().GetInt64("milestone-id")
@@ -139,7 +139,7 @@ Examples:
 
 			output.PrintSuccess(cmd, "Test run created successfully (ID: %d):", run.ID)
 			if err := output.OutputResultWithFlags(cmd, run); err != nil {
-				return err
+				return fmt.Errorf("newCreateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

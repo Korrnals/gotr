@@ -38,7 +38,7 @@ is not used in active test plans.`,
 			if len(args) > 0 {
 				configID, err = flags.ValidateRequiredID(args, 0, "config_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteConfigCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -50,7 +50,7 @@ is not used in active test plans.`,
 
 				configID, err = resolveConfigIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteConfigCmd.func: %w", err)
 				}
 			}
 

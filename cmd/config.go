@@ -47,10 +47,10 @@ Note:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cfg, err := config.Default()
 		if err != nil {
-			return err
+			return fmt.Errorf("configInitCmd.func: %w", err)
 		}
 		if err := cfg.WithDefaults().Create(); err != nil {
-			return err
+			return fmt.Errorf("configInitCmd.func: %w", err)
 		}
 		ui.Infof(os.Stdout, "Config file created: %s", cfg.Path)
 		return nil

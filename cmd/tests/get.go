@@ -32,7 +32,7 @@ within a test run.`,
 			if len(args) > 0 {
 				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -43,7 +43,7 @@ within a test run.`,
 				}
 				testID, err = resolveTestIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 
@@ -63,7 +63,7 @@ within a test run.`,
 				return client.GetTest(ctx, testID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newGetCmd.func: %w", err)
 			}
 
 			return output.OutputResult(cmd, test, "tests")

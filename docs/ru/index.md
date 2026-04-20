@@ -50,9 +50,9 @@ Language: Русский | [English](../en/index.md)
 
 История качества, аудиты и метрики проекта.
 
-- [Stage 13 Audit Report](reports/history/audit-report.md) — финальный аудит
-- [Quality Metrics](reports/history/quality-metrics.md) — метрики качества
-- [Coverage Matrix](reports/history/coverage-matrix.md) — матрица покрытия
+- [Stage 13 Audit Report](reports/stage13/audit-report.md) — финальный аудит
+- [Quality Metrics](reports/stage13/quality-metrics.md) — метрики качества
+- [Coverage Matrix](reports/stage13/test-coverage-matrix.md) — матрица покрытия
 
 **Когда читать:** для оценки качества, истории изменений, compliance.
 

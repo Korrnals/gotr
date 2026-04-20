@@ -25,7 +25,7 @@ func newProjectsCmd(getClient func(*cobra.Command) client.ClientInterface) *cobr
 
 			projects, err := cli.GetProjects(ctx)
 			if err != nil {
-				return err
+				return fmt.Errorf("newProjectsCmd.func: %w", err)
 			}
 
 			return handleOutput(command, projects, start)
@@ -52,7 +52,7 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 			if len(args) == 0 {
 				id, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newProjectCmd.func: %w", err)
 				}
 			} else {
 				id, err = flags.ParseID(args[0])
@@ -66,7 +66,7 @@ func newProjectCmd(getClient func(*cobra.Command) client.ClientInterface) *cobra
 
 			project, err := cli.GetProject(ctx, id)
 			if err != nil {
-				return err
+				return fmt.Errorf("newProjectCmd.func: %w", err)
 			}
 
 			return handleOutput(command, project, start)

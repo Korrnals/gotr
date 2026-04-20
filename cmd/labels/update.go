@@ -30,7 +30,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateTestCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -40,7 +40,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr labels update test [test_id]")
 				}
 				if testID, err = resolveTestIDInteractive(cmd.Context(), getClient(cmd)); err != nil {
-					return err
+					return fmt.Errorf("newUpdateTestCmd.func: %w", err)
 				}
 			}
 

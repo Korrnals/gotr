@@ -50,9 +50,9 @@ Release process, deployment, and version management.
 
 Project quality history, audits, and metrics.
 
-- [Stage 13 Audit](reports/history/audit-report.md) — final audit
-- [Quality Metrics](reports/history/quality-metrics.md) — quality metrics
-- [Coverage Matrix](reports/history/coverage-matrix.md) — test coverage matrix
+- [Stage 13 Audit](reports/stage13/audit-report.md) — final audit
+- [Quality Metrics](reports/stage13/quality-metrics.md) — quality metrics
+- [Coverage Matrix](reports/stage13/test-coverage-matrix.md) — test coverage matrix
 
 **When to read:** for quality assessment, change history, compliance.
 

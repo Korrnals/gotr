@@ -38,7 +38,7 @@ Content can be provided via a file or directly.`,
 			if len(args) > 0 {
 				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -49,14 +49,14 @@ Content can be provided via a file or directly.`,
 				}
 				caseID, err = resolveCaseIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
 			// Read the BDD content
 			content, err := readBDDContent(cmd)
 			if err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			if content == "" {
 				return fmt.Errorf("BDD content cannot be empty (use --file or stdin)")
@@ -77,7 +77,7 @@ Content can be provided via a file or directly.`,
 
 			ui.Successf(os.Stdout, "BDD added to case %d", caseID)
 			if err := output.OutputResult(cmd, resp, "bdds"); err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

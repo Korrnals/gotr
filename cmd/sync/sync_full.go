@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/Korrnals/gotr/internal/interactive"
@@ -53,7 +54,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -61,7 +62,7 @@ Examples:
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -69,7 +70,7 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -77,17 +78,17 @@ Examples:
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -101,7 +102,7 @@ Examples:
 			if !autoApprove {
 				ok, err := p.Confirm("Continue?", false)
 				if err != nil {
-					return err
+					return fmt.Errorf("fullCmd.func: %w", err)
 				}
 				if !ok {
 					ui.Canceled(os.Stdout)
@@ -129,11 +130,12 @@ Examples:
 		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
 		_, err = runSyncStatus(ctx, "Migrating shared steps...", quiet, func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun || !autoApprove)
+			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun)
 		})
 		if err != nil { // if dry-run — no import
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
+		sharedFiltered := m.FilteredSharedSteps()
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run complete")
@@ -142,11 +144,27 @@ Examples:
 
 		// Step 2) Migrate cases (Fetch → Filter → Import)
 		op.Phase("Step 2/2: cases")
-		_, err = runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, m.MigrateCases(ctx, dryRun)
+		caseImport, err := runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct {
+			IDs    []int64
+			Errors []string
+		}, error) {
+			createdIDs, importErrors, cErr := m.MigrateCasesReport(ctx, dryRun)
+			if cErr != nil {
+				return struct {
+					IDs    []int64
+					Errors []string
+				}{}, cErr
+			}
+			return struct {
+				IDs    []int64
+				Errors []string
+			}{IDs: createdIDs, Errors: importErrors}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
+		}
+		if len(caseImport.Errors) > 0 {
+			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
 		}
 
 		if autoSaveMapping {
@@ -161,8 +179,26 @@ Examples:
 			}
 		}
 
-		// Save sync mapping to snapshot for rollback.
-		hook.FinalizeSyncData(buildSyncDataFromMapping(m.Mapping(), srcProject, dstProject, srcSuite, dstSuite))
+		// Save sync created entities to snapshot for rollback.
+		created := make([]snap.SyncCreatedEntity, 0)
+		mapping := m.Mapping()
+		for _, s := range sharedFiltered {
+			if targetID, ok := mapping[s.ID]; ok {
+				created = append(created, snap.SyncCreatedEntity{
+					Type:     "shared_step",
+					SourceID: s.ID,
+					TargetID: targetID,
+				})
+			}
+		}
+		for _, caseID := range caseImport.IDs {
+			created = append(created, snap.SyncCreatedEntity{
+				Type:     "case",
+				SourceID: 0,
+				TargetID: caseID,
+			})
+		}
+		hook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 
 		ui.Success(os.Stdout, "Full migration complete!")
 		syncPostAction(ctx, cmd, hook, cli)

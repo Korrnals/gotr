@@ -74,7 +74,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 				selectedSuiteID, err := resolveSuiteIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newBulkUpdateCmd.func: %w", err)
 				}
 				suiteID = selectedSuiteID
 			}
@@ -106,7 +106,7 @@ func newBulkUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Updated %d cases", len(caseIDs))
 			if err := output.OutputResult(cmd, resp, "cases"); err != nil {
-				return err
+				return fmt.Errorf("newBulkUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(cmd.Context(), cmd)
 			return nil
@@ -153,7 +153,7 @@ func newBulkDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 				selectedSuiteID, err := resolveSuiteIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newBulkDeleteCmd.func: %w", err)
 				}
 				suiteID = selectedSuiteID
 			}
@@ -220,7 +220,7 @@ func newBulkCopyCmd(getClient GetClientFunc) *cobra.Command {
 
 				selectedSectionID, err := resolveSectionIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newBulkCopyCmd.func: %w", err)
 				}
 				sectionID = selectedSectionID
 			}
@@ -287,7 +287,7 @@ func newBulkMoveCmd(getClient GetClientFunc) *cobra.Command {
 
 				selectedSectionID, err := resolveSectionIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newBulkMoveCmd.func: %w", err)
 				}
 				sectionID = selectedSectionID
 			}

@@ -40,7 +40,7 @@ individual configurations to it.`,
 			if len(args) > 0 {
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddGroupCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -52,7 +52,7 @@ individual configurations to it.`,
 
 				projectID, err = resolveProjectIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddGroupCmd.func: %w", err)
 				}
 			}
 
@@ -86,7 +86,7 @@ individual configurations to it.`,
 
 			ui.Successf(os.Stdout, "Group created (ID: %d)", resp.ID)
 			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
-				return err
+				return fmt.Errorf("newAddGroupCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

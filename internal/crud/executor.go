@@ -57,7 +57,7 @@ func Execute[Req any, Resp any](
 	} else {
 		built, err := buildReq(cmd, true)
 		if err != nil {
-			return err
+			return fmt.Errorf("Execute: %w", err)
 		}
 		req = *built
 	}
@@ -88,7 +88,7 @@ func Execute[Req any, Resp any](
 	}
 
 	if err := output.OutputResult(cmd, result, "result"); err != nil {
-		return err
+		return fmt.Errorf("Execute: %w", err)
 	}
 
 	interactive.MutationPostAction(ctx, cmd)

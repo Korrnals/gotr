@@ -12,6 +12,7 @@ Language: Русский | [English](../../../en/guides/instructions/migration-p
     - [Прогресс](../progress.md)
     - [Каталог команд](../commands/index.md)
     - [Инструкции](index.md)
+      - [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md)
       - [Полная миграция](migration-full.md)
       - [Частичная миграция](migration-partial.md)
       - [Миграция shared steps](migration-shared-steps.md)
@@ -41,6 +42,13 @@ Language: Русский | [English](../../../en/guides/instructions/migration-p
 > [!TIP]
 > Этот сценарий — второй шаг после `gotr sync shared-steps --save-mapping`.
 > Для переноса всего сразу используйте [Полную миграцию](migration-full.md).
+
+## Важно: как обрабатываются ID общих шагов
+
+- Shared steps в target получают ID, назначенные TestRail при создании.
+- Source ID не «сохраняется», даже если такой номер в target формально свободен.
+- Корректная связь кейсов с shared steps обеспечивается только remap-ом по mapping-файлу.
+- Поэтому для кейсов с `shared_step_id` рекомендуется всегда использовать `--mapping-file`.
 
 ## Предусловия ✅
 
@@ -158,10 +166,44 @@ gotr sync cases \
   --mapping-file mapping.json
 ```
 
+## Rollback для частичной миграции
+
+Для `sync cases` также работает snapshot rollback.
+
+### Сразу после команды
+
+- В post-action меню выберите `↻ Rollback this migration`
+
+### Позже, по snapshot ID
+
+```bash
+# Просмотр snapshot-ов
+gotr snap list
+
+# Проверка различий перед откатом
+gotr snap rollback <snapshot_id> --dry-run
+
+# Выполнение отката
+gotr snap rollback <snapshot_id>
+```
+
+### Что именно откатывается
+
+- Для `sync cases` удаляются созданные в target кейсы из конкретного запуска.
+- Shared steps, которые были перенесены отдельно, rollback `sync cases` не удаляет.
+- Для отката двухшаговой миграции полностью обычно запускают rollback по обоим snapshot-ам:
+  - сначала для `sync cases`
+  - затем для `sync shared-steps`
+
 ## FAQ ❓
 
 - ❓ **Вопрос:** Что если mapping-файл не указан, а кейсы ссылаются на shared steps?
   > ↪️ **Ответ:** кейсы будут перенесены с оригинальными `shared_step_id`. Если такие ID не существуют в целевом проекте, ссылки будут нерабочими.
+  >
+  > ---
+
+- ❓ **Вопрос:** Если в целевом проекте есть свободный ID, совпадающий с source ID, он будет использован?
+  > ↪️ **Ответ:** нет. ID shared step всегда назначается сервером TestRail при `add_shared_step`; утилита не задает его вручную.
   >
   > ---
 

@@ -37,7 +37,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -46,7 +46,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 				caseID, err = resolveCaseIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -108,7 +108,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Case %d updated", caseID)
 			if err := output.OutputResult(cmd, resp, "cases"); err != nil {
-				return err
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

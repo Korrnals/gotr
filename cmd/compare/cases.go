@@ -99,7 +99,7 @@ Examples:
 			// Parse flags
 			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCasesCmd.func: %w", err)
 			}
 
 			// Get field for comparison
@@ -111,7 +111,7 @@ Examples:
 			// Get project names
 			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCasesCmd.func: %w", err)
 			}
 
 			// Start timer
@@ -120,7 +120,7 @@ Examples:
 			// Execute comparison
 			result, execStats, err := compareCasesInternal(ctx, cmd, cli, pid1, pid2, field)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCasesCmd.func: %w", err)
 			}
 
 			elapsed := time.Since(startTime)
@@ -135,7 +135,7 @@ Examples:
 
 			if !isInteractiveTable {
 				if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
-					return err
+					return fmt.Errorf("newCasesCmd.func: %w", err)
 				}
 			}
 

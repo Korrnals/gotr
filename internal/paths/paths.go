@@ -130,7 +130,7 @@ func EnsureAllDirs() error {
 	for _, dirFunc := range dirs {
 		dir, err := dirFunc()
 		if err != nil {
-			return err
+			return fmt.Errorf("EnsureAllDirs: %w", err)
 		}
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("cannot create directory %s: %w", dir, err)
@@ -143,7 +143,7 @@ func EnsureAllDirs() error {
 func EnsureDir(dirFunc func() (string, error)) error {
 	dir, err := dirFunc()
 	if err != nil {
-		return err
+		return fmt.Errorf("EnsureDir: %w", err)
 	}
 	return os.MkdirAll(dir, 0o755)
 }

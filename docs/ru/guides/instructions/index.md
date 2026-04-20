@@ -12,6 +12,7 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
     - [Прогресс](../progress.md)
     - [Каталог команд](../commands/index.md)
     - [Инструкции](index.md)
+      - [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md)
       - [Полная миграция](migration-full.md)
       - [Частичная миграция](migration-partial.md)
       - [Миграция shared steps](migration-shared-steps.md)
@@ -36,6 +37,7 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
 
 Перенос данных между проектами TestRail через `gotr sync`.
 
+- [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md) — все вариации миграций через интерактивный режим (walkthrough)
 - [Полная миграция](migration-full.md) — shared steps + cases за один проход (`sync full`)
 - [Частичная миграция](migration-partial.md) — cases с подстановкой mapping из предыдущего шага
 - [Миграция shared steps](migration-shared-steps.md) — перенос только общих тестовых шагов

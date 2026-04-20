@@ -40,13 +40,13 @@ Examples:
 			// Parse flags
 			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSuitesCmd.func: %w", err)
 			}
 
 			// Get project names
 			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSuitesCmd.func: %w", err)
 			}
 
 			// Start timer
@@ -63,7 +63,7 @@ Examples:
 
 			// Print or save result
 			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
-				return err
+				return fmt.Errorf("newSuitesCmd.func: %w", err)
 			}
 
 			// Print statistics

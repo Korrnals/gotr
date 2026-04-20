@@ -34,7 +34,7 @@ with test data for parameterized testing.`,
 			if len(args) > 0 {
 				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -42,7 +42,7 @@ with test data for parameterized testing.`,
 				}
 				datasetID, err = resolveDatasetIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

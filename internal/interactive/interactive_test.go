@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -290,4 +291,142 @@ func TestSelectSharedStep(t *testing.T) {
 		require.NoError(t, err)
 		assert.Contains(t, p.lastMessage, "Select shared step:")
 	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectTest
+// ---------------------------------------------------------------------------
+
+func TestSelectTest(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		tests := data.GetTestsResponse{
+			{ID: 10, CaseID: 100, Title: "Login test"},
+			{ID: 20, CaseID: 200, Title: "Logout test"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+		id, err := SelectTest(ctx, p, tests, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(20), id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectTest(ctx, p, data.GetTestsResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no tests found")
+	})
+
+	t.Run("error propagates", func(t *testing.T) {
+		tests := data.GetTestsResponse{{ID: 1, CaseID: 1, Title: "T"}}
+		p := NewNonInteractivePrompter()
+		_, err := SelectTest(ctx, p, tests, "")
+		assert.Error(t, err)
+	})
+
+	t.Run("exit", func(t *testing.T) {
+		tests := data.GetTestsResponse{{ID: 1, CaseID: 1, Title: "T"}}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Raw: true})
+		_, err := SelectTest(ctx, p, tests, "")
+		assert.True(t, IsExit(err))
+	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectPlan
+// ---------------------------------------------------------------------------
+
+func TestSelectPlan(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		plans := data.GetPlansResponse{
+			{ID: 1, Name: "Sprint 1"},
+			{ID: 2, Name: "Sprint 2"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		id, err := SelectPlan(ctx, p, plans, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectPlan(ctx, p, data.GetPlansResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no plans found")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectPlanEntry
+// ---------------------------------------------------------------------------
+
+func TestSelectPlanEntry(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		entries := []data.PlanEntry{
+			{ID: "e1", Name: "Entry 1"},
+			{ID: "e2", Name: "Entry 2"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+		id, err := SelectPlanEntry(ctx, p, entries, "")
+		require.NoError(t, err)
+		assert.Equal(t, "e2", id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectPlanEntry(ctx, p, []data.PlanEntry{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no plan entries found")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectDataset
+// ---------------------------------------------------------------------------
+
+func TestSelectDataset(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		datasets := data.GetDatasetsResponse{
+			{ID: 10, Name: "Dataset A"},
+			{ID: 20, Name: "Dataset B"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		id, err := SelectDataset(ctx, p, datasets, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(10), id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectDataset(ctx, p, data.GetDatasetsResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no datasets found")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// MutationPostAction
+// ---------------------------------------------------------------------------
+
+func TestMutationPostAction_NonInteractive(t *testing.T) {
+	ctx := WithPrompter(context.Background(), NewNonInteractivePrompter())
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(ctx)
+	// Should return silently without prompting.
+	MutationPostAction(ctx, cmd)
+}
+
+func TestMutationPostAction_NoPrompter(t *testing.T) {
+	ctx := context.Background()
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(ctx)
+	// Should return silently.
+	MutationPostAction(ctx, cmd)
 }

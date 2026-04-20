@@ -61,7 +61,7 @@ func runWorkHub(cmd *cobra.Command) error {
 		if interactive.IsGoBack(err) || interactive.IsExit(err) || interactive.IsInterrupt(err) {
 			return nil
 		}
-		return err
+		return fmt.Errorf("runWorkHub: %w", err)
 	}
 
 	printWorkHeader()
@@ -85,7 +85,7 @@ func runWorkHub(cmd *cobra.Command) error {
 			if interactive.IsExit(err) || interactive.IsGoBack(err) {
 				return nil
 			}
-			return err
+			return fmt.Errorf("runWorkHub: %w", err)
 		}
 
 		selected := workGroups[idx]

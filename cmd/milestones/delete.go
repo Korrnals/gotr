@@ -36,7 +36,7 @@ Use --dry-run to verify before deleting.`,
 				var err error
 				milestoneID, err = flags.ValidateRequiredID(args, 0, "milestone_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			} else {
 				ctx := cmd.Context()
@@ -47,7 +47,7 @@ Use --dry-run to verify before deleting.`,
 				var err error
 				milestoneID, err = resolveMilestoneIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			}
 

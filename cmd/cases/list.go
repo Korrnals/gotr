@@ -35,7 +35,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -44,7 +44,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 

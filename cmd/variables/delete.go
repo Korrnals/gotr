@@ -37,7 +37,7 @@ Use --dry-run to preview before deleting.`,
 				var err error
 				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -46,7 +46,7 @@ Use --dry-run to preview before deleting.`,
 				var err error
 				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			}
 

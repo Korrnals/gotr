@@ -29,7 +29,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -38,7 +38,7 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				projectID, err = resolveProjectIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 
@@ -57,7 +57,10 @@ func newListCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			_, err = output.Output(cmd, resp, "plans", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output plans: %w", err)
+			}
+			return nil
 		},
 	}
 

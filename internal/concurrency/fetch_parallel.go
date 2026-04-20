@@ -109,7 +109,7 @@ func FetchParallel[T any](
 			items, err := fetchFn(pid)
 			if err != nil {
 				if isCancellationError(err) || ctx.Err() != nil {
-					return err
+					return fmt.Errorf("FetchParallel.func: %w", err)
 				}
 
 				if options.reporter != nil {

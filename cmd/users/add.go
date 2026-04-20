@@ -67,7 +67,7 @@ Administrative privileges are required to create users.`,
 
 			_, err = output.Output(cmd, user, "users", "json")
 			if err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

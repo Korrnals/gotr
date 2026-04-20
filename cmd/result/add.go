@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -98,6 +99,8 @@ Examples:
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "result", Tier: snap.Tier3})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			result, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Adding result",
@@ -123,6 +126,7 @@ Examples:
 	cmd.Flags().Int64("assigned-to", 0, "User ID for assignment")
 	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 	_ = cmd.MarkFlagRequired("status-id")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }
@@ -197,6 +201,8 @@ Examples:
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "result", Tier: snap.Tier3})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			result, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Adding result",
@@ -224,6 +230,7 @@ Examples:
 	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 	_ = cmd.MarkFlagRequired("case-id")
 	_ = cmd.MarkFlagRequired("status-id")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }
@@ -290,6 +297,8 @@ Examples:
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "result", Tier: snap.Tier3})
+
 			// Parse and submit results
 			results, err := svc.AddBulkResults(ctx, runID, fileData)
 			if err != nil {
@@ -304,6 +313,7 @@ Examples:
 	cmd.Flags().String("results-file", "", "JSON file with results (required)")
 	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
 	_ = cmd.MarkFlagRequired("results-file")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

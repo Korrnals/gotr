@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -46,6 +47,8 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "group", EntityIDs: []int64{groupID}, Tier: snap.Tier2, FetchFn: nil})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting group",
@@ -67,6 +70,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without executing")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

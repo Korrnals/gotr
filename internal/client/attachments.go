@@ -46,6 +46,17 @@ func (c *HTTPClient) GetAttachment(ctx context.Context, attachmentID int64) (*da
 	return &attachment, nil
 }
 
+// DownloadAttachment downloads the binary content of an attachment.
+// The caller must close the returned ReadCloser.
+func (c *HTTPClient) DownloadAttachment(ctx context.Context, attachmentID int64) (io.ReadCloser, error) {
+	endpoint := fmt.Sprintf("get_attachment/%d", attachmentID)
+	resp, err := c.Get(ctx, endpoint, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error downloading attachment %d: %w", attachmentID, err)
+	}
+	return resp.Body, nil
+}
+
 // GetAttachmentsForCase fetches attachments for a test case.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforcase
 func (c *HTTPClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {

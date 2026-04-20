@@ -6,6 +6,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -89,8 +90,40 @@ Examples:
 		}
 		defer m.Close()
 
+		// Pre-sync snapshot (meta only, data after sync).
+		var hook *snap.Hook
+		var sd snapshotDecision
+		if !dryRun {
+			sd = confirmSnapshot(ctx, cmd)
+			printPreConfirmSummary(0, "full migration", sd)
+
+			if !autoApprove {
+				ok, err := p.Confirm("Continue?", false)
+				if err != nil {
+					return err
+				}
+				if !ok {
+					ui.Canceled(os.Stdout)
+					return nil
+				}
+			}
+		}
+
+		if sd.Create {
+			hook = snap.NewHook(cmd)
+			meta := snap.BuildMeta(
+				snap.OpSyncFull, "sync", nil,
+				snap.Tier2, srcProject, srcSuite, snap.ResolveName(cmd), os.Args[1:],
+				snap.CurrentServerURL(),
+			)
+			meta.Label = sd.Label
+			hook.Before(ctx, meta, nil)
+		} else {
+			hook = &snap.Hook{Enabled: false}
+		}
+
 		op := newSyncOperation("Full migration", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
@@ -127,7 +160,11 @@ defer op.Finish()
 			}
 		}
 
+		// Save sync mapping to snapshot for rollback.
+		hook.FinalizeSyncData(buildSyncDataFromMapping(m.Mapping(), srcProject, dstProject, srcSuite, dstSuite))
+
 		ui.Success(os.Stdout, "Full migration complete!")
+		syncPostAction(ctx, cmd, hook, cli)
 		return nil
 	},
 }

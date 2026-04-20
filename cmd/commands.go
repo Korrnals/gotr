@@ -19,6 +19,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/result"
 	"github.com/Korrnals/gotr/cmd/roles"
 	"github.com/Korrnals/gotr/cmd/run"
+	"github.com/Korrnals/gotr/cmd/snap"
 	"github.com/Korrnals/gotr/cmd/sync"
 	"github.com/Korrnals/gotr/cmd/templates"
 	"github.com/Korrnals/gotr/cmd/test"
@@ -62,6 +63,7 @@ func init() {
 	run.Register(rootCmd, GetClientFromCtx)
 	result.Register(rootCmd, GetClientFromCtx)
 	roles.Register(rootCmd, GetClient)
+	snap.Register(rootCmd, GetClient)
 	sync.Register(rootCmd, GetClientFromCtx)
 	test.Register(rootCmd, GetClientFromCtx)
 	templates.Register(rootCmd, GetClient)

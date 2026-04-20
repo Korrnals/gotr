@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -62,6 +63,8 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "config", EntityIDs: []int64{configID}, Tier: snap.Tier1, FetchFn: nil})
+
 			req := data.UpdateConfigRequest{Name: name}
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
@@ -83,6 +86,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Bool("dry-run", false, "Preview what would be done without applying changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New configuration name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

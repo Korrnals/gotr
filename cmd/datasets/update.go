@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -61,6 +62,8 @@ use the TestRail web interface.`,
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "dataset", EntityIDs: []int64{datasetID}, Tier: snap.Tier1, FetchFn: nil})
+
 			resp, err := cli.UpdateDataset(ctx, datasetID, name)
 			if err != nil {
 				return fmt.Errorf("failed to update dataset: %w", err)
@@ -74,6 +77,7 @@ use the TestRail web interface.`,
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New dataset name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

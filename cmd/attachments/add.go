@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -71,6 +72,8 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
+
 			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
 				return cli.AddAttachmentToCase(ctx, caseID, filePath)
 			})
@@ -83,6 +86,7 @@ func newAddCaseCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 	return cmd
 }
 
@@ -133,6 +137,8 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
+
 			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
 				return cli.AddAttachmentToPlan(ctx, planID, filePath)
 			})
@@ -145,6 +151,7 @@ func newAddPlanCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 	return cmd
 }
 
@@ -212,6 +219,8 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
+
 			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
 				return cli.AddAttachmentToPlanEntry(ctx, planID, entryID, filePath)
 			})
@@ -224,6 +233,7 @@ func newAddPlanEntryCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 	return cmd
 }
 
@@ -274,6 +284,8 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
+
 			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
 				return cli.AddAttachmentToResult(ctx, resultID, filePath)
 			})
@@ -286,6 +298,7 @@ func newAddResultCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 	return cmd
 }
 
@@ -336,6 +349,8 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 				return err
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "attachment", Tier: snap.Tier3})
+
 			resp, err := runAttachmentUpload(cmd, func(ctx context.Context) (*data.AttachmentResponse, error) {
 				return cli.AddAttachmentToRun(ctx, runID, filePath)
 			})
@@ -348,6 +363,7 @@ func newAddRunCmd(getClient GetClientFunc) *cobra.Command {
 		},
 	}
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 	return cmd
 }
 

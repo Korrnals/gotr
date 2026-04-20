@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -66,6 +67,8 @@ test plans with multiple configurations.`,
 				return nil
 			}
 
+			hook := snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "config", Tier: snap.Tier2})
+
 			req := data.AddConfigRequest{Name: name}
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
@@ -79,6 +82,8 @@ test plans with multiple configurations.`,
 				return fmt.Errorf("failed to add configuration: %w", err)
 			}
 
+			hook.FinalizeAdd(resp.ID)
+
 			ui.Successf(os.Stdout, "Configuration added (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
@@ -87,6 +92,7 @@ test plans with multiple configurations.`,
 	cmd.Flags().Bool("dry-run", false, "Preview what would be done without adding")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Configuration name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -59,6 +60,10 @@ Use --dry-run to verify before deleting.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "milestone", EntityIDs: []int64{milestoneID}, Tier: snap.Tier2, FetchFn: func(ctx context.Context) (interface{}, error) {
+				return cli.GetMilestone(ctx, milestoneID)
+			}})
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting milestone",
@@ -77,6 +82,7 @@ Use --dry-run to verify before deleting.`,
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/service/migration"
+	"github.com/Korrnals/gotr/internal/snap"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
@@ -26,6 +27,7 @@ func resetCasesFlags() {
 	casesCmd.Flags().Bool("dry-run", false, "")
 	casesCmd.Flags().String("output", "", "")
 	casesCmd.Flags().String("mapping-file", "", "")
+	snap.RegisterFlags(casesCmd)
 }
 
 // TestSyncCases_DryRun_NoAddCase verifies that AddCase is not called in dry-run mode
@@ -95,6 +97,7 @@ func TestSyncCases_Confirm_TriggersAddCase(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
@@ -192,6 +195,7 @@ func TestSyncCases_ConfirmDeclined_SkipsImportAndWritesLog(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("output", outputFile)
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(false)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
@@ -404,6 +408,7 @@ func TestSyncCases_ImportWithErrors_WritesErrorsToLog(t *testing.T) {
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dst-suite", "20")
 	cmd.Flags().Set("output", outputFile)
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
@@ -486,6 +491,7 @@ func TestSyncCases_NoFlags_InteractiveSelection_DeclineConfirm(t *testing.T) {
 	resetCasesFlags()
 	cmd := casesCmd
 	SetTestClient(cmd, mock)
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().
 		WithSelectResponses(interactive.SelectResponse{Index: 0}).

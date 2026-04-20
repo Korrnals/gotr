@@ -161,6 +161,18 @@ compare:
 
     # Always attempt to automatically retry failed pages after the main compare cases stage.
     auto_retry_failed_pages: true
+
+# Snapshot before mutations (enabled by default).
+# Saves entity state to ~/.gotr/snaps/ for rollback.
+snap:
+  enabled: true
+  retention_days: 30
+  max_snapshots: 100
+  attachments:
+    save_binary: "auto"
+    max_file_mb: 10
+    compress: true
+    prompt_above_threshold: true
 `, data.BaseURL, data.Username, data.APIKey, data.Insecure, data.JqFormat, data.Debug)
 }
 

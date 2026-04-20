@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/snap"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/stretchr/testify/assert"
@@ -21,6 +22,7 @@ func resetSuitesFlags() {
 	suitesCmd.Flags().Bool("dry-run", false, "")
 	suitesCmd.Flags().Bool("approve", false, "")
 	suitesCmd.Flags().Bool("save-mapping", false, "")
+	snap.RegisterFlags(suitesCmd)
 }
 
 // TestSyncSuites_DryRun_NoAddSuite verifies the command behavior in dry-run mode.
@@ -89,6 +91,7 @@ func TestSyncSuites_Confirm_TriggersAddSuite(t *testing.T) {
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("dry-run", "false")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(cmd.Context(), p))
@@ -166,6 +169,7 @@ func TestSyncSuites_ConfirmDeclined_SkipsImport(t *testing.T) {
 	SetTestClient(cmd, mock)
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(false)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))
@@ -203,6 +207,7 @@ func TestSyncSuites_SaveMappingPromptAccepted_WritesMappingFile(t *testing.T) {
 	cmd.Flags().Set("src-project", "1")
 	cmd.Flags().Set("dst-project", "2")
 	cmd.Flags().Set("approve", "true")
+	cmd.Flags().Set("snapshot", "false")
 
 	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	cmd.SetContext(interactive.WithPrompter(context.Background(), p))

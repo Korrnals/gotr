@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -66,6 +67,8 @@ individual configurations to it.`,
 				return nil
 			}
 
+			hook := snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "config_group", Tier: snap.Tier2})
+
 			req := data.AddConfigGroupRequest{Name: name}
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
@@ -79,6 +82,8 @@ individual configurations to it.`,
 				return fmt.Errorf("failed to create group: %w", err)
 			}
 
+			hook.FinalizeAdd(resp.ID)
+
 			ui.Successf(os.Stdout, "Group created (ID: %d)", resp.ID)
 			return output.OutputResult(cmd, resp, "configurations")
 		},
@@ -87,6 +92,7 @@ individual configurations to it.`,
 	cmd.Flags().Bool("dry-run", false, "Preview what would be done without creating")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "Group name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

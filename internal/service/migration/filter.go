@@ -9,6 +9,19 @@ import (
 	"github.com/Korrnals/gotr/internal/models/data"
 )
 
+// FilterStats holds summary statistics from the last filter operation.
+type FilterStats struct {
+	Source     int // total items in source
+	Target     int // total items in target
+	Duplicates int // items already existing in target (skipped)
+	New        int // items ready for import
+}
+
+// LastFilterStats returns the statistics from the last Filter* call.
+func (m *Migration) LastFilterStats() FilterStats {
+	return m.lastFilterStats
+}
+
 // FilterSharedSteps filters shared steps by usage in suite and duplicates in target.
 // Candidates are shared steps NOT used in the source suite (by CaseIDs).
 // Duplicates are added to the mapping with status "existing".
@@ -44,12 +57,14 @@ func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse
 		val := fieldValue(step, m.compareField)
 		if existingID, ok := targetMap[val]; ok {
 			m.mapping.AddPair(step.ID, existingID, "existing")
-			m.logger.Infow("Duplicate found — added to mapping", "title", step.Title, "old_id", step.ID, "existing_id", existingID)
+			m.logger.Debugw("Duplicate found — added to mapping", "title", step.Title, "old_id", step.ID, "existing_id", existingID)
 		} else {
 			filtered = append(filtered, step)
 		}
 	}
 
+	duplicates := len(candidates) - len(filtered)
+	m.lastFilterStats = FilterStats{Source: len(source), Target: len(target), Duplicates: duplicates, New: len(filtered)}
 	m.logger.Infow("Ready to import new shared steps", "count", len(filtered))
 	return filtered, nil
 }
@@ -70,12 +85,14 @@ func (m *Migration) FilterSuites(source, target data.GetSuitesResponse) (filtere
 	for _, s := range source {
 		if existingID, ok := targetMap[s.Name]; ok {
 			m.mapping.AddPair(s.ID, existingID, "existing")
-			m.logger.Infow("Duplicate suite found — added to mapping", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
+			m.logger.Debugw("Duplicate suite found — added to mapping", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
 		} else {
 			filtered = append(filtered, s)
 		}
 	}
 
+	duplicates := len(source) - len(filtered)
+	m.lastFilterStats = FilterStats{Source: len(source), Target: len(target), Duplicates: duplicates, New: len(filtered)}
 	m.logger.Infow("Ready to import new suites", "count", len(filtered))
 	return filtered, nil
 }
@@ -97,10 +114,12 @@ func (m *Migration) FilterCases(source, target data.GetCasesResponse) (filtered 
 		if _, exists := targetMap[val]; !exists {
 			filtered = append(filtered, c)
 		} else {
-			m.logger.Infow("Duplicate case found — skipped", "title", c.Title)
+			m.logger.Debugw("Duplicate case found — skipped", "title", c.Title)
 		}
 	}
 
+	duplicates := len(source) - len(filtered)
+	m.lastFilterStats = FilterStats{Source: len(source), Target: len(target), Duplicates: duplicates, New: len(filtered)}
 	m.logger.Infow("Ready to import new cases", "count", len(filtered))
 	return filtered, nil
 }
@@ -147,12 +166,14 @@ func (m *Migration) FilterSections(source, target data.GetSectionsResponse) (fil
 	for _, s := range source {
 		if existingID, ok := targetMap[s.Name]; ok {
 			m.mapping.AddPair(s.ID, existingID, "existing")
-			m.logger.Infow("Duplicate section found — mapping added", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
+			m.logger.Debugw("Duplicate section found — mapping added", "name", s.Name, "old_id", s.ID, "existing_id", existingID)
 		} else {
 			filtered = append(filtered, s)
 		}
 	}
 
+	duplicates := len(source) - len(filtered)
+	m.lastFilterStats = FilterStats{Source: len(source), Target: len(target), Duplicates: duplicates, New: len(filtered)}
 	m.logger.Infow("Ready to import new sections", "count", len(filtered))
 	return filtered, nil
 }

@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -92,6 +93,13 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation (add = no pre-fetch, finalize after).
+			hook := snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpAdd, EntityType: "plan_entry",
+				EntityIDs: nil, Tier: snap.Tier2,
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Adding plan entry",
@@ -104,12 +112,15 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add plan entry: %w", err)
 			}
 
+			hook.FinalizeAdd(resp.ID)
+
 			ui.Successf(os.Stdout, "Entry added to plan %d", planID)
 			return output.OutputResult(cmd, resp, "plans")
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without adding")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
 	cmd.Flags().String("name", "", "Entry name")
@@ -177,6 +188,14 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpUpdate, EntityType: "plan_entry",
+				EntityIDs: []int64{planID}, Tier: snap.Tier1,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetPlan(ctx, planID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Updating plan entry",
@@ -195,6 +214,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New entry name")
 
@@ -257,6 +277,14 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpDelete, EntityType: "plan_entry",
+				EntityIDs: []int64{planID}, Tier: snap.Tier2,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetPlan(ctx, planID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting plan entry",
@@ -275,6 +303,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be deleted")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

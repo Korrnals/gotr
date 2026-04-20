@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -90,6 +91,13 @@ Examples:
 				return nil
 			}
 
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpUpdate, EntityType: "run",
+				EntityIDs: []int64{runID}, Tier: snap.Tier1,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return svc.Get(ctx, runID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			run, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Updating run",
@@ -114,6 +122,7 @@ Examples:
 	cmd.Flags().Int64Slice("case-ids", nil, "List of case IDs (comma-separated)")
 	cmd.Flags().Bool("include-all", false, "Include all suite cases")
 	cmd.Flags().Bool("dry-run", false, "Show what would be executed without making actual changes")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

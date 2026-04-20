@@ -92,7 +92,7 @@ func TestReadConfig_CustomValues(t *testing.T) {
 	defer viper.Reset()
 
 	viper.Set("snap.enabled", false)
-	viper.Set("snap.retention_days", 7)
+	viper.Set("snap.retention.default_ttl_days", 7)
 	viper.Set("snap.max_snapshots", 50)
 	viper.Set("snap.attachments.save_binary", "always")
 	viper.Set("snap.attachments.max_file_mb", 20)

@@ -274,3 +274,204 @@ func TestIsDefaultValue(t *testing.T) {
 		t.Fatal("different non-empty value should not be default")
 	}
 }
+
+func TestWithDefaults_SnapshotRetention(t *testing.T) {
+	cfg := &Config{Data: &ConfigData{}}
+	cfg.WithDefaults()
+
+	// Check snapshot config is initialized
+	if cfg.Data.Snap == nil {
+		t.Fatal("Snap should not be nil after WithDefaults")
+	}
+
+	// Check retention is initialized
+	if cfg.Data.Snap.Retention == nil {
+		t.Fatal("Snap.Retention should not be nil after WithDefaults")
+	}
+
+	// Check defaults
+	if !cfg.Data.Snap.Enabled {
+		t.Fatal("Snap.Enabled should be true")
+	}
+	if !cfg.Data.Snap.Retention.Enabled {
+		t.Fatal("Snap.Retention.Enabled should be true")
+	}
+	if cfg.Data.Snap.Retention.DefaultTTLDays != 30 {
+		t.Fatalf("DefaultTTLDays = %d, want 30", cfg.Data.Snap.Retention.DefaultTTLDays)
+	}
+	if cfg.Data.Snap.MaxSnapshots != 100 {
+		t.Fatalf("MaxSnapshots = %d, want 100", cfg.Data.Snap.MaxSnapshots)
+	}
+
+	// Check protected prefixes
+	if len(cfg.Data.Snap.Retention.ProtectedPrefixes) != 2 {
+		t.Fatalf("ProtectedPrefixes length = %d, want 2", len(cfg.Data.Snap.Retention.ProtectedPrefixes))
+	}
+	if cfg.Data.Snap.Retention.ProtectedPrefixes[0] != "pinned_" {
+		t.Fatalf("ProtectedPrefixes[0] = %q, want pinned_", cfg.Data.Snap.Retention.ProtectedPrefixes[0])
+	}
+	if cfg.Data.Snap.Retention.ProtectedPrefixes[1] != "archived_" {
+		t.Fatalf("ProtectedPrefixes[1] = %q, want archived_", cfg.Data.Snap.Retention.ProtectedPrefixes[1])
+	}
+
+	// Check frozen snapshots is empty but initialized
+	if cfg.Data.Snap.Retention.FrozenSnapshots == nil {
+		t.Fatal("FrozenSnapshots should not be nil")
+	}
+	if len(cfg.Data.Snap.Retention.FrozenSnapshots) != 0 {
+		t.Fatalf("FrozenSnapshots should be empty, got %v", cfg.Data.Snap.Retention.FrozenSnapshots)
+	}
+}
+
+func TestRenderTemplate_IncludesRetentionSection(t *testing.T) {
+	cfg := &Config{Data: &ConfigData{}}
+	cfg.WithDefaults()
+
+	out := cfg.renderTemplate()
+
+	// Check retention section exists
+	if !strings.Contains(out, "retention:") {
+		t.Fatal("renderTemplate should include retention: section")
+	}
+	if !strings.Contains(out, "default_ttl_days: 30") {
+		t.Fatal("renderTemplate should include default_ttl_days: 30")
+	}
+	if !strings.Contains(out, "pinned_") {
+		t.Fatal("renderTemplate should include pinned_ prefix")
+	}
+	if !strings.Contains(out, "archived_") {
+		t.Fatal("renderTemplate should include archived_ prefix")
+	}
+	if !strings.Contains(out, "frozen_snapshots:") {
+		t.Fatal("renderTemplate should include frozen_snapshots")
+	}
+}
+
+func TestSnapshotRetention_ValidateTTL(t *testing.T) {
+	tests := []struct {
+		name    string
+		ttl     int
+		wantErr bool
+	}{
+		{"positive ttl", 30, false},
+		{"zero ttl", 0, true},
+		{"negative ttl", -1, true},
+		{"large ttl", 365, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sr := &SnapshotRetention{DefaultTTLDays: tt.ttl}
+			err := sr.ValidateTTL()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ValidateTTL() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSnapshotRetention_ValidateProtectedPrefixes(t *testing.T) {
+	tests := []struct {
+		name      string
+		prefixes  []string
+		wantErr   bool
+		errMsg    string
+	}{
+		{"empty prefixes", []string{}, false, ""},
+		{"single prefix", []string{"pinned_"}, false, ""},
+		{"multiple unique", []string{"pinned_", "archived_"}, false, ""},
+		{"duplicate prefix", []string{"pinned_", "pinned_"}, true, "duplicate"},
+		{"three items with dup", []string{"a_", "b_", "a_"}, true, "duplicate"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sr := &SnapshotRetention{ProtectedPrefixes: tt.prefixes}
+			err := sr.ValidateProtectedPrefixes()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ValidateProtectedPrefixes() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr && err != nil && !strings.Contains(err.Error(), tt.errMsg) {
+				t.Fatalf("ValidateProtectedPrefixes() error %q should contain %q", err.Error(), tt.errMsg)
+			}
+		})
+	}
+}
+
+func TestSnapshotRetention_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		sr      *SnapshotRetention
+		wantErr bool
+	}{
+		{"nil retention", nil, false},
+		{"disabled retention", &SnapshotRetention{Enabled: false, DefaultTTLDays: 0}, false},
+		{"valid retention", &SnapshotRetention{Enabled: true, DefaultTTLDays: 30, ProtectedPrefixes: []string{"pinned_"}}, false},
+		{"invalid ttl", &SnapshotRetention{Enabled: true, DefaultTTLDays: 0}, true},
+		{"invalid prefixes", &SnapshotRetention{Enabled: true, DefaultTTLDays: 30, ProtectedPrefixes: []string{"a_", "a_"}}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.sr.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSnapshotConfig_ValidateMaxSnapshots(t *testing.T) {
+	tests := []struct {
+		name      string
+		max       int
+		wantErr   bool
+	}{
+		{"positive max", 100, false},
+		{"zero max", 0, true},
+		{"negative max", -1, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sc := &SnapshotConfig{MaxSnapshots: tt.max}
+			err := sc.ValidateMaxSnapshots()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ValidateMaxSnapshots() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestSnapshotConfig_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		sc      *SnapshotConfig
+		wantErr bool
+	}{
+		{"nil snapshot config", nil, false},
+		{"disabled snapshot", &SnapshotConfig{Enabled: false}, false},
+		{"valid snapshot config", &SnapshotConfig{
+			Enabled:      true,
+			MaxSnapshots: 100,
+			Retention: &SnapshotRetention{
+				Enabled:           true,
+				DefaultTTLDays:    30,
+				ProtectedPrefixes: []string{"pinned_"},
+			},
+		}, false},
+		{"invalid max snapshots", &SnapshotConfig{Enabled: true, MaxSnapshots: 0}, true},
+		{"invalid retention", &SnapshotConfig{
+			Enabled:      true,
+			MaxSnapshots: 100,
+			Retention: &SnapshotRetention{
+				Enabled:        true,
+				DefaultTTLDays: 0,
+			},
+		}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.sc.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}

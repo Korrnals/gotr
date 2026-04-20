@@ -19,6 +19,7 @@ func TestBaseDirAndDerivedPaths_HomeUnset(t *testing.T) {
 	}{
 		{name: "ConfigDirPath", fn: ConfigDirPath},
 		{name: "LogsDirPath", fn: LogsDirPath},
+		{name: "ReportsDirPath", fn: ReportsDirPath},
 		{name: "SelftestDirPath", fn: SelftestDirPath},
 		{name: "CacheDirPath", fn: CacheDirPath},
 		{name: "ExportsDirPath", fn: ExportsDirPath},
@@ -63,6 +64,14 @@ func TestBaseAndDerivedPaths(t *testing.T) {
 	}
 	if logs != filepath.Join(wantBase, LogsDir) {
 		t.Fatalf("LogsDirPath = %q", logs)
+	}
+
+	reports, err := ReportsDirPath()
+	if err != nil {
+		t.Fatalf("ReportsDirPath error: %v", err)
+	}
+	if reports != filepath.Join(wantBase, ReportsDir) {
+		t.Fatalf("ReportsDirPath = %q", reports)
 	}
 
 	selftest, err := SelftestDirPath()
@@ -161,6 +170,7 @@ func TestEnsureAllDirsAndEnsureDir(t *testing.T) {
 	check := []func() (string, error){
 		ConfigDirPath,
 		LogsDirPath,
+		ReportsDirPath,
 		SelftestDirPath,
 		CacheDirPath,
 		ExportsDirPath,

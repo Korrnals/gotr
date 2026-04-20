@@ -47,14 +47,18 @@ func confirmSnapshot(ctx context.Context, cmd *cobra.Command) snapshotDecision {
 		return snapshotDecision{}
 	}
 
-	// Ask for optional label (from flag or interactively).
+	// Label from explicit flag has highest priority.
 	label := snap.ResolveLabel(cmd)
-	if label == "" {
-		val, err := p.Input("🏷  Snapshot label (optional, press Enter to skip):", "")
-		if err == nil {
-			label = val
-		}
+	if label != "" {
+		return snapshotDecision{Create: true, Label: label}
 	}
+
+	// Auto-generate default label when user didn't provide one.
+	mode := snap.ModeInteractive
+	if interactive.IsNonInteractive(ctx) {
+		mode = snap.ModeBatch
+	}
+	label = snap.GenerateDefaultLabel(mode, cmd.Name())
 
 	return snapshotDecision{Create: true, Label: label}
 }

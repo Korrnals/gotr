@@ -56,6 +56,28 @@ func TestServiceSave(t *testing.T) {
 	}
 }
 
+func TestServiceSave_SnapshotIDWithSlash(t *testing.T) {
+	tmpDir := t.TempDir()
+	service := NewService(tmpDir)
+
+	report := NewMigrationReport("cases/20260418T120000_update_42", 100, 200, "sync_cases", "alice")
+	report.AddResourceStats("cases", 10, 8, 0, 2, 0)
+	report.MarkSuccess()
+
+	path, err := service.Save(context.Background(), report)
+	if err != nil {
+		t.Fatalf("failed to save report with slash snapshot id: %v", err)
+	}
+
+	filename := filepath.Base(path)
+	if contains(filename, "/") {
+		t.Fatalf("filename must be sanitized, got: %s", filename)
+	}
+	if !contains(filename, "cases_20260418T120000_update_42") {
+		t.Fatalf("sanitized snapshot id not found in filename: %s", filename)
+	}
+}
+
 func TestServiceUpdateIndex(t *testing.T) {
 	tmpDir := t.TempDir()
 	service := NewService(tmpDir)
@@ -136,6 +158,18 @@ func TestGenerateMarkdownWithoutRollback(t *testing.T) {
 
 	if contains(md, "Rollback") {
 		t.Error("markdown should not have rollback section when not set")
+	}
+}
+
+func TestGenerateMarkdown_ReferencesSnapsPath(t *testing.T) {
+	service := NewService("")
+	report := NewMigrationReport("cases/snap-123", 100, 200, "sync_full", "alice")
+	report.AddResourceStats("cases", 1, 1, 0, 0, 0)
+	report.MarkSuccess()
+
+	md := service.generateMarkdown(report)
+	if !contains(md, "~/.gotr/snaps/") {
+		t.Fatal("markdown references should point to ~/.gotr/snaps/")
 	}
 }
 

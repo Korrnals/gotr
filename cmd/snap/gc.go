@@ -3,26 +3,31 @@ package snap
 import (
 	"fmt"
 	"os"
+	"strings"
+	"time"
 
 	snaplib "github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
+//nolint:gocyclo // GC command flow keeps retention rules and preview/apply paths together.
 func newGCCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "gc",
-		Short: "Clean up orphaned snapshots from local storage",
-		Long: `Removes snapshot directories from ~/.gotr/snaps/ that exist on disk
-but are not tracked in the manifest index.
+		Short: "Run snapshot retention cleanup (preview by default)",
+		Long: `Finds snapshots older than configured TTL and cleans them up.
 
-Orphans can appear when:
-  • a snapshot was partially saved (e.g. interrupted add/sync)
-  • the manifest was manually edited or corrupted
-  • a bug left stale directories behind
+By default, this command runs in preview mode and shows what would be deleted.
+Use --confirm to actually delete snapshots.
 
-This command only affects local storage — it does not touch TestRail.
-To see what would be cleaned without deleting, use --dry-run.`,
+Retention settings are read from config:
+  • snap.retention.default_ttl_days
+  • snap.retention.protected_prefixes
+  • snap.retention.frozen_snapshots
+
+Protected/frozen snapshots are never deleted by this command.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snaplib.NewStore()
 			if err != nil {
@@ -34,47 +39,83 @@ To see what would be cleaned without deleting, use --dry-run.`,
 				return fmt.Errorf("newGCCmd.func: %w", err)
 			}
 
-			ids := manifest.ManifestIDs()
-
-			// First collect orphans to show details.
-			orphans, err := store.CollectOrphans(ids)
-			if err != nil {
-				return fmt.Errorf("gc failed: %w", err)
+			cfg := snaplib.ReadConfig()
+			ttlDays, _ := cmd.Flags().GetInt("ttl-days")
+			if ttlDays <= 0 {
+				ttlDays = cfg.RetentionDays
+			}
+			if ttlDays <= 0 {
+				return fmt.Errorf("gc failed: ttl-days must be positive")
 			}
 
-			if len(orphans) == 0 {
-				fmt.Fprintf(os.Stdout, "No orphaned snapshots found (%d tracked in manifest).\n", len(ids))
+			protectedPrefixes := protectionPrefixes()
+			frozenSet := make(map[string]struct{})
+			for _, id := range viper.GetStringSlice("snap.retention.frozen_snapshots") {
+				frozenSet[id] = struct{}{}
+			}
+
+			cutoff := time.Now().UTC().Add(-time.Duration(ttlDays) * 24 * time.Hour)
+			entries := manifest.All()
+
+			candidates := make([]snaplib.ManifestEntry, 0)
+			for _, e := range entries {
+				if _, frozen := frozenSet[e.ID]; frozen {
+					continue
+				}
+				if hasAnyPrefix(e.Label, protectedPrefixes) {
+					continue
+				}
+				if e.Timestamp.Before(cutoff) {
+					candidates = append(candidates, e)
+				}
+			}
+
+			if len(candidates) == 0 {
+				fmt.Fprintf(os.Stdout, "No snapshots eligible for retention cleanup (ttl=%d days).\n", ttlDays)
 				return nil
 			}
 
-			dryRun, _ := cmd.Flags().GetBool("dry-run")
-
-			// Show what will be (or would be) cleaned.
-			verb := "Cleaning"
-			if dryRun {
-				verb = "Would clean"
+			confirm, _ := cmd.Flags().GetBool("confirm")
+			verb := "Would delete"
+			if confirm {
+				verb = "Deleting"
 			}
-			fmt.Fprintf(os.Stdout, "%s %d orphaned snapshot(s) (of %d on disk, %d tracked):\n",
-				verb, len(orphans), len(orphans)+len(ids), len(ids))
-			for _, id := range orphans {
-				fmt.Fprintf(os.Stdout, "  • %s\n", id)
+			fmt.Fprintf(os.Stdout, "%s %d snapshot(s) older than %d days:\n", verb, len(candidates), ttlDays)
+			for _, e := range candidates {
+				fmt.Fprintf(os.Stdout, "  • %s (%s)\n", e.ID, e.Timestamp.Format(time.RFC3339))
 			}
 
-			if dryRun {
+			if !confirm {
+				fmt.Fprintln(os.Stdout, "Run with --confirm to apply deletion.")
 				return nil
 			}
 
-			// Actually clean.
-			cleaned, err := store.CleanOrphans(ids)
-			if err != nil {
-				return fmt.Errorf("gc failed: %w", err)
+			deleted := 0
+			for _, e := range candidates {
+				if err := store.Delete(e.ID); err != nil {
+					return fmt.Errorf("gc delete snapshot %s: %w", e.ID, err)
+				}
+				if err := manifest.Remove(e.ID); err != nil {
+					return fmt.Errorf("gc remove manifest %s: %w", e.ID, err)
+				}
+				deleted++
 			}
 
-			ui.Successf(os.Stdout, "Cleaned %d orphaned snapshot(s)", cleaned)
+			ui.Successf(os.Stdout, "Deleted %d snapshot(s)", deleted)
 			return nil
 		},
 	}
 
-	cmd.Flags().Bool("dry-run", false, "Show orphans without deleting them")
+	cmd.Flags().Bool("confirm", false, "Actually delete snapshots (default is preview only)")
+	cmd.Flags().Int("ttl-days", 0, "Override retention TTL in days (default: config value)")
 	return cmd
+}
+
+func hasAnyPrefix(label string, prefixes []string) bool {
+	for _, p := range prefixes {
+		if p != "" && strings.HasPrefix(label, p) {
+			return true
+		}
+	}
+	return false
 }

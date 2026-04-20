@@ -17,6 +17,8 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
       - [Частичная миграция](migration-partial.md)
       - [Миграция shared steps](migration-shared-steps.md)
       - [Миграция ресурсов](migration-resources.md)
+      - [⚠️ Живой тест-план миграции (перед боевым запуском)](live-migration-test-plan.md)
+      - [Операторская карточка живого прогона](live-migration-operator-card.md)
       - [Получение данных](crud-get.md)
       - [Экспорт данных](crud-export.md)
       - [Создание объектов](crud-add.md)
@@ -42,6 +44,8 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
 - [Частичная миграция](migration-partial.md) — cases с подстановкой mapping из предыдущего шага
 - [Миграция shared steps](migration-shared-steps.md) — перенос только общих тестовых шагов
 - [Миграция ресурсов](migration-resources.md) — suites, sections между проектами
+- [⚠️ Живой тест-план миграции](live-migration-test-plan.md) — **обязательно перед боевым запуском**: изолированный тест на двух тестовых проектах с откатом и очисткой
+- [Операторская карточка живого прогона](live-migration-operator-card.md) — краткий чеклист и команды для выполнения теста в терминале
 
 ### CRUD-операции
 

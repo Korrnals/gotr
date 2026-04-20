@@ -25,12 +25,11 @@ func TestConfirmSnapshot_ExplicitFlagTrue(t *testing.T) {
 	cmd := newTestCmd()
 	_ = cmd.Flags().Set("snapshot", "true")
 
-	// Need Input mock for label prompt.
-	p := interactive.NewMockPrompter().WithInputResponses("")
+	p := interactive.NewMockPrompter()
 	ctx := interactive.WithPrompter(context.Background(), p)
 	result := confirmSnapshot(ctx, cmd)
 	assert.True(t, result.Create)
-	assert.Empty(t, result.Label)
+	assert.NotEmpty(t, result.Label)
 }
 
 func TestConfirmSnapshot_ExplicitFlagFalse(t *testing.T) {
@@ -51,6 +50,7 @@ func TestConfirmSnapshot_ConfigEnabled(t *testing.T) {
 	ctx := interactive.WithPrompter(context.Background(), p)
 	result := confirmSnapshot(ctx, cmd)
 	assert.True(t, result.Create)
+	assert.NotEmpty(t, result.Label)
 }
 
 func TestConfirmSnapshot_ConfigDisabled(t *testing.T) {
@@ -67,11 +67,12 @@ func TestConfirmSnapshot_SmartPrompt_UserAccepts(t *testing.T) {
 	cmd := newTestCmd()
 	viper.Reset()
 
-	p := interactive.NewMockPrompter().WithConfirmResponses(true).WithInputResponses("")
+	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	ctx := interactive.WithPrompter(context.Background(), p)
 
 	result := confirmSnapshot(ctx, cmd)
 	assert.True(t, result.Create)
+	assert.NotEmpty(t, result.Label)
 }
 
 func TestConfirmSnapshot_SmartPrompt_UserDeclines(t *testing.T) {
@@ -94,18 +95,19 @@ func TestConfirmSnapshot_NonInteractive_DefaultsTrue(t *testing.T) {
 
 	result := confirmSnapshot(ctx, cmd)
 	assert.True(t, result.Create, "Non-interactive mode should default to creating snapshot")
+	assert.NotEmpty(t, result.Label)
 }
 
 func TestConfirmSnapshot_LabelFromPrompt(t *testing.T) {
 	cmd := newTestCmd()
 	viper.Reset()
 
-	p := interactive.NewMockPrompter().WithConfirmResponses(true).WithInputResponses("migration-v2")
+	p := interactive.NewMockPrompter().WithConfirmResponses(true)
 	ctx := interactive.WithPrompter(context.Background(), p)
 
 	result := confirmSnapshot(ctx, cmd)
 	assert.True(t, result.Create)
-	assert.Equal(t, "migration-v2", result.Label)
+	assert.NotEmpty(t, result.Label)
 }
 
 func TestConfirmSnapshot_LabelFromFlag(t *testing.T) {

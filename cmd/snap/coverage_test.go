@@ -140,6 +140,8 @@ func TestRegister(t *testing.T) {
 	assert.Contains(t, subNames, "rollback")
 	assert.Contains(t, subNames, "export")
 	assert.Contains(t, subNames, "delete")
+	assert.Contains(t, subNames, "pin")
+	assert.Contains(t, subNames, "unpin")
 	assert.Contains(t, subNames, "gc")
 }
 

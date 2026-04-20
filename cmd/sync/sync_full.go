@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/paths"
@@ -34,6 +35,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -136,6 +138,7 @@ Examples:
 			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 		sharedFiltered := m.FilteredSharedSteps()
+		sharedFilterStats := m.LastFilterStats()
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run complete")
@@ -166,6 +169,7 @@ Examples:
 		if len(caseImport.Errors) > 0 {
 			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
 		}
+		caseFilterStats := m.LastFilterStats()
 
 		if autoSaveMapping {
 			_ = m.ExportMapping(logDir)
@@ -199,6 +203,11 @@ Examples:
 			})
 		}
 		hook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
+
+		saveMigrationReport(ctx, cmd, "sync_full", srcProject, dstProject, startedAt, hook, []reportResourceStats{
+			filterStatsToReport("shared_steps", sharedFilterStats, int64(len(sharedFiltered)), 0),
+			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(len(caseImport.Errors))),
+		})
 
 		ui.Success(os.Stdout, "Full migration complete!")
 		syncPostAction(ctx, cmd, hook, cli)

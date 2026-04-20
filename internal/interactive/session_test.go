@@ -33,6 +33,7 @@ func TestWithSession_RoundTrip(t *testing.T) {
 	got := SessionFromContext(ctx)
 	if got == nil {
 		t.Fatal("SessionFromContext returned nil")
+		return
 	}
 	if got.ServerURL != "https://example.testrail.io" {
 		t.Errorf("ServerURL = %q, want %q", got.ServerURL, "https://example.testrail.io")

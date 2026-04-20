@@ -406,6 +406,15 @@ func executeCompareAll(cmd *cobra.Command, _ []string) error {
 	if savePath != "" {
 		return saveCompareAllOutput(cmd, result, format, savePath, quiet, project1Name, pid1, project2Name, pid2, errs, elapsed)
 	}
+
+	// Post-action menu with drill-down (interactive only, non-save).
+	if !quiet {
+		action := compareAllPostAction(ctx, cmd, result, project1Name, project2Name, pid1, pid2)
+		if action == actionSave {
+			return saveCompareAllOutput(cmd, result, format, "__DEFAULT__", quiet, project1Name, pid1, project2Name, pid2, errs, elapsed)
+		}
+	}
+
 	return nil
 }
 

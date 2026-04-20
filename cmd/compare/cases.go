@@ -143,6 +143,11 @@ Examples:
 				)
 			}
 
+			// Post-action menu (interactive only, non-save).
+			if savePath == "" && !quiet {
+				comparePostAction(ctx, cmd, *result, project1Name, project2Name)
+			}
+
 			return nil
 		},
 	}

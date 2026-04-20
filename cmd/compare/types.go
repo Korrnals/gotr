@@ -12,6 +12,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -233,163 +234,22 @@ func printSeparator(widths []int) {
 	fmt.Println("├" + strings.Join(parts, "┼") + "┤")
 }
 
-// printTable prints the result in table format
+// printTable prints the result in table format.
+// If stdout is a TTY and the output is long, uses the interactive pager.
 func printTable(result CompareResult, project1Name, project2Name string) error {
-	fmt.Printf("\n=== Comparison: %s (projects %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
+	lines := renderTableLines(result, project1Name, project2Name)
 
-	// Table 1: Only in Project 1
-	printOnlyInProjectTable(result.OnlyInFirst, result.Project1ID, project1Name)
+	if interactive.ShouldPage(len(lines)) {
+		return interactive.Pager(interactive.PagerConfig{
+			Lines:  lines,
+			Header: fmt.Sprintf("=== Comparison: %s (projects %d ↔ %d) ===", result.Resource, result.Project1ID, result.Project2ID),
+		})
+	}
 
-	// Table 2: Only in Project 2
-	printOnlyInProjectTable(result.OnlyInSecond, result.Project2ID, project2Name)
-
-	// Table 3: Common items
-	printCommonTable(result.Common, result.Project1ID, result.Project2ID)
-
-	// Table 4: ID Mapping (for items with different IDs)
-	printIDMappingTable(result.Common)
-
+	for _, line := range lines {
+		fmt.Println(line)
+	}
 	return nil
-}
-
-// printOnlyInProjectTable prints a table for items only in one project
-func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName string) {
-	// Column widths are widened for long names.
-	idWidth := 8
-	nameWidth := 70
-
-	widths := []int{idWidth, nameWidth}
-	// totalInnerWidth = sum of column widths + 3 per column - 1 (for proper border alignment)
-	totalInnerWidth := idWidth + nameWidth + 3*len(widths) - 1
-
-	// Title
-	title := fmt.Sprintf("Only in project %d - %q", projectID, projectName)
-	printHorizontalBorder("┌", "┬", "┐", widths)
-	printHeader(title, totalInnerWidth)
-
-	// If no items, show empty message
-	if len(items) == 0 {
-		printSeparator(widths)
-		printHeader("(none)", totalInnerWidth)
-		printHorizontalBorder("└", "┴", "┘", widths)
-		fmt.Println()
-		return
-	}
-
-	// Column headers
-	printSeparator(widths)
-	printRow([]string{"ID", "Name"}, widths)
-	printSeparator(widths)
-
-	// Data rows
-	for _, item := range items {
-		printRow([]string{fmt.Sprintf("%d", item.ID), item.Name}, widths)
-	}
-
-	printHorizontalBorder("└", "┴", "┘", widths)
-	fmt.Println()
-}
-
-// printCommonTable prints a table for common items
-func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
-	// Column widths are widened for long names.
-	nameWidth := 50
-	id1Width := 12
-	id2Width := 12
-	statusWidth := 20
-
-	widths := []int{nameWidth, id1Width, id2Width, statusWidth}
-	// totalInnerWidth = sum of column widths + 3 per column - 1 (for proper border alignment)
-	totalInnerWidth := nameWidth + id1Width + id2Width + statusWidth + 3*len(widths) - 1
-
-	// Title
-	printHorizontalBorder("┌", "┬", "┐", widths)
-	printHeader("Common in both projects", totalInnerWidth)
-
-	// If no items, show empty message
-	if len(items) == 0 {
-		printSeparator(widths)
-		printHeader("(none)", totalInnerWidth)
-		printHorizontalBorder("└", "┴", "┘", widths)
-		fmt.Println()
-		return
-	}
-
-	// Column headers
-	printSeparator(widths)
-	printRow([]string{
-		"Name",
-		fmt.Sprintf("ID proj %d", project1ID),
-		fmt.Sprintf("ID proj %d", project2ID),
-		"ID status",
-	}, widths)
-	printSeparator(widths)
-
-	// Data rows
-	for _, item := range items {
-		status := "✓ Match"
-		if !item.IDsMatch {
-			status = "⚠ Differ"
-		}
-		printRow([]string{
-			item.Name,
-			fmt.Sprintf("%d", item.ID1),
-			fmt.Sprintf("%d", item.ID2),
-			status,
-		}, widths)
-	}
-
-	printHorizontalBorder("└", "┴", "┘", widths)
-	fmt.Println()
-}
-
-// printIDMappingTable prints a table for ID mapping (items with different IDs)
-func printIDMappingTable(items []CommonItemInfo) {
-	// Filter items with different IDs
-	var mappings []CommonItemInfo
-	for _, item := range items {
-		if !item.IDsMatch {
-			mappings = append(mappings, item)
-		}
-	}
-
-	// Column widths
-	sourceWidth := 12
-	targetWidth := 12
-	nameWidth := 70
-
-	widths := []int{sourceWidth, targetWidth, nameWidth}
-	totalInnerWidth := sourceWidth + targetWidth + nameWidth + 3*len(widths) - 1
-
-	// Title
-	printHorizontalBorder("┌", "┬", "┐", widths)
-	printHeader("ID mapping (for updates)", totalInnerWidth)
-
-	// If no mappings, don't show the table at all (or show empty message)
-	if len(mappings) == 0 {
-		printSeparator(widths)
-		printHeader("(all IDs match)", totalInnerWidth)
-		printHorizontalBorder("└", "┴", "┘", widths)
-		fmt.Println()
-		return
-	}
-
-	// Column headers
-	printSeparator(widths)
-	printRow([]string{"Source ID", "Target ID", "Name"}, widths)
-	printSeparator(widths)
-
-	// Data rows - show only items with different IDs
-	for _, item := range mappings {
-		printRow([]string{
-			fmt.Sprintf("%d", item.ID1),
-			fmt.Sprintf("%d", item.ID2),
-			item.Name,
-		}, widths)
-	}
-
-	printHorizontalBorder("└", "┴", "┘", widths)
-	fmt.Println()
 }
 
 // printJSON prints the result as JSON.

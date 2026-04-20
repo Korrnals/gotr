@@ -58,6 +58,11 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed, result.Status)
 			}
 
+			// Post-action menu (interactive only, non-save).
+			if savePath == "" && !quiet {
+				comparePostAction(ctx, cmd, *result, project1Name, project2Name)
+			}
+
 			return nil
 		},
 	}

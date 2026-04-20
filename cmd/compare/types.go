@@ -251,7 +251,6 @@ func printTable(result CompareResult, project1Name, project2Name string) error {
 	}
 	return nil
 }
-
 // printOnlyInProjectTable prints a table for items only in one project
 //nolint:unused // Kept as legacy renderer for compatibility with older output paths.
 func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName string) {

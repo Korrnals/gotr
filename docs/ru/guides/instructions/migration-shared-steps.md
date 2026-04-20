@@ -12,6 +12,7 @@ Language: Русский | [English](../../../en/guides/instructions/migration-s
     - [Прогресс](../progress.md)
     - [Каталог команд](../commands/index.md)
     - [Инструкции](index.md)
+      - [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md)
       - [Полная миграция](migration-full.md)
       - [Частичная миграция](migration-partial.md)
       - [Миграция shared steps](migration-shared-steps.md)
@@ -42,6 +43,14 @@ Language: Русский | [English](../../../en/guides/instructions/migration-s
 > [!TIP]
 > Используйте `--save-mapping`, чтобы сохранить файл соответствий для последующего
 > `gotr sync cases --mapping-file` — это гарантирует корректные ссылки в кейсах.
+
+## Важно: поведение ID при переносе shared steps
+
+- При переносе shared step исходный ID не сохраняется в target.
+- Утилита отправляет только данные шага (title, steps), а ID возвращается сервером TestRail после создания.
+- Если в target уже есть дубликат (по полю сравнения, обычно `title`), новый шаг не создается; в mapping фиксируется связь source ID с существующим target ID (`status: existing`).
+- Если дубликата нет, создается новый шаг и в mapping фиксируется пара source ID -> created target ID (`status: created`).
+- Даже если в target есть «свободный» номер, совпадающий со source ID, он не резервируется вручную.
 
 ## Предусловия ✅
 
@@ -105,6 +114,23 @@ gotr get sharedsteps 34
 # Сравнить shared steps между проектами
 gotr compare sharedsteps --pid1 30 --pid2 34
 ```
+
+## Rollback для `sync shared-steps`
+
+Откат выполняется через snapshot и удаляет только **созданные** shared steps текущего запуска.
+
+```bash
+# Превью
+gotr snap rollback <snapshot_id> --dry-run
+
+# Откат
+gotr snap rollback <snapshot_id>
+```
+
+Важно:
+
+- Shared steps, которые уже существовали в target и были сопоставлены как `existing`, не удаляются rollback-ом.
+- В post-action меню после миграции доступен пункт `↻ Rollback this migration`.
 
 ## Сценарий 2: Перенос ВСЕХ shared steps проекта 🚀
 

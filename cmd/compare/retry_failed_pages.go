@@ -106,16 +106,19 @@ func runRetryFailedPages(cmd *cobra.Command, _ []string) error {
 
 	failedPages, err := loadFailedPages(fromPath)
 	if err != nil {
-		return err
+		return fmt.Errorf("runRetryFailedPages: %w", err)
 	}
 
 	resolvedOpts, err := resolveRetryFailedPagesOptionsFromConfig(cmd)
 	if err != nil {
-		return err
+		return fmt.Errorf("runRetryFailedPages: %w", err)
 	}
 
 	_, _, err = executeRetryFailedPages(ctx, cli, failedPages, resolvedOpts, fromPath, saveRemainingPath)
-	return err
+	if err != nil {
+		return fmt.Errorf("runRetryFailedPages: %w", err)
+	}
+	return nil
 }
 
 // resolveRetryFailedPagesOptionsFromConfig merges flags with compare retry config defaults.

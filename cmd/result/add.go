@@ -73,17 +73,17 @@ Examples:
 				}
 				runID, err := resolveResultRunID(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 				testID, err = selectTestIDForRun(ctx, cli, runID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
 			req, err := buildAddResultRequest(cmd)
 			if err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 
 			// Check dry-run mode
@@ -115,7 +115,7 @@ Examples:
 
 			output.PrintSuccess(cmd, "Result added successfully:")
 			if err := output.OutputResultWithFlags(cmd, result); err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -182,14 +182,14 @@ Examples:
 				}
 				runID, err = resolveResultRunID(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCaseCmd.func: %w", err)
 				}
 			}
 
 			caseID, _ := cmd.Flags().GetInt64("case-id")
 			req, err := buildAddResultRequest(cmd)
 			if err != nil {
-				return err
+				return fmt.Errorf("newAddCaseCmd.func: %w", err)
 			}
 
 			// Check dry-run mode
@@ -221,7 +221,7 @@ Examples:
 
 			output.PrintSuccess(cmd, "Result added successfully:")
 			if err := output.OutputResultWithFlags(cmd, result); err != nil {
-				return err
+				return fmt.Errorf("newAddCaseCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil
@@ -310,12 +310,12 @@ Examples:
 			// Parse and submit results
 			results, err := svc.AddBulkResults(ctx, runID, fileData)
 			if err != nil {
-				return err
+				return fmt.Errorf("newAddBulkCmd.func: %w", err)
 			}
 
 			output.PrintSuccess(cmd, "Results added successfully:")
 			if err := output.OutputResultWithFlags(cmd, results); err != nil {
-				return err
+				return fmt.Errorf("newAddBulkCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

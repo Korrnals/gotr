@@ -56,11 +56,11 @@ Examples:
 				}
 				runID, err := resolveResultRunID(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 				testID, err = selectTestIDForRun(ctx, cli, runID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 
@@ -124,7 +124,7 @@ Examples:
 				}
 				runID, err = resolveResultRunID(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCaseCmd.func: %w", err)
 				}
 			}
 
@@ -139,7 +139,7 @@ Examples:
 				}
 				caseID, err = selectCaseIDForRun(ctx, cli, runID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCaseCmd.func: %w", err)
 				}
 			}
 

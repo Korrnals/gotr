@@ -42,13 +42,13 @@ Examples:
 			// Parse flags
 			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSectionsCmd.func: %w", err)
 			}
 
 			// Get project names
 			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSectionsCmd.func: %w", err)
 			}
 
 			// Start timer
@@ -58,14 +58,14 @@ Examples:
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			result, err := compareSectionsInternal(ctx, cmd, cli, pid1, pid2, quiet)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSectionsCmd.func: %w", err)
 			}
 
 			elapsed := time.Since(startTime)
 
 			// Print or save result
 			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
-				return err
+				return fmt.Errorf("newSectionsCmd.func: %w", err)
 			}
 
 			// Print statistics

@@ -48,7 +48,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 			if len(args) > 0 {
 				sectionID, err = flags.ValidateRequiredID(args, 0, "section_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -57,7 +57,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 
 				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionGetCmd.func: %w", err)
 				}
 
 				sections, err := cli.GetSections(ctx, projectID, 0)
@@ -70,7 +70,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 
 				sectionID, err = interactive.SelectSection(ctx, interactive.PrompterFromContext(ctx), sections, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionGetCmd.func: %w", err)
 				}
 			}
 
@@ -78,7 +78,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 				return cli.GetSection(ctx, sectionID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newSectionGetCmd.func: %w", err)
 			}
 
 			return handleOutput(command, section, start)
@@ -116,7 +116,7 @@ To filter by a specific suite, use the --suite-id flag.`,
 			if projectIDStr == "" {
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionsListCmd.func: %w", err)
 				}
 			} else {
 				projectID, err = flags.ParseID(projectIDStr)
@@ -134,7 +134,7 @@ To filter by a specific suite, use the --suite-id flag.`,
 				return cli.GetSections(ctx, projectID, suiteID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newSectionsListCmd.func: %w", err)
 			}
 
 			return handleOutput(command, sections, start)

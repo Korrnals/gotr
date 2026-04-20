@@ -30,15 +30,15 @@ access rights in the TestRail system.`,
 			if len(args) > 0 {
 				roleID, err = flags.ValidateRequiredID(args, 0, "role_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if err := requireInteractiveRoleArg(cmd.Context(), "gotr roles get [role_id]"); err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 				roleID, err = resolveRoleIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

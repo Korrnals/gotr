@@ -31,7 +31,7 @@ Use the --status-id flag to filter by status.`,
 			if len(args) > 0 {
 				runID, err = flags.ValidateRequiredID(args, 0, "run_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -42,7 +42,7 @@ Use the --status-id flag to filter by status.`,
 				}
 				runID, err = resolveRunIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 
@@ -73,7 +73,7 @@ Use the --status-id flag to filter by status.`,
 				return client.GetTests(ctx, runID, filters)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newListCmd.func: %w", err)
 			}
 
 			return output.OutputResult(cmd, tests, "tests")

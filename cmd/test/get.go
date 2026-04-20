@@ -51,7 +51,7 @@ Examples:
 				}
 				testID, err = resolveTestIDInteractive(ctx, httpClient)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

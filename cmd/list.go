@@ -45,20 +45,20 @@ Examples:
 		// JSON output
 		if jsonOutput {
 			if _, err := getResourceEndpoints(resource, "json"); err != nil {
-				return err
+				return fmt.Errorf("listCmd.func: %w", err)
 			}
 			return nil
 		}
 		// Short output (Method + URI)
 		if shortOutput {
 			if _, err := getResourceEndpoints(resource, "short"); err != nil {
-				return err
+				return fmt.Errorf("listCmd.func: %w", err)
 			}
 			return nil
 		}
 		// Full, formatted output
 		if _, err := getResourceEndpoints(resource, ""); err != nil {
-			return err
+			return fmt.Errorf("listCmd.func: %w", err)
 		}
 		return nil
 	},

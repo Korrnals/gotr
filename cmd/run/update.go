@@ -113,7 +113,7 @@ Examples:
 
 			output.PrintSuccess(cmd, "Test run updated successfully:")
 			if err := output.OutputResultWithFlags(cmd, run); err != nil {
-				return err
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

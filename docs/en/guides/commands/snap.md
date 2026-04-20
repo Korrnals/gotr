@@ -51,6 +51,8 @@ gotr snap <subcommand> [args] [flags]
 | `list` | Snapshot table grouped by server; interactive two-level picker |
 | `info [id]` | Formatted metadata card (JSON via `--format json`) |
 | `rollback [id]` | Rollback a mutation using saved data |
+| `rollback list` | Browse only rolled-back snapshots (interactive browser) |
+| `rollback undo [id]` | Undo a previous rollback (delete re-created entities) |
 | `export [id]` | Export snapshot to a portable JSON file (interactive path prompt) |
 | `delete [id]` | Delete snapshot from disk and manifest |
 | `gc` | Clean up orphaned snapshots (on disk but not in manifest) |
@@ -229,6 +231,26 @@ gotr snap list
 gotr snap rollback <snapshot_id>
 ```
 
+## Navigation Hub (`gotr work`) 🧭
+
+Snap is accessible through the interactive navigation hub:
+
+```bash
+gotr work
+```
+
+From the main menu select **📦 Snap — snapshots and rollback**, then choose a subcommand.
+After executing a snap operation, the post-action menu offers cross-navigation:
+
+- **📊 Compare** — jump to project comparison
+- **🔄 Sync** — jump to migration
+- **📦 Snap** — snapshot list
+
+Similarly, Compare and Sync post-action menus offer a jump to Snap.
+
+> In interactive mode a server banner is shown on connection:
+> `Server: https://your.testrail.io`
+
 ## Configuration
 
 Snap can be enabled globally in `~/.gotr.yaml`:
@@ -255,7 +277,7 @@ Snapshot storage: `~/.gotr/snaps/`.
   > ↪️ **Answer:** The entity is re-created via API with a new ID (Tier 2). The original ID cannot be restored — this is a TestRail API limitation.
 
 - ❓ **Question:** Can I rollback twice?
-  > ↪️ **Answer:** No. After rollback, the snapshot status changes to `rolled_back` and further rollbacks are blocked.
+  > ↪️ **Answer:** No. After rollback, the snapshot status changes to `rolled_back` and further rollbacks are blocked. However, you can **undo a rollback** via `gotr snap rollback undo <id>` — this deletes the re-created entities.
 
 - ❓ **Question:** What does gc do?
   > ↪️ **Answer:** Removes snapshot directories on disk that are not tracked in the manifest (orphans). Tracked snapshots are not affected.

@@ -138,12 +138,12 @@ func (s *RunService) Delete(ctx context.Context, runID int64) error {
 
 	if err := s.validateID(runID, "run_id"); err != nil {
 		log.L().Error("validation failed", zap.String("field", "run_id"), zap.Error(err))
-		return err
+		return fmt.Errorf("Delete: %w", err)
 	}
 
 	if err := s.client.DeleteRun(ctx, runID); err != nil {
 		log.L().Error("failed to delete run", zap.Int64("run_id", runID), zap.Error(err))
-		return err
+		return fmt.Errorf("Delete: %w", err)
 	}
 
 	log.L().Warn("test run deleted", zap.Int64("run_id", runID))

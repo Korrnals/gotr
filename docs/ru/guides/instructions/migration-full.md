@@ -12,6 +12,7 @@ Language: Русский | [English](../../../en/guides/instructions/migration-f
     - [Прогресс](../progress.md)
     - [Каталог команд](../commands/index.md)
     - [Инструкции](index.md)
+      - [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md)
       - [Полная миграция](migration-full.md)
       - [Частичная миграция](migration-partial.md)
       - [Миграция shared steps](migration-shared-steps.md)
@@ -33,7 +34,7 @@ Language: Русский | [English](../../../en/guides/instructions/migration-f
 Команда `gotr sync full` автоматически:
 
 1. Загружает shared steps из исходного проекта
-2. Фильтрует по привязке к кейсам исходного набора (поле "Used In")
+2. Применяет фильтрацию shared steps с учетом source suite
 3. Исключает дубликаты по `title` с целевым проектом
 4. Импортирует новые shared steps и сохраняет mapping (старый ID → новый ID)
 5. Загружает cases из исходного набора
@@ -42,6 +43,15 @@ Language: Русский | [English](../../../en/guides/instructions/migration-f
 
 > [!TIP]
 > Всегда начинайте с `--dry-run`, чтобы увидеть план миграции без внесения изменений.
+
+## Важно: как назначаются ID shared steps
+
+- ID shared step в source проекте не переносится «как есть» в target.
+- При создании shared step вызывается API `add_shared_step/<project_id>`, а новый ID назначает TestRail.
+- Даже если в target «свободен» такой же числовой ID, утилита не может принудительно занять именно его.
+- Связь кейсов с общими шагами сохраняется через mapping `source_shared_step_id -> target_shared_step_id`.
+- В `sync full` mapping строится на шаге переноса shared steps и автоматически применяется при переносе кейсов.
+- Если shared step уже существует в target (дубликат по полю сравнения, обычно `title`), в mapping пишется статус `existing`, и кейсы перенаправляются на уже существующий target ID.
 
 ## Предусловия ✅
 
@@ -163,6 +173,52 @@ gotr sync full \
 | `mapping.json` | при `--save-mapping` | Соответствие старых ID shared steps → новых |
 | `filtered.json` | при `--save-filtered` | Список кандидатов после фильтрации |
 
+## Rollback миграции
+
+`sync full` поддерживает rollback через snapshot.
+
+### Быстрый откат сразу после миграции
+
+В post-action меню выберите:
+
+- `↻ Rollback this migration`
+
+Утилита удалит созданные в target сущности в безопасном порядке зависимостей:
+
+1. cases
+2. shared steps
+
+### Откат позже по snapshot ID
+
+```bash
+# Найти snapshot
+gotr snap list
+
+# Посмотреть детали
+gotr snap info <snapshot_id>
+
+# Превью отката без изменений
+gotr snap rollback <snapshot_id> --dry-run
+
+# Выполнить откат
+gotr snap rollback <snapshot_id>
+```
+
+### Частичный rollback
+
+Можно откатить только часть созданных target-объектов:
+
+```bash
+gotr snap rollback <snapshot_id> --entity-ids 12345,12346
+```
+
+### Важные границы rollback
+
+- Rollback удаляет только объекты, созданные в рамках этой миграции.
+- Существовавшие ранее объекты в target (дубликаты `existing`) не удаляются.
+- Если часть сущностей уже удалена вручную, rollback продолжит работу и отметит частичный результат как resumable.
+- Повторный запуск того же rollback повторно обработает только неуспешные/необработанные элементы.
+
 ## FAQ ❓
 
 - ❓ **Вопрос:** Что если shared steps уже есть в целевом проекте?
@@ -181,7 +237,7 @@ gotr sync full \
   > ---
 
 - ❓ **Вопрос:** Как откатить миграцию?
-  > ↪️ **Ответ:** TestRail API не поддерживает массовый откат. Используйте `--dry-run` для проверки перед выполнением. При необходимости — удалите перенесённые объекты через `gotr delete`.
+  > ↪️ **Ответ:** через snapshots: `gotr snap rollback <snapshot_id>` или пункт `↻ Rollback this migration` сразу после `sync full`.
 
 ---
 

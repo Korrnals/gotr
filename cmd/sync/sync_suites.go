@@ -55,7 +55,7 @@ Flags:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("suitesCmd.func: %w", err)
 			}
 		}
 
@@ -63,17 +63,17 @@ Flags:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("suitesCmd.func: %w", err)
 			}
 		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, 0, dstProject, 0, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -98,14 +98,14 @@ Flags:
 			}{Source: sourceSuites, Target: targetSuites}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		sourceSuites := loaded.Source
 		targetSuites := loaded.Target
 
 		filtered, err := m.FilterSuites(sourceSuites, targetSuites)
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 
 		printFilterSummary("suites", m.LastFilterStats())
@@ -128,7 +128,7 @@ Flags:
 		if !autoApprove {
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("suitesCmd.func: %w", err)
 			}
 			if !ok {
 				ui.Canceled(os.Stdout)
@@ -142,14 +142,14 @@ Flags:
 
 		var snapHook *snap.Hook
 		if sd.Create {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSuites, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSuites, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d suites...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSuites(ctx, filtered, false)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 
 		// Step 4) Save mapping if requested
@@ -160,6 +160,21 @@ Flags:
 			if err == nil && ok {
 				_ = m.ExportMapping(logDir)
 			}
+		}
+
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(filtered))
+			mapping := m.Mapping()
+			for _, s := range filtered {
+				if targetID, ok := mapping[s.ID]; ok {
+					created = append(created, snap.SyncCreatedEntity{
+						Type:     "suite",
+						SourceID: s.ID,
+						TargetID: targetID,
+					})
+				}
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, 0, 0))
 		}
 
 		syncPostAction(ctx, cmd, snapHook, cli)

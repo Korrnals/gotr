@@ -37,7 +37,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				attachmentID, err = flags.ValidateRequiredID(args, 0, "attachment_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -46,7 +46,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 				attachmentID, err = resolveAttachmentIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			}
 

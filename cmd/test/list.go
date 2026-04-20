@@ -62,7 +62,7 @@ Examples:
 				}
 				runID, err = resolveRunIDInteractive(ctx, httpClient)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 

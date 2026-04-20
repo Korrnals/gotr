@@ -36,7 +36,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				configID, err = flags.ValidateRequiredID(args, 0, "config_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateConfigCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -48,7 +48,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 				configID, err = resolveConfigIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateConfigCmd.func: %w", err)
 				}
 			}
 
@@ -80,7 +80,7 @@ func newUpdateConfigCmd(getClient GetClientFunc) *cobra.Command {
 
 			ui.Successf(os.Stdout, "Configuration %d updated", configID)
 			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
-				return err
+				return fmt.Errorf("newUpdateConfigCmd.func: %w", err)
 			}
 			interactive.MutationPostAction(ctx, cmd)
 			return nil

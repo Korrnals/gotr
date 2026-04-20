@@ -55,7 +55,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
@@ -63,7 +63,7 @@ Examples:
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
@@ -71,7 +71,7 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
@@ -79,17 +79,17 @@ Examples:
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -115,7 +115,7 @@ Examples:
 			}{Source: sourceSections, Target: targetSections}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 		sourceSections := loaded.Source
 		targetSections := loaded.Target
@@ -123,7 +123,7 @@ Examples:
 		// Step 2) Filter duplicates
 		filtered, err := m.FilterSections(sourceSections, targetSections)
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 
 		printFilterSummary("sections", m.LastFilterStats())
@@ -147,7 +147,7 @@ Examples:
 		if !autoApprove {
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 			if !ok {
 				ui.Canceled(os.Stdout)
@@ -160,14 +160,14 @@ Examples:
 
 		var snapHook *snap.Hook
 		if sd.Create {
-			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync_entity", Tier: snap.Tier2, Label: sd.Label})
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
 		}
 
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSections(ctx, filtered, false)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 
 		// Step 5) Save mapping if requested
@@ -178,6 +178,21 @@ Examples:
 			if err == nil && ok {
 				_ = m.ExportMapping(logDir)
 			}
+		}
+
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(filtered))
+			mapping := m.Mapping()
+			for _, s := range filtered {
+				if targetID, ok := mapping[s.ID]; ok {
+					created = append(created, snap.SyncCreatedEntity{
+						Type:     "section",
+						SourceID: s.ID,
+						TargetID: targetID,
+					})
+				}
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 		}
 
 		syncPostAction(ctx, cmd, snapHook, cli)

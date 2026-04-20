@@ -29,7 +29,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -37,7 +37,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				groupID, err = resolveGroupIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			}
 
@@ -58,7 +58,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				return struct{}{}, client.DeleteGroup(ctx, groupID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newDeleteCmd.func: %w", err)
 			}
 
 			if !quiet {

@@ -115,7 +115,10 @@ func resolveExportInputs(cmd *cobra.Command, args []string) (resource, endpoint,
 		if !interactive.HasPrompterInContext(ctx) {
 			return "", "", "", fmt.Errorf("resource required: gotr export <resource> <endpoint> [id]")
 		}
-		idx, _, err := p.Select("Select export resource:", ValidResources)
+		idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+			Prompt: "Select export resource:",
+			Items:  ValidResources,
+		})
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to select resource: %w", err)
 		}
@@ -136,7 +139,10 @@ func resolveExportInputs(cmd *cobra.Command, args []string) (resource, endpoint,
 		if len(endpointOptions) == 0 {
 			return "", "", "", fmt.Errorf("no export endpoints found for resource: %s", resource)
 		}
-		idx, _, err := p.Select("Select export endpoint:", endpointOptions)
+		idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+			Prompt: "Select export endpoint:",
+			Items:  endpointOptions,
+		})
 		if err != nil {
 			return "", "", "", fmt.Errorf("failed to select endpoint: %w", err)
 		}

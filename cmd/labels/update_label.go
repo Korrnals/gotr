@@ -90,7 +90,11 @@ Maximum label name length is 20 characters.`,
 			}
 
 			_, err = output.Output(cmd, resp, "labels", "json")
-			return err
+			if err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

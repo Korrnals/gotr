@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/service"
@@ -135,6 +136,7 @@ Examples:
 			}
 
 			output.PrintSuccess(cmd, "Test run %d deleted successfully", runID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

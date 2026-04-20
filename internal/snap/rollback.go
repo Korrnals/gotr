@@ -665,7 +665,7 @@ func rollbackSimpleEntity(ctx context.Context, api RollbackAPI, _ *Store, meta *
 
 	deleteFn, err := resolveDeleteFn(api, meta.EntityType)
 	if err != nil {
-		return err
+		return fmt.Errorf("rollbackSimpleEntity: %w", err)
 	}
 
 	if err := deleteFn(ctx, entityID); err != nil {

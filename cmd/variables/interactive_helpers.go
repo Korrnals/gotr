@@ -25,7 +25,7 @@ func resolveDatasetIDInteractive(ctx context.Context, cli client.ClientInterface
 		return 0, fmt.Errorf("no datasets found in project %d", projectID)
 	}
 
-	return selectDatasetID(ctx, datasets)
+	return interactive.SelectDataset(ctx, p, datasets, "")
 }
 
 // resolveVariableIDInteractive prompts the user to select a dataset, then a variable.
@@ -46,31 +46,25 @@ func resolveVariableIDInteractive(ctx context.Context, cli client.ClientInterfac
 	return selectVariableID(ctx, variables)
 }
 
-// selectDatasetID presents a selection prompt for datasets.
-func selectDatasetID(ctx context.Context, datasets data.GetDatasetsResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(datasets))
-	for i, dataset := range datasets {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, dataset.ID, dataset.Name))
-	}
-
-	idx, _, err := p.Select("Select dataset:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select dataset: %w", err)
-	}
-
-	return datasets[idx].ID, nil
-}
-
 // selectVariableID presents a selection prompt for variables.
 func selectVariableID(ctx context.Context, variables data.GetVariablesResponse) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(variables))
-	for i, variable := range variables {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, variable.ID, variable.Name))
-	}
 
-	idx, _, err := p.Select("Select variable:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(variables))
+	for i, v := range variables {
+		rows[i] = []string{fmt.Sprintf("%d", v.ID), v.Name}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select variable:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select variable: %w", err)
 	}

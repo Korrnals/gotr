@@ -72,13 +72,27 @@ func selectGroupID(ctx context.Context, groups data.GetConfigsResponse) (int64, 
 
 // selectGroupIndex prompts for group selection and returns the chosen index.
 func selectGroupIndex(ctx context.Context, groups data.GetConfigsResponse) (int, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(groups))
-	for i, group := range groups {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, group.ID, group.Name))
+	if len(groups) == 0 {
+		return 0, fmt.Errorf("no configuration groups found")
 	}
 
-	idx, _, err := p.Select("Select configuration group:", options)
+	p := interactive.PrompterFromContext(ctx)
+
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(groups))
+	for i, group := range groups {
+		rows[i] = []string{fmt.Sprintf("%d", group.ID), group.Name}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select configuration group:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select configuration group: %w", err)
 	}
@@ -89,12 +103,22 @@ func selectGroupIndex(ctx context.Context, groups data.GetConfigsResponse) (int,
 // selectConfigID prompts for configuration selection and returns the chosen config ID.
 func selectConfigID(ctx context.Context, configs []data.Config) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(configs))
-	for i, cfg := range configs {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, cfg.ID, cfg.Name))
-	}
 
-	idx, _, err := p.Select("Select configuration:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(configs))
+	for i, cfg := range configs {
+		rows[i] = []string{fmt.Sprintf("%d", cfg.ID), cfg.Name}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select configuration:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select configuration: %w", err)
 	}

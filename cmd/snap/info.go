@@ -84,6 +84,14 @@ func humanSize(b int64) string {
 	}
 }
 
+// formatInfoProject returns a formatted ID or "–" for zero values.
+func formatInfoProject(id int64) string {
+	if id == 0 {
+		return "–"
+	}
+	return fmt.Sprintf("%d", id)
+}
+
 // renderInfoCard prints a structured snapshot info card.
 func renderInfoCard(cmd *cobra.Command, meta *snaplib.Meta) {
 	out := cmd.OutOrStdout()
@@ -108,8 +116,9 @@ func renderInfoCard(cmd *cobra.Command, meta *snaplib.Meta) {
 		{"Tier", tierLabel(meta.RollbackTier)},
 		{"Status", meta.Status},
 		{"Entity IDs", entityIDs},
-		{"Project", meta.ProjectID},
-		{"Suite", meta.SuiteID},
+		{"Project", formatInfoProject(meta.ProjectID)},
+		{"Source Project", formatInfoProject(meta.SourceProjectID)},
+		{"Suite", formatInfoProject(meta.SuiteID)},
 		{"CLI Command", meta.CLICommand},
 		{"Created", meta.Timestamp.Format("2006-01-02 15:04:05 UTC")},
 		{"Data Size", humanSize(meta.DataSizeBytes)},

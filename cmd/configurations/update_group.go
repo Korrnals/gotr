@@ -79,7 +79,11 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Group %d updated", groupID)
-			return output.OutputResult(cmd, resp, "configurations")
+			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

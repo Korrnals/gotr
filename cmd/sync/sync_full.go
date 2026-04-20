@@ -44,6 +44,7 @@ Examples:
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error

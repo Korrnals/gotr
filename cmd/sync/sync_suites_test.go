@@ -136,13 +136,17 @@ func TestSyncSuites_Confirm_NonInteractive_Error(t *testing.T) {
 	assert.False(t, addCalled, "AddSuite should not be called in non-interactive")
 }
 
-func TestSyncSuites_RequiredIDs_ReturnsError(t *testing.T) {
+func TestSyncSuites_RequiredIDs_InteractiveWithFlags(t *testing.T) {
+	// When both project IDs are provided via flags, no interactive prompt is needed.
+	// Without a client, the command still fails — but not on project selection.
 	resetSuitesFlags()
 	cmd := suitesCmd
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("dst-project", "2")
 
 	err := cmd.RunE(cmd, []string{})
+	// Should fail on migration init (no client), not on project selection.
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "required IDs")
 }
 
 func TestSyncSuites_ConfirmDeclined_SkipsImport(t *testing.T) {

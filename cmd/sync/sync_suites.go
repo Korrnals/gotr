@@ -46,12 +46,26 @@ Flags:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
-
-		if srcProject == 0 || dstProject == 0 {
-			return fmt.Errorf("required IDs: --src-project and --dst-project")
-		}
+		applySessionFallback(ctx, &srcProject, &dstProject, new(int64), new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
+		var err error
+
+		// Interactive source project selection
+		if srcProject == 0 {
+			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
+			if err != nil {
+				return err
+			}
+		}
+
+		// Interactive destination project selection
+		if dstProject == 0 {
+			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
+			if err != nil {
+				return err
+			}
+		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {

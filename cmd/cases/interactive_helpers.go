@@ -6,7 +6,6 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
-	"github.com/Korrnals/gotr/internal/models/data"
 )
 
 func resolveCaseIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
@@ -37,22 +36,7 @@ func resolveCaseIDInteractive(ctx context.Context, cli client.ClientInterface) (
 		return 0, fmt.Errorf("no cases found in suite %d", suiteID)
 	}
 
-	return selectCaseID(ctx, cases)
-}
-
-func selectCaseID(ctx context.Context, cases data.GetCasesResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(cases))
-	for i, kase := range cases {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, kase.ID, kase.Title))
-	}
-
-	idx, _, err := p.Select("Select case:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select case: %w", err)
-	}
-
-	return cases[idx].ID, nil
+	return interactive.SelectCase(ctx, p, cases, "")
 }
 
 func resolveSectionIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
@@ -69,7 +53,8 @@ func resolveSectionIDInteractive(ctx context.Context, cli client.ClientInterface
 		return 0, fmt.Errorf("no sections found in suite %d", suiteID)
 	}
 
-	return selectSectionID(ctx, sections)
+	p := interactive.PrompterFromContext(ctx)
+	return interactive.SelectSection(ctx, p, sections, "")
 }
 
 func resolveSuiteIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
@@ -101,19 +86,4 @@ func resolveProjectAndSuiteInteractive(ctx context.Context, cli client.ClientInt
 	}
 
 	return projectID, suiteID, nil
-}
-
-func selectSectionID(ctx context.Context, sections data.GetSectionsResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(sections))
-	for i, section := range sections {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, section.ID, section.Name))
-	}
-
-	idx, _, err := p.Select("Select section:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select section: %w", err)
-	}
-
-	return sections[idx].ID, nil
 }

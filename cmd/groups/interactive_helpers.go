@@ -36,12 +36,22 @@ func resolveGroupIDInteractive(ctx context.Context, cli client.ClientInterface) 
 // selectGroupID prompts for group selection and returns the chosen group ID.
 func selectGroupID(ctx context.Context, groups data.GetGroupsResponse) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(groups))
-	for i, group := range groups {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, group.ID, group.Name))
-	}
 
-	idx, _, err := p.Select("Select group:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(groups))
+	for i, group := range groups {
+		rows[i] = []string{fmt.Sprintf("%d", group.ID), group.Name}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select group:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select group: %w", err)
 	}

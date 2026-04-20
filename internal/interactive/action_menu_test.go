@@ -8,8 +8,8 @@ import (
 )
 
 func TestActionMenu_SelectOption(t *testing.T) {
-	// Options: [Exit, Save] → index 1 = Save
-	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+	// Options: [Exit, Save] → raw index 1 = Save (skip auto-adjust: ActionMenu uses OptExit as label)
+	mock := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1, Raw: true})
 
 	key, err := ActionMenu(context.Background(), mock, "What next?", []ActionOption{
 		{Label: OptExit, Key: "exit"},

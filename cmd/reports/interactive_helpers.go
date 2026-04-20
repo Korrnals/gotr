@@ -45,12 +45,22 @@ func resolveCrossProjectReportTemplateIDInteractive(ctx context.Context, cli cli
 
 func selectReportTemplateID(ctx context.Context, reports data.GetReportsResponse) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(reports))
-	for i, r := range reports {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, r.ID, r.Name))
-	}
 
-	idx, _, err := p.Select("Select report template:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(reports))
+	for i, r := range reports {
+		rows[i] = []string{fmt.Sprintf("%d", r.ID), r.Name}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select report template:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select report template: %w", err)
 	}

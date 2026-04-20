@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/snap"
@@ -111,7 +112,11 @@ Examples:
 			}
 
 			output.PrintSuccess(cmd, "Test run updated successfully:")
-			return output.OutputResultWithFlags(cmd, run)
+			if err := output.OutputResultWithFlags(cmd, run); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

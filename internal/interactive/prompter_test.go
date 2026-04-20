@@ -286,6 +286,7 @@ func TestMockPrompter_Select_Branches(t *testing.T) {
 
 func TestSelectProject_WithMockPrompter(t *testing.T) {
 	ctx := context.Background()
+	// Index 1 = second project (auto-adjusted past Browse nav options)
 	mockPrompt := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
 	mockClient := &client.MockClient{
 		GetProjectsFunc: func(ctx context.Context) (data.GetProjectsResponse, error) {

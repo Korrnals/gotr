@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
@@ -86,7 +87,12 @@ func Execute[Req any, Resp any](
 		}
 	}
 
-	return output.OutputResult(cmd, result, "result")
+	if err := output.OutputResult(cmd, result, "result"); err != nil {
+		return err
+	}
+
+	interactive.MutationPostAction(ctx, cmd)
+	return nil
 }
 
 // cmdArgs returns the CLI arguments for the current command (for snap metadata).

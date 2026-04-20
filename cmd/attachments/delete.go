@@ -76,6 +76,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "Attachment %d deleted successfully\n", attachmentID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}

@@ -98,7 +98,11 @@ All flags are optional — only specified fields will be changed.`,
 			}
 
 			ui.Successf(os.Stdout, "Milestone %d updated", milestoneID)
-			return output.OutputResult(cmd, resp, "milestones")
+			if err := output.OutputResult(cmd, resp, "milestones"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

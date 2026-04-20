@@ -88,7 +88,11 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Plan %d updated", planID)
-			return output.OutputResult(cmd, resp, "plans")
+			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
+				return err
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 

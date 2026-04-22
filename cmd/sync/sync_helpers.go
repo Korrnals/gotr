@@ -67,3 +67,51 @@ func resolveMatchField(ctx context.Context, cmd *cobra.Command, kind interactive
 	return selected, nil
 }
 
+// runCoverageGate re-fetches cases from the source and destination suites and
+// reports any source case that has no counterpart in target (per MatchKey).
+// The --verify-coverage flag opts in to this behavior; when not set the gate
+// is a no-op and the function returns nil so the caller may proceed.
+//
+// On gaps the function prints the missing cases (id + title), returns a
+// non-nil error that wraps migration.CoverageReport, and the sync command is
+// expected to propagate it to Cobra so the process exits non-zero — this is
+// the difference between "0 errors, 1547 skipped" and a loud stop.
+func runCoverageGate(ctx context.Context, cmd *cobra.Command, m *migration.Migration, quiet bool) error {
+	enabled, _ := cmd.Flags().GetBool("verify-coverage")
+	if !enabled {
+		return nil
+	}
+
+	report, err := runSyncStatus(ctx, "Verifying coverage (post-import)...", quiet, func(ctx context.Context) (migration.CoverageReport, error) {
+		srcCases, tgtCases, ferr := m.FetchCasesData(ctx)
+		if ferr != nil {
+			return migration.CoverageReport{}, ferr
+		}
+		return m.VerifyCasesCoverage(srcCases, tgtCases), nil
+	})
+	if err != nil {
+		return fmt.Errorf("runCoverageGate: %w", err)
+	}
+
+	if len(report.Missing) == 0 {
+		ui.Successf(os.Stdout, "Coverage OK: %d/%d source cases matched in target", report.Matched, report.Source)
+		return nil
+	}
+
+	ui.Error(os.Stdout, fmt.Sprintf("Coverage gap: %d/%d source cases missing in target (%.1f%% coverage)",
+		len(report.Missing), report.Source, report.Coverage*100))
+	limit := len(report.Missing)
+	if limit > 50 {
+		limit = 50
+	}
+	for _, miss := range report.Missing[:limit] {
+		fmt.Fprintf(os.Stdout, "  - [%d] %q (src_section=%d, dst_section=%d)\n",
+			miss.SrcID, miss.Title, miss.SrcSectionID, miss.DstSectionID)
+	}
+	if len(report.Missing) > limit {
+		fmt.Fprintf(os.Stdout, "  ... and %d more (see migration log)\n", len(report.Missing)-limit)
+	}
+	return fmt.Errorf("coverage gap: %d source cases missing in target", len(report.Missing))
+}
+
+

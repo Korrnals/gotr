@@ -258,6 +258,13 @@ Examples:
 			filterStatsToReport("cases", m.LastFilterStats(), int64(len(createdIDs)), int64(len(importErrors))),
 		})
 
+		if err := runCoverageGate(ctx, cmd, m, quiet); err != nil {
+			// Coverage gap is a hard failure, but the snapshot and logs have
+			// already been persisted — surface the error to Cobra so the
+			// process exits non-zero without overwriting the report.
+			return fmt.Errorf("casesCmd.func: %w", err)
+		}
+
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},

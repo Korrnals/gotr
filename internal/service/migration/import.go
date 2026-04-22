@@ -56,6 +56,7 @@ func (m *Migration) ImportSharedSteps(ctx context.Context, filtered data.GetShar
 			created, err := m.Client.AddSharedStep(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
+				m.failedImports++
 				m.logger.Errorw("Error importing shared step", "title", s.Title, "error", err)
 				mu.Unlock()
 				return
@@ -105,6 +106,7 @@ func (m *Migration) ImportSuites(ctx context.Context, filtered data.GetSuitesRes
 			created, err := m.Client.AddSuite(ctx, m.dstProject, req)
 			if err != nil {
 				mu.Lock()
+				m.failedImports++
 				m.logger.Errorw("Error importing suite", "name", s.Name, "error", err)
 				mu.Unlock()
 				return

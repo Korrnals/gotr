@@ -35,13 +35,13 @@ func TestWave7_CasesMutationTargets(t *testing.T) {
 			case "/index.php?/api/v2/update_cases/31":
 				w.WriteHeader(http.StatusOK)
 				_ = json.NewEncoder(w).Encode(data.GetCasesResponse{{ID: 1}})
-			case "/index.php?/api/v2/delete_case/41&soft=1":
+			case "/index.php?/api/v2/delete_case/41":
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte("{}"))
-			case "/index.php?/api/v2/delete_case/42&soft=1":
+			case "/index.php?/api/v2/delete_case/42":
 				w.WriteHeader(http.StatusBadRequest)
 				_, _ = w.Write([]byte("delete err"))
-			case "/index.php?/api/v2/delete_cases/51&soft=1":
+			case "/index.php?/api/v2/delete_cases/51":
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte("{}"))
 			case "/index.php?/api/v2/copy_cases_to_section/61":
@@ -299,8 +299,8 @@ func TestWave7_DeleteTargetsAcrossModules(t *testing.T) {
 				"/index.php?/api/v2/delete_plan_entry/1/entry-1",
 				"/index.php?/api/v2/delete_project/1",
 				"/index.php?/api/v2/delete_run/1",
-				"/index.php?/api/v2/delete_section/1&soft=1",
-				"/index.php?/api/v2/delete_suite/1&soft=1":
+				"/index.php?/api/v2/delete_section/1",
+				"/index.php?/api/v2/delete_suite/1":
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte("{}"))
 			case "/index.php?/api/v2/delete_attachment/2",
@@ -314,8 +314,8 @@ func TestWave7_DeleteTargetsAcrossModules(t *testing.T) {
 				"/index.php?/api/v2/delete_plan_entry/2/entry-2",
 				"/index.php?/api/v2/delete_project/2",
 				"/index.php?/api/v2/delete_run/2",
-				"/index.php?/api/v2/delete_section/2&soft=1",
-				"/index.php?/api/v2/delete_suite/2&soft=1":
+				"/index.php?/api/v2/delete_section/2",
+				"/index.php?/api/v2/delete_suite/2":
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte("delete failed"))
 			default:

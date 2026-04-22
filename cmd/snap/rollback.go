@@ -29,10 +29,6 @@ If snapshot_id is omitted, shows an interactive picker.
 Flags:
   --dry-run       Preview changes without applying them (shows diff table)
   --entity-ids    Limit rollback to specific entity IDs (comma-separated)
-  --permanent     Permanently delete entities instead of moving to trash (admin-only).
-                  By default rollback uses soft-delete (soft=1), so entities can be
-                  restored from TestRail UI. Use --permanent only if you need hard
-                  delete and your account has the corresponding permission.
 
 Partial failures are resumable: re-run the same rollback to retry failed entities.
 
@@ -69,7 +65,6 @@ Subcommands:
 			// Parse options.
 			opts := snaplib.RollbackOpts{}
 			opts.DryRun, _ = cmd.Flags().GetBool("dry-run")
-			opts.Permanent, _ = cmd.Flags().GetBool("permanent")
 
 			if raw, _ := cmd.Flags().GetString("entity-ids"); raw != "" {
 				ids, err := parseEntityIDs(raw)
@@ -104,27 +99,6 @@ Subcommands:
 
 				if len(preview.Preview) > 0 {
 					printDiffPreview(cmd, preview)
-					// If user did not pass --permanent, offer a choice between
-					// soft-delete (recommended) and permanent delete. We only ask
-					// for rollbacks that actually invoke a server-side delete
-					// (undo-add and sync rollbacks); for update/delete rollbacks
-					// the Permanent flag is unused, so the prompt would only
-					// confuse the user.
-					if !opts.Permanent && rollbackInvolvesDelete(entry.Operation) {
-						modeIdx, _, selErr := prompter.Select(
-							"Delete mode:",
-							[]string{
-								"Move to trash (recommended, reversible from TestRail UI)",
-								"Permanently delete (admin-only, irreversible)",
-							},
-						)
-						if selErr != nil {
-							return wrapInterrupt(selErr)
-						}
-						if modeIdx == 1 {
-							opts.Permanent = true
-						}
-					}
 					confirmed, err := prompter.Confirm("Apply this rollback?", true)
 					if err != nil {
 						return wrapInterrupt(err)
@@ -156,7 +130,6 @@ Subcommands:
 
 	cmd.Flags().Bool("dry-run", false, "Preview changes without applying them")
 	cmd.Flags().String("entity-ids", "", "Limit rollback to specific entity IDs (comma-separated)")
-	cmd.Flags().Bool("permanent", false, "Permanently delete entities instead of soft-delete (admin-only)")
 
 	cmd.AddCommand(newRollbackListCmd(getClient))
 	cmd.AddCommand(newRollbackUndoCmd(getClient))
@@ -222,19 +195,4 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
-}
-
-// rollbackInvolvesDelete reports whether the rollback of this operation will
-// perform a server-side delete (and therefore honours RollbackOpts.Permanent).
-// Undo-add deletes the re-created entity; sync rollbacks delete migrated
-// entities. Update/delete rollbacks restore or re-create — no delete.
-func rollbackInvolvesDelete(op snaplib.Operation) bool {
-	switch op {
-	case snaplib.OpAdd, snaplib.OpCopy, snaplib.OpBulk,
-		snaplib.OpSyncFull, snaplib.OpSyncCases, snaplib.OpSyncSections,
-		snaplib.OpSyncSharedSteps, snaplib.OpSyncSuites:
-		return true
-	default:
-		return false
-	}
 }

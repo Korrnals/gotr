@@ -28,15 +28,18 @@ type RollbackAPI interface {
 	UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
 	AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	DeleteCase(ctx context.Context, caseID int64) error
+	DeleteCasePermanent(ctx context.Context, caseID int64) error
 
 	// Section operations.
 	GetSection(ctx context.Context, sectionID int64) (*data.Section, error)
 	AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
 	DeleteSection(ctx context.Context, sectionID int64) error
+	DeleteSectionPermanent(ctx context.Context, sectionID int64) error
 
 	// Suite operations.
 	AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error)
 	DeleteSuite(ctx context.Context, suiteID int64) error
+	DeleteSuitePermanent(ctx context.Context, suiteID int64) error
 
 	// Shared step operations.
 	DeleteSharedStep(ctx context.Context, stepID int64, keepInCases int) error
@@ -87,6 +90,35 @@ type RollbackOpts struct {
 	EntityIDs []int64
 	// DryRun previews changes without applying them.
 	DryRun bool
+	// Permanent — when true, delete entities permanently (requires elevated
+	// TestRail permissions). When false (default), entities are soft-deleted
+	// (moved to trash), which matches the safer TestRail UI default and does
+	// not require the "permanently delete" permission.
+	Permanent bool
+}
+
+// deleteCase invokes the configured soft/permanent delete for a case.
+func (o RollbackOpts) deleteCase(ctx context.Context, api RollbackAPI, id int64) error {
+	if o.Permanent {
+		return api.DeleteCasePermanent(ctx, id)
+	}
+	return api.DeleteCase(ctx, id)
+}
+
+// deleteSection invokes the configured soft/permanent delete for a section.
+func (o RollbackOpts) deleteSection(ctx context.Context, api RollbackAPI, id int64) error {
+	if o.Permanent {
+		return api.DeleteSectionPermanent(ctx, id)
+	}
+	return api.DeleteSection(ctx, id)
+}
+
+// deleteSuite invokes the configured soft/permanent delete for a suite.
+func (o RollbackOpts) deleteSuite(ctx context.Context, api RollbackAPI, id int64) error {
+	if o.Permanent {
+		return api.DeleteSuitePermanent(ctx, id)
+	}
+	return api.DeleteSuite(ctx, id)
 }
 
 // RollbackResult holds the outcome of a rollback operation.
@@ -352,7 +384,7 @@ func rollbackCaseAdd(ctx context.Context, api CasesAPI, _ *Store, meta *Meta, re
 		return nil
 	}
 
-	if err := api.DeleteCase(ctx, caseID); err != nil {
+	if err := opt.deleteCase(ctx, api, caseID); err != nil {
 		if isGoneError(err) {
 			entry.Status = RBRestored
 			result.Message = fmt.Sprintf("Case %d already deleted, skipping (undo add)", caseID)
@@ -508,7 +540,7 @@ func rollbackSectionAdd(ctx context.Context, api RollbackAPI, meta *Meta, result
 		return nil
 	}
 
-	if err := api.DeleteSection(ctx, sectionID); err != nil {
+	if err := opt.deleteSection(ctx, api, sectionID); err != nil {
 		if isGoneError(err) {
 			entry.Status = RBRestored
 			result.Message = fmt.Sprintf("Section %d already deleted (undo %s)", sectionID, meta.Operation)
@@ -663,7 +695,7 @@ func rollbackSimpleEntity(ctx context.Context, api RollbackAPI, _ *Store, meta *
 		return nil
 	}
 
-	deleteFn, err := resolveDeleteFn(api, meta.EntityType)
+	deleteFn, err := resolveDeleteFn(api, meta.EntityType, opt.Permanent)
 	if err != nil {
 		return fmt.Errorf("rollbackSimpleEntity: %w", err)
 	}
@@ -688,7 +720,9 @@ func rollbackSimpleEntity(ctx context.Context, api RollbackAPI, _ *Store, meta *
 type deleteFn func(ctx context.Context, id int64) error
 
 // resolveDeleteFn returns the appropriate delete function for the entity type.
-func resolveDeleteFn(api RollbackAPI, entityType string) (deleteFn, error) {
+// For entity types that support TestRail's soft/permanent distinction (suite),
+// the permanent flag selects the underlying API method.
+func resolveDeleteFn(api RollbackAPI, entityType string, permanent bool) (deleteFn, error) {
 	switch entityType {
 	case "run":
 		return api.DeleteRun, nil
@@ -697,6 +731,9 @@ func resolveDeleteFn(api RollbackAPI, entityType string) (deleteFn, error) {
 	case "plan":
 		return api.DeletePlan, nil
 	case "suite":
+		if permanent {
+			return api.DeleteSuitePermanent, nil
+		}
 		return api.DeleteSuite, nil
 	case "group":
 		return api.DeleteGroup, nil
@@ -947,7 +984,7 @@ func rollbackSync(ctx context.Context, api CasesAPI, store *Store, meta *Meta, r
 				continue
 			}
 
-			err := deleteSyncEntity(ctx, api, typ, e.TargetID)
+			err := deleteSyncEntity(ctx, api, typ, e.TargetID, opt.Permanent)
 			if err != nil {
 				entry.Status = RBFailed
 				entry.Error = err.Error()
@@ -968,15 +1005,26 @@ func rollbackSync(ctx context.Context, api CasesAPI, store *Store, meta *Meta, r
 }
 
 // deleteSyncEntity performs deletion based on entity type.
-func deleteSyncEntity(ctx context.Context, api CasesAPI, entityType string, targetID int64) error {
+// The permanent flag selects between soft (trash) and permanent deletion for
+// entity kinds where TestRail distinguishes between them.
+func deleteSyncEntity(ctx context.Context, api CasesAPI, entityType string, targetID int64, permanent bool) error {
 	switch entityType {
 	case "case":
+		if permanent {
+			return api.DeleteCasePermanent(ctx, targetID)
+		}
 		return api.DeleteCase(ctx, targetID)
 	case "section":
+		if permanent {
+			return api.DeleteSectionPermanent(ctx, targetID)
+		}
 		return api.DeleteSection(ctx, targetID)
 	case "shared_step":
 		return api.DeleteSharedStep(ctx, targetID, 0)
 	case "suite":
+		if permanent {
+			return api.DeleteSuitePermanent(ctx, targetID)
+		}
 		return api.DeleteSuite(ctx, targetID)
 	default:
 		return fmt.Errorf("unknown sync entity type: %q", entityType)

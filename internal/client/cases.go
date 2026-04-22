@@ -254,11 +254,25 @@ func (c *HTTPClient) UpdateCases(ctx context.Context, suiteID int64, req *data.U
 	return &result, nil
 }
 
-// DeleteCase deletes a case by ID.
-// This action is irreversible.
+// DeleteCase moves a case to the trash (soft delete, reversible).
+// This is the safe default that matches the TestRail UI behavior and does not
+// require the "permanently delete test cases" permission.
+// Use DeleteCasePermanent for admin-level permanent removal.
 func (c *HTTPClient) DeleteCase(ctx context.Context, caseID int64) error {
+	return c.deleteCaseInternal(ctx, caseID, true)
+}
+
+// DeleteCasePermanent permanently removes a case (irreversible).
+// Requires the "permanently delete test cases" TestRail permission; otherwise
+// the API returns 403. Prefer DeleteCase for soft-delete.
+func (c *HTTPClient) DeleteCasePermanent(ctx context.Context, caseID int64) error {
+	return c.deleteCaseInternal(ctx, caseID, false)
+}
+
+func (c *HTTPClient) deleteCaseInternal(ctx context.Context, caseID int64, soft bool) error {
 	endpoint := fmt.Sprintf("delete_case/%d", caseID)
-	resp, err := c.Post(ctx, endpoint, nil, nil)
+	query := map[string]string{"soft": softFlagValue(soft)}
+	resp, err := c.Post(ctx, endpoint, nil, query)
 	if err != nil {
 		return fmt.Errorf("request error DeleteCase %d: %w", caseID, err)
 	}
@@ -267,21 +281,42 @@ func (c *HTTPClient) DeleteCase(ctx context.Context, caseID int64) error {
 	return nil
 }
 
-// DeleteCases performs a bulk deletion of cases in a suite.
+// DeleteCases performs a bulk soft delete of cases in a suite (moves to trash).
+// Use DeleteCasesPermanent for admin-level permanent removal.
 func (c *HTTPClient) DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
+	return c.deleteCasesInternal(ctx, suiteID, req, true)
+}
+
+// DeleteCasesPermanent performs a bulk permanent deletion of cases (irreversible).
+// Requires elevated TestRail permissions.
+func (c *HTTPClient) DeleteCasesPermanent(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
+	return c.deleteCasesInternal(ctx, suiteID, req, false)
+}
+
+func (c *HTTPClient) deleteCasesInternal(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest, soft bool) error {
 	bodyBytes, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("failed to marshal request: %w", err)
 	}
 
 	endpoint := fmt.Sprintf("delete_cases/%d", suiteID)
-	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), nil)
+	query := map[string]string{"soft": softFlagValue(soft)}
+	resp, err := c.Post(ctx, endpoint, bytes.NewReader(bodyBytes), query)
 	if err != nil {
 		return fmt.Errorf("request error DeleteCases in suite %d: %w", suiteID, err)
 	}
 	defer resp.Body.Close()
 
 	return nil
+}
+
+// softFlagValue maps a boolean soft-delete preference to the TestRail
+// "soft" query parameter value (1 = trash, 0 = permanent).
+func softFlagValue(soft bool) string {
+	if soft {
+		return "1"
+	}
+	return "0"
 }
 
 // GetCaseTypes fetches all available case types.

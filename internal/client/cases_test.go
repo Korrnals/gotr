@@ -263,7 +263,7 @@ func TestDeleteCase(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
-				expectedPath := fmt.Sprintf("/index.php?/api/v2/delete_case/%d", tt.caseID)
+				expectedPath := fmt.Sprintf("/index.php?/api/v2/delete_case/%d&soft=1", tt.caseID)
 				assert.Equal(t, expectedPath, r.URL.String())
 
 				w.WriteHeader(tt.mockStatus)
@@ -780,7 +780,7 @@ func TestBulkCaseAndMetaEndpoints(t *testing.T) {
 	t.Run("delete cases success", func(t *testing.T) {
 		handler := func(w http.ResponseWriter, r *http.Request) {
 			assert.Equal(t, "POST", r.Method)
-			assert.Equal(t, "/index.php?/api/v2/delete_cases/90", r.URL.String())
+			assert.Equal(t, "/index.php?/api/v2/delete_cases/90&soft=1", r.URL.String())
 			w.WriteHeader(http.StatusOK)
 		}
 
@@ -1208,10 +1208,10 @@ func TestCaseDeleteCopyMove_EdgeSuccessBranches(t *testing.T) {
 	client, server := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
 		switch r.URL.String() {
-		case "/index.php?/api/v2/delete_case/301":
+		case "/index.php?/api/v2/delete_case/301&soft=1":
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{}`))
-		case "/index.php?/api/v2/delete_cases/302":
+		case "/index.php?/api/v2/delete_cases/302&soft=1":
 			var req data.DeleteCasesRequest
 			_ = json.NewDecoder(r.Body).Decode(&req)
 			assert.Len(t, req.CaseIDs, 0)

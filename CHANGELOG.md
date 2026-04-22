@@ -9,6 +9,28 @@
 
 ## [Unreleased]
 
+### Fixed
+
+#### Snap rollback: soft-delete by default (prevents 403 Forbidden on non-admin accounts)
+
+- **`internal/client`** — `DeleteCase`, `DeleteCases`, `DeleteSection`, `DeleteSuite` now
+  default to soft-delete (`?soft=1`), moving entities to TestRail's trash instead of
+  permanently removing them. This matches TestRail's Web UI behaviour and fixes
+  `403 Forbidden: "you are not allowed to permanently delete test cases"` errors that
+  broke `gotr snap rollback` on accounts without admin permissions.
+- **`internal/client`** — new admin-only variants: `DeleteCasePermanent`,
+  `DeleteCasesPermanent`, `DeleteSectionPermanent`, `DeleteSuitePermanent` send
+  `?soft=0` for explicit permanent deletion.
+- **`gotr snap rollback`** — new `--permanent` flag opts into hard delete (admin-only).
+  Interactive mode adds a "Delete mode" prompt: *Move to trash (recommended)* /
+  *Permanently delete (admin-only, irreversible)*. Applies to rollbacks that perform
+  a server-side delete (undo-add, sync rollback). Update/delete rollbacks are
+  unaffected.
+- `internal/client.CasesAPI`, `SuitesAPI`, `SectionsAPI` interfaces extended with
+  the `*Permanent` methods; `MockClient` grows matching fields.
+- `internal/snap.RollbackOpts.Permanent` plumbs the flag through the rollback engine;
+  `resolveDeleteFn` / `deleteSyncEntity` dispatch to the right endpoint.
+
 ---
 
 ## [3.1.0] - 2026-04-19

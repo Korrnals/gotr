@@ -64,13 +64,21 @@ func confirmSnapshot(ctx context.Context, cmd *cobra.Command) snapshotDecision {
 }
 
 // printFilterSummary prints a human-readable summary of the filter operation.
+// After the multiset matcher (match.go + Bucket) the stats carry two extra
+// fields compared to the legacy Duplicates counter: AlreadyInTarget (source
+// rows matched 1:1 to a target row) and SrcCollapsed (source rows that share
+// a MatchKey with another source row — a diagnostic signal, these will still
+// be imported as separate rows in the target).
 func printFilterSummary(entityName string, stats migration.FilterStats) {
 	w := os.Stdout
 	ui.Infof(w, "─── Filter result: %s ───", entityName)
-	ui.Infof(w, "  Source:     %d (total in source)", stats.Source)
-	ui.Infof(w, "  Target:     %d (total in destination)", stats.Target)
-	ui.Infof(w, "  Matched:   %d (already exist in destination)", stats.Duplicates)
-	ui.Infof(w, "  New:        %d (will be imported)", stats.New)
+	ui.Infof(w, "  Source:            %d (total in source)", stats.Source)
+	ui.Infof(w, "  Target:            %d (total in destination)", stats.Target)
+	ui.Infof(w, "  Already in target: %d (matched 1:1, will be skipped)", stats.AlreadyInTarget)
+	if stats.SrcCollapsed > 0 {
+		ui.Infof(w, "  Source duplicates: %d (same match key — imported as distinct rows)", stats.SrcCollapsed)
+	}
+	ui.Infof(w, "  New:               %d (will be imported)", stats.New)
 }
 
 // printPreConfirmSummary prints a summary of migration parameters before final confirmation.

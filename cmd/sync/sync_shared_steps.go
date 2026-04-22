@@ -44,7 +44,10 @@ Examples:
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
-		compareField, _ := cmd.Flags().GetString("compare-field")
+		compareField, err := resolveMatchField(ctx, cmd, interactive.MatchFieldSharedSteps)
+		if err != nil {
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
+		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		quiet, _ := cmd.Flags().GetBool("quiet")
@@ -53,7 +56,6 @@ Examples:
 		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
-		var err error
 
 		// Interactive source project selection
 		if srcProject == 0 {

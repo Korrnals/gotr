@@ -2,11 +2,14 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"os"
 
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/service/migration"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/spf13/cobra"
 )
 
 // newMigration is a test seam; defaults to migration.NewMigration.
@@ -39,3 +42,28 @@ func buildSyncData(created []snap.SyncCreatedEntity, srcProject, dstProject, src
 	}
 	return sd
 }
+
+// resolveMatchField returns the compare field to feed into the migration
+// layer. Priority: (1) explicit --compare-field flag from the user, (2)
+// interactive SelectMatchField prompt when running in an interactive session,
+// (3) the kind's default ("Title" / "Name").
+//
+// The value is normalized to the canonical case-insensitive form expected
+// by migration.fieldValue's reflection.
+func resolveMatchField(ctx context.Context, cmd *cobra.Command, kind interactive.MatchFieldKind) (string, error) {
+	raw, _ := cmd.Flags().GetString("compare-field")
+	// User set the flag explicitly — honor it as-is (normalized).
+	if cmd.Flags().Changed("compare-field") {
+		return interactive.NormalizeMatchField(kind, raw), nil
+	}
+
+	// Flag is at its default value — try interactive selection.
+	p := interactive.PrompterFromContext(ctx)
+	defaultField := interactive.NormalizeMatchField(kind, raw)
+	selected, err := interactive.SelectMatchField(ctx, p, kind, defaultField)
+	if err != nil {
+		return "", fmt.Errorf("resolveMatchField: %w", err)
+	}
+	return selected, nil
+}
+

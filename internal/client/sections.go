@@ -181,23 +181,10 @@ func (c *HTTPClient) UpdateSection(ctx context.Context, sectionID int64, req *da
 	return &section, nil
 }
 
-// DeleteSection soft-deletes a section (moves to trash, reversible).
-// Does not require the "permanently delete" permission.
-// Use DeleteSectionPermanent for admin-level permanent removal.
+// DeleteSection deletes a section (irreversible, deletes cases/results).
 func (c *HTTPClient) DeleteSection(ctx context.Context, sectionID int64) error {
-	return c.deleteSectionInternal(ctx, sectionID, true)
-}
-
-// DeleteSectionPermanent permanently removes a section and all its cases
-// (irreversible). Requires elevated TestRail permissions.
-func (c *HTTPClient) DeleteSectionPermanent(ctx context.Context, sectionID int64) error {
-	return c.deleteSectionInternal(ctx, sectionID, false)
-}
-
-func (c *HTTPClient) deleteSectionInternal(ctx context.Context, sectionID int64, soft bool) error {
 	endpoint := fmt.Sprintf("delete_section/%d", sectionID)
-	query := map[string]string{"soft": softFlagValue(soft)}
-	resp, err := c.Post(ctx, endpoint, nil, query)
+	resp, err := c.Post(ctx, endpoint, nil, nil)
 	if err != nil {
 		return fmt.Errorf("request error DeleteSection %d: %w", sectionID, err)
 	}

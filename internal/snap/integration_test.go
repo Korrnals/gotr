@@ -153,10 +153,6 @@ func (a *statefulCasesAPI) DeleteCase(_ context.Context, caseID int64) error {
 	return nil
 }
 
-func (a *statefulCasesAPI) DeleteCasePermanent(ctx context.Context, caseID int64) error {
-	return a.DeleteCase(ctx, caseID)
-}
-
 func (a *statefulCasesAPI) GetSection(_ context.Context, sectionID int64) (*data.Section, error) {
 	a.log("GetSection", sectionID)
 	return &data.Section{ID: sectionID, Name: fmt.Sprintf("Section %d", sectionID)}, nil
@@ -172,10 +168,6 @@ func (a *statefulCasesAPI) DeleteSection(_ context.Context, sectionID int64) err
 	return nil
 }
 
-func (a *statefulCasesAPI) DeleteSectionPermanent(ctx context.Context, sectionID int64) error {
-	return a.DeleteSection(ctx, sectionID)
-}
-
 func (a *statefulCasesAPI) DeleteSharedStep(_ context.Context, stepID int64, _ int) error {
 	a.log("DeleteSharedStep", stepID)
 	return nil
@@ -184,10 +176,6 @@ func (a *statefulCasesAPI) DeleteSharedStep(_ context.Context, stepID int64, _ i
 func (a *statefulCasesAPI) DeleteSuite(_ context.Context, suiteID int64) error {
 	a.log("DeleteSuite", suiteID)
 	return nil
-}
-
-func (a *statefulCasesAPI) DeleteSuitePermanent(ctx context.Context, suiteID int64) error {
-	return a.DeleteSuite(ctx, suiteID)
 }
 
 // --- Extended RollbackAPI stubs ---

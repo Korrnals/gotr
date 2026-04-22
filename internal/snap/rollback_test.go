@@ -88,9 +88,6 @@ func (m *mockCasesAPI) DeleteCase(ctx context.Context, caseID int64) error {
 	}
 	return fmt.Errorf("DeleteCase not mocked")
 }
-func (m *mockCasesAPI) DeleteCasePermanent(ctx context.Context, caseID int64) error {
-	return m.DeleteCase(ctx, caseID)
-}
 func (m *mockCasesAPI) GetSection(ctx context.Context, sectionID int64) (*data.Section, error) {
 	if m.getSectionFunc != nil {
 		return m.getSectionFunc(ctx, sectionID)
@@ -109,9 +106,6 @@ func (m *mockCasesAPI) DeleteSection(ctx context.Context, sectionID int64) error
 	}
 	return nil
 }
-func (m *mockCasesAPI) DeleteSectionPermanent(ctx context.Context, sectionID int64) error {
-	return m.DeleteSection(ctx, sectionID)
-}
 func (m *mockCasesAPI) DeleteSharedStep(ctx context.Context, stepID int64, keep int) error {
 	if m.deleteSharedFunc != nil {
 		return m.deleteSharedFunc(ctx, stepID, keep)
@@ -123,9 +117,6 @@ func (m *mockCasesAPI) DeleteSuite(ctx context.Context, suiteID int64) error {
 		return m.deleteSuiteFunc(ctx, suiteID)
 	}
 	return nil
-}
-func (m *mockCasesAPI) DeleteSuitePermanent(ctx context.Context, suiteID int64) error {
-	return m.DeleteSuite(ctx, suiteID)
 }
 func (m *mockCasesAPI) AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error) {
 	if m.addSuiteFunc != nil {

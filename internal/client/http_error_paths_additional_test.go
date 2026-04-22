@@ -366,7 +366,7 @@ func TestWave6C_CasesExtendedMilestonesAndPaginatorTargets(t *testing.T) {
 func TestWave6D_CasesAndExtendedResidualBranches(t *testing.T) {
 	t.Run("DeleteCases non-OK", func(t *testing.T) {
 		c, s := mockClient(t, func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.String() != "/index.php?/api/v2/delete_cases/55&soft=1" {
+			if r.URL.String() != "/index.php?/api/v2/delete_cases/55" {
 				t.Fatalf("unexpected URL: %s", r.URL.String())
 			}
 			w.WriteHeader(http.StatusBadRequest)

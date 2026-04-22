@@ -208,7 +208,7 @@ func TestDeleteSuite(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
-				expectedPath := fmt.Sprintf("/index.php?/api/v2/delete_suite/%d&soft=1", tt.suiteID)
+				expectedPath := fmt.Sprintf("/index.php?/api/v2/delete_suite/%d", tt.suiteID)
 				assert.Equal(t, expectedPath, r.URL.String())
 
 				w.WriteHeader(tt.mockStatus)

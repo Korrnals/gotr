@@ -2,7 +2,9 @@ package snap
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -54,6 +56,10 @@ func LoadManifest(store *Store) (*Manifest, error) {
 	defer f.Close()
 
 	if err := json.NewDecoder(f).Decode(m); err != nil {
+		if errors.Is(err, io.EOF) {
+			m.Entries = []ManifestEntry{}
+			return m, nil
+		}
 		return nil, fmt.Errorf("snap: decode manifest: %w", err)
 	}
 	return m, nil

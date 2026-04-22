@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 
@@ -17,6 +19,22 @@ import (
 
 // setupAddTest sets up the test environment for the add command
 func setupAddTest(t *testing.T, mock *client.MockClient) *cobra.Command {
+	if mock.GetSectionFunc == nil {
+		mock.GetSectionFunc = func(ctx context.Context, sectionID int64) (*data.Section, error) {
+			return &data.Section{ID: sectionID, SuiteID: 11}, nil
+		}
+	}
+	if mock.GetSuiteFunc == nil {
+		mock.GetSuiteFunc = func(ctx context.Context, suiteID int64) (*data.Suite, error) {
+			return &data.Suite{ID: suiteID, ProjectID: 7}, nil
+		}
+	}
+	if mock.GetCaseFieldsFunc == nil {
+		mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+			return nil, nil
+		}
+	}
+
 	// Create a new command for the test
 	cmd := &cobra.Command{
 		Use:   addCmd.Use,
@@ -191,6 +209,9 @@ func TestAddSharedStepInteractive_Success(t *testing.T) {
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			assert.Equal(t, int64(15), projectID)
 			assert.Equal(t, "Shared A", req.Title)
+			if assert.Len(t, req.CustomStepsSeparated, 1) {
+				assert.Equal(t, "Shared A", req.CustomStepsSeparated[0].Content)
+			}
 			return &data.SharedStep{ID: 77, Title: req.Title}, nil
 		},
 	}
@@ -337,11 +358,17 @@ func TestAddSuiteInteractive_Success(t *testing.T) {
 
 func TestAddCaseInteractive_Success(t *testing.T) {
 	mock := &client.MockClient{
+		GetCaseFieldsFunc: func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+			return autotestOnCaseFields(7, "1", true), nil
+		},
 		AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
 			assert.Equal(t, int64(20), sectionID)
 			assert.Equal(t, "Case Ok", req.Title)
 			assert.Equal(t, int64(2), req.TypeID)
 			assert.Equal(t, int64(3), req.PriorityID)
+			if assert.NotNil(t, req.CustomAutotestOn) {
+				assert.Equal(t, int64(1), *req.CustomAutotestOn)
+			}
 			assert.Equal(t, "REF-2", req.Refs)
 			return &data.Case{ID: 901, Title: req.Title}, nil
 		},
@@ -1908,6 +1935,37 @@ err := addCase(&client.MockClient{}, cmd, 1, nil)
 assert.ErrorContains(t, err, "--title is required")
 }
 
+func TestAddCase_DefaultCustomAutotestOn(t *testing.T) {
+called := false
+mock := &client.MockClient{
+GetCaseFieldsFunc: func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+return autotestOnCaseFields(7, "1", true), nil
+},
+AddCaseFunc: func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+called = true
+if assert.NotNil(t, req.CustomAutotestOn) {
+assert.Equal(t, int64(1), *req.CustomAutotestOn)
+}
+return &data.Case{ID: 101, Title: req.Title}, nil
+},
+}
+cmd := setupAddTest(t, mock)
+require.NoError(t, cmd.Flags().Set("title", "Case With Default"))
+
+err := addCase(mock, cmd, 1, nil)
+assert.NoError(t, err)
+assert.True(t, called)
+}
+
+func autotestOnCaseFields(projectID int64, defaultValue string, required bool) data.GetCaseFieldsResponse {
+	payload := fmt.Sprintf(`[{"name":"custom_autotest_on","system_name":"custom_autotest_on","configs":[{"context":{"is_global":false,"project_ids":[%d]},"id":"cfg","options":{"default_value":%q,"is_required":%t}}]}]`, projectID, defaultValue, required)
+	var fields data.GetCaseFieldsResponse
+	if err := json.Unmarshal([]byte(payload), &fields); err != nil {
+		panic(err)
+	}
+	return fields
+}
+
 func TestAddRun_NameRequired(t *testing.T) {
 cmd := setupAddTest(t, &client.MockClient{})
 err := addRun(&client.MockClient{}, cmd, 1, nil)
@@ -1935,6 +1993,25 @@ func TestAddResult_StatusRequired(t *testing.T) {
 cmd := setupAddTest(t, &client.MockClient{})
 err := addResult(&client.MockClient{}, cmd, 1, nil)
 assert.ErrorContains(t, err, "--status-id is required")
+}
+
+func TestAddSharedStep_DefaultSeparatedSteps(t *testing.T) {
+called := false
+mock := &client.MockClient{
+AddSharedStepFunc: func(ctx context.Context, projectID int64, req *data.AddSharedStepRequest) (*data.SharedStep, error) {
+called = true
+if assert.Len(t, req.CustomStepsSeparated, 1) {
+assert.Equal(t, req.Title, req.CustomStepsSeparated[0].Content)
+}
+return &data.SharedStep{ID: 102, Title: req.Title}, nil
+},
+}
+cmd := setupAddTest(t, mock)
+require.NoError(t, cmd.Flags().Set("title", "Shared default"))
+
+err := addSharedStep(mock, cmd, 1, nil)
+assert.NoError(t, err)
+assert.True(t, called)
 }
 
 func TestResolveAddParentID_Case_NoSuites(t *testing.T) {

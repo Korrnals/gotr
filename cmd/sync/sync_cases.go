@@ -57,6 +57,7 @@ Examples:
 		compareField, _ := cmd.Flags().GetString("compare-field")
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		quiet, _ := cmd.Flags().GetBool("quiet")
+		autoApprove, _ := cmd.Flags().GetBool("approve")
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
 		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
@@ -185,14 +186,16 @@ Examples:
 		sd := confirmSnapshot(ctx, cmd)
 		printPreConfirmSummary(len(filtered), "cases", sd)
 
-		ok, err := p.Confirm("Continue?", false)
-		if err != nil {
-			return fmt.Errorf("casesCmd.func: %w", err)
-		}
-		if !ok {
-			ui.Canceled(os.Stdout)
-			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
-			return nil
+		if !autoApprove {
+			ok, err := p.Confirm("Continue?", false)
+			if err != nil {
+				return fmt.Errorf("casesCmd.func: %w", err)
+			}
+			if !ok {
+				ui.Canceled(os.Stdout)
+				saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
+				return nil
+			}
 		}
 
 		op = newSyncOperation("Importing cases", quiet)

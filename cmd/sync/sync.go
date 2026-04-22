@@ -112,6 +112,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	casesCmd.Flags().Int64("dst-project", 0, "Destination project ID (copy to)")
 	casesCmd.Flags().Int64("dst-suite", 0, "Destination suite ID")
 	casesCmd.Flags().String("compare-field", "title", "Field for duplicate detection")
+	casesCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
 	casesCmd.Flags().String("mapping-file", "", "Mapping file for shared_step_id replacement")
 	casesCmd.Flags().Bool("dry-run", false, "Preview without importing")
 	casesCmd.Flags().String("output", "", "Additional JSON file with results")
@@ -159,4 +160,5 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	fullCmd.Flags().Bool("save-filtered", false, "Save filtered list automatically")
 	fullCmd.Flags().Bool("dry-run", false, "Preview without importing")
 	snap.RegisterFlags(fullCmd)
+
 }

@@ -23,26 +23,19 @@ func (m *Migration) LastFilterStats() FilterStats {
 }
 
 // FilterSharedSteps filters shared steps by usage in suite and duplicates in target.
-// Candidates are shared steps NOT used in the source suite (by CaseIDs).
+// Candidates are shared steps whose IDs appear in usedStepIDs (collected from case steps).
 // Duplicates are added to the mapping with status "existing".
 // New (non-duplicate) steps are returned for import.
-func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse, sourceCaseIDs map[int64]struct{}) (filtered data.GetSharedStepsResponse, err error) {
+func (m *Migration) FilterSharedSteps(source, target data.GetSharedStepsResponse, usedStepIDs map[int64]struct{}) (filtered data.GetSharedStepsResponse, err error) {
 	m.logger.Info("Starting shared steps filtering by usage in suite")
 
 	var candidates data.GetSharedStepsResponse
 	for _, step := range source {
-		used := false
-		for _, id := range step.CaseIDs {
-			if _, ok := sourceCaseIDs[id]; ok {
-				used = true
-				break
-			}
-		}
-		if !used {
+		if _, ok := usedStepIDs[step.ID]; ok {
 			candidates = append(candidates, step)
 		}
 	}
-	m.logger.Infow("Found candidates for transfer (not used in suite)", "count", len(candidates))
+	m.logger.Infow("Found candidates for transfer (used in suite)", "count", len(candidates))
 
 	m.logger.Info("Checking for duplicates in target project")
 	targetMap := make(map[string]int64)

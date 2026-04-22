@@ -151,13 +151,17 @@ Examples:
 				sourceCases = append(sourceCases, cases...)
 			}
 		}
-		caseIDsSet := make(map[int64]struct{})
+		usedStepIDs := make(map[int64]struct{})
 		for _, c := range sourceCases {
-			caseIDsSet[c.ID] = struct{}{}
+			for _, step := range c.CustomStepsSeparated {
+				if step.SharedStepID != 0 {
+					usedStepIDs[step.SharedStepID] = struct{}{}
+				}
+			}
 		}
 
 		// Step 3) Filter candidates (exclude used and duplicates)
-		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
+		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, usedStepIDs)
 		if err != nil {
 			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}

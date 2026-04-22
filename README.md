@@ -17,13 +17,16 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-3.2.0-blue.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v3.0.0** — Stage 13.5 Complete: Quality hardening, 7 audit rounds, 0 lint findings, full test coverage. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release: v3.2.0** — Migration bugfix: multiset matching in the filter,
+> strict dst-scope resolution, `failedImports` accounting, new `--suite1` /
+> `--suite2` / `--match-field` scope flags on `compare`, and opt-in
+> `--verify-coverage` gate on `sync cases` / `sync full`. See [CHANGELOG](CHANGELOG.md).
 
 ## Overview
 

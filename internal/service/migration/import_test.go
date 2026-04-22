@@ -567,3 +567,91 @@ func TestMigration_ImportCases_UsesSectionNameFallbackMapping(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(900), calledSectionID)
 }
+
+// TestMigration_ImportCases_UnresolvedSectionFailsCount verifies that a source
+// case whose section cannot be mapped to a destination section is counted as a
+// failure (FailedCount++) and is NOT silently dropped — the false "0 errors,
+// N skipped" report was the root-cause pattern of the 717/1684 regression.
+func TestMigration_ImportCases_UnresolvedSectionFailsCount(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		return nil, nil // no sections anywhere → no name-based fallback either
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+	addCaseCalls := 0
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		addCaseCalls++
+		return &data.Case{ID: 42}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        7,
+		Title:     "orphan case",
+		SectionID: 999, // neither mapped nor name-resolvable
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, addCaseCalls, "AddCase must not be called when section cannot be resolved")
+	assert.Equal(t, 1, m.FailedCount(), "unresolved section case must increment failedImports")
+	assert.Equal(t, 0, m.ImportedCount(), "no case was actually imported")
+}
+
+// TestMigration_ImportSections_UnresolvedParentFailsCount verifies that a
+// source section whose parent cannot be mapped is recorded as a failure and
+// is NOT silently re-parented to root (which would corrupt the tree and
+// cascade into invisible case losses downstream).
+func TestMigration_ImportSections_UnresolvedParentFailsCount(t *testing.T) {
+	mock := &MockClient{}
+	addSectionCalls := 0
+	mock.AddSectionFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+		addSectionCalls++
+		return &data.Section{ID: 888}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "name", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportSections(context.Background(), data.GetSectionsResponse{{
+		ID:       5,
+		Name:     "orphan section",
+		ParentID: 12345, // unmapped parent
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, addSectionCalls, "AddSection must not be called for unresolved parent")
+	assert.Equal(t, 1, m.FailedCount(), "unresolved parent section must increment failedImports")
+}
+
+// TestMigration_ImportCasesReport_AddCaseErrorIncrementsFailed guarantees that
+// an API-level AddCase error is reflected in FailedCount even when the caller
+// also captures the error via the returned []errors slice (sync_cases uses
+// max(len(errs), FailedCount) now — both paths must agree for that to work).
+func TestMigration_ImportCasesReport_AddCaseErrorIncrementsFailed(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		return nil, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		return nil, errors.New("boom: 500 from target")
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+	m.mapping.AddPair(77, 770, "existing") // make the section resolvable
+
+	created, errs, err := m.ImportCasesReport(context.Background(),
+		data.GetCasesResponse{{ID: 1, Title: "X", SectionID: 77}}, false)
+	assert.NoError(t, err)
+	assert.Empty(t, created)
+	assert.Len(t, errs, 1)
+	assert.Equal(t, 1, m.FailedCount())
+}

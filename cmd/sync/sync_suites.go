@@ -43,7 +43,10 @@ Flags:
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
-		compareField, _ := cmd.Flags().GetString("compare-field")
+		compareField, err := resolveMatchField(ctx, cmd, interactive.MatchFieldSuites)
+		if err != nil {
+			return fmt.Errorf("suitesCmd.func: %w", err)
+		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
@@ -51,7 +54,6 @@ Flags:
 		applySessionFallback(ctx, &srcProject, &dstProject, new(int64), new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
-		var err error
 
 		// Interactive source project selection
 		if srcProject == 0 {

@@ -54,7 +54,10 @@ Examples:
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
-		compareField, _ := cmd.Flags().GetString("compare-field")
+		compareField, err := resolveMatchField(ctx, cmd, interactive.MatchFieldCases)
+		if err != nil {
+			return fmt.Errorf("casesCmd.func: %w", err)
+		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
@@ -63,7 +66,6 @@ Examples:
 		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
-		var err error
 
 		// Interactive source project selection
 		if srcProject == 0 {

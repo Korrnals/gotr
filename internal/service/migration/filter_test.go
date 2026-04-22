@@ -272,37 +272,37 @@ func TestFilterSharedSteps_TableDriven(t *testing.T) {
 		compareField        string
 		source              data.GetSharedStepsResponse
 		target              data.GetSharedStepsResponse
-		sourceCaseIDs       map[int64]struct{}
+		usedStepIDs         map[int64]struct{}
 		wantFilteredTitles  []string
 		wantMappingSourceID int64
 		wantMappingTargetID int64
 		wantMappingExists   bool
 	}{
 		{
-			name:         "used by source suite is excluded from candidates",
+			name:         "used by source suite is included as candidate",
 			compareField: "Title",
 			source: data.GetSharedStepsResponse{
-				{ID: 1, Title: "Used", CaseIDs: []int64{10}},
-				{ID: 2, Title: "Unused", CaseIDs: []int64{20}},
+				{ID: 1, Title: "Used"},
+				{ID: 2, Title: "Unused"},
 			},
 			target: data.GetSharedStepsResponse{},
-			sourceCaseIDs: map[int64]struct{}{
-				10: {},
+			usedStepIDs: map[int64]struct{}{
+				1: {},
 			},
-			wantFilteredTitles: []string{"Unused"},
+			wantFilteredTitles: []string{"Used"},
 			wantMappingExists:  false,
 		},
 		{
 			name:         "duplicate candidate is mapped as existing",
 			compareField: "Title",
 			source: data.GetSharedStepsResponse{
-				{ID: 3, Title: "Duplicate", CaseIDs: []int64{99}},
-				{ID: 4, Title: "New", CaseIDs: []int64{100}},
+				{ID: 3, Title: "Duplicate"},
+				{ID: 4, Title: "New"},
 			},
 			target: data.GetSharedStepsResponse{
 				{ID: 300, Title: "Duplicate"},
 			},
-			sourceCaseIDs:       map[int64]struct{}{},
+			usedStepIDs:         map[int64]struct{}{3: {}, 4: {}},
 			wantFilteredTitles:  []string{"New"},
 			wantMappingSourceID: 3,
 			wantMappingTargetID: 300,
@@ -312,13 +312,13 @@ func TestFilterSharedSteps_TableDriven(t *testing.T) {
 			name:         "compare field fallback keeps candidates without field match",
 			compareField: "UnknownField",
 			source: data.GetSharedStepsResponse{
-				{ID: 5, Title: "A", CaseIDs: []int64{}},
-				{ID: 6, Title: "B", CaseIDs: []int64{}},
+				{ID: 5, Title: "A"},
+				{ID: 6, Title: "B"},
 			},
 			target: data.GetSharedStepsResponse{
 				{ID: 600, Title: "A"},
 			},
-			sourceCaseIDs:      map[int64]struct{}{},
+			usedStepIDs:        map[int64]struct{}{5: {}, 6: {}},
 			wantFilteredTitles: []string{"A", "B"},
 			wantMappingExists:  false,
 		},
@@ -329,7 +329,7 @@ func TestFilterSharedSteps_TableDriven(t *testing.T) {
 			m := setupTestMigration(t, &MockClient{})
 			m.compareField = tc.compareField
 
-			filtered, err := m.FilterSharedSteps(tc.source, tc.target, tc.sourceCaseIDs)
+			filtered, err := m.FilterSharedSteps(tc.source, tc.target, tc.usedStepIDs)
 			assert.NoError(t, err)
 
 			filteredTitles := make([]string, 0, len(filtered))

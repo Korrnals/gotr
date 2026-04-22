@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/service/casefields"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -449,6 +450,9 @@ func addCaseInteractive(cli client.ClientInterface, cmd *cobra.Command, sectionI
 		PriorityID: answers.PriorityID,
 		Refs:       answers.Refs,
 	}
+	if err := enrichAddCaseRequest(ctx, cli, sectionID, req); err != nil {
+		return err
+	}
 
 	caseResp, err := cli.AddCase(ctx, sectionID, req)
 	if err != nil {
@@ -592,7 +596,12 @@ func addSharedStepInteractive(cli client.ClientInterface, cmd *cobra.Command, pr
 		return nil
 	}
 
-	req := &data.AddSharedStepRequest{Title: title}
+	req := &data.AddSharedStepRequest{
+		Title: title,
+		CustomStepsSeparated: []data.Step{
+			{Content: title},
+		},
+	}
 	step, err := cli.AddSharedStep(ctx, projectID, req)
 	if err != nil {
 		return fmt.Errorf("failed to create shared step: %w", err)
@@ -711,7 +720,12 @@ func buildAddSharedStepReq(cmd *cobra.Command, validate bool) (*data.AddSharedSt
 	if validate && title == "" {
 		return nil, fmt.Errorf("--title is required")
 	}
-	return &data.AddSharedStepRequest{Title: title}, nil
+	return &data.AddSharedStepRequest{
+		Title: title,
+		CustomStepsSeparated: []data.Step{
+			{Content: title},
+		},
+	}, nil
 }
 
 // --- Dry-run handlers (delegate to crud.DryRun) ---
@@ -815,6 +829,9 @@ func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64,
 func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, jsonData []byte) error {
 	return crud.Execute(cmd, sectionID, jsonData, buildAddCaseReq,
 		func(ctx context.Context, id int64, req *data.AddCaseRequest) (*data.Case, error) {
+			if err := enrichAddCaseRequest(ctx, cli, id, req); err != nil {
+				return nil, err
+			}
 			return cli.AddCase(ctx, id, req)
 		},
 		"failed to create case",
@@ -910,6 +927,65 @@ func splitString(s, sep string) []string {
 	}
 	result = append(result, current)
 	return result
+}
+
+func enrichAddCaseRequest(ctx context.Context, cli client.ClientInterface, sectionID int64, req *data.AddCaseRequest) error {
+	if req.CustomAutotestOn != nil {
+		return nil
+	}
+
+	projectID, err := resolveProjectIDForSection(ctx, cli, sectionID)
+	if err != nil {
+		return fmt.Errorf("resolve project for section %d: %w", sectionID, err)
+	}
+	if projectID == 0 {
+		return nil
+	}
+
+	fields, err := cli.GetCaseFields(ctx)
+	if err != nil {
+		return fmt.Errorf("get case fields: %w", err)
+	}
+
+	resolved, err := casefields.ResolveCustomAutotestOn(fields, projectID)
+	if err != nil {
+		return fmt.Errorf("resolve custom_autotest_on for project %d: %w", projectID, err)
+	}
+	req.CustomAutotestOn = resolved
+	return nil
+}
+
+func resolveProjectIDForSection(ctx context.Context, cli client.ClientInterface, sectionID int64) (int64, error) {
+	section, err := cli.GetSection(ctx, sectionID)
+	if err != nil {
+		return 0, err
+	}
+
+	if section.SuiteID != 0 {
+		suite, err := cli.GetSuite(ctx, section.SuiteID)
+		if err == nil && suite != nil && suite.ProjectID != 0 {
+			return suite.ProjectID, nil
+		}
+	}
+
+	projects, err := cli.GetProjects(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, project := range projects {
+		sections, err := cli.GetSections(ctx, project.ID, section.SuiteID)
+		if err != nil {
+			continue
+		}
+		for _, candidate := range sections {
+			if candidate.ID == sectionID {
+				return project.ID, nil
+			}
+		}
+	}
+
+	return 0, nil
 }
 
 // attachmentSpec describes a simple attachment endpoint (ID + file path).

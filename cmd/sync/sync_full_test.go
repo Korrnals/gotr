@@ -92,7 +92,7 @@ func TestSyncFull_AutoApprove_PerformsMigration(t *testing.T) {
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 && suiteID == 10 {
-				return data.GetCasesResponse{{ID: 1, Title: "Case1"}}, nil
+				return data.GetCasesResponse{{ID: 1, Title: "Case1", CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},
@@ -180,7 +180,7 @@ func TestSyncFull_NoFlags_InteractiveSuccess(t *testing.T) {
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
 			if projectID == 1 && suiteID == 10 {
-				return data.GetCasesResponse{{ID: 1, Title: "Case1"}}, nil
+				return data.GetCasesResponse{{ID: 1, Title: "Case1", CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 			}
 			return data.GetCasesResponse{}, nil
 		},

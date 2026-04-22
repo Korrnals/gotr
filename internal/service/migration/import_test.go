@@ -3,7 +3,9 @@ package migration // white-box tests — same package
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -275,7 +277,7 @@ func TestMigration_ImportCasesReport_DryRunAndMixedResults(t *testing.T) {
 	goodReq := goodReqVal.(*data.AddCaseRequest)
 	assert.Len(t, goodReq.CustomStepsSeparated, 2)
 	assert.Equal(t, int64(9001), goodReq.CustomStepsSeparated[0].SharedStepID)
-	assert.Equal(t, int64(404), goodReq.CustomStepsSeparated[1].SharedStepID)
+	assert.Equal(t, int64(0), goodReq.CustomStepsSeparated[1].SharedStepID)
 }
 
 func TestMigration_ImportCases_SharedStepIDMappingBranches(t *testing.T) {
@@ -327,7 +329,7 @@ func TestMigration_ImportCases_SharedStepIDMappingBranches(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	assert.Equal(t, []int64{155}, observedID["mapped-case"])
-	assert.Equal(t, []int64{999}, observedID["unmapped-case"])
+	assert.Equal(t, []int64{0}, observedID["unmapped-case"])
 }
 
 func TestMigration_ImportSharedSteps_CopiesCustomSteps(t *testing.T) {
@@ -374,4 +376,194 @@ func TestMigration_ImportSharedSteps_CopiesCustomSteps(t *testing.T) {
 	assert.Equal(t, int64(501), got)
 	assert.Equal(t, 1, m.mapping.Count)
 	assert.Equal(t, 1, m.importedCases)
+}
+
+func TestMigration_ImportSections_MapsSuiteIDToDestination(t *testing.T) {
+	mock := &MockClient{}
+
+	var capturedReq *data.AddSectionRequest
+	mock.AddSectionFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+		copied := *req
+		capturedReq = &copied
+		return &data.Section{ID: 88}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	m.mapping.AddPair(111, 222, "created")
+
+	err = m.ImportSections(context.Background(), data.GetSectionsResponse{{
+		ID:          5,
+		Name:        "Section A",
+		Description: "desc",
+		SuiteID:     111,
+	}}, false)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, capturedReq) {
+		assert.Equal(t, int64(222), capturedReq.SuiteID)
+	}
+}
+
+func TestMigration_ImportCases_DefaultsCustomAutotestOn(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		if projectID == 1 {
+			return data.GetSectionsResponse{{ID: 10, Name: "Section A"}}, nil
+		}
+		return data.GetSectionsResponse{{ID: 20, Name: "Section A"}}, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		var fields data.GetCaseFieldsResponse
+		payload := fmt.Sprintf(`[{"name":"custom_autotest_on","system_name":"custom_autotest_on","configs":[{"context":{"is_global":false,"project_ids":[%d]},"id":"cfg","options":{"default_value":"1","is_required":true}}]}]`, 2)
+		if err := json.Unmarshal([]byte(payload), &fields); err != nil {
+			return nil, err
+		}
+		return fields, nil
+	}
+
+	var capturedReq *data.AddCaseRequest
+	mock.AddCaseFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		capturedReq = req
+		return &data.Case{ID: 99}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:    1,
+		Title: "Case A",
+		SectionID: 10,
+	}}, false)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, capturedReq) {
+		assert.Equal(t, int64(20), capturedReq.SectionID)
+		if assert.NotNil(t, capturedReq.CustomAutotestOn) {
+			assert.Equal(t, int64(1), *capturedReq.CustomAutotestOn)
+		}
+	}
+}
+
+func TestMigration_ImportCases_AddsRequiredExtraFields(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		if projectID == 1 {
+			return data.GetSectionsResponse{{ID: 10, Name: "Section A"}}, nil
+		}
+		return data.GetSectionsResponse{{ID: 20, Name: "Section A"}}, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		var fields data.GetCaseFieldsResponse
+		payload := `[
+			{"system_name":"custom_autotest_on","configs":[{"context":{"is_global":false,"project_ids":[2]},"id":"cfg-auto","options":{"default_value":"1","is_required":true}}]},
+			{"system_name":"custom_loadtest_on","configs":[{"context":{"is_global":false,"project_ids":[2]},"id":"cfg-load","options":{"default_value":"2","is_required":true}}]}
+		]`
+		if err := json.Unmarshal([]byte(payload), &fields); err != nil {
+			return nil, err
+		}
+		return fields, nil
+	}
+
+	var capturedReq *data.AddCaseRequest
+	var marshaled map[string]interface{}
+	mock.AddCaseFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		capturedReq = req
+		raw, err := json.Marshal(req)
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(raw, &marshaled); err != nil {
+			return nil, err
+		}
+		return &data.Case{ID: 100}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        1,
+		Title:     "Case A",
+		SectionID: 10,
+	}}, false)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, capturedReq) {
+		assert.Equal(t, int64(20), capturedReq.SectionID)
+		assert.Equal(t, map[string]interface{}{"custom_loadtest_on": int64(2)}, capturedReq.ExtraFields)
+		if assert.NotNil(t, capturedReq.CustomAutotestOn) {
+			assert.Equal(t, int64(1), *capturedReq.CustomAutotestOn)
+		}
+	}
+	assert.Equal(t, float64(2), marshaled["custom_loadtest_on"])
+}
+
+func TestMigration_ImportCases_UsesMappedDestinationSectionID(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		return nil, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+
+	var calledSectionID int64
+	var reqSectionID int64
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		calledSectionID = sectionID
+		reqSectionID = req.SectionID
+		return &data.Case{ID: 101}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	m.mapping.AddPair(111, 222, "existing")
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        1,
+		Title:     "Case A",
+		SectionID: 111,
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(222), calledSectionID)
+	assert.Equal(t, int64(222), reqSectionID)
+}
+
+func TestMigration_ImportCases_UsesSectionNameFallbackMapping(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		if projectID == 1 {
+			return data.GetSectionsResponse{{ID: 500, Name: "Login Flow"}}, nil
+		}
+		return data.GetSectionsResponse{{ID: 900, Name: "Login Flow"}}, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+
+	var calledSectionID int64
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		calledSectionID = sectionID
+		return &data.Case{ID: 202}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        1,
+		Title:     "Case A",
+		SectionID: 500,
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(900), calledSectionID)
 }

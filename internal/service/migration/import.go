@@ -4,9 +4,11 @@ package migration
 import (
 	"context"
 	"fmt"
+	"sort"
 	"sync"
 
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/service/casefields"
 )
 
 // maxImportConcurrency limits the number of parallel API calls during import
@@ -121,7 +123,9 @@ func (m *Migration) ImportSuites(ctx context.Context, filtered data.GetSuitesRes
 	return nil
 }
 
-// ImportSections imports filtered sections in parallel.
+// ImportSections imports filtered sections level by level (by Depth), so parent sections are
+// always created before their children. Within each depth level sections are imported in parallel.
+// Parent IDs are resolved through the mapping (src→dst) so cross-project references are correct.
 // Updates the mapping (AddPair with status "created" for new IDs).
 func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSectionsResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
@@ -131,42 +135,78 @@ func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSection
 
 	m.logger.Infow("Starting sections import", "count", len(filtered))
 
+	// Group sections by depth so parents are created before children.
+	byDepth := make(map[int64][]data.Section)
+	var depths []int64
+	seen := make(map[int64]bool)
+	for _, s := range filtered {
+		if !seen[s.Depth] {
+			seen[s.Depth] = true
+			depths = append(depths, s.Depth)
+		}
+		byDepth[s.Depth] = append(byDepth[s.Depth], s)
+	}
+	// Sort depths ascending so root (depth 0) comes first.
+	sort.Slice(depths, func(i, j int) bool { return depths[i] < depths[j] })
+
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxImportConcurrency)
 
-	for _, section := range filtered {
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(s data.Section) {
-			defer func() { <-sem }()
-			defer wg.Done()
+	for _, depth := range depths {
+		for _, section := range byDepth[depth] {
+			wg.Add(1)
+			sem <- struct{}{}
+			go func(s data.Section) {
+				defer func() { <-sem }()
+				defer wg.Done()
 
-			// Prepare request
-			req := &data.AddSectionRequest{
-				Name:        s.Name,
-				Description: s.Description,
-				SuiteID:     s.SuiteID,
-				ParentID:    s.ParentID,
-			}
+				dstSuiteID := s.SuiteID
+				if dstSuiteID != 0 {
+					if mappedSuiteID, ok := m.mapping.GetTargetBySource(s.SuiteID); ok {
+						dstSuiteID = mappedSuiteID
+					} else if m.dstSuite != 0 {
+						dstSuiteID = m.dstSuite
+					}
+				}
 
-			// Create in target project
-			created, err := m.Client.AddSection(ctx, m.dstProject, req)
-			if err != nil {
+				// Resolve parent ID: map source parent section ID to destination parent section ID.
+				dstParentID := int64(0)
+				if s.ParentID != 0 {
+					if mappedParentID, ok := m.mapping.GetTargetBySource(s.ParentID); ok {
+						dstParentID = mappedParentID
+					} else {
+						m.logger.Warnw("Parent section not found in mapping, creating at root level",
+							"name", s.Name, "src_parent_id", s.ParentID)
+					}
+				}
+
+				// Prepare request
+				req := &data.AddSectionRequest{
+					Name:        s.Name,
+					Description: s.Description,
+					SuiteID:     dstSuiteID,
+					ParentID:    dstParentID,
+				}
+
+				// Create in target project
+				created, err := m.Client.AddSection(ctx, m.dstProject, req)
+				if err != nil {
+					mu.Lock()
+					m.logger.Errorw("Error importing section", "name", s.Name, "error", err)
+					mu.Unlock()
+					return
+				}
+
 				mu.Lock()
-				m.logger.Errorw("Error importing section", "name", s.Name, "error", err)
+				m.mapping.AddPair(s.ID, created.ID, "created")
+				m.importedCases++
+				m.logger.Infow("Successfully created section", "old_id", s.ID, "new_id", created.ID, "name", s.Name)
 				mu.Unlock()
-				return
-			}
-
-			mu.Lock()
-			m.mapping.AddPair(s.ID, created.ID, "created")
-			m.importedCases++
-			m.logger.Infow("Successfully created section", "old_id", s.ID, "new_id", created.ID, "name", s.Name)
-			mu.Unlock()
-		}(section)
+			}(section)
+		}
+		wg.Wait() // wait for all sections at this depth before processing the next level
 	}
-	wg.Wait()
 
 	m.logger.Infow("Sections import completed", "imported", m.importedCases)
 	return nil
@@ -182,6 +222,21 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 
 	m.logger.Infow("Starting cases import", "count", len(filtered))
 
+	sectionMap, err := m.resolveSectionMapByName(ctx)
+	if err != nil {
+		return err
+	}
+
+	autotestDefault, err := m.resolveAutotestOnDefault(ctx)
+	if err != nil {
+		return err
+	}
+
+	extraFields, err := m.resolveRequiredExtraFields(ctx)
+	if err != nil {
+		return err
+	}
+
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxImportConcurrency)
@@ -194,37 +249,30 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 			defer wg.Done()
 
 			// Prepare request
+			dstSectionID := m.resolveDestinationSectionID(caseData.SectionID, sectionMap)
+			if dstSectionID == 0 {
+				mu.Lock()
+				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", "unable to resolve destination section_id")
+				mu.Unlock()
+				return
+			}
+
 			req := &data.AddCaseRequest{
-				Title:                caseData.Title,
-				TypeID:               caseData.TypeID,
-				PriorityID:           caseData.PriorityID,
-				TemplateID:           caseData.TemplateID,
-				MilestoneID:          caseData.MilestoneID,
-				Refs:                 caseData.Refs,
-				CustomPreconds:       caseData.CustomPreconds,
-				CustomStepsSeparated: make([]data.Step, len(caseData.CustomStepsSeparated)),
+				Title:          caseData.Title,
+				SectionID:      dstSectionID,
+				TypeID:         caseData.TypeID,
+				PriorityID:     caseData.PriorityID,
+				TemplateID:     caseData.TemplateID,
+				MilestoneID:    caseData.MilestoneID,
+				Refs:           caseData.Refs,
+				CustomPreconds: caseData.CustomPreconds,
 			}
+			applyAutotestOnValue(req, caseData.CustomAutotestOn, autotestDefault)
+			req.ExtraFields = extraFields
+			req.CustomStepsSeparated = m.buildImportSteps(caseData, &mu)
 
-			for i, orig := range caseData.CustomStepsSeparated {
-				newStep := data.Step{
-					Content:        orig.Content,
-					AdditionalInfo: orig.AdditionalInfo,
-					Expected:       orig.Expected,
-					Refs:           orig.Refs,
-					SharedStepID:   orig.SharedStepID,
-				}
-
-				if orig.SharedStepID != 0 {
-					if newID, exists := m.mapping.GetTargetBySource(orig.SharedStepID); exists {
-						newStep.SharedStepID = newID
-					}
-				}
-
-				req.CustomStepsSeparated[i] = newStep
-			}
-
-			// Create in target suite
-			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
+			// Create in target section
+			created, err := m.Client.AddCase(ctx, dstSectionID, req)
 			if err != nil {
 				mu.Lock()
 				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", err)
@@ -244,6 +292,50 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 	return nil
 }
 
+// buildImportSteps builds the CustomStepsSeparated payload for AddCase.
+//
+// TestRail's get_case expands referenced shared steps inline: every sub-step of
+// a shared step is returned as its own Step object carrying the same
+// shared_step_id. When reimporting, we must collapse each contiguous run of
+// identical shared_step_id rows into a single {shared_step_id:newID} reference;
+// sending N duplicates causes add_case to reject the payload with
+// "Field :shared_step_id is not a valid shared test step".
+//
+// Steps whose shared_step_id is unmapped fall back to inline content (best
+// effort); steps without a shared_step_id are copied as inline content.
+func (m *Migration) buildImportSteps(caseData data.Case, mu *sync.Mutex) []data.Step {
+	if len(caseData.CustomStepsSeparated) == 0 {
+		return nil
+	}
+	out := make([]data.Step, 0, len(caseData.CustomStepsSeparated))
+	var lastSharedID int64 // last shared_step_id pushed into out (0 = none)
+	for _, orig := range caseData.CustomStepsSeparated {
+		if orig.SharedStepID != 0 {
+			if newID, exists := m.mapping.GetTargetBySource(orig.SharedStepID); exists {
+				if newID == lastSharedID {
+					// Skip duplicate expansion row from the same shared step.
+					continue
+				}
+				out = append(out, data.Step{SharedStepID: newID})
+				lastSharedID = newID
+				continue
+			}
+			mu.Lock()
+			m.logger.Warnw("SharedStepID not found in mapping — step will be imported without shared reference",
+				"case_title", caseData.Title, "unmapped_shared_step_id", orig.SharedStepID)
+			mu.Unlock()
+		}
+		out = append(out, data.Step{
+			Content:        orig.Content,
+			AdditionalInfo: orig.AdditionalInfo,
+			Expected:       orig.Expected,
+			Refs:           orig.Refs,
+		})
+		lastSharedID = 0
+	}
+	return out
+}
+
 // ImportCasesReport is like ImportCases but returns lists of created IDs and errors for CLI reporting.
 func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) (createdIDs []int64, errs []string, err error) {
 	if dryRun || len(filtered) == 0 {
@@ -252,6 +344,21 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 	}
 
 	m.logger.Infow("Starting cases import (report)", "count", len(filtered))
+
+	sectionMap, err := m.resolveSectionMapByName(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	autotestDefault, err := m.resolveAutotestOnDefault(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	extraFields, err := m.resolveRequiredExtraFields(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -265,37 +372,31 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 			defer wg.Done()
 
 			// Prepare request
+			dstSectionID := m.resolveDestinationSectionID(caseData.SectionID, sectionMap)
+			if dstSectionID == 0 {
+				mu.Lock()
+				errs = append(errs, fmt.Sprintf("case %q: unable to resolve destination section_id", caseData.Title))
+				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", "unable to resolve destination section_id")
+				mu.Unlock()
+				return
+			}
+
 			req := &data.AddCaseRequest{
-				Title:                caseData.Title,
-				TypeID:               caseData.TypeID,
-				PriorityID:           caseData.PriorityID,
-				TemplateID:           caseData.TemplateID,
-				MilestoneID:          caseData.MilestoneID,
-				Refs:                 caseData.Refs,
-				CustomPreconds:       caseData.CustomPreconds,
-				CustomStepsSeparated: make([]data.Step, len(caseData.CustomStepsSeparated)),
+				Title:          caseData.Title,
+				SectionID:      dstSectionID,
+				TypeID:         caseData.TypeID,
+				PriorityID:     caseData.PriorityID,
+				TemplateID:     caseData.TemplateID,
+				MilestoneID:    caseData.MilestoneID,
+				Refs:           caseData.Refs,
+				CustomPreconds: caseData.CustomPreconds,
 			}
+			applyAutotestOnValue(req, caseData.CustomAutotestOn, autotestDefault)
+			req.ExtraFields = extraFields
+			req.CustomStepsSeparated = m.buildImportSteps(caseData, &mu)
 
-			for i, orig := range caseData.CustomStepsSeparated {
-				newStep := data.Step{
-					Content:        orig.Content,
-					AdditionalInfo: orig.AdditionalInfo,
-					Expected:       orig.Expected,
-					Refs:           orig.Refs,
-					SharedStepID:   orig.SharedStepID,
-				}
-
-				if orig.SharedStepID != 0 {
-					if newID, exists := m.mapping.GetTargetBySource(orig.SharedStepID); exists {
-						newStep.SharedStepID = newID
-					}
-				}
-
-				req.CustomStepsSeparated[i] = newStep
-			}
-
-			// Create in target suite
-			created, err := m.Client.AddCase(ctx, m.dstSuite, req)
+			// Create in target section
+			created, err := m.Client.AddCase(ctx, dstSectionID, req)
 			if err != nil {
 				mu.Lock()
 				errs = append(errs, fmt.Sprintf("case %q: %v", caseData.Title, err))
@@ -315,4 +416,91 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 
 	m.logger.Infow("Cases import (report) completed", "imported", m.importedCases)
 	return createdIDs, errs, nil
+}
+
+func (m *Migration) resolveAutotestOnDefault(ctx context.Context) (*int64, error) {
+	fields, err := m.Client.GetCaseFields(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get case fields: %w", err)
+	}
+
+	resolved, err := casefields.ResolveCustomAutotestOn(fields, m.dstProject)
+	if err != nil {
+		return nil, fmt.Errorf("resolve custom_autotest_on for destination project %d: %w", m.dstProject, err)
+	}
+	return resolved, nil
+}
+
+// resolveRequiredExtraFields returns a map of system_name→value for all DST project
+// required custom fields (that have a configured default) except custom_autotest_on
+// (which is handled separately). The map is used as AddCaseRequest.ExtraFields.
+func (m *Migration) resolveRequiredExtraFields(ctx context.Context) (map[string]interface{}, error) {
+	fields, err := m.Client.GetCaseFields(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get case fields for extra required fields: %w", err)
+	}
+	return casefields.ResolveRequiredCustomFields(fields, m.dstProject, []string{"custom_autotest_on"}), nil
+}
+
+func applyAutotestOnValue(req *data.AddCaseRequest, sourceValue int64, defaultValue *int64) {
+	if sourceValue != 0 {
+		value := sourceValue
+		req.CustomAutotestOn = &value
+		return
+	}
+	if defaultValue != nil {
+		value := *defaultValue
+		req.CustomAutotestOn = &value
+	}
+}
+
+func (m *Migration) resolveSectionMapByName(ctx context.Context) (map[int64]int64, error) {
+	sourceSections, err := m.Client.GetSections(ctx, m.srcProject, m.srcSuite)
+	if err != nil {
+		return nil, fmt.Errorf("get source sections: %w", err)
+	}
+
+	targetSections, err := m.Client.GetSections(ctx, m.dstProject, m.dstSuite)
+	if err != nil {
+		return nil, fmt.Errorf("get destination sections: %w", err)
+	}
+
+	targetByName := make(map[string]int64, len(targetSections))
+	for _, section := range targetSections {
+		if section.Name == "" {
+			continue
+		}
+		if _, exists := targetByName[section.Name]; !exists {
+			targetByName[section.Name] = section.ID
+		}
+	}
+
+	sectionMap := make(map[int64]int64, len(sourceSections))
+	for _, source := range sourceSections {
+		if mapped, ok := m.mapping.GetTargetBySource(source.ID); ok {
+			sectionMap[source.ID] = mapped
+			continue
+		}
+		if targetID, ok := targetByName[source.Name]; ok {
+			sectionMap[source.ID] = targetID
+		}
+	}
+
+	return sectionMap, nil
+}
+
+func (m *Migration) resolveDestinationSectionID(sourceSectionID int64, sectionMap map[int64]int64) int64 {
+	if sourceSectionID == 0 {
+		return m.dstSuite
+	}
+
+	if mapped, ok := m.mapping.GetTargetBySource(sourceSectionID); ok {
+		return mapped
+	}
+
+	if mapped, ok := sectionMap[sourceSectionID]; ok {
+		return mapped
+	}
+
+	return 0
 }

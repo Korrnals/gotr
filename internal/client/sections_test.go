@@ -234,7 +234,7 @@ func TestDeleteSection(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := func(w http.ResponseWriter, r *http.Request) {
 				assert.Equal(t, "POST", r.Method)
-				expectedPath := fmt.Sprintf("/index.php?/api/v2/delete_section/%d", tt.sectionID)
+				expectedPath := fmt.Sprintf("/index.php?/api/v2/delete_section/%d&soft=1", tt.sectionID)
 				assert.Equal(t, expectedPath, r.URL.String())
 
 				w.WriteHeader(tt.mockStatus)

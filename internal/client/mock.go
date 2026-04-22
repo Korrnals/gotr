@@ -26,8 +26,10 @@ type MockClient struct {
 	AddCaseFunc            func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	UpdateCaseFunc         func(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
 	DeleteCaseFunc         func(ctx context.Context, caseID int64) error
+	DeleteCasePermanentFunc func(ctx context.Context, caseID int64) error
 	UpdateCasesFunc        func(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error)
 	DeleteCasesFunc        func(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error
+	DeleteCasesPermanentFunc func(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error
 	CopyCasesToSectionFunc func(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error
 	MoveCasesToSectionFunc func(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error
 	GetHistoryForCaseFunc  func(ctx context.Context, caseID int64) (*data.GetHistoryForCaseResponse, error)
@@ -48,6 +50,7 @@ type MockClient struct {
 	AddSuiteFunc    func(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error)
 	UpdateSuiteFunc func(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error)
 	DeleteSuiteFunc func(ctx context.Context, suiteID int64) error
+	DeleteSuitePermanentFunc func(ctx context.Context, suiteID int64) error
 
 	// ConcurrentAPI - Parallel methods (Stage 6.2)
 
@@ -58,6 +61,7 @@ type MockClient struct {
 	AddSectionFunc             func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
 	UpdateSectionFunc          func(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error)
 	DeleteSectionFunc          func(ctx context.Context, sectionID int64) error
+	DeleteSectionPermanentFunc func(ctx context.Context, sectionID int64) error
 
 	// SharedStepsAPI
 	GetSharedStepsFunc       func(ctx context.Context, projectID int64) (data.GetSharedStepsResponse, error)
@@ -285,6 +289,18 @@ func (m *MockClient) DeleteCase(ctx context.Context, caseID int64) error {
 	return nil
 }
 
+// DeleteCasePermanent calls the configured mock implementation when it is set.
+// Falls back to DeleteCaseFunc when no dedicated permanent handler is set.
+func (m *MockClient) DeleteCasePermanent(ctx context.Context, caseID int64) error {
+	if m.DeleteCasePermanentFunc != nil {
+		return m.DeleteCasePermanentFunc(ctx, caseID)
+	}
+	if m.DeleteCaseFunc != nil {
+		return m.DeleteCaseFunc(ctx, caseID)
+	}
+	return nil
+}
+
 // UpdateCases calls the configured mock implementation when it is set.
 func (m *MockClient) UpdateCases(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error) {
 	if m.UpdateCasesFunc != nil {
@@ -295,6 +311,18 @@ func (m *MockClient) UpdateCases(ctx context.Context, suiteID int64, req *data.U
 
 // DeleteCases calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
+	if m.DeleteCasesFunc != nil {
+		return m.DeleteCasesFunc(ctx, suiteID, req)
+	}
+	return nil
+}
+
+// DeleteCasesPermanent calls the configured mock implementation when it is set.
+// Falls back to DeleteCasesFunc when no dedicated permanent handler is set.
+func (m *MockClient) DeleteCasesPermanent(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error {
+	if m.DeleteCasesPermanentFunc != nil {
+		return m.DeleteCasesPermanentFunc(ctx, suiteID, req)
+	}
 	if m.DeleteCasesFunc != nil {
 		return m.DeleteCasesFunc(ctx, suiteID, req)
 	}
@@ -453,6 +481,18 @@ func (m *MockClient) DeleteSuite(ctx context.Context, suiteID int64) error {
 	return nil
 }
 
+// DeleteSuitePermanent calls the configured mock implementation when it is set.
+// Falls back to DeleteSuiteFunc when no dedicated permanent handler is set.
+func (m *MockClient) DeleteSuitePermanent(ctx context.Context, suiteID int64) error {
+	if m.DeleteSuitePermanentFunc != nil {
+		return m.DeleteSuitePermanentFunc(ctx, suiteID)
+	}
+	if m.DeleteSuiteFunc != nil {
+		return m.DeleteSuiteFunc(ctx, suiteID)
+	}
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // SectionsAPI
 // ---------------------------------------------------------------------------
@@ -512,6 +552,18 @@ func (m *MockClient) UpdateSection(ctx context.Context, sectionID int64, req *da
 
 // DeleteSection calls the configured mock implementation when it is set.
 func (m *MockClient) DeleteSection(ctx context.Context, sectionID int64) error {
+	if m.DeleteSectionFunc != nil {
+		return m.DeleteSectionFunc(ctx, sectionID)
+	}
+	return nil
+}
+
+// DeleteSectionPermanent calls the configured mock implementation when it is set.
+// Falls back to DeleteSectionFunc when no dedicated permanent handler is set.
+func (m *MockClient) DeleteSectionPermanent(ctx context.Context, sectionID int64) error {
+	if m.DeleteSectionPermanentFunc != nil {
+		return m.DeleteSectionPermanentFunc(ctx, sectionID)
+	}
 	if m.DeleteSectionFunc != nil {
 		return m.DeleteSectionFunc(ctx, sectionID)
 	}

@@ -78,11 +78,23 @@ func (c *HTTPClient) UpdateSuite(ctx context.Context, suiteID int64, req *data.U
 	return &suite, nil
 }
 
-// DeleteSuite deletes a test suite by ID.
-// This is irreversible — all cases in the suite will be deleted.
+// DeleteSuite soft-deletes a test suite (moves to trash, reversible).
+// Does not require the "permanently delete" permission.
+// Use DeleteSuitePermanent for admin-level permanent removal.
 func (c *HTTPClient) DeleteSuite(ctx context.Context, suiteID int64) error {
+	return c.deleteSuiteInternal(ctx, suiteID, true)
+}
+
+// DeleteSuitePermanent permanently removes a suite and all its cases
+// (irreversible). Requires elevated TestRail permissions.
+func (c *HTTPClient) DeleteSuitePermanent(ctx context.Context, suiteID int64) error {
+	return c.deleteSuiteInternal(ctx, suiteID, false)
+}
+
+func (c *HTTPClient) deleteSuiteInternal(ctx context.Context, suiteID int64, soft bool) error {
 	endpoint := fmt.Sprintf("delete_suite/%d", suiteID)
-	resp, err := c.Post(ctx, endpoint, nil, nil)
+	query := map[string]string{"soft": softFlagValue(soft)}
+	resp, err := c.Post(ctx, endpoint, nil, query)
 	if err != nil {
 		return fmt.Errorf("request error DeleteSuite %d: %w", suiteID, err)
 	}

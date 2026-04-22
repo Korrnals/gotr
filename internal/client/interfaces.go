@@ -33,8 +33,10 @@ type CasesAPI interface {
 	AddCase(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error)
 	UpdateCase(ctx context.Context, caseID int64, req *data.UpdateCaseRequest) (*data.Case, error)
 	DeleteCase(ctx context.Context, caseID int64) error
+	DeleteCasePermanent(ctx context.Context, caseID int64) error
 	UpdateCases(ctx context.Context, suiteID int64, req *data.UpdateCasesRequest) (*data.GetCasesResponse, error)
 	DeleteCases(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error
+	DeleteCasesPermanent(ctx context.Context, suiteID int64, req *data.DeleteCasesRequest) error
 	CopyCasesToSection(ctx context.Context, sectionID int64, req *data.CopyCasesRequest) error
 	MoveCasesToSection(ctx context.Context, sectionID int64, req *data.MoveCasesRequest) error
 	GetHistoryForCase(ctx context.Context, caseID int64) (*data.GetHistoryForCaseResponse, error)
@@ -64,6 +66,7 @@ type SuitesAPI interface {
 	AddSuite(ctx context.Context, projectID int64, req *data.AddSuiteRequest) (*data.Suite, error)
 	UpdateSuite(ctx context.Context, suiteID int64, req *data.UpdateSuiteRequest) (*data.Suite, error)
 	DeleteSuite(ctx context.Context, suiteID int64) error
+	DeleteSuitePermanent(ctx context.Context, suiteID int64) error
 }
 
 // SectionsAPI — section operations.
@@ -75,6 +78,7 @@ type SectionsAPI interface {
 	AddSection(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error)
 	UpdateSection(ctx context.Context, sectionID int64, req *data.UpdateSectionRequest) (*data.Section, error)
 	DeleteSection(ctx context.Context, sectionID int64) error
+	DeleteSectionPermanent(ctx context.Context, sectionID int64) error
 }
 
 // SharedStepsAPI — shared step operations.

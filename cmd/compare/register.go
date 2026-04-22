@@ -67,6 +67,13 @@ Examples:
 	Cmd.PersistentFlags().Int("retry-workers", 12, "Number of parallel workers for failed page auto-retry")
 	Cmd.PersistentFlags().Duration("retry-delay", 200*time.Millisecond, "Delay between attempts for one page during auto-retry")
 
+	// Scope + match-field knobs shared by cases/sections/suites/all.
+	// 0 = no scope restriction (default behavior). When set, only cases from
+	// the matching suite are considered for that project.
+	Cmd.PersistentFlags().Int64("suite1", 0, "Restrict project 1 to this suite ID (0 = all suites)")
+	Cmd.PersistentFlags().Int64("suite2", 0, "Restrict project 2 to this suite ID (0 = all suites)")
+	Cmd.PersistentFlags().String("match-field", "", "Field used to match entities across projects (overrides --field when set)")
+
 	// Add all subcommands
 	Cmd.AddCommand(casesCmd)
 	Cmd.AddCommand(suitesCmd)

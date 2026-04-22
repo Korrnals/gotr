@@ -171,13 +171,20 @@ func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSection
 				}
 
 				// Resolve parent ID: map source parent section ID to destination parent section ID.
+				// If the parent cannot be resolved, this section cannot be placed correctly —
+				// we refuse to silently create it at root (which would corrupt the tree) and
+				// record it as a failure so the final summary reflects the real state.
 				dstParentID := int64(0)
 				if s.ParentID != 0 {
 					if mappedParentID, ok := m.mapping.GetTargetBySource(s.ParentID); ok {
 						dstParentID = mappedParentID
 					} else {
-						m.logger.Warnw("Parent section not found in mapping, creating at root level",
+						mu.Lock()
+						m.failedImports++
+						m.logger.Errorw("Parent section not found in mapping — section skipped",
 							"name", s.Name, "src_parent_id", s.ParentID)
+						mu.Unlock()
+						return
 					}
 				}
 
@@ -193,6 +200,7 @@ func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSection
 				created, err := m.Client.AddSection(ctx, m.dstProject, req)
 				if err != nil {
 					mu.Lock()
+					m.failedImports++
 					m.logger.Errorw("Error importing section", "name", s.Name, "error", err)
 					mu.Unlock()
 					return
@@ -252,6 +260,7 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 			dstSectionID := m.resolveDestinationSectionID(caseData.SectionID, sectionMap)
 			if dstSectionID == 0 {
 				mu.Lock()
+				m.failedImports++
 				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", "unable to resolve destination section_id")
 				mu.Unlock()
 				return
@@ -275,6 +284,7 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 			created, err := m.Client.AddCase(ctx, dstSectionID, req)
 			if err != nil {
 				mu.Lock()
+				m.failedImports++
 				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", err)
 				mu.Unlock()
 				return
@@ -375,6 +385,7 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 			dstSectionID := m.resolveDestinationSectionID(caseData.SectionID, sectionMap)
 			if dstSectionID == 0 {
 				mu.Lock()
+				m.failedImports++
 				errs = append(errs, fmt.Sprintf("case %q: unable to resolve destination section_id", caseData.Title))
 				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", "unable to resolve destination section_id")
 				mu.Unlock()
@@ -399,6 +410,7 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 			created, err := m.Client.AddCase(ctx, dstSectionID, req)
 			if err != nil {
 				mu.Lock()
+				m.failedImports++
 				errs = append(errs, fmt.Sprintf("case %q: %v", caseData.Title, err))
 				m.logger.Errorw("Error importing case", "title", caseData.Title, "error", err)
 				mu.Unlock()

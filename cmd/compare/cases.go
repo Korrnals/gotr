@@ -105,13 +105,7 @@ Examples:
 			// Get field for comparison. --match-field takes priority (new,
 			// shared across compare subcommands). --field is kept for backward
 			// compatibility and is used when --match-field is not set.
-			field, _ := cmd.Flags().GetString("match-field")
-			if field == "" {
-				field, _ = cmd.Flags().GetString("field")
-			}
-			if field == "" {
-				field = "title"
-			}
+			field := resolveCompareField(cmd)
 
 			// Get project names
 			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
@@ -181,6 +175,33 @@ func getCaseKey(item ItemInfo, field string) string {
 	return item.Name
 }
 
+// resolveCompareField returns the field name to compare cases by.
+// --match-field (new, shared across compare subcommands) takes priority;
+// --field is kept for backward compatibility. Defaults to "title".
+func resolveCompareField(cmd *cobra.Command) string {
+	field, _ := cmd.Flags().GetString("match-field")
+	if field == "" {
+		field, _ = cmd.Flags().GetString("field")
+	}
+	if field == "" {
+		field = "title"
+	}
+	return field
+}
+
+// applySuiteScope honors the per-project --suite1 / --suite2 flags by
+// narrowing each project's suite list to a single suite when requested.
+// A zero value keeps the previous "all suites" behavior.
+func applySuiteScope(cmd *cobra.Command, suites1, suites2 data.GetSuitesResponse) (scoped1, scoped2 data.GetSuitesResponse) {
+	if suite1, _ := cmd.Flags().GetInt64("suite1"); suite1 > 0 {
+		suites1 = filterSuitesByID(suites1, suite1)
+	}
+	if suite2, _ := cmd.Flags().GetInt64("suite2"); suite2 > 0 {
+		suites2 = filterSuitesByID(suites2, suite2)
+	}
+	return suites1, suites2
+}
+
 // filterSuitesByID returns only the suite whose ID equals the given id.
 // Returns an empty slice if no suite matches — the caller is expected to
 // treat this as "no cases to compare for this project" rather than falling
@@ -231,12 +252,7 @@ func compareCasesInternal(ctx context.Context, cmd *cobra.Command, cli client.Cl
 	// Honor the per-project --suite1 / --suite2 scope flags. When set, compare
 	// only cases belonging to that suite — the rest of the project is ignored.
 	// A value of 0 means "all suites" (previous behavior).
-	if suite1, _ := cmd.Flags().GetInt64("suite1"); suite1 > 0 {
-		suites1 = filterSuitesByID(suites1, suite1)
-	}
-	if suite2, _ := cmd.Flags().GetInt64("suite2"); suite2 > 0 {
-		suites2 = filterSuitesByID(suites2, suite2)
-	}
+	suites1, suites2 = applySuiteScope(cmd, suites1, suites2)
 
 	debug.DebugPrint("[Compare] Found suites: P%d=%d, P%d=%d", pid1, len(suites1), pid2, len(suites2))
 

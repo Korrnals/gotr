@@ -189,15 +189,12 @@ func (m *Migration) FilterSections(source, target data.GetSectionsResponse) (fil
 	srcKeys := make([]MatchKey, 0, len(source))
 	for _, s := range source {
 		var dstParentID int64
-		switch {
-		case s.ParentID == 0:
+		if s.ParentID == 0 {
 			dstParentID = 0
-		default:
-			if mapped, ok := m.mapping.GetTargetBySource(s.ParentID); ok {
-				dstParentID = mapped
-			} else {
-				dstParentID = -s.ParentID
-			}
+		} else if mapped, ok := m.mapping.GetTargetBySource(s.ParentID); ok {
+			dstParentID = mapped
+		} else {
+			dstParentID = -s.ParentID
 		}
 		key := sectionMatchKey(dstParentID, s.Name)
 		srcKeys = append(srcKeys, key)

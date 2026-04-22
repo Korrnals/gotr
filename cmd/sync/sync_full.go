@@ -215,6 +215,10 @@ Examples:
 			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(max(len(caseImport.Errors), caseFailed))),
 		})
 
+		if err := runCoverageGate(ctx, cmd, m, quiet); err != nil {
+			return fmt.Errorf("fullCmd.func: %w", err)
+		}
+
 		ui.Success(os.Stdout, "Full migration complete!")
 		syncPostAction(ctx, cmd, hook, cli)
 		return nil

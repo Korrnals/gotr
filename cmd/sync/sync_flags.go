@@ -20,6 +20,7 @@ func addSyncFlags(c *cobra.Command) {
 	c.Flags().BoolP("save-mapping", "m", false, "Save mapping automatically")
 	c.Flags().String("mapping-file", "", "Mapping file for shared_step_id replacement")
 	c.Flags().String("output", "", "Additional JSON output")
+	c.Flags().Bool("verify-coverage", false, "After import, re-fetch target and verify every source case has a match (exit 2 on gaps)")
 	snap.RegisterFlags(c)
 }
 

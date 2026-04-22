@@ -141,6 +141,7 @@ Examples:
 		}
 		sharedFiltered := m.FilteredSharedSteps()
 		sharedFilterStats := m.LastFilterStats()
+		sharedFailed := m.FailedCount()
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run complete")
@@ -172,6 +173,9 @@ Examples:
 			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
 		}
 		caseFilterStats := m.LastFilterStats()
+		// Cases-only failures = cumulative failures minus the ones that happened
+		// during the shared-steps phase earlier.
+		caseFailed := m.FailedCount() - sharedFailed
 
 		if autoSaveMapping {
 			_ = m.ExportMapping(logDir)
@@ -207,8 +211,8 @@ Examples:
 		hook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 
 		saveMigrationReport(ctx, cmd, "sync_full", srcProject, dstProject, startedAt, hook, []reportResourceStats{
-			filterStatsToReport("shared_steps", sharedFilterStats, int64(len(sharedFiltered)), 0),
-			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(len(caseImport.Errors))),
+			filterStatsToReport("shared_steps", sharedFilterStats, int64(len(sharedFiltered)-sharedFailed), int64(sharedFailed)),
+			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(max(len(caseImport.Errors), caseFailed))),
 		})
 
 		ui.Success(os.Stdout, "Full migration complete!")

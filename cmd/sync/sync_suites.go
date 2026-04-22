@@ -182,7 +182,7 @@ Flags:
 		}
 
 		saveMigrationReport(ctx, cmd, "sync_suites", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
-			filterStatsToReport("suites", m.LastFilterStats(), int64(len(filtered)), 0),
+			filterStatsToReport("suites", m.LastFilterStats(), int64(len(filtered)-m.FailedCount()), int64(m.FailedCount())),
 		})
 
 		syncPostAction(ctx, cmd, snapHook, cli)

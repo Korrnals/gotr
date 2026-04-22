@@ -253,7 +253,7 @@ Examples:
 		}
 
 		saveMigrationReport(ctx, cmd, "sync_shared_steps", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
-			filterStatsToReport("shared_steps", m.LastFilterStats(), int64(len(filtered)), 0),
+			filterStatsToReport("shared_steps", m.LastFilterStats(), int64(len(filtered)-m.FailedCount()), int64(m.FailedCount())),
 		})
 
 		syncPostAction(ctx, cmd, snapHook, cli)

@@ -116,6 +116,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	casesCmd.Flags().String("mapping-file", "", "Mapping file for shared_step_id replacement")
 	casesCmd.Flags().Bool("dry-run", false, "Preview without importing")
 	casesCmd.Flags().String("output", "", "Additional JSON file with results")
+	casesCmd.Flags().Bool("verify-coverage", false, "After import, re-fetch target and verify every source case has a match (exit 2 on gaps)")
 	snap.RegisterFlags(casesCmd)
 
 	// Flags for sync shared-steps
@@ -159,6 +160,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	fullCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
 	fullCmd.Flags().Bool("save-filtered", false, "Save filtered list automatically")
 	fullCmd.Flags().Bool("dry-run", false, "Preview without importing")
+	fullCmd.Flags().Bool("verify-coverage", false, "After import, re-fetch target and verify every source case has a match (exit 2 on gaps)")
 	snap.RegisterFlags(fullCmd)
 
 }

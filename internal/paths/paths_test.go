@@ -337,7 +337,7 @@ func TestRelToHome_HomeUnset(t *testing.T) {
 	in := "/some/path"
 	if got := RelToHome(in); got != in {
 		// os.UserHomeDir may still resolve on some CI hosts; accept any prefixing
-		// behaviour only if it starts with "~/".
+		// behavior only if it starts with "~/".
 		if got != "~/some/path" && got != "~" {
 			t.Fatalf("RelToHome(%q) = %q, want unchanged or ~-prefixed", in, got)
 		}

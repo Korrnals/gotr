@@ -9,6 +9,35 @@
 
 ## [Unreleased]
 
+### Fixed — migration engine (3.2.0 follow-up)
+
+- **Coverage-gate no longer false-negatives on name-resolved sections.**
+  `internal/service/migration/import.go`:
+  `resolveSectionMapByName` now registers every `src→dst` pair it resolves by
+  section name into `m.mapping` (`AddPair(src, dst, "existing")`). Previously
+  the map lived only as a local variable consumed by `ImportCasesReport`,
+  while `VerifyCasesCoverage → resolveDstSectionIDForFilter` consulted
+  `m.mapping` exclusively and therefore reported `1684/1684 missing` after a
+  successful migration. Regression test:
+  `TestResolveSectionMapByName_PopulatesGlobalMapping`.
+- **Sync snapshots now expose real `data_size_bytes`.**
+  `internal/snap/hook.go` `Hook.FinalizeSyncData` rewrites `meta.json` with
+  the actual payload size and calls the new
+  `Manifest.UpdateDataSize` so list/retention/UI no longer see
+  `data_size_bytes=0` for sync snaps. Rollback was already reading
+  `data.json` directly, so this is purely observational for existing flows
+  but unblocks retention policies tied to size metadata and fixes inspection
+  output. Regression: extended `TestHook_FinalizeSyncData_Happy` asserts both
+  meta and manifest entry are updated.
+- **Flag parity: `--verify-coverage` exposed on `sync full` and `sync cases`.**
+  `cmd/sync/sync.go` registers the flag explicitly on both commands
+  (previously only `sync shared-steps` / `suites` / `sections` saw it via
+  `addSyncFlags`).
+
+Validated end-to-end on `p30/S20069 → p34/S19859` (, label
+`pinned_`): migration 21m56s, coverage gate
+`✅ 1684/1684 matched`, snap `data_size_bytes=142798`.
+
 ---
 
 ## [3.2.0] - 2026-04-23

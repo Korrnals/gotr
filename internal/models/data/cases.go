@@ -5,6 +5,10 @@ import (
 	"encoding/json"
 )
 
+// AddCaseRequestMarshalJSON is the concrete type alias used inside MarshalJSON to
+// avoid infinite recursion when re-encoding the base struct.
+// It is unexported; only MarshalJSON on AddCaseRequest uses it.
+
 // Case is the primary structure for a single test case (used in get_case and get_cases).
 type Case struct {
 	ID                   int64   `json:"id"`
@@ -25,6 +29,7 @@ type Case struct {
 	DisplayOrder         int     `json:"display_order,omitempty"`
 	IsDeleted            int     `json:"is_deleted,omitempty"` // 1 = deleted, 0 = not deleted
 	CustomAutomationType int64   `json:"custom_automation_type,omitempty"`
+	CustomAutotestOn     int64   `json:"custom_autotest_on,omitempty"`
 	CustomPreconds       string  `json:"custom_preconds,omitempty"`
 	CustomSteps          string  `json:"custom_steps,omitempty"`
 	CustomExpected       string  `json:"custom_expected,omitempty"`
@@ -80,19 +85,44 @@ type Change struct {
 
 // AddCaseRequest is the request for add_case.
 type AddCaseRequest struct {
-	Title                string `json:"title"`      // Required
-	SectionID            int64  `json:"section_id"` // Explicit section assignment
-	TypeID               int64  `json:"type_id"`
-	PriorityID           int64  `json:"priority_id"`
-	Estimate             string `json:"estimate,omitempty"`
-	CustomPreconds       string `json:"custom_preconds,omitempty"`
-	CustomSteps          string `json:"custom_steps,omitempty"`           // Text-format steps (alternative to CustomStepsSeparated)
-	CustomExpected       string `json:"custom_expected,omitempty"`        // Expected result (text format)
-	CustomStepsSeparated []Step `json:"custom_steps_separated,omitempty"` // Structured steps
-	Refs                 string `json:"refs,omitempty"`
-	MilestoneID          int64  `json:"milestone_id,omitempty"`
-	TemplateID           int64  `json:"template_id,omitempty"`
+	Title                string                 `json:"title"`                            // Required
+	SectionID            int64                  `json:"section_id"`                       // Explicit section assignment
+	TypeID               int64                  `json:"type_id"`
+	PriorityID           int64                  `json:"priority_id"`
+	Estimate             string                 `json:"estimate,omitempty"`
+	CustomAutotestOn     *int64                 `json:"custom_autotest_on,omitempty"`     // Required in some TestRail schemas
+	CustomPreconds       string                 `json:"custom_preconds,omitempty"`
+	CustomSteps          string                 `json:"custom_steps,omitempty"`           // Text-format steps (alternative to CustomStepsSeparated)
+	CustomExpected       string                 `json:"custom_expected,omitempty"`        // Expected result (text format)
+	CustomStepsSeparated []Step                 `json:"custom_steps_separated,omitempty"` // Structured steps
+	Refs                 string                 `json:"refs,omitempty"`
+	MilestoneID          int64                  `json:"milestone_id,omitempty"`
+	TemplateID           int64                  `json:"template_id,omitempty"`
+	// ExtraFields carries project-specific required custom fields not covered by the
+	// static struct (e.g. custom_loadtest_on). Merged into the JSON body by MarshalJSON.
+	ExtraFields          map[string]interface{} `json:"-"`
 }
+
+// MarshalJSON encodes AddCaseRequest, merging ExtraFields into the top-level JSON object.
+func (r AddCaseRequest) MarshalJSON() ([]byte, error) {
+	type Alias AddCaseRequest
+	base, err := json.Marshal(Alias(r))
+	if err != nil {
+		return nil, err
+	}
+	if len(r.ExtraFields) == 0 {
+		return base, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(base, &m); err != nil {
+		return nil, err
+	}
+	for k, v := range r.ExtraFields {
+		m[k] = v
+	}
+	return json.Marshal(m)
+}
+// AddCaseRequest is the request for add_case.
 
 // UpdateCaseRequest is the request for update_case (partial updates).
 // Pointer fields distinguish "not set" from "empty value".

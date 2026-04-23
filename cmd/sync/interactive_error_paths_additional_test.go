@@ -629,7 +629,7 @@ func TestWave6G_SharedSteps_ConfirmError(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			return &data.SharedStep{ID: 100, Title: r.Title}, nil
@@ -665,7 +665,7 @@ func TestWave6G_SharedSteps_ConfirmDeclined(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 	}
 	old := newMigration

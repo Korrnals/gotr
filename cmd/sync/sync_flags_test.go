@@ -25,6 +25,7 @@ func TestAddSyncFlags(t *testing.T) {
 		"save-mapping",
 		"mapping-file",
 		"output",
+		"verify-coverage",
 	}
 
 	for _, flag := range flags {
@@ -69,6 +70,10 @@ func TestAddSyncFlags_DefaultValues(t *testing.T) {
 	dstSuite, err := cmd.Flags().GetInt64("dst-suite")
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), dstSuite)
+
+	verifyCoverage, err := cmd.Flags().GetBool("verify-coverage")
+	assert.NoError(t, err)
+	assert.False(t, verifyCoverage, "--verify-coverage must default to false (opt-in)")
 }
 
 func TestAddSyncFlags_SetValues(t *testing.T) {

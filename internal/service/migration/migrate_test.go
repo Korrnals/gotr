@@ -39,18 +39,24 @@ func TestMigration_MigrateSuites(t *testing.T) {
 
 // TestMigration_MigrateSharedSteps verifies shared steps migration
 func TestMigration_MigrateSharedSteps(t *testing.T) {
-	t.Run("Migration of only unused steps", func(t *testing.T) {
+	t.Run("Existing duplicate shared step gets mapped from cases SharedStepID", func(t *testing.T) {
 		mock := &MockClient{
 			GetSharedStepsFunc: func(ctx context.Context, p int64) (data.GetSharedStepsResponse, error) {
 				if p == 1 { // source
 					return data.GetSharedStepsResponse{
-						{ID: 1, Title: "Used", CaseIDs: []int64{10}},
-						{ID: 2, Title: "Free", CaseIDs: []int64{}},
+						{ID: 1, Title: "Used"},
+						{ID: 2, Title: "Free"},
 					}, nil
 				}
-				// target — CHANGE 2 to 200 HERE
+				// target: "Free" already exists as 200
 				return data.GetSharedStepsResponse{
-					{ID: 200, Title: "Free", CaseIDs: []int64{}},
+					{ID: 200, Title: "Free"},
+				}, nil
+			},
+			// Case references step 2 via SharedStepID — this is how we detect candidates now
+			GetCasesFunc: func(ctx context.Context, p, s, sec int64) (data.GetCasesResponse, error) {
+				return data.GetCasesResponse{
+					{ID: 10, CustomStepsSeparated: []data.Step{{SharedStepID: 2}}},
 				}, nil
 			},
 		}
@@ -59,7 +65,7 @@ func TestMigration_MigrateSharedSteps(t *testing.T) {
 		err := m.MigrateSharedSteps(context.Background(), false)
 
 		assert.NoError(t, err)
-		// Verify mapping: step 2 (free) should be there
+		// Step 2 "Free" already exists in target as 200 → mapped as "existing"
 		id, exists := m.mapping.GetTargetBySource(2)
 		assert.True(t, exists)
 		assert.Equal(t, int64(200), id)

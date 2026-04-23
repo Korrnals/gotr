@@ -2,7 +2,9 @@ package snap
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,6 +27,8 @@ type ManifestEntry struct {
 	EntityIDs       []int64   `json:"entity_ids,omitempty"`
 	ProjectID       int64     `json:"project_id,omitempty"`
 	SourceProjectID int64     `json:"source_project_id,omitempty"`
+	DstProjectID    int64     `json:"dst_project_id,omitempty"`
+	DstSuiteID      int64     `json:"dst_suite_id,omitempty"`
 	RollbackTier    Tier      `json:"rollback_tier"`
 	Status          Status    `json:"status"`
 	Timestamp       time.Time `json:"timestamp"`
@@ -54,6 +58,10 @@ func LoadManifest(store *Store) (*Manifest, error) {
 	defer f.Close()
 
 	if err := json.NewDecoder(f).Decode(m); err != nil {
+		if errors.Is(err, io.EOF) {
+			m.Entries = []ManifestEntry{}
+			return m, nil
+		}
 		return nil, fmt.Errorf("snap: decode manifest: %w", err)
 	}
 	return m, nil
@@ -75,6 +83,8 @@ func (m *Manifest) Add(meta *Meta) error {
 		EntityIDs:       meta.EntityIDs,
 		ProjectID:       meta.ProjectID,
 		SourceProjectID: meta.SourceProjectID,
+		DstProjectID:    meta.DstProjectID,
+		DstSuiteID:      meta.DstSuiteID,
 		RollbackTier:    meta.RollbackTier,
 		Status:          meta.Status,
 		Timestamp:       meta.Timestamp,
@@ -122,6 +132,22 @@ func (m *Manifest) UpdateLabel(snapID, label string) error {
 	for i := range m.Entries {
 		if m.Entries[i].ID == snapID {
 			m.Entries[i].Label = label
+			return m.save()
+		}
+	}
+	return fmt.Errorf("snap: entry %q not found in manifest", snapID)
+}
+
+// UpdateDataSize refreshes the data_size_bytes field for an entry. Used when
+// the data.json is written after the initial manifest entry (e.g. sync flows
+// that save their payload only after the mutating phase succeeds).
+func (m *Manifest) UpdateDataSize(snapID string, size int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.Entries {
+		if m.Entries[i].ID == snapID {
+			m.Entries[i].DataSize = size
 			return m.save()
 		}
 	}

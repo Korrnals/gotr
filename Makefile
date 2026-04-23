@@ -2,6 +2,9 @@
 
 # Название бинарника
 BINARY_NAME=gotr
+GOLANGCI_LINT_VERSION=v2.11.4
+GO_BIN_DIR=$(shell if [ -n "$(shell go env GOBIN)" ]; then printf "%s" "$(shell go env GOBIN)"; else printf "%s/bin" "$(shell go env GOPATH)"; fi)
+GOLANGCI_LINT_BIN=$(shell if command -v golangci-lint >/dev/null 2>&1; then command -v golangci-lint; else printf "%s/golangci-lint" "$(GO_BIN_DIR)"; fi)
 
 # Приоритет версии:
 # 1. Явно указанная при вызове make (make VERSION=v2.6.0) - HIGHEST PRIORITY
@@ -93,11 +96,15 @@ vet:
 # Линтинг
 lint:
 	@echo "Запуск golangci-lint..."
-	@if ! command -v golangci-lint >/dev/null 2>&1; then \
-		echo "golangci-lint не найден. Установите: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8"; \
+	@if [ ! -x "$(GOLANGCI_LINT_BIN)" ]; then \
+		echo "golangci-lint не найден. Установите: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)"; \
 		exit 1; \
 	fi
-	golangci-lint run --config .golangci.yml --timeout 5m
+	$(GOLANGCI_LINT_BIN) run --config .golangci.yml --timeout 5m
+
+lint-install:
+	@echo "Установка golangci-lint $(GOLANGCI_LINT_VERSION) в $(GO_BIN_DIR)..."
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 # Проверка уязвимостей зависимостей и кода
 vuln:

@@ -71,8 +71,23 @@ func (h *Hook) FinalizeSyncData(data interface{}) {
 		return
 	}
 	meta := h.Snap.Meta
-	if _, err := h.Store.SaveData(meta.ID, meta.DataFile, data); err != nil {
+	size, err := h.Store.SaveData(meta.ID, meta.DataFile, data)
+	if err != nil {
 		ui.Warning(os.Stderr, fmt.Sprintf("snap: save sync data: %v", err))
+		return
+	}
+	// Persist the real payload size both in meta.json and in the manifest
+	// entry so retention/rollback tooling sees a non-zero size for sync
+	// snapshots. Failing to refresh these would leave the snap looking
+	// empty even though data.json contains the rollback log.
+	meta.DataSizeBytes = size
+	if err := h.Store.SaveMeta(meta); err != nil {
+		ui.Warning(os.Stderr, fmt.Sprintf("snap: refresh meta after sync data: %v", err))
+	}
+	if h.Manifest != nil {
+		if err := h.Manifest.UpdateDataSize(meta.ID, size); err != nil {
+			ui.Warning(os.Stderr, fmt.Sprintf("snap: refresh manifest data size: %v", err))
+		}
 	}
 }
 

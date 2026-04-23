@@ -17,13 +17,21 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Latest Release](https://img.shields.io/badge/release-v3.0.1-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.0.1)
+[![Next](https://img.shields.io/badge/next-v3.3.0--dev-orange.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release: v3.0.0** — Stage 13.5 Complete: Quality hardening, 7 audit rounds, 0 lint findings, full test coverage. See [CHANGELOG](CHANGELOG.md) for details
+> **Latest Release:** [v3.0.1](https://github.com/Korrnals/gotr/releases/tag/v3.0.1).
+>
+> **In progress (`main`, untagged):** v3.3.0 — bundles the original 3.1.0 feature
+> set (#28–#32), the 3.2.0 migration bugfix (multiset matching, strict dst-scope
+> resolution, `failedImports` accounting, `--suite1` / `--suite2` /
+> `--match-field` scope flags on `compare`, opt-in `--verify-coverage` gate on
+> `sync cases` / `sync full`, snap meta finalization fix), and an upcoming PDF
+> migration report. See [CHANGELOG](CHANGELOG.md) for the full unreleased scope.
 
 ## Overview
 

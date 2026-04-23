@@ -48,7 +48,7 @@ func TestSyncSharedSteps_DryRun_NoAddSharedSteps(t *testing.T) {
 			return data.GetSuitesResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -85,7 +85,7 @@ func TestSyncSharedSteps_Confirm_TriggersAddSharedStep(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -152,7 +152,7 @@ func TestSyncSharedSteps_SkipOptionalSuite_DryRun_Succeeds(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -189,7 +189,7 @@ func TestSyncSharedSteps_ConfirmDeclined_SkipsImport(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -227,7 +227,7 @@ func TestSyncSharedSteps_ConfirmInNonInteractiveMode_ReturnsError(t *testing.T) 
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -263,7 +263,7 @@ func TestSyncSharedSteps_NoNewStepsNeeded_ReturnsWithoutImport(t *testing.T) {
 			return data.GetSharedStepsResponse{{ID: 1, Title: "Step"}}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -301,7 +301,7 @@ func TestSyncSharedSteps_SaveMappingFlag_WritesMappingFile(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -353,7 +353,7 @@ func TestSyncSharedSteps_SaveMappingPromptAccepted_WritesMappingFile(t *testing.
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -400,7 +400,7 @@ func TestSyncSharedSteps_SavePromptsErrorInNonInteractive_Ignored(t *testing.T) 
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -447,7 +447,7 @@ func TestSyncSharedSteps_NoFlags_InteractiveSuccess(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID int64, suiteID int64, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			addCalled = true
@@ -490,7 +490,7 @@ func TestSyncSharedSteps_SaveFilteredFlag_WritesFilteredFile(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			return &data.SharedStep{ID: 200, Title: r.Title}, nil
@@ -541,7 +541,7 @@ func TestSyncSharedSteps_SaveFilteredPromptAccepted_WritesFilteredFile(t *testin
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			return &data.SharedStep{ID: 201, Title: r.Title}, nil
@@ -586,7 +586,7 @@ func TestSyncSharedSteps_SaveFilteredPromptDeclined_NoFile(t *testing.T) {
 			return data.GetSharedStepsResponse{}, nil
 		},
 		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
-			return data.GetCasesResponse{}, nil
+			return data.GetCasesResponse{{ID: 100, CustomStepsSeparated: []data.Step{{SharedStepID: 1}}}}, nil
 		},
 		AddSharedStepFunc: func(ctx context.Context, projectID int64, r *data.AddSharedStepRequest) (*data.SharedStep, error) {
 			return &data.SharedStep{ID: 202, Title: r.Title}, nil

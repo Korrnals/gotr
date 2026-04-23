@@ -3,7 +3,9 @@ package migration // white-box tests — same package
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 
@@ -275,7 +277,7 @@ func TestMigration_ImportCasesReport_DryRunAndMixedResults(t *testing.T) {
 	goodReq := goodReqVal.(*data.AddCaseRequest)
 	assert.Len(t, goodReq.CustomStepsSeparated, 2)
 	assert.Equal(t, int64(9001), goodReq.CustomStepsSeparated[0].SharedStepID)
-	assert.Equal(t, int64(404), goodReq.CustomStepsSeparated[1].SharedStepID)
+	assert.Equal(t, int64(0), goodReq.CustomStepsSeparated[1].SharedStepID)
 }
 
 func TestMigration_ImportCases_SharedStepIDMappingBranches(t *testing.T) {
@@ -327,7 +329,7 @@ func TestMigration_ImportCases_SharedStepIDMappingBranches(t *testing.T) {
 	mu.Lock()
 	defer mu.Unlock()
 	assert.Equal(t, []int64{155}, observedID["mapped-case"])
-	assert.Equal(t, []int64{999}, observedID["unmapped-case"])
+	assert.Equal(t, []int64{0}, observedID["unmapped-case"])
 }
 
 func TestMigration_ImportSharedSteps_CopiesCustomSteps(t *testing.T) {
@@ -374,4 +376,317 @@ func TestMigration_ImportSharedSteps_CopiesCustomSteps(t *testing.T) {
 	assert.Equal(t, int64(501), got)
 	assert.Equal(t, 1, m.mapping.Count)
 	assert.Equal(t, 1, m.importedCases)
+}
+
+func TestMigration_ImportSections_MapsSuiteIDToDestination(t *testing.T) {
+	mock := &MockClient{}
+
+	var capturedReq *data.AddSectionRequest
+	mock.AddSectionFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+		copied := *req
+		capturedReq = &copied
+		return &data.Section{ID: 88}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	m.mapping.AddPair(111, 222, "created")
+
+	err = m.ImportSections(context.Background(), data.GetSectionsResponse{{
+		ID:          5,
+		Name:        "Section A",
+		Description: "desc",
+		SuiteID:     111,
+	}}, false)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, capturedReq) {
+		assert.Equal(t, int64(222), capturedReq.SuiteID)
+	}
+}
+
+func TestMigration_ImportCases_DefaultsCustomAutotestOn(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		if projectID == 1 {
+			return data.GetSectionsResponse{{ID: 10, Name: "Section A"}}, nil
+		}
+		return data.GetSectionsResponse{{ID: 20, Name: "Section A"}}, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		var fields data.GetCaseFieldsResponse
+		payload := fmt.Sprintf(`[{"name":"custom_autotest_on","system_name":"custom_autotest_on","configs":[{"context":{"is_global":false,"project_ids":[%d]},"id":"cfg","options":{"default_value":"1","is_required":true}}]}]`, 2)
+		if err := json.Unmarshal([]byte(payload), &fields); err != nil {
+			return nil, err
+		}
+		return fields, nil
+	}
+
+	var capturedReq *data.AddCaseRequest
+	mock.AddCaseFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		capturedReq = req
+		return &data.Case{ID: 99}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        1,
+		Title:     "Case A",
+		SectionID: 10,
+	}}, false)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, capturedReq) {
+		assert.Equal(t, int64(20), capturedReq.SectionID)
+		if assert.NotNil(t, capturedReq.CustomAutotestOn) {
+			assert.Equal(t, int64(1), *capturedReq.CustomAutotestOn)
+		}
+	}
+}
+
+func TestMigration_ImportCases_AddsRequiredExtraFields(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		if projectID == 1 {
+			return data.GetSectionsResponse{{ID: 10, Name: "Section A"}}, nil
+		}
+		return data.GetSectionsResponse{{ID: 20, Name: "Section A"}}, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		var fields data.GetCaseFieldsResponse
+		payload := `[
+			{"system_name":"custom_autotest_on","configs":[{"context":{"is_global":false,"project_ids":[2]},"id":"cfg-auto","options":{"default_value":"1","is_required":true}}]},
+			{"system_name":"custom_loadtest_on","configs":[{"context":{"is_global":false,"project_ids":[2]},"id":"cfg-load","options":{"default_value":"2","is_required":true}}]}
+		]`
+		if err := json.Unmarshal([]byte(payload), &fields); err != nil {
+			return nil, err
+		}
+		return fields, nil
+	}
+
+	var capturedReq *data.AddCaseRequest
+	var marshaled map[string]interface{}
+	mock.AddCaseFunc = func(ctx context.Context, suiteID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		capturedReq = req
+		raw, err := json.Marshal(req)
+		if err != nil {
+			return nil, err
+		}
+		if err := json.Unmarshal(raw, &marshaled); err != nil {
+			return nil, err
+		}
+		return &data.Case{ID: 100}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        1,
+		Title:     "Case A",
+		SectionID: 10,
+	}}, false)
+	assert.NoError(t, err)
+
+	if assert.NotNil(t, capturedReq) {
+		assert.Equal(t, int64(20), capturedReq.SectionID)
+		assert.Equal(t, map[string]interface{}{"custom_loadtest_on": int64(2)}, capturedReq.ExtraFields)
+		if assert.NotNil(t, capturedReq.CustomAutotestOn) {
+			assert.Equal(t, int64(1), *capturedReq.CustomAutotestOn)
+		}
+	}
+	assert.Equal(t, float64(2), marshaled["custom_loadtest_on"])
+}
+
+func TestMigration_ImportCases_UsesMappedDestinationSectionID(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		return nil, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+
+	var calledSectionID int64
+	var reqSectionID int64
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		calledSectionID = sectionID
+		reqSectionID = req.SectionID
+		return &data.Case{ID: 101}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	m.mapping.AddPair(111, 222, "existing")
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        1,
+		Title:     "Case A",
+		SectionID: 111,
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(222), calledSectionID)
+	assert.Equal(t, int64(222), reqSectionID)
+}
+
+func TestMigration_ImportCases_UsesSectionNameFallbackMapping(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		if projectID == 1 {
+			return data.GetSectionsResponse{{ID: 500, Name: "Login Flow"}}, nil
+		}
+		return data.GetSectionsResponse{{ID: 900, Name: "Login Flow"}}, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+
+	var calledSectionID int64
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		calledSectionID = sectionID
+		return &data.Case{ID: 202}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        1,
+		Title:     "Case A",
+		SectionID: 500,
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(900), calledSectionID)
+}
+
+// TestMigration_ImportCases_UnresolvedSectionFailsCount verifies that a source
+// case whose section cannot be mapped to a destination section is counted as a
+// failure (FailedCount++) and is NOT silently dropped — the false "0 errors,
+// N skipped" report was the root-cause pattern of the 717/1684 regression.
+func TestMigration_ImportCases_UnresolvedSectionFailsCount(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		return nil, nil // no sections anywhere → no name-based fallback either
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+	addCaseCalls := 0
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		addCaseCalls++
+		return &data.Case{ID: 42}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
+		ID:        7,
+		Title:     "orphan case",
+		SectionID: 999, // neither mapped nor name-resolvable
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, addCaseCalls, "AddCase must not be called when section cannot be resolved")
+	assert.Equal(t, 1, m.FailedCount(), "unresolved section case must increment failedImports")
+	assert.Equal(t, 0, m.ImportedCount(), "no case was actually imported")
+}
+
+// TestMigration_ImportSections_UnresolvedParentFailsCount verifies that a
+// source section whose parent cannot be mapped is recorded as a failure and
+// is NOT silently re-parented to root (which would corrupt the tree and
+// cascade into invisible case losses downstream).
+func TestMigration_ImportSections_UnresolvedParentFailsCount(t *testing.T) {
+	mock := &MockClient{}
+	addSectionCalls := 0
+	mock.AddSectionFunc = func(ctx context.Context, projectID int64, req *data.AddSectionRequest) (*data.Section, error) {
+		addSectionCalls++
+		return &data.Section{ID: 888}, nil
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "name", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	err = m.ImportSections(context.Background(), data.GetSectionsResponse{{
+		ID:       5,
+		Name:     "orphan section",
+		ParentID: 12345, // unmapped parent
+	}}, false)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, addSectionCalls, "AddSection must not be called for unresolved parent")
+	assert.Equal(t, 1, m.FailedCount(), "unresolved parent section must increment failedImports")
+}
+
+// TestMigration_ImportCasesReport_AddCaseErrorIncrementsFailed guarantees that
+// an API-level AddCase error is reflected in FailedCount even when the caller
+// also captures the error via the returned []errors slice (sync_cases uses
+// max(len(errs), FailedCount) now — both paths must agree for that to work).
+func TestMigration_ImportCasesReport_AddCaseErrorIncrementsFailed(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		return nil, nil
+	}
+	mock.GetCaseFieldsFunc = func(ctx context.Context) (data.GetCaseFieldsResponse, error) {
+		return nil, nil
+	}
+	mock.AddCaseFunc = func(ctx context.Context, sectionID int64, req *data.AddCaseRequest) (*data.Case, error) {
+		return nil, errors.New("boom: 500 from target")
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+	m.mapping.AddPair(77, 770, "existing") // make the section resolvable
+
+	created, errs, err := m.ImportCasesReport(context.Background(),
+		data.GetCasesResponse{{ID: 1, Title: "X", SectionID: 77}}, false)
+	assert.NoError(t, err)
+	assert.Empty(t, created)
+	assert.Len(t, errs, 1)
+	assert.Equal(t, 1, m.FailedCount())
+}
+
+// TestResolveSectionMapByName_PopulatesGlobalMapping is a regression test
+// for the coverage-gate false-negative: before this fix, matches resolved by
+// section name never reached m.mapping, so VerifyCasesCoverage (which uses
+// resolveDstSectionIDForFilter / m.mapping only) reported every case missing.
+func TestResolveSectionMapByName_PopulatesGlobalMapping(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		switch projectID {
+		case 1:
+			return data.GetSectionsResponse{{ID: 100, Name: "Login"}, {ID: 200, Name: "Logout"}}, nil
+		case 2:
+			return data.GetSectionsResponse{{ID: 900, Name: "Login"}, {ID: 901, Name: "Logout"}}, nil
+		}
+		return nil, fmt.Errorf("unexpected project %d", projectID)
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "Title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	got, err := m.resolveSectionMapByName(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(900), got[100])
+	assert.Equal(t, int64(901), got[200])
+
+	// The crux of the regression: m.mapping must now expose these pairs so
+	// coverage-gate / filter paths see the same resolution.
+	if tgt, ok := m.mapping.GetTargetBySource(100); !ok || tgt != 900 {
+		t.Fatalf("expected m.mapping[100]=900, got ok=%v target=%d", ok, tgt)
+	}
+	if tgt, ok := m.mapping.GetTargetBySource(200); !ok || tgt != 901 {
+		t.Fatalf("expected m.mapping[200]=901, got ok=%v target=%d", ok, tgt)
+	}
 }

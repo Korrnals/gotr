@@ -54,15 +54,18 @@ Examples:
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
-		compareField, _ := cmd.Flags().GetString("compare-field")
+		compareField, err := resolveMatchField(ctx, cmd, interactive.MatchFieldCases)
+		if err != nil {
+			return fmt.Errorf("casesCmd.func: %w", err)
+		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		quiet, _ := cmd.Flags().GetBool("quiet")
+		autoApprove, _ := cmd.Flags().GetBool("approve")
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
 		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
-		var err error
 
 		// Interactive source project selection
 		if srcProject == 0 {
@@ -185,14 +188,16 @@ Examples:
 		sd := confirmSnapshot(ctx, cmd)
 		printPreConfirmSummary(len(filtered), "cases", sd)
 
-		ok, err := p.Confirm("Continue?", false)
-		if err != nil {
-			return fmt.Errorf("casesCmd.func: %w", err)
-		}
-		if !ok {
-			ui.Canceled(os.Stdout)
-			saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
-			return nil
+		if !autoApprove {
+			ok, err := p.Confirm("Continue?", false)
+			if err != nil {
+				return fmt.Errorf("casesCmd.func: %w", err)
+			}
+			if !ok {
+				ui.Canceled(os.Stdout)
+				saveLog(logFile, matches, filtered, nil, m.Mapping(), quiet)
+				return nil
+			}
 		}
 
 		op = newSyncOperation("Importing cases", quiet)
@@ -252,6 +257,13 @@ Examples:
 		saveMigrationReport(ctx, cmd, "sync_cases", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
 			filterStatsToReport("cases", m.LastFilterStats(), int64(len(createdIDs)), int64(len(importErrors))),
 		})
+
+		if err := runCoverageGate(ctx, cmd, m, quiet); err != nil {
+			// Coverage gap is a hard failure, but the snapshot and logs have
+			// already been persisted — surface the error to Cobra so the
+			// process exits non-zero without overwriting the report.
+			return fmt.Errorf("casesCmd.func: %w", err)
+		}
 
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil

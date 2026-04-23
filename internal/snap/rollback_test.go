@@ -1059,7 +1059,10 @@ func TestRollback_Sync_DeleteCreatedEntities(t *testing.T) {
 	result, err := Rollback(context.Background(), api, store, manifest, snapID)
 	require.NoError(t, err)
 	assert.True(t, result.Success)
-	assert.Contains(t, result.Message, "5/5")
+	assert.Contains(t, result.Message, "5 deleted")
+	require.NotNil(t, result.Stats)
+	assert.Equal(t, 5, result.Stats.Deleted)
+	assert.Equal(t, 0, result.Stats.Failed)
 	// Verify deletion order: cases first, then sections, then shared_steps, then suites.
 	assert.Equal(t, []int64{203, 204, 201, 202, 200}, deletedIDs)
 }

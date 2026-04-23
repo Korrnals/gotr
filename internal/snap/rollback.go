@@ -101,6 +101,38 @@ type RollbackResult struct {
 
 	// Preview contains field-level diff entries (populated in dry-run or preview mode).
 	Preview []DiffEntry
+
+	// Stats holds detailed sync rollback statistics (populated for sync rollbacks).
+	Stats *SyncRollbackStats
+}
+
+// SyncRollbackStats provides per-type breakdown of sync rollback outcomes.
+// Deleted: removed by this run. Skipped: already absent on server. Failed: hard errors.
+// PreRestored: previously restored entries skipped on resume.
+type SyncRollbackStats struct {
+	Total       int
+	Deleted     int
+	Skipped     int
+	Failed      int
+	PreRestored int
+	ByType      map[string]*SyncRollbackTypeStats
+	Failures    []SyncRollbackFailure
+}
+
+// SyncRollbackTypeStats holds per-type counters.
+type SyncRollbackTypeStats struct {
+	Total       int
+	Deleted     int
+	Skipped     int
+	Failed      int
+	PreRestored int
+}
+
+// SyncRollbackFailure records a single failed entity for reporting.
+type SyncRollbackFailure struct {
+	Type     string
+	TargetID int64
+	Error    string
 }
 
 // DiffEntry represents a single field difference for rollback preview.
@@ -931,7 +963,18 @@ func rollbackSync(ctx context.Context, api CasesAPI, store *Store, meta *Meta, r
 		byType[e.Type] = append(byType[e.Type], e)
 	}
 
-	deleted := 0
+	stats := &SyncRollbackStats{
+		ByType: make(map[string]*SyncRollbackTypeStats),
+	}
+	bumpType := func(typ string) *SyncRollbackTypeStats {
+		t, ok := stats.ByType[typ]
+		if !ok {
+			t = &SyncRollbackTypeStats{}
+			stats.ByType[typ] = t
+		}
+		return t
+	}
+
 	var lastErr error
 
 	for _, typ := range deleteOrder {
@@ -941,30 +984,130 @@ func rollbackSync(ctx context.Context, api CasesAPI, store *Store, meta *Meta, r
 				continue
 			}
 
+			ts := bumpType(typ)
+			ts.Total++
+			stats.Total++
+
 			entry := logEntry(meta, typ, e.TargetID)
 			if entry.Status == RBRestored {
-				deleted++
+				ts.PreRestored++
+				stats.PreRestored++
+				continue
+			}
+			if entry.Status == RBSkipped {
+				ts.Skipped++
+				stats.Skipped++
 				continue
 			}
 
 			err := deleteSyncEntity(ctx, api, typ, e.TargetID)
-			if err != nil {
+			switch {
+			case err == nil:
+				entry.Status = RBRestored
+				entry.Error = ""
+				ts.Deleted++
+				stats.Deleted++
+			case isAlreadyDeletedErr(err):
+				entry.Status = RBSkipped
+				entry.Error = ""
+				ts.Skipped++
+				stats.Skipped++
+			default:
 				entry.Status = RBFailed
 				entry.Error = err.Error()
+				ts.Failed++
+				stats.Failed++
+				stats.Failures = append(stats.Failures, SyncRollbackFailure{
+					Type:     typ,
+					TargetID: e.TargetID,
+					Error:    err.Error(),
+				})
 				lastErr = err
-				continue
 			}
-			entry.Status = RBRestored
-			deleted++
 		}
 	}
 
-	result.Message = fmt.Sprintf("Sync rollback: %d/%d entities deleted", deleted, len(syncData.Created))
+	result.Stats = stats
+	result.Message = formatSyncRollbackMessage(stats)
 
 	if lastErr != nil {
 		return fmt.Errorf("sync rollback partial: %w", lastErr)
 	}
 	return nil
+}
+
+// isAlreadyDeletedErr returns true when the API rejects deletion because the
+// entity does not exist anymore. TestRail signals this with HTTP 400 and a
+// message like "is not a valid <entity>" / "не является допустимым". Treating
+// these as a successful skip lets rollback be idempotent across overlapping
+// snapshots.
+func isAlreadyDeletedErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	if !strings.Contains(msg, "400") {
+		return false
+	}
+	switch {
+	case strings.Contains(msg, "is not a valid"),
+		strings.Contains(msg, "не является допустимым"),
+		strings.Contains(msg, "is not a valid test case"),
+		strings.Contains(msg, "is not a valid shared test step"),
+		strings.Contains(msg, "is not a valid section"),
+		strings.Contains(msg, "is not a valid test suite"):
+		return true
+	}
+	return false
+}
+
+// formatSyncRollbackMessage produces a human-readable summary line including a
+// per-type breakdown, e.g.:
+//
+//	"Sync rollback: 12 deleted, 1 skipped, 0 failed (cases: 12 deleted; shared_steps: 1 skipped)".
+func formatSyncRollbackMessage(stats *SyncRollbackStats) string {
+	if stats == nil || stats.Total == 0 {
+		return "Sync rollback: nothing to do"
+	}
+	parts := []string{
+		fmt.Sprintf("%d deleted", stats.Deleted),
+		fmt.Sprintf("%d skipped (already absent)", stats.Skipped),
+		fmt.Sprintf("%d failed", stats.Failed),
+	}
+	if stats.PreRestored > 0 {
+		parts = append(parts, fmt.Sprintf("%d already rolled back", stats.PreRestored))
+	}
+	header := fmt.Sprintf("Sync rollback: %s of %d total", strings.Join(parts, ", "), stats.Total)
+
+	typeOrder := []string{"case", "section", "shared_step", "suite"}
+	var details []string
+	for _, t := range typeOrder {
+		ts, ok := stats.ByType[t]
+		if !ok || ts.Total == 0 {
+			continue
+		}
+		var sub []string
+		if ts.Deleted > 0 {
+			sub = append(sub, fmt.Sprintf("%d deleted", ts.Deleted))
+		}
+		if ts.Skipped > 0 {
+			sub = append(sub, fmt.Sprintf("%d skipped", ts.Skipped))
+		}
+		if ts.Failed > 0 {
+			sub = append(sub, fmt.Sprintf("%d failed", ts.Failed))
+		}
+		if ts.PreRestored > 0 {
+			sub = append(sub, fmt.Sprintf("%d prior", ts.PreRestored))
+		}
+		if len(sub) == 0 {
+			continue
+		}
+		details = append(details, fmt.Sprintf("%ss: %s", t, strings.Join(sub, ", ")))
+	}
+	if len(details) > 0 {
+		header += " (" + strings.Join(details, "; ") + ")"
+	}
+	return header
 }
 
 // deleteSyncEntity performs deletion based on entity type.

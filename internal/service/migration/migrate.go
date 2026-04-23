@@ -19,12 +19,17 @@ func (m *Migration) MigrateSharedSteps(ctx context.Context, dryRun bool) error {
 	if err != nil {
 		return fmt.Errorf("MigrateSharedSteps: %w", err)
 	}
-	caseIDsSet := make(map[int64]struct{})
+	usedStepIDs := make(map[int64]struct{})
 	for _, c := range sourceCases {
-		caseIDsSet[c.ID] = struct{}{}
+		for _, step := range c.CustomStepsSeparated {
+			if step.SharedStepID != 0 {
+				usedStepIDs[step.SharedStepID] = struct{}{}
+			}
+		}
 	}
+	m.logger.Infow("Built usedStepIDs from source cases", "total_cases", len(sourceCases), "unique_shared_step_ids", len(usedStepIDs))
 
-	filtered, _ := m.FilterSharedSteps(source, target, caseIDsSet)
+	filtered, _ := m.FilterSharedSteps(source, target, usedStepIDs)
 	m.lastFilteredSteps = filtered
 
 	return m.ImportSharedSteps(ctx, filtered, dryRun)

@@ -124,6 +124,7 @@ Subcommands:
 			}
 
 			ui.Successf(os.Stdout, "Rollback complete: %s", result.Message)
+			printSyncRollbackDetails(os.Stdout, result)
 			return nil
 		},
 	}
@@ -195,4 +196,46 @@ func truncate(s string, maxLen int) string {
 		return s
 	}
 	return s[:maxLen-3] + "..."
+}
+
+// printSyncRollbackDetails prints a per-type breakdown plus failure samples for
+// sync rollbacks. No-op for non-sync rollbacks.
+func printSyncRollbackDetails(out *os.File, result *snaplib.RollbackResult) {
+	if result == nil || result.Stats == nil {
+		return
+	}
+	stats := result.Stats
+	typeOrder := []string{"case", "section", "shared_step", "suite"}
+	hasDetail := false
+	for _, t := range typeOrder {
+		if ts, ok := stats.ByType[t]; ok && ts.Total > 0 {
+			hasDetail = true
+			break
+		}
+	}
+	if hasDetail {
+		fmt.Fprintln(out, "  Per-type breakdown:")
+		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+		fmt.Fprintln(w, "    TYPE\tTOTAL\tDELETED\tSKIPPED\tFAILED\tPRIOR")
+		for _, t := range typeOrder {
+			ts, ok := stats.ByType[t]
+			if !ok || ts.Total == 0 {
+				continue
+			}
+			fmt.Fprintf(w, "    %s\t%d\t%d\t%d\t%d\t%d\n",
+				t, ts.Total, ts.Deleted, ts.Skipped, ts.Failed, ts.PreRestored)
+		}
+		_ = w.Flush()
+	}
+	if len(stats.Failures) > 0 {
+		limit := len(stats.Failures)
+		if limit > 5 {
+			limit = 5
+		}
+		fmt.Fprintf(out, "  Failure samples (showing %d of %d):\n", limit, len(stats.Failures))
+		for i := 0; i < limit; i++ {
+			f := stats.Failures[i]
+			fmt.Fprintf(out, "    - %s id=%d: %s\n", f.Type, f.TargetID, f.Error)
+		}
+	}
 }

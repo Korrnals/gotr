@@ -138,6 +138,22 @@ func (m *Manifest) UpdateLabel(snapID, label string) error {
 	return fmt.Errorf("snap: entry %q not found in manifest", snapID)
 }
 
+// UpdateDataSize refreshes the data_size_bytes field for an entry. Used when
+// the data.json is written after the initial manifest entry (e.g. sync flows
+// that save their payload only after the mutating phase succeeds).
+func (m *Manifest) UpdateDataSize(snapID string, size int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for i := range m.Entries {
+		if m.Entries[i].ID == snapID {
+			m.Entries[i].DataSize = size
+			return m.save()
+		}
+	}
+	return fmt.Errorf("snap: entry %q not found in manifest", snapID)
+}
+
 // Find returns the entry with the given ID or name, or nil.
 func (m *Manifest) Find(idOrName string) *ManifestEntry {
 	m.mu.Lock()

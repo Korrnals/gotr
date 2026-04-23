@@ -228,12 +228,12 @@ func printSyncRollbackDetails(out *os.File, result *snaplib.RollbackResult) {
 		_ = w.Flush()
 	}
 	if len(stats.Failures) > 0 {
-		max := len(stats.Failures)
-		if max > 5 {
-			max = 5
+		limit := len(stats.Failures)
+		if limit > 5 {
+			limit = 5
 		}
-		fmt.Fprintf(out, "  Failure samples (showing %d of %d):\n", max, len(stats.Failures))
-		for i := 0; i < max; i++ {
+		fmt.Fprintf(out, "  Failure samples (showing %d of %d):\n", limit, len(stats.Failures))
+		for i := 0; i < limit; i++ {
 			f := stats.Failures[i]
 			fmt.Fprintf(out, "    - %s id=%d: %s\n", f.Type, f.TargetID, f.Error)
 		}

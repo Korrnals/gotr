@@ -3,10 +3,12 @@ package sync
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/paths"
 	intreport "github.com/Korrnals/gotr/internal/report"
+	"github.com/Korrnals/gotr/internal/report/pdf"
 	"github.com/Korrnals/gotr/internal/service/migration"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -74,7 +76,24 @@ func saveMigrationReport(ctx context.Context, cmd *cobra.Command, migrationType 
 	}
 
 	ui.Infof(os.Stdout, "Migration report saved: %s", reportPath)
+	maybeRenderPDF(cmd, reportObj, reportPath)
+
 	return reportPath
+}
+
+// maybeRenderPDF writes a PDF counterpart of the migration report when the
+// --pdf-report flag is set on the command. Failures are logged but not fatal.
+func maybeRenderPDF(cmd *cobra.Command, reportObj *intreport.MigrationReport, reportPath string) {
+	wantPDF, _ := cmd.Flags().GetBool("pdf-report")
+	if !wantPDF {
+		return
+	}
+	pdfPath := strings.TrimSuffix(reportPath, ".md") + ".pdf"
+	if err := pdf.NewGenerator().Save(reportObj, pdfPath); err != nil {
+		ui.Warningf(os.Stderr, "report: render PDF failed: %v", err)
+		return
+	}
+	ui.Infof(os.Stdout, "Migration report (PDF) saved: %s", pdfPath)
 }
 
 func toCount(v int) int64 {

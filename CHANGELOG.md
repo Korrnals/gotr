@@ -9,6 +9,127 @@
 
 ## [Unreleased]
 
+### Fixed — migration engine (3.2.0 follow-up)
+
+- **Coverage-gate no longer false-negatives on name-resolved sections.**
+  `internal/service/migration/import.go`:
+  `resolveSectionMapByName` now registers every `src→dst` pair it resolves by
+  section name into `m.mapping` (`AddPair(src, dst, "existing")`). Previously
+  the map lived only as a local variable consumed by `ImportCasesReport`,
+  while `VerifyCasesCoverage → resolveDstSectionIDForFilter` consulted
+  `m.mapping` exclusively and therefore reported `1684/1684 missing` after a
+  successful migration. Regression test:
+  `TestResolveSectionMapByName_PopulatesGlobalMapping`.
+- **Sync snapshots now expose real `data_size_bytes`.**
+  `internal/snap/hook.go` `Hook.FinalizeSyncData` rewrites `meta.json` with
+  the actual payload size and calls the new
+  `Manifest.UpdateDataSize` so list/retention/UI no longer see
+  `data_size_bytes=0` for sync snaps. Rollback was already reading
+  `data.json` directly, so this is purely observational for existing flows
+  but unblocks retention policies tied to size metadata and fixes inspection
+  output. Regression: extended `TestHook_FinalizeSyncData_Happy` asserts both
+  meta and manifest entry are updated.
+- **Flag parity: `--verify-coverage` exposed on `sync full` and `sync cases`.**
+  `cmd/sync/sync.go` registers the flag explicitly on both commands
+  (previously only `sync shared-steps` / `suites` / `sections` saw it via
+  `addSyncFlags`).
+
+Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
+`pinned_DEVOPS-9946`): migration 21m56s, coverage gate
+`✅ 1684/1684 matched`, snap `data_size_bytes=142798`.
+
+---
+
+## [3.2.0] - 2026-04-23
+
+Полный багфикс миграции TestRail: устраняет скрытое расхождение 717/1684,
+которое было вызвано ошибочным «молчаливым» поведением фильтрации
+и парентинга секций в движке миграции.
+
+### Fixed — migration engine
+
+- **Multiset-matching по `(dst_section_id, compare_field)`.**
+  До 3.2.0 фильтр воспринимал одинаковое значение `title` внутри одной
+  `section_id` как «уже есть в target» и пропускал source-кейсы с тем же
+  заголовком, даже если в target этого кейса не было (или был в другом
+  scope). Новая реализация (`internal/service/migration/match.go`,
+  `filter.go`) использует мультимножество с FIFO-поглощением: каждый
+  source-кейс потребляет ровно один target-кейс по совпадающему ключу.
+- **Резолвинг dst-scope стал строгим.** `resolveDstSectionIDForFilter`
+  больше не «схлопывает» несмапленные секции в target root — для неразрешимого
+  `section_id` выдаётся отрицательный sentinel `-srcSectionID`,
+  гарантирующий, что такие source-кейсы не будут ошибочно сматчены
+  с кейсами чужих секций.
+- **Отказ от silent-root-fallback при импорте секций.**
+  `ImportSections`: секция с несмапленным `parent_id` теперь отклоняется
+  с ошибкой и учитывается в `failedImports`, вместо того чтобы молча
+  перепарентиться в root (это и была корневая причина потери 717 кейсов
+  при миграции `p30/S20069 → p34/S19859`).
+- **`FailedCount()` отражает реальные отказы импорта.**
+  `ImportCases`, `ImportCasesReport`, `ImportSections`, `ImportSuites`,
+  `ImportSharedSteps` теперь инкрементируют `failedImports` при каждой
+  ошибке API или отказе от импорта. `max(len(errs), FailedCount())`
+  в отчётах sync-команд теперь корректно превращает «717 missing»
+  из невидимых «skipped» в явные `errors`/`failed`.
+
+### Added — compare pipeline
+
+- **`--suite1` / `--suite2` (persistent).** На `gotr compare *`
+  можно зафиксировать отдельный suite для каждого проекта
+  (`0 = all suites`, как раньше). На мульти-suite целях сравнение
+  больше не будет молча идти через разные scope.
+- **`--match-field` (persistent, shared).** Новый унифицированный
+  флаг поля сравнения — имеет приоритет над `--field`, применяется
+  единообразно во всех `compare` подкомандах.
+- **`filterSuitesByID`**: для неизвестного suite-id возвращается пустой
+  scope (а не fallback на все suites проекта) — отказ от silent-fallback
+  на уровне сравнения.
+
+### Added — sync safety gate
+
+- **`--verify-coverage` (opt-in, default `false`)** на `sync cases` и
+  `sync full`. После импорта повторно фетчит target и проверяет, что
+  каждый source-кейс имеет совпадение по multiset-ключу; при пробеле
+  выходит с ошибкой `coverage gap: ...` (non-zero exit code) и лог-строками
+  `  - [id] "title" (src_section=X, dst_section=Y)` (до 50 штук).
+  Этот гейт — прямой защитник от повторения бага 717/1684 в будущем.
+- **`Migration.VerifyCasesCoverage`** (`internal/service/migration/coverage.go`):
+  автономный API-метод, который используется внутри `runCoverageGate`
+  и может быть вызван из пользовательского кода.
+
+### Added — interactive UX
+
+- **`SelectMatchField`** (`internal/interactive/match_field.go`):
+  новый TTY-guarded промпт выбора поля сравнения для `compare`/`sync`
+  с нормализацией (`MatchFieldCases`, `MatchFieldSections`,
+  `MatchFieldSuites`, `MatchFieldSharedSteps`).
+
+### Changed
+
+- Рефакторинг `cmd/compare/cases.go`: вынесены `resolveCompareField` и
+  `applySuiteScope` хелперы — снижение цикломатической сложности
+  `newCasesCmd` и `compareCasesInternal`.
+- `internal/service/migration/filter.go`: tag-less `switch` в резолвере
+  `dstParentID` заменён на `if/else` (staticcheck QF1002).
+
+### Tests
+
+- Новые регрессионные тесты (`internal/service/migration/import_test.go`,
+  `cmd/sync/sync_helpers_coverage_test.go`, `cmd/sync/sync_flags_test.go`)
+  фиксируют контракт:
+  - source-кейс с неразрешимым `SectionID` → `FailedCount++`, `AddCase`
+    не вызывается.
+  - source-секция с несмапленным `ParentID` → отклонение, учёт отказа.
+  - ошибка `AddCase` одновременно в `[]errs` и `FailedCount`.
+  - `--verify-coverage` по умолчанию `false`, гейт-no-op без флага.
+  - пробой покрытия возвращает ошибку с подстрокой `"coverage gap"`
+    (стабильный контракт для CI/grep).
+
+### Docs
+
+- Обновлён `README.md` / `README_ru.md`: новые флаги и coverage-gate.
+- Обновлены `docs/{en,ru}/guides/commands/{compare,sync}.md`.
+
 ---
 
 ## [3.1.0] - 2026-04-19

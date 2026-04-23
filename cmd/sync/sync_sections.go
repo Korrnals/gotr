@@ -42,12 +42,14 @@ Examples:
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
-		compareField, _ := cmd.Flags().GetString("compare-field")
+		compareField, err := resolveMatchField(ctx, cmd, interactive.MatchFieldSections)
+		if err != nil {
+			return fmt.Errorf("sectionsCmd.func: %w", err)
+		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 
-		var err error
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
@@ -198,7 +200,7 @@ Examples:
 		}
 
 		saveMigrationReport(ctx, cmd, "sync_sections", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
-			filterStatsToReport("sections", m.LastFilterStats(), int64(len(filtered)), 0),
+			filterStatsToReport("sections", m.LastFilterStats(), int64(len(filtered)-m.FailedCount()), int64(m.FailedCount())),
 		})
 
 		syncPostAction(ctx, cmd, snapHook, cli)

@@ -24,6 +24,7 @@ func resetCasesFlags() {
 	casesCmd.Flags().Int64("dst-project", 0, "")
 	casesCmd.Flags().Int64("dst-suite", 0, "")
 	casesCmd.Flags().String("compare-field", "title", "")
+	casesCmd.Flags().Bool("approve", false, "")
 	casesCmd.Flags().Bool("dry-run", false, "")
 	casesCmd.Flags().String("output", "", "")
 	casesCmd.Flags().String("mapping-file", "", "")
@@ -241,6 +242,42 @@ func TestSyncCases_ConfirmInNonInteractiveMode_ReturnsError(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "non-interactive mode")
 	assert.False(t, addCalled, "AddCase should not be called on confirmation error")
+}
+
+func TestSyncCases_ApproveInNonInteractiveMode_ImportsCases(t *testing.T) {
+	addCalled := false
+
+	mock := &client.MockClient{
+		GetCasesFunc: func(ctx context.Context, projectID, suiteID, sectionID int64) (data.GetCasesResponse, error) {
+			if projectID == 1 {
+				return data.GetCasesResponse{{ID: 1, Title: "Case 1"}}, nil
+			}
+			return data.GetCasesResponse{}, nil
+		},
+		AddCaseFunc: func(ctx context.Context, suiteID int64, r *data.AddCaseRequest) (*data.Case, error) {
+			addCalled = true
+			return &data.Case{ID: 100, Title: r.Title}, nil
+		},
+	}
+
+	old := newMigration
+	defer func() { newMigration = old }()
+	newMigration = newMigrationFactoryFromMock(t, mock)
+
+	resetCasesFlags()
+	cmd := casesCmd
+	SetTestClient(cmd, mock)
+	cmd.SetContext(interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter()))
+	cmd.Flags().Set("src-project", "1")
+	cmd.Flags().Set("src-suite", "10")
+	cmd.Flags().Set("dst-project", "2")
+	cmd.Flags().Set("dst-suite", "20")
+	cmd.Flags().Set("approve", "true")
+	cmd.Flags().Set("snapshot", "false")
+
+	err := cmd.RunE(cmd, []string{})
+	assert.NoError(t, err)
+	assert.True(t, addCalled, "AddCase should be called when --approve is enabled in non-interactive mode")
 }
 
 func TestSaveLog_WritesStructuredPayload(t *testing.T) {

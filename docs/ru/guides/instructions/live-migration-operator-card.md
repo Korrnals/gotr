@@ -6,6 +6,17 @@
 >
 > ⚠️ Только `[GOTR-TEST]` проекты. Никаких продуктивных проектов.
 
+## Режим выполнения (текущий)
+
+- Оператор согласует только шаги и изменения стратегии.
+- Все поля интерактивных форм (`name/title/description/refs` и т.п.) заполняются автоматически исполнителем.
+- На вопросы `Create snapshot`, `Continue`, `Save mapping` — по умолчанию отвечать `Yes`, если шаг не помечен как исключение.
+
+Текущие фиксированные проекты:
+
+- `SRC_PROJECT_ID=48` (`Test1`)
+- `DST_PROJECT_ID=49` (`Test2`)
+
 ## Переменные (заполнить один раз перед стартом)
 
 Скопировать блок ниже, подставить значения и выполнить в терминале.
@@ -154,15 +165,23 @@ make build
 ## 8) Очистка (только после явного OK)
 
 - [ ] Получено письменное подтверждение на удаление
-- [ ] Удалён SRC
-- [ ] Удалён DST
-- [ ] Проверено отсутствие `[GOTR-TEST]` проектов
+- [ ] Удалены тестовые сущности `[GOTR-TEST]` внутри `48/49`
+- [ ] Сами проекты `48/49` не удалялись
+- [ ] Проверено что в `48/49` не осталось тестовых suites/shared steps
 
 ```bash
-./gotr delete project $SRC_PROJECT_ID -i
-./gotr delete project $DST_PROJECT_ID -i
-./gotr get projects --non-interactive | grep "GOTR-TEST"
+# Пример контрольной проверки после очистки сущностей
+./gotr get suites 48 --non-interactive --format json
+./gotr get suites 49 --non-interactive --format json
+./gotr get sharedsteps 48 --non-interactive --format json
+./gotr get sharedsteps 49 --non-interactive --format json
 ```
+
+## 9) Реран после фикса багов
+
+- [ ] Повторен полный интерактивный маршрут (`-i`) с автозаполнением полей
+- [ ] Повторен полный неинтерактивный маршрут (`--non-interactive` + флаги)
+- [ ] Сравнены результаты двух прогонов (filter summary, migration summary, snapshot, report)
 
 ## Стоп-правила
 

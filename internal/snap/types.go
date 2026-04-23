@@ -60,6 +60,7 @@ type RollbackStatus string
 const (
 	RBPending  RollbackStatus = "pending"
 	RBRestored RollbackStatus = "restored"
+	RBSkipped  RollbackStatus = "skipped" // entity already absent on the server (treated as success)
 	RBFailed   RollbackStatus = "failed"
 )
 
@@ -92,6 +93,8 @@ type Meta struct {
 	ProjectID       int64     `json:"project_id,omitempty"`
 	SuiteID         int64     `json:"suite_id,omitempty"`
 	SourceProjectID int64     `json:"source_project_id,omitempty"`
+	DstProjectID    int64     `json:"dst_project_id,omitempty"`
+	DstSuiteID      int64     `json:"dst_suite_id,omitempty"`
 	Timestamp       time.Time `json:"timestamp"`
 	RollbackTier    Tier      `json:"rollback_tier"`
 	Status          Status    `json:"status"`

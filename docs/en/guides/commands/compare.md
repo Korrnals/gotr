@@ -80,8 +80,24 @@ gotr compare [command]
 --retry-workers int      Number of parallel workers during auto-retry of failed pages (default 12)
 --save                   Save result to file (default: ~/.gotr/exports/)
 --save-to string         Save result to specified file
+--suite1 int             Restrict project 1 to a single suite id (0 = all suites, default 0)
+--suite2 int             Restrict project 2 to a single suite id (0 = all suites, default 0)
+--match-field string     Field to match items by (takes priority over --field); shared across compare subcommands
 --timeout duration       Timeout for compare operation (default 30m0s)
 ```
+
+### Suite scope (since 3.2.0)
+
+| Flag | Description | Default |
+| --- | --- | --- |
+| `--suite1` | Narrow project 1 to a single suite id. `0` = previous "all suites" behavior. An unknown suite id results in an empty scope — `compare` refuses to silently fall back to full project comparison. | `0` |
+| `--suite2` | Same, for project 2. | `0` |
+| `--match-field` | Field used to match items (e.g. `title`, `priority_id`). When set, takes priority over the subcommand-specific `--field`. | `""` |
+
+> [!NOTE]
+> On multi-suite targets (e.g. when `pid2` has dozens of suites), always
+> pin `--suite1` / `--suite2` to the concrete migration scope — otherwise
+> `compare` would walk mismatched scopes and produce misleading diffs.
 
 ### Retry & Rate Limiting
 

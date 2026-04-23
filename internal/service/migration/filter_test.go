@@ -224,16 +224,67 @@ func TestFilterCases_TableDriven(t *testing.T) {
 			wantFilteredTitles: []string{},
 		},
 		{
-			name:         "exclude duplicates by compare field",
+			// New semantics: cases are matched by (dst_section_id, compare field).
+			// Source cases with SectionID=0 fall back to dstSuite (20 in the
+			// test helper), which matches target cases sitting at SectionID=20.
+			name:         "exclude duplicates by compare field (same dst_section_id)",
 			compareField: "Title",
 			source: data.GetCasesResponse{
 				{ID: 1, Title: "Duplicate"},
 				{ID: 2, Title: "Unique"},
 			},
 			target: data.GetCasesResponse{
-				{ID: 100, Title: "Duplicate"},
+				{ID: 100, Title: "Duplicate", SectionID: 20},
 			},
 			wantFilteredTitles: []string{"Unique"},
+		},
+		{
+			// Multiset / bucket semantics: two source cases with the same title
+			// in the same dst section should match the TWO target rows with that
+			// title (one-to-one), instead of the old flat-map bug where a single
+			// target entry collapsed both source rows into "skipped".
+			name:         "multiset matches N source to N targets",
+			compareField: "Title",
+			source: data.GetCasesResponse{
+				{ID: 10, Title: "Dup"},
+				{ID: 11, Title: "Dup"},
+				{ID: 12, Title: "New"},
+			},
+			target: data.GetCasesResponse{
+				{ID: 100, Title: "Dup", SectionID: 20},
+				{ID: 101, Title: "Dup", SectionID: 20},
+			},
+			wantFilteredTitles: []string{"New"},
+		},
+		{
+			// Multiset surplus on source side: target has fewer duplicates than
+			// source, so the "extra" source rows are kept as New — this is the
+			// exact bug that used to make 717 of 1684 cases disappear.
+			name:         "source has more duplicates than target keeps surplus",
+			compareField: "Title",
+			source: data.GetCasesResponse{
+				{ID: 30, Title: "Dup"},
+				{ID: 31, Title: "Dup"},
+				{ID: 32, Title: "Dup"},
+			},
+			target: data.GetCasesResponse{
+				{ID: 300, Title: "Dup", SectionID: 20},
+			},
+			wantFilteredTitles: []string{"Dup", "Dup"},
+		},
+		{
+			// Same title but different destination sections must NOT match: a
+			// source case in section A should never be considered a duplicate of
+			// a target case in section B.
+			name:         "different dst_section_id keeps case as new",
+			compareField: "Title",
+			source: data.GetCasesResponse{
+				{ID: 20, Title: "Same"},
+			},
+			target: data.GetCasesResponse{
+				{ID: 200, Title: "Same", SectionID: 99},
+			},
+			wantFilteredTitles: []string{"Same"},
 		},
 		{
 			name:         "missing compare field keeps source cases",
@@ -272,37 +323,37 @@ func TestFilterSharedSteps_TableDriven(t *testing.T) {
 		compareField        string
 		source              data.GetSharedStepsResponse
 		target              data.GetSharedStepsResponse
-		sourceCaseIDs       map[int64]struct{}
+		usedStepIDs         map[int64]struct{}
 		wantFilteredTitles  []string
 		wantMappingSourceID int64
 		wantMappingTargetID int64
 		wantMappingExists   bool
 	}{
 		{
-			name:         "used by source suite is excluded from candidates",
+			name:         "used by source suite is included as candidate",
 			compareField: "Title",
 			source: data.GetSharedStepsResponse{
-				{ID: 1, Title: "Used", CaseIDs: []int64{10}},
-				{ID: 2, Title: "Unused", CaseIDs: []int64{20}},
+				{ID: 1, Title: "Used"},
+				{ID: 2, Title: "Unused"},
 			},
 			target: data.GetSharedStepsResponse{},
-			sourceCaseIDs: map[int64]struct{}{
-				10: {},
+			usedStepIDs: map[int64]struct{}{
+				1: {},
 			},
-			wantFilteredTitles: []string{"Unused"},
+			wantFilteredTitles: []string{"Used"},
 			wantMappingExists:  false,
 		},
 		{
 			name:         "duplicate candidate is mapped as existing",
 			compareField: "Title",
 			source: data.GetSharedStepsResponse{
-				{ID: 3, Title: "Duplicate", CaseIDs: []int64{99}},
-				{ID: 4, Title: "New", CaseIDs: []int64{100}},
+				{ID: 3, Title: "Duplicate"},
+				{ID: 4, Title: "New"},
 			},
 			target: data.GetSharedStepsResponse{
 				{ID: 300, Title: "Duplicate"},
 			},
-			sourceCaseIDs:       map[int64]struct{}{},
+			usedStepIDs:         map[int64]struct{}{3: {}, 4: {}},
 			wantFilteredTitles:  []string{"New"},
 			wantMappingSourceID: 3,
 			wantMappingTargetID: 300,
@@ -312,13 +363,13 @@ func TestFilterSharedSteps_TableDriven(t *testing.T) {
 			name:         "compare field fallback keeps candidates without field match",
 			compareField: "UnknownField",
 			source: data.GetSharedStepsResponse{
-				{ID: 5, Title: "A", CaseIDs: []int64{}},
-				{ID: 6, Title: "B", CaseIDs: []int64{}},
+				{ID: 5, Title: "A"},
+				{ID: 6, Title: "B"},
 			},
 			target: data.GetSharedStepsResponse{
 				{ID: 600, Title: "A"},
 			},
-			sourceCaseIDs:      map[int64]struct{}{},
+			usedStepIDs:        map[int64]struct{}{5: {}, 6: {}},
 			wantFilteredTitles: []string{"A", "B"},
 			wantMappingExists:  false,
 		},
@@ -329,7 +380,7 @@ func TestFilterSharedSteps_TableDriven(t *testing.T) {
 			m := setupTestMigration(t, &MockClient{})
 			m.compareField = tc.compareField
 
-			filtered, err := m.FilterSharedSteps(tc.source, tc.target, tc.sourceCaseIDs)
+			filtered, err := m.FilterSharedSteps(tc.source, tc.target, tc.usedStepIDs)
 			assert.NoError(t, err)
 
 			filteredTitles := make([]string, 0, len(filtered))

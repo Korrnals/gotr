@@ -41,7 +41,10 @@ Examples:
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
 		dstSuite, _ := cmd.Flags().GetInt64("dst-suite")
-		compareField, _ := cmd.Flags().GetString("compare-field")
+		compareField, err := resolveMatchField(ctx, cmd, interactive.MatchFieldCases)
+		if err != nil {
+			return fmt.Errorf("fullCmd.func: %w", err)
+		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
@@ -50,7 +53,6 @@ Examples:
 		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
-		var err error
 
 		// Interactive source project selection
 		if srcProject == 0 {
@@ -121,6 +123,11 @@ Examples:
 				snap.CurrentServerURL(),
 			)
 			meta.Label = sd.Label
+			meta.SourceProjectID = srcProject
+			meta.DstProjectID = dstProject
+			meta.DstSuiteID = dstSuite
+			// Re-generate ID so the directory name reflects src→dst.
+			meta.ID = snap.GenerateID(&meta)
 			hook.Before(ctx, meta, nil)
 		} else {
 			hook = &snap.Hook{Enabled: false}
@@ -139,6 +146,7 @@ Examples:
 		}
 		sharedFiltered := m.FilteredSharedSteps()
 		sharedFilterStats := m.LastFilterStats()
+		sharedFailed := m.FailedCount()
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run complete")
@@ -170,6 +178,9 @@ Examples:
 			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
 		}
 		caseFilterStats := m.LastFilterStats()
+		// Cases-only failures = cumulative failures minus the ones that happened
+		// during the shared-steps phase earlier.
+		caseFailed := m.FailedCount() - sharedFailed
 
 		if autoSaveMapping {
 			_ = m.ExportMapping(logDir)
@@ -205,9 +216,13 @@ Examples:
 		hook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 
 		saveMigrationReport(ctx, cmd, "sync_full", srcProject, dstProject, startedAt, hook, []reportResourceStats{
-			filterStatsToReport("shared_steps", sharedFilterStats, int64(len(sharedFiltered)), 0),
-			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(len(caseImport.Errors))),
+			filterStatsToReport("shared_steps", sharedFilterStats, int64(len(sharedFiltered)-sharedFailed), int64(sharedFailed)),
+			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(max(len(caseImport.Errors), caseFailed))),
 		})
+
+		if err := runCoverageGate(ctx, cmd, m, quiet); err != nil {
+			return fmt.Errorf("fullCmd.func: %w", err)
+		}
 
 		ui.Success(os.Stdout, "Full migration complete!")
 		syncPostAction(ctx, cmd, hook, cli)

@@ -60,7 +60,32 @@ gotr sync [command]
 ## Flags ⚙️
 
 ```text
--h, --help   help for sync
+-h, --help               help for sync
+--verify-coverage        After import, re-fetch target and verify every source case has a match (non-zero exit on gaps). Applies to `sync cases` and `sync full`. Default: false.
+```
+
+### Coverage gate (since 3.2.0)
+
+When `--verify-coverage` is set, after the import phase `gotr` re-fetches the
+target suite and runs the same multiset matching used by the filter. If any
+source case cannot be matched in the target scope, the command:
+
+- Prints `❌ Coverage gap: M/N source cases missing in target (X.X% coverage)`.
+- Logs up to 50 missing items in the form `  - [id] "title" (src_section=X, dst_section=Y)`.
+- Returns a non-zero exit code with an error message containing the
+  stable substring `"coverage gap"` (grep-friendly for CI).
+
+The gate is opt-in and is a direct guard against silent `section_id` /
+scope mismatches that previously caused partial migrations to be reported
+as successful.
+
+```bash
+# Dry-run with coverage verification off (default).
+gotr sync cases --dry-run --src-project 30 --src-suite 20069 --dst-project 34 --dst-suite 19859
+
+# Real migration with strict coverage gate.
+gotr sync full --src-project 30 --src-suite 20069 --dst-project 34 --dst-suite 19859 \
+  --approve --save-mapping --verify-coverage
 ```
 
 ## Global Flags 🌐

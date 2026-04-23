@@ -215,6 +215,19 @@ func TestManifest_EmptyDir(t *testing.T) {
 	assert.Nil(t, manifest.Latest())
 }
 
+func TestManifest_EmptyFileEOF(t *testing.T) {
+	dir := t.TempDir()
+	store, err := NewStoreAt(dir)
+	require.NoError(t, err)
+
+	err = os.WriteFile(dir+"/manifest.json", []byte{}, 0o644)
+	require.NoError(t, err)
+
+	manifest, err := LoadManifest(store)
+	require.NoError(t, err)
+	assert.Equal(t, 0, manifest.Len())
+}
+
 func TestManifest_Add_CopiesProjectIDs(t *testing.T) {
 	dir := t.TempDir()
 	store, err := NewStoreAt(dir)

@@ -2,9 +2,11 @@
 package migration
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -28,6 +30,7 @@ type Migration struct {
 	logFile  *os.File // log file handle, closed in Close()
 
 	lastFilteredSteps data.GetSharedStepsResponse // filtered shared steps from last MigrateSharedSteps run
+	lastFilterStats   FilterStats                 // statistics from the last Filter* call
 }
 
 // NewMigration creates a new Migration instance with a zap logger.
@@ -48,9 +51,9 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 	consoleEncoder := zapcore.NewConsoleEncoder(zap.NewDevelopmentEncoderConfig())
 	jsonEncoder := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
 
-	// Cores
-	consoleCore := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), zap.DebugLevel)
-	fileCore := zapcore.NewCore(jsonEncoder, zapcore.AddSync(fileWriter), zap.InfoLevel)
+	// Cores: console shows only warnings+, file gets everything from info+
+	consoleCore := zapcore.NewCore(consoleEncoder, zapcore.AddSync(os.Stdout), zap.WarnLevel)
+	fileCore := zapcore.NewCore(jsonEncoder, zapcore.AddSync(fileWriter), zap.DebugLevel)
 
 	core := zapcore.NewTee(consoleCore, fileCore)
 	logger := zap.New(core, zap.AddCaller()).Sugar()
@@ -75,7 +78,7 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 // Close shuts down the migration, flushing log buffers to disk.
 func (m *Migration) Close() error {
 	if m.logger != nil {
-		if err := m.logger.Sync(); err != nil {
+		if err := m.logger.Sync(); err != nil && !isSyncIgnorable(err) {
 			fmt.Fprintf(os.Stderr, "warning: failed to flush migration log: %v\n", err)
 		}
 	}
@@ -85,6 +88,16 @@ func (m *Migration) Close() error {
 		}
 	}
 	return nil
+}
+
+// isSyncIgnorable returns true for errors expected when syncing non-file
+// descriptors (stdout/stderr). These are harmless and should be suppressed.
+func isSyncIgnorable(err error) bool {
+	var pathErr *os.PathError
+	if errors.As(err, &pathErr) {
+		return errors.Is(pathErr.Err, syscall.EINVAL) || errors.Is(pathErr.Err, syscall.ENOTSUP)
+	}
+	return false
 }
 
 // FilteredSharedSteps returns the filtered shared steps from the last MigrateSharedSteps run.

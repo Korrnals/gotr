@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/AlecAivazis/survey/v2"
 )
@@ -12,6 +13,14 @@ var surveyAskOne = survey.AskOne
 
 // ErrNonInteractive is returned when a prompt is requested in non-interactive mode.
 var ErrNonInteractive = errors.New("non-interactive mode: input required but unavailable")
+
+// isInterruptError returns true if the error is caused by user pressing Ctrl+C.
+func isInterruptError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "interrupt")
+}
 
 // Prompter is a unified interface for all interactive input in commands.
 type Prompter interface {
@@ -39,6 +48,9 @@ func (p *TerminalPrompter) Input(message, defaultVal string) (string, error) {
 
 	err := surveyAskOne(prompt, &answer)
 	if err != nil {
+		if isInterruptError(err) {
+			return "", context.Canceled
+		}
 		return "", fmt.Errorf("failed to get input: %w", err)
 	}
 
@@ -50,6 +62,9 @@ func (p *TerminalPrompter) Confirm(message string, def bool) (bool, error) {
 	var answer bool
 	err := surveyAskOne(&survey.Confirm{Message: message, Default: def}, &answer)
 	if err != nil {
+		if isInterruptError(err) {
+			return false, context.Canceled
+		}
 		return false, fmt.Errorf("failed to get confirmation: %w", err)
 	}
 
@@ -65,6 +80,9 @@ func (p *TerminalPrompter) Select(message string, options []string) (idx int, va
 	var selected string
 	err = surveyAskOne(&survey.Select{Message: message, Options: options}, &selected)
 	if err != nil {
+		if isInterruptError(err) {
+			return 0, "", context.Canceled
+		}
 		return 0, "", fmt.Errorf("failed to select option: %w", err)
 	}
 
@@ -83,6 +101,9 @@ func (p *TerminalPrompter) MultilineInput(message, defaultVal string) (string, e
 	prompt := &survey.Multiline{Message: message, Default: defaultVal}
 	err := surveyAskOne(prompt, &answer)
 	if err != nil {
+		if isInterruptError(err) {
+			return "", context.Canceled
+		}
 		return "", fmt.Errorf("failed to get multiline input: %w", err)
 	}
 

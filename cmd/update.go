@@ -11,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -73,6 +74,7 @@ func init() {
 
 	// Flags for labels
 	updateCmd.Flags().String("labels", "", "Comma-separated labels for test (for 'update labels')")
+	snap.RegisterFlags(updateCmd)
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
@@ -83,7 +85,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	endpoint := args[0]
 	id, err := flags.ValidateRequiredID(args, 1, "ID")
 	if err != nil {
-		return err
+		return fmt.Errorf("runUpdate: %w", err)
 	}
 
 	// Get the client
@@ -597,6 +599,8 @@ func updateProject(cli client.ClientInterface, cmd *cobra.Command, id int64, jso
 			return cli.UpdateProject(ctx, id, req)
 		},
 		"failed to update project",
+		crud.SnapHint{Op: snap.OpUpdate, EntityType: "project", EntityIDs: []int64{id}, Tier: snap.Tier1,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetProject(ctx, id) }},
 	)
 }
 
@@ -606,6 +610,8 @@ func updateSuite(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonD
 			return cli.UpdateSuite(ctx, id, req)
 		},
 		"failed to update suite",
+		crud.SnapHint{Op: snap.OpUpdate, EntityType: "suite", EntityIDs: []int64{id}, Tier: snap.Tier1,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetSuite(ctx, id) }},
 	)
 }
 
@@ -615,6 +621,8 @@ func updateSection(cli client.ClientInterface, cmd *cobra.Command, id int64, jso
 			return cli.UpdateSection(ctx, id, req)
 		},
 		"failed to update section",
+		crud.SnapHint{Op: snap.OpUpdate, EntityType: "section", EntityIDs: []int64{id}, Tier: snap.Tier1,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetSection(ctx, id) }},
 	)
 }
 
@@ -624,6 +632,8 @@ func updateCase(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonDa
 			return cli.UpdateCase(ctx, id, req)
 		},
 		"failed to update case",
+		crud.SnapHint{Op: snap.OpUpdate, EntityType: "case", EntityIDs: []int64{id}, Tier: snap.Tier1,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetCase(ctx, id) }},
 	)
 }
 
@@ -633,6 +643,8 @@ func updateRun(cli client.ClientInterface, cmd *cobra.Command, id int64, jsonDat
 			return cli.UpdateRun(ctx, id, req)
 		},
 		"failed to update run",
+		crud.SnapHint{Op: snap.OpUpdate, EntityType: "run", EntityIDs: []int64{id}, Tier: snap.Tier1,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetRun(ctx, id) }},
 	)
 }
 
@@ -642,12 +654,17 @@ func updateSharedStep(cli client.ClientInterface, cmd *cobra.Command, id int64, 
 			return cli.UpdateSharedStep(ctx, id, req)
 		},
 		"failed to update shared step",
+		crud.SnapHint{Op: snap.OpUpdate, EntityType: "shared_step", EntityIDs: []int64{id}, Tier: snap.Tier1,
+			FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetSharedStep(ctx, id) }},
 	)
 }
 
 func outputUpdateResult(cmd *cobra.Command, v interface{}) error {
 	_, err := output.Output(cmd, v, "result", "json")
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to output result: %w", err)
+	}
+	return nil
 }
 
 // updateLabels updates test labels (DEPRECATED: use 'gotr labels update' instead).

@@ -37,7 +37,7 @@ Returns the report ID, download URL, and generation status.`,
 			if len(args) > 0 {
 				templateID, err = flags.ValidateRequiredID(args, 0, "template_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newRunCrossProjectCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -49,7 +49,7 @@ Returns the report ID, download URL, and generation status.`,
 
 				templateID, err = resolveCrossProjectReportTemplateIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newRunCrossProjectCmd.func: %w", err)
 				}
 			}
 
@@ -75,7 +75,10 @@ Returns the report ID, download URL, and generation status.`,
 			}
 
 			_, err = output.Output(cmd, resp, "reports", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output reports: %w", err)
+			}
+			return nil
 		},
 	}
 

@@ -35,7 +35,7 @@ Supports JSON output for automation.`,
 				var err error
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				ctx := cmd.Context()
@@ -46,7 +46,7 @@ Supports JSON output for automation.`,
 				var err error
 				projectID, err = resolveProjectIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 

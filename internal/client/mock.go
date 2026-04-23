@@ -4,6 +4,7 @@ package client
 
 import (
 	"context"
+	"io"
 
 	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/models/data"
@@ -113,6 +114,7 @@ type MockClient struct {
 	AddAttachmentToResultFunc      func(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error)
 	AddAttachmentToRunFunc         func(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error)
 	DeleteAttachmentFunc           func(ctx context.Context, attachmentID int64) error
+	DownloadAttachmentFunc         func(ctx context.Context, attachmentID int64) (io.ReadCloser, error)
 	GetAttachmentFunc              func(ctx context.Context, attachmentID int64) (*data.Attachment, error)
 	GetAttachmentsForCaseFunc      func(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error)
 	GetAttachmentsForPlanFunc      func(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error)
@@ -871,6 +873,14 @@ func (m *MockClient) DeleteAttachment(ctx context.Context, attachmentID int64) e
 		return m.DeleteAttachmentFunc(ctx, attachmentID)
 	}
 	return nil
+}
+
+// DownloadAttachment calls the configured mock implementation when it is set.
+func (m *MockClient) DownloadAttachment(ctx context.Context, attachmentID int64) (io.ReadCloser, error) {
+	if m.DownloadAttachmentFunc != nil {
+		return m.DownloadAttachmentFunc(ctx, attachmentID)
+	}
+	return nil, nil
 }
 
 // GetAttachment calls the configured mock implementation when it is set.

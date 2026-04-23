@@ -109,16 +109,16 @@ func newSimpleResourceEntry(displayName, key, label string, field func(*allResul
 }
 
 var (
-	compareAllPipe      = os.Pipe
-	compareAllCopy      = io.Copy
-	compareAllWriteFile = os.WriteFile
-	compareAllCasesFn   = compareCasesInternal
-	compareAllSuitesFn  = compareSuitesInternalWithSuites
+	compareAllPipe       = os.Pipe
+	compareAllCopy       = io.Copy
+	compareAllWriteFile  = os.WriteFile
+	compareAllCasesFn    = compareCasesInternal
+	compareAllSuitesFn   = compareSuitesInternalWithSuites
 	compareAllSectionsFn = compareSectionsInternalWithSuites
-	compareAllSimpleFn  = compareSimpleInternal
-	resolveSavePathFn   = outpututils.ResolveSavePathFromFlags
-	promptSavePathFn    = outpututils.PromptSavePath
-	saveAllResultFn     = saveAllResult
+	compareAllSimpleFn   = compareSimpleInternal
+	resolveSavePathFn    = outpututils.ResolveSavePathFromFlags
+	promptSavePathFn     = outpututils.PromptSavePath
+	saveAllResultFn      = saveAllResult
 )
 
 func printCompareAllStageProgress(w io.Writer, current string) {
@@ -381,12 +381,12 @@ func executeCompareAll(cmd *cobra.Command, _ []string) error {
 
 	pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 	if err != nil {
-		return err
+		return fmt.Errorf("executeCompareAll: %w", err)
 	}
 
 	project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 	if err != nil {
-		return err
+		return fmt.Errorf("executeCompareAll: %w", err)
 	}
 
 	startTime := time.Now()
@@ -406,6 +406,15 @@ func executeCompareAll(cmd *cobra.Command, _ []string) error {
 	if savePath != "" {
 		return saveCompareAllOutput(cmd, result, format, savePath, quiet, project1Name, pid1, project2Name, pid2, errs, elapsed)
 	}
+
+	// Post-action menu with drill-down (interactive only, non-save).
+	if !quiet {
+		action := compareAllPostAction(ctx, cmd, result, project1Name, project2Name, pid1, pid2)
+		if action == actionSave {
+			return saveCompareAllOutput(cmd, result, format, "__DEFAULT__", quiet, project1Name, pid1, project2Name, pid2, errs, elapsed)
+		}
+	}
+
 	return nil
 }
 
@@ -480,7 +489,7 @@ func saveCompareAllOutput(cmd *cobra.Command, result *allResult, format, savePat
 	switch format {
 	case "json", "yaml":
 		if err := saveAllResultFn(result, format, savePath); err != nil {
-			return err
+			return fmt.Errorf("saveCompareAllOutput: %w", err)
 		}
 		if !quiet {
 			fmt.Println()
@@ -503,6 +512,7 @@ var allCmd = newAllCmd()
 //   - "__DEFAULT__" if --save flag was used (save to default location)
 //   - custom path if --save-to flag was used
 //   - "" if neither flag was used
+//nolint:gocyclo // Interactive flag parsing with back-navigation is intentionally explicit.
 func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid2 int64, format, savePath string, err error) {
 	ctx := cmd.Context()
 	p := interactive.PrompterFromContext(ctx)
@@ -510,22 +520,40 @@ func parseCommonFlags(cmd *cobra.Command, cli client.ClientInterface) (pid1, pid
 
 	pid1Str, _ := cmd.Flags().GetString("pid1")
 	pid1, _ = flags.ParseID(pid1Str)
-	if pid1 <= 0 {
-		pid1, err = interactive.SelectProject(ctx, p, cli, "Select first project (pid1):")
-		if err != nil {
-			return 0, 0, "", "", fmt.Errorf("pid1 not specified and interactive selection failed: %w", err)
-		}
-		usedInteractivePID = true
-	}
 
 	pid2Str, _ := cmd.Flags().GetString("pid2")
 	pid2, _ = flags.ParseID(pid2Str)
-	if pid2 <= 0 {
-		pid2, err = interactive.SelectProject(ctx, p, cli, "Select second project (pid2):")
-		if err != nil {
-			return 0, 0, "", "", fmt.Errorf("pid2 not specified and interactive selection failed: %w", err)
+
+	// Interactive project selection with back-navigation loop.
+	if pid1 <= 0 || pid2 <= 0 {
+		for {
+			if pid1 <= 0 {
+				pid1, err = interactive.SelectProject(ctx, p, cli, "Select first project (pid1):")
+				if err != nil {
+					if interactive.IsGoBack(err) || interactive.IsExit(err) {
+						return 0, 0, "", "", err
+					}
+					return 0, 0, "", "", fmt.Errorf("pid1 not specified and interactive selection failed: %w", err)
+				}
+				usedInteractivePID = true
+			}
+
+			if pid2 <= 0 {
+				pid2, err = interactive.SelectProject(ctx, p, cli, "Select second project (pid2):", true)
+				if err != nil {
+					if interactive.IsExit(err) {
+						return 0, 0, "", "", err
+					}
+					if interactive.IsGoBack(err) {
+						pid1 = 0
+						continue
+					}
+					return 0, 0, "", "", fmt.Errorf("pid2 not specified and interactive selection failed: %w", err)
+				}
+				usedInteractivePID = true
+			}
+			break
 		}
-		usedInteractivePID = true
 	}
 
 	format, _ = cmd.Flags().GetString("format")

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -37,6 +39,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -47,6 +50,7 @@ Examples:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
@@ -55,7 +59,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy shared steps from):")
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 		}
 
@@ -64,12 +68,12 @@ Examples:
 			// Ask if suite is needed
 			specifySuite, err := p.Confirm("Specify source suite?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 			if specifySuite {
 				srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 				if err != nil {
-					return err
+					return fmt.Errorf("sharedStepsCmd.func: %w", err)
 				}
 			}
 		}
@@ -78,24 +82,24 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy shared steps to):")
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 		}
 
 		// Log directory and migration initialization
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 		// Step 1) Initialize migration object (logging, client, parameters)
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, 0, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 		defer m.Close()
 
 		op := newSyncOperation("Sync shared steps", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		op.Phase("Loading shared steps")
 		loadedSteps, err := runSyncStatus(ctx, "Loading shared steps...", quiet, func(ctx context.Context) (struct {
@@ -115,18 +119,37 @@ defer op.Finish()
 			}{Source: sourceSteps, Target: targetSteps}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 		sourceSteps := loadedSteps.Source
 		targetSteps := loadedSteps.Target
 
-		// Step 2) Fetch source cases to determine shared steps usage
+		// Step 2) Fetch source cases to determine shared steps usage.
+		// When srcSuite==0 (user opted out of suite selection), load cases
+		// from every suite so filtering works for multi-suite projects.
 		op.Phase("Loading source cases")
-		sourceCases, err := runSyncStatus(ctx, "Loading source cases...", quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
-			return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
-		})
-		if err != nil {
-			return err
+		var sourceCases data.GetCasesResponse
+		if srcSuite != 0 {
+			sourceCases, err = runSyncStatus(ctx, "Loading source cases...", quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
+				return m.Client.GetCases(ctx, srcProject, srcSuite, 0)
+			})
+			if err != nil {
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
+			}
+		} else {
+			suites, sErr := m.Client.GetSuites(ctx, srcProject)
+			if sErr != nil {
+				return fmt.Errorf("failed to load suites for project %d: %w", srcProject, sErr)
+			}
+			for _, s := range suites {
+				cases, cErr := runSyncStatus(ctx, fmt.Sprintf("Loading cases from suite %d...", s.ID), quiet, func(ctx context.Context) (data.GetCasesResponse, error) {
+					return m.Client.GetCases(ctx, srcProject, s.ID, 0)
+				})
+				if cErr != nil {
+					return fmt.Errorf("failed to load cases for suite %d: %w", s.ID, cErr)
+				}
+				sourceCases = append(sourceCases, cases...)
+			}
 		}
 		caseIDsSet := make(map[int64]struct{})
 		for _, c := range sourceCases {
@@ -136,10 +159,10 @@ defer op.Finish()
 		// Step 3) Filter candidates (exclude used and duplicates)
 		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 
-		ui.Infof(os.Stdout, "Ready to import: %d new shared steps", len(filtered))
+		printFilterSummary("shared steps", m.LastFilterStats())
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import skipped")
@@ -151,13 +174,16 @@ defer op.Finish()
 			return nil
 		}
 
+		// Snapshot decision + confirmation
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "shared steps", sd)
+
 		// Step 4) Confirm import
-		op.Phase("Awaiting confirmation")
 		if !autoApprove {
-			ui.Infof(os.Stdout, "Confirm import of %d shared steps...", len(filtered))
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("sharedStepsCmd.func: %w", err)
 			}
 			if !ok {
 				ui.Canceled(os.Stdout)
@@ -166,12 +192,19 @@ defer op.Finish()
 		}
 
 		// Step 5) Import
-		op.Phase("Importing shared steps")
+		op = newSyncOperation("Importing shared steps", quiet)
+		defer op.Finish()
+
+		var snapHook *snap.Hook
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSharedSteps, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
+		}
+
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d shared steps...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSharedSteps(ctx, filtered, false)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
 
 		// Step 6) Save mapping/filtered if requested
@@ -198,6 +231,26 @@ defer op.Finish()
 			}
 		}
 
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(filtered))
+			mapping := m.Mapping()
+			for _, s := range filtered {
+				if targetID, ok := mapping[s.ID]; ok {
+					created = append(created, snap.SyncCreatedEntity{
+						Type:     "shared_step",
+						SourceID: s.ID,
+						TargetID: targetID,
+					})
+				}
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, 0))
+		}
+
+		saveMigrationReport(ctx, cmd, "sync_shared_steps", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+			filterStatsToReport("shared_steps", m.LastFilterStats(), int64(len(filtered)), 0),
+		})
+
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

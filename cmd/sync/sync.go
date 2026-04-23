@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/Korrnals/gotr/internal/client"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
 )
 
@@ -114,6 +115,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	casesCmd.Flags().String("mapping-file", "", "Mapping file for shared_step_id replacement")
 	casesCmd.Flags().Bool("dry-run", false, "Preview without importing")
 	casesCmd.Flags().String("output", "", "Additional JSON file with results")
+	snap.RegisterFlags(casesCmd)
 
 	// Flags for sync shared-steps
 	sharedStepsCmd.Flags().Int64("src-project", 0, "Source project ID")
@@ -124,6 +126,7 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	sharedStepsCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
 	sharedStepsCmd.Flags().Bool("save-filtered", false, "Save filtered list automatically")
 	sharedStepsCmd.Flags().Bool("dry-run", false, "Preview without importing")
+	snap.RegisterFlags(sharedStepsCmd)
 
 	// Flags for sync sections
 	sectionsCmd.Flags().Int64("src-project", 0, "Source project ID")
@@ -134,6 +137,16 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	sectionsCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
 	sectionsCmd.Flags().Bool("dry-run", false, "Preview without importing")
 	sectionsCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
+	snap.RegisterFlags(sectionsCmd)
+
+	// Flags for sync suites
+	suitesCmd.Flags().Int64("src-project", 0, "Source project ID")
+	suitesCmd.Flags().Int64("dst-project", 0, "Destination project ID")
+	suitesCmd.Flags().String("compare-field", "title", "Field for duplicate detection")
+	suitesCmd.Flags().Bool("dry-run", false, "Preview without importing")
+	suitesCmd.Flags().Bool("approve", false, "Auto-approve confirmation")
+	suitesCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
+	snap.RegisterFlags(suitesCmd)
 
 	// Flags for sync full
 	fullCmd.Flags().Int64("src-project", 0, "Source project ID")
@@ -145,4 +158,5 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	fullCmd.Flags().Bool("save-mapping", false, "Save mapping automatically")
 	fullCmd.Flags().Bool("save-filtered", false, "Save filtered list automatically")
 	fullCmd.Flags().Bool("dry-run", false, "Preview without importing")
+	snap.RegisterFlags(fullCmd)
 }

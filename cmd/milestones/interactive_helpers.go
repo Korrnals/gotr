@@ -33,12 +33,22 @@ func resolveMilestoneIDInteractive(ctx context.Context, cli client.ClientInterfa
 
 func selectMilestoneID(ctx context.Context, milestones []data.Milestone) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(milestones))
-	for i, m := range milestones {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, m.ID, m.Name))
-	}
 
-	idx, _, err := p.Select("Select milestone:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(milestones))
+	for i, m := range milestones {
+		rows[i] = []string{fmt.Sprintf("%d", m.ID), m.Name}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select milestone:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select milestone: %w", err)
 	}

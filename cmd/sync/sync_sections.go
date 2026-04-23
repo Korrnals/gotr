@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -34,6 +36,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -46,6 +49,7 @@ Examples:
 
 		var err error
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
 
@@ -53,7 +57,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
@@ -61,7 +65,7 @@ Examples:
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
@@ -69,7 +73,7 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
@@ -77,22 +81,22 @@ Examples:
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 		defer m.Close()
 
 		op := newSyncOperation("Sync sections", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		// Step 1) Fetch sections from source and target
 		op.Phase("Loading sections")
@@ -113,7 +117,7 @@ defer op.Finish()
 			}{Source: sourceSections, Target: targetSections}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 		sourceSections := loaded.Source
 		targetSections := loaded.Target
@@ -121,10 +125,10 @@ defer op.Finish()
 		// Step 2) Filter duplicates
 		filtered, err := m.FilterSections(sourceSections, targetSections)
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 
-		ui.Infof(os.Stdout, "Ready to import: %d new sections", len(filtered))
+		printFilterSummary("sections", m.LastFilterStats())
 
 		// Step 3) Handle dry-run
 		if dryRun {
@@ -137,13 +141,15 @@ defer op.Finish()
 			return nil
 		}
 
-		// Step 4) Confirmation and import
-		op.Phase("Awaiting confirmation")
+		// Step 4) Snapshot decision + confirmation
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "sections", sd)
+
 		if !autoApprove {
-			ui.Infof(os.Stdout, "Confirm import of %d sections...", len(filtered))
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("sectionsCmd.func: %w", err)
 			}
 			if !ok {
 				ui.Canceled(os.Stdout)
@@ -151,12 +157,19 @@ defer op.Finish()
 			}
 		}
 
-		op.Phase("Importing sections")
+		op = newSyncOperation("Importing sections", quiet)
+		defer op.Finish()
+
+		var snapHook *snap.Hook
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSections, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
+		}
+
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d sections...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSections(ctx, filtered, false)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("sectionsCmd.func: %w", err)
 		}
 
 		// Step 5) Save mapping if requested
@@ -169,6 +182,26 @@ defer op.Finish()
 			}
 		}
 
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(filtered))
+			mapping := m.Mapping()
+			for _, s := range filtered {
+				if targetID, ok := mapping[s.ID]; ok {
+					created = append(created, snap.SyncCreatedEntity{
+						Type:     "section",
+						SourceID: s.ID,
+						TargetID: targetID,
+					})
+				}
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
+		}
+
+		saveMigrationReport(ctx, cmd, "sync_sections", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+			filterStatsToReport("sections", m.LastFilterStats(), int64(len(filtered)), 0),
+		})
+
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

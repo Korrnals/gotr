@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ is not used in active test plans.`,
 			if len(args) > 0 {
 				configID, err = flags.ValidateRequiredID(args, 0, "config_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteConfigCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -49,7 +50,7 @@ is not used in active test plans.`,
 
 				configID, err = resolveConfigIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteConfigCmd.func: %w", err)
 				}
 			}
 
@@ -58,6 +59,8 @@ is not used in active test plans.`,
 				dr.PrintSimple("Delete configuration", fmt.Sprintf("Config ID: %d", configID))
 				return nil
 			}
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "config", EntityIDs: []int64{configID}, Tier: snap.Tier2, FetchFn: nil})
 
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
@@ -72,11 +75,13 @@ is not used in active test plans.`,
 			}
 
 			ui.Successf(os.Stdout, "Configuration %d deleted", configID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Preview what would be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

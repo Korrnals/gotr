@@ -15,14 +15,97 @@ const (
 	DefaultAPIKey   = "your_api_key_here"
 )
 
+// SnapshotRetention stores retention policy for snapshots
+type SnapshotRetention struct {
+	Enabled           bool     `yaml:"enabled"`
+	DefaultTTLDays    int      `yaml:"default_ttl_days"`
+	ProtectedPrefixes []string `yaml:"protected_prefixes"`
+	FrozenSnapshots   []string `yaml:"frozen_snapshots"`
+}
+
+// ValidateTTL checks that DefaultTTLDays is positive
+func (sr *SnapshotRetention) ValidateTTL() error {
+	if sr.DefaultTTLDays <= 0 {
+		return fmt.Errorf("snapshot retention: default_ttl_days must be positive, got %d", sr.DefaultTTLDays)
+	}
+	return nil
+}
+
+// ValidateProtectedPrefixes checks for duplicate or conflicting prefixes
+func (sr *SnapshotRetention) ValidateProtectedPrefixes() error {
+	seen := make(map[string]bool)
+	for _, prefix := range sr.ProtectedPrefixes {
+		if seen[prefix] {
+			return fmt.Errorf("snapshot retention: duplicate protected_prefix: %q", prefix)
+		}
+		seen[prefix] = true
+	}
+	return nil
+}
+
+// Validate performs all validation checks on retention config
+func (sr *SnapshotRetention) Validate() error {
+	if sr == nil {
+		return nil
+	}
+	if sr.Enabled {
+		if err := sr.ValidateTTL(); err != nil {
+			return err
+		}
+		if err := sr.ValidateProtectedPrefixes(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SnapshotConfig stores snapshot-related configuration
+type SnapshotConfig struct {
+	Enabled        bool                `yaml:"enabled"`
+	MaxSnapshots   int                 `yaml:"max_snapshots"`
+	Retention      *SnapshotRetention  `yaml:"retention"`
+	Attachments    AttachmentConfig    `yaml:"attachments"`
+}
+
+// ValidateMaxSnapshots checks that MaxSnapshots is positive
+func (sc *SnapshotConfig) ValidateMaxSnapshots() error {
+	if sc.MaxSnapshots <= 0 {
+		return fmt.Errorf("snapshot config: max_snapshots must be positive, got %d", sc.MaxSnapshots)
+	}
+	return nil
+}
+
+// Validate performs all validation checks on snapshot config
+func (sc *SnapshotConfig) Validate() error {
+	if sc == nil || !sc.Enabled {
+		return nil
+	}
+	if err := sc.ValidateMaxSnapshots(); err != nil {
+		return err
+	}
+	if err := sc.Retention.Validate(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AttachmentConfig stores attachment handling configuration
+type AttachmentConfig struct {
+	SaveBinary            string `yaml:"save_binary"`
+	MaxFileMB             int    `yaml:"max_file_mb"`
+	Compress              bool   `yaml:"compress"`
+	PromptAboveThreshold  bool   `yaml:"prompt_above_threshold"`
+}
+
 // ConfigData stores serialized gotr configuration fields.
 type ConfigData struct {
-	BaseURL  string `yaml:"base_url"`
-	Username string `yaml:"username"`
-	APIKey   string `yaml:"api_key"`
-	Insecure bool   `yaml:"insecure"`
-	JqFormat bool   `yaml:"jq_format"`
-	Debug    bool   `yaml:"debug"`
+	BaseURL  string            `yaml:"base_url"`
+	Username string            `yaml:"username"`
+	APIKey   string            `yaml:"api_key"`
+	Insecure bool              `yaml:"insecure"`
+	JqFormat bool              `yaml:"jq_format"`
+	Debug    bool              `yaml:"debug"`
+	Snap     *SnapshotConfig   `yaml:"snap"`
 }
 
 // Config represents a single configuration file.
@@ -58,6 +141,22 @@ func (c *Config) WithDefaults() *Config {
 		Insecure: false,
 		JqFormat: false,
 		Debug:    false,
+		Snap: &SnapshotConfig{
+			Enabled:      true,
+			MaxSnapshots: 100,
+			Retention: &SnapshotRetention{
+				Enabled:           true,
+				DefaultTTLDays:    30,
+				ProtectedPrefixes: []string{"pinned_", "archived_"},
+				FrozenSnapshots:   []string{},
+			},
+			Attachments: AttachmentConfig{
+				SaveBinary:           "auto",
+				MaxFileMB:            10,
+				Compress:             true,
+				PromptAboveThreshold: true,
+			},
+		},
 	}
 	return c
 }
@@ -161,6 +260,36 @@ compare:
 
     # Always attempt to automatically retry failed pages after the main compare cases stage.
     auto_retry_failed_pages: true
+
+# Snapshot before mutations (enabled by default).
+# Saves entity state to ~/.gotr/snaps/ for rollback.
+snap:
+  enabled: true
+  max_snapshots: 100
+
+  # Snapshot retention policy (auto-cleanup of old snapshots)
+  retention:
+    enabled: true
+    # Default time-to-live for snapshots (days)
+    # Snapshots older than this will be auto-deleted (except protected)
+    default_ttl_days: 30
+    # Prefixes for snapshots that should never be auto-deleted
+    # Example: pinned_*, archived_*
+    protected_prefixes:
+      - "pinned_"
+      - "archived_"
+    # List of snapshot IDs to permanently freeze (never delete)
+    # Example: ["snap-critical-migration-2026-04", "snap-backup-v1"]
+    frozen_snapshots: []
+
+  # Attachment handling when saving snapshots
+  attachments:
+    # Whether to save binary attachments: auto|always|never
+    # auto: only if under max_file_mb
+    save_binary: "auto"
+    max_file_mb: 10
+    compress: true
+    prompt_above_threshold: true
 `, data.BaseURL, data.Username, data.APIKey, data.Insecure, data.JqFormat, data.Debug)
 }
 

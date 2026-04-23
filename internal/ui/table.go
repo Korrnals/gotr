@@ -45,7 +45,6 @@ const (
 // Call Table(cmd, t) to render the table in the requested format.
 func NewTable(cmd *cobra.Command) table.Writer {
 	t := table.NewWriter()
-	t.SetOutputMirror(cmd.OutOrStdout())
 	t.SetStyle(table.StyleRounded)
 	return t
 }
@@ -56,8 +55,6 @@ func NewTable(cmd *cobra.Command) table.Writer {
 // Supported formats: table (default), csv, md, html.
 // For JSON output, use ui.JSON(cmd, yourSlice).
 func Table(cmd *cobra.Command, t table.Writer) {
-	t.SetOutputMirror(cmd.OutOrStdout())
-
 	format := getFormat(cmd)
 	switch format {
 	case FormatCSV:

@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +30,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateTestCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -39,7 +40,7 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 					return fmt.Errorf("test_id is required in non-interactive mode: gotr labels update test [test_id]")
 				}
 				if testID, err = resolveTestIDInteractive(cmd.Context(), getClient(cmd)); err != nil {
-					return err
+					return fmt.Errorf("newUpdateTestCmd.func: %w", err)
 				}
 			}
 
@@ -58,17 +59,22 @@ func newUpdateTestCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "label", EntityIDs: []int64{testID}, Tier: snap.Tier3, FetchFn: nil})
+
 			if err := cli.UpdateTestLabels(ctx, testID, labels); err != nil {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "✅ Labels updated for test %d: %v\n", testID, labels)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
 
 	cmd.Flags().String("labels", "", "Comma-separated list of labels (required)")
 	_ = cmd.MarkFlagRequired("labels")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }
@@ -115,11 +121,15 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "label", EntityIDs: testIDs, Tier: snap.Tier3, FetchFn: nil})
+
 			if err := cli.UpdateTestsLabels(ctx, runID, testIDs, labels); err != nil {
 				return fmt.Errorf("failed to update labels: %w", err)
 			}
 
 			fmt.Fprintf(cmd.OutOrStdout(), "✅ Labels updated for %d tests in run %d: %v\n", len(testIDs), runID, labels)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
@@ -131,6 +141,7 @@ func newUpdateTestsCmd(getClient GetClientFunc) *cobra.Command {
 	_ = cmd.MarkFlagRequired("run-id")
 	_ = cmd.MarkFlagRequired("test-ids")
 	_ = cmd.MarkFlagRequired("labels")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

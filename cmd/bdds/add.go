@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ Content can be provided via a file or directly.`,
 			if len(args) > 0 {
 				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -48,14 +49,14 @@ Content can be provided via a file or directly.`,
 				}
 				caseID, err = resolveCaseIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
 			// Read the BDD content
 			content, err := readBDDContent(cmd)
 			if err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 			if content == "" {
 				return fmt.Errorf("BDD content cannot be empty (use --file or stdin)")
@@ -67,19 +68,26 @@ Content can be provided via a file or directly.`,
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "bdd", Tier: snap.Tier2})
+
 			resp, err := cli.AddBDD(ctx, caseID, content)
 			if err != nil {
 				return fmt.Errorf("failed to add BDD: %w", err)
 			}
 
 			ui.Successf(os.Stdout, "BDD added to case %d", caseID)
-			return output.OutputResult(cmd, resp, "bdds")
+			if err := output.OutputResult(cmd, resp, "bdds"); err != nil {
+				return fmt.Errorf("newAddCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("file", "", "Path to a Gherkin scenario file")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

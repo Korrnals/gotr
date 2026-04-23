@@ -8,6 +8,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrency"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -32,12 +33,12 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 
 			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSimpleCompareCmd.func: %w", err)
 			}
 
 			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
-				return err
+				return fmt.Errorf("newSimpleCompareCmd.func: %w", err)
 			}
 
 			startTime := time.Now()
@@ -49,13 +50,26 @@ func newSimpleCompareCmd(resource, use, short, long string, fetchFn FetchFunc) *
 
 			elapsed := time.Since(startTime)
 
-			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
-				return err
+			// In interactive mode with table format and no save — skip
+			// dumping the detail table. The user can view it via
+			// "📋 View detailed results" in the post-action menu.
+			isInteractiveTable := format == "table" && savePath == "" && !quiet &&
+				interactive.HasPrompterInContext(ctx) && !interactive.IsNonInteractive(ctx)
+
+			if !isInteractiveTable {
+				if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
+					return fmt.Errorf("newSimpleCompareCmd.func: %w", err)
+				}
 			}
 
 			if !quiet {
 				PrintCompareStats(resource, pid1, pid2,
 					len(result.OnlyInFirst), len(result.OnlyInSecond), len(result.Common), elapsed, result.Status)
+			}
+
+			// Post-action menu (interactive only, non-save).
+			if savePath == "" && !quiet {
+				comparePostAction(ctx, cmd, *result, project1Name, project2Name)
 			}
 
 			return nil

@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,7 @@ Maximum label name length is 20 characters.`,
 			if len(args) > 0 {
 				labelID, err = flags.ValidateRequiredID(args, 0, "label_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateLabelCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -48,7 +49,7 @@ Maximum label name length is 20 characters.`,
 					return fmt.Errorf("label_id is required in non-interactive mode: gotr labels update-label [label_id]")
 				}
 				if labelID, err = resolveLabelIDInteractive(cmd.Context(), getClient(cmd)); err != nil {
-					return err
+					return fmt.Errorf("newUpdateLabelCmd.func: %w", err)
 				}
 			}
 
@@ -74,6 +75,8 @@ Maximum label name length is 20 characters.`,
 			client := getClient(cmd)
 			ctx := cmd.Context()
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "label", EntityIDs: []int64{labelID}, Tier: snap.Tier3, FetchFn: nil})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Updating label",
@@ -87,7 +90,11 @@ Maximum label name length is 20 characters.`,
 			}
 
 			_, err = output.Output(cmd, resp, "labels", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("newUpdateLabelCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -98,6 +105,7 @@ Maximum label name length is 20 characters.`,
 
 	_ = cmd.MarkFlagRequired("project")
 	_ = cmd.MarkFlagRequired("title")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

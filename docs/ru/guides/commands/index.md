@@ -16,6 +16,7 @@ Language: Русский | [English](../../../en/guides/commands/index.md)
         - [config](config.md)
         - [completion](completion.md)
         - [self-test](self-test.md)
+        - [snap](snap.md)
       - [CRUD операции](#crud-операции)
         - [add](add.md)
         - [delete](delete.md)
@@ -65,6 +66,7 @@ Language: Русский | [English](../../../en/guides/commands/index.md)
 - [config](config.md) — управление локальной конфигурацией клиента.
 - [completion](completion.md) — генерация shell completion для bash/zsh/fish/powershell.
 - [self-test](self-test.md) — быстрая проверка окружения и доступности API.
+- [snap](snap.md) — управление снапшотами и откат мутаций.
 
 ### CRUD операции
 

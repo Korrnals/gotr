@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -45,7 +46,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 				caseID, err = resolveCaseIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -83,6 +84,16 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			// Snapshot before mutation.
+			hook := snap.NewHook(cmd)
+			hook.Before(ctx, snap.BuildMeta(
+				snap.OpUpdate, "case", []int64{caseID},
+				snap.Tier1, 0, 0, snap.ResolveName(cmd), os.Args[1:],
+				snap.CurrentServerURL(),
+			), func(ctx context.Context) (interface{}, error) {
+				return cli.GetCase(ctx, caseID)
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Updating case",
@@ -96,7 +107,11 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Case %d updated", caseID)
-			return output.OutputResult(cmd, resp, "cases")
+			if err := output.OutputResult(cmd, resp, "cases"); err != nil {
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -107,6 +122,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 	cmd.Flags().Int64("type-id", 0, "New type ID")
 	cmd.Flags().Int64("priority-id", 0, "New priority ID")
 	cmd.Flags().String("refs", "", "New references")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

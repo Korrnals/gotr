@@ -23,7 +23,7 @@ func newCaseTypesCmd(getClient func(*cobra.Command) client.ClientInterface) *cob
 
 			types, err := cli.GetCaseTypes(ctx)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCaseTypesCmd.func: %w", err)
 			}
 
 			return handleOutput(command, types, start)
@@ -46,7 +46,7 @@ func newCaseFieldsCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 
 			fields, err := cli.GetCaseFields(ctx)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCaseFieldsCmd.func: %w", err)
 			}
 
 			return handleOutput(command, fields, start)

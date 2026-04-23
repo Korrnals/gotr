@@ -249,9 +249,9 @@ func (pc *ParallelController) fetchSuiteStreaming(
 	// Shared mutable state for the three phases, grouped into a struct
 	// so that helpers can read/write it without long parameter lists.
 	state := &streamingState{
-		pageSize:  pageSize,
-		reporter:  reporter,
-		task:      task,
+		pageSize:   pageSize,
+		reporter:   reporter,
+		task:       task,
 		aggregator: aggregator,
 	}
 
@@ -640,7 +640,7 @@ func (pc *ParallelController) fetchPageWithRetry(
 	err := concurrent.RetryWithContext(ctx, retryConfig, func() error {
 		cases, totalSize, err := fetcher.FetchPageCtx(ctx, req)
 		if err != nil {
-			return err
+			return fmt.Errorf("fetchPageWithRetry.func: %w", err)
 		}
 		result.Cases = cases
 		result.TotalSize = totalSize

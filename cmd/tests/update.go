@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ assign an executor.`,
 			if len(args) > 0 {
 				testID, err = flags.ValidateRequiredID(args, 0, "test_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -52,7 +53,7 @@ assign an executor.`,
 				}
 				testID, err = resolveTestIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -71,13 +72,19 @@ assign an executor.`,
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "test", EntityIDs: []int64{testID}, Tier: snap.Tier1, FetchFn: nil})
+
 			resp, err := cli.UpdateTest(ctx, testID, &req)
 			if err != nil {
 				return fmt.Errorf("failed to update test: %w", err)
 			}
 
 			ui.Successf(os.Stdout, "Test %d updated", testID)
-			return printJSON(cmd, resp, time.Now())
+			if err := printJSON(cmd, resp, time.Now()); err != nil {
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -85,6 +92,7 @@ assign an executor.`,
 	output.AddFlag(cmd)
 	cmd.Flags().Int64("status-id", 0, "Test status ID (1=passed, 5=failed, etc.)")
 	cmd.Flags().Int64("assigned-to", 0, "User ID to assign")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

@@ -2,10 +2,13 @@ package sync
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -32,6 +35,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -43,6 +47,7 @@ Examples:
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
 		autoSaveFiltered, _ := cmd.Flags().GetBool("save-filtered")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
@@ -51,7 +56,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -59,7 +64,7 @@ Examples:
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -67,7 +72,7 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
@@ -75,31 +80,65 @@ Examples:
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("fullCmd.func: %w", err)
 			}
 		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 		defer m.Close()
 
+		// Pre-sync snapshot (meta only, data after sync).
+		var hook *snap.Hook
+		var sd snapshotDecision
+		if !dryRun {
+			sd = confirmSnapshot(ctx, cmd)
+			printPreConfirmSummary(0, "full migration", sd)
+
+			if !autoApprove {
+				ok, err := p.Confirm("Continue?", false)
+				if err != nil {
+					return fmt.Errorf("fullCmd.func: %w", err)
+				}
+				if !ok {
+					ui.Canceled(os.Stdout)
+					return nil
+				}
+			}
+		}
+
+		if sd.Create {
+			hook = snap.NewHook(cmd)
+			meta := snap.BuildMeta(
+				snap.OpSyncFull, "sync", nil,
+				snap.Tier2, srcProject, srcSuite, snap.ResolveName(cmd), os.Args[1:],
+				snap.CurrentServerURL(),
+			)
+			meta.Label = sd.Label
+			hook.Before(ctx, meta, nil)
+		} else {
+			hook = &snap.Hook{Enabled: false}
+		}
+
 		op := newSyncOperation("Full migration", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		// Step 1) Migrate shared steps (Fetch → Filter → Import)
 		op.Phase("Step 1/2: shared steps")
 		_, err = runSyncStatus(ctx, "Migrating shared steps...", quiet, func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun || !autoApprove)
+			return struct{}{}, m.MigrateSharedSteps(ctx, dryRun)
 		})
 		if err != nil { // if dry-run — no import
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
+		sharedFiltered := m.FilteredSharedSteps()
+		sharedFilterStats := m.LastFilterStats()
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run complete")
@@ -108,12 +147,29 @@ defer op.Finish()
 
 		// Step 2) Migrate cases (Fetch → Filter → Import)
 		op.Phase("Step 2/2: cases")
-		_, err = runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct{}, error) {
-			return struct{}{}, m.MigrateCases(ctx, dryRun)
+		caseImport, err := runSyncStatus(ctx, "Migrating cases...", quiet, func(ctx context.Context) (struct {
+			IDs    []int64
+			Errors []string
+		}, error) {
+			createdIDs, importErrors, cErr := m.MigrateCasesReport(ctx, dryRun)
+			if cErr != nil {
+				return struct {
+					IDs    []int64
+					Errors []string
+				}{}, cErr
+			}
+			return struct {
+				IDs    []int64
+				Errors []string
+			}{IDs: createdIDs, Errors: importErrors}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("fullCmd.func: %w", err)
 		}
+		if len(caseImport.Errors) > 0 {
+			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
+		}
+		caseFilterStats := m.LastFilterStats()
 
 		if autoSaveMapping {
 			_ = m.ExportMapping(logDir)
@@ -127,7 +183,34 @@ defer op.Finish()
 			}
 		}
 
+		// Save sync created entities to snapshot for rollback.
+		created := make([]snap.SyncCreatedEntity, 0)
+		mapping := m.Mapping()
+		for _, s := range sharedFiltered {
+			if targetID, ok := mapping[s.ID]; ok {
+				created = append(created, snap.SyncCreatedEntity{
+					Type:     "shared_step",
+					SourceID: s.ID,
+					TargetID: targetID,
+				})
+			}
+		}
+		for _, caseID := range caseImport.IDs {
+			created = append(created, snap.SyncCreatedEntity{
+				Type:     "case",
+				SourceID: 0,
+				TargetID: caseID,
+			})
+		}
+		hook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
+
+		saveMigrationReport(ctx, cmd, "sync_full", srcProject, dstProject, startedAt, hook, []reportResourceStats{
+			filterStatsToReport("shared_steps", sharedFilterStats, int64(len(sharedFiltered)), 0),
+			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(len(caseImport.Errors))),
+		})
+
 		ui.Success(os.Stdout, "Full migration complete!")
+		syncPostAction(ctx, cmd, hook, cli)
 		return nil
 	},
 }

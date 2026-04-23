@@ -118,7 +118,7 @@ func (c *HTTPClient) SaveResponseToFile(ctx context.Context, data ResponseData, 
 	}
 
 	if err := os.WriteFile(filename, toSave, 0o644); err != nil {
-		return err
+		return fmt.Errorf("SaveResponseToFile: %w", err)
 	}
 	fmt.Printf("Response saved to %s (format: %s)\n", filename, outputFormat)
 

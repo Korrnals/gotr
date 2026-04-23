@@ -288,7 +288,7 @@ func TestSelectGroupID_TableDriven(t *testing.T) {
 			ctx: interactive.WithPrompter(context.Background(),
 				interactive.NewMockPrompter()),
 			groups:      nil,
-			wantErrPart: "select options list is empty",
+			wantErrPart: "no configuration groups found",
 		},
 	}
 

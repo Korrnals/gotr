@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -37,7 +38,7 @@ use the TestRail web interface.`,
 			if len(args) > 0 {
 				datasetID, err = flags.ValidateRequiredID(args, 0, "dataset_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -45,7 +46,7 @@ use the TestRail web interface.`,
 				}
 				datasetID, err = resolveDatasetIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -61,19 +62,26 @@ use the TestRail web interface.`,
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "dataset", EntityIDs: []int64{datasetID}, Tier: snap.Tier1, FetchFn: nil})
+
 			resp, err := cli.UpdateDataset(ctx, datasetID, name)
 			if err != nil {
 				return fmt.Errorf("failed to update dataset: %w", err)
 			}
 
 			ui.Successf(os.Stdout, "Dataset %d updated", datasetID)
-			return output.OutputResult(cmd, resp, "datasets")
+			if err := output.OutputResult(cmd, resp, "datasets"); err != nil {
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New dataset name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

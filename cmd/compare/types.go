@@ -12,6 +12,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
@@ -123,7 +124,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 				}
 				filePath := exportsDir + "/" + outpututils.GenerateFilename("compare", format)
 				if err := saveToFileWithPath(result, format, filePath); err != nil {
-					return err
+					return fmt.Errorf("PrintCompareResult: %w", err)
 				}
 				// Message is printed by saveToFile
 				return nil
@@ -142,7 +143,7 @@ func PrintCompareResult(cmd *cobra.Command, result CompareResult, project1Name, 
 		switch format {
 		case "json", "yaml", "csv":
 			if err := saveToFileWithPath(result, format, savePath); err != nil {
-				return err
+				return fmt.Errorf("PrintCompareResult: %w", err)
 			}
 			if q, _ := cmd.Flags().GetBool("quiet"); !q {
 				fmt.Println()
@@ -233,26 +234,26 @@ func printSeparator(widths []int) {
 	fmt.Println("├" + strings.Join(parts, "┼") + "┤")
 }
 
-// printTable prints the result in table format
+// printTable prints the result in table format.
+// If stdout is a TTY and the output is long, uses the interactive pager.
 func printTable(result CompareResult, project1Name, project2Name string) error {
-	fmt.Printf("\n=== Comparison: %s (projects %d ↔ %d) ===\n\n", result.Resource, result.Project1ID, result.Project2ID)
+	lines := renderTableLines(result, project1Name, project2Name)
 
-	// Table 1: Only in Project 1
-	printOnlyInProjectTable(result.OnlyInFirst, result.Project1ID, project1Name)
+	if interactive.ShouldPage(len(lines)) {
+		return interactive.Pager(interactive.PagerConfig{
+			Lines:  lines,
+			Header: fmt.Sprintf("=== Comparison: %s (projects %d ↔ %d) ===", result.Resource, result.Project1ID, result.Project2ID),
+		})
+	}
 
-	// Table 2: Only in Project 2
-	printOnlyInProjectTable(result.OnlyInSecond, result.Project2ID, project2Name)
-
-	// Table 3: Common items
-	printCommonTable(result.Common, result.Project1ID, result.Project2ID)
-
-	// Table 4: ID Mapping (for items with different IDs)
-	printIDMappingTable(result.Common)
-
+	for _, line := range lines {
+		fmt.Println(line)
+	}
 	return nil
 }
 
 // printOnlyInProjectTable prints a table for items only in one project
+//nolint:unused // Kept as legacy renderer for compatibility with older output paths.
 func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName string) {
 	// Column widths are widened for long names.
 	idWidth := 8
@@ -291,6 +292,7 @@ func printOnlyInProjectTable(items []ItemInfo, projectID int64, projectName stri
 }
 
 // printCommonTable prints a table for common items
+//nolint:unused // Kept as legacy renderer for compatibility with older output paths.
 func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 	// Column widths are widened for long names.
 	nameWidth := 50
@@ -344,6 +346,7 @@ func printCommonTable(items []CommonItemInfo, project1ID, project2ID int64) {
 }
 
 // printIDMappingTable prints a table for ID mapping (items with different IDs)
+//nolint:unused // Kept as legacy renderer for compatibility with older output paths.
 func printIDMappingTable(items []CommonItemInfo) {
 	// Filter items with different IDs
 	var mappings []CommonItemInfo
@@ -421,27 +424,27 @@ func printCSV(result CompareResult) error {
 
 	// Header
 	if err := writer.Write([]string{"Type", "Name", "ID Project 1", "ID Project 2"}); err != nil {
-		return err
+		return fmt.Errorf("printCSV: %w", err)
 	}
 
 	// Only in first
 	for _, item := range result.OnlyInFirst {
 		if err := writer.Write([]string{"Only in Project 1", item.Name, fmt.Sprintf("%d", item.ID), ""}); err != nil {
-			return err
+			return fmt.Errorf("printCSV: %w", err)
 		}
 	}
 
 	// Only in second
 	for _, item := range result.OnlyInSecond {
 		if err := writer.Write([]string{"Only in Project 2", item.Name, "", fmt.Sprintf("%d", item.ID)}); err != nil {
-			return err
+			return fmt.Errorf("printCSV: %w", err)
 		}
 	}
 
 	// Common
 	for _, item := range result.Common {
 		if err := writer.Write([]string{"Common", item.Name, fmt.Sprintf("%d", item.ID1), fmt.Sprintf("%d", item.ID2)}); err != nil {
-			return err
+			return fmt.Errorf("printCSV: %w", err)
 		}
 	}
 
@@ -486,27 +489,27 @@ func saveCSV(result CompareResult, savePath string) error {
 
 	// Header
 	if err := writer.Write([]string{"Type", "Name", "ID Project 1", "ID Project 2"}); err != nil {
-		return err
+		return fmt.Errorf("saveCSV: %w", err)
 	}
 
 	// Only in first
 	for _, item := range result.OnlyInFirst {
 		if err := writer.Write([]string{"Only in Project 1", item.Name, fmt.Sprintf("%d", item.ID), ""}); err != nil {
-			return err
+			return fmt.Errorf("saveCSV: %w", err)
 		}
 	}
 
 	// Only in second
 	for _, item := range result.OnlyInSecond {
 		if err := writer.Write([]string{"Only in Project 2", item.Name, "", fmt.Sprintf("%d", item.ID)}); err != nil {
-			return err
+			return fmt.Errorf("saveCSV: %w", err)
 		}
 	}
 
 	// Common
 	for _, item := range result.Common {
 		if err := writer.Write([]string{"Common", item.Name, fmt.Sprintf("%d", item.ID1), fmt.Sprintf("%d", item.ID2)}); err != nil {
-			return err
+			return fmt.Errorf("saveCSV: %w", err)
 		}
 	}
 

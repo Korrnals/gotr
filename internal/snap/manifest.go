@@ -27,6 +27,8 @@ type ManifestEntry struct {
 	EntityIDs       []int64   `json:"entity_ids,omitempty"`
 	ProjectID       int64     `json:"project_id,omitempty"`
 	SourceProjectID int64     `json:"source_project_id,omitempty"`
+	DstProjectID    int64     `json:"dst_project_id,omitempty"`
+	DstSuiteID      int64     `json:"dst_suite_id,omitempty"`
 	RollbackTier    Tier      `json:"rollback_tier"`
 	Status          Status    `json:"status"`
 	Timestamp       time.Time `json:"timestamp"`
@@ -81,6 +83,8 @@ func (m *Manifest) Add(meta *Meta) error {
 		EntityIDs:       meta.EntityIDs,
 		ProjectID:       meta.ProjectID,
 		SourceProjectID: meta.SourceProjectID,
+		DstProjectID:    meta.DstProjectID,
+		DstSuiteID:      meta.DstSuiteID,
 		RollbackTier:    meta.RollbackTier,
 		Status:          meta.Status,
 		Timestamp:       meta.Timestamp,

@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -85,6 +86,7 @@ func init() {
 	output.AddFlag(addCmd)
 	addCmd.Flags().Bool("dry-run", false, "Show what would be executed without making changes")
 	addCmd.Flags().BoolP("interactive", "i", false, "Interactive mode (wizard)")
+	snap.RegisterFlags(addCmd)
 }
 
 func runAdd(cmd *cobra.Command, args []string) error {
@@ -103,14 +105,14 @@ func runAdd(cmd *cobra.Command, args []string) error {
 	if len(args) > 1 && endpoint != "attachment" {
 		parsedID, err := flags.ValidateRequiredID(args, 1, "ID")
 		if err != nil {
-			return err
+			return fmt.Errorf("runAdd: %w", err)
 		}
 		id = parsedID
 	}
 
 	resolvedID, err := resolveAddParentID(ctx, interactive.PrompterFromContext(ctx), cli, endpoint, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("runAdd: %w", err)
 	}
 	id = resolvedID
 
@@ -151,12 +153,12 @@ var addEndpoints = map[string]addEndpointSpec{
 	"project": {"", func(cli client.ClientInterface, cmd *cobra.Command, _ int64, jsonData []byte) error {
 		return addProject(cli, cmd, jsonData)
 	}},
-	"suite":        {"project_id", addSuite},
-	"section":      {"project_id", addSection},
-	"case":         {"section_id", addCase},
-	"run":          {"project_id", addRun},
-	"result":       {"test_id", addResult},
-	"shared-step":  {"project_id", addSharedStep},
+	"suite":       {"project_id", addSuite},
+	"section":     {"project_id", addSection},
+	"case":        {"section_id", addCase},
+	"run":         {"project_id", addRun},
+	"result":      {"test_id", addResult},
+	"shared-step": {"project_id", addSharedStep},
 }
 
 func dispatchAdd(cli client.ClientInterface, cmd *cobra.Command, endpoint string, id int64, args []string, jsonData []byte) error {
@@ -174,7 +176,7 @@ func dispatchAdd(cli client.ClientInterface, cmd *cobra.Command, endpoint string
 		}
 		caseID, err := flags.ValidateRequiredID(args, 2, "case_id")
 		if err != nil {
-			return err
+			return fmt.Errorf("dispatchAdd: %w", err)
 		}
 		return addResultForCase(cli, cmd, id, caseID, jsonData)
 	case "attachment":
@@ -221,6 +223,7 @@ func shouldAutoRunAddInteractive(cmd *cobra.Command, endpoint string, parentID i
 	}
 }
 
+//nolint:gocyclo // Interactive selection flow intentionally keeps explicit back-navigation states.
 func resolveAddParentID(ctx context.Context, p interactive.Prompter, cli client.ClientInterface, endpoint string, currentID int64) (int64, error) {
 	if currentID != 0 || !interactive.HasPrompterInContext(ctx) {
 		return currentID, nil
@@ -234,43 +237,67 @@ func resolveAddParentID(ctx context.Context, p interactive.Prompter, cli client.
 		}
 		return projectID, nil
 	case "case":
-		projectID, err := interactive.SelectProject(ctx, p, cli, "")
-		if err != nil {
-			return 0, err
-		}
+		var projectID, suiteID int64
+		step := 0 // 0=project, 1=suite, 2=section
+		for {
+			switch step {
+			case 0:
+				var err error
+				projectID, err = interactive.SelectProject(ctx, p, cli, "")
+				if err != nil {
+					return 0, err
+				}
 
-		suites, err := cli.GetSuites(ctx, projectID)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
-		}
+				suites, err := cli.GetSuites(ctx, projectID)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+				}
 
-		var suiteID int64
-		switch len(suites) {
-		case 0:
-			suiteID = 0
-		case 1:
-			suiteID = suites[0].ID
-		default:
-			suiteID, err = interactive.SelectSuite(ctx, p, suites, "")
-			if err != nil {
-				return 0, err
+				switch len(suites) {
+				case 0:
+					suiteID = 0
+				case 1:
+					suiteID = suites[0].ID
+				default:
+					step = 1
+					continue
+				}
+				step = 2
+			case 1:
+				suites, err := cli.GetSuites(ctx, projectID)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get suites for project %d: %w", projectID, err)
+				}
+				suiteID, err = interactive.SelectSuite(ctx, p, suites, "", true)
+				if err != nil {
+					if interactive.IsGoBack(err) {
+						step = 0
+						continue
+					}
+					return 0, err
+				}
+				step = 2
+			case 2:
+				sections, err := cli.GetSections(ctx, projectID, suiteID)
+				if err != nil {
+					return 0, fmt.Errorf("failed to get sections for project %d: %w", projectID, err)
+				}
+
+				if len(sections) == 1 {
+					return sections[0].ID, nil
+				}
+
+				sectionID, err := interactive.SelectSection(ctx, p, sections, "", true)
+				if err != nil {
+					if interactive.IsGoBack(err) {
+						step = 1
+						continue
+					}
+					return 0, err
+				}
+				return sectionID, nil
 			}
 		}
-
-		sections, err := cli.GetSections(ctx, projectID, suiteID)
-		if err != nil {
-			return 0, fmt.Errorf("failed to get sections for project %d: %w", projectID, err)
-		}
-
-		if len(sections) == 1 {
-			return sections[0].ID, nil
-		}
-
-		sectionID, err := interactive.SelectSection(ctx, p, sections, "")
-		if err != nil {
-			return 0, err
-		}
-		return sectionID, nil
 	default:
 		return currentID, nil
 	}
@@ -761,6 +788,7 @@ func addProject(cli client.ClientInterface, cmd *cobra.Command, jsonData []byte)
 			return cli.AddProject(ctx, req)
 		},
 		"failed to create project",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "project", Tier: snap.Tier2},
 	)
 }
 
@@ -770,6 +798,7 @@ func addSuite(cli client.ClientInterface, cmd *cobra.Command, projectID int64, j
 			return cli.AddSuite(ctx, id, req)
 		},
 		"failed to create suite",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "suite", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 
@@ -779,6 +808,7 @@ func addSection(cli client.ClientInterface, cmd *cobra.Command, projectID int64,
 			return cli.AddSection(ctx, id, req)
 		},
 		"failed to create section",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "section", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 
@@ -788,6 +818,7 @@ func addCase(cli client.ClientInterface, cmd *cobra.Command, sectionID int64, js
 			return cli.AddCase(ctx, id, req)
 		},
 		"failed to create case",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "case", Tier: snap.Tier2},
 	)
 }
 
@@ -797,6 +828,7 @@ func addRun(cli client.ClientInterface, cmd *cobra.Command, projectID int64, jso
 			return cli.AddRun(ctx, id, req)
 		},
 		"failed to create run",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "run", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 
@@ -806,6 +838,7 @@ func addResult(cli client.ClientInterface, cmd *cobra.Command, testID int64, jso
 			return cli.AddResult(ctx, id, req)
 		},
 		"failed to add result",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "result", Tier: snap.Tier3},
 	)
 }
 
@@ -820,7 +853,7 @@ func addResultForCase(cli client.ClientInterface, cmd *cobra.Command, runID, cas
 	} else {
 		built, err := buildAddResultReq(cmd, true)
 		if err != nil {
-			return err
+			return fmt.Errorf("addResultForCase: %w", err)
 		}
 		req = *built
 	}
@@ -839,6 +872,7 @@ func addSharedStep(cli client.ClientInterface, cmd *cobra.Command, projectID int
 			return cli.AddSharedStep(ctx, id, req)
 		},
 		"failed to create shared step",
+		crud.SnapHint{Op: snap.OpAdd, EntityType: "shared_step", Tier: snap.Tier2, ProjectID: projectID},
 	)
 }
 
@@ -909,7 +943,7 @@ func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []str
 		}
 		id, err := flags.ValidateRequiredID(args, 2, spec.idLabel)
 		if err != nil {
-			return err
+			return fmt.Errorf("runAddAttachment: %w", err)
 		}
 		return spec.handler(cli, cmd, id, args[3])
 	}
@@ -921,7 +955,7 @@ func runAddAttachment(cli client.ClientInterface, cmd *cobra.Command, args []str
 		}
 		planID, err := flags.ValidateRequiredID(args, 2, "plan_id")
 		if err != nil {
-			return err
+			return fmt.Errorf("runAddAttachment: %w", err)
 		}
 		return addAttachmentToPlanEntry(cli, cmd, planID, args[3], args[4])
 	default:

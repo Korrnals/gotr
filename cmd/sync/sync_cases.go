@@ -11,6 +11,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -47,6 +48,7 @@ Examples:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
@@ -57,6 +59,7 @@ Examples:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		outputFile, _ := cmd.Flags().GetString("output")
 		mappingFile, _ := cmd.Flags().GetString("mapping-file")
+		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, &dstSuite)
 
 		p := interactive.PrompterFromContext(ctx)
 		var err error
@@ -65,7 +68,7 @@ Examples:
 		if srcProject == 0 {
 			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project (copy from):")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
@@ -73,7 +76,7 @@ Examples:
 		if srcSuite == 0 {
 			srcSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, srcProject, "Select SOURCE suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
@@ -81,7 +84,7 @@ Examples:
 		if dstProject == 0 {
 			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project (copy to):")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
@@ -89,14 +92,14 @@ Examples:
 		if dstSuite == 0 {
 			dstSuite, err = interactive.SelectSuiteForProject(ctx, p, cli, dstProject, "Select DESTINATION suite:")
 			if err != nil {
-				return err
+				return fmt.Errorf("casesCmd.func: %w", err)
 			}
 		}
 
 		// Log directory
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		timestamp := time.Now().Format("2006-01-02_15-04-05")
 		logFile := filepath.Join(logDir, fmt.Sprintf("sync_cases_%s.json", timestamp))
@@ -108,7 +111,7 @@ Examples:
 		// Create migration object
 		m, err := newMigration(cli, srcProject, srcSuite, dstProject, dstSuite, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		defer m.Close()
 
@@ -147,17 +150,17 @@ Examples:
 			}{Source: sourceCases, Target: targetCases}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		sourceCases := loaded.Source
 		targetCases := loaded.Target
 
 		filtered, err := m.FilterCases(sourceCases, targetCases)
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 
-		// Count matches
+		// Count matches for log
 		var matches data.GetCasesResponse
 		filteredIDs := make(map[int64]struct{})
 		for _, f := range filtered {
@@ -169,13 +172,7 @@ Examples:
 			}
 		}
 
-		if !quiet {
-			if !quiet {
-				fmt.Printf("\nAnalysis result:\n")
-				fmt.Printf("  Matches: %d\n", len(matches))
-				fmt.Printf("  New: %d\n", len(filtered))
-			}
-		}
+		printFilterSummary("cases", m.LastFilterStats())
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import NOT performed (safe).")
@@ -183,11 +180,14 @@ Examples:
 			return nil
 		}
 
-		op.Phase("Awaiting confirmation")
-		ui.Infof(os.Stdout, "Confirm import of %d new cases...", len(filtered))
+		// Snapshot decision + summary
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "cases", sd)
+
 		ok, err := p.Confirm("Continue?", false)
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		if !ok {
 			ui.Canceled(os.Stdout)
@@ -195,7 +195,14 @@ Examples:
 			return nil
 		}
 
-		op.Phase("Importing cases")
+		op = newSyncOperation("Importing cases", quiet)
+		defer op.Finish()
+
+		var snapHook *snap.Hook
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncCases, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
+		}
+
 		imported, err := runSyncStatus(ctx, fmt.Sprintf("Importing %d cases...", len(filtered)), quiet, func(ctx context.Context) (struct {
 			IDs    []int64
 			Errors []string
@@ -213,7 +220,7 @@ Examples:
 			}{IDs: createdIDs, Errors: importErrors}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 		createdIDs := imported.IDs
 		importErrors := imported.Errors
@@ -230,6 +237,23 @@ Examples:
 		// Save log and mapping
 		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)
 
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(createdIDs))
+			for _, id := range createdIDs {
+				created = append(created, snap.SyncCreatedEntity{
+					Type:     "case",
+					SourceID: 0,
+					TargetID: id,
+				})
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
+		}
+
+		saveMigrationReport(ctx, cmd, "sync_cases", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+			filterStatsToReport("cases", m.LastFilterStats(), int64(len(createdIDs)), int64(len(importErrors))),
+		})
+
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

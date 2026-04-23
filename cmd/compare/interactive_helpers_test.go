@@ -3,6 +3,7 @@ package compare
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -213,4 +214,190 @@ func TestSuitesCmd_InteractivePids(t *testing.T) {
 
 	err := cmd.Execute()
 	assert.NoError(t, err)
+}
+
+// ==================== Tests for renderTableLines ====================
+
+func TestRenderTableLines_Empty(t *testing.T) {
+	result := CompareResult{
+		Resource:   "labels",
+		Project1ID: 1,
+		Project2ID: 2,
+	}
+
+	lines := renderTableLines(result, "P1", "P2")
+	require.NotEmpty(t, lines)
+
+	joined := joinLines(lines)
+	assert.Contains(t, joined, "labels")
+	assert.Contains(t, joined, "(none)")
+}
+
+func TestRenderTableLines_WithData(t *testing.T) {
+	result := CompareResult{
+		Resource:     "suites",
+		Project1ID:   10,
+		Project2ID:   20,
+		OnlyInFirst:  []ItemInfo{{ID: 1, Name: "Suite A"}},
+		OnlyInSecond: []ItemInfo{{ID: 2, Name: "Suite B"}},
+		Common: []CommonItemInfo{
+			{Name: "Suite C", ID1: 3, ID2: 4, IDsMatch: true},
+			{Name: "Suite D", ID1: 5, ID2: 6, IDsMatch: false},
+		},
+	}
+
+	lines := renderTableLines(result, "Project Alpha", "Project Beta")
+	joined := joinLines(lines)
+
+	assert.Contains(t, joined, "Suite A")
+	assert.Contains(t, joined, "Suite B")
+	assert.Contains(t, joined, "Suite C")
+	assert.Contains(t, joined, "Suite D")
+	assert.Contains(t, joined, "✓ Match")
+	assert.Contains(t, joined, "⚠ Differ")
+	assert.Contains(t, joined, "ID mapping")
+}
+
+func TestRenderTableLines_NoIDMismatch(t *testing.T) {
+	result := CompareResult{
+		Resource:   "groups",
+		Project1ID: 1,
+		Project2ID: 2,
+		Common: []CommonItemInfo{
+			{Name: "Grp", ID1: 10, ID2: 10, IDsMatch: true},
+		},
+	}
+
+	lines := renderTableLines(result, "P1", "P2")
+	joined := joinLines(lines)
+	assert.Contains(t, joined, "(all IDs match)")
+}
+
+// ==================== Tests for comparePostAction ====================
+
+func TestComparePostAction_NonInteractive(t *testing.T) {
+	ctx := interactive.WithPrompter(context.Background(), interactive.NewNonInteractivePrompter())
+
+	result := CompareResult{Resource: "cases"}
+	action := comparePostAction(ctx, nil, result, "P1", "P2")
+	assert.Equal(t, actionExit, action)
+}
+
+func TestComparePostAction_Exit(t *testing.T) {
+	mock := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true})
+	ctx := interactive.WithPrompter(context.Background(), mock)
+
+	result := CompareResult{Resource: "cases"}
+	action := comparePostAction(ctx, nil, result, "P1", "P2")
+	assert.Equal(t, actionExit, action)
+}
+
+func TestComparePostAction_Sync(t *testing.T) {
+	mock := interactive.NewMockPrompter().
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 3, Value: "→ Sync: migrate differences", Raw: true},
+			interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true},
+		)
+	ctx := interactive.WithPrompter(context.Background(), mock)
+
+	result := CompareResult{
+		Resource:    "cases",
+		Project1ID:  30,
+		Project2ID:  31,
+		OnlyInFirst: []ItemInfo{{ID: 1, Name: "A"}},
+	}
+	action := comparePostAction(ctx, nil, result, "P1", "P2")
+	// Sync now shows a hint and returns to the menu; next selection is Exit.
+	assert.Equal(t, actionExit, action)
+}
+
+func TestComparePostAction_SyncDisabledNoDiffs(t *testing.T) {
+	// When no differences, sync is disabled → disabled re-prompt loop → exit.
+	mock := interactive.NewMockPrompter().
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 3, Value: "→ Sync: migrate differences", Raw: true},
+			interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true},
+		)
+	ctx := interactive.WithPrompter(context.Background(), mock)
+
+	result := CompareResult{Resource: "cases"}
+	action := comparePostAction(ctx, nil, result, "P1", "P2")
+	assert.Equal(t, actionExit, action)
+}
+
+// ==================== Tests for collectDrillDownResources ====================
+
+func TestCollectDrillDownResources_AllNil(t *testing.T) {
+	result := &allResult{}
+	entries := collectDrillDownResources(result)
+	assert.Empty(t, entries)
+}
+
+func TestCollectDrillDownResources_SomeComplete(t *testing.T) {
+	result := &allResult{
+		Cases:  &CompareResult{Resource: "cases", Status: CompareStatusComplete},
+		Suites: &CompareResult{Resource: "suites", Status: CompareStatusInterrupted},
+		Labels: &CompareResult{Resource: "labels", Status: CompareStatusComplete},
+	}
+	entries := collectDrillDownResources(result)
+	assert.Len(t, entries, 2) // cases + labels
+	assert.Equal(t, "Cases", entries[0].name)
+	assert.Equal(t, "Labels", entries[1].name)
+}
+
+// ==================== Tests for compareAllPostAction ====================
+
+func TestCompareAllPostAction_Exit(t *testing.T) {
+	mock := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 0, Value: interactive.OptExit, Raw: true})
+	ctx := interactive.WithPrompter(context.Background(), mock)
+
+	result := &allResult{}
+	action := compareAllPostAction(ctx, nil, result, "P1", "P2", 1, 2)
+	assert.Equal(t, actionExit, action)
+}
+
+func TestCompareAllPostAction_Save(t *testing.T) {
+	mock := interactive.NewMockPrompter().
+		WithSelectResponses(interactive.SelectResponse{Index: 2, Value: "💾 Save results to file", Raw: true})
+	ctx := interactive.WithPrompter(context.Background(), mock)
+
+	result := &allResult{}
+	action := compareAllPostAction(ctx, nil, result, "P1", "P2", 1, 2)
+	assert.Equal(t, actionSave, action)
+}
+
+// ==================== Tests for line rendering helpers ====================
+
+func TestHBorder(t *testing.T) {
+	line := hBorder("┌", "┬", "┐", []int{5, 10})
+	assert.True(t, strings.HasPrefix(line, "┌"))
+	assert.True(t, strings.HasSuffix(line, "┐"))
+	assert.Contains(t, line, "┬")
+}
+
+func TestRowLine(t *testing.T) {
+	line := rowLine([]string{"hello", "world"}, []int{10, 10})
+	assert.Contains(t, line, "hello")
+	assert.Contains(t, line, "world")
+	assert.True(t, strings.HasPrefix(line, "│"))
+	assert.True(t, strings.HasSuffix(line, "│"))
+}
+
+func TestHeaderLine(t *testing.T) {
+	line := headerLine("Title", 30)
+	assert.Contains(t, line, "Title")
+	assert.True(t, strings.HasPrefix(line, "│"))
+}
+
+func TestSeparatorLine(t *testing.T) {
+	line := separatorLine([]int{5, 10})
+	assert.True(t, strings.HasPrefix(line, "├"))
+	assert.True(t, strings.HasSuffix(line, "┤"))
+	assert.Contains(t, line, "┼")
+}
+
+func joinLines(lines []string) string {
+	return strings.Join(lines, "\n")
 }

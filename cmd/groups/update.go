@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +30,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -37,7 +38,7 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				groupID, err = resolveGroupIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -52,6 +53,8 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "group", EntityIDs: []int64{groupID}, Tier: snap.Tier1, FetchFn: nil})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			group, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Updating group",
@@ -61,16 +64,21 @@ func newUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				return client.UpdateGroup(ctx, groupID, name, nil)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
 			}
 
-			return output.OutputResult(cmd, group, "groups")
+			if err := output.OutputResult(cmd, group, "groups"); err != nil {
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().StringP("name", "n", "", "New group name (required)")
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without executing")
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

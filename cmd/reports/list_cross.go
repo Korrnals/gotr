@@ -45,7 +45,10 @@ func newListCrossProjectCmd(getClient GetClientFunc) *cobra.Command {
 			saveFlag, _ := cmd.Flags().GetBool("save")
 			if saveFlag {
 				_, err := output.Output(cmd, reports, "reports", "json")
-				return err
+				if err != nil {
+					return fmt.Errorf("failed to output reports: %w", err)
+				}
+				return nil
 			}
 
 			if len(reports) == 0 {

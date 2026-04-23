@@ -12,10 +12,13 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
     - [Прогресс](../progress.md)
     - [Каталог команд](../commands/index.md)
     - [Инструкции](index.md)
+      - [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md)
       - [Полная миграция](migration-full.md)
       - [Частичная миграция](migration-partial.md)
       - [Миграция shared steps](migration-shared-steps.md)
       - [Миграция ресурсов](migration-resources.md)
+      - [⚠️ Живой тест-план миграции (перед боевым запуском)](live-migration-test-plan.md)
+      - [Операторская карточка живого прогона](live-migration-operator-card.md)
       - [Получение данных](crud-get.md)
       - [Экспорт данных](crud-export.md)
       - [Создание объектов](crud-add.md)
@@ -36,10 +39,13 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
 
 Перенос данных между проектами TestRail через `gotr sync`.
 
+- [Пошаговая интерактивная миграция](migration-interactive-walkthrough.md) — все вариации миграций через интерактивный режим (walkthrough)
 - [Полная миграция](migration-full.md) — shared steps + cases за один проход (`sync full`)
 - [Частичная миграция](migration-partial.md) — cases с подстановкой mapping из предыдущего шага
 - [Миграция shared steps](migration-shared-steps.md) — перенос только общих тестовых шагов
 - [Миграция ресурсов](migration-resources.md) — suites, sections между проектами
+- [⚠️ Живой тест-план миграции](live-migration-test-plan.md) — **обязательно перед боевым запуском**: изолированный тест на двух тестовых проектах с откатом и очисткой
+- [Операторская карточка живого прогона](live-migration-operator-card.md) — краткий чеклист и команды для выполнения теста в терминале
 
 ### CRUD-операции
 

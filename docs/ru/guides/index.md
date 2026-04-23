@@ -10,6 +10,7 @@ Language: Русский | [English](../../en/guides/index.md)
     - [Конфигурация](configuration.md)
     - [Интерактивный режим](interactive-mode.md)
     - [Прогресс](progress.md)
+    - [Smoke-тестирование](smoke-testing.md)
     - [Каталог команд](commands/index.md)
     - [Инструкции](instructions/index.md)
   - [Архитектура](../architecture/index.md)
@@ -42,6 +43,10 @@ Language: Русский | [English](../../en/guides/index.md)
 
 - [Интерактивный режим](interactive-mode.md) — работа в режиме диалога с автодополнением
 - [Прогресс](progress.md) — отслеживание длительных операций с прогресс-барами
+
+### Тестирование
+
+- [Smoke-тестирование](smoke-testing.md) — E2E тесты snap/rollback на встроенном mock-сервере или реальном TestRail
 
 ---
 

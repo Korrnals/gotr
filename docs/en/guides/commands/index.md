@@ -16,6 +16,7 @@ Language: [Русский](../../../ru/guides/commands/index.md) | English
         - [config](config.md)
         - [completion](completion.md)
         - [self-test](self-test.md)
+        - [snap](snap.md)
       - [CRUD Operations](#crud-operations)
         - [add](add.md)
         - [delete](delete.md)
@@ -65,6 +66,7 @@ Service commands and core CLI configuration.
 - [config](config.md) — local client configuration management.
 - [completion](completion.md) — shell completion generation for bash/zsh/fish/powershell.
 - [self-test](self-test.md) — quick environment and API availability checks.
+- [snap](snap.md) — snapshot management and mutation rollback.
 
 ### CRUD Operations
 

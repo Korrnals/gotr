@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +36,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateGroupCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -47,7 +48,7 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 
 				groupID, err = resolveGroupIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateGroupCmd.func: %w", err)
 				}
 			}
 
@@ -61,6 +62,8 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 				dr.PrintSimple("Update group", fmt.Sprintf("Group ID: %d, New Name: %s", groupID, name))
 				return nil
 			}
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "config_group", EntityIDs: []int64{groupID}, Tier: snap.Tier1, FetchFn: nil})
 
 			req := data.UpdateConfigGroupRequest{Name: name}
 			quiet, _ := cmd.Flags().GetBool("quiet")
@@ -76,13 +79,18 @@ func newUpdateGroupCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Group %d updated", groupID)
-			return output.OutputResult(cmd, resp, "configurations")
+			if err := output.OutputResult(cmd, resp, "configurations"); err != nil {
+				return fmt.Errorf("newUpdateGroupCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Preview what would be done without applying changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New group name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

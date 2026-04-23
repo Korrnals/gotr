@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ Use --dry-run to preview before deleting.`,
 				var err error
 				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -45,7 +46,7 @@ Use --dry-run to preview before deleting.`,
 				var err error
 				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			}
 
@@ -57,16 +58,21 @@ Use --dry-run to preview before deleting.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "variable", EntityIDs: []int64{variableID}, Tier: snap.Tier2, FetchFn: nil})
+
 			if err := cli.DeleteVariable(ctx, variableID); err != nil {
 				return fmt.Errorf("failed to delete variable: %w", err)
 			}
 
 			ui.Successf(os.Stdout, "Variable %d deleted", variableID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

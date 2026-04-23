@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,7 @@ in active test plans.`,
 			if len(args) > 0 {
 				groupID, err = flags.ValidateRequiredID(args, 0, "group_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteGroupCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -50,7 +51,7 @@ in active test plans.`,
 
 				groupID, err = resolveGroupIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteGroupCmd.func: %w", err)
 				}
 			}
 
@@ -59,6 +60,8 @@ in active test plans.`,
 				dr.PrintSimple("Delete group", fmt.Sprintf("Group ID: %d", groupID))
 				return nil
 			}
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpDelete, EntityType: "config_group", EntityIDs: []int64{groupID}, Tier: snap.Tier2, FetchFn: nil})
 
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
@@ -73,11 +76,13 @@ in active test plans.`,
 			}
 
 			ui.Successf(os.Stdout, "Group %d deleted", groupID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Preview what would be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

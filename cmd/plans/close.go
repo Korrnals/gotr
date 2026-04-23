@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +33,7 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newCloseCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -41,7 +42,7 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newCloseCmd.func: %w", err)
 				}
 			}
 
@@ -54,6 +55,14 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpClose, EntityType: "plan",
+				EntityIDs: []int64{planID}, Tier: snap.Tier1,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetPlan(ctx, planID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Closing plan",
@@ -67,11 +76,16 @@ func newCloseCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Plan %d closed", planID)
-			return output.OutputResult(cmd, resp, "plans")
+			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
+				return fmt.Errorf("newCloseCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without actually closing")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 
 	return cmd

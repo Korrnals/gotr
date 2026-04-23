@@ -15,10 +15,12 @@ const (
 	// Subdirectories
 	ConfigDir   = "config"   // configuration
 	LogsDir     = "logs"     // runtime logs
+	ReportsDir  = "reports"  // migration reports
 	SelftestDir = "selftest" // self-test reports
 	CacheDir    = "cache"    // API cache
 	ExportsDir  = "exports"  // user data exports
 	TempDir     = "temp"     // temporary files
+	SnapsDir    = "snaps"    // pre-mutation snapshots
 )
 
 // BaseDir returns the path to ~/.gotr.
@@ -46,6 +48,15 @@ func LogsDirPath() (string, error) {
 		return "", err
 	}
 	return filepath.Join(base, LogsDir), nil
+}
+
+// ReportsDirPath returns the path to ~/.gotr/reports.
+func ReportsDirPath() (string, error) {
+	base, err := BaseDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, ReportsDir), nil
 }
 
 // EnsureLogsDirPath returns ~/.gotr/logs and creates it when missing.
@@ -96,6 +107,15 @@ func TempDirPath() (string, error) {
 	return filepath.Join(base, TempDir), nil
 }
 
+// SnapsDirPath returns the path to ~/.gotr/snaps.
+func SnapsDirPath() (string, error) {
+	base, err := BaseDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, SnapsDir), nil
+}
+
 // ConfigFile returns the path to the main config file ~/.gotr/config/default.yaml.
 func ConfigFile() (string, error) {
 	dir, err := ConfigDirPath()
@@ -110,16 +130,18 @@ func EnsureAllDirs() error {
 	dirs := []func() (string, error){
 		ConfigDirPath,
 		LogsDirPath,
+		ReportsDirPath,
 		SelftestDirPath,
 		CacheDirPath,
 		ExportsDirPath,
 		TempDirPath,
+		SnapsDirPath,
 	}
 
 	for _, dirFunc := range dirs {
 		dir, err := dirFunc()
 		if err != nil {
-			return err
+			return fmt.Errorf("EnsureAllDirs: %w", err)
 		}
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("cannot create directory %s: %w", dir, err)
@@ -132,7 +154,7 @@ func EnsureAllDirs() error {
 func EnsureDir(dirFunc func() (string, error)) error {
 	dir, err := dirFunc()
 	if err != nil {
-		return err
+		return fmt.Errorf("EnsureDir: %w", err)
 	}
 	return os.MkdirAll(dir, 0o755)
 }

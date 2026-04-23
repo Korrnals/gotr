@@ -11,6 +11,60 @@
 
 ---
 
+## [3.1.0] - 2026-04-19
+
+### Added
+
+#### #28: Snap backup and rollback engine
+
+- **`gotr snap backup`** — create named snapshots of TestRail project state before migration.
+- **`gotr snap restore`** — roll back project to a named snapshot.
+- **`gotr snap list`** — list available snapshots with metadata.
+- **`gotr snap gc`** — garbage-collect stale snapshots respecting retention policy.
+- **`gotr snap pin` / `gotr snap unpin`** — pin snapshots to protect from GC.
+- **`internal/snap/`** — full snapshot engine: store, hooks (67), rollback engine, conflict resolution.
+- **`pkg/snap_smoke/`** — smoke test package for integration-level validation.
+- Sync commands now auto-create a snapshot before destructive operations.
+- Server naming context propagated through all snap operations.
+
+#### #29: Interactive navigation kit and Compare UX modernization
+
+- **`internal/interactive`** — shared navigation kit: `aligned.go`, `browse.go`, `navigation.go`, `action_menu.go`, `group.go`, `pager.go` (Phase 5).
+- **`cmd/compare`** — post-action menu, pager, drill-down UX modernization (Phase 6).
+- Adds `golang.org/x/term` for terminal detection.
+
+#### #30: Navigation hub, AlignedLabels UX, cross-command dispatcher
+
+- **`gotr work`** — new unified work hub command as the interactive entry point.
+- **`internal/interactive/session.go`** — server session context with URL display.
+- **`internal/interactive/nav_dispatch.go`**, **`server.go`** — extracted `SelectServer` and `NavigateMenu` to eliminate duplication.
+- **`internal/interactive/mutation_action.go`** — standardized post-mutation action menu across all mutation commands.
+- **`internal/interactive/cross_nav.go`** — cross-command navigation dispatcher (E1-E4, B4 navigation patterns).
+- **AlignedLabels Tier 1-3** — all interactive pickers now use aligned column layout for consistent UX.
+
+#### #31: Audit hardening, migration docs, sync rollback reliability
+
+- **F1-F12 audit** — full backlog execution across 142 files (3 879 additions); covers nil-guards, error wrapping, context propagation, test coverage.
+- **Bare error wrapping** — 16 `return err` paths wrapped with `fmt.Errorf` context.
+- **`cmd/snap` coverage** — boosted to 81%.
+- **`internal/report/`** — new package: `service.go`, `types.go`, `doc.go` + tests.
+- **Migration walkthrough docs** — RU + EN step-by-step guides added to `docs/`.
+- **Shared-step ID remapping** — semantics documented in both languages.
+- **`sync` rollback fix** — snapshot rollback is now reliable for all migration flows.
+
+#### #32: Snap retention policy, GC, pin/unpin, migration reports
+
+- **`internal/snap/labeling.go`** — label generation (`batch_`, `interactive_`, `auto_` prefixes + timestamp), validation, `IsProtectedLabel`.
+- **`internal/snap/interactive_prompt.go`** — interactive label prompt (use default / custom / pin / skip).
+- **Retention policy config** — `gotr.yaml` block with keep-count, max-age, protected-prefixes + validation.
+- **`cmd/snap/gc.go`** — GC respects retention policy; dry-run mode available.
+- **`cmd/snap/pin.go`** — pin/unpin commands.
+- **`cmd/report/`** — `gotr report list`, `gotr report view` — migration report commands.
+- **`cmd/sync/sync_report_helpers.go`** — report generation helpers integrated into sync flows.
+- **Docs** — live migration test plan + operator card added to `docs/ru/guides/instructions/`.
+
+---
+
 ## [3.0.1] - 2026-04-12
 
 ### Fixed

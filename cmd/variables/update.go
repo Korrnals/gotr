@@ -7,6 +7,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +34,7 @@ To modify values, use the TestRail web interface.`,
 				var err error
 				variableID, err = flags.ValidateRequiredID(args, 0, "variable_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -42,7 +43,7 @@ To modify values, use the TestRail web interface.`,
 				var err error
 				variableID, err = resolveVariableIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -59,19 +60,27 @@ To modify values, use the TestRail web interface.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "variable", EntityIDs: []int64{variableID}, Tier: snap.Tier1, FetchFn: nil})
+
 			resp, err := cli.UpdateVariable(ctx, variableID, name)
 			if err != nil {
 				return fmt.Errorf("failed to update variable: %w", err)
 			}
 
 			ui.Successf(os.Stdout, "Variable %d updated", variableID)
-			return output.OutputResult(cmd, resp, "variables")
+			if err := output.OutputResult(cmd, resp, "variables"); err != nil {
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New variable name (required)")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

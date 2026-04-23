@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrency"
 	"github.com/Korrnals/gotr/internal/debug"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	outpututils "github.com/Korrnals/gotr/internal/output"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -98,7 +99,7 @@ Examples:
 			// Parse flags
 			pid1, pid2, format, savePath, err := parseCommonFlags(cmd, cli)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCasesCmd.func: %w", err)
 			}
 
 			// Get field for comparison
@@ -110,7 +111,7 @@ Examples:
 			// Get project names
 			project1Name, project2Name, err := GetProjectNames(ctx, cli, pid1, pid2)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCasesCmd.func: %w", err)
 			}
 
 			// Start timer
@@ -119,18 +120,26 @@ Examples:
 			// Execute comparison
 			result, execStats, err := compareCasesInternal(ctx, cmd, cli, pid1, pid2, field)
 			if err != nil {
-				return err
+				return fmt.Errorf("newCasesCmd.func: %w", err)
 			}
 
 			elapsed := time.Since(startTime)
 
-			// Print or save result
-			if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
-				return err
+			quiet, _ := cmd.Flags().GetBool("quiet")
+
+			// In interactive mode with table format and no save — skip
+			// dumping the giant table to stdout. The user can view it
+			// through "📋 View detailed results" in the post-action menu.
+			isInteractiveTable := format == "table" && savePath == "" && !quiet &&
+				interactive.HasPrompterInContext(ctx) && !interactive.IsNonInteractive(ctx)
+
+			if !isInteractiveTable {
+				if err := PrintCompareResult(cmd, *result, project1Name, project2Name, format, savePath); err != nil {
+					return fmt.Errorf("newCasesCmd.func: %w", err)
+				}
 			}
 
 			// Print statistics
-			quiet, _ := cmd.Flags().GetBool("quiet")
 			if !quiet {
 				PrintCasesStatsWithErrors(
 					pid1,
@@ -141,6 +150,11 @@ Examples:
 					elapsed,
 					execStats,
 				)
+			}
+
+			// Post-action menu (interactive only, non-save).
+			if savePath == "" && !quiet {
+				comparePostAction(ctx, cmd, *result, project1Name, project2Name)
 			}
 
 			return nil

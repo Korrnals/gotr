@@ -35,7 +35,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				labelID, err = flags.ValidateRequiredID(args, 0, "label_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -45,7 +45,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 					return fmt.Errorf("label_id is required in non-interactive mode: gotr labels get [label_id]")
 				}
 				if labelID, err = resolveLabelIDInteractive(cmd.Context(), getClient(cmd)); err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 
@@ -64,7 +64,10 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			_, err = output.Output(cmd, resp, "labels", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("failed to output labels: %w", err)
+			}
+			return nil
 		},
 	}
 	output.AddFlag(cmd)

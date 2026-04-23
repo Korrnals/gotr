@@ -55,13 +55,13 @@ Examples:
 				// project-id explicitly provided
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			} else {
 				// Interactive project selection
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newListCmd.func: %w", err)
 				}
 			}
 

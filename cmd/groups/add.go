@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -29,7 +30,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				projectID, err = flags.ValidateRequiredID(args, 0, "project_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -37,7 +38,7 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				projectID, err = resolveProjectIDInteractive(ctx, client)
 				if err != nil {
-					return err
+					return fmt.Errorf("newAddCmd.func: %w", err)
 				}
 			}
 
@@ -52,6 +53,8 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return nil
 			}
 
+			hook := snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpAdd, EntityType: "group", Tier: snap.Tier2})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			group, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Creating group",
@@ -61,16 +64,23 @@ func newAddCmd(getClient GetClientFunc) *cobra.Command {
 				return client.AddGroup(ctx, projectID, name, nil)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newAddCmd.func: %w", err)
 			}
 
-			return output.OutputResult(cmd, group, "groups")
+			hook.FinalizeAdd(group.ID)
+
+			if err := output.OutputResult(cmd, group, "groups"); err != nil {
+				return fmt.Errorf("newAddCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().StringP("name", "n", "", "Group name (required)")
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without executing")
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

@@ -8,7 +8,6 @@ import (
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
-	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +48,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 			if len(args) > 0 {
 				sectionID, err = flags.ValidateRequiredID(args, 0, "section_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -58,7 +57,7 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 
 				projectID, err := interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionGetCmd.func: %w", err)
 				}
 
 				sections, err := cli.GetSections(ctx, projectID, 0)
@@ -69,9 +68,9 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 					return fmt.Errorf("no sections found in project %d", projectID)
 				}
 
-				sectionID, err = selectSectionID(ctx, sections)
+				sectionID, err = interactive.SelectSection(ctx, interactive.PrompterFromContext(ctx), sections, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionGetCmd.func: %w", err)
 				}
 			}
 
@@ -79,27 +78,12 @@ func newSectionGetCmd(getClient func(*cobra.Command) client.ClientInterface) *co
 				return cli.GetSection(ctx, sectionID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newSectionGetCmd.func: %w", err)
 			}
 
 			return handleOutput(command, section, start)
 		},
 	}
-}
-
-func selectSectionID(ctx context.Context, sections data.GetSectionsResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(sections))
-	for i, section := range sections {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, section.ID, section.Name))
-	}
-
-	idx, _, err := p.Select("Select section:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select section: %w", err)
-	}
-
-	return sections[idx].ID, nil
 }
 
 // newSectionsListCmd creates the command for listing project sections.
@@ -132,7 +116,7 @@ To filter by a specific suite, use the --suite-id flag.`,
 			if projectIDStr == "" {
 				projectID, err = interactive.SelectProject(ctx, interactive.PrompterFromContext(ctx), cli, "")
 				if err != nil {
-					return err
+					return fmt.Errorf("newSectionsListCmd.func: %w", err)
 				}
 			} else {
 				projectID, err = flags.ParseID(projectIDStr)
@@ -150,7 +134,7 @@ To filter by a specific suite, use the --suite-id flag.`,
 				return cli.GetSections(ctx, projectID, suiteID)
 			})
 			if err != nil {
-				return err
+				return fmt.Errorf("newSectionsListCmd.func: %w", err)
 			}
 
 			return handleOutput(command, sections, start)

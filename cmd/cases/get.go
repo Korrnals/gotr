@@ -35,7 +35,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				caseID, err = flags.ValidateRequiredID(args, 0, "case_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(ctx) {
@@ -44,7 +44,7 @@ func newGetCmd(getClient GetClientFunc) *cobra.Command {
 
 				caseID, err = resolveCaseIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newGetCmd.func: %w", err)
 				}
 			}
 

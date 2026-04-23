@@ -96,7 +96,7 @@ func runSelfTest(cmd *cobra.Command, args []string) error {
 		return buildSelfTestReport(), nil
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("runSelfTest: %w", err)
 	}
 
 	// Output results

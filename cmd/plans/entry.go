@@ -10,6 +10,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -54,7 +55,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryAddCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -63,7 +64,7 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryAddCmd.func: %w", err)
 				}
 			}
 
@@ -92,6 +93,13 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation (add = no pre-fetch, finalize after).
+			hook := snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpAdd, EntityType: "plan_entry",
+				EntityIDs: nil, Tier: snap.Tier2,
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Adding plan entry",
@@ -104,12 +112,19 @@ func newEntryAddCmd(getClient GetClientFunc) *cobra.Command {
 				return fmt.Errorf("failed to add plan entry: %w", err)
 			}
 
+			hook.FinalizeAdd(resp.ID)
+
 			ui.Successf(os.Stdout, "Entry added to plan %d", planID)
-			return output.OutputResult(cmd, resp, "plans")
+			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
+				return fmt.Errorf("newEntryAddCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without adding")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 	cmd.Flags().Int64("suite-id", 0, "Suite ID (required)")
 	cmd.Flags().String("name", "", "Entry name")
@@ -134,7 +149,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -142,7 +157,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -155,7 +170,7 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
 				}
 			}
 			if entryID == "" {
@@ -177,6 +192,14 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpUpdate, EntityType: "plan_entry",
+				EntityIDs: []int64{planID}, Tier: snap.Tier1,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetPlan(ctx, planID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Updating plan entry",
@@ -190,11 +213,16 @@ func newEntryUpdateCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Entry %s updated in plan %d", entryID, planID)
-			return output.OutputResult(cmd, resp, "plans")
+			if err := output.OutputResult(cmd, resp, "plans"); err != nil {
+				return fmt.Errorf("newEntryUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without making changes")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New entry name")
 
@@ -220,7 +248,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			if len(args) > 0 {
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -228,7 +256,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryDeleteCmd.func: %w", err)
 				}
 			}
 
@@ -241,7 +269,7 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				}
 				entryID, err = resolvePlanEntryIDInteractive(cmd.Context(), getClient(cmd), planID)
 				if err != nil {
-					return err
+					return fmt.Errorf("newEntryDeleteCmd.func: %w", err)
 				}
 			}
 			if entryID == "" {
@@ -257,6 +285,14 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpDelete, EntityType: "plan_entry",
+				EntityIDs: []int64{planID}, Tier: snap.Tier2,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetPlan(ctx, planID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err = ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting plan entry",
@@ -270,11 +306,13 @@ func newEntryDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Entry %s deleted from plan %d", entryID, planID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be deleted")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

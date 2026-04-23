@@ -58,7 +58,7 @@ func FetchParallelBySuite[T any](
 			items, err := fetchPerSuite(sid)
 			if err != nil {
 				if isCancellationError(err) || ctx.Err() != nil {
-					return err
+					return fmt.Errorf("FetchParallelBySuite.func: %w", err)
 				}
 
 				if options.reporter != nil {

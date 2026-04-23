@@ -16,6 +16,7 @@ Language: [Русский](../../../ru/guides/commands/config.md) | English
         - [config](config.md)
         - [completion](completion.md)
         - [self-test](self-test.md)
+        - [snap](snap.md)
       - [CRUD Operations](add.md)
       - [Core Resources](get.md)
       - [Special Resources](bdds.md)

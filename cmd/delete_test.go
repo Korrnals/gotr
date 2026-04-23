@@ -72,29 +72,6 @@ func TestDelete_Project_AutoSelectID_Success(t *testing.T) {
 	assert.True(t, called)
 }
 
-func TestSelectCaseID(t *testing.T) {
-	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 1})
-	cases := data.GetCasesResponse{
-		{ID: 100, Title: "Case A"},
-		{ID: 200, Title: "Case B"},
-	}
-
-	id, err := selectCaseID(context.Background(), p, cases)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(200), id)
-}
-
-func TestSelectSharedStepID(t *testing.T) {
-	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 0})
-	steps := data.GetSharedStepsResponse{
-		{ID: 555, Title: "Step A"},
-	}
-
-	id, err := selectSharedStepID(p, steps)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(555), id)
-}
-
 func TestRunDeleteDryRun_SwitchEndpoints(t *testing.T) {
 	dr := output.NewDryRunPrinter("delete")
 
@@ -469,53 +446,6 @@ func TestDelete_ZeroID_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid ID")
 }
 
-func TestSelectCaseID_EmptyList_Error(t *testing.T) {
-	p := interactive.NewMockPrompter()
-	cases := data.GetCasesResponse{}
-
-	id, err := selectCaseID(context.Background(), p, cases)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no cases found")
-	assert.Equal(t, int64(0), id)
-}
-
-func TestSelectCaseID_MultipleOptions(t *testing.T) {
-	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 2})
-	cases := data.GetCasesResponse{
-		{ID: 100, Title: "Case 1"},
-		{ID: 200, Title: "Case 2"},
-		{ID: 300, Title: "Case 3"},
-		{ID: 400, Title: "Case 4"},
-	}
-
-	id, err := selectCaseID(context.Background(), p, cases)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(300), id)
-}
-
-func TestSelectSharedStepID_MultipleOptions(t *testing.T) {
-	p := interactive.NewMockPrompter().WithSelectResponses(interactive.SelectResponse{Index: 1})
-	steps := data.GetSharedStepsResponse{
-		{ID: 555, Title: "Step A"},
-		{ID: 666, Title: "Step B"},
-		{ID: 777, Title: "Step C"},
-	}
-
-	id, err := selectSharedStepID(p, steps)
-	assert.NoError(t, err)
-	assert.Equal(t, int64(666), id)
-}
-
-func TestSelectSharedStepID_EmptyList_Error(t *testing.T) {
-	p := interactive.NewMockPrompter()
-	steps := data.GetSharedStepsResponse{}
-
-	id, err := selectSharedStepID(p, steps)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "no shared steps found")
-	assert.Equal(t, int64(0), id)
-}
-
 func TestResolveDeleteID_UnsupportedEndpoint(t *testing.T) {
 	id, err := resolveDeleteID(context.Background(), interactive.NewMockPrompter(), &client.MockClient{}, "weird")
 	assert.Error(t, err)
@@ -620,16 +550,6 @@ func TestResolveDeleteID_ErrorBranches(t *testing.T) {
 	})
 }
 
-func TestSelectSharedStepID_SelectError(t *testing.T) {
-	p := interactive.NewNonInteractivePrompter()
-	steps := data.GetSharedStepsResponse{{ID: 101, Title: "Step X"}}
-
-	id, err := selectSharedStepID(p, steps)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to select shared step")
-	assert.Zero(t, id)
-}
-
 // ============= LAYER 2: delete.go missing branches =============
 
 func TestDelete_NoArgs_NoPrompter_Error(t *testing.T) {
@@ -658,16 +578,6 @@ cmd.SetArgs([]string{"project"}) // supply endpoint, id=0 → resolveDeleteID
 
 err := cmd.Execute()
 assert.Error(t, err)
-}
-
-func TestSelectCaseID_SelectError(t *testing.T) {
-p := interactive.NewNonInteractivePrompter()
-cases := data.GetCasesResponse{{ID: 100, Title: "Case 1"}}
-
-id, err := selectCaseID(context.Background(), p, cases)
-assert.Error(t, err)
-assert.Contains(t, err.Error(), "failed to select case")
-assert.Zero(t, id)
 }
 
 func TestResolveDeleteID_SelectProjectErrors(t *testing.T) {

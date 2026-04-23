@@ -37,22 +37,7 @@ func resolveCaseIDInteractive(ctx context.Context, cli client.ClientInterface) (
 		return 0, fmt.Errorf("no cases found in suite %d", suiteID)
 	}
 
-	return selectCaseID(ctx, cases)
-}
-
-func selectCaseID(ctx context.Context, cases data.GetCasesResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(cases))
-	for i, kase := range cases {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, kase.ID, kase.Title))
-	}
-
-	idx, _, err := p.Select("Select case:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select case: %w", err)
-	}
-
-	return cases[idx].ID, nil
+	return interactive.SelectCase(ctx, p, cases, "")
 }
 
 func resolveAttachmentIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
@@ -69,17 +54,30 @@ func resolveAttachmentIDInteractive(ctx context.Context, cli client.ClientInterf
 		return 0, fmt.Errorf("no attachments found in case %d", caseID)
 	}
 
-	return selectAttachmentID(ctx, attachments)
+	p := interactive.PrompterFromContext(ctx)
+	return selectAttachmentID(ctx, p, attachments)
 }
 
-func selectAttachmentID(ctx context.Context, attachments data.GetAttachmentsResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(attachments))
-	for i, a := range attachments {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, a.ID, a.Name))
+func selectAttachmentID(ctx context.Context, p interactive.Prompter, attachments data.GetAttachmentsResponse) (int64, error) {
+	if len(attachments) == 0 {
+		return 0, fmt.Errorf("no attachments found")
 	}
 
-	idx, _, err := p.Select("Select attachment:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
+	}
+	rows := make([][]string, len(attachments))
+	for i, a := range attachments {
+		rows[i] = []string{fmt.Sprintf("%d", a.ID), a.Name}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select attachment:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select attachment: %w", err)
 	}
@@ -119,22 +117,8 @@ func resolveTestIDInteractive(ctx context.Context, cli client.ClientInterface) (
 		return 0, fmt.Errorf("no tests found in run %d", runID)
 	}
 
-	return selectTestID(ctx, tests)
-}
-
-func selectTestID(ctx context.Context, tests []data.Test) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(tests))
-	for i, test := range tests {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | case: %d | %s", i+1, test.ID, test.CaseID, test.Title))
-	}
-
-	idx, _, err := p.Select("Select test:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select test: %w", err)
-	}
-
-	return tests[idx].ID, nil
+	return interactive.SelectTest(ctx, p, tests, "")
 }
 
 func resolvePlanIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
@@ -152,7 +136,7 @@ func resolvePlanIDInteractive(ctx context.Context, cli client.ClientInterface) (
 		return 0, fmt.Errorf("no plans found in project %d", projectID)
 	}
 
-	return selectPlanID(ctx, plans)
+	return interactive.SelectPlan(ctx, p, plans, "")
 }
 
 func resolvePlanAndEntryIDInteractive(ctx context.Context, cli client.ClientInterface) (planID int64, entryID string, err error) {
@@ -178,37 +162,8 @@ func resolvePlanEntryIDInteractive(ctx context.Context, cli client.ClientInterfa
 		return "", fmt.Errorf("no plan entries found in plan %d", planID)
 	}
 
-	return selectPlanEntryID(ctx, plan.Entries)
-}
-
-func selectPlanID(ctx context.Context, plans data.GetPlansResponse) (int64, error) {
 	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(plans))
-	for i, plan := range plans {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | %s", i+1, plan.ID, plan.Name))
-	}
-
-	idx, _, err := p.Select("Select plan:", options)
-	if err != nil {
-		return 0, fmt.Errorf("failed to select plan: %w", err)
-	}
-
-	return plans[idx].ID, nil
-}
-
-func selectPlanEntryID(ctx context.Context, entries []data.PlanEntry) (string, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(entries))
-	for i, entry := range entries {
-		options = append(options, fmt.Sprintf("[%d] ID: %s | %s", i+1, entry.ID, entry.Name))
-	}
-
-	idx, _, err := p.Select("Select plan entry:", options)
-	if err != nil {
-		return "", fmt.Errorf("failed to select plan entry: %w", err)
-	}
-
-	return entries[idx].ID, nil
+	return interactive.SelectPlanEntry(ctx, p, plan.Entries, "")
 }
 
 func resolveResultIDInteractive(ctx context.Context, cli client.ClientInterface) (int64, error) {
@@ -225,17 +180,31 @@ func resolveResultIDInteractive(ctx context.Context, cli client.ClientInterface)
 		return 0, fmt.Errorf("no results found in test %d", testID)
 	}
 
-	return selectResultID(ctx, results)
+	p := interactive.PrompterFromContext(ctx)
+	return selectResultID(ctx, p, results)
 }
 
-func selectResultID(ctx context.Context, results data.GetResultsResponse) (int64, error) {
-	p := interactive.PrompterFromContext(ctx)
-	options := make([]string, 0, len(results))
-	for i, result := range results {
-		options = append(options, fmt.Sprintf("[%d] ID: %d | status: %d | test: %d", i+1, result.ID, result.StatusID, result.TestID))
+func selectResultID(ctx context.Context, p interactive.Prompter, results data.GetResultsResponse) (int64, error) {
+	if len(results) == 0 {
+		return 0, fmt.Errorf("no results found")
 	}
 
-	idx, _, err := p.Select("Select result:", options)
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Status", MinWidth: 6},
+		{Header: "Test", MinWidth: 6},
+	}
+	rows := make([][]string, len(results))
+	for i, r := range results {
+		rows[i] = []string{fmt.Sprintf("%d", r.ID), fmt.Sprintf("%d", r.StatusID), fmt.Sprintf("%d", r.TestID)}
+	}
+	header, options := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select result:",
+		Header: header,
+		Items:  options,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select result: %w", err)
 	}

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/paths"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 
 	"github.com/spf13/cobra"
@@ -37,6 +39,7 @@ Flags:
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cli := getClientInterface(cmd)
 		ctx := cmd.Context()
+		startedAt := time.Now()
 
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
@@ -45,25 +48,39 @@ Flags:
 		quiet, _ := cmd.Flags().GetBool("quiet")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		autoSaveMapping, _ := cmd.Flags().GetBool("save-mapping")
-
-		if srcProject == 0 || dstProject == 0 {
-			return fmt.Errorf("required IDs: --src-project and --dst-project")
-		}
+		applySessionFallback(ctx, &srcProject, &dstProject, new(int64), new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
+		var err error
+
+		// Interactive source project selection
+		if srcProject == 0 {
+			srcProject, err = interactive.SelectProject(ctx, p, cli, "Select SOURCE project:")
+			if err != nil {
+				return fmt.Errorf("suitesCmd.func: %w", err)
+			}
+		}
+
+		// Interactive destination project selection
+		if dstProject == 0 {
+			dstProject, err = interactive.SelectProject(ctx, p, cli, "Select DESTINATION project:")
+			if err != nil {
+				return fmt.Errorf("suitesCmd.func: %w", err)
+			}
+		}
 
 		logDir, err := paths.EnsureLogsDirPath()
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		m, err := newMigration(cli, srcProject, 0, dstProject, 0, compareField, logDir)
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		defer m.Close()
 
 		op := newSyncOperation("Sync suites", quiet)
-defer op.Finish()
+		defer op.Finish()
 
 		op.Phase("Loading suites")
 		loaded, err := runSyncStatus(ctx, "Loading suites...", quiet, func(ctx context.Context) (struct {
@@ -83,17 +100,17 @@ defer op.Finish()
 			}{Source: sourceSuites, Target: targetSuites}, nil
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 		sourceSuites := loaded.Source
 		targetSuites := loaded.Target
 
 		filtered, err := m.FilterSuites(sourceSuites, targetSuites)
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 
-		ui.Infof(os.Stdout, "Ready to import: %d new suites", len(filtered))
+		printFilterSummary("suites", m.LastFilterStats())
 
 		if dryRun {
 			ui.Info(os.Stdout, "Dry-run: import skipped")
@@ -105,12 +122,15 @@ defer op.Finish()
 			return nil
 		}
 
-		op.Phase("Awaiting confirmation")
+		// Snapshot decision + confirmation
+		op.Finish() // stop spinner before interactive prompts
+		sd := confirmSnapshot(ctx, cmd)
+		printPreConfirmSummary(len(filtered), "suites", sd)
+
 		if !autoApprove {
-			ui.Infof(os.Stdout, "Confirm import of %d suites...", len(filtered))
 			ok, err := p.Confirm("Continue?", false)
 			if err != nil {
-				return err
+				return fmt.Errorf("suitesCmd.func: %w", err)
 			}
 			if !ok {
 				ui.Canceled(os.Stdout)
@@ -118,13 +138,20 @@ defer op.Finish()
 			}
 		}
 
-		// Step 3) Confirmation and import
-		op.Phase("Importing suites")
+		// Step 3) Import
+		op = newSyncOperation("Importing suites", quiet)
+		defer op.Finish()
+
+		var snapHook *snap.Hook
+		if sd.Create {
+			snapHook = snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpSyncSuites, EntityType: "sync", Tier: snap.Tier2, Label: sd.Label})
+		}
+
 		_, err = runSyncStatus(ctx, fmt.Sprintf("Importing %d suites...", len(filtered)), quiet, func(ctx context.Context) (struct{}, error) {
 			return struct{}{}, m.ImportSuites(ctx, filtered, false)
 		})
 		if err != nil {
-			return err
+			return fmt.Errorf("suitesCmd.func: %w", err)
 		}
 
 		// Step 4) Save mapping if requested
@@ -137,6 +164,26 @@ defer op.Finish()
 			}
 		}
 
+		if snapHook != nil && snapHook.Enabled {
+			created := make([]snap.SyncCreatedEntity, 0, len(filtered))
+			mapping := m.Mapping()
+			for _, s := range filtered {
+				if targetID, ok := mapping[s.ID]; ok {
+					created = append(created, snap.SyncCreatedEntity{
+						Type:     "suite",
+						SourceID: s.ID,
+						TargetID: targetID,
+					})
+				}
+			}
+			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, 0, 0))
+		}
+
+		saveMigrationReport(ctx, cmd, "sync_suites", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+			filterStatsToReport("suites", m.LastFilterStats(), int64(len(filtered)), 0),
+		})
+
+		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},
 }

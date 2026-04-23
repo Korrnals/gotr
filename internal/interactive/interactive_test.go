@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -79,13 +80,14 @@ func TestSelectProject_ErrorBranches(t *testing.T) {
 
 		_, err := SelectProject(ctx, p, cli, "")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select project")
-		assert.Equal(t, "Select project:", p.lastMessage)
+		assert.Contains(t, err.Error(), "select failed")
 	})
 }
 
 func TestSelectRun_DefaultPromptAndCompletedStatus(t *testing.T) {
-	p := &spyPrompter{idx: 1}
+	// Browse options: [✕ Exit, (active) Active Run, (completed) Closed Run]
+	// Index 2 selects "Closed Run"
+	p := &spyPrompter{idx: 2}
 	runs := data.GetRunsResponse{
 		{ID: 11, Name: "Active Run", IsCompleted: false},
 		{ID: 22, Name: "Closed Run", IsCompleted: true},
@@ -94,10 +96,10 @@ func TestSelectRun_DefaultPromptAndCompletedStatus(t *testing.T) {
 	id, err := SelectRun(context.Background(), p, runs, "")
 	require.NoError(t, err)
 	assert.Equal(t, int64(22), id)
-	assert.Equal(t, "Select run:", p.lastMessage)
-	require.Len(t, p.lastOptions, 2)
-	assert.Contains(t, p.lastOptions[0], "(active)")
-	assert.Contains(t, p.lastOptions[1], "(completed)")
+	assert.Contains(t, p.lastMessage, "Select run:")
+	require.Len(t, p.lastOptions, 3) // Exit + 2 runs
+	assert.Contains(t, p.lastOptions[1], "active")
+	assert.Contains(t, p.lastOptions[2], "completed")
 }
 
 func TestSelectSuiteForProject_Branches(t *testing.T) {
@@ -141,8 +143,7 @@ func TestSelectSuite_Run_Section_ErrorBranches(t *testing.T) {
 		p := &spyPrompter{err: errors.New("select fail")}
 		_, err := SelectSuite(ctx, p, data.GetSuitesResponse{{ID: 1, Name: "S"}}, "Custom suite prompt")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select suite")
-		assert.Equal(t, "Custom suite prompt", p.lastMessage)
+		assert.Contains(t, err.Error(), "select fail")
 	})
 
 	t.Run("SelectRun no runs", func(t *testing.T) {
@@ -155,8 +156,7 @@ func TestSelectSuite_Run_Section_ErrorBranches(t *testing.T) {
 		p := &spyPrompter{err: errors.New("select fail")}
 		_, err := SelectRun(ctx, p, data.GetRunsResponse{{ID: 2, Name: "R"}}, "Custom run prompt")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select run")
-		assert.Equal(t, "Custom run prompt", p.lastMessage)
+		assert.Contains(t, err.Error(), "select fail")
 	})
 
 	t.Run("SelectSection no sections", func(t *testing.T) {
@@ -169,8 +169,7 @@ func TestSelectSuite_Run_Section_ErrorBranches(t *testing.T) {
 		p := &spyPrompter{err: errors.New("select fail")}
 		_, err := SelectSection(ctx, p, data.GetSectionsResponse{{ID: 3, Name: "Sec"}}, "Custom section prompt")
 		require.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to select section")
-		assert.Equal(t, "Custom section prompt", p.lastMessage)
+		assert.Contains(t, err.Error(), "select fail")
 	})
 }
 
@@ -178,18 +177,256 @@ func TestSelectSuiteAndSection_DefaultPromptSuccess(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("SelectSuite default prompt", func(t *testing.T) {
-		p := &spyPrompter{idx: 0}
+		p := &spyPrompter{idx: 1} // +1 for Exit option
 		id, err := SelectSuite(ctx, p, data.GetSuitesResponse{{ID: 101, Name: "Suite"}}, "")
 		require.NoError(t, err)
 		assert.Equal(t, int64(101), id)
-		assert.Equal(t, "Select suite:", p.lastMessage)
+		assert.Contains(t, p.lastMessage, "Select suite:")
 	})
 
 	t.Run("SelectSection default prompt", func(t *testing.T) {
-		p := &spyPrompter{idx: 0}
+		p := &spyPrompter{idx: 1} // +1 for Exit option
 		id, err := SelectSection(ctx, p, data.GetSectionsResponse{{ID: 202, Name: "Section"}}, "")
 		require.NoError(t, err)
 		assert.Equal(t, int64(202), id)
-		assert.Equal(t, "Select section:", p.lastMessage)
+		assert.Contains(t, p.lastMessage, "Select section:")
 	})
+}
+
+func TestSelectCase(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success selects correct case", func(t *testing.T) {
+		cases := data.GetCasesResponse{
+			{ID: 100, Title: "Case A"},
+			{ID: 200, Title: "Case B"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+		id, err := SelectCase(ctx, p, cases, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(200), id)
+	})
+
+	t.Run("empty list returns error", func(t *testing.T) {
+		p := NewMockPrompter()
+		id, err := SelectCase(ctx, p, data.GetCasesResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no cases found")
+		assert.Zero(t, id)
+	})
+
+	t.Run("select error propagates", func(t *testing.T) {
+		cases := data.GetCasesResponse{{ID: 1, Title: "C"}}
+		p := NewNonInteractivePrompter()
+		id, err := SelectCase(ctx, p, cases, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to select case")
+		assert.Zero(t, id)
+	})
+
+	t.Run("custom prompt is used", func(t *testing.T) {
+		cases := data.GetCasesResponse{{ID: 1, Title: "C"}}
+		p := &spyPrompter{idx: 1} // +1 for Exit
+		id, err := SelectCase(ctx, p, cases, "Pick a case:")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), id)
+		assert.Contains(t, p.lastMessage, "Pick a case:")
+	})
+
+	t.Run("exit returns ErrExit", func(t *testing.T) {
+		cases := data.GetCasesResponse{{ID: 1, Title: "C"}}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Raw: true}) // Exit
+		_, err := SelectCase(ctx, p, cases, "")
+		assert.True(t, IsExit(err))
+	})
+
+	t.Run("aligned labels have header", func(t *testing.T) {
+		cases := data.GetCasesResponse{
+			{ID: 100, Title: "Login Test"},
+			{ID: 200, Title: "Logout Test"},
+		}
+		p := &spyPrompter{idx: 1} // +1 for Exit
+		_, err := SelectCase(ctx, p, cases, "")
+		require.NoError(t, err)
+		assert.Contains(t, p.lastMessage, "ID")
+		assert.Contains(t, p.lastMessage, "Title")
+	})
+}
+
+func TestSelectSharedStep(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success selects correct step", func(t *testing.T) {
+		steps := data.GetSharedStepsResponse{
+			{ID: 555, Title: "Step A"},
+			{ID: 666, Title: "Step B"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		id, err := SelectSharedStep(ctx, p, steps, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(555), id)
+	})
+
+	t.Run("empty list returns error", func(t *testing.T) {
+		p := NewMockPrompter()
+		id, err := SelectSharedStep(ctx, p, data.GetSharedStepsResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no shared steps found")
+		assert.Zero(t, id)
+	})
+
+	t.Run("select error propagates", func(t *testing.T) {
+		steps := data.GetSharedStepsResponse{{ID: 1, Title: "S"}}
+		p := NewNonInteractivePrompter()
+		id, err := SelectSharedStep(ctx, p, steps, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "failed to select shared step")
+		assert.Zero(t, id)
+	})
+
+	t.Run("default prompt", func(t *testing.T) {
+		steps := data.GetSharedStepsResponse{{ID: 1, Title: "S"}}
+		p := &spyPrompter{idx: 1} // +1 for Exit
+		_, err := SelectSharedStep(ctx, p, steps, "")
+		require.NoError(t, err)
+		assert.Contains(t, p.lastMessage, "Select shared step:")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectTest
+// ---------------------------------------------------------------------------
+
+func TestSelectTest(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		tests := data.GetTestsResponse{
+			{ID: 10, CaseID: 100, Title: "Login test"},
+			{ID: 20, CaseID: 200, Title: "Logout test"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+		id, err := SelectTest(ctx, p, tests, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(20), id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectTest(ctx, p, data.GetTestsResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no tests found")
+	})
+
+	t.Run("error propagates", func(t *testing.T) {
+		tests := data.GetTestsResponse{{ID: 1, CaseID: 1, Title: "T"}}
+		p := NewNonInteractivePrompter()
+		_, err := SelectTest(ctx, p, tests, "")
+		assert.Error(t, err)
+	})
+
+	t.Run("exit", func(t *testing.T) {
+		tests := data.GetTestsResponse{{ID: 1, CaseID: 1, Title: "T"}}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0, Raw: true})
+		_, err := SelectTest(ctx, p, tests, "")
+		assert.True(t, IsExit(err))
+	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectPlan
+// ---------------------------------------------------------------------------
+
+func TestSelectPlan(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		plans := data.GetPlansResponse{
+			{ID: 1, Name: "Sprint 1"},
+			{ID: 2, Name: "Sprint 2"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		id, err := SelectPlan(ctx, p, plans, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectPlan(ctx, p, data.GetPlansResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no plans found")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectPlanEntry
+// ---------------------------------------------------------------------------
+
+func TestSelectPlanEntry(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		entries := []data.PlanEntry{
+			{ID: "e1", Name: "Entry 1"},
+			{ID: "e2", Name: "Entry 2"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 1})
+		id, err := SelectPlanEntry(ctx, p, entries, "")
+		require.NoError(t, err)
+		assert.Equal(t, "e2", id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectPlanEntry(ctx, p, []data.PlanEntry{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no plan entries found")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// SelectDataset
+// ---------------------------------------------------------------------------
+
+func TestSelectDataset(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("success", func(t *testing.T) {
+		datasets := data.GetDatasetsResponse{
+			{ID: 10, Name: "Dataset A"},
+			{ID: 20, Name: "Dataset B"},
+		}
+		p := NewMockPrompter().WithSelectResponses(SelectResponse{Index: 0})
+		id, err := SelectDataset(ctx, p, datasets, "")
+		require.NoError(t, err)
+		assert.Equal(t, int64(10), id)
+	})
+
+	t.Run("empty list", func(t *testing.T) {
+		p := NewMockPrompter()
+		_, err := SelectDataset(ctx, p, data.GetDatasetsResponse{}, "")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "no datasets found")
+	})
+}
+
+// ---------------------------------------------------------------------------
+// MutationPostAction
+// ---------------------------------------------------------------------------
+
+func TestMutationPostAction_NonInteractive(t *testing.T) {
+	ctx := WithPrompter(context.Background(), NewNonInteractivePrompter())
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(ctx)
+	// Should return silently without prompting.
+	MutationPostAction(ctx, cmd)
+}
+
+func TestMutationPostAction_NoPrompter(t *testing.T) {
+	ctx := context.Background()
+	cmd := &cobra.Command{Use: "test"}
+	cmd.SetContext(ctx)
+	// Should return silently.
+	MutationPostAction(ctx, cmd)
 }

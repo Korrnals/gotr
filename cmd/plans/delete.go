@@ -8,6 +8,7 @@ import (
 	"github.com/Korrnals/gotr/internal/flags"
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -31,7 +32,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = flags.ValidateRequiredID(args, 0, "plan_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			} else {
 				if !interactive.HasPrompterInContext(cmd.Context()) {
@@ -40,7 +41,7 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 				var err error
 				planID, err = resolvePlanIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newDeleteCmd.func: %w", err)
 				}
 			}
 
@@ -53,6 +54,14 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			// Snapshot before mutation.
+			snap.HookMutation(ctx, snap.Mutation{
+				Cmd: cmd, Op: snap.OpDelete, EntityType: "plan",
+				EntityIDs: []int64{planID}, Tier: snap.Tier2,
+				FetchFn: func(ctx context.Context) (interface{}, error) { return cli.GetPlan(ctx, planID) },
+			})
+
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			_, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Deleting plan",
@@ -66,11 +75,13 @@ func newDeleteCmd(getClient GetClientFunc) *cobra.Command {
 			}
 
 			ui.Successf(os.Stdout, "Plan %d deleted", planID)
+			interactive.MutationPostAction(ctx, cmd)
 			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be deleted without actually deleting")
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

@@ -17,11 +17,22 @@ func resolveRoleIDInteractive(ctx context.Context, cli client.ClientInterface) (
 	if len(roles) == 0 {
 		return 0, fmt.Errorf("no roles found")
 	}
-	items := make([]string, len(roles))
-	for i, role := range roles {
-		items[i] = fmt.Sprintf("[%d] ID: %d | %s", i+1, role.ID, role.Name)
+
+	cols := []interactive.Column{
+		{Header: "ID", MinWidth: 6},
+		{Header: "Name"},
 	}
-	idx, _, err := p.Select("Select role:", items)
+	rows := make([][]string, len(roles))
+	for i, role := range roles {
+		rows[i] = []string{fmt.Sprintf("%d", role.ID), role.Name}
+	}
+	header, items := interactive.AlignedLabels(cols, rows)
+
+	idx, err := interactive.Browse(ctx, p, interactive.BrowseConfig{
+		Prompt: "Select role:",
+		Header: header,
+		Items:  items,
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to select role: %w", err)
 	}

@@ -6,6 +6,11 @@ import "fmt"
 type SelectResponse struct {
 	Index int
 	Value string
+	// Raw disables auto-adjustment for Browse navigation options.
+	// When false (default), the mock automatically skips "← Back" / "✕ Exit"
+	// options prepended by Browse, so Index 0 always means the first real item.
+	// Set to true when testing navigation option selection explicitly.
+	Raw bool
 }
 
 // MockPrompter is deterministic prompter for unit tests.
@@ -67,6 +72,8 @@ func (m *MockPrompter) Confirm(message string, def bool) (bool, error) {
 }
 
 // Select returns next queued select response.
+// When the response has Raw=false (default), the index is auto-adjusted
+// to skip Browse navigation options (← Back, ✕ Exit) at the top of the list.
 func (m *MockPrompter) Select(message string, options []string) (idx int, value string, err error) {
 	if len(options) == 0 {
 		return 0, "", fmt.Errorf("select options list is empty")
@@ -79,16 +86,36 @@ func (m *MockPrompter) Select(message string, options []string) (idx int, value 
 	response := m.selects[m.selectPos]
 	m.selectPos++
 
-	if response.Index < 0 || response.Index >= len(options) {
-		return 0, "", fmt.Errorf("mock select index out of range: %d", response.Index)
+	actualIdx := response.Index
+	if !response.Raw {
+		actualIdx += countNavPrefix(options)
+	}
+
+	if actualIdx < 0 || actualIdx >= len(options) {
+		return 0, "", fmt.Errorf("mock select index out of range: %d (raw=%d, nav=%d, opts=%d)",
+			actualIdx, response.Index, countNavPrefix(options), len(options))
 	}
 
 	value = response.Value
 	if value == "" {
-		value = options[response.Index]
+		value = options[actualIdx]
 	}
 
-	return response.Index, value, nil
+	return actualIdx, value, nil
+}
+
+// countNavPrefix counts Browse navigation options (← Back, ✕ Exit) at the
+// start of the option list.
+func countNavPrefix(options []string) int {
+	n := 0
+	for _, opt := range options {
+		if opt == OptBack || opt == OptExit {
+			n++
+		} else {
+			break
+		}
+	}
+	return n
 }
 
 // MultilineInput behaves the same as Input for test purposes.

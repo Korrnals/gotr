@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 	"github.com/spf13/cobra"
 )
@@ -41,7 +42,7 @@ All flags are optional — only specified fields will be changed.`,
 				var err error
 				milestoneID, err = flags.ValidateRequiredID(args, 0, "milestone_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				ctx := cmd.Context()
@@ -52,7 +53,7 @@ All flags are optional — only specified fields will be changed.`,
 				var err error
 				milestoneID, err = resolveMilestoneIDInteractive(ctx, cli)
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -80,6 +81,10 @@ All flags are optional — only specified fields will be changed.`,
 
 			cli := getClient(cmd)
 			ctx := cmd.Context()
+
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "milestone", EntityIDs: []int64{milestoneID}, Tier: snap.Tier1, FetchFn: func(ctx context.Context) (interface{}, error) {
+				return cli.GetMilestone(ctx, milestoneID)
+			}})
 			quiet, _ := cmd.Flags().GetBool("quiet")
 			resp, err := ui.RunWithStatus(ctx, ui.StatusConfig{
 				Title:  "Updating milestone",
@@ -93,11 +98,16 @@ All flags are optional — only specified fields will be changed.`,
 			}
 
 			ui.Successf(os.Stdout, "Milestone %d updated", milestoneID)
-			return output.OutputResult(cmd, resp, "milestones")
+			if err := output.OutputResult(cmd, resp, "milestones"); err != nil {
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without actually executing")
+	snap.RegisterFlags(cmd)
 	output.AddFlag(cmd)
 	cmd.Flags().String("name", "", "New milestone name")
 	cmd.Flags().String("description", "", "New description")

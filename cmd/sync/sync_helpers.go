@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/Korrnals/gotr/internal/service/migration"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 )
 
@@ -25,4 +26,16 @@ func runSyncStatus[T any](ctx context.Context, title string, quiet bool, fn func
 		Writer: os.Stderr,
 		Quiet:  quiet,
 	}, fn)
+}
+
+// buildSyncData builds SyncData for snap rollback from created entities.
+func buildSyncData(created []snap.SyncCreatedEntity, srcProject, dstProject, srcSuite, dstSuite int64) snap.SyncData {
+	sd := snap.SyncData{
+		SrcProject: srcProject,
+		DstProject: dstProject,
+		SrcSuite:   srcSuite,
+		DstSuite:   dstSuite,
+		Created:    created,
+	}
+	return sd
 }

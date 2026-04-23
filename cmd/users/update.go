@@ -7,8 +7,10 @@ import (
 	"fmt"
 
 	"github.com/Korrnals/gotr/internal/flags"
+	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/output"
+	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/spf13/cobra"
 )
 
@@ -36,15 +38,15 @@ Administrative privileges are required to modify users.`,
 			if len(args) > 0 {
 				userID, err = flags.ValidateRequiredID(args, 0, "user_id")
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			} else {
 				if err := requireInteractiveUserArg(cmd.Context(), "gotr users update [user_id]"); err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 				userID, err = resolveUserIDInteractive(cmd.Context(), getClient(cmd))
 				if err != nil {
-					return err
+					return fmt.Errorf("newUpdateCmd.func: %w", err)
 				}
 			}
 
@@ -92,13 +94,19 @@ Administrative privileges are required to modify users.`,
 			cli := getClient(cmd)
 			ctx := cmd.Context()
 
+			snap.HookMutation(ctx, snap.Mutation{Cmd: cmd, Op: snap.OpUpdate, EntityType: "user", EntityIDs: []int64{userID}, Tier: snap.Tier1, FetchFn: nil})
+
 			user, err := cli.UpdateUser(ctx, userID, req)
 			if err != nil {
 				return fmt.Errorf("failed to update user: %w", err)
 			}
 
 			_, err = output.Output(cmd, user, "users", "json")
-			return err
+			if err != nil {
+				return fmt.Errorf("newUpdateCmd.func: %w", err)
+			}
+			interactive.MutationPostAction(ctx, cmd)
+			return nil
 		},
 	}
 
@@ -109,6 +117,7 @@ Administrative privileges are required to modify users.`,
 	cmd.Flags().Bool("inactive", false, "Deactivate the user")
 	cmd.Flags().Bool("dry-run", false, "Show what would be done without updating the user")
 	output.AddFlag(cmd)
+	snap.RegisterFlags(cmd)
 
 	return cmd
 }

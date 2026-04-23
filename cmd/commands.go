@@ -15,10 +15,12 @@ import (
 	"github.com/Korrnals/gotr/cmd/labels"
 	"github.com/Korrnals/gotr/cmd/milestones"
 	"github.com/Korrnals/gotr/cmd/plans"
+	reportcmd "github.com/Korrnals/gotr/cmd/report"
 	"github.com/Korrnals/gotr/cmd/reports"
 	"github.com/Korrnals/gotr/cmd/result"
 	"github.com/Korrnals/gotr/cmd/roles"
 	"github.com/Korrnals/gotr/cmd/run"
+	"github.com/Korrnals/gotr/cmd/snap"
 	"github.com/Korrnals/gotr/cmd/sync"
 	"github.com/Korrnals/gotr/cmd/templates"
 	"github.com/Korrnals/gotr/cmd/test"
@@ -58,10 +60,12 @@ func init() {
 	labels.Register(rootCmd, GetClient)
 	milestones.Register(rootCmd, GetClient)
 	plans.Register(rootCmd, GetClient)
+	reportcmd.Register(rootCmd)
 	reports.Register(rootCmd, GetClient)
 	run.Register(rootCmd, GetClientFromCtx)
 	result.Register(rootCmd, GetClientFromCtx)
 	roles.Register(rootCmd, GetClient)
+	snap.Register(rootCmd, GetClient)
 	sync.Register(rootCmd, GetClientFromCtx)
 	test.Register(rootCmd, GetClientFromCtx)
 	templates.Register(rootCmd, GetClient)

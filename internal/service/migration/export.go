@@ -25,7 +25,7 @@ func (m *Migration) ExportSharedSteps(steps data.GetSharedStepsResponse, filtere
 		dir = ".testrail"
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("ExportSharedSteps: %w", err)
 	}
 
 	fileType := "all"
@@ -36,11 +36,11 @@ func (m *Migration) ExportSharedSteps(steps data.GetSharedStepsResponse, filtere
 
 	jsonData, err := exportMarshalIndent(steps, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("ExportSharedSteps: %w", err)
 	}
 
 	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
-		return err
+		return fmt.Errorf("ExportSharedSteps: %w", err)
 	}
 
 	m.logger.Info("Shared steps exported", "file", file, "count", len(steps), "type", fileType)
@@ -58,7 +58,7 @@ func (m *Migration) ExportSuites(suites data.GetSuitesResponse, filtered bool, d
 		dir = ".testrail"
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("ExportSuites: %w", err)
 	}
 
 	fileType := "all"
@@ -69,11 +69,11 @@ func (m *Migration) ExportSuites(suites data.GetSuitesResponse, filtered bool, d
 
 	jsonData, err := exportMarshalIndent(suites, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("ExportSuites: %w", err)
 	}
 
 	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
-		return err
+		return fmt.Errorf("ExportSuites: %w", err)
 	}
 
 	m.logger.Info("Suites exported", "file", file, "count", len(suites), "type", fileType)
@@ -91,7 +91,7 @@ func (m *Migration) ExportCases(cases data.GetCasesResponse, filtered bool, dir 
 		dir = ".testrail"
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("ExportCases: %w", err)
 	}
 
 	fileType := "all"
@@ -102,11 +102,11 @@ func (m *Migration) ExportCases(cases data.GetCasesResponse, filtered bool, dir 
 
 	jsonData, err := exportMarshalIndent(cases, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("ExportCases: %w", err)
 	}
 
 	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
-		return err
+		return fmt.Errorf("ExportCases: %w", err)
 	}
 
 	m.logger.Info("Cases exported", "file", file, "count", len(cases), "type", fileType)
@@ -124,7 +124,7 @@ func (m *Migration) ExportSections(sections data.GetSectionsResponse, filtered b
 		dir = ".testrail"
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return err
+		return fmt.Errorf("ExportSections: %w", err)
 	}
 
 	fileType := "all"
@@ -135,11 +135,11 @@ func (m *Migration) ExportSections(sections data.GetSectionsResponse, filtered b
 
 	jsonData, err := exportMarshalIndent(sections, "", "  ")
 	if err != nil {
-		return err
+		return fmt.Errorf("ExportSections: %w", err)
 	}
 
 	if err := exportWriteFile(file, jsonData, 0o644); err != nil {
-		return err
+		return fmt.Errorf("ExportSections: %w", err)
 	}
 
 	m.logger.Info("Sections exported", "file", file, "count", len(sections), "type", fileType)

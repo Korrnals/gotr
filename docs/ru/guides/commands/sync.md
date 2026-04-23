@@ -60,7 +60,33 @@ gotr sync [command]
 ## Флаги ⚙️
 
 ```text
--h, --help   справка для sync
+-h, --help               справка для sync
+--verify-coverage        После импорта повторно фетчит target и проверяет, что каждому source-кейсу нашлось совпадение (non-zero exit при пробое). Применяется к `sync cases` и `sync full`. По умолчанию: false.
+```
+
+### Гейт покрытия (начиная с 3.2.0)
+
+Когда указан `--verify-coverage`, после фазы импорта `gotr` повторно
+загружает target suite и применяет тот же multiset-матчинг, что и фильтр.
+Если хотя бы один source-кейс не находит совпадения в target scope —
+команда:
+
+- Печатает `❌ Coverage gap: M/N source cases missing in target (X.X% coverage)`.
+- Логирует до 50 отсутствующих: `  - [id] "title" (src_section=X, dst_section=Y)`.
+- Завершается с non-zero exit и сообщением об ошибке, содержащим
+  стабильную подстроку `"coverage gap"` (удобно для `grep` в CI).
+
+Гейт — opt-in, он прямо защищает от тихих рассогласований `section_id` /
+scope, которые ранее приводили к тому, что частично выполненная миграция
+рапортовала об успехе.
+
+```bash
+# Dry-run без coverage-гейта (поведение по умолчанию).
+gotr sync cases --dry-run --src-project 30 --src-suite 20069 --dst-project 34 --dst-suite 19859
+
+# Реальная миграция со строгим coverage-гейтом.
+gotr sync full --src-project 30 --src-suite 20069 --dst-project 34 --dst-suite 19859 \
+  --approve --save-mapping --verify-coverage
 ```
 
 ## Глобальные флаги 🌐

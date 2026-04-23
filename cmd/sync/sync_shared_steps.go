@@ -44,7 +44,10 @@ Examples:
 		srcProject, _ := cmd.Flags().GetInt64("src-project")
 		srcSuite, _ := cmd.Flags().GetInt64("src-suite")
 		dstProject, _ := cmd.Flags().GetInt64("dst-project")
-		compareField, _ := cmd.Flags().GetString("compare-field")
+		compareField, err := resolveMatchField(ctx, cmd, interactive.MatchFieldSharedSteps)
+		if err != nil {
+			return fmt.Errorf("sharedStepsCmd.func: %w", err)
+		}
 		dryRun, _ := cmd.Flags().GetBool("dry-run")
 		autoApprove, _ := cmd.Flags().GetBool("approve")
 		quiet, _ := cmd.Flags().GetBool("quiet")
@@ -53,7 +56,6 @@ Examples:
 		applySessionFallback(ctx, &srcProject, &dstProject, &srcSuite, new(int64))
 
 		p := interactive.PrompterFromContext(ctx)
-		var err error
 
 		// Interactive source project selection
 		if srcProject == 0 {
@@ -151,13 +153,17 @@ Examples:
 				sourceCases = append(sourceCases, cases...)
 			}
 		}
-		caseIDsSet := make(map[int64]struct{})
+		usedStepIDs := make(map[int64]struct{})
 		for _, c := range sourceCases {
-			caseIDsSet[c.ID] = struct{}{}
+			for _, step := range c.CustomStepsSeparated {
+				if step.SharedStepID != 0 {
+					usedStepIDs[step.SharedStepID] = struct{}{}
+				}
+			}
 		}
 
 		// Step 3) Filter candidates (exclude used and duplicates)
-		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, caseIDsSet)
+		filtered, err := m.FilterSharedSteps(sourceSteps, targetSteps, usedStepIDs)
 		if err != nil {
 			return fmt.Errorf("sharedStepsCmd.func: %w", err)
 		}
@@ -247,7 +253,7 @@ Examples:
 		}
 
 		saveMigrationReport(ctx, cmd, "sync_shared_steps", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
-			filterStatsToReport("shared_steps", m.LastFilterStats(), int64(len(filtered)), 0),
+			filterStatsToReport("shared_steps", m.LastFilterStats(), int64(len(filtered)-m.FailedCount()), int64(m.FailedCount())),
 		})
 
 		syncPostAction(ctx, cmd, snapHook, cli)

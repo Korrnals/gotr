@@ -76,6 +76,10 @@ Supports browsing available endpoints, executing requests, and more.`,
 			opts = append(opts, client.WithSkipTlsVerify(true)) // TLS verification is enabled by default
 		}
 
+		if httpTimeout := viper.GetDuration("http_timeout"); httpTimeout > 0 {
+			opts = append(opts, client.WithTimeout(httpTimeout))
+		}
+
 		httpClient, err := client.NewClient(baseURL, username, apiKey, debugMode, opts...)
 		if err != nil {
 			return fmt.Errorf("failed to create client: %w", err)

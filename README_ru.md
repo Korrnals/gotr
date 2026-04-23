@@ -17,13 +17,21 @@
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Version](https://img.shields.io/badge/version-3.0.0-blue.svg)](CHANGELOG.md)
+[![Latest Release](https://img.shields.io/badge/release-v3.0.1-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.0.1)
+[![Next](https://img.shields.io/badge/next-v3.3.0--dev-orange.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Профессиональный инструмент командной строки для работы с TestRail API v2. Разработан для QA-инженеров и специалистов по автоматизации тестирования, которым требуется эффективное управление данными, возможности миграции и бесшовная интеграция с CI/CD.
 
-> **Актуальная версия: v3.0.0** — Stage 13.5 завершён: quality hardening, 7 раундов аудита, 0 lint-findings, полное тестовое покрытие. См. [CHANGELOG](CHANGELOG.md)
+> **Последний релиз:** [v3.0.1](https://github.com/Korrnals/gotr/releases/tag/v3.0.1).
+>
+> **В работе (`main`, без тега):** v3.3.0 — объединяет исходный набор фич 3.1.0
+> (#28–#32), багфикс миграции 3.2.0 (multiset-матчинг, строгая разрешимость
+> dst-scope, учёт `failedImports`, флаги `--suite1` / `--suite2` /
+> `--match-field` на `compare`, opt-in `--verify-coverage` гейт на `sync cases`
+> / `sync full`, фикс финализации snap meta) и предстоящий PDF-отчёт о
+> миграции. Полный unreleased-скоуп см. в [CHANGELOG](CHANGELOG.md).
 
 ## Обзор
 

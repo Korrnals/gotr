@@ -23,7 +23,8 @@ type Migration struct {
 	dstProject    int64
 	dstSuite      int64
 	compareField  string
-	importedCases int // number of successfully imported cases
+	importedCases int // number of successfully imported entities (cases or sections)
+	failedImports int // number of entities that could not be imported (e.g. unresolved section/parent)
 
 	mapping  *SharedStepMapping // shared step ID mapping (see mapping.go)
 	logger   *zap.SugaredLogger
@@ -116,3 +117,13 @@ func (m *Migration) Mapping() map[int64]int64 {
 	}
 	return res
 }
+
+// ImportedCount returns the number of entities successfully imported in the
+// last ImportCases/ImportSections call (cumulative across calls on this
+// Migration instance).
+func (m *Migration) ImportedCount() int { return m.importedCases }
+
+// FailedCount returns the number of entities that failed to import because of
+// unresolved scope (missing destination section, missing mapped parent) or API
+// errors. This counter makes otherwise-silent skips visible in the summary.
+func (m *Migration) FailedCount() int { return m.failedImports }

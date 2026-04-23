@@ -27,6 +27,42 @@
 
 ---
 
+## Актуальный профиль текущей кампании
+
+Для текущей серии проверок используются фиксированные тестовые проекты:
+
+- SRC: `Test1` (ID: `48`)
+- DST: `Test2` (ID: `49`)
+
+Правила для этого профиля:
+
+- Проекты `48/49` **не удаляются** в конце шага
+- Выполняется только очистка тестовых сущностей внутри проектов
+- После устранения найденных багов выполняется **повторный полный прогон**:
+  - интерактивный режим
+  - неинтерактивный режим
+
+---
+
+## Режим автономного интерактивного прогона
+
+Во время интерактивных шагов:
+
+- поля `name/title/description/refs` и другие содержательные поля заполняются автоматически исполнителем
+- оператор не тратит время на согласование текстовых полей
+- оператор согласует только **этапы** и изменения стратегии
+
+Базовая политика ответов на промпты:
+
+- `Create snapshot before migration?` → `Yes`
+- `Continue?` → `Yes` (если не запланирован останов)
+- `Save mapping?` → `Yes`
+- `Save result to file?` → `Yes` (или `No` по сценарию, но единообразно в рамках шага)
+
+Цель: тестировать логику и надежность цепочек, а не ручной ввод текстов.
+
+---
+
 ## Предварительные условия
 
 ### Технические
@@ -431,24 +467,56 @@ export GOTR_TEST_DST_SUITE_ID=<id>
 
 ---
 
-## Шаг 7 — Удаление тестовых проектов
+## Шаг 7 — Очистка тестовых сущностей (без удаления проектов)
 
 > ⛔ **ВЫПОЛНЯЕТСЯ ТОЛЬКО С ЯВНОГО ПИСЬМЕННОГО ОДОБРЕНИЯ ОТВЕТСТВЕННОГО ЛИЦА**
 >
-> Перед удалением — визуально проверить в веб-интерфейсе TestRail что это именно `[GOTR-TEST]` проекты.
+> Для текущего профиля (`Test1=48`, `Test2=49`) сами проекты не удаляются.
+
+Удаляются только тестовые сущности с префиксом `[GOTR-TEST]`:
 
 ```bash
-# Удалить SRC
-./gotr delete project $GOTR_TEST_SRC_ID --non-interactive
+# Примерно в таком порядке:
+# 1) runs/plans (если создавались)
+# 2) cases
+# 3) sections
+# 4) suites
+# 5) shared steps (если есть отдельные)
 
-# Удалить DST
-./gotr delete project $GOTR_TEST_DST_ID --non-interactive
+# Проверить что в проектах не осталось тестовых suites/shared steps
+./gotr get suites 48 --non-interactive --format json
+./gotr get suites 49 --non-interactive --format json
+./gotr get sharedsteps 48 --non-interactive --format json
+./gotr get sharedsteps 49 --non-interactive --format json
 ```
 
-**Финальная проверка:**
+**Ожидаемый результат:** в ответах нет тестовых сущностей текущей кампании.
+
+---
+
+## Шаг 8 — Повторный полный прогон после фикса багов
+
+После исправления найденных дефектов выполнить повторно:
+
+1. Полный интерактивный маршрут (`-i`) с автозаполнением полей
+2. Полный неинтерактивный маршрут (`--non-interactive`) с явными флагами
+
+Минимальный набор команд для rerun:
+
 ```bash
-./gotr get projects --non-interactive | grep "GOTR-TEST"
-# Ожидаемый результат: пустой вывод
+# Interactive
+./gotr sync suites
+./gotr sync sections
+./gotr sync shared-steps
+./gotr sync cases
+./gotr sync full
+
+# Non-interactive (пример)
+./gotr sync suites --src-project 48 --dst-project 49 --approve --save-mapping --snapshot
+./gotr sync sections --src-project 48 --src-suite <SRC_SUITE> --dst-project 49 --dst-suite <DST_SUITE> --approve --save-mapping --snapshot
+./gotr sync shared-steps --src-project 48 --dst-project 49 --approve --save-mapping --snapshot
+./gotr sync cases --src-project 48 --src-suite <SRC_SUITE> --dst-project 49 --dst-suite <DST_SUITE> --snapshot
+./gotr sync full --src-project 48 --src-suite <SRC_SUITE> --dst-project 49 --dst-suite <DST_SUITE> --approve --save-mapping --snapshot
 ```
 
 ---
@@ -467,7 +535,8 @@ export GOTR_TEST_DST_SUITE_ID=<id>
 | 8 | Отчёт миграции сохранён и читаем | ✓/✗ |
 | 9 | Откат через снапшот выполнен корректно | ✓/✗ |
 | 10 | DST вернулся к состоянию до миграции | ✓/✗ |
-| 11 | Оба тестовых проекта удалены | ✓/✗ |
+| 11 | Тестовые сущности очищены, проекты 48/49 сохранены | ✓/✗ |
+| 12 | Повторный прогон после фиксов: interactive + non-interactive | ✓/✗ |
 
 **Только при всех ✓ — можно переходить к реальной миграции.**
 

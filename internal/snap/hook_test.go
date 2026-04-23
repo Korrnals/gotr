@@ -147,6 +147,15 @@ func TestHook_FinalizeSyncData_Happy(t *testing.T) {
 
 	// Should save without panic.
 	hook.FinalizeSyncData(map[string]int{"created": 5})
+
+	// Regression: FinalizeSyncData must refresh both meta.DataSizeBytes and
+	// the manifest entry so retention/rollback tooling sees a non-zero payload.
+	assert.Greater(t, hook.Snap.Meta.DataSizeBytes, int64(0),
+		"FinalizeSyncData must update meta.DataSizeBytes")
+	entry := hook.Manifest.Find(hook.Snap.Meta.ID)
+	require.NotNil(t, entry, "manifest entry must exist after FinalizeSyncData")
+	assert.Equal(t, hook.Snap.Meta.DataSizeBytes, entry.DataSize,
+		"manifest entry DataSize must match meta.DataSizeBytes")
 }
 
 // ---------------------------------------------------------------------------

@@ -26,6 +26,8 @@ func TestBaseDirAndDerivedPaths_HomeUnset(t *testing.T) {
 		{name: "TempDirPath", fn: TempDirPath},
 		{name: "ConfigFile", fn: ConfigFile},
 		{name: "EnsureLogsDirPath", fn: EnsureLogsDirPath},
+		{name: "EnsureReportsDirPath", fn: EnsureReportsDirPath},
+		{name: "EnsureExportsDirPath", fn: EnsureExportsDirPath},
 	}
 
 	for _, tc := range checks {
@@ -237,5 +239,164 @@ func TestEnsureDir_ErrorPaths(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected EnsureDir to fail when parent is a file")
+	}
+}
+
+func TestEnsureReportsDirPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	path, err := EnsureReportsDirPath()
+	if err != nil {
+		t.Fatalf("EnsureReportsDirPath error: %v", err)
+	}
+	want := filepath.Join(home, DirName, ReportsDir)
+	if path != want {
+		t.Fatalf("EnsureReportsDirPath = %q, want %q", path, want)
+	}
+	if st, err := os.Stat(path); err != nil || !st.IsDir() {
+		t.Fatalf("reports dir not created: %v", err)
+	}
+
+	// Idempotent: second call must succeed as well.
+	if _, err := EnsureReportsDirPath(); err != nil {
+		t.Fatalf("second EnsureReportsDirPath error: %v", err)
+	}
+}
+
+func TestEnsureReportsDirPath_MkdirError(t *testing.T) {
+	parent := t.TempDir()
+	homeFile := filepath.Join(parent, "not-a-dir")
+	if err := os.WriteFile(homeFile, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write home file: %v", err)
+	}
+	t.Setenv("HOME", homeFile)
+
+	if _, err := EnsureReportsDirPath(); err == nil {
+		t.Fatal("expected error when home path is a file")
+	}
+}
+
+func TestEnsureExportsDirPath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	path, err := EnsureExportsDirPath()
+	if err != nil {
+		t.Fatalf("EnsureExportsDirPath error: %v", err)
+	}
+	want := filepath.Join(home, DirName, ExportsDir)
+	if path != want {
+		t.Fatalf("EnsureExportsDirPath = %q, want %q", path, want)
+	}
+	if st, err := os.Stat(path); err != nil || !st.IsDir() {
+		t.Fatalf("exports dir not created: %v", err)
+	}
+}
+
+func TestEnsureExportsDirPath_MkdirError(t *testing.T) {
+	parent := t.TempDir()
+	homeFile := filepath.Join(parent, "not-a-dir")
+	if err := os.WriteFile(homeFile, []byte("x"), 0o600); err != nil {
+		t.Fatalf("write home file: %v", err)
+	}
+	t.Setenv("HOME", homeFile)
+
+	if _, err := EnsureExportsDirPath(); err == nil {
+		t.Fatal("expected error when home path is a file")
+	}
+}
+
+func TestRelToHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "empty", in: "", want: ""},
+		{name: "equals_home", in: home, want: "~"},
+		{name: "under_home", in: filepath.Join(home, ".gotr", "reports", "r.pdf"), want: "~/.gotr/reports/r.pdf"},
+		{name: "outside_home_absolute", in: "/var/log/app.log", want: "/var/log/app.log"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := RelToHome(tc.in)
+			if got != tc.want {
+				t.Fatalf("RelToHome(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestRelToHome_HomeUnset(t *testing.T) {
+	t.Setenv("HOME", "")
+	// When HOME cannot be resolved, RelToHome must return its input unchanged.
+	in := "/some/path"
+	if got := RelToHome(in); got != in {
+		// os.UserHomeDir may still resolve on some CI hosts; accept any prefixing
+		// behavior only if it starts with "~/".
+		if got != "~/some/path" && got != "~" {
+			t.Fatalf("RelToHome(%q) = %q, want unchanged or ~-prefixed", in, got)
+		}
+	}
+}
+
+func TestExpandHome(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "empty", in: "", want: ""},
+		{name: "bare_tilde", in: "~", want: home},
+		{name: "tilde_slash", in: "~/.gotr/reports/r.pdf", want: filepath.Join(home, ".gotr", "reports", "r.pdf")},
+		{name: "absolute_passthrough", in: "/var/log/app.log", want: "/var/log/app.log"},
+		{name: "relative_passthrough", in: "relative/path", want: "relative/path"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := ExpandHome(tc.in)
+			if err != nil {
+				t.Fatalf("ExpandHome(%q) error: %v", tc.in, err)
+			}
+			if got != tc.want {
+				t.Fatalf("ExpandHome(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestExpandHome_HomeUnset(t *testing.T) {
+	t.Setenv("HOME", "")
+	// If os.UserHomeDir still resolves (some CI hosts), skip the negative test.
+	if _, err := os.UserHomeDir(); err == nil {
+		t.Skip("os.UserHomeDir resolved without HOME; skipping")
+	}
+	if _, err := ExpandHome("~/x"); err == nil {
+		t.Fatal("expected error when home is unresolved")
+	}
+}
+
+func TestRelToHome_ExpandHome_RoundTrip(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+
+	abs := filepath.Join(home, ".gotr", "reports", "r.pdf")
+	portable := RelToHome(abs)
+	if portable != "~/.gotr/reports/r.pdf" {
+		t.Fatalf("RelToHome = %q", portable)
+	}
+	restored, err := ExpandHome(portable)
+	if err != nil {
+		t.Fatalf("ExpandHome error: %v", err)
+	}
+	if restored != abs {
+		t.Fatalf("round-trip mismatch: %q != %q", restored, abs)
 	}
 }

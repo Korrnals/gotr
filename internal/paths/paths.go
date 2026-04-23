@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 const (
@@ -157,4 +158,86 @@ func EnsureDir(dirFunc func() (string, error)) error {
 		return fmt.Errorf("EnsureDir: %w", err)
 	}
 	return os.MkdirAll(dir, 0o755)
+}
+
+// EnsureReportsDirPath returns ~/.gotr/reports and creates it when missing.
+func EnsureReportsDirPath() (string, error) {
+	dir, err := ReportsDirPath()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("cannot create reports directory: %w", err)
+	}
+	return dir, nil
+}
+
+// EnsureExportsDirPath returns ~/.gotr/exports and creates it when missing.
+func EnsureExportsDirPath() (string, error) {
+	dir, err := ExportsDirPath()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("cannot create exports directory: %w", err)
+	}
+	return dir, nil
+}
+
+// RelToHome converts an absolute path to a portable ~/... form when the path
+// is under the current user's home directory. Paths outside $HOME are returned
+// unchanged. This is used to make exported manifests and PDF reports portable
+// across machines where the absolute $HOME differs.
+//
+// Examples:
+//
+//	/home/alice/.gotr/reports/r.pdf  -> ~/.gotr/reports/r.pdf
+//	/var/log/app.log                 -> /var/log/app.log
+//	C:\Users\Bob\.gotr\s\x.json      -> ~/.gotr/s/x.json (on Windows)
+func RelToHome(abs string) string {
+	if abs == "" {
+		return abs
+	}
+	home, err := os.UserHomeDir()
+	if err != nil || home == "" {
+		return abs
+	}
+	cleanAbs := filepath.Clean(abs)
+	cleanHome := filepath.Clean(home)
+	if cleanAbs == cleanHome {
+		return "~"
+	}
+	// Use filepath.Rel to avoid false prefix matches (e.g. /home/al vs /home/alice).
+	rel, err := filepath.Rel(cleanHome, cleanAbs)
+	if err != nil {
+		return abs
+	}
+	// If rel starts with ".." the path is outside $HOME — return as-is.
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return abs
+	}
+	// Always use forward slashes in the portable form.
+	return "~/" + filepath.ToSlash(rel)
+}
+
+// ExpandHome is the inverse of RelToHome: it expands a leading "~/" (or bare
+// "~") to the current user's home directory. Paths that do not begin with "~"
+// are returned unchanged. This lets tooling accept portable paths from
+// imported bundles and resolve them on the local machine.
+func ExpandHome(p string) (string, error) {
+	if p == "" {
+		return p, nil
+	}
+	if p != "~" && !strings.HasPrefix(p, "~/") && !strings.HasPrefix(p, `~\`) {
+		return p, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine home directory: %w", err)
+	}
+	if p == "~" {
+		return home, nil
+	}
+	// Strip the "~/" or "~\\" prefix and join with OS-native separator.
+	return filepath.Join(home, filepath.FromSlash(p[2:])), nil
 }

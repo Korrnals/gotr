@@ -435,8 +435,8 @@ func TestMigration_ImportCases_DefaultsCustomAutotestOn(t *testing.T) {
 	defer m.Close()
 
 	err = m.ImportCases(context.Background(), data.GetCasesResponse{{
-		ID:    1,
-		Title: "Case A",
+		ID:        1,
+		Title:     "Case A",
 		SectionID: 10,
 	}}, false)
 	assert.NoError(t, err)
@@ -654,4 +654,39 @@ func TestMigration_ImportCasesReport_AddCaseErrorIncrementsFailed(t *testing.T) 
 	assert.Empty(t, created)
 	assert.Len(t, errs, 1)
 	assert.Equal(t, 1, m.FailedCount())
+}
+
+// TestResolveSectionMapByName_PopulatesGlobalMapping is a regression test
+// for the coverage-gate false-negative: before this fix, matches resolved by
+// section name never reached m.mapping, so VerifyCasesCoverage (which uses
+// resolveDstSectionIDForFilter / m.mapping only) reported every case missing.
+func TestResolveSectionMapByName_PopulatesGlobalMapping(t *testing.T) {
+	mock := &MockClient{}
+	mock.GetSectionsFunc = func(ctx context.Context, projectID, suiteID int64) (data.GetSectionsResponse, error) {
+		switch projectID {
+		case 1:
+			return data.GetSectionsResponse{{ID: 100, Name: "Login"}, {ID: 200, Name: "Logout"}}, nil
+		case 2:
+			return data.GetSectionsResponse{{ID: 900, Name: "Login"}, {ID: 901, Name: "Logout"}}, nil
+		}
+		return nil, fmt.Errorf("unexpected project %d", projectID)
+	}
+
+	m, err := NewMigration(mock, 1, 10, 2, 20, "Title", logDir())
+	assert.NoError(t, err)
+	defer m.Close()
+
+	got, err := m.resolveSectionMapByName(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, int64(900), got[100])
+	assert.Equal(t, int64(901), got[200])
+
+	// The crux of the regression: m.mapping must now expose these pairs so
+	// coverage-gate / filter paths see the same resolution.
+	if tgt, ok := m.mapping.GetTargetBySource(100); !ok || tgt != 900 {
+		t.Fatalf("expected m.mapping[100]=900, got ok=%v target=%d", ok, tgt)
+	}
+	if tgt, ok := m.mapping.GetTargetBySource(200); !ok || tgt != 901 {
+		t.Fatalf("expected m.mapping[200]=901, got ok=%v target=%d", ok, tgt)
+	}
 }

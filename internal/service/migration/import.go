@@ -497,6 +497,12 @@ func (m *Migration) resolveSectionMapByName(ctx context.Context) (map[int64]int6
 		}
 		if targetID, ok := targetByName[source.Name]; ok {
 			sectionMap[source.ID] = targetID
+			// Register section resolution in the global mapping so downstream
+			// consumers (e.g. coverage gate via resolveDstSectionIDForFilter)
+			// see the same scope resolution as ImportCases. Without this the
+			// post-import coverage verification treats every case as missing
+			// because it only consults m.mapping.
+			m.mapping.AddPair(source.ID, targetID, "existing")
 		}
 	}
 

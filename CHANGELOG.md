@@ -9,6 +9,35 @@
 
 ## [Unreleased]
 
+### Added — export/import bundles (#42, #43)
+
+- **`gotr export snap <id>` → portable tar.gz** with `manifest.json`
+  (`schema_version=1`, gotr version, created_at, per-file SHA-256 and
+  `~/.gotr/...` relative paths), `SHA256SUMS`, `README.txt` and the full
+  `~/.gotr/snaps/<id>/` subtree. Default destination
+  `~/.gotr/exports/snap_<id>_<label>_<YYYYMMDD>.tar.gz`. Flags:
+  `--out`, `--redact` (strips `assignee`, `assignee_email`, `assignee_name`,
+  `email` from JSON payloads and audits stripped paths via
+  `manifest.redacted_fields`).
+- **`gotr import snap <path.tar.gz>`** verifies SHA256SUMS and
+  `schema_version` before touching the store, then extracts into
+  `~/.gotr/snaps/<id>/`. Flags: `--overwrite` (backs up existing snap to
+  `~/.gotr/snaps/.trash/<id>_<ts>/`), `--rename-id <new>` (imports under a
+  new id and rewrites `meta.json.id` accordingly), `--dry-run`.
+- **`gotr export report <filename|all>` + `gotr import report <path>`.**
+  Single file → plain copy into `~/.gotr/exports/<basename>`; `all` →
+  zip bundle at `~/.gotr/exports/reports_<YYYYMMDD>.zip` with the same
+  manifest/SHA256SUMS/README layout. Import handles both plain files and
+  zip bundles. Flags: `--out`, `--filter <glob>`, `--overwrite`, `--dry-run`.
+- **`gotr report show <filename|latest>`** opens PDFs via the OS default
+  viewer (`xdg-open`/`open`/`rundll32`) and cats MD/JSON/TXT to stdout.
+- **`gotr report list --filter <glob>`** applies a glob to report
+  filenames and now also accepts `.pdf`/`.json` reports (previously only
+  `migration-*.md` was visible).
+- New internal packages: `internal/bundle` (tar.gz + zip + SHA-256 + manifest
+  primitives with zip-slip protection and deterministic archive output),
+  `internal/snapbundle`, `internal/reportbundle`.
+
 ### Fixed — migration engine (3.2.0 follow-up)
 
 - **Coverage-gate no longer false-negatives on name-resolved sections.**

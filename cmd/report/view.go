@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/Korrnals/gotr/internal/paths"
 	"github.com/spf13/cobra"
@@ -58,7 +57,7 @@ func resolveLatestReport(reportsDir string) (string, error) {
 		if e.IsDir() {
 			continue
 		}
-		if strings.HasPrefix(e.Name(), "migration-") && strings.HasSuffix(e.Name(), ".md") {
+		if reportLike(e.Name()) {
 			reports = append(reports, e.Name())
 		}
 	}

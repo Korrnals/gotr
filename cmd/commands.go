@@ -7,6 +7,7 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/bdds"
+	bundlecmd "github.com/Korrnals/gotr/cmd/bundlecmd"
 	"github.com/Korrnals/gotr/cmd/cases"
 	"github.com/Korrnals/gotr/cmd/compare"
 	"github.com/Korrnals/gotr/cmd/configurations"
@@ -73,6 +74,10 @@ func init() {
 	tests.Register(rootCmd, GetClient)
 	users.Register(rootCmd, GetClient)
 	variables.Register(rootCmd, GetClient)
+
+	// Snapshot / report bundle export+import (hangs `snap`, `report` subcommands
+	// under `gotr export` and registers a new top-level `gotr import`).
+	bundlecmd.Register(rootCmd, exportCmd, Version)
 }
 
 // must terminates the process if err is non-nil. Used for init-time bindings

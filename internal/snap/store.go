@@ -71,7 +71,15 @@ func GenerateID(meta *Meta) string {
 
 	if meta.IsSyncOp() {
 		opShort := strings.TrimPrefix(string(meta.Operation), "sync_")
-		dirname = fmt.Sprintf("%s_%s_p%d_p%d", ts, opShort, meta.SourceProjectID, meta.ProjectID)
+		// For sync ops, naming reflects src→dst projects so that operators can
+		// see at a glance which target a rollback would affect.
+		// Prefer DstProjectID when present; fall back to legacy p<src>_p<proj>.
+		switch {
+		case meta.DstProjectID != 0:
+			dirname = fmt.Sprintf("%s_%s_p%d_to_p%d", ts, opShort, meta.ProjectID, meta.DstProjectID)
+		default:
+			dirname = fmt.Sprintf("%s_%s_p%d_p%d", ts, opShort, meta.SourceProjectID, meta.ProjectID)
+		}
 	} else if len(meta.EntityIDs) == 1 {
 		dirname = fmt.Sprintf("%s_%s_%d", ts, meta.Operation, meta.EntityIDs[0])
 	} else {

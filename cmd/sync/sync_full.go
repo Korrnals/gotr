@@ -123,6 +123,11 @@ Examples:
 				snap.CurrentServerURL(),
 			)
 			meta.Label = sd.Label
+			meta.SourceProjectID = srcProject
+			meta.DstProjectID = dstProject
+			meta.DstSuiteID = dstSuite
+			// Re-generate ID so the directory name reflects src→dst.
+			meta.ID = snap.GenerateID(&meta)
 			hook.Before(ctx, meta, nil)
 		} else {
 			hook = &snap.Hook{Enabled: false}

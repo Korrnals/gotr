@@ -163,4 +163,11 @@ func Register(rootCmd *cobra.Command, clientFn GetClientFunc) {
 	fullCmd.Flags().Bool("verify-coverage", false, "After import, re-fetch target and verify every source case has a match (exit 2 on gaps)")
 	snap.RegisterFlags(fullCmd)
 
+	// --pdf-report: render a companion PDF next to the Markdown migration report.
+	casesCmd.Flags().Bool("pdf-report", false, "Also render migration report as PDF next to the .md file")
+	sharedStepsCmd.Flags().Bool("pdf-report", false, "Also render migration report as PDF next to the .md file")
+	sectionsCmd.Flags().Bool("pdf-report", false, "Also render migration report as PDF next to the .md file")
+	suitesCmd.Flags().Bool("pdf-report", false, "Also render migration report as PDF next to the .md file")
+	fullCmd.Flags().Bool("pdf-report", false, "Also render migration report as PDF next to the .md file")
+
 }

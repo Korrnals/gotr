@@ -224,6 +224,13 @@ func (m *Migration) ImportSections(ctx context.Context, filtered data.GetSection
 
 // ImportCases imports filtered cases in parallel.
 // Replaces SharedStepID references using the mapping.
+//
+// After parallel creation finishes, ImportCases restores the source order
+// inside each destination section by calling move_cases_to_section with the
+// case IDs in the same relative order they appeared in `filtered`. TestRail
+// renders cases in the order they are received by add_case, which is
+// non-deterministic when calls are issued concurrently — see
+// reorderCreatedCases for the rationale.
 func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) error {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run or no data — cases import skipped", "count", len(filtered))
@@ -250,11 +257,12 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxImportConcurrency)
+	perSection := make(map[int64][]createdCase)
 
-	for _, c := range filtered {
+	for i, c := range filtered {
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(caseData data.Case) {
+		go func(srcOrder int, caseData data.Case) {
 			defer func() { <-sem }()
 			defer wg.Done()
 
@@ -293,12 +301,15 @@ func (m *Migration) ImportCases(ctx context.Context, filtered data.GetCasesRespo
 			}
 
 			mu.Lock()
+			perSection[dstSectionID] = append(perSection[dstSectionID], createdCase{srcOrder: srcOrder, newID: created.ID})
 			m.importedCases++
 			m.logger.Infow("Successfully created case", "old_id", caseData.ID, "new_id", created.ID, "title", caseData.Title)
 			mu.Unlock()
-		}(c)
+		}(i, c)
 	}
 	wg.Wait()
+
+	m.reorderCreatedCases(ctx, perSection)
 
 	m.logger.Infow("Cases import completed", "imported", m.importedCases)
 	return nil
@@ -349,6 +360,9 @@ func (m *Migration) buildImportSteps(caseData data.Case, mu *sync.Mutex) []data.
 }
 
 // ImportCasesReport is like ImportCases but returns lists of created IDs and errors for CLI reporting.
+//
+// Like ImportCases, this restores source order within each destination section
+// after the parallel import phase via move_cases_to_section.
 func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCasesResponse, dryRun bool) (createdIDs []int64, errs []string, err error) {
 	if dryRun || len(filtered) == 0 {
 		m.logger.Infow("Dry-run or no data — cases import skipped", "count", len(filtered))
@@ -375,11 +389,12 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxImportConcurrency)
+	perSection := make(map[int64][]createdCase)
 
-	for _, c := range filtered {
+	for i, c := range filtered {
 		wg.Add(1)
 		sem <- struct{}{}
-		go func(caseData data.Case) {
+		go func(srcOrder int, caseData data.Case) {
 			defer func() { <-sem }()
 			defer wg.Done()
 
@@ -421,12 +436,15 @@ func (m *Migration) ImportCasesReport(ctx context.Context, filtered data.GetCase
 
 			mu.Lock()
 			createdIDs = append(createdIDs, created.ID)
+			perSection[dstSectionID] = append(perSection[dstSectionID], createdCase{srcOrder: srcOrder, newID: created.ID})
 			m.importedCases++
 			m.logger.Infow("Successfully created case (report)", "old_id", caseData.ID, "new_id", created.ID, "title", caseData.Title)
 			mu.Unlock()
-		}(c)
+		}(i, c)
 	}
 	wg.Wait()
+
+	m.reorderCreatedCases(ctx, perSection)
 
 	m.logger.Infow("Cases import (report) completed", "imported", m.importedCases)
 	return createdIDs, errs, nil
@@ -523,4 +541,66 @@ func (m *Migration) resolveDestinationSectionID(sourceSectionID int64, sectionMa
 	}
 
 	return 0
+}
+
+// createdCase pairs a newly imported case ID with its original index in the
+// source `filtered` slice, so that ImportCases/ImportCasesReport can restore
+// per-section ordering after parallel creation.
+type createdCase struct {
+	srcOrder int
+	newID    int64
+}
+
+// reorderCreatedCases restores the source-side ordering of cases inside each
+// destination section by issuing move_cases_to_section with case IDs sorted by
+// their original index in the source slice.
+//
+// Background: ImportCases creates cases concurrently (maxImportConcurrency=10)
+// for throughput. TestRail records cases in the order add_case requests arrive,
+// so concurrent goroutines produce a non-deterministic on-screen ordering that
+// does not match the source suite. move_cases_to_section accepts the new order
+// in a single call per section; cases stay in the same section (no cross-suite
+// move), so the call is cheap and idempotent.
+//
+// Errors are logged but never abort the import: ordering is a UX concern, the
+// underlying data is already migrated correctly. Sections with 0 or 1 created
+// cases are skipped (no work to do).
+func (m *Migration) reorderCreatedCases(ctx context.Context, perSection map[int64][]createdCase) {
+	if len(perSection) == 0 {
+		return
+	}
+
+	sectionIDs := make([]int64, 0, len(perSection))
+	for sid := range perSection {
+		sectionIDs = append(sectionIDs, sid)
+	}
+	sort.Slice(sectionIDs, func(i, j int) bool { return sectionIDs[i] < sectionIDs[j] })
+
+	reordered := 0
+	for _, sectionID := range sectionIDs {
+		entries := perSection[sectionID]
+		if len(entries) < 2 {
+			continue
+		}
+		sort.SliceStable(entries, func(i, j int) bool {
+			return entries[i].srcOrder < entries[j].srcOrder
+		})
+		ids := make([]int64, len(entries))
+		for i, e := range entries {
+			ids[i] = e.newID
+		}
+		if err := m.Client.MoveCasesToSection(ctx, sectionID, &data.MoveCasesRequest{CaseIDs: ids}); err != nil {
+			m.logger.Warnw("Failed to restore case order in section",
+				"section_id", sectionID, "case_count", len(ids), "error", err)
+			continue
+		}
+		reordered++
+		m.logger.Infow("Restored case order in section",
+			"section_id", sectionID, "case_count", len(ids))
+	}
+
+	if reordered > 0 {
+		m.logger.Infow("Case order restoration completed",
+			"sections_reordered", reordered, "sections_total", len(sectionIDs))
+	}
 }

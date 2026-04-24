@@ -13,9 +13,10 @@ import (
 
 func newViewCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "view [report-file|latest]",
-		Short: "View a migration report",
-		Args:  cobra.ExactArgs(1),
+		Use:               "view [report-file|latest]",
+		Short:             "View a migration report",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {

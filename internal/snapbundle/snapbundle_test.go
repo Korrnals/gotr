@@ -231,3 +231,101 @@ func TestImport_SchemaVersionMismatch_Rejected(t *testing.T) {
 		t.Fatalf("expected schema version error, got nil")
 	}
 }
+
+func TestExportOne_IncludesMatchingReports(t *testing.T) {
+store, snapID := newStoreWithSnap(t)
+
+// Build a reports/ tree that contains one matching and two non-matching
+// reports; the matcher is plain substring match on the basename.
+reportsDir := t.TempDir()
+match := filepath.Join(reportsDir, "migrations", "default", "2026-01",
+"migration-20260101T000000Z-"+filepath.Base(snapID)+".md")
+other := filepath.Join(reportsDir, "migrations", "default", "2026-01",
+"migration-20260101T000000Z-OTHER.md")
+unrelated := filepath.Join(reportsDir, "coverage", "default", "gotr_migration_foo_p1_to_p2.pdf")
+for _, p := range []string{match, other, unrelated} {
+if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+t.Fatalf("mkdir: %v", err)
+}
+if err := os.WriteFile(p, []byte("data:"+filepath.Base(p)), 0o644); err != nil {
+t.Fatalf("write %s: %v", p, err)
+}
+}
+
+dest := filepath.Join(t.TempDir(), "snap.tar.gz")
+res, err := ExportOne(store, snapID, dest, ExportOptions{
+GotrVersion:    "test",
+IncludeReports: true,
+ReportsDir:     reportsDir,
+})
+if err != nil {
+t.Fatalf("ExportOne with reports: %v", err)
+}
+if len(res.IncludedReports) != 1 {
+t.Fatalf("expected 1 embedded report, got %d: %v", len(res.IncludedReports), res.IncludedReports)
+}
+if !strings.HasPrefix(res.IncludedReports[0], "reports/") {
+t.Errorf("report archive path should start with reports/, got %q", res.IncludedReports[0])
+}
+
+// Verify the report survives round-trip extraction.
+tmp := t.TempDir()
+if _, err := bundle.ReadTarGz(dest, tmp); err != nil {
+t.Fatalf("ReadTarGz: %v", err)
+}
+extracted := filepath.Join(tmp, filepath.FromSlash(res.IncludedReports[0]))
+if _, err := os.Stat(extracted); err != nil {
+t.Errorf("expected embedded report on disk at %s: %v", extracted, err)
+}
+
+// Verify the report is referenced in the manifest Files list.
+manifestPath := filepath.Join(tmp, bundle.ManifestName)
+mraw, err := os.ReadFile(manifestPath)
+if err != nil {
+t.Fatalf("read manifest: %v", err)
+}
+if !strings.Contains(string(mraw), res.IncludedReports[0]) {
+t.Errorf("manifest must reference embedded report %s; got %s",
+res.IncludedReports[0], string(mraw))
+}
+}
+
+func TestExportOne_IncludeReports_OptOut(t *testing.T) {
+store, snapID := newStoreWithSnap(t)
+
+reportsDir := t.TempDir()
+match := filepath.Join(reportsDir, "migration-20260101T000000Z-"+filepath.Base(snapID)+".md")
+if err := os.WriteFile(match, []byte("x"), 0o644); err != nil {
+t.Fatalf("write: %v", err)
+}
+
+dest := filepath.Join(t.TempDir(), "snap.tar.gz")
+res, err := ExportOne(store, snapID, dest, ExportOptions{
+GotrVersion:    "test",
+IncludeReports: false, // opt-out
+ReportsDir:     reportsDir,
+})
+if err != nil {
+t.Fatalf("ExportOne: %v", err)
+}
+if len(res.IncludedReports) != 0 {
+t.Errorf("IncludeReports=false should not embed reports, got %v", res.IncludedReports)
+}
+}
+
+func TestExportOne_IncludeReports_MissingDir(t *testing.T) {
+store, snapID := newStoreWithSnap(t)
+
+dest := filepath.Join(t.TempDir(), "snap.tar.gz")
+res, err := ExportOne(store, snapID, dest, ExportOptions{
+GotrVersion:    "test",
+IncludeReports: true,
+ReportsDir:     filepath.Join(t.TempDir(), "does-not-exist"),
+})
+if err != nil {
+t.Fatalf("ExportOne must tolerate missing reports dir, got %v", err)
+}
+if len(res.IncludedReports) != 0 {
+t.Errorf("expected no reports from missing dir, got %v", res.IncludedReports)
+}
+}

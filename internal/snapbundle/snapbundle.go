@@ -27,14 +27,22 @@ type ExportOptions struct {
 	// (assignee_email, assignee, and top-level "email" keys). The list of
 	// redacted field paths is reported back in the returned Result.
 	Redact bool
+	// IncludeReports embeds report files whose basename contains the
+	// exported snap_id into the archive under the reports/ prefix. When
+	// ReportsDir is empty, ~/.gotr/reports is used.
+	IncludeReports bool
+	// ReportsDir overrides the lookup root for IncludeReports. Primarily
+	// useful in tests; production callers leave it empty.
+	ReportsDir string
 }
 
 // Result summarizes an export or import operation.
 type Result struct {
-	ArchivePath string
-	SnapID      string
-	Files       []bundle.File
-	Redacted    []string
+	ArchivePath    string
+	SnapID         string
+	Files          []bundle.File
+	Redacted       []string
+	IncludedReports []string // relative archive paths of embedded reports
 }
 
 // ExportOne writes the given snapshot into destPath (a .tar.gz file). The
@@ -46,6 +54,25 @@ func ExportOne(store *snap.Store, snapID, destPath string, opts ExportOptions) (
 	entries, files, redacted, err := collectEntries(store, snapID, opts)
 	if err != nil {
 		return nil, err
+	}
+
+	var includedReports []string
+	if opts.IncludeReports {
+		reportsDir := opts.ReportsDir
+		if reportsDir == "" {
+			dir, derr := paths.ReportsDirPath()
+			if derr != nil {
+				return nil, fmt.Errorf("snapbundle: resolve reports dir: %w", derr)
+			}
+			reportsDir = dir
+		}
+		rentries, rfiles, rpaths, rerr := collectReportEntries(reportsDir, snapID)
+		if rerr != nil {
+			return nil, rerr
+		}
+		entries = append(entries, rentries...)
+		files = append(files, rfiles...)
+		includedReports = rpaths
 	}
 
 	manifest := &bundle.Manifest{
@@ -64,7 +91,76 @@ func ExportOne(store *snap.Store, snapID, destPath string, opts ExportOptions) (
 	if err := bundle.WriteTarGz(destPath, entries); err != nil {
 		return nil, fmt.Errorf("snapbundle: write archive: %w", err)
 	}
-	return &Result{ArchivePath: destPath, SnapID: snapID, Files: files, Redacted: redacted}, nil
+	return &Result{
+		ArchivePath:     destPath,
+		SnapID:          snapID,
+		Files:           files,
+		Redacted:        redacted,
+		IncludedReports: includedReports,
+	}, nil
+}
+
+// collectReportEntries scans reportsDir for regular files whose basename
+// contains the snap_id (its basename — the portion after the last `/`) and
+// packages each one under the archive prefix "reports/<relative path>". The
+// search is recursive so it works with both the flat pre-v3.3.0 layout and
+// the categorized v3.3.0 hierarchy.
+func collectReportEntries(reportsDir, snapID string) ([]bundle.Entry, []bundle.File, []string, error) {
+	home, _ := os.UserHomeDir()
+	needle := filepath.Base(snapID)
+	var entries []bundle.Entry
+	var files []bundle.File
+	var names []string
+
+	err := filepath.WalkDir(reportsDir, func(p string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			if errors.Is(werr, fs.ErrNotExist) {
+				return nil
+			}
+			return werr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if name == "INDEX.md" {
+			return nil
+		}
+		if !strings.Contains(name, needle) {
+			return nil
+		}
+		rel, rerr := filepath.Rel(reportsDir, p)
+		if rerr != nil {
+			return rerr
+		}
+		content, rerr := os.ReadFile(p) //nolint:gosec // path enumerated under reportsDir
+		if rerr != nil {
+			return fmt.Errorf("snapbundle: read report %s: %w", p, rerr)
+		}
+		archivePath := "reports/" + filepath.ToSlash(rel)
+		sum := bundle.SHA256Bytes(content)
+		entries = append(entries, bundle.Entry{
+			ArchivePath: archivePath,
+			RelHome:     relHome(home, p),
+			Content:     content,
+		})
+		files = append(files, bundle.File{
+			Path:    archivePath,
+			RelHome: relHome(home, p),
+			SHA256:  sum,
+			Size:    int64(len(content)),
+		})
+		names = append(names, archivePath)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("snapbundle: walk reports %s: %w", reportsDir, err)
+	}
+
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ArchivePath < entries[j].ArchivePath })
+	sort.Strings(names)
+	return entries, files, names, nil
 }
 
 // collectEntries walks the snapshot directory and builds archive Entries +

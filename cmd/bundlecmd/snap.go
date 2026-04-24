@@ -40,15 +40,20 @@ file list with SHA-256), SHA256SUMS, README.txt and the full
 				outPath = p
 			}
 			redact, _ := cmd.Flags().GetBool("redact")
+			noReports, _ := cmd.Flags().GetBool("no-reports")
 
 			res, err := snapbundle.ExportOne(store, entry.ID, outPath, snapbundle.ExportOptions{
-				GotrVersion: version,
-				Redact:      redact,
+				GotrVersion:    version,
+				Redact:         redact,
+				IncludeReports: !noReports,
 			})
 			if err != nil {
 				return err
 			}
 			successf("Exported snapshot %s → %s", res.SnapID, res.ArchivePath)
+			if n := len(res.IncludedReports); n > 0 {
+				infof("Embedded %d matching report(s) under reports/", n)
+			}
 			if len(res.Redacted) > 0 {
 				warnf("redacted fields: %s", strings.Join(res.Redacted, ", "))
 			}
@@ -57,6 +62,7 @@ file list with SHA-256), SHA256SUMS, README.txt and the full
 	}
 	cmd.Flags().String("out", "", "Destination path (default: ~/.gotr/exports/snaps/snap_<id>_<date>.tar.gz)")
 	cmd.Flags().Bool("redact", false, "Strip assignee emails, names, and other sensitive fields from meta.json")
+	cmd.Flags().Bool("no-reports", false, "Do not embed migration reports whose filename contains the snap_id (default: embed)")
 	return cmd
 }
 

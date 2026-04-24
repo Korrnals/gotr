@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/paths"
+	intreport "github.com/Korrnals/gotr/internal/report"
 	"github.com/spf13/cobra"
 )
 
@@ -24,20 +26,15 @@ func newShowCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("report show: resolve reports dir: %w", err)
 			}
-			target := args[0]
-			if target == "latest" {
-				latest, err := resolveLatestReport(reportsDir)
-				if err != nil {
-					return fmt.Errorf("report show: %w", err)
+			path, err := intreport.ResolveReportPath(reportsDir, args[0])
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					return fmt.Errorf("report show: %q not found under %s", args[0], reportsDir)
 				}
-				target = latest
-			}
-			path := filepath.Join(reportsDir, target)
-			if _, err := os.Stat(path); err != nil {
 				return fmt.Errorf("report show: %w", err)
 			}
 
-			ext := strings.ToLower(filepath.Ext(target))
+			ext := strings.ToLower(filepath.Ext(path))
 			switch ext {
 			case ".pdf":
 				if err := openWithOS(path); err != nil {
@@ -48,7 +45,6 @@ func newShowCmd() *cobra.Command {
 			case ".md", ".json", ".txt", "":
 				return catFile(cmd.OutOrStdout(), path)
 			default:
-				// Best-effort: fall back to OS opener for unknown extensions.
 				if err := openWithOS(path); err != nil {
 					return fmt.Errorf("report show: open %s: %w", ext, err)
 				}
@@ -60,7 +56,7 @@ func newShowCmd() *cobra.Command {
 }
 
 func catFile(w io.Writer, path string) error {
-	data, err := os.ReadFile(path) //nolint:gosec // path is inside reports dir resolved from paths helper
+	data, err := os.ReadFile(path) //nolint:gosec // path resolved via ResolveReportPath under reports dir
 	if err != nil {
 		return err
 	}

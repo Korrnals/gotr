@@ -1,12 +1,13 @@
 package report
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
-	"sort"
 
 	"github.com/Korrnals/gotr/internal/paths"
+	intreport "github.com/Korrnals/gotr/internal/report"
 	"github.com/spf13/cobra"
 )
 
@@ -20,51 +21,20 @@ func newViewCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("report view: resolve reports dir: %w", err)
 			}
-
-			target := args[0]
-			if target == "latest" {
-				latest, err := resolveLatestReport(reportsDir)
-				if err != nil {
-					return fmt.Errorf("report view: %w", err)
-				}
-				target = latest
-			}
-
-			reportPath := filepath.Join(reportsDir, target)
-			content, err := os.ReadFile(reportPath)
+			path, err := intreport.ResolveReportPath(reportsDir, args[0])
 			if err != nil {
-				return fmt.Errorf("report view: read report %s: %w", target, err)
+				if errors.Is(err, fs.ErrNotExist) {
+					return fmt.Errorf("report view: %q not found under %s", args[0], reportsDir)
+				}
+				return fmt.Errorf("report view: %w", err)
 			}
-
-			fmt.Fprintf(cmd.OutOrStdout(), "# %s\n\n", target)
+			content, err := os.ReadFile(path) //nolint:gosec // path resolved via ResolveReportPath
+			if err != nil {
+				return fmt.Errorf("report view: read %s: %w", path, err)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "# %s\n\n", path)
 			fmt.Fprint(cmd.OutOrStdout(), string(content))
 			return nil
 		},
 	}
-}
-
-func resolveLatestReport(reportsDir string) (string, error) {
-	entries, err := os.ReadDir(reportsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("no reports found")
-		}
-		return "", err
-	}
-
-	reports := make([]string, 0)
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if reportLike(e.Name()) {
-			reports = append(reports, e.Name())
-		}
-	}
-	if len(reports) == 0 {
-		return "", fmt.Errorf("no reports found")
-	}
-
-	sort.Sort(sort.Reverse(sort.StringSlice(reports)))
-	return reports[0], nil
 }

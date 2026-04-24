@@ -11,13 +11,13 @@ import (
 
 func newExportSnapCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "snap <snap_id|label>",
+		Use:   "snap [snap_id|label]",
 		Short: "Export a snapshot as a portable tar.gz bundle",
 		Long: `Export a single snapshot to a tar.gz archive under ~/.gotr/exports/snaps/.
 The archive contains manifest.json (with schema_version, gotr version,
 file list with SHA-256), SHA256SUMS, README.txt and the full
 ~/.gotr/snaps/<id>/ tree.`,
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: completeExportSnapArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snap.NewStore()
@@ -28,9 +28,13 @@ file list with SHA-256), SHA256SUMS, README.txt and the full
 			if err != nil {
 				return fmt.Errorf("export snap: %w", err)
 			}
-			entry := manifest.Find(args[0])
+			target, err := resolveExportSnapTarget(cmd, args)
+			if err != nil {
+				return err
+			}
+			entry := manifest.Find(target)
 			if entry == nil {
-				return fmt.Errorf("export snap: snapshot %q not found", args[0])
+				return fmt.Errorf("export snap: snapshot %q not found", target)
 			}
 			outPath, _ := cmd.Flags().GetString("out")
 			if outPath == "" {
@@ -69,20 +73,24 @@ file list with SHA-256), SHA256SUMS, README.txt and the full
 
 func newImportSnapCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "snap <path.tar.gz>",
+		Use:               "snap [path.tar.gz]",
 		Short:             "Import a snapshot bundle into ~/.gotr/snaps/",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: completeImportSnapArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snap.NewStore()
 			if err != nil {
 				return fmt.Errorf("import snap: %w", err)
 			}
+			target, err := resolveImportSnapTarget(cmd, args)
+			if err != nil {
+				return err
+			}
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
 			rename, _ := cmd.Flags().GetString("rename-id")
 			dry, _ := cmd.Flags().GetBool("dry-run")
 
-			res, err := snapbundle.Import(store, args[0], snapbundle.ImportOptions{
+			res, err := snapbundle.Import(store, target, snapbundle.ImportOptions{
 				Overwrite: overwrite,
 				RenameID:  rename,
 				DryRun:    dry,

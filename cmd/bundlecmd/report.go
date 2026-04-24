@@ -11,23 +11,26 @@ import (
 
 func newExportReportCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "report <filename|all>",
+		Use:   "report [filename|all]",
 		Short: "Export migration reports",
 		Long: `Export gotr migration reports from ~/.gotr/reports/.
   report <filename>   Copies a single file to ~/.gotr/exports/reports/<basename>.
   report all          Bundles all reports into
                       ~/.gotr/exports/reports/reports_<YYYYMMDD>.zip.`,
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: completeExportReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {
 				return fmt.Errorf("export report: %w", err)
 			}
+			target, err := resolveExportReportTarget(cmd, args, reportsDir)
+			if err != nil {
+				return err
+			}
 			outPath, _ := cmd.Flags().GetString("out")
 			filter, _ := cmd.Flags().GetString("filter")
 
-			target := args[0]
 			var res *reportbundle.Result
 			switch target {
 			case "all":
@@ -59,19 +62,23 @@ func newExportReportCmd(version string) *cobra.Command {
 
 func newImportReportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:               "report <path.zip|path.pdf|path.md|path.json>",
+		Use:               "report [path.zip|path.pdf|path.md|path.json]",
 		Short:             "Import reports into ~/.gotr/reports/",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: completeImportReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {
 				return fmt.Errorf("import report: %w", err)
 			}
+			target, err := resolveImportReportTarget(cmd, args)
+			if err != nil {
+				return err
+			}
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
 			dry, _ := cmd.Flags().GetBool("dry-run")
 
-			res, err := reportbundle.Import(reportsDir, args[0], reportbundle.ImportOptions{
+			res, err := reportbundle.Import(reportsDir, target, reportbundle.ImportOptions{
 				Overwrite: overwrite,
 				DryRun:    dry,
 			})

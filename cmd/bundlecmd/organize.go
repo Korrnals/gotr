@@ -39,17 +39,30 @@ Existing destinations are preserved and never overwritten.`,
 				infof("Exports layout already organized under %s", base)
 				return nil
 			}
-			verb := "Would move"
-			if !dryRun {
-				verb = "Moved"
-			}
 			for _, p := range res.Plans {
-				infof("%s %s -> %s", verb, p.RelSrc, p.RelDest)
+				if dryRun {
+					infof("Would move %s -> %s", p.RelSrc, p.RelDest)
+					continue
+				}
+				switch p.Action {
+				case exportsorg.ActionMoved:
+					infof("Moved %s -> %s", p.RelSrc, p.RelDest)
+				case exportsorg.ActionMerged:
+					infof("Merged %s -> %s (files=%d)", p.RelSrc, p.RelDest, p.MergedFiles)
+				case exportsorg.ActionPartial:
+					infof("Merged %s -> %s (files=%d, conflicts kept in %s: %d)",
+						p.RelSrc, p.RelDest, p.MergedFiles, p.RelSrc, p.SkippedFiles)
+				case exportsorg.ActionSkipped:
+					infof("Skipped %s (destination %s already exists)", p.RelSrc, p.RelDest)
+				default:
+					infof("%s %s -> %s", p.Action, p.RelSrc, p.RelDest)
+				}
 			}
 			if dryRun {
 				infof("Dry-run: %d entr(y|ies) pending under %s", len(res.Plans), base)
 			} else {
-				infof("Organized: moved=%d skipped=%d (base=%s)", res.Moved, res.Skipped, base)
+				infof("Organized: moved=%d merged=%d skipped=%d (base=%s)",
+					res.Moved, res.Merged, res.Skipped, base)
 			}
 			return nil
 		},

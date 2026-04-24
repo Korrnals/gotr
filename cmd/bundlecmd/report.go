@@ -14,9 +14,9 @@ func newExportReportCmd(version string) *cobra.Command {
 		Use:   "report <filename|all>",
 		Short: "Export migration reports",
 		Long: `Export gotr migration reports from ~/.gotr/reports/.
-  report <filename>   Copies a single file to ~/.gotr/exports/<basename>.
+  report <filename>   Copies a single file to ~/.gotr/exports/reports/<basename>.
   report all          Bundles all reports into
-                      ~/.gotr/exports/reports_<YYYYMMDD>.zip.`,
+                      ~/.gotr/exports/reports/reports_<YYYYMMDD>.zip.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
@@ -51,7 +51,7 @@ func newExportReportCmd(version string) *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().String("out", "", "Destination path (default: ~/.gotr/exports/<name>)")
+	cmd.Flags().String("out", "", "Destination path (default: ~/.gotr/exports/reports/<name>)")
 	cmd.Flags().String("filter", "", "When exporting 'all', keep only reports whose name matches this glob")
 	return cmd
 }

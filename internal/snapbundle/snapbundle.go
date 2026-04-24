@@ -243,9 +243,9 @@ func readmeSnap(m *bundle.Manifest) string {
 }
 
 // DefaultExportPath returns the conventional export destination for a
-// snapshot, under ~/.gotr/exports/.
+// snapshot, under ~/.gotr/exports/snaps/.
 func DefaultExportPath(snapID, label string) (string, error) {
-	dir, err := paths.EnsureExportsDirPath()
+	dir, err := paths.EnsureExportsSnapsDirPath()
 	if err != nil {
 		return "", err
 	}

@@ -206,7 +206,7 @@ func registerExportCmd() {
 	exportCmd.Flags().String("milestone-id", "", "Milestone ID (for get_runs)")
 
 	// Save response to ~/.gotr/exports/
-	exportCmd.Flags().Bool("save", false, "Save response to ~/.gotr/exports/export/")
+	exportCmd.Flags().Bool("save", false, "Save response to ~/.gotr/exports/api/export/")
 
 	// Shell completion
 	exportCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

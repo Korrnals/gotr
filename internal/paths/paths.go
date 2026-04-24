@@ -22,6 +22,12 @@ const (
 	ExportsDir  = "exports"  // user data exports
 	TempDir     = "temp"     // temporary files
 	SnapsDir    = "snaps"    // pre-mutation snapshots
+
+	// Categorized subdirectories under ExportsDir. Introduced in v3.3.0
+	// to replace the flat ~/.gotr/exports/ layout.
+	ExportsSnapsSubdir   = "snaps"   // portable snapshot bundles (.tar.gz)
+	ExportsReportsSubdir = "reports" // exported migration report bundles (.zip / single files)
+	ExportsAPISubdir     = "api"     // raw API responses saved via `gotr export <resource>`
 )
 
 // BaseDir returns the path to ~/.gotr.
@@ -180,6 +186,65 @@ func EnsureExportsDirPath() (string, error) {
 	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("cannot create exports directory: %w", err)
+	}
+	return dir, nil
+}
+
+// ExportsSnapsDirPath returns ~/.gotr/exports/snaps — the canonical v3.3.0
+// destination for portable snapshot bundles produced by `gotr export snap`.
+func ExportsSnapsDirPath() (string, error) {
+	base, err := ExportsDirPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, ExportsSnapsSubdir), nil
+}
+
+// ExportsReportsDirPath returns ~/.gotr/exports/reports — the canonical v3.3.0
+// destination for exported migration report bundles and single-file report
+// copies produced by `gotr export report`.
+func ExportsReportsDirPath() (string, error) {
+	base, err := ExportsDirPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, ExportsReportsSubdir), nil
+}
+
+// ExportsAPIDirPath returns ~/.gotr/exports/api — the canonical v3.3.0
+// destination for raw API responses saved via `gotr export <resource> --save`.
+// Individual resource subdirectories live beneath this path
+// (e.g. ~/.gotr/exports/api/cases/).
+func ExportsAPIDirPath() (string, error) {
+	base, err := ExportsDirPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, ExportsAPISubdir), nil
+}
+
+// EnsureExportsSnapsDirPath returns ~/.gotr/exports/snaps, creating it when missing.
+func EnsureExportsSnapsDirPath() (string, error) {
+	return ensureUnderExports(ExportsSnapsDirPath, "exports/snaps")
+}
+
+// EnsureExportsReportsDirPath returns ~/.gotr/exports/reports, creating it when missing.
+func EnsureExportsReportsDirPath() (string, error) {
+	return ensureUnderExports(ExportsReportsDirPath, "exports/reports")
+}
+
+// EnsureExportsAPIDirPath returns ~/.gotr/exports/api, creating it when missing.
+func EnsureExportsAPIDirPath() (string, error) {
+	return ensureUnderExports(ExportsAPIDirPath, "exports/api")
+}
+
+func ensureUnderExports(pathFn func() (string, error), label string) (string, error) {
+	dir, err := pathFn()
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("cannot create %s directory: %w", label, err)
 	}
 	return dir, nil
 }

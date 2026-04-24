@@ -17,7 +17,8 @@ func newExportSnapCmd(version string) *cobra.Command {
 The archive contains manifest.json (with schema_version, gotr version,
 file list with SHA-256), SHA256SUMS, README.txt and the full
 ~/.gotr/snaps/<id>/ tree.`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeExportSnapArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snap.NewStore()
 			if err != nil {
@@ -68,9 +69,10 @@ file list with SHA-256), SHA256SUMS, README.txt and the full
 
 func newImportSnapCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "snap <path.tar.gz>",
-		Short: "Import a snapshot bundle into ~/.gotr/snaps/",
-		Args:  cobra.ExactArgs(1),
+		Use:               "snap <path.tar.gz>",
+		Short:             "Import a snapshot bundle into ~/.gotr/snaps/",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeImportSnapArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snap.NewStore()
 			if err != nil {

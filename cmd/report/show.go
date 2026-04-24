@@ -18,9 +18,10 @@ import (
 
 func newShowCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "show <filename|latest>",
-		Short: "Open a migration report in the OS default viewer (PDF) or print it (md/json)",
-		Args:  cobra.ExactArgs(1),
+		Use:               "show <filename|latest>",
+		Short:             "Open a migration report in the OS default viewer (PDF) or print it (md/json)",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {

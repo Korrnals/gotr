@@ -17,7 +17,8 @@ func newExportReportCmd(version string) *cobra.Command {
   report <filename>   Copies a single file to ~/.gotr/exports/reports/<basename>.
   report all          Bundles all reports into
                       ~/.gotr/exports/reports/reports_<YYYYMMDD>.zip.`,
-		Args: cobra.ExactArgs(1),
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeExportReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {
@@ -58,9 +59,10 @@ func newExportReportCmd(version string) *cobra.Command {
 
 func newImportReportCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "report <path.zip|path.pdf|path.md|path.json>",
-		Short: "Import reports into ~/.gotr/reports/",
-		Args:  cobra.ExactArgs(1),
+		Use:               "report <path.zip|path.pdf|path.md|path.json>",
+		Short:             "Import reports into ~/.gotr/reports/",
+		Args:              cobra.ExactArgs(1),
+		ValidArgsFunction: completeImportReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {

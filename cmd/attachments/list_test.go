@@ -93,7 +93,7 @@ func TestListCaseCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify file was created in exports directory
-	exportsDir := filepath.Join(tempHome, ".gotr", "exports", "attachments")
+	exportsDir := filepath.Join(tempHome, ".gotr", "exports", "api", "attachments")
 	files, err := os.ReadDir(exportsDir)
 	require.NoError(t, err)
 	require.Len(t, files, 1)
@@ -870,7 +870,7 @@ func TestListProjectCmd_WithSaveFlag(t *testing.T) {
 	err := cmd.Execute()
 	require.NoError(t, err)
 
-	matches, _ := filepath.Glob(filepath.Join(tempHome, ".gotr", "exports", "attachments*"))
+	matches, _ := filepath.Glob(filepath.Join(tempHome, ".gotr", "exports", "api", "attachments*"))
 	assert.NotEmpty(t, matches, "expected export file to be created")
 }
 

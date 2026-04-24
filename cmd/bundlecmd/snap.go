@@ -13,7 +13,7 @@ func newExportSnapCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "snap <snap_id|label>",
 		Short: "Export a snapshot as a portable tar.gz bundle",
-		Long: `Export a single snapshot to a tar.gz archive under ~/.gotr/exports/.
+		Long: `Export a single snapshot to a tar.gz archive under ~/.gotr/exports/snaps/.
 The archive contains manifest.json (with schema_version, gotr version,
 file list with SHA-256), SHA256SUMS, README.txt and the full
 ~/.gotr/snaps/<id>/ tree.`,
@@ -55,7 +55,7 @@ file list with SHA-256), SHA256SUMS, README.txt and the full
 			return nil
 		},
 	}
-	cmd.Flags().String("out", "", "Destination path (default: ~/.gotr/exports/snap_<id>_<date>.tar.gz)")
+	cmd.Flags().String("out", "", "Destination path (default: ~/.gotr/exports/snaps/snap_<id>_<date>.tar.gz)")
 	cmd.Flags().Bool("redact", false, "Strip assignee emails, names, and other sensitive fields from meta.json")
 	return cmd
 }

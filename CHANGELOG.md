@@ -13,9 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [3.3.1] - 2026-04-25
 
-Hotfix following the live DEVOPS-9946 migration (`p30 → p34`,
-suite `S20069 → S19859`).
-
 ### Fixed
 
 - **Case ordering during import** (`internal/service/migration/import.go`).
@@ -250,7 +247,7 @@ retention:
   section name into `m.mapping` (`AddPair(src, dst, "existing")`). Previously
   the map lived only as a local variable consumed by `ImportCasesReport`,
   while `VerifyCasesCoverage → resolveDstSectionIDForFilter` consulted
-  `m.mapping` exclusively and therefore reported `1684/1684 missing` after a
+  `m.mapping` exclusively and therefore reported all cases as missing after a
   successful migration. Regression test:
   `TestResolveSectionMapByName_PopulatesGlobalMapping`.
 - **Sync snapshots now expose real `data_size_bytes`.**
@@ -267,15 +264,11 @@ retention:
   (previously only `sync shared-steps` / `suites` / `sections` saw it via
   `addSyncFlags`).
 
-Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
-`pinned_DEVOPS-9946`): migration 21m56s, coverage gate
-`✅ 1684/1684 matched`, snap `data_size_bytes=142798`.
-
 ---
 
 ## [3.2.0] - 2026-04-23
 
-Full TestRail migration bugfix release: eliminates the hidden 717/1684
+Migration bugfix release: eliminates a hidden case-loss
 discrepancy caused by erroneous "silent" filtering and section
 re-parenting behaviour in the migration engine.
 
@@ -298,13 +291,13 @@ re-parenting behaviour in the migration engine.
   `ImportSections`: a section with an unmapped `parent_id` is now
   rejected with an error and counted in `failedImports`, instead of
   being silently re-parented under root (this was the root cause of
-  the 717-case loss during the `p30/S20069 → p34/S19859` migration).
+  silent case loss when the source had sections with unmapped parents).
 - **`FailedCount()` reflects real import failures.** `ImportCases`,
   `ImportCasesReport`, `ImportSections`, `ImportSuites`,
   `ImportSharedSteps` now increment `failedImports` on every API
   error or import refusal. The `max(len(errs), FailedCount())`
-  convention in sync command reports correctly turns "717 missing"
-  from invisible "skipped" into explicit `errors`/`failed`.
+  convention in sync command reports correctly turns silently-missing
+  cases from invisible "skipped" into explicit `errors`/`failed`.
 
 ### Added — compare pipeline
 
@@ -326,7 +319,7 @@ re-parenting behaviour in the migration engine.
   that every source case has a multiset-key match; on a gap exits
   with `coverage gap: ...` (non-zero exit code) and log lines
   `  - [id] "title" (src_section=X, dst_section=Y)` (up to 50). This
-  gate is a direct guardian against the 717/1684 regression
+  gate is a direct guardian against silent case-loss regressions
   recurring in the future.
 - **`Migration.VerifyCasesCoverage`**
   (`internal/service/migration/coverage.go`): a standalone API

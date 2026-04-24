@@ -32,6 +32,17 @@ const (
 	CategoryUnknown Category = "unknown"
 )
 
+// Action describes what applyPlan ended up doing for a given Plan.
+type Action string
+
+const (
+	ActionPending Action = ""        // no attempt yet (dry-run planner)
+	ActionMoved   Action = "moved"   // renamed / copied in full
+	ActionMerged  Action = "merged"  // dir merged into existing dest, orphan removed
+	ActionPartial Action = "partial" // dir merged but some children remained (conflicts)
+	ActionSkipped Action = "skipped" // dest already existed, no merge possible
+)
+
 // Plan describes a single move the organizer proposes to make.
 type Plan struct {
 	AbsSrc   string
@@ -40,12 +51,18 @@ type Plan struct {
 	RelDest  string
 	Category Category
 	IsDir    bool
+	Action   Action // set after applyPlan runs (zero-value for dry-run)
+	// MergedFiles / SkippedFiles are populated when a directory destination
+	// already existed and its contents had to be merged file-by-file.
+	MergedFiles  int
+	SkippedFiles int
 }
 
 // Result summarizes the outcome of a MigrateExportsLayout call.
 type Result struct {
 	Plans   []Plan
 	Moved   int
+	Merged  int
 	Skipped int
 	DryRun  bool
 }
@@ -136,8 +153,14 @@ func buildPlans(baseDir string, entries []os.DirEntry) []Plan {
 }
 
 func applyPlan(p *Plan, res *Result) error {
-	if _, err := os.Stat(p.AbsDest); err == nil {
-		// Never overwrite existing categorized files.
+	destInfo, err := os.Stat(p.AbsDest)
+	if err == nil {
+		// Destination already exists. For directories we merge their
+		// contents file-by-file; for files we skip (never overwrite).
+		if p.IsDir && destInfo.IsDir() {
+			return mergeDir(p, res)
+		}
+		p.Action = ActionSkipped
 		res.Skipped++
 		return nil
 	} else if !os.IsNotExist(err) {
@@ -158,8 +181,84 @@ func applyPlan(p *Plan, res *Result) error {
 			return fmt.Errorf("exportsorg: remove %s: %w", p.AbsSrc, rerr)
 		}
 	}
+	p.Action = ActionMoved
 	res.Moved++
 	return nil
+}
+
+// mergeDir walks p.AbsSrc and moves each regular file under p.AbsDest,
+// preserving relative paths. Files that already exist at the destination
+// are skipped (never overwritten). After the walk, p.AbsSrc is removed
+// if it became empty; otherwise it is left in place and the plan is
+// marked ActionPartial so the user can review the remaining files.
+func mergeDir(p *Plan, res *Result) error {
+	err := filepath.Walk(p.AbsSrc, func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if info.IsDir() {
+			return nil
+		}
+		rel, rerr := filepath.Rel(p.AbsSrc, path)
+		if rerr != nil {
+			return rerr
+		}
+		dst := filepath.Join(p.AbsDest, rel)
+		if _, serr := os.Stat(dst); serr == nil {
+			p.SkippedFiles++
+			return nil
+		} else if !os.IsNotExist(serr) {
+			return serr
+		}
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return err
+		}
+		if err := os.Rename(path, dst); err != nil {
+			if cerr := copyFile(path, dst); cerr != nil {
+				return cerr
+			}
+			if rerr := os.Remove(path); rerr != nil {
+				return rerr
+			}
+		}
+		p.MergedFiles++
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("exportsorg: merge %s -> %s: %w", p.AbsSrc, p.AbsDest, err)
+	}
+	// Try to remove the source tree if it is now empty (prune empty subdirs first).
+	pruneEmptyDirs(p.AbsSrc)
+	if removeErr := os.Remove(p.AbsSrc); removeErr == nil {
+		p.Action = ActionMerged
+		res.Merged++
+		return nil
+	}
+	// Source still has leftover files (conflicts) — leave them for manual review.
+	p.Action = ActionPartial
+	res.Merged++
+	return nil
+}
+
+// pruneEmptyDirs removes empty subdirectories within root (deepest-first).
+// It never removes root itself; callers decide based on final state.
+func pruneEmptyDirs(root string) {
+	type entry struct {
+		path  string
+		depth int
+	}
+	var dirs []entry
+	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+		if err != nil || !info.IsDir() || path == root {
+			return nil
+		}
+		dirs = append(dirs, entry{path: path, depth: strings.Count(path, string(filepath.Separator))})
+		return nil
+	})
+	sort.Slice(dirs, func(i, j int) bool { return dirs[i].depth > dirs[j].depth })
+	for _, d := range dirs {
+		_ = os.Remove(d.path) // best effort; non-empty dirs stay
+	}
 }
 
 func copyFile(src, dst string) error {

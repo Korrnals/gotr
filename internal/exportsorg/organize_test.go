@@ -144,3 +144,75 @@ func TestMigrateExportsLayout_MissingBaseDir(t *testing.T) {
 		t.Fatalf("missing dir should yield empty result, got %+v", res)
 	}
 }
+
+// When a legacy resource directory (e.g. `templates/`) conflicts with an
+// already-categorized destination (`api/templates/`), MigrateExportsLayout
+// must merge file-by-file without overwriting conflicts, then remove the
+// orphan legacy directory if empty.
+func TestMigrateExportsLayout_MergesDirIntoExisting(t *testing.T) {
+	base := t.TempDir()
+
+	// Legacy content at the root.
+	writeFile(t, filepath.Join(base, "templates", "old_a.json"))
+	writeFile(t, filepath.Join(base, "templates", "shared.json"))
+	// Pre-existing destination from new-layout writes.
+	writeFile(t, filepath.Join(base, "api", "templates", "new_b.json"))
+	writeFile(t, filepath.Join(base, "api", "templates", "shared.json")) // conflict
+
+	res, err := MigrateExportsLayout(base, false)
+	if err != nil {
+		t.Fatalf("MigrateExportsLayout: %v", err)
+	}
+	if res.Merged != 1 || res.Moved != 0 {
+		t.Fatalf("expected merged=1 moved=0, got %+v", res)
+	}
+	p := res.Plans[0]
+	if p.Action != ActionPartial {
+		t.Fatalf("expected ActionPartial (shared.json conflict), got %q", p.Action)
+	}
+	if p.MergedFiles != 1 || p.SkippedFiles != 1 {
+		t.Fatalf("expected merged=1 skipped=1 per-plan, got merged=%d skipped=%d", p.MergedFiles, p.SkippedFiles)
+	}
+	// Non-conflicting legacy file moved to destination.
+	if _, err := os.Stat(filepath.Join(base, "api", "templates", "old_a.json")); err != nil {
+		t.Errorf("old_a.json should be merged into api/templates: %v", err)
+	}
+	// Pre-existing file remains untouched.
+	if _, err := os.Stat(filepath.Join(base, "api", "templates", "new_b.json")); err != nil {
+		t.Errorf("new_b.json must be preserved: %v", err)
+	}
+	// Conflict kept in legacy dir; orphan directory still exists.
+	if _, err := os.Stat(filepath.Join(base, "templates", "shared.json")); err != nil {
+		t.Errorf("conflicting shared.json should remain in legacy templates/: %v", err)
+	}
+}
+
+// When the legacy directory has no conflicts, it must be fully drained and
+// removed after merge, with action reported as ActionMerged.
+func TestMigrateExportsLayout_MergesDirFully(t *testing.T) {
+	base := t.TempDir()
+
+	writeFile(t, filepath.Join(base, "templates", "only_legacy.json"))
+	writeFile(t, filepath.Join(base, "api", "templates", "only_new.json"))
+
+	res, err := MigrateExportsLayout(base, false)
+	if err != nil {
+		t.Fatalf("MigrateExportsLayout: %v", err)
+	}
+	if res.Merged != 1 {
+		t.Fatalf("expected merged=1, got %+v", res)
+	}
+	if res.Plans[0].Action != ActionMerged {
+		t.Fatalf("expected ActionMerged, got %q", res.Plans[0].Action)
+	}
+	// Legacy dir must be gone.
+	if _, err := os.Stat(filepath.Join(base, "templates")); !os.IsNotExist(err) {
+		t.Errorf("legacy templates/ should be removed after full merge, stat err=%v", err)
+	}
+	// Both files live under api/templates.
+	for _, f := range []string{"only_legacy.json", "only_new.json"} {
+		if _, err := os.Stat(filepath.Join(base, "api", "templates", f)); err != nil {
+			t.Errorf("expected %s under api/templates: %v", f, err)
+		}
+	}
+}

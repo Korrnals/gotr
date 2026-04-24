@@ -356,8 +356,8 @@ func TestExportRunE_SaveFlag(t *testing.T) {
 	err = exportCmd.RunE(cmd, []string{"projects", "get_projects"})
 	require.NoError(t, err)
 
-	// Verify file was saved under ~/.gotr/exports/export/
-	exportDir := filepath.Join(tmpDir, ".gotr", "exports", "export")
+	// Verify file was saved under ~/.gotr/exports/api/export/
+	exportDir := filepath.Join(tmpDir, ".gotr", "exports", "api", "export")
 	entries, err := os.ReadDir(exportDir)
 	require.NoError(t, err)
 	assert.NotEmpty(t, entries)

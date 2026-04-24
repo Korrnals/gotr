@@ -86,28 +86,11 @@ Subcommands:
 			}
 
 			// Interactive mode: show preview + confirm.
-			prompter := interactive.PrompterFromContext(ctx)
-			if !interactive.IsNonInteractive(ctx) {
-				printRollbackHeader(cmd, entry)
-
-				previewOpts := opts
-				previewOpts.DryRun = true
-				preview, err := snaplib.Rollback(ctx, cli, store, manifest, snapID, previewOpts)
-				if err != nil {
-					return fmt.Errorf("preview failed: %w", err)
-				}
-
-				if len(preview.Preview) > 0 {
-					printDiffPreview(cmd, preview)
-					confirmed, err := prompter.Confirm("Apply this rollback?", true)
-					if err != nil {
-						return wrapInterrupt(err)
-					}
-					if !confirmed {
-						fmt.Fprintln(os.Stdout, "Rollback canceled.")
-						return nil
-					}
-				}
+			yes, _ := cmd.Flags().GetBool("yes")
+			if canceled, err := maybeConfirmRollback(ctx, cmd, cli, store, manifest, entry, snapID, opts, yes); err != nil {
+				return err
+			} else if canceled {
+				return nil
 			}
 
 			// Execute rollback.
@@ -131,11 +114,52 @@ Subcommands:
 
 	cmd.Flags().Bool("dry-run", false, "Preview changes without applying them")
 	cmd.Flags().String("entity-ids", "", "Limit rollback to specific entity IDs (comma-separated)")
+	cmd.Flags().BoolP("yes", "y", false, "Skip the interactive confirmation prompt")
 
 	cmd.AddCommand(newRollbackListCmd(getClient))
 	cmd.AddCommand(newRollbackUndoCmd(getClient))
 
 	return cmd
+}
+
+// maybeConfirmRollback renders the rollback preview and asks for
+// confirmation when stdin is a TTY and --yes is not set. Returns canceled=true
+// when the user declined the prompt so the caller can exit without applying.
+func maybeConfirmRollback(
+	ctx context.Context,
+	cmd *cobra.Command,
+	cli snaplib.RollbackAPI,
+	store *snaplib.Store,
+	manifest *snaplib.Manifest,
+	entry *snaplib.ManifestEntry,
+	snapID string,
+	opts snaplib.RollbackOpts,
+	yes bool,
+) (canceled bool, err error) {
+	if interactive.IsNonInteractive(ctx) || yes {
+		return false, nil
+	}
+	printRollbackHeader(cmd, entry)
+	previewOpts := opts
+	previewOpts.DryRun = true
+	preview, pErr := snaplib.Rollback(ctx, cli, store, manifest, snapID, previewOpts)
+	if pErr != nil {
+		return false, fmt.Errorf("preview failed: %w", pErr)
+	}
+	if len(preview.Preview) == 0 {
+		return false, nil
+	}
+	printDiffPreview(cmd, preview)
+	prompter := interactive.PrompterFromContext(ctx)
+	confirmed, cErr := prompter.Confirm("Apply this rollback?", true)
+	if cErr != nil {
+		return false, wrapInterrupt(cErr)
+	}
+	if !confirmed {
+		fmt.Fprintln(os.Stdout, "Rollback canceled.")
+		return true, nil
+	}
+	return false, nil
 }
 
 // parseEntityIDs parses comma-separated int64 IDs.

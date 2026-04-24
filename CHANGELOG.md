@@ -9,6 +9,183 @@
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-04-24
+
+UX polish релиз (issue #44): категоризованная иерархия отчётов и
+экспортов, shell completion, интерактивный режим, retention/cleanup,
+управление предупреждениями и корпоративный TLS (`ca_bundle`).
+
+### Added — иерархия `~/.gotr/reports/` и `~/.gotr/exports/`
+
+- **Категоризация отчётов** в дерево
+  `~/.gotr/reports/<category>/<label|default>/<YYYY-MM>/<file>`.
+  Новые категории: `migrations`, `coverage`, `rollbacks`, `no-snapshot`,
+  `testrail/p<N>`, `_unclassified`. Классификация выполняется в
+  `internal/report.ClassifyReport` по шаблонам имён файлов.
+- **`gotr report organize [--dry-run]`** — миграция старого «плоского»
+  layout в новую иерархию. Идемпотентна; конфликты (уже существующий
+  файл в целевом пути) скипаются. `--dry-run` печатает план без
+  изменений на диске. После успешного переноса вызывает `Reindex`.
+- **Иерархия экспортов** `~/.gotr/exports/{snaps,reports,api}/`.
+  `snaps/` — tar.gz-бандлы, `reports/` — zip-бандлы и plain-копии,
+  `api/<resource>/` — legacy-выгрузки `gotr get plans/reports/...`.
+  Миграция — `gotr export organize [--dry-run]`.
+- **`gotr export snap --with-reports`** — по умолчанию ON. Сканирует
+  reports-директорию рекурсивно, встраивает в архив файлы, чья
+  basename содержит `filepath.Base(snapID)`. `--no-reports` —
+  opt-out. Архивный префикс: `reports/<rel>`. Результат отражается
+  в `manifest.Files`.
+- **`gotr cleanup {reports,snaps,exports,all} [--dry-run]`** —
+  ручной executor для retention-политик. Конфигурация в
+  `retention.{reports,snaps,exports}` (см. ниже). `snaps` делегирует
+  существующему `gotr snap gc`.
+- **`gotr report show --print`** — вывод содержимого отчёта в stdout
+  (cat-like) независимо от расширения для md/json/txt. Бинарные
+  PDF явно отклоняются с понятной ошибкой.
+- **INDEX.md**: автоматически регенерируется после generate/import/organize,
+  содержит ссылки на все отчёты в иерархии.
+
+### Added — shell completion
+
+- Динамический `ValidArgsFunction` для `report show/view`,
+  `export report/snap`, `import snap/report`. Рекурсивный листинг
+  через `intreport.RecursiveListReports`; для snap-команд — по
+  `snap.LoadManifest`; для import — файлы с расширениями
+  `.zip/.pdf/.md/.json` или `.tar.gz/.tgz` в соответствующих
+  директориях. Handles two-dot `.tar.gz`.
+
+### Added — interactive mode (TTY-guard)
+
+- `report show/view`, `export report/snap`, `import snap/report`
+  теперь принимают `cobra.MaximumNArgs(1)`. Если argument отсутствует,
+  stdin — TTY и `--non-interactive` не установлен, пользователю
+  показывается survey-prompt со списком кандидатов. В
+  non-interactive режиме и без TTY — явная ошибка с подсказкой
+  «pass as argument or run interactively».
+
+### Added — warnings suppression + TLS
+
+- **`ui.suppress_warnings: []`** (list of keys) — подавление отдельных
+  не-критичных предупреждений. Ключи:
+  - `tls_insecure` — баннер при `insecure=true` или `tls.insecure=true`,
+  - `deprecation` — зарезервирован,
+  - `flat_layout` — подсказка при обнаружении плоского layout.
+- **`--show-warnings`** CLI-флаг (`show_warnings` viper key) —
+  временный override, показывает все варнинги независимо от конфига.
+- **`tls.insecure`** — новый config-ключ. Старый top-level `insecure`
+  и флаг `--insecure` сохранены для обратной совместимости;
+  включающий источник побеждает.
+- **`tls.ca_bundle: "/path/to/ca.pem"`** — корпоративный CA. Путь
+  читается, парсится `x509.NewCertPool` + `AppendCertsFromPEM`,
+  подставляется в `tls.Config.RootCAs`. Предпочтительная альтернатива
+  `insecure=true`. `client.WithCABundle(path)` — публичная опция.
+- При первом показе каждого варнинга добавляется one-time tip:
+  «add '<key>' to ui.suppress_warnings to silence this warning».
+- Флаг «показывали про flat layout» теперь персистентный —
+  `~/.gotr/state.json::flat_layout_warned`. Показывается один раз за
+  инсталляцию.
+
+### Added — retention/cleanup конфиг
+
+```yaml
+retention:
+  reports:
+    enabled: false          # по умолчанию ВЫКЛЮЧЕНО (безопасно)
+    max_age_days: 90
+    max_count: 500
+    keep_categories: [coverage]
+    dry_run: true
+  snaps:
+    enabled: false
+    max_age_days: 180
+    max_count: 100
+    dry_run: false
+  exports:
+    enabled: false
+    max_age_days: 30
+```
+
+- Отсутствие секции `retention` не является ошибкой: дефолты
+  подставляются автоматически.
+- `keep_categories` — whitelist: такие категории никогда не
+  удаляются retention-политикой (важно для coverage-артефактов).
+
+### Changed
+
+- **`internal/paths`**: введены `ExportsSnapsDirPath`,
+  `ExportsReportsDirPath`, `ExportsAPIDirPath` + Ensure\*-варианты.
+  Writers перенаправлены: `internal/snapbundle.DefaultExportPath`,
+  `internal/reportbundle.ExportSingle`/`ExportAll`,
+  `internal/output.GetExportsDir(resource)` теперь пишут в
+  подкатегории `exports/`.
+- **`cmd/report/list`**: `--filter` применяется по basename (glob)
+  ИЛИ по substring в relative path; листинг — рекурсивный.
+- **`cmd/report/show`**: `openWithOS` использует `exec.Cmd.Run()`
+  вместо `Start()`, так что нулевой exit OS-лаунчера
+  (`xdg-open`/`open`/`rundll32`) пропагируется как ошибка CLI.
+- **`cmd/root.PersistentPreRunE`**: warnings registry инициализируется
+  до любого другого вывода; баннер `tls_insecure` теперь идёт через
+  `warnings.Emitf` и, соответственно, уважает `suppress_warnings`.
+  Прямая `fmt.Fprintln(os.Stderr, "WARNING: TLS...")` из
+  `internal/client` удалена.
+
+### Fixed
+
+- Снятие false-positive при первом показе flat-layout подсказки, если
+  пользователь уже мигрировал иерархию и удалил `state.json` вручную:
+  `warnings.Emitf` дополнительно блокирует повторный вывод в рамках
+  одного процесса через in-memory `shownHint` map.
+
+### Migration notes (v3.2 → v3.3)
+
+1. **Reports layout.** При первом запуске любой команды `report list/show`
+   будет показано однократное предупреждение о «плоском» layout, если
+   в `~/.gotr/reports/` обнаружены файлы в корне. Рекомендуется:
+   ```bash
+   gotr report organize --dry-run   # посмотреть план
+   gotr report organize             # выполнить миграцию
+   ```
+   Команда не удаляет ничего: при коллизии оригинал остаётся в корне,
+   счётчик `skipped` увеличивается. После успеха `INDEX.md` регенерируется.
+2. **Exports layout.** Аналогично:
+   ```bash
+   gotr export organize --dry-run
+   gotr export organize
+   ```
+   Классификатор перемещает `*.tar.gz|*.tgz` → `exports/snaps/`,
+   `*.zip|*.pdf|*.md|*.json` → `exports/reports/`, директории ресурсов
+   (plans/, reports/, runs/…) — в `exports/api/`.
+3. **Insecure TLS.** Старый `insecure: true` и `--insecure` продолжают
+   работать без изменений. Рекомендуется миграция:
+   ```yaml
+   tls:
+     insecure: false
+     ca_bundle: "/etc/ssl/corp-ca.pem"
+   ```
+4. **Подавление предупреждений.** Было: глобальное `no_warnings: true`
+   (в плане). Финальное решение — per-key list:
+   ```yaml
+   ui:
+     suppress_warnings: [tls_insecure, flat_layout]
+   ```
+   Флаг `--show-warnings` показывает все варнинги независимо от списка.
+5. **Retention.** По умолчанию выключен, никакие старые артефакты не
+   удаляются автоматически. Для миграции на новую политику — явно
+   задать `retention.*.enabled: true` и прогнать `gotr cleanup all
+   --dry-run` перед боевым запуском.
+
+### Internal
+
+- Новые пакеты: `internal/warnings` (registry), `internal/state`
+  (persistent JSON store), `internal/exportsorg` (migrator), 
+  `internal/retention` (policy + executor).
+- E2E-тесты жизненного цикла: `internal/report/e2e_lifecycle_test.go`
+  (flat→hierarchy, 6 категорий, идемпотентность),
+  `internal/snapbundle/e2e_reports_test.go` (organize → export
+  --with-reports → import round-trip).
+
+---
+
 ### Added — export/import bundles (#42, #43)
 
 - **`gotr export snap <id>` → portable tar.gz** with `manifest.json`

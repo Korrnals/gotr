@@ -27,14 +27,25 @@ type ExportOptions struct {
 	// (assignee_email, assignee, and top-level "email" keys). The list of
 	// redacted field paths is reported back in the returned Result.
 	Redact bool
+	// IncludeReports embeds report files whose basename contains the
+	// exported snap_id into the archive under the reports/ prefix. When
+	// ReportsDir is empty, ~/.gotr/reports is used.
+	IncludeReports bool
+	// ReportsDir overrides the lookup root for IncludeReports. Primarily
+	// useful in tests; production callers leave it empty.
+	ReportsDir string
 }
 
 // Result summarizes an export or import operation.
 type Result struct {
-	ArchivePath string
-	SnapID      string
-	Files       []bundle.File
-	Redacted    []string
+	ArchivePath    string
+	SnapID         string
+	Files          []bundle.File
+	Redacted       []string
+	IncludedReports []string // relative archive paths of embedded reports (export) / restored to ~/.gotr/reports (import)
+	// SkippedReports lists bundle reports that were NOT restored during
+	// import because a file with the same path already existed on disk.
+	SkippedReports []string
 }
 
 // ExportOne writes the given snapshot into destPath (a .tar.gz file). The
@@ -46,6 +57,25 @@ func ExportOne(store *snap.Store, snapID, destPath string, opts ExportOptions) (
 	entries, files, redacted, err := collectEntries(store, snapID, opts)
 	if err != nil {
 		return nil, err
+	}
+
+	var includedReports []string
+	if opts.IncludeReports {
+		reportsDir := opts.ReportsDir
+		if reportsDir == "" {
+			dir, derr := paths.ReportsDirPath()
+			if derr != nil {
+				return nil, fmt.Errorf("snapbundle: resolve reports dir: %w", derr)
+			}
+			reportsDir = dir
+		}
+		rentries, rfiles, rpaths, rerr := collectReportEntries(reportsDir, snapID)
+		if rerr != nil {
+			return nil, rerr
+		}
+		entries = append(entries, rentries...)
+		files = append(files, rfiles...)
+		includedReports = rpaths
 	}
 
 	manifest := &bundle.Manifest{
@@ -64,7 +94,76 @@ func ExportOne(store *snap.Store, snapID, destPath string, opts ExportOptions) (
 	if err := bundle.WriteTarGz(destPath, entries); err != nil {
 		return nil, fmt.Errorf("snapbundle: write archive: %w", err)
 	}
-	return &Result{ArchivePath: destPath, SnapID: snapID, Files: files, Redacted: redacted}, nil
+	return &Result{
+		ArchivePath:     destPath,
+		SnapID:          snapID,
+		Files:           files,
+		Redacted:        redacted,
+		IncludedReports: includedReports,
+	}, nil
+}
+
+// collectReportEntries scans reportsDir for regular files whose basename
+// contains the snap_id (its basename — the portion after the last `/`) and
+// packages each one under the archive prefix "reports/<relative path>". The
+// search is recursive so it works with both the flat pre-v3.3.0 layout and
+// the categorized v3.3.0 hierarchy.
+func collectReportEntries(reportsDir, snapID string) ([]bundle.Entry, []bundle.File, []string, error) {
+	home, _ := os.UserHomeDir()
+	needle := filepath.Base(snapID)
+	var entries []bundle.Entry
+	var files []bundle.File
+	var names []string
+
+	err := filepath.WalkDir(reportsDir, func(p string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			if errors.Is(werr, fs.ErrNotExist) {
+				return nil
+			}
+			return werr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if name == "INDEX.md" {
+			return nil
+		}
+		if !strings.Contains(name, needle) {
+			return nil
+		}
+		rel, rerr := filepath.Rel(reportsDir, p)
+		if rerr != nil {
+			return rerr
+		}
+		content, rerr := os.ReadFile(p) //nolint:gosec // path enumerated under reportsDir
+		if rerr != nil {
+			return fmt.Errorf("snapbundle: read report %s: %w", p, rerr)
+		}
+		archivePath := "reports/" + filepath.ToSlash(rel)
+		sum := bundle.SHA256Bytes(content)
+		entries = append(entries, bundle.Entry{
+			ArchivePath: archivePath,
+			RelHome:     relHome(home, p),
+			Content:     content,
+		})
+		files = append(files, bundle.File{
+			Path:    archivePath,
+			RelHome: relHome(home, p),
+			SHA256:  sum,
+			Size:    int64(len(content)),
+		})
+		names = append(names, archivePath)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("snapbundle: walk reports %s: %w", reportsDir, err)
+	}
+
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ArchivePath < entries[j].ArchivePath })
+	sort.Strings(names)
+	return entries, files, names, nil
 }
 
 // collectEntries walks the snapshot directory and builds archive Entries +
@@ -243,13 +342,13 @@ func readmeSnap(m *bundle.Manifest) string {
 }
 
 // DefaultExportPath returns the conventional export destination for a
-// snapshot, under ~/.gotr/exports/.
+// snapshot, under ~/.gotr/exports/snaps/.
 func DefaultExportPath(snapID, label string) (string, error) {
-	dir, err := paths.EnsureExportsDirPath()
+	dir, err := paths.EnsureExportsSnapsDirPath()
 	if err != nil {
 		return "", err
 	}
-	ts := time.Now().UTC().Format("20060102")
+	ts := time.Now().UTC().Format("20060102T150405Z")
 	slug := sanitizeFilename(snapID)
 	if label != "" {
 		slug += "_" + sanitizeFilename(label)
@@ -267,6 +366,13 @@ type ImportOptions struct {
 	Overwrite bool
 	RenameID  string // when set, import under this snap_id instead of the one in manifest
 	DryRun    bool
+	// SkipReports disables restoring bundled reports into ~/.gotr/reports/.
+	// Default (false) restores categorized report files that were embedded
+	// by `gotr export snap` (unless SkipReports is true).
+	SkipReports bool
+	// ReportsDir overrides the destination root for restored reports. When
+	// empty, ~/.gotr/reports is used. Primarily useful for tests.
+	ReportsDir string
 }
 
 // Import extracts a snap bundle from srcPath into the local snap store.
@@ -305,9 +411,12 @@ func Import(store *snap.Store, srcPath string, opts ImportOptions) (*Result, err
 		return result, nil
 	}
 
-	if err := extractAndRelocate(srcPath, store, manifest.SnapID, targetID); err != nil {
+	restored, skipped, err := extractAndRelocate(srcPath, store, manifest.SnapID, targetID, opts)
+	if err != nil {
 		return nil, err
 	}
+	result.IncludedReports = restored
+	result.SkippedReports = skipped
 	return result, nil
 }
 
@@ -384,41 +493,109 @@ func backupExistingSnap(store *snap.Store, snapID string) error {
 }
 
 // extractAndRelocate unpacks the archive to a temp dir and moves the
-// snapshot subtree into the store, optionally under a renamed id.
-func extractAndRelocate(srcPath string, store *snap.Store, archiveID, targetID string) error {
-	tmp, err := os.MkdirTemp("", "gotr-snap-import-*")
-	if err != nil {
-		return fmt.Errorf("snapbundle: tmpdir: %w", err)
+// snapshot subtree into the store, optionally under a renamed id. When the
+// archive carries a reports/ payload and opts.SkipReports is false, the
+// reports are restored into ~/.gotr/reports (or opts.ReportsDir) preserving
+// the categorized hierarchy. Existing files on disk are never overwritten
+// and are reported as skipped.
+func extractAndRelocate(srcPath string, store *snap.Store, archiveID, targetID string, opts ImportOptions) (restored, skipped []string, err error) {
+	tmp, mkErr := os.MkdirTemp("", "gotr-snap-import-*")
+	if mkErr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: tmpdir: %w", mkErr)
 	}
 	defer func() { _ = os.RemoveAll(tmp) }()
 
-	if _, err := bundle.ReadTarGz(srcPath, tmp); err != nil {
-		return fmt.Errorf("snapbundle: extract: %w", err)
+	if _, rerr := bundle.ReadTarGz(srcPath, tmp); rerr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: extract: %w", rerr)
 	}
 	srcSnap := filepath.Join(tmp, "snaps", filepath.FromSlash(archiveID))
-	if _, err := os.Stat(srcSnap); err != nil {
-		return fmt.Errorf("snapbundle: extracted archive missing snaps/%s: %w", archiveID, err)
+	if _, serr := os.Stat(srcSnap); serr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: extracted archive missing snaps/%s: %w", archiveID, serr)
 	}
 	dst := store.SnapDir(targetID)
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return fmt.Errorf("snapbundle: mkdir target parent: %w", err)
+	if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: mkdir target parent: %w", mkErr)
 	}
 	// If target still exists (e.g. --rename-id target clashes unexpectedly), fail.
-	if _, err := os.Stat(dst); err == nil {
-		return fmt.Errorf("snapbundle: target %s already exists", dst)
+	if _, serr := os.Stat(dst); serr == nil {
+		return nil, nil, fmt.Errorf("snapbundle: target %s already exists", dst)
 	}
-	if err := os.Rename(srcSnap, dst); err != nil {
+	if rerr := os.Rename(srcSnap, dst); rerr != nil {
 		// os.Rename may fail across filesystems; fall back to copy+remove.
-		if err := copyTree(srcSnap, dst); err != nil {
-			return fmt.Errorf("snapbundle: relocate %s -> %s: %w", srcSnap, dst, err)
+		if cerr := copyTree(srcSnap, dst); cerr != nil {
+			return nil, nil, fmt.Errorf("snapbundle: relocate %s -> %s: %w", srcSnap, dst, cerr)
 		}
 	}
 	if targetID != archiveID {
-		if err := rewriteMetaID(dst, targetID); err != nil {
-			return fmt.Errorf("snapbundle: rewrite meta.json id: %w", err)
+		if mErr := rewriteMetaID(dst, targetID); mErr != nil {
+			return nil, nil, fmt.Errorf("snapbundle: rewrite meta.json id: %w", mErr)
 		}
 	}
-	return nil
+
+	if !opts.SkipReports {
+		restored, skipped, err = restoreReports(tmp, opts.ReportsDir)
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	return restored, skipped, nil
+}
+
+// restoreReports walks the tmp/reports/ subtree (if any) and copies each
+// file into dstReportsDir preserving relative layout. When dstReportsDir is
+// empty, ~/.gotr/reports is used. Existing files are never overwritten —
+// collisions are appended to the skipped list so the CLI can warn the user.
+func restoreReports(tmpRoot, dstReportsDir string) (restored, skipped []string, err error) {
+	reportsSrc := filepath.Join(tmpRoot, "reports")
+	info, statErr := os.Stat(reportsSrc)
+	if statErr != nil || !info.IsDir() {
+		return nil, nil, nil //nolint:nilerr // no reports embedded
+	}
+	if dstReportsDir == "" {
+		dir, derr := paths.EnsureReportsDirPath()
+		if derr != nil {
+			return nil, nil, fmt.Errorf("snapbundle: resolve reports dir: %w", derr)
+		}
+		dstReportsDir = dir
+	} else if mkErr := os.MkdirAll(dstReportsDir, 0o755); mkErr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: mkdir reports dst: %w", mkErr)
+	}
+
+	werr := filepath.WalkDir(reportsSrc, func(p string, d fs.DirEntry, wErr error) error {
+		if wErr != nil {
+			return wErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, rErr := filepath.Rel(reportsSrc, p)
+		if rErr != nil {
+			return rErr
+		}
+		target := filepath.Join(dstReportsDir, rel)
+		if _, statErr := os.Stat(target); statErr == nil {
+			skipped = append(skipped, filepath.ToSlash(rel))
+			return nil
+		}
+		if mkErr := os.MkdirAll(filepath.Dir(target), 0o755); mkErr != nil {
+			return mkErr
+		}
+		data, rErr := os.ReadFile(p) //nolint:gosec // tmp path owned by us
+		if rErr != nil {
+			return rErr
+		}
+		if wErr := os.WriteFile(target, data, 0o644); wErr != nil { //nolint:gosec // restoring user-owned data
+			return wErr
+		}
+		restored = append(restored, filepath.ToSlash(rel))
+		return nil
+	})
+	if werr != nil {
+		return restored, skipped, fmt.Errorf("snapbundle: restore reports: %w", werr)
+	}
+	sort.Strings(restored)
+	sort.Strings(skipped)
+	return restored, skipped, nil
 }
 
 func copyTree(src, dst string) error {

@@ -12,6 +12,7 @@ import (
 	"github.com/Korrnals/gotr/internal/interactive"
 	"github.com/Korrnals/gotr/internal/models/config"
 	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/warnings"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -42,10 +43,18 @@ Supports browsing available endpoints, executing requests, and more.`,
 		// Set up Viper: env vars, flags, config files
 		viper.AutomaticEnv()
 
+		// Initialize centralized warnings suppression registry.
+		// Precedence: --show-warnings flag > ui.suppress_warnings config.
+		warnings.Init(viper.GetStringSlice("ui.suppress_warnings"), viper.GetBool("show_warnings"))
+
 		// Read connection settings from Viper (config/env/flags)
 		baseURL := viper.GetString("base_url")
 		username := viper.GetString("username")
-		insecure := viper.GetBool("insecure")
+		// tls.insecure is the preferred config key; top-level `insecure`
+		// (and --insecure) remain supported for backward-compat. Either
+		// enabling source wins.
+		insecure := viper.GetBool("insecure") || viper.GetBool("tls.insecure")
+		caBundle := viper.GetString("tls.ca_bundle")
 		debugMode := viper.GetBool("debug")
 
 		// Support both password (Basic Auth) and api_key (API Key Auth).
@@ -74,6 +83,11 @@ Supports browsing available endpoints, executing requests, and more.`,
 		opts := []client.ClientOption{}
 		if insecure {
 			opts = append(opts, client.WithSkipTlsVerify(true)) // TLS verification is enabled by default
+			warnings.Emitf(os.Stderr, warnings.KeyTLSInsecure,
+				"TLS certificate verification is disabled (insecure=true). Connection is vulnerable to MITM attacks.")
+		}
+		if caBundle != "" {
+			opts = append(opts, client.WithCABundle(caBundle))
 		}
 
 		if httpTimeout := viper.GetDuration("http_timeout"); httpTimeout > 0 {

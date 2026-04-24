@@ -504,11 +504,11 @@ func TestOutputGetResult_SaveFlagBodyOnly(t *testing.T) {
 	err := OutputGetResult(cmd, map[string]any{"id": 11}, time.Now())
 	require.NoError(t, err)
 
-	entries, readErr := os.ReadDir(filepath.Join(tempHome, ".gotr", "exports", "get"))
+	entries, readErr := os.ReadDir(filepath.Join(tempHome, ".gotr", "exports", "api", "get"))
 	require.NoError(t, readErr)
 	require.NotEmpty(t, entries)
 
-	savedPath := filepath.Join(tempHome, ".gotr", "exports", "get", entries[0].Name())
+	savedPath := filepath.Join(tempHome, ".gotr", "exports", "api", "get", entries[0].Name())
 	content, contentErr := os.ReadFile(savedPath)
 	require.NoError(t, contentErr)
 	assert.Contains(t, string(content), "\"id\": 11")
@@ -539,11 +539,11 @@ func TestOutputGetResult_InteractivePromptSavePath(t *testing.T) {
 	err := OutputGetResult(cmd, map[string]any{"id": 42}, time.Now())
 	require.NoError(t, err)
 
-	entries, readErr := os.ReadDir(filepath.Join(tempHome, ".gotr", "exports", "get"))
+	entries, readErr := os.ReadDir(filepath.Join(tempHome, ".gotr", "exports", "api", "get"))
 	require.NoError(t, readErr)
 	require.NotEmpty(t, entries)
 
-	savedPath := filepath.Join(tempHome, ".gotr", "exports", "get", entries[0].Name())
+	savedPath := filepath.Join(tempHome, ".gotr", "exports", "api", "get", entries[0].Name())
 	content, readErr := os.ReadFile(savedPath)
 	require.NoError(t, readErr)
 	assert.Contains(t, string(content), "\"status_code\": 200")
@@ -1249,8 +1249,8 @@ func TestSaveToFile_FileCreationError(t *testing.T) {
 	os.Setenv("HOME", tempHome)
 	defer os.Setenv("HOME", origHome)
 
-	// Create exports dir
-	exportsDir := tempHome + "/.gotr/exports/test"
+	// Create exports dir (v3.3.0 layout: ~/.gotr/exports/api/<resource>)
+	exportsDir := tempHome + "/.gotr/exports/api/test"
 	err := os.MkdirAll(exportsDir, 0o755)
 	require.NoError(t, err)
 

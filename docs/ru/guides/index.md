@@ -38,6 +38,8 @@ Language: Русский | [English](../../en/guides/index.md)
 Готовые пошаговые рецепты для типовых задач.
 
 - [Инструкции](instructions/index.md) — миграция данных, CRUD-операции, сравнение проектов
+- Новое в v3.3: [жизненный цикл отчётов](instructions/reports-lifecycle.md), [retention/cleanup runbook](instructions/retention-and-cleanup-runbook.md), [миграция TLS на ca_bundle](instructions/tls-ca-bundle-migration.md).
+- [Migration guide v3.3](migration-guide-v3.3.md) — как обновиться с v3.2 без потерь.
 
 ### Специальные режимы
 

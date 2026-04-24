@@ -87,7 +87,7 @@ func TestGetCmd_WithSaveFlag(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify file was created in exports directory
-	exportsDir := filepath.Join(tempHome, ".gotr", "exports", "attachments")
+	exportsDir := filepath.Join(tempHome, ".gotr", "exports", "api", "attachments")
 	files, err := os.ReadDir(exportsDir)
 	require.NoError(t, err)
 	require.Len(t, files, 1)

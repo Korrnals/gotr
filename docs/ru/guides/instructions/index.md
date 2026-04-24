@@ -25,6 +25,9 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
       - [Обновление объектов](crud-update.md)
       - [Удаление объектов](crud-delete.md)
       - [Сравнение проектов](compare.md)
+      - [Жизненный цикл отчётов (v3.3)](reports-lifecycle.md)
+      - [Retention и cleanup runbook (v3.3)](retention-and-cleanup-runbook.md)
+      - [TLS: insecure → ca_bundle (v3.3)](tls-ca-bundle-migration.md)
   - [Архитектура](../../architecture/index.md)
   - [Эксплуатация](../../operations/index.md)
   - [Отчёты](../../reports/index.md)
@@ -60,6 +63,15 @@ Language: Русский | [English](../../../en/guides/instructions/index.md)
 ### Сравнение
 
 - [Сравнение проектов](compare.md) — `gotr compare` для аудита и предмиграционной разведки
+
+### v3.3.0 — UX polish
+
+Пошаговые кейсы под новый функционал (иерархия отчётов, retention/cleanup,
+корпоративный TLS). См. также [Migration guide v3.3](../migration-guide-v3.3.md).
+
+- [Жизненный цикл отчётов](reports-lifecycle.md) — миграция layout → генерация → просмотр (`--print`, `latest`) → экспорт snap с `--with-reports` → импорт в чистое окружение → очистка
+- [Retention и cleanup runbook](retention-and-cleanup-runbook.md) — базовый конфиг с whitelist `coverage`, CI-сценарий dry-run, совместимость с `gotr snap gc`
+- [TLS: insecure → ca_bundle](tls-ca-bundle-migration.md) — перенос корпоративного CA, подавление баннера `tls_insecure`, troubleshooting
 
 ---
 

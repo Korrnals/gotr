@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Korrnals/gotr/internal/paths"
+	intreport "github.com/Korrnals/gotr/internal/report"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/snapbundle"
 	"github.com/spf13/cobra"
@@ -89,11 +91,13 @@ func newImportSnapCmd() *cobra.Command {
 			overwrite, _ := cmd.Flags().GetBool("overwrite")
 			rename, _ := cmd.Flags().GetString("rename-id")
 			dry, _ := cmd.Flags().GetBool("dry-run")
+			skipReports, _ := cmd.Flags().GetBool("skip-reports")
 
 			res, err := snapbundle.Import(store, target, snapbundle.ImportOptions{
-				Overwrite: overwrite,
-				RenameID:  rename,
-				DryRun:    dry,
+				Overwrite:   overwrite,
+				RenameID:    rename,
+				DryRun:      dry,
+				SkipReports: skipReports,
 			})
 			if err != nil {
 				return err
@@ -103,6 +107,19 @@ func newImportSnapCmd() *cobra.Command {
 				return nil
 			}
 			successf("Imported snapshot %s (%d files) from %s", res.SnapID, len(res.Files), res.ArchivePath)
+			if n := len(res.IncludedReports); n > 0 {
+				infof("Restored %d bundled report(s) into ~/.gotr/reports/", n)
+				// Reindex so INDEX.md picks up the new files.
+				if dir, dErr := paths.ReportsDirPath(); dErr == nil {
+					if rErr := intreport.Reindex(dir); rErr != nil {
+						warnf("reindex reports: %v", rErr)
+					}
+				}
+			}
+			if n := len(res.SkippedReports); n > 0 {
+				warnf("skipped %d bundled report(s) (already exist on disk): %s",
+					n, strings.Join(res.SkippedReports, ", "))
+			}
 			// Keep manifest in sync if target was a fresh id.
 			if err := reindexImported(store, res.SnapID); err != nil {
 				warnf("manifest refresh: %v", err)
@@ -113,6 +130,7 @@ func newImportSnapCmd() *cobra.Command {
 	cmd.Flags().Bool("overwrite", false, "Replace an existing snapshot; the old one is moved to ~/.gotr/snaps/.trash/")
 	cmd.Flags().String("rename-id", "", "Import under this snapshot id instead of the one recorded in the bundle")
 	cmd.Flags().Bool("dry-run", false, "Validate the bundle and print what would be imported; no changes")
+	cmd.Flags().Bool("skip-reports", false, "Do not restore bundled reports into ~/.gotr/reports/ (default: restore)")
 	return cmd
 }
 

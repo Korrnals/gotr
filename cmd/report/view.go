@@ -15,17 +15,21 @@ func newViewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:               "view [report-file|latest]",
 		Short:             "View a migration report",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: completeReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {
 				return fmt.Errorf("report view: resolve reports dir: %w", err)
 			}
-			path, err := intreport.ResolveReportPath(reportsDir, args[0])
+			target, err := resolveViewTarget(cmd, args, reportsDir)
+			if err != nil {
+				return err
+			}
+			path, err := intreport.ResolveReportPath(reportsDir, target)
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
-					return fmt.Errorf("report view: %q not found under %s", args[0], reportsDir)
+					return fmt.Errorf("report view: %q not found under %s", target, reportsDir)
 				}
 				return fmt.Errorf("report view: %w", err)
 			}
@@ -38,4 +42,15 @@ func newViewCmd() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// resolveViewTarget mirrors resolveShowTarget for `gotr report view`.
+func resolveViewTarget(cmd *cobra.Command, args []string, reportsDir string) (string, error) {
+	if len(args) == 1 {
+		return args[0], nil
+	}
+	if !shouldPromptForReport(cmd) {
+		return "", fmt.Errorf("report view: a report name or 'latest' is required (pass as argument or run interactively)")
+	}
+	return promptForReport(cmd, reportsDir)
 }

@@ -18,19 +18,23 @@ import (
 
 func newShowCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:               "show <filename|latest>",
+		Use:               "show [filename|latest]",
 		Short:             "Open a migration report in the OS default viewer (PDF) or print it (md/json)",
-		Args:              cobra.ExactArgs(1),
+		Args:              cobra.MaximumNArgs(1),
 		ValidArgsFunction: completeReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {
 				return fmt.Errorf("report show: resolve reports dir: %w", err)
 			}
-			path, err := intreport.ResolveReportPath(reportsDir, args[0])
+			target, err := resolveShowTarget(cmd, args, reportsDir)
+			if err != nil {
+				return err
+			}
+			path, err := intreport.ResolveReportPath(reportsDir, target)
 			if err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
-					return fmt.Errorf("report show: %q not found under %s", args[0], reportsDir)
+					return fmt.Errorf("report show: %q not found under %s", target, reportsDir)
 				}
 				return fmt.Errorf("report show: %w", err)
 			}
@@ -89,4 +93,17 @@ func openWithOS(path string) error {
 		return fmt.Errorf("opener %q not found in PATH", bin)
 	}
 	return exec.Command(bin, args...).Start() //nolint:gosec // bin is a fixed per-OS constant
+}
+
+// resolveShowTarget returns the user-supplied positional argument or, when
+// missing, asks the user to pick a report interactively. When running in
+// non-interactive mode / no TTY / no args, it reports a usage error.
+func resolveShowTarget(cmd *cobra.Command, args []string, reportsDir string) (string, error) {
+	if len(args) == 1 {
+		return args[0], nil
+	}
+	if !shouldPromptForReport(cmd) {
+		return "", fmt.Errorf("report show: a report name or 'latest' is required (pass as argument or run interactively)")
+	}
+	return promptForReport(cmd, reportsDir)
 }

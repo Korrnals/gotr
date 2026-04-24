@@ -348,7 +348,7 @@ func DefaultExportPath(snapID, label string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	ts := time.Now().UTC().Format("20060102")
+	ts := time.Now().UTC().Format("20060102T150405Z")
 	slug := sanitizeFilename(snapID)
 	if label != "" {
 		slug += "_" + sanitizeFilename(label)

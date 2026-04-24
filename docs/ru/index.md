@@ -24,6 +24,7 @@ Language: Русский | [English](../en/index.md)
 - [Интерактивный режим](guides/interactive-mode.md) — работа в интерактивном режиме
 - [Прогресс](guides/progress.md) — отслеживание длительных операций
 - [Каталог команд](guides/commands/index.md) — полный справочник 32+ команд
+- [Migration guide v3.3](guides/migration-guide-v3.3.md) — апгрейд с v3.2: иерархия reports/exports, TLS ca_bundle, retention opt-in
 
 **Когда читать:** при первом запуске, для ежедневной работы, для справки по командам.
 
@@ -35,6 +36,7 @@ Language: Русский | [English](../en/index.md)
 - [Concurrency](architecture/concurrency.md) — модель параллелизации
 - [Стандарты](architecture/standards.md) — соглашения кодирования
 - [План распараллеливания](architecture/recursive-parallelization-plan.md) — схема масштабирования
+- [UX polish v3.3.0](architecture/ux-polish-v3.3.0.md) — категоризованная иерархия, warnings registry, persistent state, retention, corporate TLS
 
 **Когда читать:** при разработке новых команд, рефакторинге, тюнинге производительности.
 

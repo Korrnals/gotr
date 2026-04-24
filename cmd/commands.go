@@ -110,6 +110,9 @@ func initGlobalFlags() {
 	// Non-interactive mode (CI/CD, scripting)
 	rootCmd.PersistentFlags().Bool("non-interactive", false, "Disable interactive prompts; fail if input required")
 
+	// Show-all-warnings override (takes precedence over ui.suppress_warnings)
+	rootCmd.PersistentFlags().Bool("show-warnings", false, "Show all warnings ignoring ui.suppress_warnings")
+
 	// Global output format
 	rootCmd.PersistentFlags().StringP("format", "f", "table", "Output format: table, json, csv, md, html")
 
@@ -119,6 +122,7 @@ func initGlobalFlags() {
 	must(viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")))
 	must(viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")))
 	must(viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")))
+	must(viper.BindPFlag("show_warnings", rootCmd.PersistentFlags().Lookup("show-warnings")))
 
 	// HTTP timeout (default 30s matches the built-in default in client.go)
 	rootCmd.PersistentFlags().Duration("http-timeout", 30*time.Second, "HTTP request timeout (e.g. 60s, 2m)")

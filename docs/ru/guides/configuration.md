@@ -63,9 +63,37 @@ username: "user@example.com"
 api_key: "your_api_key"
 
 # Опциональные параметры
-insecure: false      # пропустить проверку TLS
+insecure: false      # пропустить проверку TLS (legacy; см. tls.insecure)
 jq_format: false     # включить jq-форматирование по умолчанию
 debug: false         # отладочный вывод
+
+# TLS (v3.3.0+)
+tls:
+  insecure: false                     # эквивалент top-level insecure; OR-merge
+  ca_bundle: "/etc/ssl/corp-ca.pem"   # корпоративный CA; предпочтительнее insecure=true
+
+# UI / предупреждения (v3.3.0+)
+ui:
+  # Список per-key подавлений: tls_insecure | deprecation | flat_layout
+  suppress_warnings: []
+
+# Retention / автоочистка (v3.3.0+)
+# По умолчанию все ВЫКЛЮЧЕНО; команда gotr cleanup применяет эту политику вручную.
+retention:
+  reports:
+    enabled: false
+    max_age_days: 90
+    max_count: 500
+    keep_categories: [coverage]   # whitelist: эти категории никогда не чистятся
+    dry_run: true
+  snaps:
+    enabled: false
+    max_age_days: 180
+    max_count: 100
+    dry_run: false
+  exports:
+    enabled: false
+    max_age_days: 30
 
 # Настройки compare-команд (performance tuning)
 compare:
@@ -105,8 +133,78 @@ compare:
 | `--url` | URL TestRail | `TESTRAIL_BASE_URL` |
 | `-u, --username` | Email пользователя | `TESTRAIL_USERNAME` |
 | `-k, --api-key` | API ключ | `TESTRAIL_API_KEY` |
-| `-i, --insecure` | Пропустить проверку TLS | - |
+| `-i, --insecure` | Пропустить проверку TLS (legacy, см. `tls.insecure`) | - |
+| `--show-warnings` | Показать все предупреждения, игнорируя `ui.suppress_warnings` | - |
 | `-d, --debug` | Отладочный вывод | `TESTRAIL_DEBUG` |
+
+## TLS и корпоративный CA (v3.3.0+)
+
+Предпочтительный способ работы с приватными CA — загрузить PEM-бандл:
+
+```yaml
+tls:
+  ca_bundle: "/etc/ssl/corp-ca.pem"
+```
+
+Бандл читается один раз на старте, парсится через `x509.NewCertPool` и
+подставляется в `tls.Config.RootCAs` внутреннего HTTP-клиента (см.
+архитектурный doc про warnings + TLS). Это безопаснее, чем
+`insecure=true`, и не даёт MITM-проблем в CI.
+
+Ключ `tls.insecure` эквивалентен top-level `insecure` и старому флагу
+`--insecure`; источники OR-мерджатся, так что существующие конфиги
+продолжают работать без изменений. При активном `insecure` на stderr
+печатается баннер-предупреждение (ключ `tls_insecure`).
+
+## Предупреждения: suppress_warnings (v3.3.0+)
+
+Некоторые не-критичные предупреждения можно подавить точечно:
+
+```yaml
+ui:
+  suppress_warnings:
+    - tls_insecure   # баннер о insecure=true
+    - flat_layout    # одноразовая подсказка про миграцию иерархии
+```
+
+Возможные ключи: `tls_insecure`, `deprecation`, `flat_layout`. При первом
+показе любого варнинга в stderr добавляется подсказка вида
+«add '<key>' to ui.suppress_warnings to silence this warning».
+
+Флаг `--show-warnings` — runtime-override: показывает все варнинги
+независимо от `suppress_warnings` (удобно для CI-валидации).
+
+## Retention/cleanup (v3.3.0+)
+
+Политики retention описываются в конфиге и применяются командой
+`gotr cleanup` вручную (по умолчанию ничего не удаляется
+автоматически):
+
+```yaml
+retention:
+  reports:
+    enabled: true
+    max_age_days: 90
+    max_count: 500
+    keep_categories: [coverage]
+    dry_run: false
+```
+
+- `max_age_days` — удалять файлы старше N дней (0 = не ограничивать).
+- `max_count` — сохранять не более N наиболее свежих файлов в каждой
+  категории (0 = не ограничивать).
+- `keep_categories` — whitelist категорий, которые игнорируются
+  retention (обычно `coverage`).
+- `dry_run: true` — только печать плана, без удаления.
+
+Запуск:
+
+```bash
+gotr cleanup reports --dry-run
+gotr cleanup all
+```
+
+См. [gotr cleanup](commands/cleanup.md).
 
 ## Флаги compare
 

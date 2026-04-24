@@ -14,6 +14,7 @@ type MigrationReport struct {
 	TargetProjectID int64
 	MigrationType   string // "sync_full", "sync_cases", "sync_shared_steps", etc
 	User            string
+	Label           string // Optional classification label (inherited from snapshot).
 
 	Summary     map[string]*ResourceStats // "cases", "shared_steps", "sections", "suites", "attachments"
 	Skipped     map[string][]SkipReason

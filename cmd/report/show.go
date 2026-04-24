@@ -17,7 +17,7 @@ import (
 )
 
 func newShowCmd() *cobra.Command {
-	return &cobra.Command{
+	cmd := &cobra.Command{
 		Use:               "show [filename|latest]",
 		Short:             "Open a migration report in the OS default viewer (PDF) or print it (md/json)",
 		Args:              cobra.MaximumNArgs(1),
@@ -39,7 +39,16 @@ func newShowCmd() *cobra.Command {
 				return fmt.Errorf("report show: %w", err)
 			}
 
+			printFlag, _ := cmd.Flags().GetBool("print")
 			ext := strings.ToLower(filepath.Ext(path))
+
+			if printFlag {
+				if ext == ".pdf" {
+					return fmt.Errorf("report show: --print does not support binary PDF reports (%s)", path)
+				}
+				return catFile(cmd.OutOrStdout(), path)
+			}
+
 			switch ext {
 			case ".pdf":
 				if err := openWithOS(path); err != nil {
@@ -58,6 +67,8 @@ func newShowCmd() *cobra.Command {
 			}
 		},
 	}
+	cmd.Flags().Bool("print", false, "Print report contents to stdout instead of opening a viewer (md/json/txt only)")
+	return cmd
 }
 
 func catFile(w io.Writer, path string) error {
@@ -92,7 +103,14 @@ func openWithOS(path string) error {
 	if _, err := exec.LookPath(bin); err != nil {
 		return fmt.Errorf("opener %q not found in PATH", bin)
 	}
-	return exec.Command(bin, args...).Start() //nolint:gosec // bin is a fixed per-OS constant
+	// Run() (not Start()) so a non-zero viewer exit propagates as an error
+	// and the CLI exits with a non-zero code. Standard OS launchers
+	// (xdg-open, open, rundll32) fork/daemonize and exit quickly.
+	c := exec.Command(bin, args...) //nolint:gosec // bin is a fixed per-OS constant
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("%s failed: %w", bin, err)
+	}
+	return nil
 }
 
 // resolveShowTarget returns the user-supplied positional argument or, when

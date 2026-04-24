@@ -77,13 +77,15 @@ func TestE2E_OrganizeThenExportImport_WithReports(t *testing.T) {
 		t.Errorf("embedded report must contain snap basename %s: %s", snapBase, embedded)
 	}
 
-	// 5. Import into a fresh empty store.
+	// 5. Import into a fresh empty store, restoring reports into a
+	//    scratch reports dir (simulates a different machine).
 	freshBase := t.TempDir()
 	fresh, err := snap.NewStoreAt(freshBase)
 	if err != nil {
 		t.Fatalf("NewStoreAt: %v", err)
 	}
-	imp, err := Import(fresh, dest, ImportOptions{})
+	freshReports := t.TempDir()
+	imp, err := Import(fresh, dest, ImportOptions{ReportsDir: freshReports})
 	if err != nil {
 		t.Fatalf("Import: %v", err)
 	}
@@ -92,5 +94,82 @@ func TestE2E_OrganizeThenExportImport_WithReports(t *testing.T) {
 	}
 	if !fresh.Exists(snapID) {
 		t.Errorf("fresh store missing imported snapshot %s", snapID)
+	}
+	// The embedded report must land in the scratch reports dir under its
+	// categorized path (migrations/default/2026-01/<basename>.md).
+	if len(imp.IncludedReports) != 1 {
+		t.Fatalf("expected 1 restored report, got %d: %v",
+			len(imp.IncludedReports), imp.IncludedReports)
+	}
+	wantRel := "migrations/default/2026-01/migration-20260101T000000Z-" + snapBase + ".md"
+	if imp.IncludedReports[0] != wantRel {
+		t.Errorf("restored report rel = %q, want %q", imp.IncludedReports[0], wantRel)
+	}
+	restoredAbs := filepath.Join(freshReports, filepath.FromSlash(wantRel))
+	if _, err := os.Stat(restoredAbs); err != nil {
+		t.Errorf("expected restored report at %s: %v", restoredAbs, err)
+	}
+
+	// 6. Re-import must skip (collision-safe; not overwrite).
+	imp2, err := Import(fresh, dest, ImportOptions{
+		Overwrite: true, ReportsDir: freshReports,
+	})
+	if err != nil {
+		t.Fatalf("second Import: %v", err)
+	}
+	if len(imp2.SkippedReports) != 1 || imp2.SkippedReports[0] != wantRel {
+		t.Errorf("expected 1 skipped report on re-import, got %v", imp2.SkippedReports)
+	}
+	if len(imp2.IncludedReports) != 0 {
+		t.Errorf("expected 0 restored on re-import, got %v", imp2.IncludedReports)
+	}
+}
+
+// TestImport_SkipReportsOptOut verifies that ImportOptions.SkipReports
+// suppresses restoration while still importing the snapshot itself.
+func TestImport_SkipReportsOptOut(t *testing.T) {
+	store, snapID := newStoreWithSnap(t)
+	snapBase := filepath.Base(snapID)
+
+	reportsDir := t.TempDir()
+	match := filepath.Join(reportsDir, "migrations", "default", "2026-01",
+		"migration-20260101T000000Z-"+snapBase+".md")
+	if err := os.MkdirAll(filepath.Dir(match), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(match, []byte("x"), 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	dest := filepath.Join(t.TempDir(), "snap.tar.gz")
+	if _, err := ExportOne(store, snapID, dest, ExportOptions{
+		IncludeReports: true,
+		ReportsDir:     reportsDir,
+	}); err != nil {
+		t.Fatalf("ExportOne: %v", err)
+	}
+
+	fresh, err := snap.NewStoreAt(t.TempDir())
+	if err != nil {
+		t.Fatalf("NewStoreAt: %v", err)
+	}
+	freshReports := t.TempDir()
+	imp, err := Import(fresh, dest, ImportOptions{
+		SkipReports: true,
+		ReportsDir:  freshReports,
+	})
+	if err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+	if !fresh.Exists(snapID) {
+		t.Fatalf("snapshot must be imported even when SkipReports=true")
+	}
+	if len(imp.IncludedReports) != 0 {
+		t.Errorf("SkipReports=true must not restore reports, got %v", imp.IncludedReports)
+	}
+	// Verify the reports dir is empty.
+	entries, _ := os.ReadDir(freshReports)
+	if len(entries) != 0 {
+		t.Errorf("expected empty reports dir, got %d entries", len(entries))
 	}
 }

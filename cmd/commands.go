@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/cmd/bdds"
 	bundlecmd "github.com/Korrnals/gotr/cmd/bundlecmd"
 	"github.com/Korrnals/gotr/cmd/cases"
+	"github.com/Korrnals/gotr/cmd/cleanup"
 	"github.com/Korrnals/gotr/cmd/compare"
 	"github.com/Korrnals/gotr/cmd/configurations"
 	"github.com/Korrnals/gotr/cmd/datasets"
@@ -63,6 +64,7 @@ func init() {
 	milestones.Register(rootCmd, GetClient)
 	plans.Register(rootCmd, GetClient)
 	reportcmd.Register(rootCmd)
+	cleanup.Register(rootCmd)
 	reports.Register(rootCmd, GetClient)
 	run.Register(rootCmd, GetClientFromCtx)
 	result.Register(rootCmd, GetClientFromCtx)

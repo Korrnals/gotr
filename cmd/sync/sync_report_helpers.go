@@ -47,6 +47,7 @@ func saveMigrationReport(ctx context.Context, cmd *cobra.Command, migrationType 
 	}
 
 	reportObj := intreport.NewMigrationReport(snapshotID, srcProject, dstProject, migrationType, user)
+	reportObj.Label = resolveSnapLabel(hook)
 	for _, s := range stats {
 		reportObj.AddResourceStats(s.Resource, s.Source, s.Created, s.Updated, s.Skipped, s.Failed)
 	}
@@ -101,6 +102,16 @@ func toCount(v int) int64 {
 		return 0
 	}
 	return int64(v)
+}
+
+// resolveSnapLabel extracts the snapshot label (if any) from an active hook.
+// It returns "" when no label is available so callers can fall back to the
+// "default" bucket in the report hierarchy.
+func resolveSnapLabel(hook *snap.Hook) string {
+	if hook == nil || !hook.Enabled || hook.Snap == nil || hook.Snap.Meta == nil {
+		return ""
+	}
+	return hook.Snap.Meta.Label
 }
 
 func filterStatsToReport(resource string, s migration.FilterStats, created, failed int64) reportResourceStats {

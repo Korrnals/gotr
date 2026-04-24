@@ -36,7 +36,7 @@ type Result struct {
 
 // ExportSingle copies a single report file from ~/.gotr/reports/ into
 // destPath. If destPath is empty, the report is copied under
-// ~/.gotr/exports/<basename>.
+// ~/.gotr/exports/reports/<basename>.
 func ExportSingle(reportsDir, reportName, destPath string) (*Result, error) {
 	src := filepath.Join(reportsDir, reportName)
 	st, err := os.Stat(src)
@@ -47,11 +47,11 @@ func ExportSingle(reportsDir, reportName, destPath string) (*Result, error) {
 		return nil, fmt.Errorf("reportbundle: %q is a directory", reportName)
 	}
 	if destPath == "" {
-		out, err := paths.EnsureExportsDirPath()
+		out, err := paths.EnsureExportsReportsDirPath()
 		if err != nil {
 			return nil, err
 		}
-		destPath = filepath.Join(out, reportName)
+		destPath = filepath.Join(out, filepath.Base(reportName))
 	}
 	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
 		return nil, fmt.Errorf("reportbundle: mkdir %s: %w", destPath, err)
@@ -64,7 +64,7 @@ func ExportSingle(reportsDir, reportName, destPath string) (*Result, error) {
 
 // ExportAll bundles every report file under reportsDir (optionally filtered)
 // into a zip archive written to destPath. If destPath is empty, the archive
-// is written under ~/.gotr/exports/reports_<YYYYMMDD>.zip.
+// is written under ~/.gotr/exports/reports/reports_<YYYYMMDD>.zip.
 func ExportAll(reportsDir, destPath string, opts ExportOptions) (*Result, error) {
 	selected, err := selectReports(reportsDir, opts.Filter)
 	if err != nil {
@@ -75,7 +75,7 @@ func ExportAll(reportsDir, destPath string, opts ExportOptions) (*Result, error)
 	}
 
 	if destPath == "" {
-		out, err := paths.EnsureExportsDirPath()
+		out, err := paths.EnsureExportsReportsDirPath()
 		if err != nil {
 			return nil, err
 		}

@@ -14,5 +14,7 @@ func Register(root *cobra.Command) {
 
 	reportCmd.AddCommand(newListCmd())
 	reportCmd.AddCommand(newViewCmd())
+	reportCmd.AddCommand(newShowCmd())
+	reportCmd.AddCommand(newOrganizeCmd())
 	root.AddCommand(reportCmd)
 }

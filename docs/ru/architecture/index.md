@@ -41,6 +41,11 @@ Language: Русский | [English](../../en/architecture/index.md)
 - [Concurrency](concurrency.md) — пакет concurrent, worker pool, каналы
 - [План распараллеливания](recursive-parallelization-plan.md) — схема рекурсивного разбиения работы
 
+### Релизы
+
+- [UX polish v3.3.0](ux-polish-v3.3.0.md) — категоризованная иерархия,
+  warnings registry, persistent state, retention/cleanup, corporate TLS.
+
 ---
 
 ← [Документация](../index.md)

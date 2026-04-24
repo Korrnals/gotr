@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,6 +29,7 @@ type options struct {
 	insecure            bool
 	timeout             time.Duration
 	tlsHandshakeTimeout time.Duration
+	caBundlePath        string
 }
 
 // authTransport automatically injects Basic Auth into every outgoing request.
@@ -76,6 +78,16 @@ func WithTimeout(duration time.Duration) ClientOption {
 	}
 }
 
+// WithCABundle loads a PEM-encoded CA bundle from the given path and
+// installs it as the TLS RootCAs pool. This is the preferred alternative to
+// WithSkipTlsVerify for corporate environments that use private CAs.
+// An empty path is a no-op.
+func WithCABundle(path string) ClientOption {
+	return func(o *options) {
+		o.caBundlePath = path
+	}
+}
+
 // NewClient creates a new HTTP client for TestRail API calls with the given options.
 func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...ClientOption) (*HTTPClient, error) {
 	// Parse URL; we rebuild with scheme+host only
@@ -100,8 +112,18 @@ func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...Clie
 		o(&cfg)
 	}
 
-	if cfg.insecure {
-		fmt.Fprintln(os.Stderr, "WARNING: TLS certificate verification is disabled (--insecure). Connection is vulnerable to MITM attacks.")
+	// NOTE: The "TLS verification disabled" banner is emitted by the caller
+	// (cmd/root.go) via internal/warnings so it honors ui.suppress_warnings
+	// and the --show-warnings CLI override.
+	tlsCfg := &tls.Config{
+		InsecureSkipVerify: cfg.insecure, //nolint:gosec // toggled only via explicit --insecure flag
+	}
+	if cfg.caBundlePath != "" {
+		pool, err := loadCAPool(cfg.caBundlePath)
+		if err != nil {
+			return nil, fmt.Errorf("load CA bundle %q: %w", cfg.caBundlePath, err)
+		}
+		tlsCfg.RootCAs = pool
 	}
 
 	// Configure HTTP transport.
@@ -111,9 +133,7 @@ func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...Clie
 	// http.Client.Timeout includes queue wait, causing cascading timeouts
 	// and exponential-backoff retries → 3× slower than expected.
 	transport := &http.Transport{
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: cfg.insecure,
-		},
+		TLSClientConfig:     tlsCfg,
 		TLSHandshakeTimeout: cfg.tlsHandshakeTimeout,
 		MaxIdleConns:        200,
 		MaxIdleConnsPerHost: 200,
@@ -231,4 +251,18 @@ func (c *HTTPClient) formatAPIError(resp *http.Response) error {
 
 	// Fallback: return raw body as error text
 	return fmt.Errorf("API returned %s: %s", resp.Status, string(bodyBytes))
+}
+
+// loadCAPool reads a PEM-encoded CA bundle from path and returns an
+// x509.CertPool that contains its certificates.
+func loadCAPool(path string) (*x509.CertPool, error) {
+	pem, err := os.ReadFile(path) //nolint:gosec // path comes from explicit config/flag
+	if err != nil {
+		return nil, err
+	}
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(pem) {
+		return nil, fmt.Errorf("no certificates parsed from %s", path)
+	}
+	return pool, nil
 }

@@ -1,71 +1,56 @@
 package report
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/Korrnals/gotr/internal/paths"
+	intreport "github.com/Korrnals/gotr/internal/report"
 	"github.com/spf13/cobra"
 )
 
 func newViewCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "view [report-file|latest]",
-		Short: "View a migration report",
-		Args:  cobra.ExactArgs(1),
+		Use:               "view [report-file|latest]",
+		Short:             "View a migration report",
+		Args:              cobra.MaximumNArgs(1),
+		ValidArgsFunction: completeReportArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reportsDir, err := paths.ReportsDirPath()
 			if err != nil {
 				return fmt.Errorf("report view: resolve reports dir: %w", err)
 			}
-
-			target := args[0]
-			if target == "latest" {
-				latest, err := resolveLatestReport(reportsDir)
-				if err != nil {
-					return fmt.Errorf("report view: %w", err)
-				}
-				target = latest
-			}
-
-			reportPath := filepath.Join(reportsDir, target)
-			content, err := os.ReadFile(reportPath)
+			target, err := resolveViewTarget(cmd, args, reportsDir)
 			if err != nil {
-				return fmt.Errorf("report view: read report %s: %w", target, err)
+				return err
 			}
-
-			fmt.Fprintf(cmd.OutOrStdout(), "# %s\n\n", target)
+			path, err := intreport.ResolveReportPath(reportsDir, target)
+			if err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					return fmt.Errorf("report view: %q not found under %s", target, reportsDir)
+				}
+				return fmt.Errorf("report view: %w", err)
+			}
+			content, err := os.ReadFile(path) //nolint:gosec // path resolved via ResolveReportPath
+			if err != nil {
+				return fmt.Errorf("report view: read %s: %w", path, err)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "# %s\n\n", path)
 			fmt.Fprint(cmd.OutOrStdout(), string(content))
 			return nil
 		},
 	}
 }
 
-func resolveLatestReport(reportsDir string) (string, error) {
-	entries, err := os.ReadDir(reportsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", fmt.Errorf("no reports found")
-		}
-		return "", err
+// resolveViewTarget mirrors resolveShowTarget for `gotr report view`.
+func resolveViewTarget(cmd *cobra.Command, args []string, reportsDir string) (string, error) {
+	if len(args) == 1 {
+		return args[0], nil
 	}
-
-	reports := make([]string, 0)
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		if strings.HasPrefix(e.Name(), "migration-") && strings.HasSuffix(e.Name(), ".md") {
-			reports = append(reports, e.Name())
-		}
+	if !shouldPromptForReport(cmd) {
+		return "", fmt.Errorf("report view: a report name or 'latest' is required (pass as argument or run interactively)")
 	}
-	if len(reports) == 0 {
-		return "", fmt.Errorf("no reports found")
-	}
-
-	sort.Sort(sort.Reverse(sort.StringSlice(reports)))
-	return reports[0], nil
+	return promptForReport(cmd, reportsDir)
 }

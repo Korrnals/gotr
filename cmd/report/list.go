@@ -7,7 +7,8 @@ import (
 
 	"github.com/Korrnals/gotr/internal/paths"
 	intreport "github.com/Korrnals/gotr/internal/report"
-	"github.com/Korrnals/gotr/internal/ui"
+	"github.com/Korrnals/gotr/internal/state"
+	"github.com/Korrnals/gotr/internal/warnings"
 	"github.com/spf13/cobra"
 )
 
@@ -69,12 +70,30 @@ func newListCmd() *cobra.Command {
 // maybeFlatLayoutHint prints a one-time hint on stderr when the reports
 // directory still contains legacy flat files. It is best-effort and never
 // returns an error.
+//
+// The hint is routed through internal/warnings (key "flat_layout") so it
+// honors ui.suppress_warnings / --show-warnings, and through
+// internal/state so the hint is shown at most once per installation
+// (state.FlatLayoutWarned persists in ~/.gotr/state.json).
 func maybeFlatLayoutHint(cmd *cobra.Command, reportsDir string) {
 	flat, n, err := intreport.IsFlatLayout(reportsDir)
 	if err != nil || !flat {
 		return
 	}
-	ui.Warningf(cmd.ErrOrStderr(),
+	if warnings.Suppressed(warnings.KeyFlatLayout) {
+		return
+	}
+	// Persistent one-time guard: skip if the user has already seen it.
+	if st, err := state.Load(); err == nil && st.FlatLayoutWarned {
+		return
+	}
+	warnings.Emitf(cmd.ErrOrStderr(), warnings.KeyFlatLayout,
 		"~/.gotr/reports/ contains %d legacy flat file(s). Run 'gotr report organize --dry-run' "+
 			"to preview the new categorized hierarchy, then re-run without --dry-run to migrate.", n)
+	// Best-effort persistence; ignore write errors so transient FS issues
+	// never block the user's primary command.
+	if st, err := state.Load(); err == nil {
+		st.FlatLayoutWarned = true
+		_ = state.Save(st)
+	}
 }

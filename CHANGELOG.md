@@ -1,9 +1,11 @@
 # Changelog
 
-Все заметные изменения в проекте `gotr` будут документироваться в этом файле.
+All notable changes to the `gotr` project are documented in this file.
 
-Формат основан на [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
-и проект использует [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+> Russian translation: see [CHANGELOG.ru.md](CHANGELOG.ru.md).
 
 ---
 
@@ -11,107 +13,107 @@
 
 ## [3.3.1] - 2026-04-25
 
-Hotfix после живой миграции DEVOPS-9946 (`p30 → p34`,
+Hotfix following the live DEVOPS-9946 migration (`p30 → p34`,
 suite `S20069 → S19859`).
 
 ### Fixed
 
-- **Порядок кейсов при импорте** (`internal/service/migration/import.go`).
-  `ImportCases` и `ImportCasesReport` создают кейсы параллельно
-  (`maxImportConcurrency = 10`); TestRail фиксирует порядок кейсов
-  в том виде, в котором приходят `add_case`-вызовы, и из-за
-  недетерминированности goroutine-scheduling кейсы оказывались
-  перемешаны относительно исходного порядка. Теперь после
-  фазы параллельного создания импорт вызывает
-  `move_cases_to_section` по каждой dst-секции с case_ids,
-  отсортированными по исходному индексу в `filtered`.
-  Секции с `≤1` кейсом пропускаются. Ошибки reorder
-  логируются как `WARN`, но не прерывают миграцию (данные уже
-  импортированы, порядок — UX-аспект). Регрессия покрыта
-  4 unit-тестами в `internal/service/migration/import_order_test.go`.
+- **Case ordering during import** (`internal/service/migration/import.go`).
+  `ImportCases` and `ImportCasesReport` create cases in parallel
+  (`maxImportConcurrency = 10`); TestRail records cases in the order
+  `add_case` calls arrive, and because of non-deterministic goroutine
+  scheduling cases ended up shuffled relative to the source order.
+  Now, after the parallel-create phase the import calls
+  `move_cases_to_section` per dst section with `case_ids` sorted by
+  the source index in `filtered`. Sections with `≤1` case are
+  skipped. Reorder errors are logged as `WARN` but do not abort the
+  migration (data is already imported, ordering is a UX concern).
+  Regression covered by 4 unit tests in
+  `internal/service/migration/import_order_test.go`.
 
 ## [3.3.0] - 2026-04-24
 
-UX polish релиз (issue #44): категоризованная иерархия отчётов и
-экспортов, shell completion, интерактивный режим, retention/cleanup,
-управление предупреждениями и корпоративный TLS (`ca_bundle`).
+UX polish release (issue #44): categorized hierarchy for reports and
+exports, shell completion, interactive mode, retention/cleanup,
+warnings management and corporate TLS (`ca_bundle`).
 
-### Added — иерархия `~/.gotr/reports/` и `~/.gotr/exports/`
+### Added — `~/.gotr/reports/` and `~/.gotr/exports/` hierarchy
 
-- **Категоризация отчётов** в дерево
+- **Report categorization** into the tree
   `~/.gotr/reports/<category>/<label|default>/<YYYY-MM>/<file>`.
-  Новые категории: `migrations`, `coverage`, `rollbacks`, `no-snapshot`,
-  `testrail/p<N>`, `_unclassified`. Классификация выполняется в
-  `internal/report.ClassifyReport` по шаблонам имён файлов.
-- **`gotr report organize [--dry-run]`** — миграция старого «плоского»
-  layout в новую иерархию. Идемпотентна; конфликты (уже существующий
-  файл в целевом пути) скипаются. `--dry-run` печатает план без
-  изменений на диске. После успешного переноса вызывает `Reindex`.
-- **Иерархия экспортов** `~/.gotr/exports/{snaps,reports,api}/`.
-  `snaps/` — tar.gz-бандлы, `reports/` — zip-бандлы и plain-копии,
-  `api/<resource>/` — legacy-выгрузки `gotr get plans/reports/...`.
-  Миграция — `gotr export organize [--dry-run]`.
-- **`gotr export snap --with-reports`** — по умолчанию ON. Сканирует
-  reports-директорию рекурсивно, встраивает в архив файлы, чья
-  basename содержит `filepath.Base(snapID)`. `--no-reports` —
-  opt-out. Архивный префикс: `reports/<rel>`. Результат отражается
-  в `manifest.Files`.
-- **`gotr cleanup {reports,snaps,exports,all} [--dry-run]`** —
-  ручной executor для retention-политик. Конфигурация в
-  `retention.{reports,snaps,exports}` (см. ниже). `snaps` делегирует
-  существующему `gotr snap gc`.
-- **`gotr report show --print`** — вывод содержимого отчёта в stdout
-  (cat-like) независимо от расширения для md/json/txt. Бинарные
-  PDF явно отклоняются с понятной ошибкой.
-- **INDEX.md**: автоматически регенерируется после generate/import/organize,
-  содержит ссылки на все отчёты в иерархии.
+  New categories: `migrations`, `coverage`, `rollbacks`, `no-snapshot`,
+  `testrail/p<N>`, `_unclassified`. Classification is performed by
+  `internal/report.ClassifyReport` based on filename patterns.
+- **`gotr report organize [--dry-run]`** — migrates the legacy "flat"
+  layout into the new hierarchy. Idempotent; conflicts (target file
+  already exists) are skipped. `--dry-run` prints the plan without
+  touching disk. After a successful move it calls `Reindex`.
+- **Exports hierarchy** `~/.gotr/exports/{snaps,reports,api}/`.
+  `snaps/` — tar.gz bundles, `reports/` — zip bundles and plain
+  copies, `api/<resource>/` — legacy dumps from `gotr get
+  plans/reports/...`. Migrator: `gotr export organize [--dry-run]`.
+- **`gotr export snap --with-reports`** — ON by default. Recursively
+  scans the reports directory and embeds files whose basename
+  contains `filepath.Base(snapID)` into the archive. `--no-reports`
+  opts out. Archive prefix: `reports/<rel>`. The result is reflected
+  in `manifest.Files`.
+- **`gotr cleanup {reports,snaps,exports,all} [--dry-run]`** — manual
+  executor for retention policies. Configuration in
+  `retention.{reports,snaps,exports}` (see below). `snaps` delegates
+  to the existing `gotr snap gc`.
+- **`gotr report show --print`** — prints report contents to stdout
+  (cat-like) regardless of extension for md/json/txt. Binary PDFs
+  are explicitly rejected with a clear error.
+- **INDEX.md**: automatically regenerated after generate/import/organize,
+  contains links to all reports in the hierarchy.
 
 ### Added — shell completion
 
-- Динамический `ValidArgsFunction` для `report show/view`,
-  `export report/snap`, `import snap/report`. Рекурсивный листинг
-  через `intreport.RecursiveListReports`; для snap-команд — по
-  `snap.LoadManifest`; для import — файлы с расширениями
-  `.zip/.pdf/.md/.json` или `.tar.gz/.tgz` в соответствующих
-  директориях. Handles two-dot `.tar.gz`.
+- Dynamic `ValidArgsFunction` for `report show/view`,
+  `export report/snap`, `import snap/report`. Recursive listing via
+  `intreport.RecursiveListReports`; for snap commands — by
+  `snap.LoadManifest`; for import — files with extensions
+  `.zip/.pdf/.md/.json` or `.tar.gz/.tgz` in the matching
+  directories. Handles two-dot `.tar.gz`.
 
 ### Added — interactive mode (TTY-guard)
 
-- `report show/view`, `export report/snap`, `import snap/report`
-  теперь принимают `cobra.MaximumNArgs(1)`. Если argument отсутствует,
-  stdin — TTY и `--non-interactive` не установлен, пользователю
-  показывается survey-prompt со списком кандидатов. В
-  non-interactive режиме и без TTY — явная ошибка с подсказкой
-  «pass as argument or run interactively».
+- `report show/view`, `export report/snap`, `import snap/report` now
+  accept `cobra.MaximumNArgs(1)`. If an argument is missing, stdin
+  is a TTY and `--non-interactive` is not set, the user is shown a
+  survey-prompt with candidate listing. In non-interactive mode
+  without TTY — explicit error with hint "pass as argument or run
+  interactively".
 
 ### Added — warnings suppression + TLS
 
-- **`ui.suppress_warnings: []`** (list of keys) — подавление отдельных
-  не-критичных предупреждений. Ключи:
-  - `tls_insecure` — баннер при `insecure=true` или `tls.insecure=true`,
-  - `deprecation` — зарезервирован,
-  - `flat_layout` — подсказка при обнаружении плоского layout.
-- **`--show-warnings`** CLI-флаг (`show_warnings` viper key) —
-  временный override, показывает все варнинги независимо от конфига.
-- **`tls.insecure`** — новый config-ключ. Старый top-level `insecure`
-  и флаг `--insecure` сохранены для обратной совместимости;
-  включающий источник побеждает.
-- **`tls.ca_bundle: "/path/to/ca.pem"`** — корпоративный CA. Путь
-  читается, парсится `x509.NewCertPool` + `AppendCertsFromPEM`,
-  подставляется в `tls.Config.RootCAs`. Предпочтительная альтернатива
-  `insecure=true`. `client.WithCABundle(path)` — публичная опция.
-- При первом показе каждого варнинга добавляется one-time tip:
-  «add '<key>' to ui.suppress_warnings to silence this warning».
-- Флаг «показывали про flat layout» теперь персистентный —
-  `~/.gotr/state.json::flat_layout_warned`. Показывается один раз за
-  инсталляцию.
+- **`ui.suppress_warnings: []`** (list of keys) — silences individual
+  non-critical warnings. Keys:
+  - `tls_insecure` — banner shown when `insecure=true` or
+    `tls.insecure=true`,
+  - `deprecation` — reserved,
+  - `flat_layout` — hint shown when a flat layout is detected.
+- **`--show-warnings`** CLI flag (`show_warnings` viper key) —
+  temporary override that displays all warnings regardless of config.
+- **`tls.insecure`** — new config key. The legacy top-level
+  `insecure` and `--insecure` flag are kept for backward
+  compatibility; whichever source enables it wins.
+- **`tls.ca_bundle: "/path/to/ca.pem"`** — corporate CA. The path is
+  read, parsed through `x509.NewCertPool` + `AppendCertsFromPEM`,
+  and injected into `tls.Config.RootCAs`. Preferred alternative to
+  `insecure=true`. `client.WithCABundle(path)` is the public option.
+- A one-time tip is appended on the first display of each warning:
+  "add '<key>' to ui.suppress_warnings to silence this warning".
+- The "shown the flat layout hint" flag is now persistent —
+  `~/.gotr/state.json::flat_layout_warned`. Shown once per
+  installation.
 
-### Added — retention/cleanup конфиг
+### Added — retention/cleanup configuration
 
 ```yaml
 retention:
   reports:
-    enabled: false          # по умолчанию ВЫКЛЮЧЕНО (безопасно)
+    enabled: false          # OFF by default (safe)
     max_age_days: 90
     max_count: 500
     keep_categories: [coverage]
@@ -126,82 +128,86 @@ retention:
     max_age_days: 30
 ```
 
-- Отсутствие секции `retention` не является ошибкой: дефолты
-  подставляются автоматически.
-- `keep_categories` — whitelist: такие категории никогда не
-  удаляются retention-политикой (важно для coverage-артефактов).
+- A missing `retention` block is not an error: defaults are filled
+  in automatically.
+- `keep_categories` — whitelist: such categories are never removed
+  by the retention policy (important for coverage artifacts).
 
 ### Changed
 
-- **`internal/paths`**: введены `ExportsSnapsDirPath`,
-  `ExportsReportsDirPath`, `ExportsAPIDirPath` + Ensure\*-варианты.
-  Writers перенаправлены: `internal/snapbundle.DefaultExportPath`,
+- **`internal/paths`**: added `ExportsSnapsDirPath`,
+  `ExportsReportsDirPath`, `ExportsAPIDirPath` plus Ensure\*
+  variants. Writers redirected: `internal/snapbundle.DefaultExportPath`,
   `internal/reportbundle.ExportSingle`/`ExportAll`,
-  `internal/output.GetExportsDir(resource)` теперь пишут в
-  подкатегории `exports/`.
-- **`cmd/report/list`**: `--filter` применяется по basename (glob)
-  ИЛИ по substring в relative path; листинг — рекурсивный.
-- **`cmd/report/show`**: `openWithOS` использует `exec.Cmd.Run()`
-  вместо `Start()`, так что нулевой exit OS-лаунчера
-  (`xdg-open`/`open`/`rundll32`) пропагируется как ошибка CLI.
-- **`cmd/root.PersistentPreRunE`**: warnings registry инициализируется
-  до любого другого вывода; баннер `tls_insecure` теперь идёт через
-  `warnings.Emitf` и, соответственно, уважает `suppress_warnings`.
-  Прямая `fmt.Fprintln(os.Stderr, "WARNING: TLS...")` из
-  `internal/client` удалена.
+  `internal/output.GetExportsDir(resource)` now write into the
+  `exports/` subcategories.
+- **`cmd/report/list`**: `--filter` is applied by basename (glob)
+  OR by substring within the relative path; listing is recursive.
+- **`cmd/report/show`**: `openWithOS` uses `exec.Cmd.Run()` instead
+  of `Start()`, so a non-zero exit from the OS launcher
+  (`xdg-open`/`open`/`rundll32`) is propagated as a CLI error.
+- **`cmd/root.PersistentPreRunE`**: warnings registry is initialised
+  before any other output; the `tls_insecure` banner now flows
+  through `warnings.Emitf` and respects `suppress_warnings`. Direct
+  `fmt.Fprintln(os.Stderr, "WARNING: TLS...")` from
+  `internal/client` removed.
 
 ### Fixed
 
-- Снятие false-positive при первом показе flat-layout подсказки, если
-  пользователь уже мигрировал иерархию и удалил `state.json` вручную:
-  `warnings.Emitf` дополнительно блокирует повторный вывод в рамках
-  одного процесса через in-memory `shownHint` map.
+- Removed false-positive on the first display of the flat-layout
+  hint when the user has already migrated the hierarchy and removed
+  `state.json` manually: `warnings.Emitf` additionally blocks
+  re-display within the same process via an in-memory `shownHint`
+  map.
 
 ### Migration notes (v3.2 → v3.3)
 
-1. **Reports layout.** При первом запуске любой команды `report list/show`
-   будет показано однократное предупреждение о «плоском» layout, если
-   в `~/.gotr/reports/` обнаружены файлы в корне. Рекомендуется:
+1. **Reports layout.** On the first invocation of any `report
+   list/show` command a one-time warning is shown about the "flat"
+   layout if files are detected at the root of `~/.gotr/reports/`.
+   Recommended:
    ```bash
-   gotr report organize --dry-run   # посмотреть план
-   gotr report organize             # выполнить миграцию
+   gotr report organize --dry-run   # preview the plan
+   gotr report organize             # perform the migration
    ```
-   Команда не удаляет ничего: при коллизии оригинал остаётся в корне,
-   счётчик `skipped` увеличивается. После успеха `INDEX.md` регенерируется.
-2. **Exports layout.** Аналогично:
+   The command does not delete anything: on collision the original
+   stays at the root and the `skipped` counter is incremented. After
+   success `INDEX.md` is regenerated.
+2. **Exports layout.** Likewise:
    ```bash
    gotr export organize --dry-run
    gotr export organize
    ```
-   Классификатор перемещает `*.tar.gz|*.tgz` → `exports/snaps/`,
-   `*.zip|*.pdf|*.md|*.json` → `exports/reports/`, директории ресурсов
-   (plans/, reports/, runs/…) — в `exports/api/`.
-3. **Insecure TLS.** Старый `insecure: true` и `--insecure` продолжают
-   работать без изменений. Рекомендуется миграция:
+   The classifier moves `*.tar.gz|*.tgz` → `exports/snaps/`,
+   `*.zip|*.pdf|*.md|*.json` → `exports/reports/`, resource
+   directories (plans/, reports/, runs/…) — into `exports/api/`.
+3. **Insecure TLS.** Legacy `insecure: true` and `--insecure` keep
+   working unchanged. Recommended migration:
    ```yaml
    tls:
      insecure: false
      ca_bundle: "/etc/ssl/corp-ca.pem"
    ```
-4. **Подавление предупреждений.** Было: глобальное `no_warnings: true`
-   (в плане). Финальное решение — per-key list:
+4. **Warnings suppression.** Was: global `no_warnings: true` (in
+   plan). Final design — per-key list:
    ```yaml
    ui:
      suppress_warnings: [tls_insecure, flat_layout]
    ```
-   Флаг `--show-warnings` показывает все варнинги независимо от списка.
-5. **Retention.** По умолчанию выключен, никакие старые артефакты не
-   удаляются автоматически. Для миграции на новую политику — явно
-   задать `retention.*.enabled: true` и прогнать `gotr cleanup all
-   --dry-run` перед боевым запуском.
+   The `--show-warnings` flag shows all warnings regardless of the
+   list.
+5. **Retention.** OFF by default; no legacy artifacts are removed
+   automatically. To migrate to the new policy explicitly set
+   `retention.*.enabled: true` and run `gotr cleanup all --dry-run`
+   before the production run.
 
 ### Internal
 
-- Новые пакеты: `internal/warnings` (registry), `internal/state`
-  (persistent JSON store), `internal/exportsorg` (migrator), 
+- New packages: `internal/warnings` (registry), `internal/state`
+  (persistent JSON store), `internal/exportsorg` (migrator),
   `internal/retention` (policy + executor).
-- E2E-тесты жизненного цикла: `internal/report/e2e_lifecycle_test.go`
-  (flat→hierarchy, 6 категорий, идемпотентность),
+- Lifecycle E2E tests: `internal/report/e2e_lifecycle_test.go`
+  (flat→hierarchy, 6 categories, idempotency),
   `internal/snapbundle/e2e_reports_test.go` (organize → export
   --with-reports → import round-trip).
 
@@ -238,7 +244,7 @@ retention:
 
 ### Fixed — migration engine (3.2.0 follow-up)
 
-- **Coverage-gate no longer false-negatives on name-resolved sections.**
+- **Coverage gate no longer false-negatives on name-resolved sections.**
   `internal/service/migration/import.go`:
   `resolveSectionMapByName` now registers every `src→dst` pair it resolves by
   section name into `m.mapping` (`AddPair(src, dst, "existing")`). Previously
@@ -269,93 +275,101 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ## [3.2.0] - 2026-04-23
 
-Полный багфикс миграции TestRail: устраняет скрытое расхождение 717/1684,
-которое было вызвано ошибочным «молчаливым» поведением фильтрации
-и парентинга секций в движке миграции.
+Full TestRail migration bugfix release: eliminates the hidden 717/1684
+discrepancy caused by erroneous "silent" filtering and section
+re-parenting behaviour in the migration engine.
 
 ### Fixed — migration engine
 
-- **Multiset-matching по `(dst_section_id, compare_field)`.**
-  До 3.2.0 фильтр воспринимал одинаковое значение `title` внутри одной
-  `section_id` как «уже есть в target» и пропускал source-кейсы с тем же
-  заголовком, даже если в target этого кейса не было (или был в другом
-  scope). Новая реализация (`internal/service/migration/match.go`,
-  `filter.go`) использует мультимножество с FIFO-поглощением: каждый
-  source-кейс потребляет ровно один target-кейс по совпадающему ключу.
-- **Резолвинг dst-scope стал строгим.** `resolveDstSectionIDForFilter`
-  больше не «схлопывает» несмапленные секции в target root — для неразрешимого
-  `section_id` выдаётся отрицательный sentinel `-srcSectionID`,
-  гарантирующий, что такие source-кейсы не будут ошибочно сматчены
-  с кейсами чужих секций.
-- **Отказ от silent-root-fallback при импорте секций.**
-  `ImportSections`: секция с несмапленным `parent_id` теперь отклоняется
-  с ошибкой и учитывается в `failedImports`, вместо того чтобы молча
-  перепарентиться в root (это и была корневая причина потери 717 кейсов
-  при миграции `p30/S20069 → p34/S19859`).
-- **`FailedCount()` отражает реальные отказы импорта.**
-  `ImportCases`, `ImportCasesReport`, `ImportSections`, `ImportSuites`,
-  `ImportSharedSteps` теперь инкрементируют `failedImports` при каждой
-  ошибке API или отказе от импорта. `max(len(errs), FailedCount())`
-  в отчётах sync-команд теперь корректно превращает «717 missing»
-  из невидимых «skipped» в явные `errors`/`failed`.
+- **Multiset matching by `(dst_section_id, compare_field)`.** Before
+  3.2.0 the filter treated equal `title` values within a single
+  `section_id` as "already in target" and skipped source cases with
+  the same title even when the target did not actually contain such
+  a case (or had it in a different scope). The new implementation
+  (`internal/service/migration/match.go`, `filter.go`) uses a
+  multiset with FIFO consumption: each source case consumes exactly
+  one target case by matching key.
+- **Strict dst-scope resolution.** `resolveDstSectionIDForFilter` no
+  longer "collapses" unmapped sections to target root — for an
+  unresolvable `section_id` it returns the negative sentinel
+  `-srcSectionID`, guaranteeing that such source cases are never
+  mismatched with cases of foreign sections.
+- **No more silent root fallback during section import.**
+  `ImportSections`: a section with an unmapped `parent_id` is now
+  rejected with an error and counted in `failedImports`, instead of
+  being silently re-parented under root (this was the root cause of
+  the 717-case loss during the `p30/S20069 → p34/S19859` migration).
+- **`FailedCount()` reflects real import failures.** `ImportCases`,
+  `ImportCasesReport`, `ImportSections`, `ImportSuites`,
+  `ImportSharedSteps` now increment `failedImports` on every API
+  error or import refusal. The `max(len(errs), FailedCount())`
+  convention in sync command reports correctly turns "717 missing"
+  from invisible "skipped" into explicit `errors`/`failed`.
 
 ### Added — compare pipeline
 
-- **`--suite1` / `--suite2` (persistent).** На `gotr compare *`
-  можно зафиксировать отдельный suite для каждого проекта
-  (`0 = all suites`, как раньше). На мульти-suite целях сравнение
-  больше не будет молча идти через разные scope.
-- **`--match-field` (persistent, shared).** Новый унифицированный
-  флаг поля сравнения — имеет приоритет над `--field`, применяется
-  единообразно во всех `compare` подкомандах.
-- **`filterSuitesByID`**: для неизвестного suite-id возвращается пустой
-  scope (а не fallback на все suites проекта) — отказ от silent-fallback
-  на уровне сравнения.
+- **`--suite1` / `--suite2` (persistent).** On `gotr compare *` a
+  separate suite can be pinned for each project (`0 = all suites`,
+  same as before). On multi-suite targets the comparison no longer
+  silently traverses different scopes.
+- **`--match-field` (persistent, shared).** New unified compare
+  field flag — takes precedence over `--field`, applied uniformly
+  across all `compare` subcommands.
+- **`filterSuitesByID`**: returns an empty scope for an unknown
+  suite-id (instead of falling back to all project suites) — no
+  silent fallback at the comparison level.
 
 ### Added — sync safety gate
 
-- **`--verify-coverage` (opt-in, default `false`)** на `sync cases` и
-  `sync full`. После импорта повторно фетчит target и проверяет, что
-  каждый source-кейс имеет совпадение по multiset-ключу; при пробеле
-  выходит с ошибкой `coverage gap: ...` (non-zero exit code) и лог-строками
-  `  - [id] "title" (src_section=X, dst_section=Y)` (до 50 штук).
-  Этот гейт — прямой защитник от повторения бага 717/1684 в будущем.
-- **`Migration.VerifyCasesCoverage`** (`internal/service/migration/coverage.go`):
-  автономный API-метод, который используется внутри `runCoverageGate`
-  и может быть вызван из пользовательского кода.
+- **`--verify-coverage` (opt-in, default `false`)** on `sync cases`
+  and `sync full`. After import re-fetches the target and asserts
+  that every source case has a multiset-key match; on a gap exits
+  with `coverage gap: ...` (non-zero exit code) and log lines
+  `  - [id] "title" (src_section=X, dst_section=Y)` (up to 50). This
+  gate is a direct guardian against the 717/1684 regression
+  recurring in the future.
+- **`Migration.VerifyCasesCoverage`**
+  (`internal/service/migration/coverage.go`): a standalone API
+  method consumed inside `runCoverageGate` and callable from user
+  code.
 
 ### Added — interactive UX
 
 - **`SelectMatchField`** (`internal/interactive/match_field.go`):
-  новый TTY-guarded промпт выбора поля сравнения для `compare`/`sync`
-  с нормализацией (`MatchFieldCases`, `MatchFieldSections`,
+  new TTY-guarded prompt to pick the compare field for `compare`/
+  `sync` with normalisation (`MatchFieldCases`, `MatchFieldSections`,
   `MatchFieldSuites`, `MatchFieldSharedSteps`).
 
 ### Changed
 
-- Рефакторинг `cmd/compare/cases.go`: вынесены `resolveCompareField` и
-  `applySuiteScope` хелперы — снижение цикломатической сложности
-  `newCasesCmd` и `compareCasesInternal`.
-- `internal/service/migration/filter.go`: tag-less `switch` в резолвере
-  `dstParentID` заменён на `if/else` (staticcheck QF1002).
+- Refactor `cmd/compare/cases.go`: extracted `resolveCompareField`
+  and `applySuiteScope` helpers — reduces cyclomatic complexity of
+  `newCasesCmd` and `compareCasesInternal`.
+- `internal/service/migration/filter.go`: tag-less `switch` in the
+  `dstParentID` resolver replaced with `if/else` (staticcheck
+  QF1002).
 
 ### Tests
 
-- Новые регрессионные тесты (`internal/service/migration/import_test.go`,
-  `cmd/sync/sync_helpers_coverage_test.go`, `cmd/sync/sync_flags_test.go`)
-  фиксируют контракт:
-  - source-кейс с неразрешимым `SectionID` → `FailedCount++`, `AddCase`
-    не вызывается.
-  - source-секция с несмапленным `ParentID` → отклонение, учёт отказа.
-  - ошибка `AddCase` одновременно в `[]errs` и `FailedCount`.
-  - `--verify-coverage` по умолчанию `false`, гейт-no-op без флага.
-  - пробой покрытия возвращает ошибку с подстрокой `"coverage gap"`
-    (стабильный контракт для CI/grep).
+- New regression tests
+  (`internal/service/migration/import_test.go`,
+  `cmd/sync/sync_helpers_coverage_test.go`,
+  `cmd/sync/sync_flags_test.go`) lock the contract:
+  - source case with unresolvable `SectionID` → `FailedCount++`,
+    `AddCase` not called.
+  - source section with unmapped `ParentID` → rejected, failure
+    counted.
+  - `AddCase` error appears both in `[]errs` and `FailedCount`.
+  - `--verify-coverage` defaults to `false`, gate is no-op without
+    the flag.
+  - coverage breach returns an error containing the substring
+    `"coverage gap"` (stable contract for CI/grep).
 
 ### Docs
 
-- Обновлён `README.md` / `README_ru.md`: новые флаги и coverage-gate.
-- Обновлены `docs/{en,ru}/guides/commands/{compare,sync}.md`.
+- Updated `README.md` / `README_ru.md`: new flags and the coverage
+  gate.
+- Updated `docs/{en,ru}/guides/commands/{compare,sync}.md`.
 
 ---
 
@@ -493,42 +507,42 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 #### Stage 6.8: Concurrency Unification & Compare Subcommands
 
-- **`internal/concurrency/`** — новый unified concurrency-пакет (переименован из `internal/parallel/`)
-  - Три уровня стратегий:
-    - `FetchParallel[T]` — лёгкая: один API-вызов на проект, параллельная загрузка P1+P2
-    - `FetchParallelBySuite[T]` — средняя: per-suite запросы (для `sections`)
-    - `FetchParallelPaginated` — тяжёлая: `ParallelController` с пагинацией (для `cases`)
-  - Generic API через Go generics `[T any]`
+- **`internal/concurrency/`** — new unified concurrency package (renamed from `internal/parallel/`)
+  - Three strategy tiers:
+    - `FetchParallel[T]` — light: one API call per project, parallel loading of P1+P2
+    - `FetchParallelBySuite[T]` — medium: per-suite requests (for `sections`)
+    - `FetchParallelPaginated` — heavy: `ParallelController` with pagination (for `cases`)
+  - Generic API via Go generics `[T any]`
 
-- **`pkg/reporter/`** — универсальный reporter вынесен в публичный пакет (из `internal/ui/reporter/`)
+- **`pkg/reporter/`** — universal reporter extracted into a public package (from `internal/ui/reporter/`)
   - Builder pattern: `Section` / `Stat` / `StatIf` / `StatFmt` / `Print`
-  - go-pretty/v6 для выровненного boxed-вывода
+  - go-pretty/v6 for aligned, boxed output
 
-- **Generic `newSimpleCompareCmd`** — одна generic-фабрика вместо 9 идентичных файлов (`cmd/compare/simple.go`)
-  - Устранено ~1200 строк копипасты
-  - Все простые подкоманды используют `FetchParallel[T]` для параллельной загрузки проектов
+- **Generic `newSimpleCompareCmd`** — single generic factory replacing 9 identical files (`cmd/compare/simple.go`)
+  - Eliminated ~1200 lines of copy-paste
+  - All simple subcommands use `FetchParallel[T]` for parallel project loading
 
-- **`compare sections`** — параллельная загрузка секций по сьютам через `FetchParallelBySuite[T]`
+- **`compare sections`** — parallel section loading per suite via `FetchParallelBySuite[T]`
 
-- **`compare all`** — единообразный вывод через `pkg/reporter`, partial results при недоступных API
+- **`compare all`** — uniform output via `pkg/reporter`, partial results when an API is unavailable
 
 ### Changed
 
-- `internal/parallel/` → `internal/concurrency/` (переименование пакета и всех импортов)
-- `internal/ui/reporter/` → `pkg/reporter/` (вынесен в публичный пакет)
-- Все 13 compare-подкоманд используют `pkg/reporter` для вывода статистики
-- `OnSuiteComplete` → `OnItemComplete` в интерфейсе `ProgressReporter`
-- Дефолтные значения: `parallel-suites=10`, `parallel-pages=6` (стабильные для TestRail Server)
+- `internal/parallel/` → `internal/concurrency/` (package rename and all imports)
+- `internal/ui/reporter/` → `pkg/reporter/` (extracted into a public package)
+- All 13 compare subcommands use `pkg/reporter` for stat output
+- `OnSuiteComplete` → `OnItemComplete` in the `ProgressReporter` interface
+- Default values: `parallel-suites=10`, `parallel-pages=6` (stable for TestRail Server)
 
 ### Fixed
 
-- `compare all` более не использует `fmt.Println` с emoji и box-drawing символами
-- Устранено некорректное выравнивание статистики в терминалах без поддержки emoji
+- `compare all` no longer uses `fmt.Println` with emoji and box-drawing characters
+- Fixed misaligned statistics in terminals without emoji support
 
 ### Performance
 
-- Простые compare-подкоманды (runs, plans, milestones и др.): загрузка P1 и P2 **параллельно**
-- `compare sections`: параллельная загрузка по сьютам вместо последовательной
+- Simple compare subcommands (runs, plans, milestones, etc.): P1 and P2 loaded **in parallel**
+- `compare sections`: per-suite parallel loading instead of sequential
 
 ---
 
@@ -536,44 +550,44 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-- **`internal/client/paginator.go`** — универсальный generic-пагинатор `fetchAllPages[T]`
-  - Обрабатывает оба формата TestRail API без ветвлений в бизнес-логике:
+- **`internal/client/paginator.go`** — universal generic paginator `fetchAllPages[T]`
+  - Handles both TestRail API formats without branches in business logic:
     - **Paginated wrapper** (TestRail 6.7+): `{"offset":0,"limit":250,"size":N,"<key>":[...]}`
-    - **Flat array** (старые TestRail Server): `[item1, item2, ...]`
-  - Автоматическое определение формата по первому байту ответа
-  - Стандартный размер страницы: 250 элементов (TestRail default)
-  - Выход по условию: `len(page) < limit` (последняя страница)
+    - **Flat array** (legacy TestRail Server): `[item1, item2, ...]`
+  - Auto-detects format by the first response byte
+  - Standard page size: 250 items (TestRail default)
+  - Exit condition: `len(page) < limit` (last page)
 
-- **Миграция 9 критичных list-методов** на `fetchAllPages[T]`:
-  - `GetRuns(projectID)` — runs теперь не обрезаются на 250
-  - `GetPlans(projectID)` — планы теперь не обрезаются на 250
-  - `GetSections(projectID, suiteID)` — секции (критично для `compare sections`)
+- **Migration of 9 critical list methods** to `fetchAllPages[T]`:
+  - `GetRuns(projectID)` — runs no longer truncated at 250
+  - `GetPlans(projectID)` — plans no longer truncated at 250
+  - `GetSections(projectID, suiteID)` — sections (critical for `compare sections`)
   - `GetSharedSteps(projectID)` — shared steps
   - `GetMilestones(projectID)` — milestones
-  - `GetResults(runID)` — результаты рана
-  - `GetResultsForRun(runID)` — расширенный вариант
-  - `GetTests(runID)` — тесты рана
-  - `GetSuites(projectID)` — сьюты проекта
+  - `GetResults(runID)` — run results
+  - `GetResultsForRun(runID)` — extended variant
+  - `GetTests(runID)` — run tests
+  - `GetSuites(projectID)` — project suites
 
 ### Changed
 
-- Все 9 мигрированных методов: тело метода упрощено с ~30 строк ручного цикла до 1 вызова `fetchAllPages`
-- Удалено ~145 строк дублированного pagination boilerplate из `internal/client/`
+- All 9 migrated methods: method body simplified from ~30 lines of manual loop to a single `fetchAllPages` call
+- Removed ~145 lines of duplicated pagination boilerplate from `internal/client/`
 
 ### Tests
 
-- `internal/client/paginator_test.go` — 11 новых unit-тестов:
-  - Оба формата ответа (paginated wrapper и flat array)
-  - Многостраничная загрузка (multi-page accumulation)
-  - Граничные случаи: пустой ответ, последняя неполная страница
-  - Тест на ошибку сервера (HTTP 500)
-  - Table-driven tests для `decodeListResponse`
+- `internal/client/paginator_test.go` — 11 new unit tests:
+  - Both response formats (paginated wrapper and flat array)
+  - Multi-page accumulation
+  - Edge cases: empty response, last partial page
+  - Server error test (HTTP 500)
+  - Table-driven tests for `decodeListResponse`
 
 ### Verified
 
-- `compare all --pid1 30 --pid2 34`: 20 509 кейсов (87 стр.) + 116 009 кейсов (475 стр.) — пагинация подтверждена на реальных данных
-- `compare runs`, `compare plans`, `compare milestones`, `compare sections`, `compare sharedsteps`: все работают корректно
-- `go test ./...` — все тесты зелёные
+- `compare all --pid1 30 --pid2 34`: 20 509 cases (87 pages) + 116 009 cases (475 pages) — pagination confirmed against real data
+- `compare runs`, `compare plans`, `compare milestones`, `compare sections`, `compare sharedsteps`: all working correctly
+- `go test ./...` — all tests green
 
 ---
 
@@ -581,15 +595,15 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-- **`context.Context`** во все ~100 методов `ClientInterface`
-  - `signal.NotifyContext` → корректное завершение по Ctrl+C
-  - Контекст пробрасывается CLI → Service → Client → HTTP
+- **`context.Context`** propagated to all ~100 methods of `ClientInterface`
+  - `signal.NotifyContext` → graceful shutdown on Ctrl+C
+  - Context flows CLI → Service → Client → HTTP
 
 ### Changed
 
-- Все API-методы принимают `ctx context.Context` первым аргументом
-- `cmd.ExecuteContext()` вместо `cmd.Execute()`
-- `MockClient` обновлён под новые сигнатуры
+- All API methods accept `ctx context.Context` as the first argument
+- `cmd.ExecuteContext()` instead of `cmd.Execute()`
+- `MockClient` updated to match the new signatures
 
 ---
 
@@ -597,19 +611,19 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-- **`internal/ui/`** — универсальные хелперы:
-  - `ui.Table(headers, rows)` — обёртка над go-pretty вместо tabwriter
-  - `ui.JSON(v)` — форматированный JSON-вывод
-  - `ui.Success()`, `ui.Warn()`, `ui.Error()`, `ui.Info()` — цветные сообщения
-  - `ui.Print()`, `ui.Printf()`, `ui.Println()` — обёртки стандартного вывода
-- **`--format` PersistentFlag** — глобальный флаг формата вывода на root-уровне
-- Массовая миграция: `tabwriter` → `ui.Table`, `json.MarshalIndent` → `ui.JSON`, `fmt.Print*` → `ui.*` (49 файлов)
+- **`internal/ui/`** — universal helpers:
+  - `ui.Table(headers, rows)` — go-pretty wrapper replacing tabwriter
+  - `ui.JSON(v)` — formatted JSON output
+  - `ui.Success()`, `ui.Warn()`, `ui.Error()`, `ui.Info()` — coloured messages
+  - `ui.Print()`, `ui.Printf()`, `ui.Println()` — stdout wrappers
+- **`--format` PersistentFlag** — global output format flag at the root level
+- Mass migration: `tabwriter` → `ui.Table`, `json.MarshalIndent` → `ui.JSON`, `fmt.Print*` → `ui.*` (49 files)
 
 ### Changed
 
 - `internal/flags/`: `*Var` → `GetFlag`, `ValidateRequiredID`
-- `os.Exit` → `panic` в `GetClient*` (тестируемость)
-- Все error messages переведены на английский
+- `os.Exit` → `panic` in `GetClient*` (testability)
+- All error messages translated to English
 
 ---
 
@@ -631,31 +645,31 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
   - Multiple simultaneous progress bars on separate lines
   - Real-time updates for parallel project loading
   - ETA, speed, and percentage decorators
-  
+
 - **Parallel API Requests**: 60-80% performance improvement
   - Worker pool pattern for concurrent requests
   - Rate limiting (180 req/min — TestRail maximum)
   - Parallel fetching for cases, suites, shared steps
   - Integrated with progress monitoring
-  - **Page-level progress**: GetCasesWithProgress updates after each 250 cases page
-  
+  - **Page-level progress**: GetCasesWithProgress updates after each 250-case page
+
 - **Compare Cases Command**: Full comparison with parallel loading
   - Two-phase progress: spinner → progress bars
-  - Parallel loading of both projects simultaneously  
+  - Parallel loading of both projects simultaneously
   - Project-level statistics (suites count, cases count, duration)
   - Analysis phase with timing
   - Debug mode support via `--debug` flag
-  
+
 - **Response Caching**: Disk-based cache with TTL
   - Cache location: `~/.gotr/cache/`
   - TTL: Projects 1h, Cases 15min, Suites 30min
   - `--no-cache` flag to bypass
-  
+
 - **Retry Logic**: Exponential backoff for resilience
   - Automatic retry on transient failures
   - Circuit breaker pattern
   - `--timeout` flag (default: 5min)
-  
+
 - **Batch Operations**: Optimized for large projects
   - Batch fetching (250 items per request)
   - Streaming output for large datasets
@@ -739,18 +753,18 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 #### Build System Improvements
 
-- **Автоматическая синхронизация версии в Makefile:**
-  - Команда `make build` теперь извлекает версию из `cmd/root.go` (единый источник правды)
-  - Для релизных версий (без `-dev`) автоматически создаётся/проверяется git tag
-  - Приоритет версии: 1) `make build VERSION=x`, 2) версия из кода, 3) git tag
-  - Нормализация тега: поддержка `VERSION=v2.7.0` и `VERSION=2.7.0`
+- **Automatic version sync in Makefile:**
+  - `make build` now extracts the version from `cmd/root.go` (single source of truth)
+  - For release versions (no `-dev` suffix) a git tag is auto-created/verified
+  - Version priority: 1) `make build VERSION=x`, 2) version from code, 3) git tag
+  - Tag normalisation: supports both `VERSION=v2.7.0` and `VERSION=2.7.0`
 
 #### Stage 4: Complete API Coverage (106/106 endpoints)
 
 - **Attachments API** — 5 endpoints:
   - `AddAttachmentToCase`, `AddAttachmentToPlan`, `AddAttachmentToPlanEntry`
   - `AddAttachmentToResult`, `AddAttachmentToRun`
-  - Поддержка multipart/form-data для загрузки файлов
+  - multipart/form-data support for file uploads
 - **Configurations API** — 7 endpoints:
   - `GetConfigs`, `AddConfigGroup`, `AddConfig`
   - `UpdateConfigGroup`, `UpdateConfig`, `DeleteConfigGroup`, `DeleteConfig`
@@ -769,33 +783,33 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
   - BDDs: `GetBDD`, `AddBDD`
   - Labels: `UpdateTestLabels`, `UpdateTestsLabels`
 
-**Всего реализовано:** 44 новых endpoint'а  
-**Общее покрытие:** 106/106 endpoint'ов TestRail API (100%)
+**Total implemented:** 44 new endpoints
+**Overall coverage:** 106/106 TestRail API endpoints (100%)
 
 ### Added
 
-#### Dry-run режим
+#### Dry-run mode
 
-- **Флаг** `--dry-run` — единый флаг для всех команд, изменяющих состояние:
+- **Flag** `--dry-run` — single flag for all state-mutating commands:
   - `add` — project, suite, section, case, run, result, shared-step
   - `update` — project, suite, section, case, run, shared-step
   - `delete` — project, suite, section, case, run, shared-step
   - `run create/update/close/delete`
   - `result add/add-case/add-bulk`
-- **Пакет** `cmd/common/dryrun/` — централизованное форматирование вывода dry-run
+- **Package** `cmd/common/dryrun/` — centralised formatting for dry-run output
 
-#### Интерактивный wizard mode
+#### Interactive wizard mode
 
-- **Флаг** `--interactive/-i` — интерактивный режим для команд:
+- **Flag** `--interactive/-i` — interactive mode for commands:
   - `add` — project, suite, case, run
   - `update` — project, suite, case
-- **Пакет** `cmd/common/wizard/` — библиотека интерактивных prompt'ов на survey/v2
-- Паттерн: ввод → предпросмотр → подтверждение/отмена
+- **Package** `cmd/common/wizard/` — library of interactive prompts on survey/v2
+- Pattern: input → preview → confirm/cancel
 
 ### Changed
 
-- **Флаг** `-i` теперь используется для `--interactive` (вместо `--insecure`)
-- **Флаг** `--insecure` — только длинная форма (без shorthand)
+- **Flag** `-i` is now used for `--interactive` (instead of `--insecure`)
+- **Flag** `--insecure` — long form only (no shorthand)
 
 ---
 
@@ -803,46 +817,46 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-#### Интерактивный режим
+#### Interactive mode
 
-- **Команда** `gotr run list` — интерактивный выбор проекта при отсутствии аргументов
-- **Команда** `gotr result list` — интерактивный выбор проекта → test run
-- **Пакет** `internal/interactive/` — единый механизм интерактивного выбора
+- **Command** `gotr run list` — interactive project picker when no arguments are given
+- **Command** `gotr result list` — interactive picker: project → test run
+- **Package** `internal/interactive/` — unified interactive selection mechanism
 
-#### Client Interface + Mock (Архитектурное улучшение)
+#### Client Interface + Mock (architectural improvement)
 
-- **Пакет** `internal/client/interfaces.go` — полный композитный интерфейс:
-  - `ProjectsAPI` — 5 методов
-  - `CasesAPI` — 14 методов
-  - `SuitesAPI` — 5 методов
-  - `SectionsAPI` — 5 методов
-  - `SharedStepsAPI` — 6 методов
-  - `RunsAPI` — 6 методов
-  - `ResultsAPI` — 7 методов
-- **Пакет** `internal/client/mock.go` — полный `MockClient` (43 метода)
-- Проверка компиляции: `var _ ClientInterface = (*HTTPClient)(nil)`
+- **Package** `internal/client/interfaces.go` — full composite interface:
+  - `ProjectsAPI` — 5 methods
+  - `CasesAPI` — 14 methods
+  - `SuitesAPI` — 5 methods
+  - `SectionsAPI` — 5 methods
+  - `SharedStepsAPI` — 6 methods
+  - `RunsAPI` — 6 methods
+  - `ResultsAPI` — 7 methods
+- **Package** `internal/client/mock.go` — full `MockClient` (43 methods)
+- Compile-time check: `var _ ClientInterface = (*HTTPClient)(nil)`
 
-#### Общие утилиты (Рефакторинг)
+#### Shared utilities (refactor)
 
-- **Пакет** `cmd/common/client.go` — `ClientAccessor` для единого доступа к HTTP клиенту
-- **Пакет** `cmd/common/flags.go` — общие функции парсинга флагов
-- Рефакторинг `cmd/result/`, `cmd/run/`, `cmd/sync/` — использование `common.ClientAccessor`
-- Удалено дублирование `getClientSafe` из 3 пакетов
+- **Package** `cmd/common/client.go` — `ClientAccessor` for unified access to the HTTP client
+- **Package** `cmd/common/flags.go` — shared flag-parsing helpers
+- Refactor of `cmd/result/`, `cmd/run/`, `cmd/sync/` — uses `common.ClientAccessor`
+- Removed `getClientSafe` duplication across 3 packages
 
 ### Fixed
 
-#### Унификация интерфейсов миграции
+#### Migration interface unification
 
-- **Удалён дублирующий пакет** `internal/migration` (оставлен `internal/service/migration`)
-- **Унифицирован интерфейс** — `internal/service/migration` теперь использует `client.ClientInterface`
-- **Обновлён `MockClient`** — дефолтные возвращаемые значения предотвращают nil pointer dereference
-- **Рефакторинг sync тестов** — все 10 тестов переписаны с использованием `client.MockClient`
-- Убраны пропуски тестов (`t.Skip`) — все тесты проходят
+- **Removed duplicate package** `internal/migration` (kept `internal/service/migration`)
+- **Unified interface** — `internal/service/migration` now uses `client.ClientInterface`
+- **Updated `MockClient`** — default return values prevent nil pointer dereference
+- **Refactored sync tests** — all 10 tests rewritten using `client.MockClient`
+- Removed test skips (`t.Skip`) — every test now passes
 
 ### Changed
 
-- **README.md** — реструктурировано описание, acknowledgements перенесены в конец
-- Версия обновлена до `2.5.0`
+- **README.md** — restructured description, acknowledgements moved to the end
+- Version bumped to `2.5.0`
 
 ---
 
@@ -850,79 +864,79 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-#### Results API (Полная реализация)
+#### Results API (full implementation)
 
-- **Новый client** `internal/client/results.go` с методами:
-  - `AddResult` — добавление результата для теста
-  - `AddResultForCase` — добавление результата для кейса в run
-  - `AddResults` — массовое добавление результатов (bulk)
-  - `AddResultsForCases` — массовое добавление для кейсов (bulk)
-  - `GetResults` — получение результатов для теста
-  - `GetResultsForRun` — получение всех результатов run
-  - `GetResultsForCase` — получение результатов для кейса в run
+- **New client** `internal/client/results.go` with methods:
+  - `AddResult` — add a result for a test
+  - `AddResultForCase` — add a result for a case in a run
+  - `AddResults` — bulk add results
+  - `AddResultsForCases` — bulk add for cases
+  - `GetResults` — fetch results for a test
+  - `GetResultsForRun` — fetch all results for a run
+  - `GetResultsForCase` — fetch results for a case in a run
 
-#### Runs API (Полная реализация)
+#### Runs API (full implementation)
 
-- **Новый client** `internal/client/runs.go` с методами:
-  - `GetRun` — получение информации о run
-  - `GetRuns` — список runs проекта
-  - `AddRun` — создание нового run
-  - `UpdateRun` — обновление существующего run
-  - `CloseRun` — закрытие run
-  - `DeleteRun` — удаление run
+- **New client** `internal/client/runs.go` with methods:
+  - `GetRun` — fetch run info
+  - `GetRuns` — list project runs
+  - `AddRun` — create a new run
+  - `UpdateRun` — update an existing run
+  - `CloseRun` — close a run
+  - `DeleteRun` — delete a run
 
-#### CLI команды для Results
+#### CLI commands for Results
 
-- **Новый пакет** `cmd/result/` с командами:
-  - `gotr result get <test-id>` — получить результаты
-  - `gotr result get-case <run-id> <case-id>` — получить результаты для кейса
-  - `gotr result add <test-id>` — добавить результат
-  - `gotr result add-case <run-id>` — добавить результат для кейса
-  - `gotr result add-bulk <run-id>` — массовое добавление из JSON-файла
+- **New package** `cmd/result/` with commands:
+  - `gotr result get <test-id>` — get results
+  - `gotr result get-case <run-id> <case-id>` — get results for a case
+  - `gotr result add <test-id>` — add a result
+  - `gotr result add-case <run-id>` — add a result for a case
+  - `gotr result add-bulk <run-id>` — bulk add from a JSON file
 
-#### CLI команды для Runs
+#### CLI commands for Runs
 
-- **Новый пакет** `cmd/run/` с командами:
-  - `gotr run get <run-id>` — получить информацию о run
-  - `gotr run list <project-id>` — список runs проекта
-  - `gotr run create <project-id>` — создать run
-  - `gotr run update <run-id>` — обновить run
-  - `gotr run close <run-id>` — закрыть run
-  - `gotr run delete <run-id>` — удалить run
+- **New package** `cmd/run/` with commands:
+  - `gotr run get <run-id>` — fetch run info
+  - `gotr run list <project-id>` — list project runs
+  - `gotr run create <project-id>` — create a run
+  - `gotr run update <run-id>` — update a run
+  - `gotr run close <run-id>` — close a run
+  - `gotr run delete <run-id>` — delete a run
 
-#### Service Layer (Архитектурное улучшение)
+#### Service Layer (architectural improvement)
 
-- **Новый пакет** `internal/service/`:
-  - `RunService` — бизнес-логика для runs с валидацией
-  - `ResultService` — бизнес-логика для results с валидацией
-  - `internal/service/migration/` — перенесён из `internal/migration/`
-- **Валидация** в сервисах:
-  - Проверка ID > 0
-  - Проверка обязательных полей (name, suite_id, status_id)
-  - Валидация bulk-запросов (непустые массивы)
-- **Утилиты** в `internal/utils/helpers.go`:
-  - `ParseID` — парсинг ID
-  - `OutputResult` — вывод результата (JSON + сохранение в файл)
-  - `PrintSuccess` — вывод сообщений
-  - `SaveToFile` — сохранение данных в JSON-файл
+- **New package** `internal/service/`:
+  - `RunService` — business logic for runs with validation
+  - `ResultService` — business logic for results with validation
+  - `internal/service/migration/` — migrated from `internal/migration/`
+- **Validation** in services:
+  - ID > 0 checks
+  - Required fields (name, suite_id, status_id)
+  - Bulk request validation (non-empty arrays)
+- **Utilities** in `internal/utils/helpers.go`:
+  - `ParseID` — parse an ID
+  - `OutputResult` — output result (JSON + save to file)
+  - `PrintSuccess` — output messages
+  - `SaveToFile` — save data to a JSON file
 
-#### Архитектурная документация
+#### Architecture documentation
 
-- **Системная документация** `.github/copilot/instructions/`:
-  - Полное описание 4 слоёв архитектуры
-  - Таблицы разделения ответственности
-  - Полный перечень компонентов (22 команды, 3 сервиса, 40+ API методов)
-  - Примеры рефакторинга
-- **Пользовательская документация** `docs/architecture/overview.md` (243 строки):
-  - Упрощённое описание архитектуры
-  - Примеры потоков данных
-  - Полный список команд
+- **System docs** in `.github/copilot/instructions/`:
+  - Full description of the 4 architectural layers
+  - Responsibility split tables
+  - Component inventory (22 commands, 3 services, 40+ API methods)
+  - Refactoring examples
+- **User docs** in `docs/architecture/overview.md` (243 lines):
+  - Simplified architecture description
+  - Data-flow examples
+  - Full command list
 
-#### Тесты
+#### Tests
 
-- **Тесты для Service Layer**:
-  - `internal/service/run_test.go` — 6 тестов для валидации RunService
-  - `internal/service/result_test.go` — 9 тестов для валидации ResultService
+- **Service Layer tests**:
+  - `internal/service/run_test.go` — 6 tests for RunService validation
+  - `internal/service/result_test.go` — 9 tests for ResultService validation
 
 ---
 
@@ -930,28 +944,28 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-#### Модели для Results и Runs API
+#### Models for Results and Runs API
 
-- **Новые модели данных** в `internal/models/data/`:
-  - `results.go` — модели `Result`, `AddResultRequest`, `AddResultsRequest`, `AddResultsForCasesRequest`
-  - `runs.go` — модели `Run`, `AddRunRequest`, `UpdateRunRequest`, `CloseRunRequest`
-  - `tests.go` — модели `Test`, `UpdateTestRequest`
-  - `statuses.go` — модель `Status` с константами статусов
-- Подготовка к реализации Results и Runs API
+- **New data models** in `internal/models/data/`:
+  - `results.go` — `Result`, `AddResultRequest`, `AddResultsRequest`, `AddResultsForCasesRequest`
+  - `runs.go` — `Run`, `AddRunRequest`, `UpdateRunRequest`, `CloseRunRequest`
+  - `tests.go` — `Test`, `UpdateTestRequest`
+  - `statuses.go` — `Status` plus status constants
+- Preparation for the Results and Runs API implementation
 
-#### Исправления по результатам аудита
+#### Audit-driven fixes
 
-- **Обновлены request-структуры** в `cases.go`:
-  - `AddCaseRequest` — добавлены поля `custom_steps` и `custom_expected` (текстовый формат)
-  - `UpdateCaseRequest` — добавлены поля `type_id`, `suite_id`, `section_id`, `template_id` для перемещения кейсов
-- **Исправлена модель `Section`** — добавлены `omitempty` к необязательным полям
-- **Удалён дубликат метода** `AddCaseRequest` из `internal/client/cases.go`
-- **Исправлен метод `GetSections`** — `suite_id` теперь передаётся как query-параметр
+- **Updated request structures** in `cases.go`:
+  - `AddCaseRequest` — added `custom_steps` and `custom_expected` (text format)
+  - `UpdateCaseRequest` — added `type_id`, `suite_id`, `section_id`, `template_id` for case relocation
+- **Fixed `Section` model** — `omitempty` added to optional fields
+- **Removed duplicate** `AddCaseRequest` method from `internal/client/cases.go`
+- **Fixed `GetSections`** — `suite_id` is now passed as a query parameter
 
-#### Системные изменения
+#### System changes
 
-- Системные файлы разработки вынесены в служебные инструкции `.github/copilot/instructions/`
-- Внедрено осознанное версионирование (Semantic Versioning)
+- Development system files moved to internal instructions in `.github/copilot/instructions/`
+- Adopted explicit Semantic Versioning
 
 ---
 
@@ -959,51 +973,51 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-#### Интерактивный режим
+#### Interactive mode
 
-- **Интерактивный выбор** для всех команд `get` и `sync`:
-  - `gotr get cases` — интерактивный выбор проекта и сьюта
-  - `gotr get suites` — интерактивный выбор проекта
-  - `gotr get sharedsteps` — интерактивный выбор проекта
-  - `gotr sync cases` — интерактивный выбор source/destination проектов и сьютов
-  - `gotr sync shared-steps` — интерактивный выбор проектов
-  - `gotr sync sections` — интерактивный выбор проектов и сьютов
-  - `gotr sync full` — интерактивный выбор для полной миграции
-- **Автоматический выбор**: если в проекте один сьют — используется автоматически
-- **Флаг `--all-suites`** для `gotr get cases` — получение кейсов из всех сьютов проекта
+- **Interactive selection** for all `get` and `sync` commands:
+  - `gotr get cases` — interactive project + suite picker
+  - `gotr get suites` — interactive project picker
+  - `gotr get sharedsteps` — interactive project picker
+  - `gotr sync cases` — interactive source/destination project + suite pickers
+  - `gotr sync shared-steps` — interactive project pickers
+  - `gotr sync sections` — interactive project + suite pickers
+  - `gotr sync full` — interactive selection for full migration
+- **Auto-selection**: if a project has only one suite — it is used automatically
+- **`--all-suites` flag** for `gotr get cases` — fetch cases from all project suites
 
-#### Реструктуризация кода
+#### Code restructure
 
-- Новая структура пакета `cmd/`:
-  - `cmd/get/` — отдельный пакет для GET-команд
-  - `cmd/sync/` — отдельный пакет для SYNC-команд
-  - `cmd/commands.go` — централизованная регистрация всех команд
-  - `cmd/interactive.go` — общие функции интерактивного выбора
-- Dependency injection для избежания циклических зависимостей между пакетами
+- New `cmd/` package layout:
+  - `cmd/get/` — dedicated package for GET commands
+  - `cmd/sync/` — dedicated package for SYNC commands
+  - `cmd/commands.go` — centralised command registration
+  - `cmd/interactive.go` — shared interactive selection helpers
+- Dependency injection to avoid circular dependencies between packages
 
-#### Документация
+#### Documentation
 
-- Создана директория `docs/` с подробной документацией:
-  - `guides/installation.md` — установка
-  - `guides/configuration.md` — конфигурация
-  - `guides/commands/get.md` — команды получения данных
-  - `guides/commands/sync.md` — команды синхронизации
-  - `guides/interactive-mode.md` — интерактивный режим
-  - `guides/commands/other.md` — другие команды
+- Created the `docs/` directory with detailed documentation:
+  - `guides/installation.md` — installation
+  - `guides/configuration.md` — configuration
+  - `guides/commands/get.md` — data-retrieval commands
+  - `guides/commands/sync.md` — synchronisation commands
+  - `guides/interactive-mode.md` — interactive mode
+  - `guides/commands/other.md` — other commands
 
 ### Changed
 
-- Улучшена работа с `suite-id` в `gotr get cases`:
-  - Убрано жёсткое требование флага `--suite-id`
-  - Интерактивный выбор при отсутствии флага
-  - Понятное сообщение об ошибке от API при отсутствии suite_id для multiple suites
-- Обновлены `Long` описания всех sync-команд с описанием интерактивного режима
-- Регистрация флагов перенесена из `init()` функций в `cmd/sync/sync.go`
+- Improved `suite-id` handling in `gotr get cases`:
+  - Removed the hard requirement of `--suite-id`
+  - Interactive picker when the flag is absent
+  - Clear API error message when suite_id is missing on multi-suite projects
+- Updated `Long` descriptions of all sync commands with interactive-mode notes
+- Flag registration moved out of `init()` functions into `cmd/sync/sync.go`
 
 ### Fixed
 
-- Исправлено дублирование флагов в `sync` командах
-- Убраны неиспользуемые переменные в тестах
+- Removed flag duplication in `sync` commands
+- Removed unused variables in tests
 
 ---
 
@@ -1011,20 +1025,20 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Added
 
-- `gotr sync suites` — новая команда синхронизации suites: Fetch → Filter → Import.
-- `gotr sync sections` — новая команда синхронизации sections.
-- Общий хелпер `addSyncFlags()` для унификации флагов команд `sync/*`.
-- Unit-тесты для `sync suites` и `sync sections`.
+- `gotr sync suites` — new suites synchronisation command: Fetch → Filter → Import.
+- `gotr sync sections` — new sections synchronisation command.
+- Shared helper `addSyncFlags()` to unify flags across `sync/*` commands.
+- Unit tests for `sync suites` and `sync sections`.
 
 ### Changed
 
-- Команды `sync/*` переведены на единый поток миграции (internal/migration) и теперь используют централизованную логику Fetch → Filter → Import.
-- Улучшены `Long` описания команд и добавлены русские комментарии-«Шаги» в коде команд для удобства русскоязычных пользователей.
+- `sync/*` commands moved onto a unified migration flow (`internal/migration`) and now share the centralised Fetch → Filter → Import logic.
+- Improved `Long` command descriptions and added Russian "Steps" comments inside command code for the convenience of Russian-speaking users.
 
 ### Testing
 
-- В тестах используется отдельная папка логов: `.testrail/logs/test_runs`.
-- Введён тестовый seam `sync_helpers.go` (переменная `newMigration`) для инъекции мок-миграций в тестах.
+- Tests use a separate logs folder: `.testrail/logs/test_runs`.
+- Introduced a test seam `sync_helpers.go` (variable `newMigration`) to inject mock migrations in tests.
 
 ---
 
@@ -1032,39 +1046,39 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Breaking Changes
 
-- Полная переработка команды `get`: переход на подкоманды вместо универсального подхода.
-  - Теперь `gotr get <resource>` с подкомандами: `cases`, `case`, `projects`, `project`, `sharedsteps`, `sharedstep`, `sharedstep-history`, `suites`, `suite`.
-  - Убраны старые универсальные вызовы (например, `gotr get get_cases 30`).
-- Все ID теперь строго типизированы как `int64` в методах клиента и структурах (было string в некоторых местах).
-- `get_cases` теперь требует `suite_id` (обязательно для проектов в режиме multiple suites).
-- Изменена структура ответов для некоторых эндпоинтов (например, `GetProjectsResponse`, `GetSharedStepsResponse` стали срезами вместо объектов с полем).
+- Full rework of the `get` command: switched to subcommands instead of a universal approach.
+  - Now `gotr get <resource>` with subcommands: `cases`, `case`, `projects`, `project`, `sharedsteps`, `sharedstep`, `sharedstep-history`, `suites`, `suite`.
+  - Removed the legacy universal calls (e.g. `gotr get get_cases 30`).
+- All IDs are now strictly typed as `int64` in client methods and structs (some places previously used `string`).
+- `get_cases` now requires `suite_id` (mandatory for projects in multiple-suites mode).
+- Response shape changed for some endpoints (e.g. `GetProjectsResponse`, `GetSharedStepsResponse` are now slices instead of objects with a wrapping field).
 
 ### Added
 
-- Новые подкоманды в группе `get`:
-  - `gotr get case <case-id>` — получить один кейс по ID кейса.
-  - `gotr get case-history <case-id>` — получить историю изменений кейса.
-  - `gotr get sharedstep <step-id>` — получить один shared step по ID шага.
-  - `gotr get sharedstep-history <step-id>` — получить историю изменений shared step.
-  - `gotr get suites` — получить список тест-сюит проекта.
-  - `gotr get suite <suite-id>` — получить одну тест-сюиту по ID.
-- Поддержка **позиционных аргументов** для ID проекта в `cases`, `sharedsteps`, `suites`.
-- Явные и информативные подсказки в `Short` и `Long` для всех подкоманд.
-- Проверка обязательных параметров в `RunE` с понятными сообщениями об ошибках.
-- Методы клиента для suites: `GetSuites`, `GetSuite`, `AddSuite`, `UpdateSuite`, `DeleteSuite`.
+- New subcommands in the `get` group:
+  - `gotr get case <case-id>` — fetch a single case by ID.
+  - `gotr get case-history <case-id>` — fetch case change history.
+  - `gotr get sharedstep <step-id>` — fetch a single shared step by ID.
+  - `gotr get sharedstep-history <step-id>` — fetch shared-step change history.
+  - `gotr get suites` — fetch project test-suite list.
+  - `gotr get suite <suite-id>` — fetch a single test suite by ID.
+- Support for **positional arguments** for project ID in `cases`, `sharedsteps`, `suites`.
+- Explicit and informative `Short`/`Long` hints for all subcommands.
+- Required-parameter checks in `RunE` with clear error messages.
+- Suites client methods: `GetSuites`, `GetSuite`, `AddSuite`, `UpdateSuite`, `DeleteSuite`.
 
 ### Changed
 
-- Улучшена обработка ошибок в клиенте: проверка StatusCode перед декодированием, информативные сообщения.
-- Все ответы на список (projects, cases, shared steps, suites) возвращают срез напрямую (массив), а не объект с полем.
-- Убраны лишние обёртки в структурах ответов (GetProjectResponse → Project, GetCaseResponse → Case и т.д.).
-- Подсказки в `help` теперь максимально понятные: указывают, какой ID нужен и где его взять.
+- Improved error handling in the client: StatusCode checked before decoding, informative messages.
+- All list responses (projects, cases, shared steps, suites) return a slice directly (an array) instead of an object with a wrapping field.
+- Removed redundant wrappers in response structs (GetProjectResponse → Project, GetCaseResponse → Case, etc.).
+- `help` hints made as clear as possible: indicate the required ID and where to obtain it.
 
 ### Fixed
 
-- Исправлено декодирование массивов из API (projects, shared steps, cases).
-- Исправлена проблема с `MarkFlagRequired` — теперь позиционные аргументы работают без конфликта с обязательными флагами.
-- Исправлено поле `is_deleted` в Case (теперь int, так как API возвращает 0/1).
+- Fixed array decoding from the API (projects, shared steps, cases).
+- Fixed `MarkFlagRequired` issue — positional arguments now work without conflicting with required flags.
+- Fixed `is_deleted` field on Case (now int because API returns 0/1).
 
 ---
 
@@ -1072,41 +1086,40 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
 
 ### Breaking Changes
 
-- Изменён префикс переменных окружения с `GOTR_` на `TESTRAIL_` для лучшей совместимости с экосистемой TestRail (например, `TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`).
-- Убраны старые ключи в конфиге и Viper (`testrail_base_url`, `testrail_username` и т.д.) — теперь используются `base_url`, `username`, `api_key`.
+- Changed environment variable prefix from `GOTR_` to `TESTRAIL_` for better compatibility with the TestRail ecosystem (e.g. `TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`).
+- Removed legacy keys in config and Viper (`testrail_base_url`, `testrail_username`, etc.) — now only `base_url`, `username`, `api_key` are used.
 
 ### Added
 
-- Поддержка конфигурационного файла `~/.gotr/config/default.yaml` с автоматическим чтением (Viper).
-- Новые подкоманды в группе `config`:
-  - `gotr config init` — создание дефолтного конфига с комментариями.
-  - `gotr config path` — показ пути к конфигу.
-  - `gotr config view` — вывод содержимого конфига.
-  - `gotr config edit` — открытие конфига в редакторе по умолчанию (`$EDITOR`).
-- Автодополнение для bash (через `gotr completion bash`).
-- Отключение обязательных проверок для служебных команд (`config`, `completion`).
-- Условный вывод сообщений (без "Using config file" для чистоты stdout).
-- Поддержка `insecure` в конфиге (для пропуска TLS-проверки).
+- Configuration file `~/.gotr/config/default.yaml` with automatic reading (Viper).
+- New subcommands in the `config` group:
+  - `gotr config init` — create a default config with comments.
+  - `gotr config path` — print the config path.
+  - `gotr config view` — print config contents.
+  - `gotr config edit` — open the config in the default editor (`$EDITOR`).
+- Bash completion (via `gotr completion bash`).
+- Disabled mandatory checks for utility commands (`config`, `completion`).
+- Conditional message output (no "Using config file" line for clean stdout).
+- `insecure` support in the config (skip TLS verification).
 
 ### Changed
 
-- Унифицированы ключи Viper: `base_url`, `username`, `api_key` (без `testrail_`).
-- Улучшена обработка env-переменных с префиксом `TESTRAIL_`.
+- Unified Viper keys: `base_url`, `username`, `api_key` (no `testrail_` prefix).
+- Improved env-variable handling with the `TESTRAIL_` prefix.
 
 ### Fixed
 
-- Убрано дублирование сообщений "Using config file".
-- Исправлено автодополнение (без мусора из файлов и вывода).
+- Removed duplicated "Using config file" messages.
+- Fixed completion (no garbage from files or output).
 
 ### Removed
 
-- Старые env-переменные с префиксом `GOTR_`.
+- Legacy env variables with the `GOTR_` prefix.
 
 ---
 
-## [1.0.0] - 2025-12-19 (предыдущий релиз)
+## [1.0.0] - 2025-12-19 (previous release)
 
-- Базовая версия с командами `list`, `get`, `add` и т.д.
-- Поддержка TestRail API v2 через HTTP-клиент.
-- Глобальные флаги `--url`, `--username`, `--api-key`.
-
+- Base version with `list`, `get`, `add`, etc. commands.
+- TestRail API v2 support via an HTTP client.
+- Global flags `--url`, `--username`, `--api-key`.

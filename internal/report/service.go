@@ -24,7 +24,14 @@ func NewService(reportsDir string) *Service {
 	}
 }
 
-// Save saves a migration report to disk
+// Save saves a migration report to disk.
+//
+// Since v3.3.0 reports are written under a categorized hierarchy:
+//
+//	<reportsDir>/<category>/<label|default>/<YYYY-MM>/<filename>
+//
+// The category and year-month are derived from the filename; the label is
+// taken from report.Label (falling back to "default" when empty).
 func (s *Service) Save(ctx context.Context, report *MigrationReport) (string, error) {
 	// Ensure reports directory exists
 	if err := os.MkdirAll(s.reportsDir, 0o755); err != nil {
@@ -39,7 +46,13 @@ func (s *Service) Save(ctx context.Context, report *MigrationReport) (string, er
 		report.Timestamp.Format("20060102T150405Z"),
 		sanitizeSnapshotID(report.SnapshotID),
 	)
-	reportPath := filepath.Join(s.reportsDir, filename)
+
+	cls := ClassifyReportWithLabel(filename, report.Label)
+	dir := filepath.Join(s.reportsDir, cls.RelDir())
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("failed to create report subdir: %w", err)
+	}
+	reportPath := filepath.Join(dir, filename)
 
 	// Write report file
 	if err := os.WriteFile(reportPath, []byte(md), 0o644); err != nil {
@@ -162,41 +175,10 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 	return sb.String()
 }
 
-// updateIndex updates the report index file
-func (s *Service) updateIndex(ctx context.Context) error {
-	// List all migration reports
-	entries, err := os.ReadDir(s.reportsDir)
-	if err != nil {
-		return err
-	}
-
-	var reports []string
-	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasPrefix(entry.Name(), "migration-") && strings.HasSuffix(entry.Name(), ".md") {
-			reports = append(reports, entry.Name())
-		}
-	}
-
-	// Sort in reverse chronological order
-	sort.Sort(sort.Reverse(sort.StringSlice(reports)))
-
-	// Generate index content
-	var sb strings.Builder
-	sb.WriteString("# Migration Reports Index\n\n")
-	sb.WriteString("Recent migration reports (newest first):\n\n")
-
-	for i, report := range reports {
-		if i >= 50 { // Limit to last 50 in index
-			break
-		}
-		// Extract timestamp from filename for display
-		timestamp := strings.TrimPrefix(strings.TrimSuffix(report, ".md"), "migration-")
-		fmt.Fprintf(&sb, "- [%s](%s)\n", timestamp, report)
-	}
-
-	// Write index file
-	indexPath := filepath.Join(s.reportsDir, "INDEX.md")
-	return os.WriteFile(indexPath, []byte(sb.String()), 0o644)
+// updateIndex updates the report index file. It delegates to Reindex, which
+// walks the categorized hierarchy recursively.
+func (s *Service) updateIndex(_ context.Context) error {
+	return Reindex(s.reportsDir)
 }
 
 // GetReportsDir returns the reports directory path

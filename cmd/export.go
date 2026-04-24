@@ -83,7 +83,7 @@ Examples:
 		}
 
 		if saveFlag {
-			// Save via output.Output to ~/.gotr/exports/export/
+			// Save via output.Output to ~/.gotr/exports/api/export/
 			filepath, err := output.Output(cmd, data, "export", "json")
 			if err != nil {
 				return fmt.Errorf("save error: %w", err)

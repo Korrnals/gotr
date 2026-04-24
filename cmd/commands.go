@@ -7,7 +7,9 @@ import (
 
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/bdds"
+	bundlecmd "github.com/Korrnals/gotr/cmd/bundlecmd"
 	"github.com/Korrnals/gotr/cmd/cases"
+	"github.com/Korrnals/gotr/cmd/cleanup"
 	"github.com/Korrnals/gotr/cmd/compare"
 	"github.com/Korrnals/gotr/cmd/configurations"
 	"github.com/Korrnals/gotr/cmd/datasets"
@@ -62,6 +64,7 @@ func init() {
 	milestones.Register(rootCmd, GetClient)
 	plans.Register(rootCmd, GetClient)
 	reportcmd.Register(rootCmd)
+	cleanup.Register(rootCmd)
 	reports.Register(rootCmd, GetClient)
 	run.Register(rootCmd, GetClientFromCtx)
 	result.Register(rootCmd, GetClientFromCtx)
@@ -73,6 +76,10 @@ func init() {
 	tests.Register(rootCmd, GetClient)
 	users.Register(rootCmd, GetClient)
 	variables.Register(rootCmd, GetClient)
+
+	// Snapshot / report bundle export+import (hangs `snap`, `report` subcommands
+	// under `gotr export` and registers a new top-level `gotr import`).
+	bundlecmd.Register(rootCmd, exportCmd, Version)
 }
 
 // must terminates the process if err is non-nil. Used for init-time bindings
@@ -103,6 +110,9 @@ func initGlobalFlags() {
 	// Non-interactive mode (CI/CD, scripting)
 	rootCmd.PersistentFlags().Bool("non-interactive", false, "Disable interactive prompts; fail if input required")
 
+	// Show-all-warnings override (takes precedence over ui.suppress_warnings)
+	rootCmd.PersistentFlags().Bool("show-warnings", false, "Show all warnings ignoring ui.suppress_warnings")
+
 	// Global output format
 	rootCmd.PersistentFlags().StringP("format", "f", "table", "Output format: table, json, csv, md, html")
 
@@ -112,6 +122,7 @@ func initGlobalFlags() {
 	must(viper.BindPFlag("api_key", rootCmd.PersistentFlags().Lookup("api-key")))
 	must(viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")))
 	must(viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")))
+	must(viper.BindPFlag("show_warnings", rootCmd.PersistentFlags().Lookup("show-warnings")))
 
 	// HTTP timeout (default 30s matches the built-in default in client.go)
 	rootCmd.PersistentFlags().Duration("http-timeout", 30*time.Second, "HTTP request timeout (e.g. 60s, 2m)")
@@ -199,7 +210,7 @@ func registerExportCmd() {
 	exportCmd.Flags().String("milestone-id", "", "Milestone ID (for get_runs)")
 
 	// Save response to ~/.gotr/exports/
-	exportCmd.Flags().Bool("save", false, "Save response to ~/.gotr/exports/export/")
+	exportCmd.Flags().Bool("save", false, "Save response to ~/.gotr/exports/api/export/")
 
 	// Shell completion
 	exportCmd.ValidArgsFunction = func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {

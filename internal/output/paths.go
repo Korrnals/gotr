@@ -7,14 +7,14 @@ import (
 )
 
 // GetExportsDir returns the exports directory path for a given resource.
-// Pattern: ~/.gotr/exports/{resource}/
+// Pattern: ~/.gotr/exports/api/{resource}/ (v3.3.0 layout).
 func GetExportsDir(resource string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("error getting user home directory: %w", err)
 	}
 
-	return filepath.Join(homeDir, ".gotr", "exports", resource), nil
+	return filepath.Join(homeDir, ".gotr", "exports", "api", resource), nil
 }
 
 // EnsureDir ensures that the given directory exists, creating it if necessary.

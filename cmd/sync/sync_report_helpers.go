@@ -3,10 +3,12 @@ package sync
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/paths"
 	intreport "github.com/Korrnals/gotr/internal/report"
+	"github.com/Korrnals/gotr/internal/report/pdf"
 	"github.com/Korrnals/gotr/internal/service/migration"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -45,6 +47,7 @@ func saveMigrationReport(ctx context.Context, cmd *cobra.Command, migrationType 
 	}
 
 	reportObj := intreport.NewMigrationReport(snapshotID, srcProject, dstProject, migrationType, user)
+	reportObj.Label = resolveSnapLabel(hook)
 	for _, s := range stats {
 		reportObj.AddResourceStats(s.Resource, s.Source, s.Created, s.Updated, s.Skipped, s.Failed)
 	}
@@ -74,7 +77,24 @@ func saveMigrationReport(ctx context.Context, cmd *cobra.Command, migrationType 
 	}
 
 	ui.Infof(os.Stdout, "Migration report saved: %s", reportPath)
+	maybeRenderPDF(cmd, reportObj, reportPath)
+
 	return reportPath
+}
+
+// maybeRenderPDF writes a PDF counterpart of the migration report when the
+// --pdf-report flag is set on the command. Failures are logged but not fatal.
+func maybeRenderPDF(cmd *cobra.Command, reportObj *intreport.MigrationReport, reportPath string) {
+	wantPDF, _ := cmd.Flags().GetBool("pdf-report")
+	if !wantPDF {
+		return
+	}
+	pdfPath := strings.TrimSuffix(reportPath, ".md") + ".pdf"
+	if err := pdf.NewGenerator().Save(reportObj, pdfPath); err != nil {
+		ui.Warningf(os.Stderr, "report: render PDF failed: %v", err)
+		return
+	}
+	ui.Infof(os.Stdout, "Migration report (PDF) saved: %s", pdfPath)
 }
 
 func toCount(v int) int64 {
@@ -82,6 +102,16 @@ func toCount(v int) int64 {
 		return 0
 	}
 	return int64(v)
+}
+
+// resolveSnapLabel extracts the snapshot label (if any) from an active hook.
+// It returns "" when no label is available so callers can fall back to the
+// "default" bucket in the report hierarchy.
+func resolveSnapLabel(hook *snap.Hook) string {
+	if hook == nil || !hook.Enabled || hook.Snap == nil || hook.Snap.Meta == nil {
+		return ""
+	}
+	return hook.Snap.Meta.Label
 }
 
 func filterStatsToReport(resource string, s migration.FilterStats, created, failed int64) reportResourceStats {

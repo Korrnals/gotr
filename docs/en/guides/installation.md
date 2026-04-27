@@ -17,5 +17,69 @@ Language: [Русский](../../ru/guides/installation.md) | English
   - [Reports](../reports/index.md)
 - [Home](../../../README.md)
 
-The complete content for this page is currently maintained in Russian.
-Use the language switch above to open the full version.
+## Quick install (Linux/macOS)
+
+```bash
+# Unix
+curl -s -L https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr && chmod +x gotr && sudo mv gotr /usr/local/bin/
+```
+
+> **Note:** for Windows download the .exe manually from [Releases](https://github.com/Korrnals/gotr/releases).
+
+## Build from source
+
+### Requirements
+
+- Go 1.21+
+- (Optional) UPX for compression
+
+### Option 1: Simple build
+
+```bash
+git clone https://github.com/Korrnals/gotr.git
+cd gotr
+go build -ldflags="-s -w" -o gotr
+sudo mv gotr /usr/local/bin/
+```
+
+### Option 2: Via Makefile (recommended)
+
+```bash
+git clone https://github.com/Korrnals/gotr.git
+cd gotr
+
+# Build and install
+make install
+
+# Other targets:
+make build          # build only
+make test           # run tests
+make compress       # UPX compression
+make build-compressed  # build + compress
+make clean          # cleanup
+make release        # build for all platforms
+```
+
+### Build with a version
+
+```bash
+# Without a tag — version "dev"
+make build
+# gotr version → dev
+
+# With a tag
+git tag v2.0.0
+make build
+# gotr version → v2.0.0
+```
+
+## Verify installation
+
+```bash
+gotr --help
+gotr version
+```
+
+---
+
+← [Guides](index.md) · [Documentation](../index.md)

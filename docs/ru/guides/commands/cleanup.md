@@ -1,4 +1,4 @@
-# Команда: cleanup (v3.3.0+)
+# Команда: cleanup
 
 Language: Русский | [English](../../../en/guides/commands/cleanup.md)
 

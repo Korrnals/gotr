@@ -2,5 +2,123 @@
 
 Language: [Русский](../../../ru/guides/instructions/retention-and-cleanup-runbook.md) | English
 
-The complete content for this page is currently maintained in Russian.
-Use the language switch above to open the full version.
+## Navigation
+
+- [Documentation](../../index.md)
+  - [Guides](../index.md)
+    - [Instructions](index.md)
+      - [Retention & cleanup runbook](retention-and-cleanup-runbook.md)
+  - [Architecture](../../architecture/index.md)
+  - [Operations](../../operations/index.md)
+  - [Reports](../../reports/index.md)
+- [Home](../../../../README.md)
+
+Step-by-step scenarios for configuring and applying retention policies
+in v3.3.0. By default retention is disabled — nothing is deleted
+automatically.
+
+## Prerequisites
+
+- v3.3.0+, the reports/exports hierarchy is already migrated to the new
+  layout (see [Reports lifecycle](reports-lifecycle.md), case A).
+
+## Case A: Base config with coverage protection
+
+**Scenario:** keep the last 500 reports, no older than 90 days; never
+touch coverage artefacts.
+
+```yaml
+# ~/.gotr/config/default.yaml
+retention:
+  reports:
+    enabled: true
+    max_age_days: 90
+    max_count: 500
+    keep_categories: [coverage]
+    dry_run: false
+  exports:
+    enabled: true
+    max_age_days: 30
+  snaps:
+    enabled: true
+    max_age_days: 180
+    max_count: 100
+```
+
+```bash
+# Always — dry-run first
+gotr cleanup all --dry-run
+
+# Real run
+gotr cleanup all
+```
+
+## Case B: Reports only, leaving snap/exports alone
+
+```bash
+gotr cleanup reports --dry-run
+gotr cleanup reports
+```
+
+`keep_categories: [coverage, migrations]` will also protect migration
+reports.
+
+## Case C: Temporarily disable retention in an emergency
+
+```yaml
+retention:
+  reports:
+    enabled: false
+```
+
+`gotr cleanup reports` will explicitly exit with a message
+"retention for reports disabled" and exit code 0.
+
+## Case D: CI — throttle local storage after migration
+
+```bash
+# In a CI script after a guaranteed successful migration
+gotr cleanup reports --dry-run > cleanup-plan.txt
+# Manual review of the artefact; if it looks good, the next run drops --dry-run
+```
+
+The CLI `--dry-run` flag takes precedence over `retention.*.dry_run` in
+the YAML.
+
+## Case E: "snap gc only" via the unified CLI
+
+Historically there was `gotr snap gc`. In v3.3 `gotr cleanup snaps` is a
+compatible wrapper that reads `retention.snaps`. The legacy path still
+works:
+
+```bash
+gotr snap gc                   # as before
+gotr cleanup snaps             # via retention.snaps
+```
+
+## Success criteria
+
+- `INDEX.md` is updated after `cleanup reports`.
+- Files in `keep_categories` did not shrink.
+- `~/.gotr/exports/snaps/` contains only files newer than
+  `max_age_days` or within `max_count`.
+- `gotr cleanup all --dry-run` returns exit 0 and a plan on stdout.
+
+## Important warnings
+
+> **Always dry-run.** The very first run of a new policy must be
+> **only** with `--dry-run`. Retention looks at mtime, not logical age;
+> a freshly imported old archive can unexpectedly fall into the
+> deletion plan under `max_age_days`.
+
+> **`keep_categories` applies only to `reports`.** For `snaps` and
+> `exports` use `max_count` / `max_age_days` or keep them disabled.
+
+## See also
+
+- [gotr cleanup](../commands/cleanup.md).
+- [Configuration → Retention](../configuration.md).
+
+---
+
+← [Instructions](index.md) · [Documentation](../../index.md)

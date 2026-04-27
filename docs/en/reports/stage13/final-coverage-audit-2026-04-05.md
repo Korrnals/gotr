@@ -34,3 +34,20 @@ Language: [Русский](../../../ru/reports/stage13/final-coverage-audit-2026
       - [Layer 2 Wave](layer2-coverage-wave.md)
       - [TODO](todo.md)
 - [Home](../../../../README.md)
+
+## Status
+
+This document is an internal release/audit report. It is maintained
+**in Russian only**. The English documentation tree intentionally does
+not duplicate retrospective reports.
+
+## Read the full report
+
+Please open the Russian original via the language switch above, or
+follow the direct link:
+
+- [Russian original](../../../ru/reports/stage13/final-coverage-audit-2026-04-05.md)
+
+---
+
+← [Reports](../index.md) · [Documentation](../../index.md)

@@ -67,8 +67,8 @@ Language: Русский | [English](../../../en/guides/commands/index.md)
 - [completion](completion.md) — генерация shell completion для bash/zsh/fish/powershell.
 - [self-test](self-test.md) — быстрая проверка окружения и доступности API.
 - [snap](snap.md) — управление снапшотами и откат мутаций.
-- [report](report.md) — локальные отчёты `gotr` (list/show/organize) (v3.3.0+).
-- [cleanup](cleanup.md) — retention/cleanup для `~/.gotr/` (v3.3.0+).
+- [report](report.md) — локальные отчёты `gotr` (list/show/organize).
+- [cleanup](cleanup.md) — retention/cleanup для `~/.gotr/`.
 
 ### CRUD операции
 

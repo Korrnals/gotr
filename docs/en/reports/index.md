@@ -25,6 +25,12 @@ Language: [Русский](../../ru/reports/index.md) | English
 
 ## Contents
 
+> **Note.** Internal release/audit reports are maintained **in Russian
+> only**. The English pages in this section contain navigation and
+> direct links to the Russian originals. To read the full reports, use
+> the language switch on each page or open the Russian tree directly:
+> [docs/ru/reports/](../../ru/reports/index.md).
+
 ### Stage 13 — Final Phase
 
 Comprehensive quality assessment and release readiness.

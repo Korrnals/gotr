@@ -27,6 +27,12 @@ Language: [Русский](../../../ru/reports/history/index.md) | English
 
 ## Contents
 
+> **Note.** Historical reports below are maintained **in Russian
+> only**. The English entries listed here are navigation stubs that
+> link to the Russian originals. Open
+> [docs/ru/reports/history/](../../../ru/reports/history/index.md)
+> for the full set.
+
 ### Historical Reports
 
 Timeline of decisions, development waves, and final audits.

@@ -15,7 +15,7 @@ type RepairAction struct {
 	Reason string
 }
 
-// RepairResult summarises the outcome of a manifest repair pass.
+// RepairResult summarizes the outcome of a manifest repair pass.
 type RepairResult struct {
 	// Added lists meta-on-disk snapshots that were missing from the manifest
 	// and (unless DryRun) have been re-indexed.

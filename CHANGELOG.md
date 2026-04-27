@@ -9,9 +9,23 @@
 
 ## [Unreleased]
 
-## [3.3.2] - 2026-04-27
+## [3.3.2] - 2026-04-28
+
+Patch release combining two production hotfixes applied during the
+DEVOPS-9946 migration cycle.
 
 ### Fixed
+
+- **Case import order** (`internal/service/migration/import.go`).
+  `ImportCases` and `ImportCasesReport` create cases in parallel
+  (`maxImportConcurrency = 10`); TestRail records insertion order from
+  `add_case` calls, so non-deterministic goroutine scheduling scrambled
+  the original order. After the parallel creation phase, import now calls
+  `move_cases_to_section` for each dst-section with case_ids sorted by
+  original index in `filtered`. Sections with `≤1` case are skipped.
+  Reorder errors are logged as `WARN` but do not abort the migration
+  (data is already imported; order is a UX concern). Regression covered
+  by 4 unit tests in `internal/service/migration/import_order_test.go`.
 
 - **Snapshot manifest drift recovery**.
   Added `gotr snap manifest repair [--dry-run]` to reconcile
@@ -20,32 +34,16 @@
   removes orphan manifest entries whose directories no longer exist,
   and reports unreadable `meta.json` entries without destructive changes.
 
+- **Atomic manifest write race** (`internal/snap/store.go`).
+  Replaced fixed `manifest.json.tmp` temp-file name with a unique
+  temp file via `os.CreateTemp`, eliminating rename failures under
+  concurrent writers or overlapping processes.
+
 - **Test isolation for local snapshot store**.
   Snapshot-related tests no longer contaminate the operator's real
-  `~/.gotr` data. Test-mode path sandboxing now redirects home paths to
-  per-process temporary directories, while explicit per-test overrides
-  still work as expected.
-
-## [3.3.1] - 2026-04-25
-
-Hotfix после живой миграции DEVOPS-9946 (`p30 → p34`,
-suite `S20069 → S19859`).
-
-### Fixed
-
-- **Порядок кейсов при импорте** (`internal/service/migration/import.go`).
-  `ImportCases` и `ImportCasesReport` создают кейсы параллельно
-  (`maxImportConcurrency = 10`); TestRail фиксирует порядок кейсов
-  в том виде, в котором приходят `add_case`-вызовы, и из-за
-  недетерминированности goroutine-scheduling кейсы оказывались
-  перемешаны относительно исходного порядка. Теперь после
-  фазы параллельного создания импорт вызывает
-  `move_cases_to_section` по каждой dst-секции с case_ids,
-  отсортированными по исходному индексу в `filtered`.
-  Секции с `≤1` кейсом пропускаются. Ошибки reorder
-  логируются как `WARN`, но не прерывают миграцию (данные уже
-  импортированы, порядок — UX-аспект). Регрессия покрыта
-  4 unit-тестами в `internal/service/migration/import_order_test.go`.
+  `~/.gotr` data. Test-mode path sandboxing redirects home paths to
+  per-process temporary directories; explicit per-test overrides still
+  work as expected.
 
 ## [3.3.0] - 2026-04-24
 

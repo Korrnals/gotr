@@ -12,7 +12,7 @@ import (
 )
 
 // TestImportCases_PreservesSourceOrderViaMoveCasesToSection guards against the
-// regression observed on DEVOPS-9946 (p30 → p34): cases imported concurrently
+// regression: cases imported concurrently
 // landed in the destination suite in a non-deterministic order because TestRail
 // records cases in the order add_case calls arrive.
 //

@@ -11,8 +11,7 @@
 
 ## [3.3.2] - 2026-04-28
 
-Patch release combining two production hotfixes applied during the
-DEVOPS-9946 migration cycle.
+Patch release combining two production hotfixes.
 
 ### Fixed
 
@@ -275,10 +274,6 @@ retention:
   `cmd/sync/sync.go` registers the flag explicitly on both commands
   (previously only `sync shared-steps` / `suites` / `sections` saw it via
   `addSyncFlags`).
-
-Validated end-to-end on `p30/S20069 → p34/S19859` (DEVOPS-9946, label
-`pinned_DEVOPS-9946`): migration 21m56s, coverage gate
-`✅ 1684/1684 matched`, snap `data_size_bytes=142798`.
 
 ---
 

@@ -1,8 +1,11 @@
 package snap
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -218,4 +221,37 @@ func TestStore_CleanOrphans(t *testing.T) {
 	assert.Equal(t, 1, cleaned)
 	assert.False(t, store.Exists("cases/orphan"))
 	assert.True(t, store.Exists("cases/keep"))
+}
+
+func TestAtomicWriteJSON_ConcurrentWritersSamePath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "manifest.json")
+
+	const writers = 24
+	errCh := make(chan error, writers)
+	var wg sync.WaitGroup
+
+	for i := 0; i < writers; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			payload := map[string]string{"writer": fmt.Sprintf("w-%d", i)}
+			if err := atomicWriteJSON(path, payload); err != nil {
+				errCh <- err
+			}
+		}(i)
+	}
+
+	wg.Wait()
+	close(errCh)
+
+	for err := range errCh {
+		require.NoError(t, err)
+	}
+
+	// The final manifest must be valid JSON regardless of write interleaving.
+	raw, err := os.ReadFile(path)
+	require.NoError(t, err)
+	var got map[string]string
+	require.NoError(t, json.Unmarshal(raw, &got))
+	assert.Contains(t, got["writer"], "w-")
 }

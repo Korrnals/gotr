@@ -252,22 +252,26 @@ func (s *Store) CleanOrphans(manifestIDs map[string]struct{}) (int, error) {
 
 // atomicWriteJSON encodes data as indented JSON, writes to a .tmp file, then renames.
 func atomicWriteJSON(path string, data interface{}) error {
-	tmp := path + ".tmp"
-
-	f, err := os.Create(tmp)
-	if err != nil {
-		return fmt.Errorf("snap: create tmp %s: %w", tmp, err)
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("snap: ensure dir for %s: %w", path, err)
 	}
 
-	enc := json.NewEncoder(f)
+	tmpf, err := os.CreateTemp(dir, filepath.Base(path)+".tmp-*")
+	if err != nil {
+		return fmt.Errorf("snap: create tmp for %s: %w", path, err)
+	}
+	tmp := tmpf.Name()
+
+	enc := json.NewEncoder(tmpf)
 	enc.SetIndent("", "  ")
 	if err := enc.Encode(data); err != nil {
-		f.Close()
+		tmpf.Close()
 		os.Remove(tmp)
 		return fmt.Errorf("snap: encode %s: %w", path, err)
 	}
 
-	if err := f.Close(); err != nil {
+	if err := tmpf.Close(); err != nil {
 		os.Remove(tmp)
 		return fmt.Errorf("snap: close tmp %s: %w", tmp, err)
 	}

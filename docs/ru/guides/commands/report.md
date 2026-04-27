@@ -51,17 +51,19 @@ Language: Русский | [English](../../../en/guides/commands/report.md)
 | --- | --- |
 | `list` | Рекурсивный листинг отчётов, с фильтром по glob basename или подстроке относительного пути |
 | `show` | Показать содержимое отчёта: PDF через системный viewer, md/json/txt — cat в stdout или через `--print` |
+| `view` | Печать содержимого отчёта в stdout с заголовком `# <path>`; работает для любых текстовых форматов, не вызывает OS-viewer |
 | `organize` | Миграция «плоского» layout в иерархию (v3.2 → v3.3); идемпотентна |
 
 ## `gotr report list`
 
 ```bash
-gotr report list [--filter <glob-or-substring>]
+gotr report list [--filter <glob-or-substring>] [--limit <N>]
 ```
 
 - Рекурсивный обход `~/.gotr/reports/`.
 - `--filter` применяется по **basename** (glob) или как **substring**
   по относительному пути (`migrations/rel_9946/…`).
+- `--limit <N>` ограничивает количество выводимых отчётов (по умолчанию: `20`).
 - При обнаружении файлов в корне директории (плоский layout v3.2) один
   раз показывается подсказка `flat_layout` → рекомендация запустить
   `gotr report organize`. Подсказку можно подавить:
@@ -83,6 +85,19 @@ gotr report show <filename|latest> [--print]
   от расширения. Для PDF явная ошибка «cannot --print a binary PDF».
 - Shell completion: tab-autocomplete по фактическому содержимому
   reports-иерархии.
+
+## `gotr report view`
+
+```bash
+gotr report view <filename|latest>
+```
+
+- Печатает содержимое любого текстового отчёта (md/json/txt) в stdout,
+  с заголовком `# <абсолютный-путь>`.
+- В отличие от `show`, никогда не вызывает OS-viewer; удобно в скриптах
+  и pipelines, когда нужен плоский вывод для любого формата.
+- Без аргумента и на TTY открывает тот же survey-prompt, что
+  `report show`.
 
 ## `gotr report organize`
 

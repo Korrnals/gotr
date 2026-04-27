@@ -24,3 +24,20 @@ Language: [Русский](../../../ru/reports/history/wave5-ui-coverage-impleme
       - [Layer 2 Final Report](layer2-final-report.md)
       - [Wave 5 UI Coverage](wave5-ui-coverage-implementation.md)
 - [Home](../../../../README.md)
+
+## Status
+
+This document is an internal release/audit report. It is maintained
+**in Russian only**. The English documentation tree intentionally does
+not duplicate retrospective reports.
+
+## Read the full report
+
+Please open the Russian original via the language switch above, or
+follow the direct link:
+
+- [Russian original](../../../ru/reports/history/wave5-ui-coverage-implementation.md)
+
+---
+
+← [Reports](../index.md) · [Documentation](../../index.md)

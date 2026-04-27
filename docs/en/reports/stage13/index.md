@@ -37,6 +37,12 @@ Language: [Русский](../../../ru/reports/stage13/index.md) | English
 
 ## Contents
 
+> **Note.** The Stage 13 reports below are maintained **in Russian
+> only**. The English entries listed here are navigation stubs that
+> link to the Russian originals. Use the language switch on each page
+> or open [docs/ru/reports/stage13/](../../../ru/reports/stage13/index.md)
+> directly.
+
 ### Report Documents
 
 Comprehensive quality assessment, coverage, and architecture conformance.

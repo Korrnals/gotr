@@ -27,9 +27,8 @@ A professional command-line interface for TestRail API v2. Designed for QA engin
 > **Latest Release:** [v3.3.2](https://github.com/Korrnals/gotr/releases/tag/v3.3.2).
 >
 > **In progress (`main`, untagged):** `v3.4.0-dev` — continues post-`v3.3.0`
-> development, including the DEVOPS-9946 recovery track and follow-up snapshot
-> manifest hardening. See [CHANGELOG](CHANGELOG.md) for the current unreleased
-> scope.
+> development with follow-up snapshot manifest hardening. See
+> [CHANGELOG](CHANGELOG.md) for the current unreleased scope.
 
 ## Overview
 

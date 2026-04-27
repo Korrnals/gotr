@@ -27,9 +27,8 @@
 > **Последний релиз:** [v3.3.2](https://github.com/Korrnals/gotr/releases/tag/v3.3.2).
 >
 > **В работе (`main`, без тега):** `v3.4.0-dev` — это продолжение разработки
-> после `v3.3.0`, включая recovery-трек DEVOPS-9946 и последующее укрепление
-> работы со snapshot-manifest. Полный unreleased-скоуп см. в
-> [CHANGELOG](CHANGELOG.md).
+> после `v3.3.0` с последующим укреплением работы со snapshot-manifest.
+> Полный unreleased-скоуп см. в [CHANGELOG](CHANGELOG.md).
 
 ## Обзор
 

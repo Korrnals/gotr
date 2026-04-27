@@ -5,6 +5,8 @@
 Формат основан на [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 и проект использует [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> English version: см. [CHANGELOG.md](CHANGELOG.md).
+
 ---
 
 ## [Unreleased]
@@ -13,23 +15,20 @@
 
 ### Fixed
 
-- **Snapshot manifest drift recovery**.
-  Added `gotr snap manifest repair [--dry-run]` to reconcile
-  `~/.gotr/snaps/manifest.json` with on-disk snapshot directories.
-  The command re-indexes valid snapshots missing from the manifest,
-  removes orphan manifest entries whose directories no longer exist,
-  and reports unreadable `meta.json` entries without destructive changes.
+- **Восстановление дрейфа snapshot-manifest**.
+  Добавлена команда `gotr snap manifest repair [--dry-run]` для
+  согласования `~/.gotr/snaps/manifest.json` с фактическими каталогами
+  snapshots на диске. Команда доиндексирует валидные snapshots,
+  отсутствующие в manifest, удаляет orphan-записи manifest без
+  соответствующих каталогов и отдельно репортит нечитаемые `meta.json`
+  без деструктивных действий.
 
-- **Test isolation for local snapshot store**.
-  Snapshot-related tests no longer contaminate the operator's real
-  `~/.gotr` data. Test-mode path sandboxing now redirects home paths to
-  per-process temporary directories, while explicit per-test overrides
-  still work as expected.
+- **Изоляция тестов от локального snapshot-store**.
+  Snapshot-тесты больше не загрязняют реальный `~/.gotr` пользователя.
+  В тестовом режиме пути перенаправляются в временный sandbox на процесс,
+  при этом явные пер-тестовые переопределения по-прежнему работают.
 
 ## [3.3.1] - 2026-04-25
-
-Hotfix после живой миграции  (`p30 → p34`,
-suite `S20069 → S19859`).
 
 ### Fixed
 
@@ -261,7 +260,7 @@ retention:
   section name into `m.mapping` (`AddPair(src, dst, "existing")`). Previously
   the map lived only as a local variable consumed by `ImportCasesReport`,
   while `VerifyCasesCoverage → resolveDstSectionIDForFilter` consulted
-  `m.mapping` exclusively and therefore reported `1684/1684 missing` after a
+  `m.mapping` exclusively and therefore reported all cases as missing after a
   successful migration. Regression test:
   `TestResolveSectionMapByName_PopulatesGlobalMapping`.
 - **Sync snapshots now expose real `data_size_bytes`.**
@@ -278,16 +277,12 @@ retention:
   (previously only `sync shared-steps` / `suites` / `sections` saw it via
   `addSyncFlags`).
 
-Validated end-to-end on `p30/S20069 → p34/S19859` (, label
-`pinned_`): migration 21m56s, coverage gate
-`✅ 1684/1684 matched`, snap `data_size_bytes=142798`.
-
 ---
 
 ## [3.2.0] - 2026-04-23
 
-Полный багфикс миграции TestRail: устраняет скрытое расхождение 717/1684,
-которое было вызвано ошибочным «молчаливым» поведением фильтрации
+Багфикс-релиз миграции: устраняет скрытую потерю кейсов при импорте,
+вызванную ошибочным «молчаливым» поведением фильтрации
 и парентинга секций в движке миграции.
 
 ### Fixed — migration engine
@@ -307,14 +302,14 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 - **Отказ от silent-root-fallback при импорте секций.**
   `ImportSections`: секция с несмапленным `parent_id` теперь отклоняется
   с ошибкой и учитывается в `failedImports`, вместо того чтобы молча
-  перепарентиться в root (это и была корневая причина потери 717 кейсов
-  при миграции `p30/S20069 → p34/S19859`).
+  перепарентиться в root (именно секции с неразрешёнными родителями
+  и были корневой причиной скрытой потери кейсов).
 - **`FailedCount()` отражает реальные отказы импорта.**
   `ImportCases`, `ImportCasesReport`, `ImportSections`, `ImportSuites`,
   `ImportSharedSteps` теперь инкрементируют `failedImports` при каждой
   ошибке API или отказе от импорта. `max(len(errs), FailedCount())`
-  в отчётах sync-команд теперь корректно превращает «717 missing»
-  из невидимых «skipped» в явные `errors`/`failed`.
+  в отчётах sync-команд теперь корректно превращает скрыто пропущенные
+  кейсы из невидимых «skipped» в явные `errors`/`failed`.
 
 ### Added — compare pipeline
 
@@ -336,7 +331,8 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
   каждый source-кейс имеет совпадение по multiset-ключу; при пробеле
   выходит с ошибкой `coverage gap: ...` (non-zero exit code) и лог-строками
   `  - [id] "title" (src_section=X, dst_section=Y)` (до 50 штук).
-  Этот гейт — прямой защитник от повторения бага 717/1684 в будущем.
+  Этот гейт — прямой защитник от повторения скрытых регрессий
+  потери кейсов в будущем.
 - **`Migration.VerifyCasesCoverage`** (`internal/service/migration/coverage.go`):
   автономный API-метод, который используется внутри `runCoverageGate`
   и может быть вызван из пользовательского кода.

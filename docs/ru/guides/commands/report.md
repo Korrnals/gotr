@@ -1,4 +1,4 @@
-# Команда: report (v3.3.0+)
+# Команда: report
 
 Language: Русский | [English](../../../en/guides/commands/report.md)
 

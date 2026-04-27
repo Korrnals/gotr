@@ -84,8 +84,7 @@ _No unreleased changes yet._
 <details>
 <summary>Details</summary>
 
-Patch release combining two production hotfixes applied during the
- migration cycle.
+Patch release combining two hotfixes.
 
 ### Fixed
 
@@ -337,8 +336,8 @@ retention:
   section name into `m.mapping` (`AddPair(src, dst, "existing")`). Previously
   the map lived only as a local variable consumed by `ImportCasesReport`,
   while `VerifyCasesCoverage → resolveDstSectionIDForFilter` consulted
-  `m.mapping` exclusively and therefore reported `1684/1684 missing` after a
-  successful migration. Regression test:
+  `m.mapping` exclusively and therefore reported all cases as `missing`
+  after a successful migration. Regression test:
   `TestResolveSectionMapByName_PopulatesGlobalMapping`.
 - **Sync snapshots now expose real `data_size_bytes`.**
   `internal/snap/hook.go` `Hook.FinalizeSyncData` rewrites `meta.json` with
@@ -354,10 +353,6 @@ retention:
   (previously only `sync shared-steps` / `suites` / `sections` saw it via
   `addSyncFlags`).
 
-Validated end-to-end on `p30/S20069 → p34/S19859` (, label
-`pinned_`): migration 21m56s, coverage gate
-`✅ 1684/1684 matched`, snap `data_size_bytes=142798`.
-
 ---
 
 </details>
@@ -367,8 +362,8 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 <details>
 <summary>Details</summary>
 
-Полный багфикс миграции TestRail: устраняет скрытое расхождение 717/1684,
-которое было вызвано ошибочным «молчаливым» поведением фильтрации
+Полный багфикс миграции TestRail: устраняет скрытые расхождения счётчиков
+импорта, вызванные ошибочным «молчаливым» поведением фильтрации
 и парентинга секций в движке миграции.
 
 ### Fixed — migration engine
@@ -388,14 +383,13 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 - **Отказ от silent-root-fallback при импорте секций.**
   `ImportSections`: секция с несмапленным `parent_id` теперь отклоняется
   с ошибкой и учитывается в `failedImports`, вместо того чтобы молча
-  перепарентиться в root (это и была корневая причина потери 717 кейсов
-  при миграции `p30/S20069 → p34/S19859`).
+  перепарентиться в root.
 - **`FailedCount()` отражает реальные отказы импорта.**
   `ImportCases`, `ImportCasesReport`, `ImportSections`, `ImportSuites`,
   `ImportSharedSteps` теперь инкрементируют `failedImports` при каждой
   ошибке API или отказе от импорта. `max(len(errs), FailedCount())`
-  в отчётах sync-команд теперь корректно превращает «717 missing»
-  из невидимых «skipped» в явные `errors`/`failed`.
+  в отчётах sync-команд теперь корректно превращает пропущенные
+  импорты из невидимых «skipped» в явные `errors`/`failed`.
 
 ### Added — compare pipeline
 
@@ -417,7 +411,7 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
   каждый source-кейс имеет совпадение по multiset-ключу; при пробеле
   выходит с ошибкой `coverage gap: ...` (non-zero exit code) и лог-строками
   `  - [id] "title" (src_section=X, dst_section=Y)` (до 50 штук).
-  Этот гейт — прямой защитник от повторения бага 717/1684 в будущем.
+  Гейт защищает от повторения этого класса ошибок в будущем.
 - **`Migration.VerifyCasesCoverage`** (`internal/service/migration/coverage.go`):
   автономный API-метод, который используется внутри `runCoverageGate`
   и может быть вызван из пользовательского кода.

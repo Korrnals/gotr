@@ -15,6 +15,7 @@ func setHome(t *testing.T) string {
 	tmp := t.TempDir()
 	t.Setenv("HOME", tmp)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tmp, ".config"))
+	t.Setenv("GOTR_HOME", filepath.Join(tmp, ".gotr"))
 	return tmp
 }
 

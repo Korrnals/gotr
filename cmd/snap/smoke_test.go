@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -39,10 +40,15 @@ func getClientForTests(cmd *cobra.Command) client.ClientInterface {
 
 // redirectHome sets HOME to a temp dir so snap store goes to $HOME/.gotr/snaps/.
 // Returns the home path.
+//
+// Also overrides GOTR_HOME for the duration of the test to ensure
+// paths.BaseDir() resolves to the redirected location even when an outer
+// TestMain has installed a package-wide sandbox via GOTR_HOME.
 func redirectHome(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("GOTR_HOME", filepath.Join(home, ".gotr"))
 	return home
 }
 

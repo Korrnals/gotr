@@ -13,6 +13,13 @@ const (
 	// DirName is the base directory name for gotr.
 	DirName = ".gotr"
 
+	// HomeEnvVar names the environment variable that overrides the default
+	// gotr base directory. When set to a non-empty value it is used verbatim
+	// as the base path instead of "$HOME/.gotr". Primarily intended for
+	// tests and ephemeral CLI runs that must not touch the operator's
+	// real ~/.gotr/.
+	HomeEnvVar = "GOTR_HOME"
+
 	// Subdirectories
 	ConfigDir   = "config"   // configuration
 	LogsDir     = "logs"     // runtime logs
@@ -31,7 +38,14 @@ const (
 )
 
 // BaseDir returns the path to ~/.gotr.
+//
+// If the GOTR_HOME environment variable is set to a non-empty value it is
+// returned verbatim, allowing callers (notably test suites) to redirect
+// every gotr-managed path to a sandbox.
 func BaseDir() (string, error) {
+	if override := strings.TrimSpace(os.Getenv(HomeEnvVar)); override != "" {
+		return override, nil
+	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("cannot determine home directory: %w", err)

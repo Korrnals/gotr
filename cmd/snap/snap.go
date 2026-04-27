@@ -29,7 +29,8 @@ Available operations:
     • rollback undo — undo a previous rollback
   • export   — export snapshot to a portable JSON file
   • delete   — remove a snapshot
-  • gc       — clean up orphaned snapshots`,
+  • gc       — clean up orphaned snapshots
+  • manifest repair — reconcile manifest.json with on-disk snapshot dirs`,
 	}
 
 	snapCmd.AddCommand(newListCmd())
@@ -40,6 +41,7 @@ Available operations:
 	snapCmd.AddCommand(newPinCmd())
 	snapCmd.AddCommand(newUnpinCmd())
 	snapCmd.AddCommand(newGCCmd())
+	snapCmd.AddCommand(newManifestCmd())
 
 	root.AddCommand(snapCmd)
 }

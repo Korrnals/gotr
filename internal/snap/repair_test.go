@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// writeMeta is a small helper that materialises a snapshot directory with a
+// writeMeta is a small helper that materializes a snapshot directory with a
 // valid meta.json under store.BaseDir() so RepairManifest sees it as
 // "present on disk".
 func writeMeta(t *testing.T, store *Store, meta *Meta) {

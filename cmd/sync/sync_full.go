@@ -231,10 +231,11 @@ Examples:
 		}
 
 		printArtifacts(artifactSet{
-			MigrationLog:   m.LogFilePath(),
-			MappingFile:    mappingPath,
+			MigrationLog:    m.LogFilePath(),
+			MappingFile:     mappingPath,
 			MigrationReport: reportPath,
-			SnapshotDir:    snapshotDirFromHook(hook),
+			SnapshotDir:     snapshotDirFromHook(hook),
+			SnapshotID:      snapshotIDFromHook(hook),
 		})
 		ui.Success(os.Stdout, "Full migration complete!")
 		syncPostAction(ctx, cmd, hook, cli)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
@@ -154,10 +155,12 @@ type artifactSet struct {
 	CasesLog        string // sync_cases JSON log file (if any)
 	MigrationReport string // markdown report path returned by saveMigrationReport
 	SnapshotDir     string // snapshot directory on disk (if a snapshot was created)
+	SnapshotID      string // snapshot identifier (e.g. "sync/20260428T001036_full_p30_to_p34")
 }
 
 // printArtifacts emits a uniform "Artifacts" footer listing every produced
-// path. Silently skips empty entries; if the whole set is empty, prints nothing.
+// path plus a "Hints" block with ready-to-run gotr commands. Silently skips
+// empty entries; if the whole set is empty, prints nothing.
 func printArtifacts(a artifactSet) {
 	type row struct {
 		label string
@@ -188,6 +191,36 @@ func printArtifacts(a artifactSet) {
 		}
 		ui.Infof(w, "  %-14s %s", r.label+":", r.value)
 	}
+
+	hints := buildArtifactHints(a)
+	if len(hints) == 0 {
+		return
+	}
+	ui.Infof(w, "─── Hints ───")
+	for _, h := range hints {
+		ui.Infof(w, "  %s", h)
+	}
+}
+
+// buildArtifactHints produces a list of ready-to-copy gotr commands for the
+// produced artifacts. Returns an empty slice when nothing is actionable.
+func buildArtifactHints(a artifactSet) []string {
+	var hints []string
+	if a.MigrationReport != "" {
+		name := filepath.Base(a.MigrationReport)
+		hints = append(hints,
+			fmt.Sprintf("View report:    gotr report show %s", name),
+			fmt.Sprintf("Print report:   gotr report show %s --print", name),
+			"List reports:   gotr report list",
+		)
+	}
+	if a.SnapshotID != "" {
+		hints = append(hints,
+			fmt.Sprintf("Snap details:   gotr snap info %s", a.SnapshotID),
+			fmt.Sprintf("Rollback:       gotr snap rollback %s", a.SnapshotID),
+		)
+	}
+	return hints
 }
 
 // snapshotDirFromHook returns the absolute filesystem path of the snapshot
@@ -202,6 +235,16 @@ func snapshotDirFromHook(hook *snap.Hook) string {
 		return ""
 	}
 	return hook.Store.SnapDir(id)
+}
+
+// snapshotIDFromHook returns the snapshot identifier (category/id) suitable
+// for `gotr snap info|rollback` arguments, or "" when the hook produced no
+// snapshot.
+func snapshotIDFromHook(hook *snap.Hook) string {
+	if hook == nil || !hook.Enabled || hook.Snap == nil {
+		return ""
+	}
+	return hook.Snap.Meta.ID
 }
 
 // syncPostAction shows a post-migration action menu.

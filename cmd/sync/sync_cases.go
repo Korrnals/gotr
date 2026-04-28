@@ -271,6 +271,7 @@ Examples:
 			CasesLog:        logFile,
 			MigrationReport: reportPath,
 			SnapshotDir:     snapshotDirFromHook(snapHook),
+			SnapshotID:      snapshotIDFromHook(snapHook),
 		})
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil

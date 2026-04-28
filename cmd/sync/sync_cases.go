@@ -238,6 +238,7 @@ Examples:
 				fmt.Printf("  - %s\n", e)
 			}
 		}
+		reportOrphanSharedSteps(m)
 
 		// Save log and mapping
 		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)

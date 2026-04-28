@@ -343,10 +343,22 @@ func (m *Migration) buildImportSteps(caseData data.Case, mu *sync.Mutex) []data.
 				lastSharedID = newID
 				continue
 			}
+			// Source case carries an orphan reference: the parent shared step
+			// no longer exists in the source project (deleted upstream) but the
+			// case payload retains the shared_step_id and the inline expansion.
+			// Fall back to inline content; aggregate the occurrence so the CLI
+			// can surface a single concise note instead of one WARN per case.
 			mu.Lock()
-			m.logger.Warnw("SharedStepID not found in mapping — step will be imported without shared reference",
+			m.logger.Debugw("Orphan shared_step_id in source case — importing as inline content",
 				"case_title", caseData.Title, "unmapped_shared_step_id", orig.SharedStepID)
 			mu.Unlock()
+			m.unmappedMu.Lock()
+			if m.unmappedSharedStepIDs == nil {
+				m.unmappedSharedStepIDs = make(map[int64]struct{})
+			}
+			m.unmappedSharedStepIDs[orig.SharedStepID] = struct{}{}
+			m.unmappedSharedStepHits++
+			m.unmappedMu.Unlock()
 		}
 		out = append(out, data.Step{
 			Content:        orig.Content,

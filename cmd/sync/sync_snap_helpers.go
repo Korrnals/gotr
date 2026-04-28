@@ -81,6 +81,22 @@ func printFilterSummary(entityName string, stats migration.FilterStats) {
 	ui.Infof(w, "  New:               %d (will be imported)", stats.New)
 }
 
+// reportOrphanSharedSteps prints a single concise note when source cases
+// contained references to shared_step_ids that could not be resolved against
+// the mapping. This is typically caused by upstream deletion of a shared step
+// while the cases still carry the orphan reference (TestRail keeps the inline
+// expansion in the case payload). Such steps are imported as inline content
+// (graceful degradation) — the note is informational, not an error.
+func reportOrphanSharedSteps(m *migration.Migration) {
+	ids, hits := m.UnmappedSharedStepRefs()
+	if hits == 0 {
+		return
+	}
+	ui.Infof(os.Stdout,
+		"Note: %d step occurrence(s) in %d unique source shared step(s) %v could not be mapped (likely deleted upstream); imported as inline content.",
+		hits, len(ids), ids)
+}
+
 // printPreConfirmSummary prints a summary of migration parameters before final confirmation.
 //
 // `count` is the number of entities to import. Use a negative value when the

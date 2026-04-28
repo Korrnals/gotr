@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"sync"
 	"syscall"
 	"time"
 
@@ -32,6 +34,32 @@ type Migration struct {
 
 	lastFilteredSteps data.GetSharedStepsResponse // filtered shared steps from last MigrateSharedSteps run
 	lastFilterStats   FilterStats                 // statistics from the last Filter* call
+
+	// unmappedSharedStepRefs tracks source shared_step_ids that are referenced
+	// by source cases but cannot be resolved to a target ID (typically because
+	// the parent shared step was deleted upstream and only orphan references
+	// remain in the case payload). Such steps are imported as inline content
+	// (graceful degradation), and we surface a single aggregate note to the
+	// operator at the end of the cases phase instead of one warning per case.
+	unmappedMu             sync.Mutex
+	unmappedSharedStepIDs  map[int64]struct{}
+	unmappedSharedStepHits int
+}
+
+// UnmappedSharedStepRefs returns the set of source shared_step_ids that were
+// referenced by source cases during import but could not be resolved against
+// the mapping, along with the total number of step occurrences affected.
+//
+// IDs are returned sorted ascending for stable output.
+func (m *Migration) UnmappedSharedStepRefs() (uniqueIDs []int64, occurrences int) {
+	m.unmappedMu.Lock()
+	defer m.unmappedMu.Unlock()
+	uniqueIDs = make([]int64, 0, len(m.unmappedSharedStepIDs))
+	for id := range m.unmappedSharedStepIDs {
+		uniqueIDs = append(uniqueIDs, id)
+	}
+	sort.Slice(uniqueIDs, func(i, j int) bool { return uniqueIDs[i] < uniqueIDs[j] })
+	return uniqueIDs, m.unmappedSharedStepHits
 }
 
 // NewMigration creates a new Migration instance with a zap logger.

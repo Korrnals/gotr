@@ -177,6 +177,7 @@ Examples:
 		if len(caseImport.Errors) > 0 {
 			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
 		}
+		reportOrphanSharedSteps(m)
 		caseFilterStats := m.LastFilterStats()
 		// Cases-only failures = cumulative failures minus the ones that happened
 		// during the shared-steps phase earlier.

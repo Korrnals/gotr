@@ -81,6 +81,27 @@ func printFilterSummary(entityName string, stats migration.FilterStats) {
 	ui.Infof(w, "  New:               %d (will be imported)", stats.New)
 }
 
+// pluralizeEntity returns the singular form of an entity name when count==1,
+// otherwise the input as-is. Handles the small set of entity nouns used in
+// pre-confirm summaries: "cases" / "suites" / "sections" / "shared steps".
+// Unknown nouns are returned unchanged.
+func pluralizeEntity(count int, name string) string {
+	if count != 1 {
+		return name
+	}
+	switch name {
+	case "cases":
+		return "case"
+	case "suites":
+		return "suite"
+	case "sections":
+		return "section"
+	case "shared steps":
+		return "shared step"
+	}
+	return name
+}
+
 // reportOrphanSharedSteps prints a single concise note when source cases
 // contained references to shared_step_ids that could not be resolved against
 // the mapping. This is typically caused by upstream deletion of a shared step
@@ -110,7 +131,7 @@ func printPreConfirmSummary(count int, entityName string, sd snapshotDecision) {
 	if count < 0 {
 		ui.Infof(w, "  Operation: %s", entityName)
 	} else {
-		ui.Infof(w, "  Import:    %d %s", count, entityName)
+		ui.Infof(w, "  Import:    %d %s", count, pluralizeEntity(count, entityName))
 	}
 	if sd.Create {
 		if sd.Label != "" {

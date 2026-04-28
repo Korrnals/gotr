@@ -48,7 +48,11 @@ func newExportReportCmd(version string) *cobra.Command {
 				return err
 			}
 			if target == "all" {
-				successf("Exported %d reports → %s", len(res.Files), res.ArchivePath)
+				noun := "reports"
+				if len(res.Files) == 1 {
+					noun = "report"
+				}
+				successf("Exported %d %s → %s", len(res.Files), noun, res.ArchivePath)
 			} else {
 				successf("Exported report %s → %s", target, res.ArchivePath)
 			}

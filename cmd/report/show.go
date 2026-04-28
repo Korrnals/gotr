@@ -44,7 +44,7 @@ func newShowCmd() *cobra.Command {
 
 			if printFlag {
 				if ext == ".pdf" {
-					return fmt.Errorf("report show: --print does not support binary PDF reports (%s)", path)
+					return fmt.Errorf("report show: --print does not support PDF reports (%s)", path)
 				}
 				return catFile(cmd.OutOrStdout(), path)
 			}

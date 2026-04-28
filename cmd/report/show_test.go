@@ -75,7 +75,7 @@ func TestShow_Print_RejectsPDF(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for PDF + --print")
 	}
-	if !strings.Contains(err.Error(), "--print does not support binary PDF") {
+	if !strings.Contains(err.Error(), "--print does not support PDF") {
 		t.Errorf("unexpected error: %v", err)
 	}
 }

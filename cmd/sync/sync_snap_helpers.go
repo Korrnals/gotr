@@ -82,10 +82,20 @@ func printFilterSummary(entityName string, stats migration.FilterStats) {
 }
 
 // printPreConfirmSummary prints a summary of migration parameters before final confirmation.
+//
+// `count` is the number of entities to import. Use a negative value when the
+// count is not yet known at confirm time (e.g. `sync full` runs filtering for
+// shared steps and cases inside its own phases, after the user has already
+// approved the operation); in that case the helper prints an `Operation:`
+// line instead of a misleading `Import: 0 ...` line.
 func printPreConfirmSummary(count int, entityName string, sd snapshotDecision) {
 	w := os.Stdout
 	ui.Infof(w, "─── Migration summary ───")
-	ui.Infof(w, "  Import:    %d %s", count, entityName)
+	if count < 0 {
+		ui.Infof(w, "  Operation: %s", entityName)
+	} else {
+		ui.Infof(w, "  Import:    %d %s", count, entityName)
+	}
 	if sd.Create {
 		if sd.Label != "" {
 			ui.Infof(w, "  Snapshot:  ✓ enabled (🏷 %s)", sd.Label)

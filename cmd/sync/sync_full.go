@@ -101,7 +101,7 @@ Examples:
 		var sd snapshotDecision
 		if !dryRun {
 			sd = confirmSnapshot(ctx, cmd)
-			printPreConfirmSummary(0, "full migration", sd)
+			printPreConfirmSummary(-1, "full migration (shared steps + cases)", sd)
 
 			if !autoApprove {
 				ok, err := p.Confirm("Continue?", false)

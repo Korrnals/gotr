@@ -31,6 +31,7 @@ type Migration struct {
 	mapping  *SharedStepMapping // shared step ID mapping (see mapping.go)
 	logger   *zap.SugaredLogger
 	logFile  *os.File // log file handle, closed in Close()
+	logFilePath string // absolute path of the JSON migration log; surfaced via LogFilePath()
 
 	lastFilteredSteps data.GetSharedStepsResponse // filtered shared steps from last MigrateSharedSteps run
 	lastFilterStats   FilterStats                 // statistics from the last Filter* call
@@ -98,6 +99,7 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 		mapping:       NewSharedStepMapping(srcProject, dstProject), // from mapping.go
 		logger:        logger,
 		logFile:       fileWriter,
+		logFilePath:   logFile,
 	}
 
 	m.logger.Info("Migration object created", "log_file", logFile)
@@ -132,6 +134,12 @@ func isSyncIgnorable(err error) bool {
 // FilteredSharedSteps returns the filtered shared steps from the last MigrateSharedSteps run.
 func (m *Migration) FilteredSharedSteps() data.GetSharedStepsResponse {
 	return m.lastFilteredSteps
+}
+
+// LogFilePath returns the absolute filesystem path of the JSON migration log
+// for this Migration instance, or "" if logging was not initialized.
+func (m *Migration) LogFilePath() string {
+	return m.logFilePath
 }
 
 // Mapping returns a simple map[sourceID]=targetID for external use

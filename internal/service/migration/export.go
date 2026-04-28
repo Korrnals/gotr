@@ -146,7 +146,9 @@ func (m *Migration) ExportSections(sections data.GetSectionsResponse, filtered b
 	return nil
 }
 
-// ExportMapping saves the shared step mapping to a JSON file via SharedStepMapping.Save.
-func (m *Migration) ExportMapping(dir string) error {
+// ExportMapping saves the shared step mapping to a JSON file via
+// SharedStepMapping.Save and returns the absolute path of the written file.
+// Returns ("", nil) when the mapping is empty.
+func (m *Migration) ExportMapping(dir string) (string, error) {
 	return m.mapping.Save(dir)
 }

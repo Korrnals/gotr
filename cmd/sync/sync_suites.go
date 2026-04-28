@@ -158,11 +158,11 @@ Flags:
 
 		// Step 4) Save mapping if requested
 		if autoSaveMapping {
-			_ = m.ExportMapping(logDir)
+			_, _ = m.ExportMapping(logDir)
 		} else if len(m.Mapping()) > 0 {
 			ok, err := p.Confirm("Save mapping?", false)
 			if err == nil && ok {
-				_ = m.ExportMapping(logDir)
+				_, _ = m.ExportMapping(logDir)
 			}
 		}
 

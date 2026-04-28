@@ -70,10 +70,12 @@ func (sm *SharedStepMapping) SortPairs() {
 	})
 }
 
-// Save writes the mapping to a JSON file in the given directory.
-func (sm *SharedStepMapping) Save(dir string) error {
+// Save writes the mapping to a JSON file in the given directory and returns
+// the absolute path of the written file. Returns ("", nil) if the mapping is
+// empty (nothing was written).
+func (sm *SharedStepMapping) Save(dir string) (string, error) {
 	if sm.Count == 0 {
-		return nil
+		return "", nil
 	}
 
 	if dir == "" {
@@ -81,7 +83,7 @@ func (sm *SharedStepMapping) Save(dir string) error {
 	}
 
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("Save: %w", err)
+		return "", fmt.Errorf("Save: %w", err)
 	}
 
 	sm.SortPairs()
@@ -91,10 +93,13 @@ func (sm *SharedStepMapping) Save(dir string) error {
 
 	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
-		return fmt.Errorf("Save: %w", err)
+		return "", fmt.Errorf("Save: %w", err)
 	}
 
-	return os.WriteFile(file, jsonData, 0o644)
+	if err := os.WriteFile(file, jsonData, 0o644); err != nil {
+		return "", err
+	}
+	return file, nil
 }
 
 // LoadSharedStepMapping loads a shared step mapping from a JSON file.

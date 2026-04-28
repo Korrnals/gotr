@@ -144,6 +144,66 @@ func printPreConfirmSummary(count int, entityName string, sd snapshotDecision) {
 	}
 }
 
+// artifactSet bundles paths of artifacts produced by a migration command, so
+// that the operator can locate them without scrolling the log.
+//
+// Empty fields are skipped during printing.
+type artifactSet struct {
+	MigrationLog    string // ~/.gotr/logs/migration_*.json
+	MappingFile     string // mapping_*.json (if --save-mapping)
+	CasesLog        string // sync_cases JSON log file (if any)
+	MigrationReport string // markdown report path returned by saveMigrationReport
+	SnapshotDir     string // snapshot directory on disk (if a snapshot was created)
+}
+
+// printArtifacts emits a uniform "Artifacts" footer listing every produced
+// path. Silently skips empty entries; if the whole set is empty, prints nothing.
+func printArtifacts(a artifactSet) {
+	type row struct {
+		label string
+		value string
+	}
+	rows := []row{
+		{"Migration log", a.MigrationLog},
+		{"Mapping", a.MappingFile},
+		{"Cases log", a.CasesLog},
+		{"Report", a.MigrationReport},
+		{"Snapshot", a.SnapshotDir},
+	}
+	any := false
+	for _, r := range rows {
+		if r.value != "" {
+			any = true
+			break
+		}
+	}
+	if !any {
+		return
+	}
+	w := os.Stdout
+	ui.Infof(w, "─── Artifacts ───")
+	for _, r := range rows {
+		if r.value == "" {
+			continue
+		}
+		ui.Infof(w, "  %-14s %s", r.label+":", r.value)
+	}
+}
+
+// snapshotDirFromHook returns the absolute filesystem path of the snapshot
+// captured by hook (if any), or "" if the hook is nil/disabled or no snapshot
+// was actually written.
+func snapshotDirFromHook(hook *snap.Hook) string {
+	if hook == nil || !hook.Enabled || hook.Snap == nil || hook.Store == nil {
+		return ""
+	}
+	id := hook.Snap.Meta.ID
+	if id == "" {
+		return ""
+	}
+	return hook.Store.SnapDir(id)
+}
+
 // syncPostAction shows a post-migration action menu.
 // hook is the Hook returned by HookMutation (may be nil or disabled).
 // cli is the API client for rollback operations.

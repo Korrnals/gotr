@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+_No unreleased changes yet._
+
+---
+
+## [3.5.0] - 2026-05-04
+
 ### Added — bulk attachments cleanup with snapshot + rollback
 
 - **New command `gotr attachments cleanup`** — removes attachments older
@@ -79,6 +85,9 @@
 
 ## [3.4.0] - 2026-05-04
 
+<details>
+<summary>Details</summary>
+
 ### Added — multi-snap migration bundles & full-state cross-machine transfer
 
 - **`gotr export migration-archive` with no arguments** now defaults to
@@ -142,6 +151,7 @@
   Old migration bundles remain functional — import accepts an explicit
   file path regardless of location.
 
+</details>
 
 ## [3.3.2] - 2026-04-28
 

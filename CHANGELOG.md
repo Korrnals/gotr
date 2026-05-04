@@ -9,7 +9,72 @@
 
 ## [Unreleased]
 
-## [3.3.2] - 2026-04-28
+### Added — multi-snap migration bundles & full-state cross-machine transfer
+
+- **`gotr export migration-archive` with no arguments** now defaults to
+  packing the **full state** of `~/.gotr/`: all snapshots from the local
+  store + the entire `~/.gotr/reports/` tree + the entire `~/.gotr/logs/`
+  tree. The archive has type `migration_bundle` and is saved into the new
+  directory **`~/.gotr/exports/all/`** under the name
+  `migration_bundle_all_<N>snaps_<UTC-timestamp>.tar.gz`. This is the
+  recommended artifact for transferring `gotr` state between machines
+  with a single command.
+
+- **Selectors for multi-snap mode**:
+  - `gotr export migration-archive --label <substr>` — packs all
+    snapshots whose `label` contains the substring (case-insensitive).
+  - `gotr export migration-archive <id1> <id2> ...` — packs the
+    listed snapshots + the union of their reports and logs.
+  - `gotr export migration-archive --all` — explicit form of the default.
+  For a single `<id>` the behavior is unchanged: the archive stays in
+  `~/.gotr/exports/snaps/`.
+
+- **`gotr import migration-archive`** automatically detects the archive
+  type (single-snap vs `migration_bundle`) from its manifest and picks
+  the correct restore path — no flags required. Import still requires
+  an explicit file-path argument; extraction always goes into the
+  system directory `~/.gotr/` (or `$GOTR_HOME`). In interactive mode the
+  picker shows archives from both directories: `exports/snaps/` and
+  `exports/all/`.
+
+### Fixed — manifest auto-registration after import
+
+- **`gotr import` now automatically registers imported snapshots in
+  `~/.gotr/snaps/manifest.json`** (store index), so `gotr snap list`
+  immediately shows them without needing to run
+  `gotr snap manifest repair`. Works for both single-snap imports
+  (`Kind=snap`) and multi-snap bundles (`Kind=migration_bundle`).
+  With `--overwrite` the stale manifest entry is replaced by the fresh
+  one (no duplicates). If an individual snap's `meta.json` is unreadable,
+  indexing is skipped without error — data remains on disk and will be
+  picked up by a subsequent `manifest repair`.
+
+- **`gotr snap manifest repair`** now performs a single atomic
+  `manifest.save()` per run instead of O(N) writes for each
+  orphan/missing entry. On a store with thousands of snapshots this
+  removes O(N²) disk load — observed speed-up from tens of seconds
+  to tenths of a second (`internal/snap.AddMany` / `RemoveMany`).
+
+### Changed — `~/.gotr/exports/` layout
+
+- Added constant `paths.ExportsAllSubdir = "all"` and helpers
+  `paths.ExportsAllDirPath()` / `paths.EnsureExportsAllDirPath()`.
+  The `~/.gotr/exports/` tree is now:
+
+  ```text
+  ~/.gotr/exports/
+  ├── snaps/    — single snap_<id>_<ts>.tar.gz / migration_<id>_<ts>.tar.gz
+  ├── reports/  — exported reports (.zip / .pdf / .md / .json)
+  ├── api/      — raw API dumps (`gotr export <resource> --save`)
+  └── all/      — full / multi-snap migration_bundle_*.tar.gz (new)
+  ```
+
+  Old migration bundles remain functional — import accepts an explicit
+  file path regardless of location.
+
+
+<details>
+<summary>[3.3.2] - 2026-04-28</summary>
 
 Patch release combining two production hotfixes applied during the
  migration cycle.
@@ -45,7 +110,10 @@ Patch release combining two production hotfixes applied during the
   per-process temporary directories; explicit per-test overrides still
   work as expected.
 
-## [3.3.0] - 2026-04-24
+</details>
+
+<details>
+<summary>[3.3.0] - 2026-04-24</summary>
 
 UX polish релиз (issue #44): категоризованная иерархия отчётов и
 экспортов, shell completion, интерактивный режим, retention/cleanup,
@@ -282,7 +350,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [3.2.0] - 2026-04-23
+</details>
+
+<details>
+<summary>[3.2.0] - 2026-04-23</summary>
 
 Полный багфикс миграции TestRail: устраняет скрытое расхождение 717/1684,
 которое было вызвано ошибочным «молчаливым» поведением фильтрации
@@ -374,7 +445,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [3.1.0] - 2026-04-19
+</details>
+
+<details>
+<summary>[3.1.0] - 2026-04-19</summary>
 
 ### Added
 
@@ -428,7 +502,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [3.0.1] - 2026-04-12
+</details>
+
+<details>
+<summary>[3.0.1] - 2026-04-12</summary>
 
 ### Fixed
 
@@ -451,7 +528,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [3.0.0] - 2026-04-09
+</details>
+
+<details>
+<summary>[3.0.0] - 2026-04-09</summary>
 
 ### Added
 
@@ -502,7 +582,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 - **0 TODO/FIXME/HACK** markers in production code.
 - **Audit verdict**: UNCONDITIONAL PASS (7 audit rounds completed).
 
-## [3.0.0] - 2026-03-12
+</details>
+
+<details>
+<summary>[3.0.0] - 2026-03-12</summary>
 
 ### Added
 
@@ -628,7 +711,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.7.0] - 2026-02-20
+</details>
+
+<details>
+<summary>[2.7.0] - 2026-02-20</summary>
 
 ### Added
 
@@ -814,7 +900,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.5.0] - 2026-02-05
+</details>
+
+<details>
+<summary>[2.5.0] - 2026-02-05</summary>
 
 ### Added
 
@@ -861,7 +950,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.4.0] - 2026-02-04
+</details>
+
+<details>
+<summary>[2.4.0] - 2026-02-04</summary>
 
 ### Added
 
@@ -941,7 +1033,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.3.0] - 2026-02-03
+</details>
+
+<details>
+<summary>[2.3.0] - 2026-02-03</summary>
 
 ### Added
 
@@ -970,7 +1065,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.2.3] - 2026-02-03
+</details>
+
+<details>
+<summary>[2.2.3] - 2026-02-03</summary>
 
 ### Added
 
@@ -1022,7 +1120,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.1.0] - 2026-01-24
+</details>
+
+<details>
+<summary>[2.1.0] - 2026-01-24</summary>
 
 ### Added
 
@@ -1043,7 +1144,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.0.0] - 2026-01-15
+</details>
+
+<details>
+<summary>[2.0.0] - 2026-01-15</summary>
 
 ### Breaking Changes
 
@@ -1083,7 +1187,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [2.0.0] - 2025-12-21
+</details>
+
+<details>
+<summary>[2.0.0] - 2025-12-21</summary>
 
 ### Breaking Changes
 
@@ -1119,9 +1226,13 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 ---
 
-## [1.0.0] - 2025-12-19 (предыдущий релиз)
+</details>
+
+<details>
+<summary>[1.0.0] - 2025-12-19 (предыдущий релиз)</summary>
 
 - Базовая версия с командами `list`, `get`, `add` и т.д.
 - Поддержка TestRail API v2 через HTTP-клиент.
 - Глобальные флаги `--url`, `--username`, `--api-key`.
 
+</details>

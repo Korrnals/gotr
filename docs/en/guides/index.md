@@ -11,6 +11,7 @@ Language: [Русский](../../ru/guides/index.md) | English
     - [Interactive Mode](interactive-mode.md)
     - [Progress](progress.md)
     - [Smoke Testing](smoke-testing.md)
+    - [Migration archives](migration-archive.md)
     - [Commands Index](commands/index.md)
     - [Instructions](instructions/index.md)
   - [Architecture](../architecture/index.md)
@@ -47,6 +48,10 @@ Ready-to-use step-by-step recipes for common tasks.
 ### Testing
 
 - [Smoke Testing](smoke-testing.md) — E2E snap/rollback tests on built-in mock server or live TestRail
+
+### Cross-machine state transfer
+
+- [Migration archives](migration-archive.md) — pack the whole `~/.gotr/` (or any subset of snapshots) into a single tar.gz and restore it on another machine in one command
 
 ---
 

@@ -27,8 +27,9 @@ func newExportMigrationArchiveCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "migration-archive [snap_id|label ...]",
 		Short: "Export a migration archive (snap + reports + logs) as a portable tar.gz",
-		Long: `Export a migration archive to a tar.gz file under
-~/.gotr/exports/snaps/.
+		Long: `Export a migration archive to a tar.gz file. Single-snap
+archives default to ~/.gotr/exports/snaps/; multi-snap and full-state
+bundles default to ~/.gotr/exports/all/.
 
 Default (no arguments, no flags): bundles every snapshot in the local
 store plus the ENTIRE ~/.gotr/reports/ and ~/.gotr/logs/ trees into a
@@ -199,7 +200,7 @@ Archive layout:
 			return nil
 		},
 	}
-	cmd.Flags().String("out", "", "Destination path (default: ~/.gotr/exports/snaps/migration_<id>_<date>.tar.gz)")
+	cmd.Flags().String("out", "", "Destination path (default: ~/.gotr/exports/snaps/migration_<id>_<date>.tar.gz for single-snap; ~/.gotr/exports/all/migration_bundle_*.tar.gz for multi-snap/--all)")
 	cmd.Flags().Bool("redact", false, "Strip assignee emails, names, and other sensitive fields from meta.json")
 	cmd.Flags().Bool("no-reports", false, "Do not embed migration reports whose filename contains the snap_id (default: embed)")
 	cmd.Flags().Bool("no-logs", false, "Do not embed migration_/mapping_/shared_steps_filtered_/sync_cases_ logs (default: embed)")
@@ -265,7 +266,7 @@ func newImportMigrationArchiveCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("import migration-archive: %w", err)
 			}
-			target, err := resolveImportSnapTarget(cmd, args)
+			target, err := resolveImportMigrationArchiveTarget(cmd, args)
 			if err != nil {
 				return err
 			}

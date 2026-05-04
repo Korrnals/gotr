@@ -11,6 +11,7 @@ Language: Русский | [English](../../en/guides/index.md)
     - [Интерактивный режим](interactive-mode.md)
     - [Прогресс](progress.md)
     - [Smoke-тестирование](smoke-testing.md)
+    - [Миграционные архивы](migration-archive.md)
     - [Каталог команд](commands/index.md)
     - [Инструкции](instructions/index.md)
   - [Архитектура](../architecture/index.md)
@@ -49,6 +50,10 @@ Language: Русский | [English](../../en/guides/index.md)
 ### Тестирование
 
 - [Smoke-тестирование](smoke-testing.md) — E2E тесты snap/rollback на встроенном mock-сервере или реальном TestRail
+
+### Перенос состояния между машинами
+
+- [Миграционные архивы](migration-archive.md) — упаковать всё `~/.gotr/` (или произвольный набор снапшотов) в один tar.gz и восстановить на другой машине одной командой
 
 ---
 

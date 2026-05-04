@@ -917,11 +917,11 @@ func DefaultExportPath(snapID, label string) (string, error) {
 }
 
 // DefaultMigrationBundlePath returns a destination path under
-// ~/.gotr/exports/snaps/ for a multi-snap migration_bundle archive. The
+// ~/.gotr/exports/all/ for a multi-snap migration_bundle archive. The
 // `tag` is a free-form slug appended to the filename to identify the
 // selection (e.g. "all", "pinned", "label-foo").
 func DefaultMigrationBundlePath(tag string, count int) (string, error) {
-	dir, err := paths.EnsureExportsSnapsDirPath()
+	dir, err := paths.EnsureExportsAllDirPath()
 	if err != nil {
 		return "", err
 	}
@@ -1003,6 +1003,9 @@ func Import(store *snap.Store, srcPath string, opts ImportOptions) (*Result, err
 	restored, skipped, err := extractAndRelocate(srcPath, store, manifest.SnapID, targetID, opts)
 	if err != nil {
 		return nil, err
+	}
+	if rerr := registerImportedSnaps(store, []string{targetID}, opts.Overwrite); rerr != nil {
+		return nil, rerr
 	}
 	result.IncludedReports = restored
 	result.SkippedReports = skipped
@@ -1096,6 +1099,12 @@ func importMigrationBundle(store *snap.Store, srcPath string, manifest *bundle.M
 				return nil, fmt.Errorf("snapbundle: relocate %s -> %s: %w", srcSnap, dst, cerr)
 			}
 		}
+	}
+
+	// Register imported snaps in the store manifest so `gotr snap list`
+	// surfaces them without requiring a follow-up `manifest repair`.
+	if rerr := registerImportedSnaps(store, ids, opts.Overwrite); rerr != nil {
+		return nil, rerr
 	}
 
 	// Reports.
@@ -1402,4 +1411,45 @@ func rewriteMetaID(dir, newID string) error {
 		return err
 	}
 	return os.WriteFile(p, out, 0o644) //nolint:gosec // meta.json under trusted ~/.gotr/snaps path
+}
+
+// registerImportedSnaps adds entries for the given snap IDs to the store
+// manifest (~/.gotr/snaps/manifest.json) so they are visible to commands
+// like `gotr snap list` without requiring a follow-up `manifest repair`.
+//
+// When overwrite is true any pre-existing entries with the same IDs are
+// removed first; otherwise stale entries (if any) remain and the new
+// metadata is appended after them. Snap directories must already be
+// present on disk — this function reads each meta.json from the store.
+//
+// Failure to read an individual meta.json is non-fatal: the snap stays
+// on disk, just unindexed (a subsequent `gotr snap manifest repair` will
+// pick it up). This matches the principle that import never destroys
+// imported data.
+func registerImportedSnaps(store *snap.Store, ids []string, overwrite bool) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	storeManifest, err := snap.LoadManifest(store)
+	if err != nil {
+		return fmt.Errorf("snapbundle: load store manifest: %w", err)
+	}
+	if overwrite {
+		if err := storeManifest.RemoveMany(ids); err != nil {
+			return fmt.Errorf("snapbundle: prune stale manifest entries: %w", err)
+		}
+	}
+	metas := make([]*snap.Meta, 0, len(ids))
+	for _, id := range ids {
+		meta, mErr := store.LoadMeta(id)
+		if mErr != nil {
+			// Tolerate: the snap files are on disk, just skip indexing.
+			continue
+		}
+		metas = append(metas, meta)
+	}
+	if err := storeManifest.AddMany(metas); err != nil {
+		return fmt.Errorf("snapbundle: register imported snaps: %w", err)
+	}
+	return nil
 }

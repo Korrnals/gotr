@@ -146,3 +146,110 @@ func TestExportFull_PicksAllManifestEntries(t *testing.T) {
 		t.Errorf("SnapIDs len = %d, want 2", len(res.SnapIDs))
 	}
 }
+
+// TestImport_RegistersInStoreManifest verifies that after Import the
+// store manifest (~/.gotr/snaps/manifest.json) contains entries for
+// all imported snaps, so `gotr snap list` surfaces them without a
+// follow-up `manifest repair`.
+func TestImport_RegistersInStoreManifest(t *testing.T) {
+	srcDir := t.TempDir()
+	src, _ := snap.NewStoreAt(srcDir)
+	id1 := seedSnap(t, srcDir, "sync/20260101T000000_full_p1_to_p2", "alpha")
+	id2 := seedSnap(t, srcDir, "sync/20260102T000000_full_p3_to_p4", "beta")
+
+	dest := filepath.Join(t.TempDir(), "bundle.tar.gz")
+	if _, err := ExportMany(src, []string{id1, id2}, dest, ExportOptions{GotrVersion: "t"}); err != nil {
+		t.Fatalf("ExportMany: %v", err)
+	}
+
+	dstDir := t.TempDir()
+	dst, _ := snap.NewStoreAt(dstDir)
+	if _, err := Import(dst, dest, ImportOptions{}); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	sm, err := snap.LoadManifest(dst)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	got := map[string]bool{}
+	for _, e := range sm.Entries {
+		got[e.ID] = true
+	}
+	for _, id := range []string{id1, id2} {
+		if !got[id] {
+			t.Errorf("imported snap %q not registered in store manifest; entries=%v", id, sm.Entries)
+		}
+	}
+}
+
+// TestImport_SingleSnap_RegistersInStoreManifest covers the single-snap
+// import path (Kind=KindSnap), which uses Import's non-bundle branch.
+func TestImport_SingleSnap_RegistersInStoreManifest(t *testing.T) {
+	srcDir := t.TempDir()
+	src, _ := snap.NewStoreAt(srcDir)
+	id := seedSnap(t, srcDir, "sync/20260105T000000_full_p1_to_p2", "solo")
+
+	dest := filepath.Join(t.TempDir(), "single.tar.gz")
+	if _, err := ExportOne(src, id, dest, ExportOptions{GotrVersion: "t"}); err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	dstDir := t.TempDir()
+	dst, _ := snap.NewStoreAt(dstDir)
+	if _, err := Import(dst, dest, ImportOptions{}); err != nil {
+		t.Fatalf("Import: %v", err)
+	}
+
+	sm, err := snap.LoadManifest(dst)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	found := false
+	for _, e := range sm.Entries {
+		if e.ID == id {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("single-snap import did not register %q; entries=%v", id, sm.Entries)
+	}
+}
+
+// TestImport_Overwrite_NoDuplicateEntries verifies that re-importing
+// over an existing snap with --overwrite replaces the manifest entry
+// rather than appending a duplicate.
+func TestImport_Overwrite_NoDuplicateEntries(t *testing.T) {
+	srcDir := t.TempDir()
+	src, _ := snap.NewStoreAt(srcDir)
+	id := seedSnap(t, srcDir, "sync/20260106T000000_full_p1_to_p2", "dup")
+
+	dest := filepath.Join(t.TempDir(), "b.tar.gz")
+	if _, err := ExportOne(src, id, dest, ExportOptions{GotrVersion: "t"}); err != nil {
+		t.Fatalf("Export: %v", err)
+	}
+
+	dstDir := t.TempDir()
+	dst, _ := snap.NewStoreAt(dstDir)
+	if _, err := Import(dst, dest, ImportOptions{}); err != nil {
+		t.Fatalf("Import #1: %v", err)
+	}
+	if _, err := Import(dst, dest, ImportOptions{Overwrite: true}); err != nil {
+		t.Fatalf("Import #2 with Overwrite: %v", err)
+	}
+
+	sm, err := snap.LoadManifest(dst)
+	if err != nil {
+		t.Fatalf("LoadManifest: %v", err)
+	}
+	count := 0
+	for _, e := range sm.Entries {
+		if e.ID == id {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("entry %q present %d times after overwrite-import; want 1", id, count)
+	}
+}

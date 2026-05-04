@@ -4,326 +4,230 @@
   <img src="docs/assets/banner.svg" alt="gotr — CLI client for TestRail API v2: migrate · snapshot · sync · report · automate" width="100%"/>
 </p>
 
-[English](README.md) | [Русский](README_ru.md)
+<p align="center">
+  <a href="README.md">English</a> · <a href="README_ru.md">Русский</a>
+</p>
 
-[![Latest Release](https://img.shields.io/badge/release-v3.4.0-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)
-[![Next](https://img.shields.io/badge/next-v3.5.0--dev-orange.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.4.0-blue.svg" alt="Latest Release"/></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/next-v3.5.0--dev-orange.svg" alt="Next"/></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/go-1.25-00ADD8.svg?logo=go" alt="Go"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"/></a>
+  <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-EN%20%7C%20RU-purple.svg" alt="Docs"/></a>
+</p>
 
-A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
+> 🛠️ Professional CLI for TestRail API v2 — built for QA engineers and automation specialists who need fast bulk operations, safe migrations with rollback, and CI/CD-friendly automation.
 
-> **Latest Release:** [v3.4.0](https://github.com/Korrnals/gotr/releases/tag/v3.4.0) — multi-snap migration bundles, full-state cross-machine transfer, and store-manifest auto-registration on import.
->
-> **`main` currently points at tag [`v3.4.0`](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)** and is in development toward `v3.5.0-dev` — see [CHANGELOG](CHANGELOG.md) for the unreleased scope.
+`gotr` is a fully-featured terminal client that covers the entire TestRail API v2 surface (121 endpoints), adds operator-grade safety (snapshots, dry-run, rollback), and ships with shell completion, an interactive mode, and a portable bundle format for cross-instance transfers. Every long-running operation streams progress, every destructive action is reversible, and every workflow has a documented runbook.
 
-## Overview
+---
 
-`gotr` provides a comprehensive toolkit for TestRail operations:
+## 📚 Navigation
 
-- **Data Operations** — Retrieve and manage test cases, suites, sections, shared steps, runs, results, milestones, plans, and more
-- **Complete API Coverage** — All 121 TestRail API v2 endpoints implemented (Stage 4 complete)
-- **Project Synchronization** — Migrate entities between projects with intelligent duplicate detection
-- **Interactive Workflow** — Guided selection of projects and suites eliminates the need to memorize IDs
-- **Real-time Progress** — Visual progress bars with channel-based updates for all long-running operations
-- **Built-in Processing** — JSON filtering with embedded `jq`, progress tracking, and structured logging
-- **Flexible Configuration** — Support for flags, environment variables, and configuration files
+- 📖 [Documentation index](docs/index.md) — full EN/RU catalog
+- 🚀 [Installation](docs/en/guides/installation.md) · ⚙️ [Configuration](docs/en/guides/configuration.md) · 💬 [Interactive mode](docs/en/guides/interactive-mode.md)
+- 📋 [Commands catalog](docs/en/guides/commands/index.md) — reference for every subcommand
+- 📘 [Instructions & runbooks](docs/en/guides/instructions/index.md) — operations playbooks
+- 🏛️ [Architecture](docs/en/architecture/index.md) · 📊 [Reports](docs/en/reports/index.md) · 🛠️ [Operations](docs/en/operations/index.md)
+- 📰 [CHANGELOG](CHANGELOG.md) — release history and unreleased scope
 
-## Navigation
+---
 
-- [Documentation](docs/index.md)
-  - [Guides](docs/en/guides/index.md)
-    - [Installation](docs/en/guides/installation.md)
-    - [Configuration](docs/en/guides/configuration.md)
-    - [Interactive Mode](docs/en/guides/interactive-mode.md)
-    - [Progress](docs/en/guides/progress.md)
-    - [Smoke Testing](docs/en/guides/smoke-testing.md)
-    - [Commands Index](docs/en/guides/commands/index.md)
-      - [Command groups](docs/en/guides/commands/index.md#command-groups-and-subgroups)
-      - [report](docs/en/guides/commands/report.md)
-      - [cleanup](docs/en/guides/commands/cleanup.md)
-    - [Instructions](docs/en/guides/instructions/index.md)
-      - [Reports lifecycle](docs/en/guides/instructions/reports-lifecycle.md)
-      - [Retention & cleanup runbook](docs/en/guides/instructions/retention-and-cleanup-runbook.md)
-      - [TLS: insecure → ca_bundle](docs/en/guides/instructions/tls-ca-bundle-migration.md)
-    - [Migration guide v3.3](docs/en/guides/migration-guide-v3.3.md)
-  - [Architecture](docs/en/architecture/index.md)
-    - [UX polish v3.3.0](docs/en/architecture/ux-polish-v3.3.0.md)
-  - [Operations](docs/en/operations/index.md)
-  - [Reports](docs/en/reports/index.md)
-- [Home](README.md)
-
-## Quick Start
+## 🚀 Installation & Quick Start
 
 ```bash
-# Install (Linux/macOS)
+# 1. Install (Linux / macOS)
 curl -sL https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr
 chmod +x gotr && sudo mv gotr /usr/local/bin/
 
-# Initialize configuration
+# 2. Initialize configuration (URL · username · API key)
 gotr config init
 
-# Verify installation
+# 3. Verify installation against your TestRail instance
 gotr self-test
-```
 
-## Key Features
-
-| Feature | Description |
-|---------|-------------|
-| **Full API Coverage** | 121/121 TestRail API v2 endpoints implemented |
-| **Interactive Mode** | Visual selection for projects, suites, and migration targets |
-| **Data Synchronization** | Migrate cases, shared steps, suites, and sections between projects |
-| **Test Run Management** | Create runs, add results, and track test execution |
-| **Built-in jq** | Filter and transform JSON without external dependencies |
-| **Real-time Progress** | Channel-based progress bars with live updates for parallel operations |
-| **Shell Completion** | Auto-completion for bash, zsh, and fish |
-| **Comprehensive Logging** | Structured JSON logs for audit and debugging |
-
-## Usage Examples
-
-### Interactive Mode
-
-```bash
-# Get cases with interactive project/suite selection
-gotr get cases
-
-# Sync with guided workflow
-gotr sync full
-```
-
-### Data Retrieval
-
-```bash
-# List all projects
+# 4. Run your first command
 gotr get projects
-
-# Get cases from specific project and suite
-gotr get cases 30 --suite-id 20069
-
-# Get cases from all suites in project
-gotr get cases 30 --all-suites
-
-# Get shared steps
-gotr get sharedsteps 30
 ```
 
-### Synchronization
+**Detailed instructions** (Windows, package managers, build from source, troubleshooting): [Installation guide](docs/en/guides/installation.md).
+
+---
+
+## ✨ Key Features
+
+Each row links to the dedicated reference page; the link label matches the actual subcommand.
+
+| Capability | Subcommand | What it does |
+|---|---|---|
+| 🔍 **Resource retrieval** | [`get`](docs/en/guides/commands/get.md) | Read cases, suites, sections, runs, plans, milestones, users, and 100+ other resources with filters and pagination. |
+| 🔄 **Cross-project synchronization** | [`sync`](docs/en/guides/commands/sync.md) | Migrate cases, shared steps, suites, and sections between projects with intelligent dedup, mapping, and `--verify-coverage`. |
+| 🆚 **Project comparison** | [`compare`](docs/en/guides/commands/compare.md) | Diff cases, suites, plans, milestones, datasets, and more between two projects; export to JSON / YAML / table. |
+| 📸 **Snapshots & rollback** | [`snap`](docs/en/guides/commands/snap.md) | Snapshot any mutation, list, restore, garbage-collect by per-category TTL. Every destructive op produces a snapshot by default. |
+| 📎 **Attachments** *(incl. bulk cleanup)* | [`attachments`](docs/en/guides/commands/attachments.md) | Upload, download, list — and **bulk-clean** old attachments with default snapshot + rollback safety net (`cleanup-attachments` category, 7-day retention). |
+| 🧹 **Retention & cleanup** | [`cleanup`](docs/en/guides/commands/cleanup.md) | Configurable retention for reports / snaps / exports with `--dry-run` preview and auto-cleanup hooks. |
+| 📊 **Test runs & results** | [`run`](docs/en/guides/commands/run.md) · [`result`](docs/en/guides/commands/result.md) | Create runs, add results in bulk, track execution. |
+| ✅ **Test-level operations** | [`test`](docs/en/guides/commands/test.md) · [`tests`](docs/en/guides/commands/tests.md) | Inspect individual run-tests and batch sets. |
+| 📦 **Portable export / import** | [`export`](docs/en/guides/commands/export.md) | Self-contained bundles (snap / report / migration-archive) with `manifest.json` + `SHA256SUMS`, deterministic, redaction-aware. Symmetric `import`. |
+| 📝 **Reports lifecycle** | [`report`](docs/en/guides/commands/report.md) | Categorized reports (`migrations` / `coverage` / `rollbacks` / `testrail/p<N>`), `report show --print`, recursive listing, INDEX reindex. |
+| 🧩 **CRUD shortcuts** | [`add`](docs/en/guides/commands/add.md) · [`update`](docs/en/guides/commands/update.md) · [`delete`](docs/en/guides/commands/delete.md) · [`list`](docs/en/guides/commands/list.md) | Universal create / update / delete / list operations across resource types. |
+| 💬 **Interactive mode** | [interactive-mode](docs/en/guides/interactive-mode.md) | TTY-guarded survey prompts for `get` / `sync` / `compare` / `report` / `attachments cleanup` / `export` / `import` — no IDs to memorize. |
+| 🔧 **Configuration & profiles** | [`config`](docs/en/guides/commands/config.md) | YAML-backed config with environment-variable overrides, multiple profiles, TLS CA-bundle support. |
+| 🐚 **Shell completion** | [`completion`](docs/en/guides/commands/completion.md) | bash / zsh / fish / powershell with dynamic `ValidArgsFunction` for files, snap IDs, report paths. |
+| 🩺 **Self-test & diagnostics** | [`self-test`](docs/en/guides/commands/self-test.md) | API connectivity, configuration sanity, embedded-tool checks. |
+| 🪵 **Built-in JSON processing** | `--jq` / `--jq-filter` | Filter and transform any output via embedded `jq` — no external dependencies. |
+| 📈 **Streaming progress** | [`progress`](docs/en/guides/progress.md) | Channel-based progress bars with adaptive rate-limit (180 req/min) for parallel fetches. |
+| 🐛 **Debug tracing** | `--debug` / `-d` | API request details, per-phase timings, suite/case processing diagnostics. |
+
+For the full reference and the `bdds` / `configurations` / `datasets` / `groups` / `labels` / `milestones` / `plans` / `roles` / `templates` / `users` / `variables` resource commands, see the [commands catalog](docs/en/guides/commands/index.md).
+
+---
+
+## 💡 Examples (excerpt)
+
+The snippets below cover the most common flows. The full set of recipes (with TLS, CI integration, mapping files, redaction, etc.) lives in the [commands catalog](docs/en/guides/commands/index.md) and the [instructions runbooks](docs/en/guides/instructions/index.md).
 
 ```bash
-# Full migration (shared steps + cases)
+# 🔍 Read data
+gotr get projects
+gotr get cases 30 --suite-id 20069
+gotr get sharedsteps 30 --jq --jq-filter '.[] | {id, title}'
+
+# 🔄 Synchronize between projects (with snapshot + verification)
 gotr sync full \
   --src-project 30 --src-suite 20069 \
   --dst-project 31 --dst-suite 19859 \
   --approve --save-mapping
 
-# Shared steps only
-gotr sync shared-steps \
-  --src-project 30 --dst-project 31 \
-  --approve --save-mapping
-
-# Cases with existing mapping
-gotr sync cases \
-  --src-project 30 --src-suite 20069 \
-  --dst-project 31 --dst-suite 19859 \
-  --mapping-file mapping.json --approve
-```
-
-### Project Comparison
-
-Compare resources between two projects to identify differences and similarities:
-
-```bash
-# Compare all resources between projects
-gotr compare all --pid1 30 --pid2 34
-
-# Compare specific resource types
-gotr compare cases --pid1 30 --pid2 34
-gotr compare suites --pid1 30 --pid2 34
-gotr compare sharedsteps --pid1 30 --pid2 34
-
-# Save comparison results
+# 🆚 Compare projects
 gotr compare all --pid1 30 --pid2 34 --save
 gotr compare cases --pid1 30 --pid2 34 --save-to results.json --format json
 
-# Auto-detect format from file extension
-gotr compare all --pid1 30 --pid2 34 --save-to comparison.yaml
-```
+# 📎 Bulk-clean old attachments (snapshot + rollback by default)
+gotr attachments cleanup --all-projects --older-than 6M --dry-run
+gotr attachments cleanup --project 30 --older-than 6M
 
-**Supported resources:** `cases`, `suites`, `sections`, `sharedsteps`, `runs`, `plans`, `milestones`, `datasets`, `groups`, `labels`, `templates`, `configurations`, `all`
+# 📸 Roll back any mutation
+gotr snap list
+gotr snap rollback <snap-id>
 
-#### Performance Tuning
-
-```bash
-# Server (без rate-limit, максимальная скорость)
-gotr compare cases --pid1 30 --pid2 34 --rate-limit 0
-
-# Cloud Enterprise (повышенный лимит)
-gotr compare cases --pid1 30 --pid2 34 --rate-limit 300
-
-# Больше параллелизма
-gotr compare cases --pid1 30 --pid2 34 --parallel-suites 10 --parallel-pages 6
-```
-
-Automatic deployment detection: gotr определяет `cloud/server` по URL и подбирает rate-limit автоматически. Настраивается в конфиге (`compare.deployment`, `compare.cloud_tier`).
-
-#### Точечный дозабор failed pages
-
-```bash
-# Если часть страниц не загрузилась — дозабрать только их
-gotr compare retry-failed-pages --from ~/.gotr/exports/compare/failed_pages_2026-03-03_10-15-00.json
-```
-
-По умолчанию compare cases автоматически пытается дозабрать проблемные страницы.
-
-### Test Runs and Results
-
-```bash
-# Create test run
+# ✅ Create a run and post results
 gotr run add 30 --name "Regression Suite" --case-ids "1,2,3,4,5"
+gotr result add 12345 --status-id 1 --comment "Passed"
 
-# Add test result
-gotr result add 12345 --status-id 1 --comment "Test passed"
-
-# List test results
-gotr result list --run-id 100
+# 📦 Portable bundle export → transfer → import
+gotr export snap <snap-id>
+gotr import snap ~/.gotr/exports/snaps/snap_<id>_<ts>.tar.gz
 ```
 
-### JSON Filtering
+➡️ **More examples**: [commands catalog](docs/en/guides/commands/index.md) · [interactive mode](docs/en/guides/interactive-mode.md) · [smoke testing](docs/en/guides/smoke-testing.md).
+
+---
+
+## ⚙️ Configuration
+
+Priority (highest → lowest):
+
+1. **CLI flags** — `--url` · `--username` · `--api-key`
+2. **Environment variables** — `TESTRAIL_BASE_URL` · `TESTRAIL_USERNAME` · `TESTRAIL_API_KEY`
+3. **Config file** — `~/.gotr/config/default.yaml` (multiple profiles supported)
 
 ```bash
-# Extract specific fields
-gotr get projects --jq --jq-filter '.[] | {id: .id, name: .name}'
-
-# Pretty print with jq
-gotr get case 12345 --jq
+gotr config init   # create default profile
+gotr config view   # inspect current resolution
 ```
 
-## Debugging
+Full reference: [Configuration guide](docs/en/guides/configuration.md) (TLS CA-bundle, retention, warning suppression, cloud / server tuning).
 
-For troubleshooting and detailed execution information, use the `--debug` (or `-d`) flag:
+---
 
-```bash
-# Show debug output for any command
-gotr compare cases --pid1 30 --pid2 34 --debug
-gotr sync cases --src-project 30 --dst-project 31 --debug
-gotr get cases --project-id 30 --debug
-
-# Debug output includes:
-# - API request details
-# - Progress tracking information
-# - Timing for each operation phase
-# - Suite/case processing details
-```
-
-> **Note:** The `--debug` flag is hidden from autocompletion but available in all commands.
-
-## Configuration
-
-Configuration priority (highest to lowest):
-
-1. **Command-line flags** (`--url`, `--username`, `--api-key`)
-2. **Environment variables** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
-3. **Configuration file** (`~/.gotr/config/default.yaml`)
-
-```bash
-# Initialize configuration
-gotr config init
-
-# View current configuration
-gotr config view
-```
-
-## Project Structure
+## 🗂️ Project Structure
 
 ```text
 gotr/
-├── cmd/                          # CLI commands (29 subcommands)
-│   ├── internal/testhelper/     #   Shared test utilities
-│   ├── get/                     #   GET commands (cases, suites, projects)
-│   ├── run/                     #   Test run management
-│   ├── result/                  #   Test results management
-│   ├── compare/                 #   Cross-project comparison
-│   ├── sync/                    #   Data migration commands
-│   └── ...                      #   Other resource subcommands
-├── docs/                         # Documentation (EN + RU)
-│   ├── en/                      #   English docs
-│   └── ru/                      #   Russian docs
-├── embedded/                     # Embedded binaries (jq)
+├── cmd/                  # CLI commands (Cobra) — one subdir per resource group
+│   ├── attachments/      #   upload · list · cleanup (bulk + rollback)
+│   ├── bundlecmd/        #   export / import (snap · report · migration-archive)
+│   ├── cleanup/          #   retention executor (reports · snaps · exports · all)
+│   ├── compare/          #   cross-project diffing
+│   ├── get/              #   read-only resource retrieval
+│   ├── snap/             #   snapshot list · rollback · gc
+│   ├── sync/             #   project synchronization engine
+│   ├── report/           #   reports lifecycle (organize · show · view · list)
+│   ├── run/ result/ test/ tests/                  #   execution domain
+│   └── …                 #   bdds · cases · configurations · datasets · groups
+│                         #   labels · milestones · plans · roles · templates
+│                         #   users · variables · work
 ├── internal/
-│   ├── client/                  #   TestRail API client
-│   │   ├── interfaces.go       #     ClientInterface (130+ methods, 16 APIs)
-│   │   ├── mock.go             #     MockClient for testing
-│   │   └── *.go                #     API implementations
-│   ├── concurrency/            #   Domain-level parallel orchestration
-│   │   ├── controller.go       #     ParallelController — suite/page streaming
-│   │   └── simple.go           #     FetchParallel[T], FetchParallelBySuite[T]
-│   ├── concurrent/             #   Low-level concurrency primitives
-│   │   ├── pool.go             #     WorkerPool
-│   │   ├── limiter.go          #     AdaptiveRateLimiter (180 req/min)
-│   │   └── retry.go            #     Exponential backoff retry
-│   ├── interactive/            #   Interactive prompts (survey)
-│   ├── service/                #   Business logic
-│   │   ├── run.go              #     RunService
-│   │   ├── result.go           #     ResultService
-│   │   └── migration/          #     Data migration engine
-│   ├── models/                 #   Data models
-│   │   ├── data/              #     API DTOs
-│   │   └── config/            #     Configuration model
-│   ├── output/                 #   Output formatting (JSON/YAML/table)
-│   ├── ui/                     #   Terminal UI (progress, preview)
-│   ├── flags/                  #   Common flag parsing
-│   ├── log/                    #   Structured logging (zap)
-│   └── paths/                  #   Path utilities
-├── pkg/                          # Public packages
-│   ├── testrailapi/            #   API endpoint definitions (135 endpoints)
-│   └── reporter/               #   Unified statistics reporter
-└── main.go                       # Entry point
+│   ├── client/           #   TestRail API client + paginator + ClientInterface
+│   ├── service/          #   business logic (run · result · migration · …)
+│   ├── snap/             #   snapshot engine (entities · backup · rollback)
+│   ├── snapbundle/       #   tar.gz bundles · manifest · SHA256SUMS
+│   ├── reportbundle/     #   zip bundles for report exports
+│   ├── bundle/           #   shared bundle mechanics (zip-slip safe)
+│   ├── cleanup/          #   attachments cleanup core (walker · filter · executor)
+│   ├── retention/        #   retention policies (reports · snaps · exports)
+│   ├── report/           #   classify · organize · resolve · INDEX
+│   ├── exportsorg/       #   exports/ layout migrator
+│   ├── concurrent/       #   primitives — WorkerPool · AdaptiveRateLimiter · retry
+│   ├── concurrency/      #   domain orchestration — ParallelController · streaming
+│   ├── interactive/      #   survey prompts · TTY guard · MockPrompter
+│   ├── output/           #   JSON · YAML · table renderers
+│   ├── ui/               #   progress bars · status messages · quiet-mode
+│   ├── warnings/         #   suppressible warnings registry + first-time tips
+│   ├── state/            #   ~/.gotr/state.json (one-shot flags)
+│   ├── flags/            #   shared flag parsing
+│   ├── log/              #   structured logging (zap)
+│   ├── paths/            #   ~/.gotr layout helpers
+│   └── models/           #   API DTOs + config model
+├── pkg/
+│   ├── testrailapi/      #   API endpoint definitions (135 endpoints)
+│   ├── reporter/         #   unified statistics reporter
+│   └── snap_smoke/       #   snapshot smoke harness
+├── embedded/             #   embedded jq binary (no external deps)
+├── docs/                 #   EN + RU documentation
+└── main.go               #   entry point
 ```
 
-See [docs/en/architecture/overview.md](docs/en/architecture/overview.md) for complete structure.
+Architecture deep-dive: [docs/en/architecture/index.md](docs/en/architecture/index.md).
 
-## What's New in v3.0.0
+---
 
-- **135 TestRail API endpoints** defined, 98% implemented in client
-- **29 CLI commands** covering all major TestRail resources
-- **Streaming parallel pagination** with adaptive rate limiting (180 req/min)
-- **100% test coverage** in 35/42 packages, min 97.4% across all packages
-- **Zero golangci-lint issues** with gocyclo ≤15 threshold
-- **Full EN/RU documentation** with 125 doc pages
+## 🧪 Quality Gates
 
-See [CHANGELOG](CHANGELOG.md) for full release history.
+- ✅ `golangci-lint v2.11.4` — zero issues, `gocyclo ≤ 15` threshold
+- ✅ `go test ./... -count=1 -timeout 300s` — green
+- ✅ Reproducible deterministic bundles (fixed `ModTime`, stable sort, `tar.FormatPAX`)
+- ✅ Race detector + `govulncheck` in CI
 
-## Installation
+Pre-PR checklist: `make verify` (test + vet + lint + build + race + vuln).
 
-Detailed installation instructions: [docs/en/guides/installation.md](docs/en/guides/installation.md)
+---
 
-## Contributing
+## 🤝 Contributing
 
-Contributions are welcome. Please open an issue or submit a pull request.
+Issues and pull requests are welcome. Please follow the [release protocol](docs/en/operations/index.md) and run `make verify` before opening a PR.
 
-## Acknowledgements
+---
 
-This project is built with the following open-source libraries:
+## 🙏 Acknowledgements
+
+Built on top of these excellent open-source projects:
 
 | Library | Purpose |
-|---------|---------|
+|---|---|
 | [spf13/cobra](https://github.com/spf13/cobra) | CLI framework |
 | [spf13/viper](https://github.com/spf13/viper) | Configuration management |
 | [go.uber.org/zap](https://github.com/uber-go/zap) | Structured logging |
 | [stretchr/testify](https://github.com/stretchr/testify) | Testing toolkit |
 | [AlecAivazis/survey/v2](https://github.com/AlecAivazis/survey) | Interactive prompts |
-| [jedib0t/go-pretty/v6](https://github.com/jedib0t/go-pretty) | Table output formatting |
+| [jedib0t/go-pretty/v6](https://github.com/jedib0t/go-pretty) | Table output |
 | [fatih/color](https://github.com/fatih/color) | Colored terminal output |
-| [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) | Concurrency utilities |
-| [golang.org/x/time](https://pkg.go.dev/golang.org/x/time) | Rate limiting |
+| [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) · [time](https://pkg.go.dev/golang.org/x/time) | Concurrency & rate limiting |
+| [jq](https://github.com/jqlang/jq) | Embedded JSON processor (`--jq` / `--jq-filter`) |
 
-### Embedded Tools
+---
 
-| Tool | Purpose |
-|------|----------|
-| [jq](https://github.com/jqlang/jq) | Lightweight JSON processor, embedded as a static binary for `--jq` / `--jq-filter` support |
+## 📄 License
 
-## License
-
-MIT License — see [LICENSE](LICENSE)
+[MIT](LICENSE) © Korrnals

@@ -96,6 +96,62 @@ gotr snap gc                   # as before
 gotr cleanup snaps             # via retention.snaps
 ```
 
+## Case F: Bulk cleanup of TestRail attachments
+
+**Scenario:** reclaim space on the TestRail side by deleting attachments
+older than N days, with a snapshot safety net for rollback. See
+[`gotr attachments cleanup`](../commands/attachments.md) for the full
+flag reference.
+
+Five-step runbook:
+
+1. **Dry-run preview.** Always start with `--dry-run` to inspect the
+   pre-flight summary (project scope, entity types, total attachments,
+   estimated size).
+
+   ```bash
+   gotr attachments cleanup --all-projects \
+     --entity-type result --older-than 90d --dry-run
+   ```
+
+2. **Review the pre-flight summary.** Verify project IDs, entity types,
+   and the projected count/size. Re-run the dry-run with narrower
+   `--project` / `--entity-type` / `--limit` if the scope is too broad.
+
+3. **Confirm and execute.** Drop `--dry-run`. The command will create a
+   snapshot under category `cleanup-attachments` before deleting.
+
+   ```bash
+   gotr attachments cleanup --all-projects \
+     --entity-type result --older-than 90d --concurrency 4
+   ```
+
+   Use `--force` to skip the final confirmation prompt in scripts.
+
+4. **Locate the snapshot.** Snapshots live under
+   `~/.gotr/snaps/cleanup-attachments/<id>/` (`data.json` + `files/`
+   tree). Default TTL for this category is **7 days** — see
+   [snap → Per-category retention TTL](../commands/snap.md#per-category-retention-ttl)
+   to extend it via `snap.retention.category_ttl_days` if you need a
+   longer rollback window.
+
+   ```bash
+   gotr snap list --category cleanup-attachments
+   ```
+
+5. **Rollback if needed.** Re-uploads the snapshotted blobs to TestRail.
+   Re-uploaded attachments receive **new** TestRail IDs (original IDs
+   cannot be restored). The `test` entity type is gracefully skipped on
+   rollback because TestRail has no `add_attachment_to_test` endpoint.
+
+   ```bash
+   gotr snap rollback <snapshot_id>
+   ```
+
+> **Tip.** Use `--no-snapshot` only when you intentionally accept that
+> rollback will be impossible (e.g. one-off cleanup with no recovery
+> requirement). The default snapshot path is the recommended mode.
+
 ## Success criteria
 
 - `INDEX.md` is updated after `cleanup reports`.

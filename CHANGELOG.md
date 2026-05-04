@@ -13,7 +13,80 @@ _No unreleased changes yet._
 
 ---
 
+## [3.5.0] - 2026-05-04
+
+### Added — bulk attachments cleanup with snapshot + rollback
+
+- **New command `gotr attachments cleanup`** — removes attachments older
+  than a configurable cutoff across one project, several projects, or
+  every visible project. Selection can be filtered by parent kind
+  (`case`, `run`, `plan`, `plan_entry`, `result`, `test`) and capped
+  via `--limit`.
+
+- **Default snapshot + rollback safety net.** Before any deletion the
+  command stores a snapshot of every selected attachment (binary +
+  metadata) under the new snap category `cleanup-attachments`. The
+  standard snap workflow restores them:
+  ```bash
+  gotr snap list --category cleanup-attachments
+  gotr snap rollback <snap-id>
+  ```
+  Rollback re-uploads each binary to its original parent and records the
+  old → new attachment ID mapping. Test-bound attachments (no
+  `add_attachment_to_test` endpoint exists in TestRail) are reported as
+  **Skipped** with the original IDs preserved in the failure list.
+
+- **Seven-day default retention for cleanup snapshots.** `snap gc` now
+  honors a per-category TTL map (`snap.retention.category_ttl_days`)
+  with a built-in default of 7 days for `cleanup-attachments`. The
+  global `--ttl-days` override and existing `protected_prefixes` /
+  `frozen_snapshots` rules continue to apply unchanged.
+
+- **Compatibility with TestRail Server &lt; 7.5.** The cleanup walker now
+  ships **two scan strategies** behind a new `--scan-strategy` flag:
+  `project` (single bulk `get_attachments_for_project` call, TestRail
+  7.5+ / Cloud) and `entities` (walk
+  `get_suites → get_cases → get_attachments_for_case`, plus optional
+  `get_runs` / `get_plans` based on `--entity-type`, deduplicated by
+  attachment ID, TestRail 5.7+). The default is `auto`: the command
+  probes the project endpoint once on the first project and falls back
+  to the entity walk **only** when the canonical
+  `404 Unknown method 'get_attachments_for_project'` is returned. Any
+  other probe error aborts the run — no silent fallback. The fallback
+  is announced with an `INFO:` line on stderr; `--scan-strategy=project`
+  or `--scan-strategy=entities` pins the strategy and skips the probe.
+
+- **Interactive survey** mirrors every CLI flag (project scope, parent
+  kinds, `--older-than`, concurrency, snapshot toggle, retention,
+  dry-run) and is gated by a TTY check — non-interactive contexts skip
+  the survey entirely. The final pre-flight confirmation is suppressed
+  by `--force` or `--dry-run`.
+
+### Added — Attachment model & client
+
+- `data.Attachment` gained `EntryID`, `TestID`, `EntityType`, and
+  `EntityID` fields plus an `InferredEntityType()` helper that derives
+  the parent kind from whichever ID is populated.
+- All `client.HTTPClient.GetAttachmentsFor*` methods now use the
+  generic paginator and stream every page of results.
+
+### Fixed — multipart attachment upload
+
+- `client.HTTPClient.DoRequest` now extracts the `Content-Type`
+  override from `queryParams` **before** building the URL query string.
+  Previously the multipart `Content-Type` header (with its boundary
+  parameter) leaked into the GET parameters, and TestRail rejected the
+  upload with `Invalid characters in GET: [Content-Type]
+  [multipart/form-data; boundary=...]`. As a result, `gotr attachments
+  add` and the cleanup snapshot rollback path (which re-uploads
+  binaries) now work against TestRail Server again.
+
+---
+
 ## [3.4.0] - 2026-05-04
+
+<details>
+<summary>Details</summary>
 
 ### Added — multi-snap migration bundles & full-state cross-machine transfer
 
@@ -78,6 +151,7 @@ _No unreleased changes yet._
   Old migration bundles remain functional — import accepts an explicit
   file path regardless of location.
 
+</details>
 
 ## [3.3.2] - 2026-04-28
 

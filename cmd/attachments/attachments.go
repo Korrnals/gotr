@@ -49,5 +49,8 @@ test result, or test run.`,
 	// Add 'add' to the attachments command
 	attachmentsCmd.AddCommand(addCmd)
 
+	// Bulk cleanup with snapshot+rollback.
+	attachmentsCmd.AddCommand(newCleanupCmd(getClient))
+
 	root.AddCommand(attachmentsCmd)
 }

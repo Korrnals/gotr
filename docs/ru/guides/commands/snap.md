@@ -264,6 +264,36 @@ snap:
 
 Хранилище снапшотов: `~/.gotr/snaps/`.
 
+### Per-category retention TTL
+
+`gotr snap gc` учитывает per-category переопределения TTL поверх
+глобального `snap.retention.default_ttl_days`. Карта живёт под ключом
+`snap.retention.category_ttl_days` в `~/.gotr/config/default.yaml`:
+
+```yaml
+snap:
+  retention:
+    default_ttl_days: 30
+    category_ttl_days:
+      cleanup-attachments: 7   # built-in default; для наглядности
+      sync: 14                 # пример: более короткий срок для sync-снапшотов
+```
+
+Приоритет (выше — побеждает):
+
+1. Флаг `--ttl-days` у `gotr snap gc` — применяется ко всем категориям,
+   игнорирует per-category переопределения.
+2. `snap.retention.category_ttl_days[<category>]` — per-category
+   переопределение из конфига (или встроенный default для известных
+   категорий).
+3. `snap.retention.default_ttl_days` — глобальный fallback.
+
+Категория `cleanup-attachments` (снапшоты, создаваемые
+[`gotr attachments cleanup`](attachments.md)) по умолчанию имеет TTL
+**7 дней** даже без явной записи в конфиге, поскольку такие снапшоты —
+короткоживущая страховка отката и могут содержать перекачанные блобы.
+Пользовательские записи всегда переопределяют встроенные значения.
+
 ## 🧪 Чек-лист перед использованием
 
 - [ ] Конфигурация gotr настроена (`gotr self-test`)

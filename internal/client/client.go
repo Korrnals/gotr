@@ -172,6 +172,16 @@ func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, bod
 	// Full URL as string
 	fullURL := base + "/" + path
 
+	// Extract Content-Type override BEFORE building the query string —
+	// otherwise multipart upload headers leak into TestRail's GET
+	// parameters and the server rejects the request with
+	// "Invalid characters in GET: [Content-Type] [multipart/form-data; ...]".
+	contentType := "application/json"
+	if ct, ok := queryParams["Content-Type"]; ok {
+		contentType = ct
+		delete(queryParams, "Content-Type")
+	}
+
 	// Append query params with '&' (TestRail uses '?' inside the path prefix)
 	if len(queryParams) > 0 {
 		q := url.Values{}
@@ -186,14 +196,6 @@ func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, bod
 	req, err := http.NewRequestWithContext(ctx, method, fullURL, body)
 	if err != nil {
 		return nil, err
-	}
-
-	// Check for Content-Type override in queryParams (e.g. multipart/form-data)
-	contentType := "application/json"
-	if ct, ok := queryParams["Content-Type"]; ok {
-		contentType = ct
-		// Remove Content-Type from params so it's not appended to URL
-		delete(queryParams, "Content-Type")
 	}
 
 	// Set the Content-Type header

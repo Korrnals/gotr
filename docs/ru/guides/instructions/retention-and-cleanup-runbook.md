@@ -93,6 +93,66 @@ gotr snap gc                   # как раньше
 gotr cleanup snaps             # через retention.snaps
 ```
 
+## Случай F: Массовая очистка вложений TestRail
+
+**Сценарий:** освободить место на стороне TestRail, удалив вложения
+старше N дней, со страховочным снапшотом для отката. Полный список
+флагов и сценарий отката описан в
+[`gotr attachments cleanup`](../commands/attachments.md).
+
+Раннер из 5 шагов:
+
+1. **Dry-run preview.** Всегда начинайте с `--dry-run`, чтобы увидеть
+   pre-flight summary (область проектов, типы сущностей, общее
+   количество вложений, оценка размера).
+
+   ```bash
+   gotr attachments cleanup --all-projects \
+     --entity-type result --older-than 90d --dry-run
+   ```
+
+2. **Просмотр pre-flight summary.** Проверьте ID проектов, типы
+   сущностей и прогноз количества/размера. Если область слишком
+   широкая — повторите dry-run с более узкими `--project` /
+   `--entity-type` / `--limit`.
+
+3. **Подтверждение и запуск.** Уберите `--dry-run`. Команда создаст
+   снапшот в категории `cleanup-attachments` перед удалением.
+
+   ```bash
+   gotr attachments cleanup --all-projects \
+     --entity-type result --older-than 90d --concurrency 4
+   ```
+
+   Используйте `--force`, чтобы пропустить финальное подтверждение в
+   скриптах.
+
+4. **Местоположение снапшота.** Снапшоты лежат в
+   `~/.gotr/snaps/cleanup-attachments/<id>/` (`data.json` + дерево
+   `files/`). Default TTL для этой категории — **7 дней**; см.
+   [snap → Per-category retention TTL](../commands/snap.md#per-category-retention-ttl),
+   чтобы продлить окно через `snap.retention.category_ttl_days`, если
+   требуется более длинный rollback-window.
+
+   ```bash
+   gotr snap list --category cleanup-attachments
+   ```
+
+5. **Откат при необходимости.** Перезаливает снапшотные блобы обратно в
+   TestRail. Перезалитые вложения получают **новые** TestRail-ID
+   (исходные ID восстановить нельзя). Тип сущности `test` при откате
+   корректно пропускается, поскольку TestRail не имеет endpoint
+   `add_attachment_to_test`.
+
+   ```bash
+   gotr snap rollback <snapshot_id>
+   ```
+
+> **Подсказка.** `--no-snapshot` стоит использовать только если вы
+> сознательно отказываетесь от возможности отката (например, разовая
+> очистка без требований к восстановлению). Режим со снапшотом — по
+> умолчанию и рекомендуется.
+
 ## Критерии успеха
 
 - `INDEX.md` обновлён после `cleanup reports`.

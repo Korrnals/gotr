@@ -218,6 +218,7 @@ func buildArtifactHints(a artifactSet) []string {
 		hints = append(hints,
 			fmt.Sprintf("Snap details:   gotr snap info %s", a.SnapshotID),
 			fmt.Sprintf("Rollback:       gotr snap rollback %s", a.SnapshotID),
+			fmt.Sprintf("Bundle:         gotr export migration-archive %s", a.SnapshotID),
 		)
 	}
 	return hints

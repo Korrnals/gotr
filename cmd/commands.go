@@ -223,6 +223,18 @@ func registerExportCmd() {
 		}
 		return nil, cobra.ShellCompDirectiveDefault
 	}
+
+	// `gotr export resources <resource> <endpoint> [id]` is the modern
+	// entry point for raw API resource exports. It mirrors the legacy
+	// `gotr export <resource>` form (which remains for back-compat) and
+	// shares the same flag set + completion logic.
+	exportCmd.AddCommand(exportResourcesCmd)
+	exportResourcesCmd.Flags().StringP("project-id", "p", "", "Project ID (for endpoints with {project_id})")
+	exportResourcesCmd.Flags().StringP("suite-id", "s", "", "Suite ID (for get_cases)")
+	exportResourcesCmd.Flags().String("section-id", "", "Section ID (for get_cases)")
+	exportResourcesCmd.Flags().String("milestone-id", "", "Milestone ID (for get_runs)")
+	exportResourcesCmd.Flags().Bool("save", false, "Save response to ~/.gotr/exports/api/export/")
+	exportResourcesCmd.ValidArgsFunction = exportCmd.ValidArgsFunction
 }
 
 // ============================================

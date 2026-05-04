@@ -102,14 +102,21 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 			return fmt.Errorf("parse flags: %w", err)
 		}
 
+		ctx := cmd.Context()
+		if err := promptCleanupOptions(ctx, cmd, opts); err != nil {
+			return fmt.Errorf("interactive: %w", err)
+		}
+
 		if !opts.AllProjects && len(opts.ProjectIDs) == 0 {
 			return fmt.Errorf("either --project or --all-projects is required")
 		}
 		if opts.AllProjects && len(opts.ProjectIDs) > 0 {
 			return fmt.Errorf("--project and --all-projects are mutually exclusive")
 		}
+		if opts.OlderThan == 0 && !opts.DryRun {
+			return fmt.Errorf("--older-than is required (use --dry-run to preview without it)")
+		}
 
-		ctx := cmd.Context()
 		api, ok := getClient(cmd).(cleanup.AttachmentsAPI)
 		if !ok {
 			return fmt.Errorf("client does not implement cleanup.AttachmentsAPI")
@@ -140,6 +147,15 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 			if estGB > opts.MaxSizeGB {
 				return fmt.Errorf("estimated snapshot size %.2f GB exceeds --max-size-gb %.2f (use --force to override)", estGB, opts.MaxSizeGB)
 			}
+		}
+
+		proceed, err := confirmCleanupExecution(ctx, opts)
+		if err != nil {
+			return err
+		}
+		if !proceed {
+			fmt.Fprintln(cmd.OutOrStdout(), "Aborted by user.")
+			return nil
 		}
 
 		store, manifest, err := openSnapStore()
@@ -204,8 +220,6 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 			return nil, fmt.Errorf("--older-than %q: %w", rawAge, err)
 		}
 		opts.OlderThan = d
-	} else if !opts.DryRun {
-		return nil, fmt.Errorf("--older-than is required (use --dry-run to preview without it)")
 	}
 
 	if rawRet != "" {

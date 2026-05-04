@@ -161,7 +161,20 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | `--max-size-gb <n>` | Abort if estimated snapshot exceeds this size unless `--force`. |
 | `--concurrency <n>` | Parallel delete workers (default `4`). |
 | `--limit <n>` | Cap total attachments processed across all projects. |
+| `--scan-strategy` | How to enumerate attachments: `auto` (default), `project`, `entities`. See **Compatibility** below. |
 | `--force` | Skip the final confirmation prompt. |
+
+**🧭 Compatibility (TestRail Server vs Cloud):**
+
+The bulk endpoint `get_attachments_for_project` was added in **TestRail 7.5**. Older self-hosted servers (TestRail Server &lt; 7.5) respond with `404 Unknown method`. To stay compatible with both, `gotr` ships **two scan strategies**:
+
+| Strategy | How attachments are listed | Works on |
+| --- | --- | --- |
+| `project` | Single bulk call to `get_attachments_for_project`. | TestRail 7.5+ / Cloud |
+| `entities` | Walk `get_suites → get_cases → get_attachments_for_case` (and optionally `get_runs` / `get_plans` based on `--entity-type`). Results are deduplicated by attachment ID. | TestRail 5.7+ |
+| `auto` (default) | Probe the project endpoint once on the first project; fall back to `entities` only when the canonical `404 Unknown method` is returned. Any other error aborts the run — no silent fallback. | both |
+
+When the auto-probe falls back, an `INFO:` line is printed to stderr explaining the switch. In CI/non-interactive flows you can pin the strategy explicitly with `--scan-strategy=entities` or `--scan-strategy=project` to skip the probe call entirely.
 
 **Rollback:** the snapshot is recorded under category `cleanup-attachments` and can be restored with the standard snap workflow:
 

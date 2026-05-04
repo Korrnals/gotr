@@ -80,10 +80,21 @@ type Plan struct {
 	TruncatedByLimit bool
 }
 
-// BuildPlan walks the given projects, lists their attachments, applies
-// the filter and returns a deterministic Plan. When projectIDs is empty
-// the walker enumerates every project the API key can see.
-//nolint:gocyclo // Plan walker: project resolution + parallel fetch + filter + limit are best read top-to-bottom.
+// ProjectLister is the slice of the TestRail client surface used to
+// resolve the project set walked by BuildPlan.
+type ProjectLister interface {
+	GetProjects(ctx context.Context) (data.GetProjectsResponse, error)
+}
+
+// BuildPlan walks the given projects, lists their attachments via the
+// project-level endpoint, applies the filter and returns a
+// deterministic Plan. When projectIDs is empty the walker enumerates
+// every project the API key can see.
+//
+// Use BuildPlanWithScanner when the caller has already resolved a
+// scan strategy (project vs entities) — for example via ResolveScanner.
+// BuildPlan is preserved for back-compat and assumes the project-level
+// endpoint is available on the server.
 func BuildPlan(
 	ctx context.Context,
 	api AttachmentsAPI,
@@ -91,7 +102,22 @@ func BuildPlan(
 	filter AttachmentFilter,
 	concurrency int,
 ) (*Plan, error) {
-	projects, err := resolveProjects(ctx, api, projectIDs)
+	return BuildPlanWithScanner(ctx, api, NewProjectScanner(api), projectIDs, filter, concurrency)
+}
+
+// BuildPlanWithScanner is BuildPlan parameterised by an explicit
+// AttachmentScanner. The scanner decides HOW each project's
+// attachments are listed (single bulk call vs entity walk).
+//nolint:gocyclo // Plan walker: project resolution + parallel fetch + filter + limit are best read top-to-bottom.
+func BuildPlanWithScanner(
+	ctx context.Context,
+	lister ProjectLister,
+	scanner AttachmentScanner,
+	projectIDs []int64,
+	filter AttachmentFilter,
+	concurrency int,
+) (*Plan, error) {
+	projects, err := resolveProjectsViaLister(ctx, lister, projectIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +126,7 @@ func BuildPlan(
 	}
 
 	results, _ := concurrent.ParallelMap(ctx, projects, concurrency, func(p data.Project, _ int) (ProjectSelection, error) {
-		atts, err := api.GetAttachmentsForProject(ctx, p.ID)
+		atts, err := scanner.Scan(ctx, p.ID)
 		if err != nil {
 			return ProjectSelection{}, fmt.Errorf("project %d: %w", p.ID, err)
 		}
@@ -148,9 +174,9 @@ func BuildPlan(
 	return plan, nil
 }
 
-func resolveProjects(ctx context.Context, api AttachmentsAPI, projectIDs []int64) ([]data.Project, error) {
+func resolveProjectsViaLister(ctx context.Context, lister ProjectLister, projectIDs []int64) ([]data.Project, error) {
 	if len(projectIDs) == 0 {
-		all, err := api.GetProjects(ctx)
+		all, err := lister.GetProjects(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("list projects: %w", err)
 		}
@@ -158,7 +184,7 @@ func resolveProjects(ctx context.Context, api AttachmentsAPI, projectIDs []int64
 	}
 	out := make([]data.Project, 0, len(projectIDs))
 	for _, id := range projectIDs {
-		p, err := lookupProject(ctx, api, id)
+		p, err := lookupProjectViaLister(ctx, lister, id)
 		if err != nil {
 			return nil, err
 		}
@@ -167,11 +193,11 @@ func resolveProjects(ctx context.Context, api AttachmentsAPI, projectIDs []int64
 	return out, nil
 }
 
-// lookupProject prefers a single GET when the API supports it; we fall
-// back to scanning the full project list for environments where
-// get_project is restricted.
-func lookupProject(ctx context.Context, api AttachmentsAPI, id int64) (data.Project, error) {
-	if g, ok := api.(interface {
+// lookupProjectViaLister prefers a single GET when the lister supports
+// it; we fall back to scanning the full project list for environments
+// where get_project is restricted.
+func lookupProjectViaLister(ctx context.Context, lister ProjectLister, id int64) (data.Project, error) {
+	if g, ok := lister.(interface {
 		GetProject(context.Context, int64) (*data.GetProjectResponse, error)
 	}); ok {
 		p, err := g.GetProject(ctx, id)
@@ -179,7 +205,7 @@ func lookupProject(ctx context.Context, api AttachmentsAPI, id int64) (data.Proj
 			return data.Project{ID: p.ID, Name: p.Name}, nil
 		}
 	}
-	all, err := api.GetProjects(ctx)
+	all, err := lister.GetProjects(ctx)
 	if err != nil {
 		return data.Project{}, fmt.Errorf("list projects (lookup %d): %w", id, err)
 	}

@@ -40,6 +40,21 @@
   `protected_prefixes` и `frozen_snapshots` продолжают работать как
   раньше.
 
+- **Совместимость с TestRail Server &lt; 7.5.** Очистка теперь
+  поддерживает **две стратегии сканирования** через новый флаг
+  `--scan-strategy`: `project` (один bulk-вызов
+  `get_attachments_for_project`, TestRail 7.5+ / Cloud) и `entities`
+  (обход `get_suites → get_cases → get_attachments_for_case` плюс
+  опционально `get_runs` / `get_plans` в зависимости от
+  `--entity-type`, дедупликация по ID вложения, TestRail 5.7+).
+  Значение по умолчанию `auto`: один пробный вызов project-эндпоинта
+  на первом проекте, переключение на `entities` происходит **только**
+  при канонической ошибке `404 Unknown method 'get_attachments_for_project'`.
+  Любая другая ошибка пробного вызова прерывает запуск — без
+  молчаливого fallback. Переключение сопровождается строкой `INFO:` в
+  stderr; `--scan-strategy=project` или `--scan-strategy=entities`
+  фиксируют стратегию и полностью отключают пробный вызов.
+
 - **Интерактивный режим** дублирует все флаги команды (область
   проектов, типы родителей, `--older-than`, параллелизм, включение
   снапшота, retention, dry-run) и активируется только в TTY —

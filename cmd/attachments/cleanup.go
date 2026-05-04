@@ -72,6 +72,7 @@ as Skipped.`,
 	cmd.Flags().Float64("max-size-gb", 0, "Refuse if the snapshot would exceed N GB (0 = no cap); use --force to override")
 	cmd.Flags().Bool("compress", false, "Gzip-compress stored binaries inside the snapshot")
 	cmd.Flags().Bool("force", false, "Bypass --max-size-gb and the interactive confirmation prompt")
+	cmd.Flags().String("scan-strategy", "auto", "How to enumerate attachments: auto|project|entities. auto probes get_attachments_for_project once and falls back to a suites→cases/runs/plans walk on TestRail Server < 7.5.")
 	output.AddFlag(cmd)
 
 	return cmd
@@ -93,6 +94,7 @@ type cleanupOptions struct {
 	MaxSizeGB         float64
 	Compress          bool
 	Force             bool
+	ScanStrategy      string
 }
 
 //nolint:gocyclo // Sequential pre-flight stages (parse → prompt → validate → plan → confirm → execute) are clearer kept together than artificially split.
@@ -122,6 +124,10 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		if !ok {
 			return fmt.Errorf("client does not implement cleanup.AttachmentsAPI")
 		}
+		scannerAPI, ok := getClient(cmd).(cleanup.ScannerAPI)
+		if !ok {
+			return fmt.Errorf("client does not implement cleanup.ScannerAPI (need both project- and entity-level attachment endpoints)")
+		}
 
 		filter := cleanup.AttachmentFilter{
 			EntityTypes: toEntityTypeSet(opts.EntityTypes),
@@ -131,7 +137,12 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 			filter.OlderThan = time.Now().Add(-opts.OlderThan)
 		}
 
-		plan, err := buildPlanWithStatus(ctx, cmd, api, opts, filter)
+		scanner, err := resolveScannerWithStatus(ctx, cmd, scannerAPI, opts, filter)
+		if err != nil {
+			return fmt.Errorf("resolve scan strategy: %w", err)
+		}
+
+		plan, err := buildPlanWithStatus(ctx, cmd, api, scanner, opts, filter)
 		if err != nil {
 			return fmt.Errorf("build plan: %w", err)
 		}
@@ -214,6 +225,13 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 	opts.MaxSizeGB, _ = cmd.Flags().GetFloat64("max-size-gb")
 	opts.Compress, _ = cmd.Flags().GetBool("compress")
 	opts.Force, _ = cmd.Flags().GetBool("force")
+	opts.ScanStrategy, _ = cmd.Flags().GetString("scan-strategy")
+	opts.ScanStrategy = strings.ToLower(strings.TrimSpace(opts.ScanStrategy))
+	switch opts.ScanStrategy {
+	case "", "auto", "project", "entities":
+	default:
+		return nil, fmt.Errorf("--scan-strategy %q invalid (allowed: auto, project, entities)", opts.ScanStrategy)
+	}
 
 	if rawAge != "" {
 		d, err := parseHumanDuration(rawAge)
@@ -296,7 +314,7 @@ func parseHumanDuration(s string) (time.Duration, error) {
 	}
 }
 
-func buildPlanWithStatus(ctx context.Context, cmd *cobra.Command, api cleanup.AttachmentsAPI, opts *cleanupOptions, filter cleanup.AttachmentFilter) (*cleanup.Plan, error) {
+func buildPlanWithStatus(ctx context.Context, cmd *cobra.Command, lister cleanup.ProjectLister, scanner cleanup.AttachmentScanner, opts *cleanupOptions, filter cleanup.AttachmentFilter) (*cleanup.Plan, error) {
 	quiet, _ := cmd.Flags().GetBool("quiet")
 	var ids []int64
 	if !opts.AllProjects {
@@ -307,8 +325,54 @@ func buildPlanWithStatus(ctx context.Context, cmd *cobra.Command, api cleanup.At
 		Writer: os.Stderr,
 		Quiet:  quiet,
 	}, func(ctx context.Context) (*cleanup.Plan, error) {
-		return cleanup.BuildPlan(ctx, api, ids, filter, opts.Concurrency)
+		return cleanup.BuildPlanWithScanner(ctx, lister, scanner, ids, filter, opts.Concurrency)
 	})
+}
+
+// resolveScannerWithStatus picks the scan strategy honoring
+// --scan-strategy, probing the server once when strategy=auto. The
+// probe targets the first explicit project ID, or — when --all-projects
+// is in effect — the first project returned by GetProjects (which is a
+// call we'd make anyway during BuildPlanWithScanner).
+func resolveScannerWithStatus(ctx context.Context, cmd *cobra.Command, api cleanup.ScannerAPI, opts *cleanupOptions, filter cleanup.AttachmentFilter) (cleanup.AttachmentScanner, error) {
+	strategy := cleanup.ScanStrategy(opts.ScanStrategy)
+	entityOpts := cleanup.EntityScannerOptionsFromTypes(filter.EntityTypes, opts.Concurrency)
+
+	// project / entities forced — no probe required.
+	if strategy == cleanup.ScanStrategyProject || strategy == cleanup.ScanStrategyEntities {
+		return cleanup.ResolveScanner(ctx, api, strategy, entityOpts, 0, nil)
+	}
+
+	lister, ok := any(api).(cleanup.ProjectLister)
+	if !ok {
+		return nil, fmt.Errorf("client does not implement cleanup.ProjectLister (need GetProjects for the auto-probe)")
+	}
+	probeID, err := pickProbeProjectID(ctx, lister, opts)
+	if err != nil {
+		return nil, err
+	}
+	logf := func(format string, args ...any) {
+		fmt.Fprintln(cmd.ErrOrStderr(), "INFO:", fmt.Sprintf(format, args...))
+	}
+	return cleanup.ResolveScanner(ctx, api, strategy, entityOpts, probeID, logf)
+}
+
+// pickProbeProjectID returns a project ID suitable for the auto-probe
+// call. With --project, the first explicit ID is used. With
+// --all-projects the helper performs a single GetProjects call (which
+// the planner would issue regardless) and returns the first ID.
+func pickProbeProjectID(ctx context.Context, lister cleanup.ProjectLister, opts *cleanupOptions) (int64, error) {
+	if !opts.AllProjects && len(opts.ProjectIDs) > 0 {
+		return opts.ProjectIDs[0], nil
+	}
+	all, err := lister.GetProjects(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("list projects (probe): %w", err)
+	}
+	if len(all) == 0 {
+		return 0, fmt.Errorf("no projects visible to API key — nothing to probe")
+	}
+	return all[0].ID, nil
 }
 
 func openSnapStore() (*snap.Store, *snap.Manifest, error) {

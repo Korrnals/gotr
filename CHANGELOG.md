@@ -36,6 +36,20 @@
   global `--ttl-days` override and existing `protected_prefixes` /
   `frozen_snapshots` rules continue to apply unchanged.
 
+- **Compatibility with TestRail Server &lt; 7.5.** The cleanup walker now
+  ships **two scan strategies** behind a new `--scan-strategy` flag:
+  `project` (single bulk `get_attachments_for_project` call, TestRail
+  7.5+ / Cloud) and `entities` (walk
+  `get_suites → get_cases → get_attachments_for_case`, plus optional
+  `get_runs` / `get_plans` based on `--entity-type`, deduplicated by
+  attachment ID, TestRail 5.7+). The default is `auto`: the command
+  probes the project endpoint once on the first project and falls back
+  to the entity walk **only** when the canonical
+  `404 Unknown method 'get_attachments_for_project'` is returned. Any
+  other probe error aborts the run — no silent fallback. The fallback
+  is announced with an `INFO:` line on stderr; `--scan-strategy=project`
+  or `--scan-strategy=entities` pins the strategy and skips the probe.
+
 - **Interactive survey** mirrors every CLI flag (project scope, parent
   kinds, `--older-than`, concurrency, snapshot toggle, retention,
   dry-run) and is gated by a TTY check — non-interactive contexts skip

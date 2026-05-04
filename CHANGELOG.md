@@ -64,6 +64,17 @@
 - All `client.HTTPClient.GetAttachmentsFor*` methods now use the
   generic paginator and stream every page of results.
 
+### Fixed — multipart attachment upload
+
+- `client.HTTPClient.DoRequest` now extracts the `Content-Type`
+  override from `queryParams` **before** building the URL query string.
+  Previously the multipart `Content-Type` header (with its boundary
+  parameter) leaked into the GET parameters, and TestRail rejected the
+  upload with `Invalid characters in GET: [Content-Type]
+  [multipart/form-data; boundary=...]`. As a result, `gotr attachments
+  add` and the cleanup snapshot rollback path (which re-uploads
+  binaries) now work against TestRail Server again.
+
 ---
 
 ## [3.4.0] - 2026-05-04

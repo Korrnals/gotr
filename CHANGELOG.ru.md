@@ -69,6 +69,16 @@
 - Все методы `client.HTTPClient.GetAttachmentsFor*` теперь используют
   общий пагинатор и читают все страницы ответа.
 
+### Fixed — загрузка multipart-вложений
+
+- `client.HTTPClient.DoRequest` теперь извлекает `Content-Type`-override
+  из `queryParams` **до** сборки query-строки URL. Раньше заголовок
+  multipart с параметром boundary попадал в GET-параметры, и TestRail
+  отвергал загрузку с ошибкой `Invalid characters in GET:
+  [Content-Type] [multipart/form-data; boundary=...]`. После фикса
+  снова работают `gotr attachments add` и rollback-снапшота cleanup
+  (который повторно загружает бинарники).
+
 ---
 
 ## [3.4.0] - 2026-05-04

@@ -205,6 +205,24 @@ gotr cleanup all
 
 See [gotr cleanup](commands/cleanup.md).
 
+### Snap manifest TTL: per-category override
+
+The `gotr snap gc` retention window is configured separately from
+`retention.snaps` (which only manages exported snapshot files). To
+override the manifest TTL per category, use
+`snap.retention.category_ttl_days`:
+
+```yaml
+snap:
+  retention:
+    default_ttl_days: 30
+    category_ttl_days:
+      cleanup-attachments: 7   # built-in default for attachments cleanup snapshots
+```
+
+Precedence: `--ttl-days` flag > category override > `default_ttl_days`.
+See [gotr snap → Per-category retention TTL](commands/snap.md#per-category-retention-ttl).
+
 ## Compare flags
 
 These flags are available for all `compare` subcommands (`cases`,

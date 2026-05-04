@@ -11,7 +11,73 @@
 
 ## [Unreleased]
 
-_Пока нет незарелизенных изменений._
+### Added — массовая очистка вложений со снапшотом и откатом
+
+- **Новая команда `gotr attachments cleanup`** — удаляет вложения
+  старше заданной границы возраста в одном проекте, нескольких
+  проектах или во всех видимых проектах. Выборка фильтруется по типу
+  родителя (`case`, `run`, `plan`, `plan_entry`, `result`, `test`) и
+  ограничивается флагом `--limit`.
+
+- **Снапшот и откат включены по умолчанию.** Перед удалением
+  сохраняются бинарники и метаданные всех выбранных вложений в новой
+  snap-категории `cleanup-attachments`. Восстановление — стандартным
+  потоком snap:
+  ```bash
+  gotr snap list --category cleanup-attachments
+  gotr snap rollback <snap-id>
+  ```
+  Откат повторно загружает каждое вложение в его исходного родителя и
+  фиксирует соответствие старого и нового ID. Вложения, привязанные
+  только к `test` (в TestRail API нет endpoint `add_attachment_to_test`),
+  при откате помечаются как **Skipped** с сохранением исходных ID в
+  списке ошибок.
+
+- **Срок хранения снапшотов очистки — 7 дней по умолчанию.** В `snap gc`
+  добавлена карта TTL по категориям
+  (`snap.retention.category_ttl_days`) со встроенным значением 7 дней
+  для `cleanup-attachments`. Глобальный `--ttl-days`, а также
+  `protected_prefixes` и `frozen_snapshots` продолжают работать как
+  раньше.
+
+- **Совместимость с TestRail Server &lt; 7.5.** Очистка теперь
+  поддерживает **две стратегии сканирования** через новый флаг
+  `--scan-strategy`: `project` (один bulk-вызов
+  `get_attachments_for_project`, TestRail 7.5+ / Cloud) и `entities`
+  (обход `get_suites → get_cases → get_attachments_for_case` плюс
+  опционально `get_runs` / `get_plans` в зависимости от
+  `--entity-type`, дедупликация по ID вложения, TestRail 5.7+).
+  Значение по умолчанию `auto`: один пробный вызов project-эндпоинта
+  на первом проекте, переключение на `entities` происходит **только**
+  при канонической ошибке `404 Unknown method 'get_attachments_for_project'`.
+  Любая другая ошибка пробного вызова прерывает запуск — без
+  молчаливого fallback. Переключение сопровождается строкой `INFO:` в
+  stderr; `--scan-strategy=project` или `--scan-strategy=entities`
+  фиксируют стратегию и полностью отключают пробный вызов.
+
+- **Интерактивный режим** дублирует все флаги команды (область
+  проектов, типы родителей, `--older-than`, параллелизм, включение
+  снапшота, retention, dry-run) и активируется только в TTY —
+  неинтерактивные запуски опрос пропускают. Финальное подтверждение
+  пропускается при `--force` или `--dry-run`.
+
+### Added — модель Attachment и клиент
+
+- В `data.Attachment` добавлены поля `EntryID`, `TestID`, `EntityType`,
+  `EntityID` и метод `InferredEntityType()`, определяющий тип родителя
+  по заполненному идентификатору.
+- Все методы `client.HTTPClient.GetAttachmentsFor*` теперь используют
+  общий пагинатор и читают все страницы ответа.
+
+### Fixed — загрузка multipart-вложений
+
+- `client.HTTPClient.DoRequest` теперь извлекает `Content-Type`-override
+  из `queryParams` **до** сборки query-строки URL. Раньше заголовок
+  multipart с параметром boundary попадал в GET-параметры, и TestRail
+  отвергал загрузку с ошибкой `Invalid characters in GET:
+  [Content-Type] [multipart/form-data; boundary=...]`. После фикса
+  снова работают `gotr attachments add` и rollback-снапшота cleanup
+  (который повторно загружает бинарники).
 
 ---
 

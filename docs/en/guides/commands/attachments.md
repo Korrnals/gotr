@@ -52,6 +52,7 @@ gotr attachments [command]
 | --- | --- |
 | `add` | Add an attachment to a resource |
 | `list` | List attachments for case, plan, plan-entry, project, run, and test |
+| `cleanup` | Bulk-delete attachments older than a cutoff with snapshot+rollback |
 
 ## Flags ⚙️
 
@@ -126,6 +127,65 @@ gotr attachments list project 1
 ```
 
 ✅ **Why this matters:** helps validate migration/upload outcomes without opening UI manually.
+
+---
+
+### ▶️ Scenario 6: Bulk cleanup of old attachments (with snapshot + rollback)
+
+🎯 **Goal:** reclaim storage by removing attachments older than a cutoff, while keeping a recovery snapshot.
+
+```bash
+# Preview only — lists candidates per project, no snapshot, no deletes.
+gotr attachments cleanup --all-projects --older-than 90d --dry-run
+
+# Real cleanup of result-bound attachments older than 3 months across
+# every visible project. A snapshot is taken automatically and kept
+# for 7 days (default category TTL for `cleanup-attachments`).
+gotr attachments cleanup --all-projects --older-than 3M --entity-type result
+
+# Restrict to specific projects, raise concurrency, and disable the
+# snapshot (NOT recommended outside of throwaway environments).
+gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-snapshot --force
+```
+
+**Flags worth knowing:**
+
+| Flag | Purpose |
+| --- | --- |
+| `--project <ids>` / `--all-projects` | Required scope selector (mutually exclusive). |
+| `--older-than <dur>` | Cutoff (e.g. `7d`, `3M`, `1y`, `720h`). Required unless `--dry-run`. |
+| `--entity-type` | Filter by parent kind: `case`, `run`, `plan`, `plan_entry`, `result`, `test` (default `result`). |
+| `--dry-run` | Preview only; no snapshot, no deletes. |
+| `--no-snapshot` | Skip the safety-net snapshot. |
+| `--snapshot-retention <dur>` | Override snapshot TTL (default `7d`; honored by `gotr snap gc`). |
+| `--max-size-gb <n>` | Abort if estimated snapshot exceeds this size unless `--force`. |
+| `--concurrency <n>` | Parallel delete workers (default `4`). |
+| `--limit <n>` | Cap total attachments processed across all projects. |
+| `--scan-strategy` | How to enumerate attachments: `auto` (default), `project`, `entities`. See **Compatibility** below. |
+| `--force` | Skip the final confirmation prompt. |
+
+**🧭 Compatibility (TestRail Server vs Cloud):**
+
+The bulk endpoint `get_attachments_for_project` was added in **TestRail 7.5**. Older self-hosted servers (TestRail Server &lt; 7.5) respond with `404 Unknown method`. To stay compatible with both, `gotr` ships **two scan strategies**:
+
+| Strategy | How attachments are listed | Works on |
+| --- | --- | --- |
+| `project` | Single bulk call to `get_attachments_for_project`. | TestRail 7.5+ / Cloud |
+| `entities` | Walk `get_suites → get_cases → get_attachments_for_case` (and optionally `get_runs` / `get_plans` based on `--entity-type`). Results are deduplicated by attachment ID. | TestRail 5.7+ |
+| `auto` (default) | Probe the project endpoint once on the first project; fall back to `entities` only when the canonical `404 Unknown method` is returned. Any other error aborts the run — no silent fallback. | both |
+
+When the auto-probe falls back, an `INFO:` line is printed to stderr explaining the switch. In CI/non-interactive flows you can pin the strategy explicitly with `--scan-strategy=entities` or `--scan-strategy=project` to skip the probe call entirely.
+
+**Rollback:** the snapshot is recorded under category `cleanup-attachments` and can be restored with the standard snap workflow:
+
+```bash
+gotr snap list --category cleanup-attachments
+gotr snap rollback <snap-id>
+```
+
+⚠️ TestRail's API has no `add_attachment_to_test` endpoint, so attachments whose only parent is a `test` are reported as **Skipped** during rollback — clean them up only when re-upload of test-bound binaries is acceptable.
+
+✅ **Why this matters:** bulk cleanup without a snapshot is irreversible. The default flow keeps a one-week recovery window so you can roll back any over-eager deletion before the snapshot is GC'd.
 
 ---
 

@@ -61,108 +61,66 @@ func (c *HTTPClient) DownloadAttachment(ctx context.Context, attachmentID int64)
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforcase
 func (c *HTTPClient) GetAttachmentsForCase(ctx context.Context, caseID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_case/%d", caseID)
-	resp, err := c.Get(ctx, endpoint, nil)
+	items, err := fetchAllPages[data.Attachment](ctx, c, endpoint, nil, "attachments")
 	if err != nil {
 		return nil, fmt.Errorf("error getting attachments for case %d: %w", caseID, err)
 	}
-	defer resp.Body.Close()
-
-	var attachments data.GetAttachmentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
-		return nil, fmt.Errorf("error decoding attachments for case %d: %w", caseID, err)
-	}
-
-	return attachments, nil
+	return data.GetAttachmentsResponse(items), nil
 }
 
 // GetAttachmentsForPlan fetches attachments for a test plan.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforplan
 func (c *HTTPClient) GetAttachmentsForPlan(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_plan/%d", planID)
-	resp, err := c.Get(ctx, endpoint, nil)
+	items, err := fetchAllPages[data.Attachment](ctx, c, endpoint, nil, "attachments")
 	if err != nil {
 		return nil, fmt.Errorf("error getting attachments for plan %d: %w", planID, err)
 	}
-	defer resp.Body.Close()
-
-	var attachments data.GetAttachmentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
-		return nil, fmt.Errorf("error decoding attachments for plan %d: %w", planID, err)
-	}
-
-	return attachments, nil
+	return data.GetAttachmentsResponse(items), nil
 }
 
 // GetAttachmentsForPlanEntry fetches attachments for a plan entry.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforplanentry
 func (c *HTTPClient) GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_plan_entry/%d/%s", planID, entryID)
-	resp, err := c.Get(ctx, endpoint, nil)
+	items, err := fetchAllPages[data.Attachment](ctx, c, endpoint, nil, "attachments")
 	if err != nil {
 		return nil, fmt.Errorf("error getting attachments for plan entry %s in plan %d: %w", entryID, planID, err)
 	}
-	defer resp.Body.Close()
-
-	var attachments data.GetAttachmentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
-		return nil, fmt.Errorf("error decoding attachments for plan entry %s: %w", entryID, err)
-	}
-
-	return attachments, nil
+	return data.GetAttachmentsResponse(items), nil
 }
 
 // GetAttachmentsForRun fetches attachments for a test run.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforrun
 func (c *HTTPClient) GetAttachmentsForRun(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_run/%d", runID)
-	resp, err := c.Get(ctx, endpoint, nil)
+	items, err := fetchAllPages[data.Attachment](ctx, c, endpoint, nil, "attachments")
 	if err != nil {
 		return nil, fmt.Errorf("error getting attachments for run %d: %w", runID, err)
 	}
-	defer resp.Body.Close()
-
-	var attachments data.GetAttachmentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
-		return nil, fmt.Errorf("error decoding attachments for run %d: %w", runID, err)
-	}
-
-	return attachments, nil
+	return data.GetAttachmentsResponse(items), nil
 }
 
 // GetAttachmentsForProject fetches attachments for a project.
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsforproject
 func (c *HTTPClient) GetAttachmentsForProject(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_project/%d", projectID)
-	resp, err := c.Get(ctx, endpoint, nil)
+	items, err := fetchAllPages[data.Attachment](ctx, c, endpoint, nil, "attachments")
 	if err != nil {
 		return nil, fmt.Errorf("error getting attachments for project %d: %w", projectID, err)
 	}
-	defer resp.Body.Close()
-
-	var attachments data.GetAttachmentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
-		return nil, fmt.Errorf("error decoding attachments for project %d: %w", projectID, err)
-	}
-
-	return attachments, nil
+	return data.GetAttachmentsResponse(items), nil
 }
 
-// GetAttachmentsForTest fetches attachments for a test.
+// GetAttachmentsForTest fetches attachments for a test (a test's results).
 // https://support.testrail.com/hc/en-us/articles/7077990441108-Attachments#getattachmentsfortest
 func (c *HTTPClient) GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error) {
 	endpoint := fmt.Sprintf("get_attachments_for_test/%d", testID)
-	resp, err := c.Get(ctx, endpoint, nil)
+	items, err := fetchAllPages[data.Attachment](ctx, c, endpoint, nil, "attachments")
 	if err != nil {
 		return nil, fmt.Errorf("error getting attachments for test %d: %w", testID, err)
 	}
-	defer resp.Body.Close()
-
-	var attachments data.GetAttachmentsResponse
-	if err := json.NewDecoder(resp.Body).Decode(&attachments); err != nil {
-		return nil, fmt.Errorf("error decoding attachments for test %d: %w", testID, err)
-	}
-
-	return attachments, nil
+	return data.GetAttachmentsResponse(items), nil
 }
 
 // AddAttachmentToCase uploads an attachment to a test case.

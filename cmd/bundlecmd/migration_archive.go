@@ -17,46 +17,159 @@ import (
 // whose filename references the snap, and the migration JSON / mapping logs
 // written within ±1h of the snap. It is intended as a single-file bundle of
 // everything produced by a single `gotr sync` run.
+//
+// In multi-snap mode (--all, --label, or multiple positional ids) it emits
+// a migration_bundle archive that bundles every selected snap, plus the
+// union of matching reports/logs (or, with --all, the entire reports/ and
+// logs/ trees) — suitable for transferring full ~/.gotr state to another
+// machine in one file.
 func newExportMigrationArchiveCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "migration-archive [snap_id|label]",
-		Short: "Export a full migration archive (snap + reports + logs) as a portable tar.gz",
-		Long: `Export a complete migration archive to a tar.gz file under
+		Use:   "migration-archive [snap_id|label ...]",
+		Short: "Export a migration archive (snap + reports + logs) as a portable tar.gz",
+		Long: `Export a migration archive to a tar.gz file under
 ~/.gotr/exports/snaps/.
 
-The archive bundles together everything a single migration run produces:
+Default (no arguments, no flags): bundles every snapshot in the local
+store plus the ENTIRE ~/.gotr/reports/ and ~/.gotr/logs/ trees into a
+single migration_bundle archive. This is the recommended single-file
+artifact for transferring a complete ~/.gotr state to another machine.
+` + "`gotr import migration-archive <file>`" + ` restores everything in one shot
+and auto-detects the archive kind — no flags needed.
 
-  • snaps/<id>/         the full snapshot tree (meta.json + data.json)
-  • reports/...         all markdown/PDF reports whose filename references
-                        the snap id (same scope as ` + "`gotr export snap`" + `)
-  • logs/...            migration_*.json, mapping_*.json,
-                        shared_steps_filtered_*.json and sync_cases_*.json
-                        whose mtime is within ~1h of the snap's timestamp
+Selectors:
 
-It is the recommended single-file artifact for archival, transfer between
-machines, or sharing a reproducible migration with another operator.
+  • <snap_id|label>         single-snap mode: bundle just that one snap,
+                            its reports, and its ±1h log window
+  • <id1> <id2> ...         multi-snap: bundle all listed snapshots and
+                            the union of their reports/logs
+  • --label <substr>        bundle every snapshot whose label contains
+                            <substr> (case-insensitive)
+  • --all                   explicit form of the default full-state mode
 
-Use ` + "`gotr import migration-archive`" + ` to restore everything in one shot.`,
-		Args:              cobra.MaximumNArgs(1),
+Archive layout:
+
+  • snaps/<id>/             the full snapshot tree (meta.json + data.json)
+  • reports/...             matching report files (or the entire tree
+                            with --all)
+  • logs/...                matching log files (or the entire tree
+                            with --all)`,
 		ValidArgsFunction: completeExportSnapArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			store, err := snap.NewStore()
 			if err != nil {
 				return fmt.Errorf("export migration-archive: %w", err)
 			}
-			manifest, err := snap.LoadManifest(store)
+			storeManifest, err := snap.LoadManifest(store)
 			if err != nil {
 				return fmt.Errorf("export migration-archive: %w", err)
 			}
+			all, _ := cmd.Flags().GetBool("all")
+			label, _ := cmd.Flags().GetString("label")
+			outPath, _ := cmd.Flags().GetString("out")
+			redact, _ := cmd.Flags().GetBool("redact")
+			noReports, _ := cmd.Flags().GetBool("no-reports")
+			noLogs, _ := cmd.Flags().GetBool("no-logs")
+
+			// Validate mutually-exclusive selection flags.
+			selectorCount := 0
+			if all {
+				selectorCount++
+			}
+			if label != "" {
+				selectorCount++
+			}
+			if len(args) > 0 {
+				selectorCount++
+			}
+			if selectorCount > 1 {
+				return fmt.Errorf("export migration-archive: --all, --label and positional ids are mutually exclusive")
+			}
+
+			// No selector → default to full-state bundle so a bare
+			// `gotr export migration-archive` produces one portable
+			// archive containing everything.
+			if selectorCount == 0 {
+				all = true
+			}
+
+			// Multi-snap branches.
+			if all {
+				if outPath == "" {
+					p, err := snapbundle.DefaultMigrationBundlePath("all", len(storeManifest.Entries))
+					if err != nil {
+						return fmt.Errorf("export migration-archive: %w", err)
+					}
+					outPath = p
+				}
+				res, err := snapbundle.ExportFull(store, outPath, snapbundle.ExportOptions{
+					GotrVersion: version,
+					Redact:      redact,
+				})
+				if err != nil {
+					return err
+				}
+				reportMultiExport(res)
+				return nil
+			}
+			if label != "" {
+				ids := selectByLabel(storeManifest, label)
+				if len(ids) == 0 {
+					return fmt.Errorf("export migration-archive: no snapshots match label substring %q", label)
+				}
+				if outPath == "" {
+					p, err := snapbundle.DefaultMigrationBundlePath("label-"+label, len(ids))
+					if err != nil {
+						return fmt.Errorf("export migration-archive: %w", err)
+					}
+					outPath = p
+				}
+				res, err := snapbundle.ExportMany(store, ids, outPath, snapbundle.ExportOptions{
+					GotrVersion:    version,
+					Redact:         redact,
+					IncludeReports: !noReports,
+					IncludeLogs:    !noLogs,
+				})
+				if err != nil {
+					return err
+				}
+				reportMultiExport(res)
+				return nil
+			}
+			if len(args) > 1 {
+				ids, err := resolveSnapIDs(storeManifest, args)
+				if err != nil {
+					return fmt.Errorf("export migration-archive: %w", err)
+				}
+				if outPath == "" {
+					p, err := snapbundle.DefaultMigrationBundlePath("multi", len(ids))
+					if err != nil {
+						return fmt.Errorf("export migration-archive: %w", err)
+					}
+					outPath = p
+				}
+				res, err := snapbundle.ExportMany(store, ids, outPath, snapbundle.ExportOptions{
+					GotrVersion:    version,
+					Redact:         redact,
+					IncludeReports: !noReports,
+					IncludeLogs:    !noLogs,
+				})
+				if err != nil {
+					return err
+				}
+				reportMultiExport(res)
+				return nil
+			}
+
+			// Single-snap path (existing behavior).
 			target, err := resolveExportSnapTarget(cmd, args)
 			if err != nil {
 				return err
 			}
-			entry := manifest.Find(target)
+			entry := storeManifest.Find(target)
 			if entry == nil {
 				return fmt.Errorf("export migration-archive: snapshot %q not found", target)
 			}
-			outPath, _ := cmd.Flags().GetString("out")
 			if outPath == "" {
 				p, err := defaultMigrationArchivePath(entry.ID, entry.Label)
 				if err != nil {
@@ -64,10 +177,6 @@ Use ` + "`gotr import migration-archive`" + ` to restore everything in one shot.
 				}
 				outPath = p
 			}
-			redact, _ := cmd.Flags().GetBool("redact")
-			noReports, _ := cmd.Flags().GetBool("no-reports")
-			noLogs, _ := cmd.Flags().GetBool("no-logs")
-
 			res, err := snapbundle.ExportOne(store, entry.ID, outPath, snapbundle.ExportOptions{
 				GotrVersion:    version,
 				Redact:         redact,
@@ -94,7 +203,51 @@ Use ` + "`gotr import migration-archive`" + ` to restore everything in one shot.
 	cmd.Flags().Bool("redact", false, "Strip assignee emails, names, and other sensitive fields from meta.json")
 	cmd.Flags().Bool("no-reports", false, "Do not embed migration reports whose filename contains the snap_id (default: embed)")
 	cmd.Flags().Bool("no-logs", false, "Do not embed migration_/mapping_/shared_steps_filtered_/sync_cases_ logs (default: embed)")
+	cmd.Flags().Bool("all", false, "Bundle ALL snapshots from the local store plus the entire reports/ and logs/ trees into one migration_bundle archive (full-state cross-machine transfer)")
+	cmd.Flags().String("label", "", "Bundle every snapshot whose label contains this substring into one migration_bundle archive")
 	return cmd
+}
+
+// reportMultiExport prints a uniform summary for ExportMany/ExportFull.
+func reportMultiExport(res *snapbundle.Result) {
+	successf("Exported migration_bundle (%d snap(s), %d file(s)) → %s",
+		len(res.SnapIDs), len(res.Files), res.ArchivePath)
+	if n := len(res.IncludedReports); n > 0 {
+		infof("Embedded %d report(s) under reports/", n)
+	}
+	if n := len(res.IncludedLogs); n > 0 {
+		infof("Embedded %d migration log(s) under logs/", n)
+	}
+	if len(res.Redacted) > 0 {
+		warnf("redacted fields: %s", strings.Join(res.Redacted, ", "))
+	}
+}
+
+// selectByLabel returns the IDs of every manifest entry whose Label
+// contains the given substring (case-insensitive).
+func selectByLabel(m *snap.Manifest, substr string) []string {
+	needle := strings.ToLower(substr)
+	var ids []string
+	for _, e := range m.Entries {
+		if strings.Contains(strings.ToLower(e.Label), needle) {
+			ids = append(ids, e.ID)
+		}
+	}
+	return ids
+}
+
+// resolveSnapIDs maps each user-supplied token (snap_id or label) to a
+// concrete snap ID via storeManifest.Find. Errors out on unknown tokens.
+func resolveSnapIDs(m *snap.Manifest, tokens []string) ([]string, error) {
+	ids := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		e := m.Find(tok)
+		if e == nil {
+			return nil, fmt.Errorf("snapshot %q not found", tok)
+		}
+		ids = append(ids, e.ID)
+	}
+	return ids, nil
 }
 
 // newImportMigrationArchiveCmd builds `gotr import migration-archive`,
@@ -133,10 +286,20 @@ func newImportMigrationArchiveCmd() *cobra.Command {
 				return err
 			}
 			if dry {
-				infof("Would import migration archive %s (%d files) from %s", res.SnapID, len(res.Files), res.ArchivePath)
+				if len(res.SnapIDs) > 0 {
+					infof("Would import migration_bundle (%d snap(s), %d files) from %s",
+						len(res.SnapIDs), len(res.Files), res.ArchivePath)
+				} else {
+					infof("Would import migration archive %s (%d files) from %s", res.SnapID, len(res.Files), res.ArchivePath)
+				}
 				return nil
 			}
-			successf("Imported migration archive %s (%d files) from %s", res.SnapID, len(res.Files), res.ArchivePath)
+			if len(res.SnapIDs) > 0 {
+				successf("Imported migration_bundle (%d snap(s), %d files) from %s",
+					len(res.SnapIDs), len(res.Files), res.ArchivePath)
+			} else {
+				successf("Imported migration archive %s (%d files) from %s", res.SnapID, len(res.Files), res.ArchivePath)
+			}
 			if n := len(res.IncludedReports); n > 0 {
 				infof("Restored %d bundled report(s) into ~/.gotr/reports/", n)
 				if dir, dErr := paths.ReportsDirPath(); dErr == nil {
@@ -156,8 +319,15 @@ func newImportMigrationArchiveCmd() *cobra.Command {
 				warnf("skipped %d bundled log(s) (already exist on disk): %s",
 					n, strings.Join(res.SkippedLogs, ", "))
 			}
-			if err := reindexImported(store, res.SnapID); err != nil {
-				warnf("manifest refresh: %v", err)
+			if res.SnapID != "" {
+				if err := reindexImported(store, res.SnapID); err != nil {
+					warnf("manifest refresh: %v", err)
+				}
+			}
+			for _, id := range res.SnapIDs {
+				if err := reindexImported(store, id); err != nil {
+					warnf("manifest refresh %s: %v", id, err)
+				}
 			}
 			return nil
 		},

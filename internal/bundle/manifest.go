@@ -22,8 +22,9 @@ type Kind string
 
 // Supported bundle kinds.
 const (
-	KindSnap    Kind = "snap"
-	KindReports Kind = "reports"
+	KindSnap            Kind = "snap"
+	KindReports         Kind = "reports"
+	KindMigrationBundle Kind = "migration_bundle"
 )
 
 // File describes one archived payload file (manifest/checksums/readme
@@ -53,6 +54,10 @@ type Manifest struct {
 	// Snap-specific (when Kind == KindSnap with a single snapshot).
 	SnapID   string   `json:"snap_id,omitempty"`
 	Redacted []string `json:"redacted_fields,omitempty"`
+
+	// Multi-snap bundle (when Kind == KindMigrationBundle). Carries N
+	// snapshot trees plus optional reports/ and logs/ payloads.
+	SnapIDs []string `json:"snap_ids,omitempty"`
 
 	// Reports-specific. Left as zero value when irrelevant.
 	ReportCount int `json:"report_count,omitempty"`

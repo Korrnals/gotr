@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+_No unreleased changes yet._
+
+---
+
+## [3.4.0] - 2026-05-04
+
 ### Added — multi-snap migration bundles & full-state cross-machine transfer
 
 - **`gotr export migration-archive` with no arguments** now defaults to
@@ -73,8 +79,10 @@
   file path regardless of location.
 
 
+## [3.3.2] - 2026-04-28
+
 <details>
-<summary>[3.3.2] - 2026-04-28</summary>
+<summary>Details</summary>
 
 Patch release combining two production hotfixes applied during the
  migration cycle.
@@ -112,8 +120,10 @@ Patch release combining two production hotfixes applied during the
 
 </details>
 
+## [3.3.0] - 2026-04-24
+
 <details>
-<summary>[3.3.0] - 2026-04-24</summary>
+<summary>Details</summary>
 
 UX polish релиз (issue #44): категоризованная иерархия отчётов и
 экспортов, shell completion, интерактивный режим, retention/cleanup,
@@ -352,8 +362,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [3.2.0] - 2026-04-23
+
 <details>
-<summary>[3.2.0] - 2026-04-23</summary>
+<summary>Details</summary>
 
 Полный багфикс миграции TestRail: устраняет скрытое расхождение 717/1684,
 которое было вызвано ошибочным «молчаливым» поведением фильтрации
@@ -447,8 +459,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [3.1.0] - 2026-04-19
+
 <details>
-<summary>[3.1.0] - 2026-04-19</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -504,8 +518,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [3.0.1] - 2026-04-12
+
 <details>
-<summary>[3.0.1] - 2026-04-12</summary>
+<summary>Details</summary>
 
 ### Fixed
 
@@ -530,8 +546,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [3.0.0] - 2026-04-09
+
 <details>
-<summary>[3.0.0] - 2026-04-09</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -584,8 +602,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [3.0.0] - 2026-03-12
+
 <details>
-<summary>[3.0.0] - 2026-03-12</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -713,8 +733,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.7.0] - 2026-02-20
+
 <details>
-<summary>[2.7.0] - 2026-02-20</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -902,8 +924,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.5.0] - 2026-02-05
+
 <details>
-<summary>[2.5.0] - 2026-02-05</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -952,8 +976,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.4.0] - 2026-02-04
+
 <details>
-<summary>[2.4.0] - 2026-02-04</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -1035,8 +1061,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.3.0] - 2026-02-03
+
 <details>
-<summary>[2.3.0] - 2026-02-03</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -1067,8 +1095,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.2.3] - 2026-02-03
+
 <details>
-<summary>[2.2.3] - 2026-02-03</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -1122,8 +1152,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.1.0] - 2026-01-24
+
 <details>
-<summary>[2.1.0] - 2026-01-24</summary>
+<summary>Details</summary>
 
 ### Added
 
@@ -1146,8 +1178,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.0.0] - 2026-01-15
+
 <details>
-<summary>[2.0.0] - 2026-01-15</summary>
+<summary>Details</summary>
 
 ### Breaking Changes
 
@@ -1189,8 +1223,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [2.0.0] - 2025-12-21
+
 <details>
-<summary>[2.0.0] - 2025-12-21</summary>
+<summary>Details</summary>
 
 ### Breaking Changes
 
@@ -1228,8 +1264,10 @@ Validated end-to-end on `p30/S20069 → p34/S19859` (, label
 
 </details>
 
+## [1.0.0] - 2025-12-19 (предыдущий релиз)
+
 <details>
-<summary>[1.0.0] - 2025-12-19 (предыдущий релиз)</summary>
+<summary>Details</summary>
 
 - Базовая версия с командами `list`, `get`, `add` и т.д.
 - Поддержка TestRail API v2 через HTTP-клиент.

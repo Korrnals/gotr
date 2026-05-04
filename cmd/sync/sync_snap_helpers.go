@@ -173,14 +173,14 @@ func printArtifacts(a artifactSet) {
 		{"Report", a.MigrationReport},
 		{"Snapshot", a.SnapshotDir},
 	}
-	any := false
+	hasAny := false
 	for _, r := range rows {
 		if r.value != "" {
-			any = true
+			hasAny = true
 			break
 		}
 	}
-	if !any {
+	if !hasAny {
 		return
 	}
 	w := os.Stdout

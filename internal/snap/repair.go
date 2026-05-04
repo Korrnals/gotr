@@ -51,6 +51,8 @@ func (r *RepairResult) HasChanges() bool {
 //
 // When dryRun is true the manifest file is not modified; the returned
 // RepairResult still describes the actions that would have been taken.
+//
+//nolint:gocyclo // Repair walks store directory, reconciles entries and applies orphan/missing fixes inline.
 func RepairManifest(store *Store, manifest *Manifest, dryRun bool) (*RepairResult, error) {
 	result := &RepairResult{DryRun: dryRun}
 

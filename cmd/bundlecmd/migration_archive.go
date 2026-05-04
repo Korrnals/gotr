@@ -23,6 +23,8 @@ import (
 // union of matching reports/logs (or, with --all, the entire reports/ and
 // logs/ trees) — suitable for transferring full ~/.gotr state to another
 // machine in one file.
+//
+//nolint:gocyclo // Command flow keeps flag parsing, mode resolution and pre-flight checks together.
 func newExportMigrationArchiveCmd(version string) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "migration-archive [snap_id|label ...]",
@@ -254,6 +256,8 @@ func resolveSnapIDs(m *snap.Manifest, tokens []string) ([]string, error) {
 // newImportMigrationArchiveCmd builds `gotr import migration-archive`,
 // the inverse of the export command above. It restores the snap, embedded
 // reports and embedded logs in a single invocation.
+//
+//nolint:gocyclo // Command flow keeps interactive picker, auto-detection and import dispatch together.
 func newImportMigrationArchiveCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:               "migration-archive [path.tar.gz]",

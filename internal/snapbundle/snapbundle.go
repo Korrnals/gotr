@@ -166,6 +166,8 @@ func ExportOne(store *snap.Store, snapID, destPath string, opts ExportOptions) (
 //
 // For a single-id slice this is equivalent to ExportOne but emits a
 // migration_bundle manifest (Kind = KindMigrationBundle, SnapIDs = [id]).
+//
+//nolint:gocyclo // Exporter inlines snap-tree collection, reports/logs union and manifest assembly.
 func ExportMany(store *snap.Store, snapIDs []string, destPath string, opts ExportOptions) (*Result, error) {
 	if len(snapIDs) == 0 {
 		return nil, errors.New("snapbundle: ExportMany requires at least one snap id")
@@ -195,12 +197,12 @@ func ExportMany(store *snap.Store, snapIDs []string, destPath string, opts Expor
 	)
 	// 1) Snap trees.
 	for _, id := range snapIDs {
-		es, fs, rd, err := collectEntries(store, id, opts)
+		es, fls, rd, err := collectEntries(store, id, opts)
 		if err != nil {
 			return nil, err
 		}
 		entries = append(entries, es...)
-		files = append(files, fs...)
+		files = append(files, fls...)
 		redacted = append(redacted, rd...)
 	}
 
@@ -1027,6 +1029,8 @@ func Import(store *snap.Store, srcPath string, opts ImportOptions) (*Result, err
 // importMigrationBundle handles archives with Kind == KindMigrationBundle.
 // All snapshots in manifest.SnapIDs are relocated, and embedded
 // reports/logs are restored once.
+//
+//nolint:gocyclo // Bundle import dispatches per-snap relocation, manifest registration and reports/logs restoration inline.
 func importMigrationBundle(store *snap.Store, srcPath string, manifest *bundle.Manifest, sums string, opts ImportOptions) (*Result, error) {
 	if err := verifyChecksums(manifest, sums); err != nil {
 		return nil, err
@@ -1133,6 +1137,8 @@ func importMigrationBundle(store *snap.Store, srcPath string, manifest *bundle.M
 // restoreLogsFromArchive extracts srcPath into a fresh temp dir and copies
 // any logs/<file> entries into dstLogsDir (defaults to ~/.gotr/logs).
 // Existing destination files are never overwritten.
+//
+//nolint:gocyclo // Archive walker keeps tar/gz handling, path filtering and copy logic in one place.
 func restoreLogsFromArchive(srcPath, dstLogsDir string) (restored, skipped []string, err error) {
 	tmp, mkErr := os.MkdirTemp("", "gotr-logs-import-*")
 	if mkErr != nil {

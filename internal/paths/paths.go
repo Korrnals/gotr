@@ -35,7 +35,7 @@ const (
 	ExportsSnapsSubdir   = "snaps"   // portable snapshot bundles (.tar.gz)
 	ExportsReportsSubdir = "reports" // exported migration report bundles (.zip / single files)
 	ExportsAPISubdir     = "api"     // raw API responses saved via `gotr export <resource>`
-	ExportsAllSubdir     = "all"     // full migration bundles containing all artefacts (snaps+reports+logs+manifests)
+	ExportsAllSubdir     = "all"     // full migration bundles containing all artifacts (snaps+reports+logs+manifests)
 )
 
 // BaseDir returns the path to ~/.gotr.

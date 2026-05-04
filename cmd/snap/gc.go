@@ -54,7 +54,14 @@ Protected/frozen snapshots are never deleted by this command.`,
 				frozenSet[id] = struct{}{}
 			}
 
-			cutoff := time.Now().UTC().Add(-time.Duration(ttlDays) * 24 * time.Hour)
+			// Per-category TTL overrides. Reads `snap.retention.category_ttl_days`
+			// as a map[string]int and applies built-in defaults for categories
+			// that have a recommended retention shorter than the global TTL.
+			categoryTTL := loadCategoryTTLs()
+
+			now := time.Now().UTC()
+			confirmFlag, _ := cmd.Flags().GetBool("confirm")
+			ttlDaysOverride := cmd.Flags().Changed("ttl-days")
 			entries := manifest.All()
 
 			candidates := make([]snaplib.ManifestEntry, 0)
@@ -65,17 +72,24 @@ Protected/frozen snapshots are never deleted by this command.`,
 				if hasAnyPrefix(e.Label, protectedPrefixes) {
 					continue
 				}
+				effTTL := ttlDays
+				if !ttlDaysOverride {
+					if cat, ok := categoryTTL[string(e.Category)]; ok && cat > 0 {
+						effTTL = cat
+					}
+				}
+				cutoff := now.Add(-time.Duration(effTTL) * 24 * time.Hour)
 				if e.Timestamp.Before(cutoff) {
 					candidates = append(candidates, e)
 				}
 			}
 
 			if len(candidates) == 0 {
-				fmt.Fprintf(os.Stdout, "No snapshots eligible for retention cleanup (ttl=%d days).\n", ttlDays)
+				fmt.Fprintf(os.Stdout, "No snapshots eligible for retention cleanup (default ttl=%d days).\n", ttlDays)
 				return nil
 			}
 
-			confirm, _ := cmd.Flags().GetBool("confirm")
+			confirm := confirmFlag
 			verb := "Would delete"
 			if confirm {
 				verb = "Deleting"
@@ -118,4 +132,46 @@ func hasAnyPrefix(label string, prefixes []string) bool {
 		}
 	}
 	return false
+}
+
+// builtinCategoryTTLs encodes recommended per-category snapshot retentions.
+// Categories not listed inherit the global default TTL.
+//
+// `cleanup-attachments` snapshots are produced by `gotr attachments cleanup`
+// and are conceptually short-lived rollback safety nets — keep them around
+// for a week by default to bound disk usage.
+var builtinCategoryTTLs = map[string]int{
+	"cleanup-attachments": 7,
+}
+
+// loadCategoryTTLs merges the built-in defaults with any user override
+// from `snap.retention.category_ttl_days` (map of category -> int days).
+// User-supplied entries take precedence; unknown categories are ignored.
+func loadCategoryTTLs() map[string]int {
+	out := make(map[string]int, len(builtinCategoryTTLs))
+	for k, v := range builtinCategoryTTLs {
+		out[k] = v
+	}
+	if !viper.IsSet("snap.retention.category_ttl_days") {
+		return out
+	}
+	if raw := viper.GetStringMap("snap.retention.category_ttl_days"); raw != nil {
+		for k, v := range raw {
+			switch n := v.(type) {
+			case int:
+				if n > 0 {
+					out[k] = n
+				}
+			case int64:
+				if n > 0 {
+					out[k] = int(n)
+				}
+			case float64:
+				if n > 0 {
+					out[k] = int(n)
+				}
+			}
+		}
+	}
+	return out
 }

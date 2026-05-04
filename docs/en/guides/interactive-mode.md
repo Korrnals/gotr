@@ -205,6 +205,37 @@ gotr sync suites
 # → [post-action menu]
 ```
 
+### attachments cleanup — bulk attachment cleanup
+
+`gotr attachments cleanup` supports interactive prompts when invoked
+with insufficient flags on a TTY. Flags explicitly set on the command
+line are never overwritten by the wizard.
+
+```bash
+gotr attachments cleanup
+# → Scope: All projects / Specific projects
+#   (specific) → Project IDs (comma-separated):
+# → Entity types (comma-separated, default: result):
+# → Older than (e.g. 90d, 3M, 1y):
+# → Concurrency:
+# → 📦 Create snapshot before deletion? (recommended) [Y/n]
+#   (yes) → Snapshot retention (days):
+# → Dry-run first? [Y/n]
+# → Final confirmation: Y/N
+```
+
+Overrides:
+
+- `--non-interactive` — disable prompts; the command errors out if any
+  required input is missing (CI-friendly).
+- `--force` — skip the final confirmation prompt while still allowing
+  the wizard for missing values.
+- `--no-snapshot` — opt out of the rollback safety net; rollback will
+  not be possible.
+
+See [`gotr attachments cleanup`](commands/attachments.md) for the full
+flag reference and rollback recipe.
+
 ## Post-action menu and cross-navigation
 
 After sync and compare operations finish, an interactive action menu is shown.

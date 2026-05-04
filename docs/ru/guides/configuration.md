@@ -206,6 +206,24 @@ gotr cleanup all
 
 См. [gotr cleanup](commands/cleanup.md).
 
+### TTL манифеста snap: per-category переопределение
+
+Окно retention у `gotr snap gc` настраивается отдельно от
+`retention.snaps` (последняя управляет только экспортированными файлами
+снапшотов). Для переопределения TTL манифеста по категориям используйте
+`snap.retention.category_ttl_days`:
+
+```yaml
+snap:
+  retention:
+    default_ttl_days: 30
+    category_ttl_days:
+      cleanup-attachments: 7   # встроенный default для снапшотов attachments cleanup
+```
+
+Приоритет: флаг `--ttl-days` > category override > `default_ttl_days`.
+См. [gotr snap → Per-category retention TTL](commands/snap.md#per-category-retention-ttl).
+
 ## Флаги compare
 
 Эти флаги доступны для всех подкоманд `compare` (`cases`, `all`, `retry-failed-pages` и др.):

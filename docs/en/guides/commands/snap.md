@@ -264,6 +264,35 @@ Or via the `--snapshot` flag for individual operations.
 
 Snapshot storage: `~/.gotr/snaps/`.
 
+### Per-category retention TTL
+
+`gotr snap gc` honours per-category TTL overrides on top of the global
+`snap.retention.default_ttl_days`. The map lives under
+`snap.retention.category_ttl_days` in `~/.gotr/config/default.yaml`:
+
+```yaml
+snap:
+  retention:
+    default_ttl_days: 30
+    category_ttl_days:
+      cleanup-attachments: 7   # built-in default; shown here for clarity
+      sync: 14                 # example: shorter retention for sync snapshots
+```
+
+Precedence (highest wins):
+
+1. `--ttl-days` flag on `gotr snap gc` — applies to all categories,
+   ignores per-category overrides.
+2. `snap.retention.category_ttl_days[<category>]` — per-category override
+   from the config (or built-in default for known categories).
+3. `snap.retention.default_ttl_days` — global fallback.
+
+The `cleanup-attachments` category (snapshots produced by
+[`gotr attachments cleanup`](attachments.md)) defaults to **7 days**
+even without an explicit config entry, because those snapshots are
+short-lived rollback safety nets and may include re-downloaded blobs.
+User-supplied entries always override built-in defaults.
+
 ## 🧪 Pre-run Checklist
 
 - [ ] gotr is configured (`gotr self-test`)

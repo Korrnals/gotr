@@ -4,308 +4,218 @@
   <img src="docs/assets/banner.svg" alt="gotr — CLI-клиент для TestRail API v2: миграция · снапшоты · синхронизация · отчёты · автоматизация" width="100%"/>
 </p>
 
-[English](README.md) | [Русский](README_ru.md)
+<p align="center">
+  <a href="README.md">English</a> · <a href="README_ru.md">Русский</a>
+</p>
 
-[![Latest Release](https://img.shields.io/badge/release-v3.4.0-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)
-[![Next](https://img.shields.io/badge/next-v3.5.0--dev-orange.svg)](CHANGELOG.md)
-[![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.4.0-blue.svg" alt="Latest Release"/></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/next-v3.5.0--dev-orange.svg" alt="Next"/></a>
+  <a href="go.mod"><img src="https://img.shields.io/badge/go-1.25-00ADD8.svg?logo=go" alt="Go"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"/></a>
+  <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-EN%20%7C%20RU-purple.svg" alt="Docs"/></a>
+</p>
 
-Профессиональный инструмент командной строки для работы с TestRail API v2. Разработан для QA-инженеров и специалистов по автоматизации тестирования, которым требуется эффективное управление данными, возможности миграции и бесшовная интеграция с CI/CD.
+> 🛠️ Профессиональный CLI для TestRail API v2 — для QA-инженеров и автоматизаторов, которым нужны быстрые массовые операции, безопасные миграции с откатом и удобная интеграция с CI/CD.
 
-> **Последний релиз:** [v3.4.0](https://github.com/Korrnals/gotr/releases/tag/v3.4.0) — мульти-снап миграционные бандлы, полный перенос состояния между машинами и авто-регистрация снапшотов в манифесте стора при импорте.
->
-> **`main` сейчас указывает на тег [`v3.4.0`](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)** и развивается в сторону `v3.5.0-dev` — текущий unreleased-скоуп см. в [CHANGELOG](CHANGELOG.md).
+`gotr` — полнофункциональный терминальный клиент, покрывающий весь TestRail API v2 (121 эндпоинт), с операторскими гарантиями безопасности (снапшоты, dry-run, rollback), автодополнением shell, интерактивным режимом и переносимым форматом бандлов для переноса данных между инсталляциями. Любая длительная операция стримит прогресс, любое деструктивное действие обратимо, для каждого сценария есть документированный runbook.
 
-## Обзор
+---
 
-`gotr` предоставляет комплексный инструментарий для работы с TestRail:
+## 📚 Навигация
 
-- **Операции с данными** — Получение и управление тест-кейсами, сьютами, секциями, shared steps, ранами, результатами, майлстоунами, планами и др.
-- **Полное покрытие API** — Все 121 endpoint'ов TestRail API v2 реализованы (Этап 4 завершён)
-- **Синхронизация проектов** — Миграция сущностей между проектами с интеллектуальным обнаружением дубликатов
-- **Интерактивный режим** — Пошаговый выбор проектов и сьютов без необходимости запоминать ID
-- **Встроенная обработка** — Фильтрация JSON через встроенный `jq`, отслеживание прогресса и структурированное логирование
-- **Прогресс в реальном времени** — Визуальные прогресс-бары с обновлением через каналы для параллельных операций
-- **Гибкая конфигурация** — Поддержка флагов, переменных окружения и конфигурационных файлов
+- 📖 [Каталог документации](docs/index.md) — полный индекс EN/RU
+- 🚀 [Установка](docs/ru/guides/installation.md) · ⚙️ [Конфигурация](docs/ru/guides/configuration.md) · 💬 [Интерактивный режим](docs/ru/guides/interactive-mode.md)
+- 📋 [Каталог команд](docs/ru/guides/commands/index.md) — справочник по каждой подкоманде
+- 📘 [Инструкции и runbook'и](docs/ru/guides/instructions/index.md) — эксплуатационные сценарии
+- 🏛️ [Архитектура](docs/ru/architecture/index.md) · 📊 [Отчёты](docs/ru/reports/index.md) · 🛠️ [Эксплуатация](docs/ru/operations/index.md)
+- 📰 [CHANGELOG](CHANGELOG.md) — история релизов и unreleased-скоуп
 
-## Навигация
+---
 
-- [Документация](docs/index.md)
-  - [Гайды](docs/ru/guides/index.md)
-    - [Установка](docs/ru/guides/installation.md)
-    - [Конфигурация](docs/ru/guides/configuration.md)
-    - [Интерактивный режим](docs/ru/guides/interactive-mode.md)
-    - [Прогресс](docs/ru/guides/progress.md)
-    - [Smoke-тестирование](docs/ru/guides/smoke-testing.md)
-    - [Каталог команд](docs/ru/guides/commands/index.md)
-      - [Группы команд](docs/ru/guides/commands/index.md#группы-команд-и-подгруппы)
-      - [report](docs/ru/guides/commands/report.md)
-      - [cleanup](docs/ru/guides/commands/cleanup.md)
-    - [Инструкции](docs/ru/guides/instructions/index.md)
-      - [Жизненный цикл отчётов](docs/ru/guides/instructions/reports-lifecycle.md)
-      - [Retention и cleanup runbook](docs/ru/guides/instructions/retention-and-cleanup-runbook.md)
-      - [TLS: insecure → ca_bundle](docs/ru/guides/instructions/tls-ca-bundle-migration.md)
-    - [Migration guide v3.3](docs/ru/guides/migration-guide-v3.3.md)
-  - [Архитектура](docs/ru/architecture/index.md)
-    - [UX polish v3.3.0](docs/ru/architecture/ux-polish-v3.3.0.md)
-  - [Эксплуатация](docs/ru/operations/index.md)
-  - [Отчёты](docs/ru/reports/index.md)
-- [Главная](README_ru.md)
-
-## Быстрый старт
+## 🚀 Установка и быстрый старт
 
 ```bash
-# Установка (Linux/macOS)
+# 1. Установка (Linux / macOS)
 curl -sL https://github.com/Korrnals/gotr/releases/latest/download/gotr-$(uname -s | tr '[:upper:]' '[:lower:]')-amd64 -o gotr
 chmod +x gotr && sudo mv gotr /usr/local/bin/
 
-# Инициализация конфигурации
+# 2. Инициализация конфигурации (URL · логин · API-ключ)
 gotr config init
 
-# Проверка установки
+# 3. Проверка соединения с TestRail
 gotr self-test
-```
 
-## Ключевые возможности
-
-| Возможность | Описание |
-|-------------|----------|
-| **Полное покрытие API** | 121/121 эндпоинтов TestRail API v2 реализовано |
-| **Интерактивный режим** | Визуальный выбор проектов, сьютов и целей миграции |
-| **Синхронизация данных** | Миграция кейсов, shared steps, сьютов и секций между проектами |
-| **Управление ранами** | Создание ранов, добавление результатов, отслеживание выполнения |
-| **Встроенный jq** | Фильтрация и трансформация JSON без внешних зависимостей |
-| **Прогресс в реальном времени** | Прогресс-бары с живым обновлением через каналы для параллельных операций |
-| **Автодополнение** | Поддержка bash, zsh и fish |
-| **Детальное логирование** | Структурированные JSON-логи для аудита и отладки |
-
-## Примеры использования
-
-### Интерактивный режим
-
-```bash
-# Получение кейсов с интерактивным выбором проекта/сьюта
-gotr get cases
-
-# Синхронизация с пошаговым мастером
-gotr sync full
-```
-
-### Получение данных
-
-```bash
-# Список всех проектов
+# 4. Первая команда
 gotr get projects
-
-# Получение кейсов из конкретного проекта и сьюта
-gotr get cases 30 --suite-id 20069
-
-# Получение кейсов из всех сьютов проекта
-gotr get cases 30 --all-suites
-
-# Получение shared steps
-gotr get sharedsteps 30
 ```
 
-### Синхронизация
+**Подробные инструкции** (Windows, пакетные менеджеры, сборка из исходников, troubleshooting): [Гайд по установке](docs/ru/guides/installation.md).
+
+---
+
+## ✨ Ключевые возможности
+
+Каждая строка ведёт на свой справочник; имя ссылки совпадает с реальной подкомандой.
+
+| Возможность | Подкоманда | Что делает |
+|---|---|---|
+| 🔍 **Чтение ресурсов** | [`get`](docs/ru/guides/commands/get.md) | Кейсы, сьюты, секции, раны, планы, майлстоуны, пользователи и ещё 100+ ресурсов с фильтрами и пагинацией. |
+| 🔄 **Кросс-проектная синхронизация** | [`sync`](docs/ru/guides/commands/sync.md) | Миграция кейсов, shared steps, сьютов и секций между проектами с дедупликацией, маппингом и `--verify-coverage`. |
+| 🆚 **Сравнение проектов** | [`compare`](docs/ru/guides/commands/compare.md) | Diff кейсов, сьютов, планов, майлстоунов, датасетов; экспорт в JSON / YAML / table. |
+| 📸 **Снапшоты и откат** | [`snap`](docs/ru/guides/commands/snap.md) | Снапшот любой мутации, list, restore, GC по per-category TTL. Каждое деструктивное действие по умолчанию делает снапшот. |
+| 📎 **Вложения** *(включая массовую очистку)* | [`attachments`](docs/ru/guides/commands/attachments.md) | Загрузка, скачивание, листинг — и **массовая очистка** старых вложений со снапшотом и откатом по умолчанию (категория `cleanup-attachments`, retention 7 дней). |
+| 🧹 **Retention и cleanup** | [`cleanup`](docs/ru/guides/commands/cleanup.md) | Настраиваемый retention для отчётов / снапов / экспортов с `--dry-run` и авто-cleanup-хуками. |
+| 📊 **Тест-раны и результаты** | [`run`](docs/ru/guides/commands/run.md) · [`result`](docs/ru/guides/commands/result.md) | Создание ранов, массовая загрузка результатов, отслеживание выполнения. |
+| ✅ **Операции на уровне теста** | [`test`](docs/ru/guides/commands/test.md) · [`tests`](docs/ru/guides/commands/tests.md) | Просмотр одиночных run-test'ов и батч-операции. |
+| 📦 **Переносимые export / import** | [`export`](docs/ru/guides/commands/export.md) | Самодостаточные бандлы (snap / report / migration-archive) с `manifest.json` + `SHA256SUMS`, детерминированные, с поддержкой redaction. Симметричный `import`. |
+| 📝 **Жизненный цикл отчётов** | [`report`](docs/ru/guides/commands/report.md) | Категоризированные отчёты (`migrations` / `coverage` / `rollbacks` / `testrail/p<N>`), `report show --print`, рекурсивный листинг, переиндексация INDEX. |
+| 🧩 **CRUD-шорткаты** | [`add`](docs/ru/guides/commands/add.md) · [`update`](docs/ru/guides/commands/update.md) · [`delete`](docs/ru/guides/commands/delete.md) · [`list`](docs/ru/guides/commands/list.md) | Универсальные create / update / delete / list по разным типам ресурсов. |
+| 💬 **Интерактивный режим** | [interactive-mode](docs/ru/guides/interactive-mode.md) | TTY-guarded survey-промпты для `get` / `sync` / `compare` / `report` / `attachments cleanup` / `export` / `import` — без запоминания ID. |
+| 🔧 **Конфигурация и профили** | [`config`](docs/ru/guides/commands/config.md) | YAML-конфиг с переопределениями через env, несколько профилей, поддержка TLS CA-bundle. |
+| 🐚 **Shell completion** | [`completion`](docs/ru/guides/commands/completion.md) | bash / zsh / fish / powershell с динамическим `ValidArgsFunction` для файлов, snap ID, путей отчётов. |
+| 🩺 **Self-test и диагностика** | [`self-test`](docs/ru/guides/commands/self-test.md) | Проверка соединения с API, валидность конфига, embedded-инструменты. |
+| 🪵 **Встроенный JSON-процессор** | `--jq` / `--jq-filter` | Фильтрация и трансформация любого вывода через встроенный `jq` — без внешних зависимостей. |
+| 📈 **Streaming-прогресс** | [`progress`](docs/ru/guides/progress.md) | Прогресс-бары на каналах с адаптивным rate-limit (180 req/min) для параллельных загрузок. |
+| 🐛 **Debug-трейс** | `--debug` / `-d` | Детали API-запросов, тайминг по фазам, диагностика обработки сьютов/кейсов. |
+
+Полный справочник, плюс команды `bdds` / `configurations` / `datasets` / `groups` / `labels` / `milestones` / `plans` / `roles` / `templates` / `users` / `variables`, см. в [каталоге команд](docs/ru/guides/commands/index.md).
+
+---
+
+## 💡 Примеры (выдержка)
+
+Ниже — самые частые сценарии. Полный набор рецептов (TLS, CI, mapping-файлы, redaction и пр.) — в [каталоге команд](docs/ru/guides/commands/index.md) и [runbook-инструкциях](docs/ru/guides/instructions/index.md).
 
 ```bash
-# Полная миграция (shared steps + кейсы)
+# 🔍 Чтение данных
+gotr get projects
+gotr get cases 30 --suite-id 20069
+gotr get sharedsteps 30 --jq --jq-filter '.[] | {id, title}'
+
+# 🔄 Синхронизация между проектами (со снапшотом и верификацией)
 gotr sync full \
   --src-project 30 --src-suite 20069 \
   --dst-project 31 --dst-suite 19859 \
   --approve --save-mapping
 
-# Только shared steps
-gotr sync shared-steps \
-  --src-project 30 --dst-project 31 \
-  --approve --save-mapping
-
-# Кейсы с существующим маппингом
-gotr sync cases \
-  --src-project 30 --src-suite 20069 \
-  --dst-project 31 --dst-suite 19859 \
-  --mapping-file mapping.json --approve
-```
-
-### Сравнение проектов
-
-Сравнение ресурсов между двумя проектами для выявления различий и совпадений:
-
-```bash
-# Сравнить все ресурсы между проектами
-gotr compare all --pid1 30 --pid2 34
-
-# Сравнить конкретные типы ресурсов
-gotr compare cases --pid1 30 --pid2 34
-gotr compare suites --pid1 30 --pid2 34
-gotr compare sharedsteps --pid1 30 --pid2 34
-
-# Сохранить результаты сравнения
+# 🆚 Сравнение проектов
 gotr compare all --pid1 30 --pid2 34 --save
 gotr compare cases --pid1 30 --pid2 34 --save-to results.json --format json
 
-# Автоопределение формата по расширению файла
-gotr compare all --pid1 30 --pid2 34 --save-to comparison.yaml
-```
+# 📎 Массовая очистка старых вложений (по умолчанию со снапшотом и откатом)
+gotr attachments cleanup --all-projects --older-than 6M --dry-run
+gotr attachments cleanup --project 30 --older-than 6M
 
-**Поддерживаемые ресурсы:** `cases`, `suites`, `sections`, `sharedsteps`, `runs`, `plans`, `milestones`, `datasets`, `groups`, `labels`, `templates`, `configurations`, `all`
+# 📸 Откат любой мутации
+gotr snap list
+gotr snap rollback <snap-id>
 
-#### Тюнинг производительности
-
-```bash
-# Server (без rate-limit, максимальная скорость)
-gotr compare cases --pid1 30 --pid2 34 --rate-limit 0
-
-# Cloud Enterprise (повышенный лимит)
-gotr compare cases --pid1 30 --pid2 34 --rate-limit 300
-
-# Больше параллелизма
-gotr compare cases --pid1 30 --pid2 34 --parallel-suites 10 --parallel-pages 6
-```
-
-Автоматическое определение деплоймента: gotr определяет `cloud/server` по URL и подбирает rate-limit автоматически. Настраивается в конфиге (`compare.deployment`, `compare.cloud_tier`).
-
-#### Точечный дозабор failed pages
-
-```bash
-# Если часть страниц не загрузилась — дозабрать только их
-gotr compare retry-failed-pages --from ~/.gotr/exports/compare/failed_pages_2026-03-03_10-15-00.json
-```
-
-По умолчанию compare cases автоматически пытается дозабрать проблемные страницы.
-
-### Тест-раны и результаты
-
-```bash
-# Создание тест-рана
+# ✅ Создание рана и публикация результатов
 gotr run add 30 --name "Regression Suite" --case-ids "1,2,3,4,5"
+gotr result add 12345 --status-id 1 --comment "Passed"
 
-# Добавление результата теста
-gotr result add 12345 --status-id 1 --comment "Test passed"
-
-# Список результатов тестирования
-gotr result list --run-id 100
+# 📦 Переносимый бандл: export → перенос → import
+gotr export snap <snap-id>
+gotr import snap ~/.gotr/exports/snaps/snap_<id>_<ts>.tar.gz
 ```
 
-### JSON-фильтрация
+➡️ **Больше примеров**: [каталог команд](docs/ru/guides/commands/index.md) · [интерактивный режим](docs/ru/guides/interactive-mode.md) · [smoke-тестирование](docs/ru/guides/smoke-testing.md).
+
+---
+
+## ⚙️ Конфигурация
+
+Приоритет (от высшего к низшему):
+
+1. **Флаги CLI** — `--url` · `--username` · `--api-key`
+2. **Переменные окружения** — `TESTRAIL_BASE_URL` · `TESTRAIL_USERNAME` · `TESTRAIL_API_KEY`
+3. **Файл конфигурации** — `~/.gotr/config/default.yaml` (поддерживает несколько профилей)
 
 ```bash
-# Извлечение конкретных полей
-gotr get projects --jq --jq-filter '.[] | {id: .id, name: .name}'
-
-# Форматированный вывод с jq
-gotr get case 12345 --jq
+gotr config init   # создать дефолтный профиль
+gotr config view   # показать итоговую резолюцию
 ```
 
-## Отладка
+Полный справочник: [Гайд по конфигурации](docs/ru/guides/configuration.md) (TLS CA-bundle, retention, suppress_warnings, тюнинг для cloud/server).
 
-Для диагностики и получения детальной информации о выполнении используйте флаг `--debug` (или `-d`):
+---
 
-```bash
-# Показать debug-вывод для любой команды
-gotr compare cases --pid1 30 --pid2 34 --debug
-gotr sync cases --src-project 30 --dst-project 31 --debug
-gotr get cases --project-id 30 --debug
-
-# Debug-вывод включает:
-# - Детали API-запросов
-# - Информацию о прогрессе
-# - Тайминг каждой фазы операции
-# - Детали обработки сьютов/кейсов
-```
-
-> **Примечание:** Флаг `--debug` скрыт из автодополнения, но доступен во всех командах.
-
-## Конфигурация
-
-Приоритет конфигурации (от высшего к низшему):
-
-1. **Флаги командной строки** (`--url`, `--username`, `--api-key`)
-2. **Переменные окружения** (`TESTRAIL_BASE_URL`, `TESTRAIL_USERNAME`, `TESTRAIL_API_KEY`)
-3. **Конфигурационный файл** (`~/.gotr/config/default.yaml`)
-
-```bash
-# Инициализация конфигурации
-gotr config init
-
-# Просмотр текущей конфигурации
-gotr config view
-```
-
-## Структура проекта
+## 🗂️ Структура проекта
 
 ```text
 gotr/
-├── cmd/                          # CLI команды (29 подкоманд)
-│   ├── internal/testhelper/     #   Общие тест-утилиты
-│   ├── get/                     #   GET-команды (cases, suites, projects)
-│   ├── run/                     #   Управление тест-ранами
-│   ├── result/                  #   Управление результатами
-│   ├── compare/                 #   Кросс-проектное сравнение
-│   ├── sync/                    #   Миграция данных
-│   └── ...                      #   Прочие ресурсные подкоманды
-├── docs/                         # Документация (EN + RU)
-│   ├── en/                      #   Английская документация
-│   └── ru/                      #   Русская документация
-├── embedded/                     # Встроенные бинарники (jq)
+├── cmd/                  # CLI-команды (Cobra) — по подпапке на ресурс
+│   ├── attachments/      #   upload · list · cleanup (массовая + откат)
+│   ├── bundlecmd/        #   export / import (snap · report · migration-archive)
+│   ├── cleanup/          #   исполнитель retention (reports · snaps · exports · all)
+│   ├── compare/          #   кросс-проектный diff
+│   ├── get/              #   read-only чтение ресурсов
+│   ├── snap/             #   snapshot list · rollback · gc
+│   ├── sync/             #   движок синхронизации проектов
+│   ├── report/           #   жизненный цикл отчётов (organize · show · view · list)
+│   ├── run/ result/ test/ tests/                  #   домен выполнения
+│   └── …                 #   bdds · cases · configurations · datasets · groups
+│                         #   labels · milestones · plans · roles · templates
+│                         #   users · variables · work
 ├── internal/
-│   ├── client/                  #   Клиент TestRail API
-│   │   ├── interfaces.go       #     ClientInterface (130+ методов, 16 API)
-│   │   ├── mock.go             #     MockClient для тестирования
-│   │   └── *.go                #     Реализации API
-│   ├── concurrency/            #   Доменная параллельная оркестрация
-│   │   ├── controller.go       #     ParallelController — стриминг suite/page
-│   │   └── simple.go           #     FetchParallel[T], FetchParallelBySuite[T]
-│   ├── concurrent/             #   Низкоуровневые примитивы параллелизма
-│   │   ├── pool.go             #     WorkerPool
-│   │   ├── limiter.go          #     AdaptiveRateLimiter (180 req/min)
-│   │   └── retry.go            #     Экспоненциальный backoff retry
-│   ├── interactive/            #   Интерактивные промпты (survey)
-│   ├── service/                #   Бизнес-логика
-│   │   ├── run.go              #     RunService
-│   │   ├── result.go           #     ResultService
-│   │   └── migration/          #     Движок миграции данных
-│   ├── models/                 #   Модели данных
-│   │   ├── data/              #     API DTO
-│   │   └── config/            #     Модель конфигурации
-│   ├── output/                 #   Форматирование вывода (JSON/YAML/table)
-│   ├── ui/                     #   Терминальный UI (прогресс, превью)
-│   ├── flags/                  #   Парсинг общих флагов
-│   ├── log/                    #   Структурированное логирование (zap)
-│   └── paths/                  #   Утилиты путей
-├── pkg/                          # Публичные пакеты
-│   ├── testrailapi/            #   Определения API endpoint'ов (135 endpoints)
-│   └── reporter/               #   Унифицированный репортер статистики
-└── main.go                       # Точка входа
+│   ├── client/           #   клиент TestRail API + paginator + ClientInterface
+│   ├── service/          #   бизнес-логика (run · result · migration · …)
+│   ├── snap/             #   движок снапшотов (entity · backup · rollback)
+│   ├── snapbundle/       #   tar.gz-бандлы · manifest · SHA256SUMS
+│   ├── reportbundle/     #   zip-бандлы для экспорта отчётов
+│   ├── bundle/           #   общая механика бандлов (защита от zip-slip)
+│   ├── cleanup/          #   ядро очистки вложений (walker · filter · executor)
+│   ├── retention/        #   политики retention (reports · snaps · exports)
+│   ├── report/           #   classify · organize · resolve · INDEX
+│   ├── exportsorg/       #   мигратор раскладки exports/
+│   ├── concurrent/       #   примитивы — WorkerPool · AdaptiveRateLimiter · retry
+│   ├── concurrency/      #   доменная оркестрация — ParallelController · streaming
+│   ├── interactive/      #   survey-промпты · TTY-guard · MockPrompter
+│   ├── output/           #   рендереры JSON · YAML · table
+│   ├── ui/               #   прогресс-бары · статус-сообщения · quiet-mode
+│   ├── warnings/         #   реестр подавляемых варнингов + first-time tips
+│   ├── state/            #   ~/.gotr/state.json (one-shot флаги)
+│   ├── flags/            #   общий парсинг флагов
+│   ├── log/              #   структурированное логирование (zap)
+│   ├── paths/            #   хелперы раскладки ~/.gotr
+│   └── models/           #   API DTO + модель конфига
+├── pkg/
+│   ├── testrailapi/      #   определения API endpoint'ов (135 endpoints)
+│   ├── reporter/         #   унифицированный репортер статистики
+│   └── snap_smoke/       #   smoke-харнес для снапшотов
+├── embedded/             #   встроенный jq (без внешних зависимостей)
+├── docs/                 #   документация EN + RU
+└── main.go               #   точка входа
 ```
 
-См. [docs/ru/architecture/overview.md](docs/ru/architecture/overview.md) для полной структуры.
+Углублённо про архитектуру: [docs/ru/architecture/index.md](docs/ru/architecture/index.md).
 
-## Что нового в v3.0.0
+---
 
-- **135 endpoint'ов TestRail API** определены, 98% реализованы в клиенте
-- **29 CLI-команд** для всех основных ресурсов TestRail
-- **Потоковая параллельная пагинация** с адаптивным rate limiting (180 req/min)
-- **100% покрытие тестами** в 35/42 пакетах, минимум 97.4% во всех
-- **Ноль замечаний golangci-lint** с порогом gocyclo ≤15
-- **Полная документация EN/RU** — 125 doc-страниц
+## 🧪 Quality gates
 
-См. [CHANGELOG](CHANGELOG.md) для полной истории изменений.
+- ✅ `golangci-lint v2.11.4` — 0 issues, порог `gocyclo ≤ 15`
+- ✅ `go test ./... -count=1 -timeout 300s` — зелёный
+- ✅ Воспроизводимые детерминированные бандлы (фиксированный `ModTime`, стабильная сортировка, `tar.FormatPAX`)
+- ✅ Race detector + `govulncheck` в CI
 
-## Установка
+Pre-PR чеклист: `make verify` (test + vet + lint + build + race + vuln).
 
-Детальные инструкции по установке: [docs/ru/guides/installation.md](docs/ru/guides/installation.md)
+---
 
-## Участие в проекте
+## 🤝 Участие в проекте
 
-Приветствуются issues и pull requests.
+Issues и pull requests приветствуются. Пожалуйста, следуйте [протоколу релизов](docs/ru/operations/index.md) и запускайте `make verify` перед открытием PR.
 
-## Используемые библиотеки
+---
+
+## 🙏 Используемые библиотеки
+
+Проект построен на отличных open-source-проектах:
 
 | Библиотека | Назначение |
-|------------|------------|
+|---|---|
 | [spf13/cobra](https://github.com/spf13/cobra) | CLI-фреймворк |
 | [spf13/viper](https://github.com/spf13/viper) | Управление конфигурацией |
 | [go.uber.org/zap](https://github.com/uber-go/zap) | Структурированное логирование |
@@ -313,15 +223,11 @@ gotr/
 | [AlecAivazis/survey/v2](https://github.com/AlecAivazis/survey) | Интерактивные промпты |
 | [jedib0t/go-pretty/v6](https://github.com/jedib0t/go-pretty) | Табличный вывод |
 | [fatih/color](https://github.com/fatih/color) | Цветной вывод в терминале |
-| [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) | Утилиты параллелизма |
-| [golang.org/x/time](https://pkg.go.dev/golang.org/x/time) | Rate limiting |
+| [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) · [time](https://pkg.go.dev/golang.org/x/time) | Параллелизм и rate limiting |
+| [jq](https://github.com/jqlang/jq) | Встроенный JSON-процессор (`--jq` / `--jq-filter`) |
 
-### Встроенные инструменты
+---
 
-| Инструмент | Назначение |
-|------------|------------|
-| [jq](https://github.com/jqlang/jq) | Легковесный JSON-процессор, встроен как статический бинарник для поддержки `--jq` / `--jq-filter` |
+## 📄 Лицензия
 
-## Лицензия
-
-MIT License — см. [LICENSE](LICENSE)
+[MIT](LICENSE) © Korrnals

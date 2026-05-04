@@ -1,35 +1,21 @@
 # gotr — CLI Client for TestRail API
 
-```text
-╔══════════════════════════════════════════════════════════╗
-║                                                          ║
-║     ██████╗  ██████╗ ████████╗██████╗                    ║
-║    ██╔════╝ ██╔═══██╗╚══██╔══╝██╔══██╗                   ║
-║    ██║  ███╗██║   ██║   ██║   ██████╔╝                   ║
-║    ██║   ██║██║   ██║   ██║   ██╔══██╗                   ║
-║    ╚██████╔╝╚██████╔╝   ██║   ██║  ██║                   ║
-║     ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝                   ║
-║                                                          ║
-║           CLI Client for TestRail API v2                 ║
-║                                                          ║
-╚══════════════════════════════════════════════════════════╝
-```
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="gotr — CLI client for TestRail API v2: migrate · snapshot · sync · report · automate" width="100%"/>
+</p>
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Latest Release](https://img.shields.io/badge/release-v3.3.2-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.3.2)
-[![Next](https://img.shields.io/badge/next-v3.4.0--dev-orange.svg)](CHANGELOG.md)
+[![Latest Release](https://img.shields.io/badge/release-v3.4.0-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)
+[![Next](https://img.shields.io/badge/next-v3.5.0--dev-orange.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 A professional command-line interface for TestRail API v2. Designed for QA engineers and test automation specialists who need efficient data management, migration capabilities, and seamless integration with CI/CD pipelines.
 
-> **Latest Release:** [v3.3.2](https://github.com/Korrnals/gotr/releases/tag/v3.3.2).
+> **Latest Release:** [v3.4.0](https://github.com/Korrnals/gotr/releases/tag/v3.4.0) — multi-snap migration bundles, full-state cross-machine transfer, and store-manifest auto-registration on import.
 >
-> **In progress (`main`, untagged):** `v3.4.0-dev` — continues post-`v3.3.0`
-> development, including the  recovery track and follow-up snapshot
-> manifest hardening. See [CHANGELOG](CHANGELOG.md) for the current unreleased
-> scope.
+> **`main` currently points at tag [`v3.4.0`](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)** and is in development toward `v3.5.0-dev` — see [CHANGELOG](CHANGELOG.md) for the unreleased scope.
 
 ## Overview
 

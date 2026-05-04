@@ -1,35 +1,21 @@
 # gotr — CLI-клиент для TestRail API
 
-```text
-╔══════════════════════════════════════════════════════════╗
-║                                                          ║
-║     ██████╗  ██████╗ ████████╗██████╗                    ║
-║    ██╔════╝ ██╔═══██╗╚══██╔══╝██╔══██╗                   ║
-║    ██║  ███╗██║   ██║   ██║   ██████╔╝                   ║
-║    ██║   ██║██║   ██║   ██║   ██╔══██╗                   ║
-║    ╚██████╔╝╚██████╔╝   ██║   ██║  ██║                   ║
-║     ╚═════╝  ╚═════╝    ╚═╝   ╚═╝  ╚═╝                   ║
-║                                                          ║
-║           CLI Client for TestRail API v2                 ║
-║                                                          ║
-╚══════════════════════════════════════════════════════════╝
-```
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="gotr — CLI-клиент для TestRail API v2: миграция · снапшоты · синхронизация · отчёты · автоматизация" width="100%"/>
+</p>
 
 [English](README.md) | [Русский](README_ru.md)
 
-[![Latest Release](https://img.shields.io/badge/release-v3.3.2-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.3.2)
-[![Next](https://img.shields.io/badge/next-v3.4.0--dev-orange.svg)](CHANGELOG.md)
+[![Latest Release](https://img.shields.io/badge/release-v3.4.0-blue.svg)](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)
+[![Next](https://img.shields.io/badge/next-v3.5.0--dev-orange.svg)](CHANGELOG.md)
 [![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)](go.mod)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Профессиональный инструмент командной строки для работы с TestRail API v2. Разработан для QA-инженеров и специалистов по автоматизации тестирования, которым требуется эффективное управление данными, возможности миграции и бесшовная интеграция с CI/CD.
 
-> **Последний релиз:** [v3.3.2](https://github.com/Korrnals/gotr/releases/tag/v3.3.2).
+> **Последний релиз:** [v3.4.0](https://github.com/Korrnals/gotr/releases/tag/v3.4.0) — мульти-снап миграционные бандлы, полный перенос состояния между машинами и авто-регистрация снапшотов в манифесте стора при импорте.
 >
-> **В работе (`main`, без тега):** `v3.4.0-dev` — это продолжение разработки
-> после `v3.3.0`, включая recovery-трек  и последующее укрепление
-> работы со snapshot-manifest. Полный unreleased-скоуп см. в
-> [CHANGELOG](CHANGELOG.md).
+> **`main` сейчас указывает на тег [`v3.4.0`](https://github.com/Korrnals/gotr/releases/tag/v3.4.0)** и развивается в сторону `v3.5.0-dev` — текущий unreleased-скоуп см. в [CHANGELOG](CHANGELOG.md).
 
 ## Обзор
 

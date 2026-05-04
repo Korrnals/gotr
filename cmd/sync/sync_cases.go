@@ -238,6 +238,7 @@ Examples:
 				fmt.Printf("  - %s\n", e)
 			}
 		}
+		reportOrphanSharedSteps(m)
 
 		// Save log and mapping
 		saveLog(logFile, matches, filtered, importErrors, m.Mapping(), quiet)
@@ -254,7 +255,7 @@ Examples:
 			snapHook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 		}
 
-		saveMigrationReport(ctx, cmd, "sync_cases", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
+		reportPath := saveMigrationReport(ctx, cmd, "sync_cases", srcProject, dstProject, startedAt, snapHook, []reportResourceStats{
 			filterStatsToReport("cases", m.LastFilterStats(), int64(len(createdIDs)), int64(len(importErrors))),
 		})
 
@@ -265,6 +266,13 @@ Examples:
 			return fmt.Errorf("casesCmd.func: %w", err)
 		}
 
+		printArtifacts(artifactSet{
+			MigrationLog:    m.LogFilePath(),
+			CasesLog:        logFile,
+			MigrationReport: reportPath,
+			SnapshotDir:     snapshotDirFromHook(snapHook),
+			SnapshotID:      snapshotIDFromHook(snapHook),
+		})
 		syncPostAction(ctx, cmd, snapHook, cli)
 		return nil
 	},

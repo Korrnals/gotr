@@ -11,7 +11,76 @@
 
 ## [Unreleased]
 
+_Пока нет незарелизенных изменений._
+
+---
+
+## [3.4.0] - 2026-05-04
+
+### Added — мульти-снап миграционные бандлы и полный перенос состояния
+
+- **`gotr export migration-archive` без аргументов** теперь по умолчанию
+  пакует **полное состояние** `~/.gotr/`: все снапшоты из локального
+  стора + всё дерево `~/.gotr/reports/` + всё дерево `~/.gotr/logs/`.
+  Архив имеет тип `migration_bundle` и сохраняется в новую директорию
+  **`~/.gotr/exports/all/`** под именем
+  `migration_bundle_all_<N>snaps_<UTC-timestamp>.tar.gz`. Это
+  рекомендуемый артефакт для переноса `gotr`-состояния между машинами
+  одной командой.
+
+- **Селекторы мульти-снап режима**:
+  - `--label <substr>` — все снапшоты, чей `label` содержит подстроку
+    (case-insensitive);
+  - `<id1> <id2> ...` — перечисленные снапшоты + объединение их
+    репортов и логов;
+  - `--all` — явная форма дефолта.
+  Для одиночного `<id>` поведение не изменилось: архив остаётся в
+  `~/.gotr/exports/snaps/`.
+
+- **`gotr import migration-archive`** автоматически определяет тип
+  архива (single-snap vs `migration_bundle`) по его манифесту и
+  выбирает корректный путь восстановления — флаги не нужны. Импорт
+  по-прежнему требует явного аргумента-пути к файлу; распаковка
+  всегда идёт в системную директорию `~/.gotr/` (или `$GOTR_HOME`).
+  Интерактивный picker показывает архивы из обеих директорий —
+  `exports/snaps/` и `exports/all/`.
+
+### Fixed — авто-регистрация снапшотов в манифесте стора при импорте
+
+- **`gotr import` теперь автоматически регистрирует импортированные
+  снапшоты в `~/.gotr/snaps/manifest.json`**, чтобы `gotr snap list`
+  сразу видел их без вызова `gotr snap manifest repair`. Работает и
+  для single-snap (`Kind=snap`), и для мульти-снап бандлов
+  (`Kind=migration_bundle`). При `--overwrite` устаревшая запись в
+  манифесте заменяется свежей (без дублирования). Нечитаемый
+  `meta.json` отдельного снапа не приводит к ошибке: данные остаются
+  на диске, а их подберёт последующий `manifest repair`.
+
+- **`gotr snap manifest repair`** теперь делает один атомарный
+  `manifest.save()` за прогон вместо O(N) записей на каждый
+  orphan/missing entry. На сторе с тысячами снапшотов это убирает
+  O(N²) дисковую нагрузку (`internal/snap.AddMany` / `RemoveMany`).
+
+### Changed — структура `~/.gotr/exports/`
+
+- Добавлены `paths.ExportsAllSubdir = "all"`, `ExportsAllDirPath()`,
+  `EnsureExportsAllDirPath()`. Дерево теперь:
+
+  ```text
+  ~/.gotr/exports/
+  ├── snaps/    — одиночные snap_<id>_<ts>.tar.gz / migration_<id>_<ts>.tar.gz
+  ├── reports/  — экспортированные репорты (.zip / .pdf / .md / .json)
+  ├── api/      — сырые API-дампы (`gotr export <resource> --save`)
+  └── all/      — полные/мульти-снап migration_bundle_*.tar.gz (новое)
+  ```
+
+  Старые миграционные бандлы продолжают работать — импорт принимает
+  явный путь к файлу независимо от его расположения.
+
 ## [3.3.2] - 2026-04-28
+
+<details>
+<summary>Details</summary>
 
 Патч-релиз, объединяющий два production-хотфикса цикла миграции
 .
@@ -50,7 +119,12 @@
   В тестовом режиме пути перенаправляются в временный sandbox на процесс,
   при этом явные пер-тестовые переопределения по-прежнему работают.
 
+</details>
+
 ## [3.3.0] - 2026-04-24
+
+<details>
+<summary>Details</summary>
 
 UX polish релиз (issue #44): категоризованная иерархия отчётов и
 экспортов, shell completion, интерактивный режим, retention/cleanup,
@@ -283,7 +357,12 @@ retention:
 
 ---
 
+</details>
+
 ## [3.2.0] - 2026-04-23
+
+<details>
+<summary>Details</summary>
 
 Багфикс-релиз миграции: устраняет скрытую потерю кейсов при импорте,
 вызванную ошибочным «молчаливым» поведением фильтрации
@@ -376,7 +455,12 @@ retention:
 
 ---
 
+</details>
+
 ## [3.1.0] - 2026-04-19
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -430,7 +514,12 @@ retention:
 
 ---
 
+</details>
+
 ## [3.0.1] - 2026-04-12
+
+<details>
+<summary>Details</summary>
 
 ### Fixed
 
@@ -453,7 +542,12 @@ retention:
 
 ---
 
+</details>
+
 ## [3.0.0] - 2026-04-09
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -504,7 +598,12 @@ retention:
 - **0 TODO/FIXME/HACK** markers in production code.
 - **Audit verdict**: UNCONDITIONAL PASS (7 audit rounds completed).
 
+</details>
+
 ## [3.0.0] - 2026-03-12
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -630,7 +729,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.7.0] - 2026-02-20
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -816,7 +920,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.5.0] - 2026-02-05
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -863,7 +972,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.4.0] - 2026-02-04
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -943,7 +1057,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.3.0] - 2026-02-03
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -972,7 +1091,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.2.3] - 2026-02-03
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -1024,7 +1148,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.1.0] - 2026-01-24
+
+<details>
+<summary>Details</summary>
 
 ### Added
 
@@ -1045,7 +1174,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.0.0] - 2026-01-15
+
+<details>
+<summary>Details</summary>
 
 ### Breaking Changes
 
@@ -1085,7 +1219,12 @@ retention:
 
 ---
 
+</details>
+
 ## [2.0.0] - 2025-12-21
+
+<details>
+<summary>Details</summary>
 
 ### Breaking Changes
 
@@ -1121,9 +1260,15 @@ retention:
 
 ---
 
+</details>
+
 ## [1.0.0] - 2025-12-19 (предыдущий релиз)
+
+<details>
+<summary>Details</summary>
 
 - Базовая версия с командами `list`, `get`, `add` и т.д.
 - Поддержка TestRail API v2 через HTTP-клиент.
 - Глобальные флаги `--url`, `--username`, `--api-key`.
 
+</details>

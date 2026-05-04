@@ -175,6 +175,37 @@ func resolveImportSnapTarget(cmd *cobra.Command, args []string) (string, error) 
 	return promptImportBundle(cmd, dir, "Select snapshot bundle to import", ".tar.gz", ".tgz")
 }
 
+// resolveImportMigrationArchiveTarget returns args[0] or runs an interactive
+// picker over both ~/.gotr/exports/snaps/ (single-snap migration archives)
+// and ~/.gotr/exports/all/ (multi-snap migration_bundle archives).
+func resolveImportMigrationArchiveTarget(cmd *cobra.Command, args []string) (string, error) {
+	if len(args) == 1 {
+		return args[0], nil
+	}
+	if !shouldPrompt(cmd) {
+		return "", fmt.Errorf("import migration-archive: a bundle path is required (pass as argument or run interactively)")
+	}
+	snapsDir, err := paths.ExportsSnapsDirPath()
+	if err != nil {
+		return "", err
+	}
+	allDir, err := paths.ExportsAllDirPath()
+	if err != nil {
+		return "", err
+	}
+	candidates := append(listBundleFiles(allDir, ".tar.gz", ".tgz"),
+		listBundleFiles(snapsDir, ".tar.gz", ".tgz")...)
+	if len(candidates) == 0 {
+		return "", ErrNoInteractiveTarget
+	}
+	p := interactive.PrompterFromContext(cmd.Context())
+	_, value, err := p.Select("Select migration archive to import", candidates)
+	if err != nil {
+		return "", err
+	}
+	return value, nil
+}
+
 // resolveImportReportTarget returns args[0] or runs an interactive bundle picker.
 func resolveImportReportTarget(cmd *cobra.Command, args []string) (string, error) {
 	if len(args) == 1 {

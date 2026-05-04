@@ -20,6 +20,7 @@ func Register(root, exportParent *cobra.Command, version string) {
 	exportParent.AddCommand(newExportSnapCmd(version))
 	exportParent.AddCommand(newExportReportCmd(version))
 	exportParent.AddCommand(newExportOrganizeCmd())
+	exportParent.AddCommand(newExportMigrationArchiveCmd(version))
 
 	importCmd := &cobra.Command{
 		Use:   "import",
@@ -28,6 +29,7 @@ func Register(root, exportParent *cobra.Command, version string) {
 	}
 	importCmd.AddCommand(newImportSnapCmd())
 	importCmd.AddCommand(newImportReportCmd())
+	importCmd.AddCommand(newImportMigrationArchiveCmd())
 	root.AddCommand(importCmd)
 }
 

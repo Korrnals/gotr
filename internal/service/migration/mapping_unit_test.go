@@ -17,7 +17,7 @@ func TestSharedStepMapping_Save_MarshalError(t *testing.T) {
 	// time.Time with year > 9999 causes json.Marshal to fail deterministically.
 	sm.CreatedAt = time.Date(10000, time.January, 1, 0, 0, 0, 0, time.UTC)
 
-	err := sm.Save(t.TempDir())
+	_, err := sm.Save(t.TempDir())
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "year outside of range")
 }
@@ -47,7 +47,7 @@ func TestSharedStepMapping_SaveAndLoad(t *testing.T) {
 		dir := t.TempDir()
 		sm := NewSharedStepMapping(1, 2)
 
-		err := sm.Save(dir)
+		_, err := sm.Save(dir)
 		assert.NoError(t, err)
 
 		entries, err := os.ReadDir(dir)
@@ -61,7 +61,7 @@ func TestSharedStepMapping_SaveAndLoad(t *testing.T) {
 		sm.AddPair(11, 111, "created")
 		sm.AddPair(12, 112, "existing")
 
-		err := sm.Save(dir)
+		_, err := sm.Save(dir)
 		assert.NoError(t, err)
 
 		entries, err := os.ReadDir(dir)
@@ -164,7 +164,7 @@ func TestSharedStepMapping_Save_TableDriven(t *testing.T) {
 			sm := NewSharedStepMapping(1, 2)
 			tc.prepare(sm)
 
-			err := sm.Save(dir)
+			_, err := sm.Save(dir)
 			if tc.wantErr {
 				assert.Error(t, err)
 				return
@@ -210,7 +210,7 @@ func TestSharedStepMapping_Save_EmptyDataCases(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := tc.sm.Save(tc.dir)
+			_, err := tc.sm.Save(tc.dir)
 			assert.NoError(t, err)
 
 			entries, readErr := os.ReadDir(tc.dir)

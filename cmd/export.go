@@ -35,82 +35,114 @@ Output file name:
 
 Examples:
     gotr export projects get_projects
-    gotr export cases get_cases 1 --suite-id 5 -o cases_suite5.json`,
+    gotr export cases get_cases 1 --suite-id 5 -o cases_suite5.json
+
+Note: invoking the raw resource exporter via the bare ` + "`gotr export`" + ` form
+is preserved for backwards compatibility. Prefer ` + "`gotr export resources`" + `
+for new scripts; that subcommand exists to keep the top-level ` + "`export`" + `
+command's listing focused on bundle-style exports (snap, report,
+migration-archive, organize).`,
 
 	Args: cobra.MaximumNArgs(3),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		ctx := cmd.Context()
+	RunE: runRawExport,
+}
 
-		resource, endpoint, mainID, err := resolveExportInputs(cmd, args)
+// exportResourcesCmd is the canonical entry point for raw API resource
+// exports. `gotr export <resource> ...` continues to work as a backwards
+// compatible alias that runs the same code path.
+var exportResourcesCmd = &cobra.Command{
+	Use:   "resources <resource> <endpoint> [id]",
+	Short: "Export raw API resource data from TestRail to a JSON file",
+	Long: `Exports raw API resource data from TestRail to a JSON file.
+
+This is the modern entry point for the resource-level export tools and is
+equivalent to the legacy ` + "`gotr export <resource> <endpoint>`" + ` form.
+It is grouped under ` + "`resources`" + ` to keep the top-level ` + "`export`" + ` command
+listing focused on bundle-style exporters (snap, report, migration-archive,
+organize).
+
+Examples:
+    gotr export resources projects get_projects
+    gotr export resources cases get_cases 1 --suite-id 5 -o cases_suite5.json`,
+	Args: cobra.MaximumNArgs(3),
+	RunE: runRawExport,
+}
+
+// runRawExport is the shared implementation behind both the legacy
+// ` + "`gotr export <resource>`" + ` form and the new
+// ` + "`gotr export resources <resource>`" + ` subcommand.
+func runRawExport(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
+
+	resource, endpoint, mainID, err := resolveExportInputs(cmd, args)
+	if err != nil {
+		return fmt.Errorf("exportCmd.func: %w", err)
+	}
+
+	httpClient, ok := GetClient(cmd).(rawExporter)
+	if !ok {
+		return fmt.Errorf("export requires full HTTP client (not available with mock)")
+	}
+
+	// Build full endpoint path and query parameters
+	fullEndpoint, queryParams, err := buildRequestParams(endpoint, mainID, cmd)
+	if err != nil {
+		return fmt.Errorf("exportCmd.func: %w", err)
+	}
+
+	debug.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)
+	debug.DebugPrint("{exportCmd} - Query params: %v", queryParams)
+
+	// Flags
+	quiet, _ := cmd.Flags().GetBool("quiet")
+	saveFlag, _ := cmd.Flags().GetBool("save")
+
+	// Request
+	data, err := ui.RunWithStatus(ctx, ui.StatusConfig{
+		Title:  "Exporting data",
+		Writer: os.Stderr,
+		Quiet:  quiet,
+	}, func(ctx context.Context) (client.ResponseData, error) {
+		start := time.Now()
+		resp, err := httpClient.Get(ctx, fullEndpoint, queryParams)
 		if err != nil {
-			return fmt.Errorf("exportCmd.func: %w", err)
+			return client.ResponseData{}, err
 		}
+		defer resp.Body.Close()
+		return httpClient.ReadResponse(ctx, resp, time.Since(start), "json")
+	})
+	if err != nil {
+		return fmt.Errorf("response reading error: %w", err)
+	}
 
-		httpClient, ok := GetClient(cmd).(rawExporter)
-		if !ok {
-			return fmt.Errorf("export requires full HTTP client (not available with mock)")
-		}
-
-		// Build full endpoint path and query parameters
-		fullEndpoint, queryParams, err := buildRequestParams(endpoint, mainID, cmd)
+	if saveFlag {
+		// Save via output.Output to ~/.gotr/exports/api/export/
+		filepath, err := output.Output(cmd, data, "export", "json")
 		if err != nil {
-			return fmt.Errorf("exportCmd.func: %w", err)
+			return fmt.Errorf("save error: %w", err)
 		}
-
-		debug.DebugPrint("{exportCmd} - Final endpoint: %s", fullEndpoint)
-		debug.DebugPrint("{exportCmd} - Query params: %v", queryParams)
-
-		// Flags
-		quiet, _ := cmd.Flags().GetBool("quiet")
-		saveFlag, _ := cmd.Flags().GetBool("save")
-
-		// Request
-		data, err := ui.RunWithStatus(ctx, ui.StatusConfig{
-			Title:  "Exporting data",
-			Writer: os.Stderr,
-			Quiet:  quiet,
-		}, func(ctx context.Context) (client.ResponseData, error) {
-			start := time.Now()
-			resp, err := httpClient.Get(ctx, fullEndpoint, queryParams)
-			if err != nil {
-				return client.ResponseData{}, err
-			}
-			defer resp.Body.Close()
-			return httpClient.ReadResponse(ctx, resp, time.Since(start), "json")
-		})
-		if err != nil {
-			return fmt.Errorf("response reading error: %w", err)
+		if !quiet && filepath != "" {
+			ui.Infof(os.Stdout, "Data exported to %s", filepath)
 		}
-
-		if saveFlag {
-			// Save via output.Output to ~/.gotr/exports/api/export/
-			filepath, err := output.Output(cmd, data, "export", "json")
-			if err != nil {
-				return fmt.Errorf("save error: %w", err)
-			}
-			if !quiet && filepath != "" {
-				ui.Infof(os.Stdout, "Data exported to %s", filepath)
-			}
-		} else {
-			// Save to .testrail/ (legacy behavior)
-			exportDir := ".testrail"
-			if err := os.MkdirAll(exportDir, 0o755); err != nil {
-				return fmt.Errorf("failed to create directory %s: %w", exportDir, err)
-			}
-			filename := fmt.Sprintf("%s/%s_%s.json", exportDir, resource, time.Now().Format("20060102_150405"))
-			if mainID != "" {
-				filename = fmt.Sprintf("%s/%s_%s_%s.json", exportDir, resource, mainID, time.Now().Format("20060102_150405"))
-			}
-			if err := httpClient.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
-				return fmt.Errorf("file export error %s: %w", filename, err)
-			}
-			if !quiet {
-				ui.Infof(os.Stdout, "Data exported to %s", filename)
-			}
+	} else {
+		// Save to .testrail/ (legacy behavior)
+		exportDir := ".testrail"
+		if err := os.MkdirAll(exportDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", exportDir, err)
 		}
+		filename := fmt.Sprintf("%s/%s_%s.json", exportDir, resource, time.Now().Format("20060102_150405"))
+		if mainID != "" {
+			filename = fmt.Sprintf("%s/%s_%s_%s.json", exportDir, resource, mainID, time.Now().Format("20060102_150405"))
+		}
+		if err := httpClient.SaveResponseToFile(ctx, data, filename, "json"); err != nil {
+			return fmt.Errorf("file export error %s: %w", filename, err)
+		}
+		if !quiet {
+			ui.Infof(os.Stdout, "Data exported to %s", filename)
+		}
+	}
 
-		return nil
-	},
+	return nil
 }
 
 func resolveExportInputs(cmd *cobra.Command, args []string) (resource, endpoint, id string, err error) {

@@ -206,7 +206,7 @@ func TestMigrationExportFunctions(t *testing.T) {
 		m.mapping = NewSharedStepMapping(1, 2)
 		m.mapping.AddPair(10, 20, "existing")
 
-		if err := m.ExportMapping(dir); err != nil {
+		if _, err := m.ExportMapping(dir); err != nil {
 			t.Fatalf("ExportMapping() error = %v", err)
 		}
 		if got := countFilesByPrefix(t, dir, "mapping_"); got != 1 {
@@ -787,7 +787,7 @@ func TestMigrationExportMapping_ErrorPath(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	if err := m.ExportMapping(notDir); err == nil {
+	if _, err := m.ExportMapping(notDir); err == nil {
 		t.Fatalf("expected ExportMapping() error for file path as dir")
 	}
 }

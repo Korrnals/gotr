@@ -35,6 +35,7 @@ const (
 	ExportsSnapsSubdir   = "snaps"   // portable snapshot bundles (.tar.gz)
 	ExportsReportsSubdir = "reports" // exported migration report bundles (.zip / single files)
 	ExportsAPISubdir     = "api"     // raw API responses saved via `gotr export <resource>`
+	ExportsAllSubdir     = "all"     // full migration bundles containing all artifacts (snaps+reports+logs+manifests)
 )
 
 // BaseDir returns the path to ~/.gotr.
@@ -237,6 +238,19 @@ func ExportsAPIDirPath() (string, error) {
 	return filepath.Join(base, ExportsAPISubdir), nil
 }
 
+// ExportsAllDirPath returns ~/.gotr/exports/all — destination for full
+// migration bundles produced by `gotr export migration-archive` (default
+// "everything" mode). Such archives contain snapshots, reports, logs and
+// manifests, so they live in their own bucket separate from per-snap
+// bundles in exports/snaps.
+func ExportsAllDirPath() (string, error) {
+	base, err := ExportsDirPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(base, ExportsAllSubdir), nil
+}
+
 // EnsureExportsSnapsDirPath returns ~/.gotr/exports/snaps, creating it when missing.
 func EnsureExportsSnapsDirPath() (string, error) {
 	return ensureUnderExports(ExportsSnapsDirPath, "exports/snaps")
@@ -250,6 +264,11 @@ func EnsureExportsReportsDirPath() (string, error) {
 // EnsureExportsAPIDirPath returns ~/.gotr/exports/api, creating it when missing.
 func EnsureExportsAPIDirPath() (string, error) {
 	return ensureUnderExports(ExportsAPIDirPath, "exports/api")
+}
+
+// EnsureExportsAllDirPath returns ~/.gotr/exports/all, creating it when missing.
+func EnsureExportsAllDirPath() (string, error) {
+	return ensureUnderExports(ExportsAllDirPath, "exports/all")
 }
 
 func ensureUnderExports(pathFn func() (string, error), label string) (string, error) {

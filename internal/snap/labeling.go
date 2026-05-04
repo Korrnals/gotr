@@ -23,8 +23,12 @@ type LabelInfo struct {
 
 // GenerateDefaultLabel generates a default label in format: {mode}_{command}_{timestamp}
 // Example: "interactive_sync_full_20260418143015"
+//
+// The timestamp is formatted in UTC to stay consistent with snapshot IDs
+// (see internal/snap/store.go), so labels and IDs cannot disagree on
+// calendar day across timezones.
 func GenerateDefaultLabel(mode LabelMode, command string) string {
-	timestamp := time.Now().Format("20060102150405")
+	timestamp := time.Now().UTC().Format("20060102150405")
 	return fmt.Sprintf("%s_%s_%s", mode, command, timestamp)
 }
 

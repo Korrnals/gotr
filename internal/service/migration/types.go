@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"sync"
 	"syscall"
 	"time"
 
@@ -29,9 +31,36 @@ type Migration struct {
 	mapping  *SharedStepMapping // shared step ID mapping (see mapping.go)
 	logger   *zap.SugaredLogger
 	logFile  *os.File // log file handle, closed in Close()
+	logFilePath string // absolute path of the JSON migration log; surfaced via LogFilePath()
 
 	lastFilteredSteps data.GetSharedStepsResponse // filtered shared steps from last MigrateSharedSteps run
 	lastFilterStats   FilterStats                 // statistics from the last Filter* call
+
+	// unmappedSharedStepRefs tracks source shared_step_ids that are referenced
+	// by source cases but cannot be resolved to a target ID (typically because
+	// the parent shared step was deleted upstream and only orphan references
+	// remain in the case payload). Such steps are imported as inline content
+	// (graceful degradation), and we surface a single aggregate note to the
+	// operator at the end of the cases phase instead of one warning per case.
+	unmappedMu             sync.Mutex
+	unmappedSharedStepIDs  map[int64]struct{}
+	unmappedSharedStepHits int
+}
+
+// UnmappedSharedStepRefs returns the set of source shared_step_ids that were
+// referenced by source cases during import but could not be resolved against
+// the mapping, along with the total number of step occurrences affected.
+//
+// IDs are returned sorted ascending for stable output.
+func (m *Migration) UnmappedSharedStepRefs() (uniqueIDs []int64, occurrences int) {
+	m.unmappedMu.Lock()
+	defer m.unmappedMu.Unlock()
+	uniqueIDs = make([]int64, 0, len(m.unmappedSharedStepIDs))
+	for id := range m.unmappedSharedStepIDs {
+		uniqueIDs = append(uniqueIDs, id)
+	}
+	sort.Slice(uniqueIDs, func(i, j int) bool { return uniqueIDs[i] < uniqueIDs[j] })
+	return uniqueIDs, m.unmappedSharedStepHits
 }
 
 // NewMigration creates a new Migration instance with a zap logger.
@@ -70,6 +99,7 @@ func NewMigration(cli client.ClientInterface, srcProject, srcSuite, dstProject, 
 		mapping:       NewSharedStepMapping(srcProject, dstProject), // from mapping.go
 		logger:        logger,
 		logFile:       fileWriter,
+		logFilePath:   logFile,
 	}
 
 	m.logger.Info("Migration object created", "log_file", logFile)
@@ -104,6 +134,12 @@ func isSyncIgnorable(err error) bool {
 // FilteredSharedSteps returns the filtered shared steps from the last MigrateSharedSteps run.
 func (m *Migration) FilteredSharedSteps() data.GetSharedStepsResponse {
 	return m.lastFilteredSteps
+}
+
+// LogFilePath returns the absolute filesystem path of the JSON migration log
+// for this Migration instance, or "" if logging was not initialized.
+func (m *Migration) LogFilePath() string {
+	return m.logFilePath
 }
 
 // Mapping returns a simple map[sourceID]=targetID for external use

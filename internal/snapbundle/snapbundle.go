@@ -34,18 +34,45 @@ type ExportOptions struct {
 	// ReportsDir overrides the lookup root for IncludeReports. Primarily
 	// useful in tests; production callers leave it empty.
 	ReportsDir string
+	// IncludeLogs embeds migration log files (migration_*.json,
+	// mapping_*.json, shared_steps_filtered_*.json, sync_cases_*.json)
+	// from LogsDir whose mtime is within ~1h of the snap's Timestamp into
+	// the archive under the logs/ prefix. When LogsDir is empty,
+	// ~/.gotr/logs is used.
+	IncludeLogs bool
+	// LogsDir overrides the lookup root for IncludeLogs. Primarily useful
+	// in tests; production callers leave it empty.
+	LogsDir string
+	// IncludeAllReports, when true with multi-snap export, embeds the
+	// ENTIRE reports/ tree (not just files matching snap ids). Used for
+	// full-state cross-machine archives.
+	IncludeAllReports bool
+	// IncludeAllLogs, when true with multi-snap export, embeds the ENTIRE
+	// logs/ directory (all migration_*/mapping_*/shared_steps_filtered_*/
+	// sync_cases_* files) regardless of timestamp. Used for full-state
+	// cross-machine archives.
+	IncludeAllLogs bool
 }
 
 // Result summarizes an export or import operation.
 type Result struct {
 	ArchivePath    string
 	SnapID         string
+	// SnapIDs is populated for multi-snap (migration_bundle) archives.
+	// For single-snap archives it is empty and SnapID carries the id.
+	SnapIDs        []string
 	Files          []bundle.File
 	Redacted       []string
 	IncludedReports []string // relative archive paths of embedded reports (export) / restored to ~/.gotr/reports (import)
 	// SkippedReports lists bundle reports that were NOT restored during
 	// import because a file with the same path already existed on disk.
 	SkippedReports []string
+	// IncludedLogs lists migration log files embedded into the archive on
+	// export, or restored to ~/.gotr/logs on import.
+	IncludedLogs []string
+	// SkippedLogs lists bundle logs that were NOT restored during import
+	// because a file with the same path already existed on disk.
+	SkippedLogs []string
 }
 
 // ExportOne writes the given snapshot into destPath (a .tar.gz file). The
@@ -78,6 +105,29 @@ func ExportOne(store *snap.Store, snapID, destPath string, opts ExportOptions) (
 		includedReports = rpaths
 	}
 
+	var includedLogs []string
+	if opts.IncludeLogs {
+		logsDir := opts.LogsDir
+		if logsDir == "" {
+			dir, derr := paths.LogsDirPath()
+			if derr != nil {
+				return nil, fmt.Errorf("snapbundle: resolve logs dir: %w", derr)
+			}
+			logsDir = dir
+		}
+		snapTime, terr := readSnapTimestamp(store, snapID)
+		if terr != nil {
+			return nil, fmt.Errorf("snapbundle: read snap meta for log window: %w", terr)
+		}
+		lentries, lfiles, lpaths, lerr := collectLogEntries(logsDir, snapTime)
+		if lerr != nil {
+			return nil, lerr
+		}
+		entries = append(entries, lentries...)
+		files = append(files, lfiles...)
+		includedLogs = lpaths
+	}
+
 	manifest := &bundle.Manifest{
 		SchemaVersion: bundle.SchemaVersion,
 		Kind:          bundle.KindSnap,
@@ -100,7 +150,519 @@ func ExportOne(store *snap.Store, snapID, destPath string, opts ExportOptions) (
 		Files:           files,
 		Redacted:        redacted,
 		IncludedReports: includedReports,
+		IncludedLogs:    includedLogs,
 	}, nil
+}
+
+// ExportMany writes multiple snapshots into a single migration_bundle
+// tar.gz at destPath. Reports and logs handling:
+//
+//   - When opts.IncludeReports is true and opts.IncludeAllReports is false,
+//     reports whose basename contains ANY of the snap ids are embedded.
+//   - When opts.IncludeAllReports is true, the entire ~/.gotr/reports tree
+//     is embedded (used for full-state cross-machine archives).
+//   - Logs use a similar policy: per-snap windowed selection by default,
+//     or the entire logs/ directory when IncludeAllLogs is set.
+//
+// For a single-id slice this is equivalent to ExportOne but emits a
+// migration_bundle manifest (Kind = KindMigrationBundle, SnapIDs = [id]).
+//
+//nolint:gocyclo // Exporter inlines snap-tree collection, reports/logs union and manifest assembly.
+func ExportMany(store *snap.Store, snapIDs []string, destPath string, opts ExportOptions) (*Result, error) {
+	if len(snapIDs) == 0 {
+		return nil, errors.New("snapbundle: ExportMany requires at least one snap id")
+	}
+	// Dedupe while preserving order.
+	seen := make(map[string]struct{}, len(snapIDs))
+	uniq := make([]string, 0, len(snapIDs))
+	for _, id := range snapIDs {
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		uniq = append(uniq, id)
+	}
+	snapIDs = uniq
+
+	for _, id := range snapIDs {
+		if !store.Exists(id) {
+			return nil, fmt.Errorf("snapbundle: snapshot %q does not exist", id)
+		}
+	}
+
+	var (
+		entries  []bundle.Entry
+		files    []bundle.File
+		redacted []string
+	)
+	// 1) Snap trees.
+	for _, id := range snapIDs {
+		es, fls, rd, err := collectEntries(store, id, opts)
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, es...)
+		files = append(files, fls...)
+		redacted = append(redacted, rd...)
+	}
+
+	// 2) Reports — either union per-snap match, or entire tree.
+	var includedReports []string
+	if opts.IncludeReports || opts.IncludeAllReports {
+		reportsDir := opts.ReportsDir
+		if reportsDir == "" {
+			dir, derr := paths.ReportsDirPath()
+			if derr != nil {
+				return nil, fmt.Errorf("snapbundle: resolve reports dir: %w", derr)
+			}
+			reportsDir = dir
+		}
+		var (
+			res []bundle.Entry
+			rfs []bundle.File
+			rps []string
+			err error
+		)
+		if opts.IncludeAllReports {
+			res, rfs, rps, err = collectAllReports(reportsDir)
+		} else {
+			res, rfs, rps, err = collectReportEntriesMulti(reportsDir, snapIDs)
+		}
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, res...)
+		files = append(files, rfs...)
+		includedReports = rps
+	}
+
+	// 3) Logs — either union of per-snap windows, or entire dir.
+	var includedLogs []string
+	if opts.IncludeLogs || opts.IncludeAllLogs {
+		logsDir := opts.LogsDir
+		if logsDir == "" {
+			dir, derr := paths.LogsDirPath()
+			if derr != nil {
+				return nil, fmt.Errorf("snapbundle: resolve logs dir: %w", derr)
+			}
+			logsDir = dir
+		}
+		var (
+			les []bundle.Entry
+			lfs []bundle.File
+			lps []string
+			err error
+		)
+		if opts.IncludeAllLogs {
+			les, lfs, lps, err = collectAllLogs(logsDir)
+		} else {
+			times := make([]time.Time, 0, len(snapIDs))
+			for _, id := range snapIDs {
+				t, terr := readSnapTimestamp(store, id)
+				if terr != nil {
+					return nil, fmt.Errorf("snapbundle: read snap meta for log window: %w", terr)
+				}
+				times = append(times, t)
+			}
+			les, lfs, lps, err = collectLogEntriesMulti(logsDir, times)
+		}
+		if err != nil {
+			return nil, err
+		}
+		entries = append(entries, les...)
+		files = append(files, lfs...)
+		includedLogs = lps
+	}
+
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	redacted = dedupe(redacted)
+	sort.Strings(redacted)
+
+	manifest := &bundle.Manifest{
+		SchemaVersion: bundle.SchemaVersion,
+		Kind:          bundle.KindMigrationBundle,
+		GotrVersion:   opts.GotrVersion,
+		GeneratedAt:   time.Now().UTC(),
+		SnapIDs:       snapIDs,
+		Files:         files,
+		Redacted:      redacted,
+	}
+	if err := appendMetaEntries(&entries, manifest); err != nil {
+		return nil, err
+	}
+	if err := bundle.WriteTarGz(destPath, entries); err != nil {
+		return nil, fmt.Errorf("snapbundle: write archive: %w", err)
+	}
+	return &Result{
+		ArchivePath:     destPath,
+		SnapIDs:         snapIDs,
+		Files:           files,
+		Redacted:        redacted,
+		IncludedReports: includedReports,
+		IncludedLogs:    includedLogs,
+	}, nil
+}
+
+// ExportFull discovers every snapshot in the store's manifest and bundles
+// it together with the entire reports/ and logs/ trees into a single
+// migration_bundle archive at destPath. This is the recommended artifact
+// for transferring a full ~/.gotr state to another machine.
+func ExportFull(store *snap.Store, destPath string, opts ExportOptions) (*Result, error) {
+	manifest, err := snap.LoadManifest(store)
+	if err != nil {
+		return nil, fmt.Errorf("snapbundle: load store manifest: %w", err)
+	}
+	ids := make([]string, 0, len(manifest.Entries))
+	for _, e := range manifest.Entries {
+		ids = append(ids, e.ID)
+	}
+	if len(ids) == 0 {
+		return nil, errors.New("snapbundle: no snapshots in store")
+	}
+	opts.IncludeReports = true
+	opts.IncludeLogs = true
+	opts.IncludeAllReports = true
+	opts.IncludeAllLogs = true
+	return ExportMany(store, ids, destPath, opts)
+}
+
+// collectReportEntriesMulti is the multi-snap variant of
+// collectReportEntries: a file is embedded once if its basename contains
+// ANY of the snapIDs (basename match).
+func collectReportEntriesMulti(reportsDir string, snapIDs []string) ([]bundle.Entry, []bundle.File, []string, error) {
+	home, _ := os.UserHomeDir()
+	needles := make([]string, 0, len(snapIDs))
+	for _, id := range snapIDs {
+		needles = append(needles, filepath.Base(id))
+	}
+	var (
+		entries []bundle.Entry
+		files   []bundle.File
+		names   []string
+		seen    = make(map[string]struct{})
+	)
+	err := filepath.WalkDir(reportsDir, func(p string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			if errors.Is(werr, fs.ErrNotExist) {
+				return nil
+			}
+			return werr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		name := d.Name()
+		if name == "INDEX.md" {
+			return nil
+		}
+		match := false
+		for _, n := range needles {
+			if strings.Contains(name, n) {
+				match = true
+				break
+			}
+		}
+		if !match {
+			return nil
+		}
+		rel, rerr := filepath.Rel(reportsDir, p)
+		if rerr != nil {
+			return rerr
+		}
+		archivePath := "reports/" + filepath.ToSlash(rel)
+		if _, ok := seen[archivePath]; ok {
+			return nil
+		}
+		seen[archivePath] = struct{}{}
+		content, rerr := os.ReadFile(p) //nolint:gosec // path under reportsDir
+		if rerr != nil {
+			return fmt.Errorf("snapbundle: read report %s: %w", p, rerr)
+		}
+		sum := bundle.SHA256Bytes(content)
+		entries = append(entries, bundle.Entry{
+			ArchivePath: archivePath,
+			RelHome:     relHome(home, p),
+			Content:     content,
+		})
+		files = append(files, bundle.File{
+			Path:    archivePath,
+			RelHome: relHome(home, p),
+			SHA256:  sum,
+			Size:    int64(len(content)),
+		})
+		names = append(names, archivePath)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("snapbundle: walk reports %s: %w", reportsDir, err)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ArchivePath < entries[j].ArchivePath })
+	sort.Strings(names)
+	return entries, files, names, nil
+}
+
+// collectAllReports embeds the entire reports/ subtree.
+func collectAllReports(reportsDir string) ([]bundle.Entry, []bundle.File, []string, error) {
+	home, _ := os.UserHomeDir()
+	var (
+		entries []bundle.Entry
+		files   []bundle.File
+		names   []string
+	)
+	err := filepath.WalkDir(reportsDir, func(p string, d fs.DirEntry, werr error) error {
+		if werr != nil {
+			if errors.Is(werr, fs.ErrNotExist) {
+				return nil
+			}
+			return werr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, rerr := filepath.Rel(reportsDir, p)
+		if rerr != nil {
+			return rerr
+		}
+		archivePath := "reports/" + filepath.ToSlash(rel)
+		content, rerr := os.ReadFile(p) //nolint:gosec // path under reportsDir
+		if rerr != nil {
+			return fmt.Errorf("snapbundle: read report %s: %w", p, rerr)
+		}
+		sum := bundle.SHA256Bytes(content)
+		entries = append(entries, bundle.Entry{
+			ArchivePath: archivePath,
+			RelHome:     relHome(home, p),
+			Content:     content,
+		})
+		files = append(files, bundle.File{
+			Path:    archivePath,
+			RelHome: relHome(home, p),
+			SHA256:  sum,
+			Size:    int64(len(content)),
+		})
+		names = append(names, archivePath)
+		return nil
+	})
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("snapbundle: walk reports %s: %w", reportsDir, err)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ArchivePath < entries[j].ArchivePath })
+	sort.Strings(names)
+	return entries, files, names, nil
+}
+
+// collectLogEntriesMulti picks logs whose mtime is within ±logWindow of
+// ANY of the given snap timestamps.
+func collectLogEntriesMulti(logsDir string, snapTimes []time.Time) ([]bundle.Entry, []bundle.File, []string, error) {
+	home, _ := os.UserHomeDir()
+	var (
+		entries []bundle.Entry
+		files   []bundle.File
+		names   []string
+	)
+	dirEntries, err := os.ReadDir(logsDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil, nil, nil
+		}
+		return nil, nil, nil, fmt.Errorf("snapbundle: read logs %s: %w", logsDir, err)
+	}
+	for _, d := range dirEntries {
+		if d.IsDir() {
+			continue
+		}
+		name := d.Name()
+		if !hasAnyPrefix(name, logFilePrefixes) {
+			continue
+		}
+		info, ierr := d.Info()
+		if ierr != nil {
+			continue
+		}
+		match := false
+		for _, t := range snapTimes {
+			if t.IsZero() {
+				match = true
+				break
+			}
+			dt := info.ModTime().Sub(t)
+			if dt < 0 {
+				dt = -dt
+			}
+			if dt <= logWindow {
+				match = true
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		p := filepath.Join(logsDir, name)
+		content, rerr := os.ReadFile(p) //nolint:gosec // path under logsDir
+		if rerr != nil {
+			return nil, nil, nil, fmt.Errorf("snapbundle: read log %s: %w", p, rerr)
+		}
+		archivePath := "logs/" + name
+		sum := bundle.SHA256Bytes(content)
+		entries = append(entries, bundle.Entry{
+			ArchivePath: archivePath,
+			RelHome:     relHome(home, p),
+			Content:     content,
+		})
+		files = append(files, bundle.File{
+			Path:    archivePath,
+			RelHome: relHome(home, p),
+			SHA256:  sum,
+			Size:    int64(len(content)),
+		})
+		names = append(names, archivePath)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ArchivePath < entries[j].ArchivePath })
+	sort.Strings(names)
+	return entries, files, names, nil
+}
+
+// collectAllLogs embeds every recognized migration log file in logsDir
+// regardless of timestamp.
+func collectAllLogs(logsDir string) ([]bundle.Entry, []bundle.File, []string, error) {
+	home, _ := os.UserHomeDir()
+	var (
+		entries []bundle.Entry
+		files   []bundle.File
+		names   []string
+	)
+	dirEntries, err := os.ReadDir(logsDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil, nil, nil
+		}
+		return nil, nil, nil, fmt.Errorf("snapbundle: read logs %s: %w", logsDir, err)
+	}
+	for _, d := range dirEntries {
+		if d.IsDir() {
+			continue
+		}
+		name := d.Name()
+		if !hasAnyPrefix(name, logFilePrefixes) {
+			continue
+		}
+		p := filepath.Join(logsDir, name)
+		content, rerr := os.ReadFile(p) //nolint:gosec // path under logsDir
+		if rerr != nil {
+			return nil, nil, nil, fmt.Errorf("snapbundle: read log %s: %w", p, rerr)
+		}
+		archivePath := "logs/" + name
+		sum := bundle.SHA256Bytes(content)
+		entries = append(entries, bundle.Entry{
+			ArchivePath: archivePath,
+			RelHome:     relHome(home, p),
+			Content:     content,
+		})
+		files = append(files, bundle.File{
+			Path:    archivePath,
+			RelHome: relHome(home, p),
+			SHA256:  sum,
+			Size:    int64(len(content)),
+		})
+		names = append(names, archivePath)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ArchivePath < entries[j].ArchivePath })
+	sort.Strings(names)
+	return entries, files, names, nil
+}
+
+// readSnapTimestamp loads the snap meta and returns its Timestamp, used to
+// pick log files written around the same time.
+func readSnapTimestamp(store *snap.Store, snapID string) (time.Time, error) {
+	meta, err := store.LoadMeta(snapID)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return meta.Timestamp, nil
+}
+
+// logWindow is the +/- range around a snap's Timestamp considered as
+// belonging to the same migration run for the purpose of log embedding.
+const logWindow = time.Hour
+
+// logFilePrefixes lists basename prefixes recognized as migration artifacts.
+var logFilePrefixes = []string{"migration_", "mapping_", "shared_steps_filtered_", "sync_cases_"}
+
+// collectLogEntries scans logsDir (non-recursively) for migration log files
+// whose mtime is within ±logWindow of snapTime and packages each one under
+// the archive prefix "logs/<filename>". When snapTime is zero, all matching
+// files in the directory are picked.
+func collectLogEntries(logsDir string, snapTime time.Time) ([]bundle.Entry, []bundle.File, []string, error) {
+	home, _ := os.UserHomeDir()
+	var entries []bundle.Entry
+	var files []bundle.File
+	var names []string
+
+	dirEntries, err := os.ReadDir(logsDir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil, nil, nil
+		}
+		return nil, nil, nil, fmt.Errorf("snapbundle: read logs %s: %w", logsDir, err)
+	}
+	for _, d := range dirEntries {
+		if d.IsDir() {
+			continue
+		}
+		name := d.Name()
+		if !hasAnyPrefix(name, logFilePrefixes) {
+			continue
+		}
+		info, ierr := d.Info()
+		if ierr != nil {
+			continue
+		}
+		if !snapTime.IsZero() {
+			dt := info.ModTime().Sub(snapTime)
+			if dt < 0 {
+				dt = -dt
+			}
+			if dt > logWindow {
+				continue
+			}
+		}
+		p := filepath.Join(logsDir, name)
+		content, rerr := os.ReadFile(p) //nolint:gosec // path enumerated under logsDir
+		if rerr != nil {
+			return nil, nil, nil, fmt.Errorf("snapbundle: read log %s: %w", p, rerr)
+		}
+		archivePath := "logs/" + name
+		sum := bundle.SHA256Bytes(content)
+		entries = append(entries, bundle.Entry{
+			ArchivePath: archivePath,
+			RelHome:     relHome(home, p),
+			Content:     content,
+		})
+		files = append(files, bundle.File{
+			Path:    archivePath,
+			RelHome: relHome(home, p),
+			SHA256:  sum,
+			Size:    int64(len(content)),
+		})
+		names = append(names, archivePath)
+	}
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	sort.Slice(entries, func(i, j int) bool { return entries[i].ArchivePath < entries[j].ArchivePath })
+	sort.Strings(names)
+	return entries, files, names, nil
+}
+
+func hasAnyPrefix(s string, prefixes []string) bool {
+	for _, p := range prefixes {
+		if strings.HasPrefix(s, p) {
+			return true
+		}
+	}
+	return false
 }
 
 // collectReportEntries scans reportsDir for regular files whose basename
@@ -356,6 +918,23 @@ func DefaultExportPath(snapID, label string) (string, error) {
 	return filepath.Join(dir, fmt.Sprintf("snap_%s_%s.tar.gz", slug, ts)), nil
 }
 
+// DefaultMigrationBundlePath returns a destination path under
+// ~/.gotr/exports/all/ for a multi-snap migration_bundle archive. The
+// `tag` is a free-form slug appended to the filename to identify the
+// selection (e.g. "all", "pinned", "label-foo").
+func DefaultMigrationBundlePath(tag string, count int) (string, error) {
+	dir, err := paths.EnsureExportsAllDirPath()
+	if err != nil {
+		return "", err
+	}
+	ts := time.Now().UTC().Format("20060102T150405Z")
+	if tag == "" {
+		tag = "bundle"
+	}
+	tag = sanitizeFilename(tag)
+	return filepath.Join(dir, fmt.Sprintf("migration_bundle_%s_%dsnaps_%s.tar.gz", tag, count, ts)), nil
+}
+
 func sanitizeFilename(s string) string {
 	r := strings.NewReplacer("/", "_", "\\", "_", ":", "_", " ", "_")
 	return r.Replace(s)
@@ -373,6 +952,13 @@ type ImportOptions struct {
 	// ReportsDir overrides the destination root for restored reports. When
 	// empty, ~/.gotr/reports is used. Primarily useful for tests.
 	ReportsDir string
+	// SkipLogs disables restoring bundled migration logs into ~/.gotr/logs/.
+	// Default (false) restores any logs/ payload embedded by
+	// `gotr export migration-archive`.
+	SkipLogs bool
+	// LogsDir overrides the destination root for restored logs. When
+	// empty, ~/.gotr/logs is used. Primarily useful for tests.
+	LogsDir string
 }
 
 // Import extracts a snap bundle from srcPath into the local snap store.
@@ -382,7 +968,12 @@ func Import(store *snap.Store, srcPath string, opts ImportOptions) (*Result, err
 	if err != nil {
 		return nil, err
 	}
-	if manifest.Kind != bundle.KindSnap {
+	switch manifest.Kind {
+	case bundle.KindSnap:
+		// fall through to single-snap path below
+	case bundle.KindMigrationBundle:
+		return importMigrationBundle(store, srcPath, manifest, sums, opts)
+	default:
 		return nil, fmt.Errorf("snapbundle: archive kind %q is not a snapshot bundle", manifest.Kind)
 	}
 	if err := verifyChecksums(manifest, sums); err != nil {
@@ -415,9 +1006,197 @@ func Import(store *snap.Store, srcPath string, opts ImportOptions) (*Result, err
 	if err != nil {
 		return nil, err
 	}
+	if rerr := registerImportedSnaps(store, []string{targetID}, opts.Overwrite); rerr != nil {
+		return nil, rerr
+	}
 	result.IncludedReports = restored
 	result.SkippedReports = skipped
+	if !opts.SkipLogs {
+		// extractAndRelocate already cleaned up its tmp dir; do a second
+		// pass to restore logs/ if the archive carried any. We re-extract
+		// to a fresh temp dir so this stays cleanly separated from the
+		// snap relocation path.
+		lrestored, lskipped, lerr := restoreLogsFromArchive(srcPath, opts.LogsDir)
+		if lerr != nil {
+			return nil, lerr
+		}
+		result.IncludedLogs = lrestored
+		result.SkippedLogs = lskipped
+	}
 	return result, nil
+}
+
+// importMigrationBundle handles archives with Kind == KindMigrationBundle.
+// All snapshots in manifest.SnapIDs are relocated, and embedded
+// reports/logs are restored once.
+//
+//nolint:gocyclo // Bundle import dispatches per-snap relocation, manifest registration and reports/logs restoration inline.
+func importMigrationBundle(store *snap.Store, srcPath string, manifest *bundle.Manifest, sums string, opts ImportOptions) (*Result, error) {
+	if err := verifyChecksums(manifest, sums); err != nil {
+		return nil, err
+	}
+	ids := manifest.SnapIDs
+	if len(ids) == 0 {
+		return nil, errors.New("snapbundle: migration_bundle manifest has empty snap_ids")
+	}
+	if opts.RenameID != "" {
+		return nil, errors.New("snapbundle: --rename-id is not supported for multi-snap migration_bundle")
+	}
+
+	// Pre-flight existence check.
+	if !opts.DryRun {
+		var conflicts []string
+		for _, id := range ids {
+			if store.Exists(id) {
+				conflicts = append(conflicts, id)
+			}
+		}
+		if len(conflicts) > 0 && !opts.Overwrite {
+			return nil, fmt.Errorf("snapbundle: %d snapshot(s) already exist; use --overwrite (conflicts: %s)",
+				len(conflicts), strings.Join(conflicts, ", "))
+		}
+	}
+
+	result := &Result{
+		ArchivePath: srcPath,
+		SnapIDs:     ids,
+		Files:       manifest.Files,
+		Redacted:    manifest.Redacted,
+	}
+	if opts.DryRun {
+		return result, nil
+	}
+
+	// Single extraction of the whole archive.
+	tmp, mkErr := os.MkdirTemp("", "gotr-mig-import-*")
+	if mkErr != nil {
+		return nil, fmt.Errorf("snapbundle: tmpdir: %w", mkErr)
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+	if _, rerr := bundle.ReadTarGz(srcPath, tmp); rerr != nil {
+		return nil, fmt.Errorf("snapbundle: extract: %w", rerr)
+	}
+
+	// Relocate each snap.
+	for _, id := range ids {
+		if store.Exists(id) {
+			if !opts.Overwrite {
+				return nil, fmt.Errorf("snapbundle: snapshot %q already exists", id)
+			}
+			if err := backupExistingSnap(store, id); err != nil {
+				return nil, err
+			}
+		}
+		srcSnap := filepath.Join(tmp, "snaps", filepath.FromSlash(id))
+		if _, serr := os.Stat(srcSnap); serr != nil {
+			return nil, fmt.Errorf("snapbundle: extracted archive missing snaps/%s: %w", id, serr)
+		}
+		dst := store.SnapDir(id)
+		if mkErr := os.MkdirAll(filepath.Dir(dst), 0o755); mkErr != nil {
+			return nil, fmt.Errorf("snapbundle: mkdir target parent: %w", mkErr)
+		}
+		if _, serr := os.Stat(dst); serr == nil {
+			return nil, fmt.Errorf("snapbundle: target %s already exists", dst)
+		}
+		if rerr := os.Rename(srcSnap, dst); rerr != nil {
+			if cerr := copyTree(srcSnap, dst); cerr != nil {
+				return nil, fmt.Errorf("snapbundle: relocate %s -> %s: %w", srcSnap, dst, cerr)
+			}
+		}
+	}
+
+	// Register imported snaps in the store manifest so `gotr snap list`
+	// surfaces them without requiring a follow-up `manifest repair`.
+	if rerr := registerImportedSnaps(store, ids, opts.Overwrite); rerr != nil {
+		return nil, rerr
+	}
+
+	// Reports.
+	if !opts.SkipReports {
+		restored, skipped, err := restoreReports(tmp, opts.ReportsDir)
+		if err != nil {
+			return nil, err
+		}
+		result.IncludedReports = restored
+		result.SkippedReports = skipped
+	}
+
+	// Logs.
+	if !opts.SkipLogs {
+		lrestored, lskipped, lerr := restoreLogsFromArchive(srcPath, opts.LogsDir)
+		if lerr != nil {
+			return nil, lerr
+		}
+		result.IncludedLogs = lrestored
+		result.SkippedLogs = lskipped
+	}
+
+	return result, nil
+}
+
+// restoreLogsFromArchive extracts srcPath into a fresh temp dir and copies
+// any logs/<file> entries into dstLogsDir (defaults to ~/.gotr/logs).
+// Existing destination files are never overwritten.
+//
+//nolint:gocyclo // Archive walker keeps tar/gz handling, path filtering and copy logic in one place.
+func restoreLogsFromArchive(srcPath, dstLogsDir string) (restored, skipped []string, err error) {
+	tmp, mkErr := os.MkdirTemp("", "gotr-logs-import-*")
+	if mkErr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: tmpdir: %w", mkErr)
+	}
+	defer func() { _ = os.RemoveAll(tmp) }()
+	if _, rerr := bundle.ReadTarGz(srcPath, tmp); rerr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: extract for logs: %w", rerr)
+	}
+	logsSrc := filepath.Join(tmp, "logs")
+	info, statErr := os.Stat(logsSrc)
+	if statErr != nil || !info.IsDir() {
+		return nil, nil, nil //nolint:nilerr // no logs embedded
+	}
+	if dstLogsDir == "" {
+		dir, derr := paths.EnsureLogsDirPath()
+		if derr != nil {
+			return nil, nil, fmt.Errorf("snapbundle: resolve logs dir: %w", derr)
+		}
+		dstLogsDir = dir
+	} else if mkErr := os.MkdirAll(dstLogsDir, 0o755); mkErr != nil {
+		return nil, nil, fmt.Errorf("snapbundle: mkdir logs dst: %w", mkErr)
+	}
+	werr := filepath.WalkDir(logsSrc, func(p string, d fs.DirEntry, wErr error) error {
+		if wErr != nil {
+			return wErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		rel, rErr := filepath.Rel(logsSrc, p)
+		if rErr != nil {
+			return rErr
+		}
+		target := filepath.Join(dstLogsDir, rel)
+		if _, sErr := os.Stat(target); sErr == nil {
+			skipped = append(skipped, filepath.ToSlash(rel))
+			return nil
+		}
+		if mkErr := os.MkdirAll(filepath.Dir(target), 0o755); mkErr != nil {
+			return mkErr
+		}
+		data, rErr := os.ReadFile(p) //nolint:gosec // tmp path owned by us
+		if rErr != nil {
+			return rErr
+		}
+		if wErr := os.WriteFile(target, data, 0o644); wErr != nil { //nolint:gosec // restoring user-owned data
+			return wErr
+		}
+		restored = append(restored, filepath.ToSlash(rel))
+		return nil
+	})
+	if werr != nil {
+		return restored, skipped, fmt.Errorf("snapbundle: restore logs: %w", werr)
+	}
+	sort.Strings(restored)
+	sort.Strings(skipped)
+	return restored, skipped, nil
 }
 
 func peekManifest(srcPath string) (*bundle.Manifest, string, error) {
@@ -638,4 +1417,45 @@ func rewriteMetaID(dir, newID string) error {
 		return err
 	}
 	return os.WriteFile(p, out, 0o644) //nolint:gosec // meta.json under trusted ~/.gotr/snaps path
+}
+
+// registerImportedSnaps adds entries for the given snap IDs to the store
+// manifest (~/.gotr/snaps/manifest.json) so they are visible to commands
+// like `gotr snap list` without requiring a follow-up `manifest repair`.
+//
+// When overwrite is true any pre-existing entries with the same IDs are
+// removed first; otherwise stale entries (if any) remain and the new
+// metadata is appended after them. Snap directories must already be
+// present on disk — this function reads each meta.json from the store.
+//
+// Failure to read an individual meta.json is non-fatal: the snap stays
+// on disk, just unindexed (a subsequent `gotr snap manifest repair` will
+// pick it up). This matches the principle that import never destroys
+// imported data.
+func registerImportedSnaps(store *snap.Store, ids []string, overwrite bool) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	storeManifest, err := snap.LoadManifest(store)
+	if err != nil {
+		return fmt.Errorf("snapbundle: load store manifest: %w", err)
+	}
+	if overwrite {
+		if err := storeManifest.RemoveMany(ids); err != nil {
+			return fmt.Errorf("snapbundle: prune stale manifest entries: %w", err)
+		}
+	}
+	metas := make([]*snap.Meta, 0, len(ids))
+	for _, id := range ids {
+		meta, mErr := store.LoadMeta(id)
+		if mErr != nil {
+			// Tolerate: the snap files are on disk, just skip indexing.
+			continue
+		}
+		metas = append(metas, meta)
+	}
+	if err := storeManifest.AddMany(metas); err != nil {
+		return fmt.Errorf("snapbundle: register imported snaps: %w", err)
+	}
+	return nil
 }

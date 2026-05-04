@@ -101,7 +101,7 @@ Examples:
 		var sd snapshotDecision
 		if !dryRun {
 			sd = confirmSnapshot(ctx, cmd)
-			printPreConfirmSummary(0, "full migration", sd)
+			printPreConfirmSummary(-1, "full migration (shared steps + cases)", sd)
 
 			if !autoApprove {
 				ok, err := p.Confirm("Continue?", false)
@@ -177,13 +177,19 @@ Examples:
 		if len(caseImport.Errors) > 0 {
 			ui.Warningf(os.Stdout, "Cases with import errors: %d (see migration log for details)", len(caseImport.Errors))
 		}
+		reportOrphanSharedSteps(m)
 		caseFilterStats := m.LastFilterStats()
 		// Cases-only failures = cumulative failures minus the ones that happened
 		// during the shared-steps phase earlier.
 		caseFailed := m.FailedCount() - sharedFailed
 
+		var mappingPath string
 		if autoSaveMapping {
-			_ = m.ExportMapping(logDir)
+			if p, err := m.ExportMapping(logDir); err != nil {
+				ui.Warningf(os.Stdout, "Failed to save mapping: %v", err)
+			} else {
+				mappingPath = p
+			}
 		}
 
 		if autoSaveFiltered {
@@ -215,7 +221,7 @@ Examples:
 		}
 		hook.FinalizeSyncData(buildSyncData(created, srcProject, dstProject, srcSuite, dstSuite))
 
-		saveMigrationReport(ctx, cmd, "sync_full", srcProject, dstProject, startedAt, hook, []reportResourceStats{
+		reportPath := saveMigrationReport(ctx, cmd, "sync_full", srcProject, dstProject, startedAt, hook, []reportResourceStats{
 			filterStatsToReport("shared_steps", sharedFilterStats, int64(len(sharedFiltered)-sharedFailed), int64(sharedFailed)),
 			filterStatsToReport("cases", caseFilterStats, int64(len(caseImport.IDs)), int64(max(len(caseImport.Errors), caseFailed))),
 		})
@@ -224,6 +230,13 @@ Examples:
 			return fmt.Errorf("fullCmd.func: %w", err)
 		}
 
+		printArtifacts(artifactSet{
+			MigrationLog:    m.LogFilePath(),
+			MappingFile:     mappingPath,
+			MigrationReport: reportPath,
+			SnapshotDir:     snapshotDirFromHook(hook),
+			SnapshotID:      snapshotIDFromHook(hook),
+		})
 		ui.Success(os.Stdout, "Full migration complete!")
 		syncPostAction(ctx, cmd, hook, cli)
 		return nil

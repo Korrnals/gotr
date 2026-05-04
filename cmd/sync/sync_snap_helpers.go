@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/interactive"
@@ -81,11 +82,58 @@ func printFilterSummary(entityName string, stats migration.FilterStats) {
 	ui.Infof(w, "  New:               %d (will be imported)", stats.New)
 }
 
+// pluralizeEntity returns the singular form of an entity name when count==1,
+// otherwise the input as-is. Handles the small set of entity nouns used in
+// pre-confirm summaries: "cases" / "suites" / "sections" / "shared steps".
+// Unknown nouns are returned unchanged.
+func pluralizeEntity(count int, name string) string {
+	if count != 1 {
+		return name
+	}
+	switch name {
+	case "cases":
+		return "case"
+	case "suites":
+		return "suite"
+	case "sections":
+		return "section"
+	case "shared steps":
+		return "shared step"
+	}
+	return name
+}
+
+// reportOrphanSharedSteps prints a single concise note when source cases
+// contained references to shared_step_ids that could not be resolved against
+// the mapping. This is typically caused by upstream deletion of a shared step
+// while the cases still carry the orphan reference (TestRail keeps the inline
+// expansion in the case payload). Such steps are imported as inline content
+// (graceful degradation) — the note is informational, not an error.
+func reportOrphanSharedSteps(m *migration.Migration) {
+	ids, hits := m.UnmappedSharedStepRefs()
+	if hits == 0 {
+		return
+	}
+	ui.Infof(os.Stdout,
+		"Note: %d step occurrence(s) in %d unique source shared step(s) %v could not be mapped (likely deleted upstream); imported as inline content.",
+		hits, len(ids), ids)
+}
+
 // printPreConfirmSummary prints a summary of migration parameters before final confirmation.
+//
+// `count` is the number of entities to import. Use a negative value when the
+// count is not yet known at confirm time (e.g. `sync full` runs filtering for
+// shared steps and cases inside its own phases, after the user has already
+// approved the operation); in that case the helper prints an `Operation:`
+// line instead of a misleading `Import: 0 ...` line.
 func printPreConfirmSummary(count int, entityName string, sd snapshotDecision) {
 	w := os.Stdout
 	ui.Infof(w, "─── Migration summary ───")
-	ui.Infof(w, "  Import:    %d %s", count, entityName)
+	if count < 0 {
+		ui.Infof(w, "  Operation: %s", entityName)
+	} else {
+		ui.Infof(w, "  Import:    %d %s", count, pluralizeEntity(count, entityName))
+	}
 	if sd.Create {
 		if sd.Label != "" {
 			ui.Infof(w, "  Snapshot:  ✓ enabled (🏷 %s)", sd.Label)
@@ -95,6 +143,109 @@ func printPreConfirmSummary(count int, entityName string, sd snapshotDecision) {
 	} else {
 		ui.Infof(w, "  Snapshot:  ✗ disabled")
 	}
+}
+
+// artifactSet bundles paths of artifacts produced by a migration command, so
+// that the operator can locate them without scrolling the log.
+//
+// Empty fields are skipped during printing.
+type artifactSet struct {
+	MigrationLog    string // ~/.gotr/logs/migration_*.json
+	MappingFile     string // mapping_*.json (if --save-mapping)
+	CasesLog        string // sync_cases JSON log file (if any)
+	MigrationReport string // markdown report path returned by saveMigrationReport
+	SnapshotDir     string // snapshot directory on disk (if a snapshot was created)
+	SnapshotID      string // snapshot identifier (e.g. "sync/20260428T001036_full_p30_to_p34")
+}
+
+// printArtifacts emits a uniform "Artifacts" footer listing every produced
+// path plus a "Hints" block with ready-to-run gotr commands. Silently skips
+// empty entries; if the whole set is empty, prints nothing.
+func printArtifacts(a artifactSet) {
+	type row struct {
+		label string
+		value string
+	}
+	rows := []row{
+		{"Migration log", a.MigrationLog},
+		{"Mapping", a.MappingFile},
+		{"Cases log", a.CasesLog},
+		{"Report", a.MigrationReport},
+		{"Snapshot", a.SnapshotDir},
+	}
+	hasAny := false
+	for _, r := range rows {
+		if r.value != "" {
+			hasAny = true
+			break
+		}
+	}
+	if !hasAny {
+		return
+	}
+	w := os.Stdout
+	ui.Infof(w, "─── Artifacts ───")
+	for _, r := range rows {
+		if r.value == "" {
+			continue
+		}
+		ui.Infof(w, "  %-14s %s", r.label+":", r.value)
+	}
+
+	hints := buildArtifactHints(a)
+	if len(hints) == 0 {
+		return
+	}
+	ui.Infof(w, "─── Hints ───")
+	for _, h := range hints {
+		ui.Infof(w, "  %s", h)
+	}
+}
+
+// buildArtifactHints produces a list of ready-to-copy gotr commands for the
+// produced artifacts. Returns an empty slice when nothing is actionable.
+func buildArtifactHints(a artifactSet) []string {
+	var hints []string
+	if a.MigrationReport != "" {
+		name := filepath.Base(a.MigrationReport)
+		hints = append(hints,
+			fmt.Sprintf("View report:    gotr report show %s", name),
+			fmt.Sprintf("Print report:   gotr report show %s --print", name),
+			"List reports:   gotr report list",
+		)
+	}
+	if a.SnapshotID != "" {
+		hints = append(hints,
+			fmt.Sprintf("Snap details:   gotr snap info %s", a.SnapshotID),
+			fmt.Sprintf("Rollback:       gotr snap rollback %s", a.SnapshotID),
+			fmt.Sprintf("Bundle:         gotr export migration-archive %s", a.SnapshotID),
+		)
+	}
+	return hints
+}
+
+// snapshotDirFromHook returns the absolute filesystem path of the snapshot
+// captured by hook (if any), or "" if the hook is nil/disabled or no snapshot
+// was actually written.
+func snapshotDirFromHook(hook *snap.Hook) string {
+	if hook == nil || !hook.Enabled || hook.Snap == nil || hook.Store == nil {
+		return ""
+	}
+	id := hook.Snap.Meta.ID
+	if id == "" {
+		return ""
+	}
+	return hook.Store.SnapDir(id)
+}
+
+// snapshotIDFromHook returns the snapshot identifier (category/id) suitable
+// for `gotr snap info|rollback` arguments, or "" when the hook produced no
+// snapshot.
+func snapshotIDFromHook(hook *snap.Hook) string {
+	if hook == nil || !hook.Enabled || hook.Snap == nil {
+		return ""
+	}
+	return hook.Snap.Meta.ID
 }
 
 // syncPostAction shows a post-migration action menu.

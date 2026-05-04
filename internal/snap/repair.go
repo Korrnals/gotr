@@ -75,6 +75,7 @@ func RepairManifest(store *Store, manifest *Manifest, dryRun bool) (*RepairResul
 	}
 	sort.Strings(missing)
 
+	toAdd := make([]*Meta, 0, len(missing))
 	for _, id := range missing {
 		meta, err := store.LoadMeta(id)
 		if err != nil {
@@ -89,17 +90,17 @@ func RepairManifest(store *Store, manifest *Manifest, dryRun bool) (*RepairResul
 		// path (e.g. after a manual rename), but the manifest must index by
 		// the directory ID since that is what every other code path looks up.
 		meta.ID = id
-		action := RepairAction{
+		result.Added = append(result.Added, RepairAction{
 			Op:     "add",
 			SnapID: id,
 			Reason: fmt.Sprintf("meta.json present, missing from manifest (status=%s)", meta.Status),
+		})
+		toAdd = append(toAdd, meta)
+	}
+	if !dryRun && len(toAdd) > 0 {
+		if err := manifest.AddMany(toAdd); err != nil {
+			return result, fmt.Errorf("snap repair: re-index batch: %w", err)
 		}
-		if !dryRun {
-			if err := manifest.Add(meta); err != nil {
-				return result, fmt.Errorf("snap repair: re-index %q: %w", id, err)
-			}
-		}
-		result.Added = append(result.Added, action)
 	}
 
 	// 2. Find manifest entries whose snapshot directory is gone.
@@ -113,17 +114,16 @@ func RepairManifest(store *Store, manifest *Manifest, dryRun bool) (*RepairResul
 	sort.Strings(orphans)
 
 	for _, id := range orphans {
-		action := RepairAction{
+		result.Removed = append(result.Removed, RepairAction{
 			Op:     "remove",
 			SnapID: id,
 			Reason: "manifest entry has no matching directory on disk",
+		})
+	}
+	if !dryRun && len(orphans) > 0 {
+		if err := manifest.RemoveMany(orphans); err != nil {
+			return result, fmt.Errorf("snap repair: prune orphans: %w", err)
 		}
-		if !dryRun {
-			if err := manifest.Remove(id); err != nil {
-				return result, fmt.Errorf("snap repair: remove orphan %q: %w", id, err)
-			}
-		}
-		result.Removed = append(result.Removed, action)
 	}
 
 	return result, nil

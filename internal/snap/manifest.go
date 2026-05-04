@@ -67,12 +67,10 @@ func LoadManifest(store *Store) (*Manifest, error) {
 	return m, nil
 }
 
-// Add inserts a new entry into the manifest and saves to disk.
-func (m *Manifest) Add(meta *Meta) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	entry := ManifestEntry{
+// metaToEntry converts a *Meta into a ManifestEntry. Caller must hold m.mu
+// when persisting; this helper itself touches no shared state.
+func metaToEntry(meta *Meta) ManifestEntry {
+	return ManifestEntry{
 		ID:              meta.ID,
 		Name:            meta.Name,
 		Label:           meta.Label,
@@ -90,8 +88,29 @@ func (m *Manifest) Add(meta *Meta) error {
 		Timestamp:       meta.Timestamp,
 		DataSize:        meta.DataSizeBytes,
 	}
+}
 
-	m.Entries = append(m.Entries, entry)
+// Add inserts a new entry into the manifest and saves to disk.
+func (m *Manifest) Add(meta *Meta) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.Entries = append(m.Entries, metaToEntry(meta))
+	return m.save()
+}
+
+// AddMany inserts multiple entries and saves once. Use this for bulk
+// re-indexing (e.g. manifest repair) to avoid O(N) disk writes.
+func (m *Manifest) AddMany(metas []*Meta) error {
+	if len(metas) == 0 {
+		return nil
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for _, meta := range metas {
+		m.Entries = append(m.Entries, metaToEntry(meta))
+	}
 	return m.save()
 }
 
@@ -105,6 +124,33 @@ func (m *Manifest) Remove(snapID string) error {
 		if e.ID != snapID {
 			filtered = append(filtered, e)
 		}
+	}
+	m.Entries = filtered
+	return m.save()
+}
+
+// RemoveMany deletes all entries whose ID is in the given set and saves
+// once. Use this for bulk pruning (e.g. manifest repair) to avoid O(N)
+// disk writes — a naive Remove-per-id loop on N entries triggers N atomic
+// writes of the full manifest, which is O(N²) total I/O.
+func (m *Manifest) RemoveMany(snapIDs []string) error {
+	if len(snapIDs) == 0 {
+		return nil
+	}
+	drop := make(map[string]struct{}, len(snapIDs))
+	for _, id := range snapIDs {
+		drop[id] = struct{}{}
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	filtered := m.Entries[:0]
+	for _, e := range m.Entries {
+		if _, gone := drop[e.ID]; gone {
+			continue
+		}
+		filtered = append(filtered, e)
 	}
 	m.Entries = filtered
 	return m.save()

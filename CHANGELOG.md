@@ -9,7 +9,46 @@
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Added — bulk attachments cleanup with snapshot + rollback
+
+- **New command `gotr attachments cleanup`** — removes attachments older
+  than a configurable cutoff across one project, several projects, or
+  every visible project. Selection can be filtered by parent kind
+  (`case`, `run`, `plan`, `plan_entry`, `result`, `test`) and capped
+  via `--limit`.
+
+- **Default snapshot + rollback safety net.** Before any deletion the
+  command stores a snapshot of every selected attachment (binary +
+  metadata) under the new snap category `cleanup-attachments`. The
+  standard snap workflow restores them:
+  ```bash
+  gotr snap list --category cleanup-attachments
+  gotr snap rollback <snap-id>
+  ```
+  Rollback re-uploads each binary to its original parent and records the
+  old → new attachment ID mapping. Test-bound attachments (no
+  `add_attachment_to_test` endpoint exists in TestRail) are reported as
+  **Skipped** with the original IDs preserved in the failure list.
+
+- **Seven-day default retention for cleanup snapshots.** `snap gc` now
+  honors a per-category TTL map (`snap.retention.category_ttl_days`)
+  with a built-in default of 7 days for `cleanup-attachments`. The
+  global `--ttl-days` override and existing `protected_prefixes` /
+  `frozen_snapshots` rules continue to apply unchanged.
+
+- **Interactive survey** mirrors every CLI flag (project scope, parent
+  kinds, `--older-than`, concurrency, snapshot toggle, retention,
+  dry-run) and is gated by a TTY check — non-interactive contexts skip
+  the survey entirely. The final pre-flight confirmation is suppressed
+  by `--force` or `--dry-run`.
+
+### Added — Attachment model & client
+
+- `data.Attachment` gained `EntryID`, `TestID`, `EntityType`, and
+  `EntityID` fields plus an `InferredEntityType()` helper that derives
+  the parent kind from whichever ID is populated.
+- All `client.HTTPClient.GetAttachmentsFor*` methods now use the
+  generic paginator and stream every page of results.
 
 ---
 

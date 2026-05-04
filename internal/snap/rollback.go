@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/concurrent"
@@ -74,6 +75,14 @@ type RollbackAPI interface {
 	// Variable operations.
 	AddVariable(ctx context.Context, datasetID int64, name string) (*data.Variable, error)
 	DeleteVariable(ctx context.Context, variableID int64) error
+
+	// Attachment operations (used by cleanup-attachments rollback).
+	DownloadAttachment(ctx context.Context, attachmentID int64) (io.ReadCloser, error)
+	AddAttachmentToCase(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlan(ctx context.Context, planID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToPlanEntry(ctx context.Context, planID int64, entryID, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToResult(ctx context.Context, resultID int64, filePath string) (*data.AttachmentResponse, error)
+	AddAttachmentToRun(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error)
 }
 
 // CasesAPI is an alias for backward compatibility.
@@ -202,6 +211,8 @@ func dispatchRollback(ctx context.Context, api CasesAPI, store *Store, meta *Met
 		return rollbackProject(ctx, api, store, meta, result, opt)
 	case "run", "milestone", "plan", "suite", "group", "variable", "dataset", "configuration":
 		return rollbackSimpleEntity(ctx, api, store, meta, result, opt)
+	case EntityTypeAttachments:
+		return rollbackAttachmentsCleanup(ctx, api, store, meta, result, opt)
 	}
 	if meta.IsSyncOp() {
 		return rollbackSync(ctx, api, store, meta, result, opt)
@@ -1141,4 +1152,57 @@ func buildSyncPreview(sd *SyncData, filterIDs []int64) []DiffEntry {
 		})
 	}
 	return diffs
+}
+
+// ---------------------------------------------------------------------------
+// Attachments cleanup rollback (re-upload deleted attachments)
+// ---------------------------------------------------------------------------
+
+// rollbackAttachmentsCleanup re-uploads every attachment recorded in the
+// snapshot's data.json. The TestRail API assigns a new ID to each
+// re-upload, so the per-entry mapping is recorded in the rollback log.
+// Attachments bound to a "test" entity cannot be restored — TestRail has
+// no add_attachment_to_test endpoint — and are reported as skipped.
+func rollbackAttachmentsCleanup(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
+	if meta.Operation != OpDelete {
+		return fmt.Errorf("unsupported operation for attachments rollback: %q (only delete is supported)", meta.Operation)
+	}
+
+	rb, err := RestoreCleanupAttachments(ctx, api, store, meta.ID, opt.DryRun)
+	if err != nil {
+		return fmt.Errorf("rollbackAttachmentsCleanup: %w", err)
+	}
+
+	for oldID, newID := range rb.Mapping {
+		entry := logEntry(meta, "attachment", oldID)
+		entry.Status = RBRestored
+		entry.NewID = newID
+	}
+	for _, f := range rb.Failures {
+		entry := logEntry(meta, "attachment", f.OriginalID)
+		if errors.Is(errors.New(f.Error), ErrCleanupRollbackUnsupportedEntity) || strings.Contains(f.Error, ErrCleanupRollbackUnsupportedEntity.Error()) {
+			entry.Status = RBSkipped
+		} else {
+			entry.Status = RBFailed
+		}
+		entry.Error = f.Error
+	}
+
+	if opt.DryRun {
+		result.Message = fmt.Sprintf("Dry-run: %d attachments would be re-uploaded", rb.Restored)
+		return nil
+	}
+
+	switch {
+	case rb.Failed == 0 && rb.Skipped == 0:
+		result.Success = true
+		result.Message = fmt.Sprintf("Restored %d attachments (new IDs assigned by TestRail)", rb.Restored)
+	case rb.Failed == 0:
+		result.Success = true
+		result.Message = fmt.Sprintf("Restored %d, skipped %d (entity type without add API)", rb.Restored, rb.Skipped)
+	default:
+		result.Message = fmt.Sprintf("Restored %d, skipped %d, failed %d", rb.Restored, rb.Skipped, rb.Failed)
+		return fmt.Errorf("attachments rollback completed with %d failures", rb.Failed)
+	}
+	return nil
 }

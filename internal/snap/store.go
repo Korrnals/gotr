@@ -45,6 +45,7 @@ func (s *Store) BaseDir() string {
 //
 //	--snap-name set   → "custom"
 //	sync operation    → "sync"
+//	entity_type=attachments → "cleanup-attachments" (already plural-ish)
 //	everything else   → entity_type + "s" (cases, sections, runs, ...)
 func ResolveCategoryDir(meta *Meta) Category {
 	if meta.Name != "" {
@@ -52,6 +53,9 @@ func ResolveCategoryDir(meta *Meta) Category {
 	}
 	if meta.IsSyncOp() {
 		return CatSync
+	}
+	if meta.EntityType == EntityTypeAttachments {
+		return Category("cleanup-attachments")
 	}
 	return Category(meta.EntityType + "s")
 }

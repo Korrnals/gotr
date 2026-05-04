@@ -83,6 +83,7 @@ type Plan struct {
 // BuildPlan walks the given projects, lists their attachments, applies
 // the filter and returns a deterministic Plan. When projectIDs is empty
 // the walker enumerates every project the API key can see.
+//nolint:gocyclo // Plan walker: project resolution + parallel fetch + filter + limit are best read top-to-bottom.
 func BuildPlan(
 	ctx context.Context,
 	api AttachmentsAPI,
@@ -256,7 +257,7 @@ type ExecuteOptions struct {
 	ServerURL string
 }
 
-// ExecuteResult summarises an Execute call.
+// ExecuteResult summarizes an Execute call.
 type ExecuteResult struct {
 	SnapshotID   string
 	DryRun       bool
@@ -277,6 +278,7 @@ type DeleteFailure struct {
 // Execute performs the cleanup workflow described by plan: optional
 // snapshot, then parallel DeleteAttachment calls. The snapshot is
 // always taken unless opts.SkipSnapshot or opts.DryRun is set.
+//nolint:gocyclo // Two-phase executor (snapshot → parallel deletes) tracked with explicit branches keeps the rollback contract visible.
 func Execute(
 	ctx context.Context,
 	api AttachmentsAPI,

@@ -95,6 +95,7 @@ type cleanupOptions struct {
 	Force             bool
 }
 
+//nolint:gocyclo // Sequential pre-flight stages (parse → prompt → validate → plan → confirm → execute) are clearer kept together than artificially split.
 func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, _ []string) error {
 		opts, err := parseCleanupFlags(cmd)
@@ -429,12 +430,12 @@ func formatRetention(d time.Duration) string {
 	return d.String()
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
 		return s
 	}
-	if max <= 1 {
-		return s[:max]
+	if maxLen <= 1 {
+		return s[:maxLen]
 	}
-	return s[:max-1] + "…"
+	return s[:maxLen-1] + "…"
 }

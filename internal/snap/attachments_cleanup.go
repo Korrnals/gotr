@@ -98,6 +98,7 @@ func BackupAttachmentsForCleanup(
 	return saved, totalBytes, nil
 }
 
+//nolint:gocyclo // Backup pipeline: download → (optional) gzip → stat → entity-type fan-out is more readable inline than split into helpers.
 func backupOneCleanup(
 	ctx context.Context,
 	api CleanupAttachmentsAPI,

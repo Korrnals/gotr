@@ -20,6 +20,7 @@ import (
 //
 // The survey only asks about a value when the corresponding CLI flag was
 // not explicitly provided, so users can mix flags and prompts freely.
+//nolint:gocyclo // Linear survey: each block guards one CLI flag with the same shape, splitting per-question would obscure the prompt order.
 func promptCleanupOptions(ctx context.Context, cmd *cobra.Command, opts *cleanupOptions) error {
 	if !interactive.HasPrompterInContext(ctx) || interactive.IsNonInteractive(ctx) {
 		return nil

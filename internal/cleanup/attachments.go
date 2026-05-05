@@ -108,7 +108,6 @@ func BuildPlan(
 // BuildPlanWithScanner is BuildPlan parameterised by an explicit
 // AttachmentScanner. The scanner decides HOW each project's
 // attachments are listed (single bulk call vs entity walk).
-//nolint:gocyclo // Plan walker: project resolution + parallel fetch + filter + limit are best read top-to-bottom.
 func BuildPlanWithScanner(
 	ctx context.Context,
 	lister ProjectLister,
@@ -126,25 +125,7 @@ func BuildPlanWithScanner(
 	}
 
 	results, _ := concurrent.ParallelMap(ctx, projects, concurrency, func(p data.Project, _ int) (ProjectSelection, error) {
-		atts, err := scanner.Scan(ctx, p.ID)
-		if err != nil {
-			return ProjectSelection{}, fmt.Errorf("project %d: %w", p.ID, err)
-		}
-		sel := ProjectSelection{ProjectID: p.ID, ProjectName: p.Name}
-		for _, att := range atts {
-			if !filter.Allowed(att) {
-				continue
-			}
-			sel.Attachments = append(sel.Attachments, att)
-			sel.TotalBytes += att.Size
-			if sel.OldestUnix == 0 || (att.CreatedOn != 0 && att.CreatedOn < sel.OldestUnix) {
-				sel.OldestUnix = att.CreatedOn
-			}
-		}
-		sort.SliceStable(sel.Attachments, func(i, j int) bool {
-			return sel.Attachments[i].ID < sel.Attachments[j].ID
-		})
-		return sel, nil
+		return scanProject(ctx, scanner, p, filter, 0)
 	})
 
 	plan := &Plan{}

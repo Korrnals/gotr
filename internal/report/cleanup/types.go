@@ -7,7 +7,7 @@
 //
 //	~/.gotr/reports/cleanup-attachments/<label>/<YYYY-MM>/cleanup-<id>-<ts>.<ext>
 //
-// The Markdown rendition is the human-readable artefact, JSON is the
+// The Markdown rendition is the human-readable artifact, JSON is the
 // machine-readable mirror, CSV is a flat per-attachment table, and PDF
 // is a fixed-format document for ticket attachments.
 package cleanup

@@ -14,7 +14,7 @@ import (
 	"github.com/Korrnals/gotr/internal/report"
 )
 
-// PDFRenderer is implemented by anything that can produce a PDF artefact
+// PDFRenderer is implemented by anything that can produce a PDF artifact
 // for a Report. It exists so the writer can defer to the existing
 // internal/report/pdf package without an import cycle.
 type PDFRenderer interface {
@@ -38,7 +38,7 @@ func AllFormats() WriteOptions {
 	return WriteOptions{Markdown: true, JSON: true, CSV: true, PDF: true}
 }
 
-// WriteResult is the set of artefacts produced by Write.
+// WriteResult is the set of artifacts produced by Write.
 type WriteResult struct {
 	MarkdownPath string
 	JSONPath     string
@@ -66,6 +66,7 @@ func (r WriteResult) Files() []string {
 // is refreshed via report.Reindex on success. Failures during PDF
 // rendering are reported but do not roll back already-written formats.
 func Write(ctx context.Context, reportsDir string, rep *Report, opts WriteOptions) (WriteResult, error) {
+	_ = ctx
 	if rep == nil {
 		return WriteResult{}, fmt.Errorf("cleanup-report: nil report")
 	}
@@ -84,54 +85,56 @@ func Write(ctx context.Context, reportsDir string, rep *Report, opts WriteOption
 	}
 
 	var res WriteResult
-
-	if opts.Markdown {
-		path := filepath.Join(dir, base+".md")
-		if err := os.WriteFile(path, []byte(RenderMarkdown(rep)), 0o644); err != nil {
-			return res, fmt.Errorf("cleanup-report: write md: %w", err)
-		}
-		res.MarkdownPath = path
-	}
-
-	if opts.JSON {
-		b, err := RenderJSON(rep)
-		if err != nil {
-			return res, err
-		}
-		path := filepath.Join(dir, base+".json")
-		if err := os.WriteFile(path, b, 0o644); err != nil {
-			return res, fmt.Errorf("cleanup-report: write json: %w", err)
-		}
-		res.JSONPath = path
-	}
-
-	if opts.CSV {
-		b, err := RenderCSV(rep)
-		if err != nil {
-			return res, err
-		}
-		path := filepath.Join(dir, base+".csv")
-		if err := os.WriteFile(path, b, 0o644); err != nil {
-			return res, fmt.Errorf("cleanup-report: write csv: %w", err)
-		}
-		res.CSVPath = path
-	}
-
-	if opts.PDF && opts.PDFRenderer != nil {
-		path := filepath.Join(dir, base+".pdf")
-		if err := opts.PDFRenderer.Save(rep, path); err != nil {
-			return res, fmt.Errorf("cleanup-report: write pdf: %w", err)
-		}
-		res.PDFPath = path
+	if err := writeFormats(dir, base, rep, opts, &res); err != nil {
+		return res, err
 	}
 
 	if err := report.Reindex(reportsDir); err != nil {
-		// Index is a best-effort artefact; report it but don't fail.
+		// Index is a best-effort artifact; report it but don't fail.
 		fmt.Fprintf(os.Stderr, "warning: cleanup-report: refresh INDEX.md: %v\n", err)
 	}
-	_ = ctx
-
 	return res, nil
+}
+
+// writeFormats emits each requested format into dir, populating res.
+func writeFormats(dir, base string, rep *Report, opts WriteOptions, res *WriteResult) error {
+	if opts.Markdown {
+		path := filepath.Join(dir, base+".md")
+		if err := os.WriteFile(path, []byte(RenderMarkdown(rep)), 0o644); err != nil {
+			return fmt.Errorf("cleanup-report: write md: %w", err)
+		}
+		res.MarkdownPath = path
+	}
+	if opts.JSON {
+		b, err := RenderJSON(rep)
+		if err != nil {
+			return err
+		}
+		path := filepath.Join(dir, base+".json")
+		if err := os.WriteFile(path, b, 0o644); err != nil {
+			return fmt.Errorf("cleanup-report: write json: %w", err)
+		}
+		res.JSONPath = path
+	}
+	if opts.CSV {
+		b, err := RenderCSV(rep)
+		if err != nil {
+			return err
+		}
+		path := filepath.Join(dir, base+".csv")
+		if err := os.WriteFile(path, b, 0o644); err != nil {
+			return fmt.Errorf("cleanup-report: write csv: %w", err)
+		}
+		res.CSVPath = path
+	}
+	if opts.PDF && opts.PDFRenderer != nil {
+		path := filepath.Join(dir, base+".pdf")
+		if err := opts.PDFRenderer.Save(rep, path); err != nil {
+			return fmt.Errorf("cleanup-report: write pdf: %w", err)
+		}
+		res.PDFPath = path
+	}
+	return nil
 }
 
 // buildBaseFilename returns the timestamped basename (no extension)

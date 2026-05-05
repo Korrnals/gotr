@@ -14,8 +14,8 @@ import (
 
 	"github.com/Korrnals/gotr/internal/cleanup"
 	"github.com/Korrnals/gotr/internal/paths"
-	"github.com/Korrnals/gotr/internal/report/pdf"
 	cleanupreport "github.com/Korrnals/gotr/internal/report/cleanup"
+	"github.com/Korrnals/gotr/internal/report/pdf"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 )

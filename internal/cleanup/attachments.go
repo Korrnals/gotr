@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -116,6 +117,27 @@ func BuildPlanWithScanner(
 	filter AttachmentFilter,
 	concurrency int,
 ) (*Plan, error) {
+	return BuildPlanWithScannerProgress(ctx, lister, scanner, projectIDs, filter, concurrency, NoProgress)
+}
+
+// BuildPlanWithScannerProgress is BuildPlanWithScanner with an
+// explicit progress sink. nil sink → NoProgress.
+func BuildPlanWithScannerProgress(
+	ctx context.Context,
+	lister ProjectLister,
+	scanner AttachmentScanner,
+	projectIDs []int64,
+	filter AttachmentFilter,
+	concurrency int,
+	progress ScanProgress,
+) (*Plan, error) {
+	if progress == nil {
+		progress = NoProgress
+	}
+	if r, ok := scanner.(ScanProgressReceiver); ok {
+		r.SetProgress(progress)
+		defer r.SetProgress(NoProgress)
+	}
 	projects, err := resolveProjectsViaLister(ctx, lister, projectIDs)
 	if err != nil {
 		return nil, err
@@ -124,8 +146,24 @@ func BuildPlanWithScanner(
 		return &Plan{}, nil
 	}
 
+	total := len(projects)
+	var startMu sync.Mutex
+	var startedIdx int
 	results, _ := concurrent.ParallelMap(ctx, projects, concurrency, func(p data.Project, _ int) (ProjectSelection, error) {
-		return scanProject(ctx, scanner, p, filter, 0)
+		startMu.Lock()
+		startedIdx++
+		idx := startedIdx
+		startMu.Unlock()
+		progress.OnProjectStart(idx, total, p.ID, p.Name)
+		start := time.Now()
+		sel, scanErr := scanProject(ctx, scanner, p, filter, 0)
+		elapsed := time.Since(start)
+		if scanErr != nil {
+			progress.OnError(p.ID, scanErr)
+		} else {
+			progress.OnProjectDone(p.ID, len(sel.Attachments), len(sel.Attachments), sel.TotalBytes, elapsed)
+		}
+		return sel, scanErr
 	})
 
 	plan := &Plan{}

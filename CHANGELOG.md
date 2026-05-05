@@ -9,6 +9,41 @@
 
 ## [Unreleased]
 
+### Added — `attachments cleanup`: progress UI and per-entity-type summary
+
+- **Multiline live scan UI.** The single-line spinner is replaced by a
+  5-line progress block on stderr (when stderr is a TTY and `--quiet`
+  is not set) covering project N/M, the current phase
+  (`project → suites → cases → runs → plans → tests`) with a 10-char
+  bar and a done/total counter, running totals (`found`, `eligible`,
+  size), and elapsed time + ETA. Progress events are throttled to
+  ~50 ms to avoid stalling the scanner during high-concurrency phases.
+  Closes [#72].
+- **`INFO`-line fallback** on non-TTY writers / `--quiet`: per-project
+  `INFO: project X/Y done: …` and per-chunk
+  `INFO: chunk N/M done — running totals: …` lines keep CI logs
+  grep-friendly while preserving the same data.
+- **Per-project × per-entity-type summary table** is printed after the
+  executor finishes (`Breakdown by project × entity type:`) with
+  `case run plan plan_entry result test` columns, per-row Total/Size
+  and a footer aggregating across the whole run.
+- **Final summary block** lists the absolute paths of every audit
+  report file, the snapshot id with its absolute path under
+  `~/.gotr/snaps/cleanup-attachments/<id>/`, and a `Next steps:`
+  section with copy-pasteable rollback (`gotr snap rollback <id>`)
+  and resume (`gotr attachments cleanup --resume <run-id>`) hints.
+- New `internal/cleanup.ScanProgress` interface +
+  `ScanProgressReceiver` capability lets both `ProjectScanner` and
+  `EntityScanner` emit per-phase events without leaking UI concerns
+  into the scan layer; `BuildPlanWithScannerProgress` and
+  `ChunkConfig.Progress` are the new public entry points.
+- New `internal/ui.MultilineStatus` component with TTY-aware rendering
+  (`golang.org/x/term`), ANSI cursor-up redraw, deterministic
+  `RenderForTest` helper for golden tests, and `HumanBytes` /
+  `fmtDurationShort` formatters.
+
+[#72]: https://github.com/Korrnals/gotr/issues/72
+
 ### Added — `attachments cleanup`: chunked execution, checkpoints, resume
 
 - **Chunked plan-build with crash-safe checkpoints.** Long entity-walk

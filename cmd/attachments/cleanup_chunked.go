@@ -7,7 +7,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
+	"io"
 
 	"github.com/Korrnals/gotr/internal/cleanup"
 	"github.com/Korrnals/gotr/internal/cleanup/checkpoint"
@@ -116,8 +116,8 @@ func runListCheckpoints(cmd *cobra.Command) error {
 }
 
 // buildPlanWithChunkingStatus drives BuildPlanChunked under the
-// existing single-line spinner. Per-chunk INFO logs are emitted to
-// stderr unless --quiet is set.
+// rich multiline progress UI (or per-project INFO logs when stderr is
+// not a TTY / --quiet is set).
 //nolint:gocyclo // Sequential pre/post-flight stages (config build + status spinner + post-summary) are clearer kept inline.
 func buildPlanWithChunkingStatus(
 	ctx context.Context,
@@ -138,6 +138,17 @@ func buildPlanWithChunkingStatus(
 		ids = opts.ProjectIDs
 	}
 
+	stderr := cmd.ErrOrStderr()
+	live := ui.NewMultilineStatus(ui.MultilineConfig{
+		Writer: stderr,
+		Quiet:  quiet,
+	})
+	var logSink io.Writer
+	if !live.Active() && !quiet {
+		logSink = stderr
+	}
+	progress := newScanProgressAdapter("Scanning attachments", scanner.Name(), live, logSink)
+
 	cfg := cleanup.ChunkConfig{
 		ChunkSize:             opts.ChunkSize,
 		ScanTimeoutPerProject: opts.ScanTimeout,
@@ -154,35 +165,27 @@ func buildPlanWithChunkingStatus(
 		},
 		AllProjects: opts.AllProjects,
 		CLIArgs:     cliArgsFor(cmd),
+		Progress:    progress,
 		OnChunkComplete: func(idx, total int, partial *cleanup.Plan) {
-			if quiet {
+			if quiet || logSink == nil {
 				return
 			}
-			fmt.Fprintf(cmd.ErrOrStderr(), "INFO: chunk %d/%d done — running totals: %d projects with hits, %d attachments, %s\n",
+			fmt.Fprintf(logSink, "INFO: chunk %d/%d done — running totals: %d projects with hits, %d attachments, %s\n",
 				idx, total, len(partial.Projects), partial.TotalCount, humanBytes(partial.TotalBytes))
 		},
 	}
 
 	if cfg.Resume {
-		fmt.Fprintf(cmd.ErrOrStderr(), "INFO: resuming run %s\n", cfg.RunID)
+		fmt.Fprintf(stderr, "INFO: resuming run %s\n", cfg.RunID)
 	}
 
-	type result struct {
-		plan *cleanup.Plan
-		cp   *checkpoint.Checkpoint
-	}
-	r, runErr := ui.RunWithStatus(ctx, ui.StatusConfig{
-		Title:  "Scanning attachments",
-		Writer: os.Stderr,
-		Quiet:  quiet,
-	}, func(ctx context.Context) (result, error) {
-		plan, cp, err := cleanup.BuildPlanChunked(ctx, lister, scanner, ids, filter, opts.Concurrency, cfg)
-		return result{plan: plan, cp: cp}, err
-	})
+	stop := live.Start(ctx)
+	plan, cp, runErr := cleanup.BuildPlanChunked(ctx, lister, scanner, ids, filter, opts.Concurrency, cfg)
+	stop()
 
 	runID := ""
-	if r.cp != nil {
-		runID = r.cp.RunID
+	if cp != nil {
+		runID = cp.RunID
 	}
 	if runErr != nil {
 		if errors.Is(runErr, cleanup.ErrCheckpointMismatch) {
@@ -192,14 +195,14 @@ func buildPlanWithChunkingStatus(
 	}
 
 	if !cfg.Resume && runID != "" && !quiet {
-		fmt.Fprintf(cmd.ErrOrStderr(), "INFO: run-id=%s — resume with: gotr attachments cleanup --resume %s\n", runID, runID)
+		fmt.Fprintf(stderr, "INFO: run-id=%s — resume with: gotr attachments cleanup --resume %s\n", runID, runID)
 	}
 
 	// Surface failed/timeout summary so the operator can decide
 	// whether to rerun with --resume.
-	if r.cp != nil && !quiet {
+	if cp != nil && !quiet {
 		var failed, timedOut []int64
-		for _, ps := range r.cp.Projects {
+		for _, ps := range cp.Projects {
 			switch ps.State {
 			case checkpoint.StateFailed:
 				failed = append(failed, ps.ID)
@@ -208,10 +211,10 @@ func buildPlanWithChunkingStatus(
 			}
 		}
 		if len(failed) > 0 || len(timedOut) > 0 {
-			fmt.Fprintf(cmd.ErrOrStderr(), "WARN: scan completed with failures: %d failed %v, %d timed out %v — checkpoint preserved at ~/.gotr/cache/cleanup-attachments/%s\n",
+			fmt.Fprintf(stderr, "WARN: scan completed with failures: %d failed %v, %d timed out %v — checkpoint preserved at ~/.gotr/cache/cleanup-attachments/%s\n",
 				len(failed), failed, len(timedOut), timedOut, runID)
 		}
 	}
 
-	return r.plan, runID, nil
+	return plan, runID, nil
 }

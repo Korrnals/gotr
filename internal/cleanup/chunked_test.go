@@ -300,3 +300,28 @@ func TestBuildPlanChunked_LimitAppliedAfterChunks(t *testing.T) {
 		t.Errorf("plan.TotalCount = %d, want 3", plan.TotalCount)
 	}
 }
+
+func TestBuildPlanChunked_EmitsProgressEvents(t *testing.T) {
+	lister, scanner := newFakeChunkSetup(3)
+	store := newChunkStore(t)
+
+	r := &recorder{}
+	cfg := ChunkConfig{ChunkSize: 2, Store: store, Progress: r}
+	if _, _, err := BuildPlanChunked(context.Background(), lister, scanner, nil, AttachmentFilter{}, 2, cfg); err != nil {
+		t.Fatalf("BuildPlanChunked: %v", err)
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	var starts, dones int
+	for _, e := range r.events {
+		switch e.kind {
+		case "start":
+			starts++
+		case "done":
+			dones++
+		}
+	}
+	if starts != 3 || dones != 3 {
+		t.Fatalf("events: starts=%d dones=%d, want 3/3", starts, dones)
+	}
+}

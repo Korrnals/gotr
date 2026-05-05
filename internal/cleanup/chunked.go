@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"sync/atomic"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/cleanup/checkpoint"
@@ -44,6 +45,10 @@ type ChunkConfig struct {
 	// be nil. partial is the cumulative plan; idx is 1-based, total is
 	// the number of chunks.
 	OnChunkComplete func(idx, total int, partial *Plan)
+	// Progress receives per-project lifecycle and per-phase events.
+	// nil → NoProgress. Scanners that implement ScanProgressReceiver
+	// have their sink installed for the duration of the call.
+	Progress ScanProgress
 }
 
 // ErrCheckpointMismatch is returned when a --resume invocation cannot
@@ -114,6 +119,13 @@ func BuildPlanChunked(
 	if cfg.ChunkSize <= 0 {
 		cfg.ChunkSize = 10
 	}
+	if cfg.Progress == nil {
+		cfg.Progress = NoProgress
+	}
+	if r, ok := scanner.(ScanProgressReceiver); ok {
+		r.SetProgress(cfg.Progress)
+		defer r.SetProgress(NoProgress)
+	}
 
 	projects, err := resolveProjectsViaLister(ctx, lister, projectIDs)
 	if err != nil {
@@ -157,6 +169,8 @@ func BuildPlanChunked(
 	}
 
 	totalChunks := chunkCount(len(workset), cfg.ChunkSize)
+	totalProjects := len(workset)
+	var startCounter int64
 
 	for chunkIdx, start := 0, 0; start < len(workset); start += cfg.ChunkSize {
 		end := start + cfg.ChunkSize
@@ -176,7 +190,17 @@ func BuildPlanChunked(
 		}
 
 		results, _ := concurrent.ParallelMap(ctx, batch, concurrency, func(w pendingProject, _ int) (ProjectSelection, error) {
-			return scanProject(ctx, scanner, w.project, filter, cfg.ScanTimeoutPerProject)
+			idx := int(atomic.AddInt64(&startCounter, 1))
+			cfg.Progress.OnProjectStart(idx, totalProjects, w.project.ID, w.project.Name)
+			projStart := time.Now()
+			sel, scanErr := scanProject(ctx, scanner, w.project, filter, cfg.ScanTimeoutPerProject)
+			elapsed := time.Since(projStart)
+			if scanErr != nil {
+				cfg.Progress.OnError(w.project.ID, scanErr)
+			} else {
+				cfg.Progress.OnProjectDone(w.project.ID, len(sel.Attachments), len(sel.Attachments), sel.TotalBytes, elapsed)
+			}
+			return sel, scanErr
 		})
 
 		for i, r := range results {

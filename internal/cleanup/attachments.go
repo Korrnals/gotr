@@ -25,6 +25,10 @@ type AttachmentsAPI interface {
 	GetAttachmentsForProject(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error)
 	DeleteAttachment(ctx context.Context, attachmentID int64) error
 	snap.CleanupAttachmentsAPI
+	// ReferenceFetchAPI is required so Execute can index markdown
+	// references that point at the about-to-be-deleted attachments.
+	// Disabled when ExecuteOptions.SkipReferences is true.
+	snap.ReferenceFetchAPI
 }
 
 // AttachmentFilter narrows the candidate set for an attachments cleanup.
@@ -295,6 +299,14 @@ type ExecuteOptions struct {
 	CompressBinaries bool
 	// Concurrency sets the worker count for the delete phase.
 	Concurrency int
+	// BackupConcurrency sets the worker count for the snapshot
+	// download phase. 0 means auto: min(8, Concurrency).
+	BackupConcurrency int
+	// SkipReferences disables the reference scan (markdown bodies that
+	// point at the deleted attachments will not be indexed and cannot
+	// be rewritten on restore). Use only when the entity API is
+	// unhealthy and you accept lossy restore.
+	SkipReferences bool
 	// CLIArgs is propagated into the snapshot meta for traceability.
 	CLIArgs []string
 	// ServerURL is propagated into the snapshot meta. Empty = use
@@ -311,6 +323,15 @@ type ExecuteResult struct {
 	Deleted      int
 	DeleteErrors int
 	Failures     []DeleteFailure
+	// EntitiesScanned is the number of (entity_type, entity_id) tuples
+	// walked during the reference scan. 0 when SkipReferences=true.
+	EntitiesScanned int
+	// RefsIndexed is the number of attachment URLs persisted into
+	// references.json.
+	RefsIndexed int
+	// IntegrityRoot is the merkle-style root hash recorded in
+	// integrity.json. Empty when no snapshot was taken.
+	IntegrityRoot string
 }
 
 // DeleteFailure is a single failed DeleteAttachment call.
@@ -374,7 +395,10 @@ func Execute(
 		if err := store.SaveMeta(&meta); err != nil {
 			return res, fmt.Errorf("snapshot: save meta: %w", err)
 		}
-		saved, bytes, err := snap.BackupAttachmentsForCleanup(ctx, api, store, meta.ID, atts, opts.CompressBinaries)
+		saved, bytes, err := snap.BackupAttachmentsForCleanupV2(ctx, api, store, meta.ID, atts, snap.BackupOptions{
+			Compress:    opts.CompressBinaries,
+			Concurrency: resolveBackupConcurrency(opts),
+		})
 		if err != nil {
 			return res, fmt.Errorf("snapshot: backup binaries: %w", err)
 		}
@@ -388,6 +412,29 @@ func Execute(
 		res.SnapshotID = meta.ID
 		res.BackedUp = saved
 		res.BackupBytes = bytes
+
+		// 1b. Reference scan: walk every entity that owned a deleted
+		// attachment and persist references.json next to data.json.
+		// Best-effort — partial indexing is preferable to aborting the
+		// cleanup. Empty array means "scanned, found nothing", which
+		// is distinct from "scan was skipped" (no file written).
+		if !opts.SkipReferences {
+			refsList := snap.ScanReferencesForAttachments(ctx, api, atts)
+			if err := snap.WriteReferencesSidecar(store, meta.ID, refsList); err != nil {
+				return res, fmt.Errorf("snapshot: write references.json: %w", err)
+			}
+			res.EntitiesScanned = len(refsList)
+			for _, e := range refsList {
+				res.RefsIndexed += len(e.Refs)
+			}
+		}
+
+		// 1c. Integrity index over the entire snapshot directory.
+		idx, err := snap.WriteIntegrityIndex(store, meta.ID)
+		if err != nil {
+			return res, fmt.Errorf("snapshot: write integrity.json: %w", err)
+		}
+		res.IntegrityRoot = idx.Root
 	}
 
 	// 2. Delete phase (parallel).
@@ -428,3 +475,20 @@ func Execute(
 
 // Compile-time assertion that *client.HTTPClient satisfies AttachmentsAPI.
 var _ AttachmentsAPI = (*client.HTTPClient)(nil)
+
+// resolveBackupConcurrency picks the snapshot-download worker count.
+// 0 means "auto = min(8, Concurrency)" so tiny --concurrency values
+// don't accidentally enable a thundering herd of downloads.
+func resolveBackupConcurrency(opts ExecuteOptions) int {
+	if opts.BackupConcurrency > 0 {
+		return opts.BackupConcurrency
+	}
+	auto := opts.Concurrency
+	if auto > 8 {
+		auto = 8
+	}
+	if auto <= 0 {
+		auto = 1
+	}
+	return auto
+}

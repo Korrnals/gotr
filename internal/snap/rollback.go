@@ -5,10 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/concurrent"
+	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"go.uber.org/zap"
 )
 
 // errUnsupportedEntity signals that the entity type has no rollback handler.
@@ -96,6 +99,22 @@ type RollbackOpts struct {
 	EntityIDs []int64
 	// DryRun previews changes without applying them.
 	DryRun bool
+	// SkipReferences disables markdown-reference rewrite during the
+	// attachments-cleanup rollback. References indexed in
+	// references.json are left untouched on TestRail and the restore
+	// report records them as not-rewritten.
+	SkipReferences bool
+	// RewriteAPI carries the optional surface required to GET/UPDATE
+	// case/run/plan/milestone bodies for reference rewrite. When nil,
+	// the rewrite phase is skipped (regardless of SkipReferences). The
+	// CLI passes *client.HTTPClient which already implements every
+	// Update* method on this interface.
+	RewriteAPI ReferenceRewriteAPI
+	// VerifyIntegrity enables a SHA-256 round-trip check against
+	// integrity.json before any restore call. A mismatch is logged
+	// as a warning and does not abort the rollback (operators can
+	// still recover even if one binary is corrupt).
+	VerifyIntegrity bool
 }
 
 // RollbackResult holds the outcome of a rollback operation.
@@ -1163,9 +1182,20 @@ func buildSyncPreview(sd *SyncData, filterIDs []int64) []DiffEntry {
 // re-upload, so the per-entry mapping is recorded in the rollback log.
 // Attachments bound to a "test" entity cannot be restored — TestRail has
 // no add_attachment_to_test endpoint — and are reported as skipped.
+//nolint:gocyclo // Two-phase restore (binaries + reference rewrite) with three branching outcomes (full success, partial, failure) plus optional integrity verify is clearer kept inline.
 func rollbackAttachmentsCleanup(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
 	if meta.Operation != OpDelete {
 		return fmt.Errorf("unsupported operation for attachments rollback: %q (only delete is supported)", meta.Operation)
+	}
+
+	// 1. Optional pre-flight integrity check. Best-effort: a missing
+	// integrity.json (legacy v1 snapshot) is fine; a mismatch is a
+	// warning, not a hard stop.
+	if opt.VerifyIntegrity {
+		if err := VerifyIntegrityIndex(store, meta.ID); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Warn("integrity verify failed; continuing with restore",
+				zap.String("snap_id", meta.ID), zap.Error(err))
+		}
 	}
 
 	rb, err := RestoreCleanupAttachments(ctx, api, store, meta.ID, opt.DryRun)
@@ -1188,6 +1218,38 @@ func rollbackAttachmentsCleanup(ctx context.Context, api RollbackAPI, store *Sto
 		entry.Error = f.Error
 	}
 
+	// 2. Reference rewrite phase. Skipped on dry-run, when explicitly
+	// disabled, when no rewrite API is wired, or when references.json
+	// is absent (legacy v1 snapshot or empty index).
+	var rwSummary string
+	if !opt.DryRun && !opt.SkipReferences && opt.RewriteAPI != nil && len(rb.Mapping) > 0 {
+		entries, err := LoadReferencesSidecar(store, meta.ID)
+		switch {
+		case err != nil && errors.Is(err, os.ErrNotExist):
+			// legacy snapshot or scan was skipped: leave references untouched.
+		case err != nil:
+			log.Warn("references.json unreadable; skipping rewrite",
+				zap.String("snap_id", meta.ID), zap.Error(err))
+		case len(entries) == 0:
+			// scanned but found nothing — nothing to do.
+		default:
+			rw, rerr := RewriteReferences(ctx, opt.RewriteAPI, entries, rb.Mapping)
+			if rerr != nil {
+				log.Warn("reference rewrite aborted",
+					zap.String("snap_id", meta.ID), zap.Error(rerr))
+			}
+			if rw != nil {
+				rwSummary = fmt.Sprintf(", rewrote %d references across %d entities (skipped %d, failed %d)",
+					rw.RefsRewritten, rw.EntitiesRewritten, rw.RefsSkipped, rw.EntitiesFailed)
+				for _, f := range rw.Failures {
+					e := logEntry(meta, f.EntityType, f.EntityID)
+					e.Status = RBFailed
+					e.Error = f.Error
+				}
+			}
+		}
+	}
+
 	if opt.DryRun {
 		result.Message = fmt.Sprintf("Dry-run: %d attachments would be re-uploaded", rb.Restored)
 		return nil
@@ -1196,12 +1258,12 @@ func rollbackAttachmentsCleanup(ctx context.Context, api RollbackAPI, store *Sto
 	switch {
 	case rb.Failed == 0 && rb.Skipped == 0:
 		result.Success = true
-		result.Message = fmt.Sprintf("Restored %d attachments (new IDs assigned by TestRail)", rb.Restored)
+		result.Message = fmt.Sprintf("Restored %d attachments (new IDs assigned by TestRail)%s", rb.Restored, rwSummary)
 	case rb.Failed == 0:
 		result.Success = true
-		result.Message = fmt.Sprintf("Restored %d, skipped %d (entity type without add API)", rb.Restored, rb.Skipped)
+		result.Message = fmt.Sprintf("Restored %d, skipped %d (entity type without add API)%s", rb.Restored, rb.Skipped, rwSummary)
 	default:
-		result.Message = fmt.Sprintf("Restored %d, skipped %d, failed %d", rb.Restored, rb.Skipped, rb.Failed)
+		result.Message = fmt.Sprintf("Restored %d, skipped %d, failed %d%s", rb.Restored, rb.Skipped, rb.Failed, rwSummary)
 		return fmt.Errorf("attachments rollback completed with %d failures", rb.Failed)
 	}
 	return nil

@@ -24,6 +24,8 @@ func RenderMarkdown(r *Report) string {
 	return sb.String()
 }
 
+// writeMDTitle emits the H1 title and the DRY-RUN warning banner when
+// the report describes a dry-run invocation.
 func writeMDTitle(sb *strings.Builder, r *Report) {
 	title := "Attachments Cleanup Report"
 	if r.DryRun {
@@ -35,6 +37,9 @@ func writeMDTitle(sb *strings.Builder, r *Report) {
 	}
 }
 
+// writeMDRun emits the run header table (Report ID, Snapshot ID,
+// timestamp, server, gotr version, label, user, dry-run flag and the
+// reconstructed CLI invocation).
 func writeMDRun(sb *strings.Builder, r *Report) {
 	sb.WriteString("## Run\n\n")
 	sb.WriteString("| Field | Value |\n")
@@ -53,6 +58,9 @@ func writeMDRun(sb *strings.Builder, r *Report) {
 	sb.WriteString("\n")
 }
 
+// writeMDFilters emits the table of selection filters that produced
+// the report's scope (project IDs / all-projects, age cutoff, entity
+// types, scan strategy and limit).
 func writeMDFilters(sb *strings.Builder, r *Report) {
 	sb.WriteString("## Filters\n\n")
 	sb.WriteString("| Filter | Value |\n")
@@ -77,6 +85,8 @@ func writeMDFilters(sb *strings.Builder, r *Report) {
 	sb.WriteString("\n")
 }
 
+// writeMDSummary emits the aggregate counts (total selected, backed
+// up, bytes, deleted, failed).
 func writeMDSummary(sb *strings.Builder, r *Report) {
 	sb.WriteString("## Summary\n\n")
 	sb.WriteString("| Metric | Value |\n")
@@ -89,6 +99,8 @@ func writeMDSummary(sb *strings.Builder, r *Report) {
 	sb.WriteString("\n")
 }
 
+// writeMDProjects emits the per-project breakdown (count, total bytes,
+// oldest timestamp). Skipped when no projects are present.
 func writeMDProjects(sb *strings.Builder, r *Report) {
 	if len(r.Projects) == 0 {
 		return
@@ -107,6 +119,8 @@ func writeMDProjects(sb *strings.Builder, r *Report) {
 	sb.WriteString("\n")
 }
 
+// writeMDItems emits the full per-attachment table (id, name, size,
+// parent, created date). Skipped when no project carries any items.
 func writeMDItems(sb *strings.Builder, r *Report) {
 	if !hasItems(r) {
 		return
@@ -135,6 +149,8 @@ func writeMDItems(sb *strings.Builder, r *Report) {
 	sb.WriteString("\n")
 }
 
+// writeMDFailures emits the list of per-attachment failures observed
+// during deletion. Skipped when there are none.
 func writeMDFailures(sb *strings.Builder, r *Report) {
 	if len(r.Failures) == 0 {
 		return
@@ -149,6 +165,9 @@ func writeMDFailures(sb *strings.Builder, r *Report) {
 	sb.WriteString("\n")
 }
 
+// writeMDRollback emits the footer: snapshot location and the
+// `gotr snap rollback` command for real runs, or an explanatory note
+// for dry-runs / runs without a snapshot.
 func writeMDRollback(sb *strings.Builder, r *Report) {
 	sb.WriteString("## Rollback\n\n")
 	switch {

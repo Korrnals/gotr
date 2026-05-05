@@ -96,8 +96,13 @@ func Write(ctx context.Context, reportsDir string, rep *Report, opts WriteOption
 	return res, nil
 }
 
-// writeFormats emits each requested format into dir, populating res.
+// writeFormats emits each requested format (Markdown, JSON, CSV, PDF)
+// into dir using base as the filename stem, populating the matching
+// fields of res. Formats are written in deterministic order; the first
+// failure short-circuits and any already-written files are left in
+// place for inspection.
 func writeFormats(dir, base string, rep *Report, opts WriteOptions, res *WriteResult) error {
+	// Markdown — human-readable rendition (always cheapest, written first).
 	if opts.Markdown {
 		path := filepath.Join(dir, base+".md")
 		if err := os.WriteFile(path, []byte(RenderMarkdown(rep)), 0o644); err != nil {
@@ -105,6 +110,7 @@ func writeFormats(dir, base string, rep *Report, opts WriteOptions, res *WriteRe
 		}
 		res.MarkdownPath = path
 	}
+	// JSON — machine-consumable rendition for audit pipelines.
 	if opts.JSON {
 		b, err := RenderJSON(rep)
 		if err != nil {
@@ -116,6 +122,7 @@ func writeFormats(dir, base string, rep *Report, opts WriteOptions, res *WriteRe
 		}
 		res.JSONPath = path
 	}
+	// CSV — flat row-per-attachment view for spreadsheet review.
 	if opts.CSV {
 		b, err := RenderCSV(rep)
 		if err != nil {
@@ -127,6 +134,8 @@ func writeFormats(dir, base string, rep *Report, opts WriteOptions, res *WriteRe
 		}
 		res.CSVPath = path
 	}
+	// PDF — rendered last via the supplied PDFRenderer (if any), since
+	// the PDF generator pulls in fonts and is the slowest format.
 	if opts.PDF && opts.PDFRenderer != nil {
 		path := filepath.Join(dir, base+".pdf")
 		if err := opts.PDFRenderer.Save(rep, path); err != nil {

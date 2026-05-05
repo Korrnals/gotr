@@ -41,6 +41,22 @@ _No unreleased changes yet._
   `TestEntityScanner_WalksTestsForResultBoundAttachments`,
   `TestEntityScanner_CollectRunIDsFromPlanEntries` lock both fixes.
 
+### Changed — `attachments cleanup --entity-type` default is now ALL kinds
+
+- **Default scope is the full set** `case,run,plan,plan_entry,result,test`
+  (was `result` only). This matches the entity-scanner fix above so
+  invocations without `--entity-type` no longer silently skip run/case/
+  plan-bound attachments.
+- **Mandatory scope notice** is printed before scanning. When the
+  resolved scope covers ALL kinds the notice is rendered as a ⚠️
+  warning with a hint on how to narrow with `--entity-type`. Narrower
+  scopes get a one-line ℹ️ confirmation.
+- **Interactive prompt** now warns before asking and offers the
+  presets `all` / `case` / `run` / `plan,plan_entry` / `result,test` /
+  `custom` so users can correct the scope in one keystroke.
+- The pre-flight summary table and the final `Proceed with deletion?`
+  confirmation already exist and continue to gate destructive runs.
+
 ### Removed
 
 - **v3.5.1 release** is withdrawn from GitHub Releases after v3.5.2

@@ -42,6 +42,21 @@ _Пока без изменений._
   `TestEntityScanner_WalksTestsForResultBoundAttachments`,
   `TestEntityScanner_CollectRunIDsFromPlanEntries` фиксируют оба фикса.
 
+### Changed — `attachments cleanup --entity-type` по умолчанию очищает ВСЕ типы
+
+- **Дефолтный scope — полный набор** `case,run,plan,plan_entry,result,test`
+  (было только `result`). Это согласовано с фиксом entity-сканера:
+  запуски без `--entity-type` больше не пропускают run/case/plan-вложения.
+- **Обязательное уведомление о scope** печатается перед сканированием.
+  Если результирующий scope покрывает ВСЕ типы — это ⚠️-предупреждение
+  с подсказкой, как сузить через `--entity-type`. Для более узкого
+  scope печатается короткая ℹ️-плашка.
+- **Интерактивный режим** показывает предупреждение перед вопросом и
+  предлагает пресеты `all` / `case` / `run` / `plan,plan_entry` /
+  `result,test` / `custom`, чтобы скорректировать scope в один клик.
+- Сводная таблица перед удалением и финальный
+  `Proceed with deletion?` уже были и продолжают защищать запуск.
+
 ### Removed
 
 - **Релиз v3.5.1** будет снят с GitHub Releases после публикации

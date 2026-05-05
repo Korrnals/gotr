@@ -19,11 +19,12 @@ type fakeScannerAPI struct {
 	getAttachmentsForCase    func(int64) (data.GetAttachmentsResponse, error)
 	getRuns                  func(int64) (data.GetRunsResponse, error)
 	getAttachmentsForRun     func(int64) (data.GetAttachmentsResponse, error)
-	getPlans                 func(int64) (data.GetPlansResponse, error)
-	getPlan                  func(int64) (*data.Plan, error)
-	getAttachmentsForPlan    func(int64) (data.GetAttachmentsResponse, error)
-	getTests                 func(runID int64) ([]data.Test, error)
-	getAttachmentsForTest    func(int64) (data.GetAttachmentsResponse, error)
+	getPlans                   func(int64) (data.GetPlansResponse, error)
+	getPlan                    func(int64) (*data.Plan, error)
+	getAttachmentsForPlan      func(int64) (data.GetAttachmentsResponse, error)
+	getAttachmentsForPlanEntry func(planID int64, entryID string) (data.GetAttachmentsResponse, error)
+	getTests                   func(runID int64) ([]data.Test, error)
+	getAttachmentsForTest      func(int64) (data.GetAttachmentsResponse, error)
 }
 
 func (f *fakeScannerAPI) GetAttachmentsForProject(_ context.Context, id int64) (data.GetAttachmentsResponse, error) {
@@ -71,6 +72,12 @@ func (f *fakeScannerAPI) GetPlans(_ context.Context, id int64) (data.GetPlansRes
 func (f *fakeScannerAPI) GetAttachmentsForPlan(_ context.Context, id int64) (data.GetAttachmentsResponse, error) {
 	if f.getAttachmentsForPlan != nil {
 		return f.getAttachmentsForPlan(id)
+	}
+	return nil, nil
+}
+func (f *fakeScannerAPI) GetAttachmentsForPlanEntry(_ context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+	if f.getAttachmentsForPlanEntry != nil {
+		return f.getAttachmentsForPlanEntry(planID, entryID)
 	}
 	return nil, nil
 }
@@ -368,6 +375,71 @@ func TestEntityScanner_CollectRunIDsFromPlanEntries(t *testing.T) {
 	for _, want := range []int64{10, 20, 30} {
 		if !ids[want] {
 			t.Fatalf("missing attachment from test %d (ids=%v)", want, ids)
+		}
+	}
+}
+
+// TestEntityScanner_WalksPlanEntriesForEntryBoundAttachments locks the
+// fix for Copilot review on PR #70: --entity-type plan_entry (which
+// maps to WalkPlans) must enumerate plan entries via
+// get_attachments_for_plan_entry, not just get_attachments_for_plan.
+func TestEntityScanner_WalksPlanEntriesForEntryBoundAttachments(t *testing.T) {
+	planAttCalled := false
+	entryCalls := map[string]bool{}
+	api := &fakeScannerAPI{
+		getPlans: func(int64) (data.GetPlansResponse, error) {
+			return data.GetPlansResponse{{ID: 500}}, nil
+		},
+		getPlan: func(planID int64) (*data.Plan, error) {
+			return &data.Plan{ID: planID, Entries: []data.PlanEntry{
+				{ID: "e1"},
+				{ID: "e2"},
+				{ID: ""}, // must be skipped
+			}}, nil
+		},
+		getAttachmentsForPlan: func(planID int64) (data.GetAttachmentsResponse, error) {
+			planAttCalled = true
+			return data.GetAttachmentsResponse{{ID: 9000, Size: 1}}, nil
+		},
+		getAttachmentsForPlanEntry: func(planID int64, entryID string) (data.GetAttachmentsResponse, error) {
+			entryCalls[entryID] = true
+			switch entryID {
+			case "e1":
+				return data.GetAttachmentsResponse{{ID: 9001, Size: 1}}, nil
+			case "e2":
+				return data.GetAttachmentsResponse{{ID: 9002, Size: 1}}, nil
+			}
+			return nil, nil
+		},
+	}
+	sc := NewEntityScanner(api, EntityScannerOptions{WalkPlans: true, Concurrency: 1})
+	got, err := sc.Scan(context.Background(), 49)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !planAttCalled {
+		t.Fatalf("get_attachments_for_plan must still be called")
+	}
+	if !entryCalls["e1"] || !entryCalls["e2"] {
+		t.Fatalf("get_attachments_for_plan_entry not called for both entries: %v", entryCalls)
+	}
+	if entryCalls[""] {
+		t.Fatalf("blank entry id must be skipped")
+	}
+	want := map[int64]bool{9000: true, 9001: true, 9002: true}
+	for _, a := range got {
+		delete(want, a.ID)
+	}
+	if len(want) != 0 {
+		t.Fatalf("missing plan/entry attachments: %v", want)
+	}
+	// Stamping: entry-bound attachments must carry plan_id + entry_id.
+	for _, a := range got {
+		if a.ID == 9001 && (a.PlanID != 500 || a.EntryID != "e1") {
+			t.Fatalf("entry-bound 9001 not stamped: %+v", a)
+		}
+		if a.ID == 9002 && (a.PlanID != 500 || a.EntryID != "e2") {
+			t.Fatalf("entry-bound 9002 not stamped: %+v", a)
 		}
 	}
 }

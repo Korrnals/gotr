@@ -67,6 +67,7 @@ type EntityAttachmentsAPI interface {
 	GetPlans(ctx context.Context, projectID int64) (data.GetPlansResponse, error)
 	GetPlan(ctx context.Context, planID int64) (*data.Plan, error)
 	GetAttachmentsForPlan(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error)
 	GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error)
 	GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error)
 }
@@ -295,12 +296,34 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 			return nil, fmt.Errorf("get_plans %d: %w", projectID, err)
 		}
 		res, _ := concurrent.ParallelMap(ctx, plans, s.concurrency, func(p data.Plan, _ int) ([]data.Attachment, error) {
+			var acc []data.Attachment
 			atts, err := s.api.GetAttachmentsForPlan(ctx, p.ID)
 			if err != nil {
 				return nil, fmt.Errorf("get_attachments_for_plan %d: %w", p.ID, err)
 			}
 			stampParent(atts, "plan", p.ID, "")
-			return atts, nil
+			acc = append(acc, atts...)
+
+			// Expand plan entries — TestRail exposes entry-bound
+			// attachments only via get_attachments_for_plan_entry/{plan}/{entry}.
+			full, ferr := s.api.GetPlan(ctx, p.ID)
+			if ferr != nil {
+				return nil, fmt.Errorf("get_plan %d: %w", p.ID, ferr)
+			}
+			if full != nil {
+				for _, e := range full.Entries {
+					if e.ID == "" {
+						continue
+					}
+					eAtts, eerr := s.api.GetAttachmentsForPlanEntry(ctx, p.ID, e.ID)
+					if eerr != nil {
+						return nil, fmt.Errorf("get_attachments_for_plan_entry %d/%s: %w", p.ID, e.ID, eerr)
+					}
+					stampParent(eAtts, "plan_entry", p.ID, e.ID)
+					acc = append(acc, eAtts...)
+				}
+			}
+			return acc, nil
 		})
 		for _, r := range res {
 			if r.Error != nil {

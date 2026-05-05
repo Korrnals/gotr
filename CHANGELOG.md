@@ -39,7 +39,16 @@ _No unreleased changes yet._
   attachments — re-run cleanup on v3.5.2 if you relied on that path.
 - **Regression tests:** `TestEntityScanner_StampsRunIDOnRunBoundAttachments`,
   `TestEntityScanner_WalksTestsForResultBoundAttachments`,
-  `TestEntityScanner_CollectRunIDsFromPlanEntries` lock both fixes.
+  `TestEntityScanner_CollectRunIDsFromPlanEntries`,
+  `TestEntityScanner_WalksPlanEntriesForEntryBoundAttachments` lock
+  every fix.
+- **Plan-entry attachments are now scanned.** The plan walk previously
+  only called `get_attachments_for_plan/{id}`, so attachments uploaded
+  via `add_attachment_to_plan_entry/{plan_id}/{entry_id}` were
+  unreachable for `--entity-type plan_entry`. The walk now expands
+  every plan via `GetPlan` and fetches
+  `get_attachments_for_plan_entry/{plan_id}/{entry_id}` per entry,
+  stamping `plan_id` + `entry_id` on each result.
 
 ### Changed — `attachments cleanup --entity-type` default is now ALL kinds
 

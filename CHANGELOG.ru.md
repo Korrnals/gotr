@@ -40,7 +40,15 @@ _Пока без изменений._
   очистку на v3.5.2, если использовали этот путь.
 - **Регрессионные тесты:** `TestEntityScanner_StampsRunIDOnRunBoundAttachments`,
   `TestEntityScanner_WalksTestsForResultBoundAttachments`,
-  `TestEntityScanner_CollectRunIDsFromPlanEntries` фиксируют оба фикса.
+  `TestEntityScanner_CollectRunIDsFromPlanEntries`,
+  `TestEntityScanner_WalksPlanEntriesForEntryBoundAttachments` фиксируют все правки.
+- **Вложения plan-entry теперь сканируются.** Walk по планам ранее
+  вызывал только `get_attachments_for_plan/{id}`, поэтому вложения,
+  загруженные через `add_attachment_to_plan_entry/{plan_id}/{entry_id}`,
+  были недостижимы для `--entity-type plan_entry`. Теперь walk
+  раскрывает каждый план через `GetPlan` и вызывает
+  `get_attachments_for_plan_entry/{plan_id}/{entry_id}` для каждой
+  записи, проставляя `plan_id` + `entry_id`.
 
 ### Changed — `attachments cleanup --entity-type` по умолчанию очищает ВСЕ типы
 

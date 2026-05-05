@@ -177,9 +177,16 @@ release-3.0.0 → PR → main → tag v3.0.0
 - [ ] PR: feature → release — для каждой feature-ветки
 - [ ] `go test ./...` на release-ветке
 - [ ] `go build ./...` на release-ветке
-- [ ] CHANGELOG.md обновлён
+- [ ] `CHANGELOG.md` / `CHANGELOG.ru.md` обновлены: `[Unreleased]` → `[X.Y.Z] - YYYY-MM-DD`, добавлен пустой `[Unreleased]`
+- [ ] Версия в `cmd/root.go` (`Version`) обновлена
+- [ ] **Бейджи в README обновлены** в обоих файлах (`README.md` и `README_ru.md`):
+  - `release-vX.Y.Z` — последний выпущенный релиз
+  - `next-vX.(Y+1).0--dev` — следующий dev-цикл (или `v(X+1).0.0--dev` для major)
 - [ ] PR: release → main
 - [ ] Tag `vX.Y.Z`
+- [ ] Post-release bump на `main`: вернуть `Version = "X.(Y+1).0-dev"`, синхронизировать бейджи README с новым тегом
+
+> **Зачем нужны бейджи в README.** Бейджи в шапке README — публичное лицо репозитория. Устаревший `release-vX.Y` после успешного релиза выглядит как заброшенный проект. Считаем их частью релизного артефакта, а не декорацией.
 
 ---
 

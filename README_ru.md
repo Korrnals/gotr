@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.4.0-blue.svg" alt="Latest Release"/></a>
-  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/next-v3.5.0--dev-orange.svg" alt="Next"/></a>
+  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.5.0-blue.svg" alt="Latest Release"/></a>
+  <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/next-v3.6.0--dev-orange.svg" alt="Next"/></a>
   <a href="go.mod"><img src="https://img.shields.io/badge/go-1.25-00ADD8.svg?logo=go" alt="Go"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"/></a>
   <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-EN%20%7C%20RU-purple.svg" alt="Docs"/></a>

@@ -65,7 +65,11 @@ type EntityAttachmentsAPI interface {
 	GetRuns(ctx context.Context, projectID int64) (data.GetRunsResponse, error)
 	GetAttachmentsForRun(ctx context.Context, runID int64) (data.GetAttachmentsResponse, error)
 	GetPlans(ctx context.Context, projectID int64) (data.GetPlansResponse, error)
+	GetPlan(ctx context.Context, planID int64) (*data.Plan, error)
 	GetAttachmentsForPlan(ctx context.Context, planID int64) (data.GetAttachmentsResponse, error)
+	GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error)
+	GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error)
+	GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error)
 }
 
 // ScannerAPI is the union required by ResolveScanner: both endpoints
@@ -99,24 +103,26 @@ func (s *projectScanner) Scan(ctx context.Context, projectID int64) ([]data.Atta
 	return atts, nil
 }
 
-// entityScanner walks suites → cases (and optionally runs/plans),
+// entityScanner walks suites → cases (and optionally runs/plans/tests),
 // fetching attachments per entity in parallel and deduplicating by ID.
 type entityScanner struct {
 	api         EntityAttachmentsAPI
 	walkCases   bool
 	walkRuns    bool
 	walkPlans   bool
+	walkTests   bool
 	concurrency int
 }
 
 // EntityScannerOptions narrows the entity walk. When all booleans are
 // false the scanner walks every supported entity kind (cases, runs,
-// plans) — matching the default "scan everything" behavior callers
-// expect when --entity-type is unset.
+// plans, tests) — matching the default "scan everything" behavior
+// callers expect when --entity-type is unset.
 type EntityScannerOptions struct {
 	WalkCases   bool
 	WalkRuns    bool
 	WalkPlans   bool
+	WalkTests   bool
 	Concurrency int
 }
 
@@ -127,10 +133,11 @@ type EntityScannerOptions struct {
 func NewEntityScanner(api EntityAttachmentsAPI, opts EntityScannerOptions) AttachmentScanner {
 	// If no walk is requested, fall back to walking every entity kind:
 	// the AttachmentFilter still narrows the result downstream.
-	if !opts.WalkCases && !opts.WalkRuns && !opts.WalkPlans {
+	if !opts.WalkCases && !opts.WalkRuns && !opts.WalkPlans && !opts.WalkTests {
 		opts.WalkCases = true
 		opts.WalkRuns = true
 		opts.WalkPlans = true
+		opts.WalkTests = true
 	}
 	if opts.Concurrency <= 0 {
 		opts.Concurrency = 4
@@ -140,24 +147,28 @@ func NewEntityScanner(api EntityAttachmentsAPI, opts EntityScannerOptions) Attac
 		walkCases:   opts.WalkCases,
 		walkRuns:    opts.WalkRuns,
 		walkPlans:   opts.WalkPlans,
+		walkTests:   opts.WalkTests,
 		concurrency: opts.Concurrency,
 	}
 }
 
 // EntityScannerOptionsFromTypes translates AttachmentFilter.EntityTypes
-// into the entity-walk plan. "case", "result" and "test" all imply the
-// case walk because TestRail attaches results/tests under a case.
+// into the entity-walk plan. "case" implies the case walk;
+// "result"/"test" imply the tests walk (TestRail exposes result-bound
+// attachments via get_attachments_for_test, not under the parent case).
 // "plan_entry" implies the plan walk because plan entries are reached
 // through their parent plan.
 func EntityScannerOptionsFromTypes(types map[string]struct{}, concurrency int) EntityScannerOptions {
 	if len(types) == 0 {
-		return EntityScannerOptions{WalkCases: true, WalkRuns: true, WalkPlans: true, Concurrency: concurrency}
+		return EntityScannerOptions{WalkCases: true, WalkRuns: true, WalkPlans: true, WalkTests: true, Concurrency: concurrency}
 	}
 	opts := EntityScannerOptions{Concurrency: concurrency}
 	for t := range types {
 		switch t {
-		case "case", "result", "test":
+		case "case":
 			opts.WalkCases = true
+		case "result", "test":
+			opts.WalkTests = true
 		case "run":
 			opts.WalkRuns = true
 		case "plan", "plan_entry":
@@ -168,6 +179,53 @@ func EntityScannerOptionsFromTypes(types map[string]struct{}, concurrency int) E
 }
 
 func (s *entityScanner) Name() string { return "entities" }
+
+// stampParent fills in the parent-id field on attachments that the
+// server returned without it. Some TestRail Server builds (notably the
+// self-hosted < 7.5 fleet) omit run_id/plan_id/case_id in the
+// per-entity attachment listings, breaking downstream
+// InferredEntityType()-based filtering. We compensate by stamping the
+// known parent id from the walk context. EntityType is left untouched
+// when the server already populated it (TestRail >= 7.1 cloud format).
+func stampParent(atts []data.Attachment, kind string, parentID int64, entryID string) {
+	for i := range atts {
+		switch kind {
+		case "case":
+			if atts[i].CaseID == 0 {
+				atts[i].CaseID = parentID
+			}
+		case "run":
+			if atts[i].RunID == 0 {
+				atts[i].RunID = parentID
+			}
+		case "plan":
+			if atts[i].PlanID == 0 {
+				atts[i].PlanID = parentID
+			}
+		case "plan_entry":
+			if atts[i].PlanID == 0 {
+				atts[i].PlanID = parentID
+			}
+			if atts[i].EntryID == "" {
+				atts[i].EntryID = entryID
+			}
+		case "test":
+			if atts[i].TestID == 0 {
+				atts[i].TestID = parentID
+			}
+		}
+		if atts[i].EntityType == "" {
+			// Prefer "result" when the payload has a result_id (TestRail
+			// returns these under get_attachments_for_test) so the
+			// AttachmentFilter "result" type matches.
+			if atts[i].ResultID != 0 {
+				atts[i].EntityType = "result"
+			} else {
+				atts[i].EntityType = kind
+			}
+		}
+	}
+}
 
 //nolint:gocyclo // Sequential per-kind walks (cases / runs / plans) are clearer kept inline.
 func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attachment, error) {
@@ -199,6 +257,7 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 				if err != nil {
 					return nil, fmt.Errorf("get_attachments_for_case %d: %w", c.ID, err)
 				}
+				stampParent(atts, "case", c.ID, "")
 				return atts, nil
 			})
 			for _, r := range res {
@@ -220,6 +279,7 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 			if err != nil {
 				return nil, fmt.Errorf("get_attachments_for_run %d: %w", r.ID, err)
 			}
+			stampParent(atts, "run", r.ID, "")
 			return atts, nil
 		})
 		for _, r := range res {
@@ -236,11 +296,34 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 			return nil, fmt.Errorf("get_plans %d: %w", projectID, err)
 		}
 		res, _ := concurrent.ParallelMap(ctx, plans, s.concurrency, func(p data.Plan, _ int) ([]data.Attachment, error) {
+			var acc []data.Attachment
 			atts, err := s.api.GetAttachmentsForPlan(ctx, p.ID)
 			if err != nil {
 				return nil, fmt.Errorf("get_attachments_for_plan %d: %w", p.ID, err)
 			}
-			return atts, nil
+			stampParent(atts, "plan", p.ID, "")
+			acc = append(acc, atts...)
+
+			// Expand plan entries — TestRail exposes entry-bound
+			// attachments only via get_attachments_for_plan_entry/{plan}/{entry}.
+			full, ferr := s.api.GetPlan(ctx, p.ID)
+			if ferr != nil {
+				return nil, fmt.Errorf("get_plan %d: %w", p.ID, ferr)
+			}
+			if full != nil {
+				for _, e := range full.Entries {
+					if e.ID == "" {
+						continue
+					}
+					eAtts, eerr := s.api.GetAttachmentsForPlanEntry(ctx, p.ID, e.ID)
+					if eerr != nil {
+						return nil, fmt.Errorf("get_attachments_for_plan_entry %d/%s: %w", p.ID, e.ID, eerr)
+					}
+					stampParent(eAtts, "plan_entry", p.ID, e.ID)
+					acc = append(acc, eAtts...)
+				}
+			}
+			return acc, nil
 		})
 		for _, r := range res {
 			if r.Error != nil {
@@ -250,7 +333,98 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 		}
 	}
 
+	if s.walkTests {
+		runIDs, err := s.collectRunIDs(ctx, projectID)
+		if err != nil {
+			return nil, err
+		}
+		// Enumerate tests per run, then attachments per test. Two
+		// levels of parallelism; cap inner to avoid burst on large
+		// runs by reusing the same concurrency budget.
+		testsPerRun, _ := concurrent.ParallelMap(ctx, runIDs, s.concurrency, func(runID int64, _ int) ([]data.Test, error) {
+			tests, err := s.api.GetTests(ctx, runID, nil)
+			if err != nil {
+				return nil, fmt.Errorf("get_tests run=%d: %w", runID, err)
+			}
+			return tests, nil
+		})
+		var allTests []data.Test
+		for _, r := range testsPerRun {
+			if r.Error != nil {
+				return nil, r.Error
+			}
+			allTests = append(allTests, r.Data...)
+		}
+		attsPerTest, _ := concurrent.ParallelMap(ctx, allTests, s.concurrency, func(t data.Test, _ int) ([]data.Attachment, error) {
+			atts, err := s.api.GetAttachmentsForTest(ctx, t.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get_attachments_for_test %d: %w", t.ID, err)
+			}
+			stampParent(atts, "test", t.ID, "")
+			return atts, nil
+		})
+		for _, r := range attsPerTest {
+			if r.Error != nil {
+				return nil, r.Error
+			}
+			collect(r.Data)
+		}
+	}
+
 	return out, nil
+}
+
+// collectRunIDs returns the union of project-level run IDs (GetRuns)
+// and plan-bound run IDs (GetPlans → GetPlan → Entries[].Runs[]). The
+// tests walk uses this set to enumerate every test reachable in the
+// project. Duplicates are removed.
+func (s *entityScanner) collectRunIDs(ctx context.Context, projectID int64) ([]int64, error) {
+	seen := make(map[int64]struct{})
+	var ids []int64
+	add := func(id int64) {
+		if id == 0 {
+			return
+		}
+		if _, ok := seen[id]; ok {
+			return
+		}
+		seen[id] = struct{}{}
+		ids = append(ids, id)
+	}
+
+	runs, err := s.api.GetRuns(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("get_runs %d: %w", projectID, err)
+	}
+	for _, r := range runs {
+		add(r.ID)
+	}
+
+	plans, err := s.api.GetPlans(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("get_plans %d: %w", projectID, err)
+	}
+	planDetails, _ := concurrent.ParallelMap(ctx, plans, s.concurrency, func(p data.Plan, _ int) (*data.Plan, error) {
+		full, err := s.api.GetPlan(ctx, p.ID)
+		if err != nil {
+			return nil, fmt.Errorf("get_plan %d: %w", p.ID, err)
+		}
+		return full, nil
+	})
+	for _, r := range planDetails {
+		if r.Error != nil {
+			return nil, r.Error
+		}
+		if r.Data == nil {
+			continue
+		}
+		for _, e := range r.Data.Entries {
+			for _, run := range e.Runs {
+				add(run.ID)
+			}
+		}
+	}
+	return ids, nil
 }
 
 // ResolveScanner picks the scanner implementation honoring strategy.

@@ -13,6 +13,67 @@ _No unreleased changes yet._
 
 ---
 
+## [3.5.2] - 2026-05-05
+
+### Fixed — entity scanner: complete coverage of run/result attachments
+
+- **Run-bound attachments are no longer dropped.** TestRail Server
+  builds (notably self-hosted < 7.5) return
+  `get_attachments_for_run/{id}` payloads with `run_id`/`case_id`/
+  `result_id` set to `null`. The previous scanner relied on those
+  fields, so `InferredEntityType()` returned an empty string and
+  `--entity-type run` filtered every run-bound attachment out. The
+  scanner now stamps the parent ID after each per-entity fetch.
+- **Result-/test-bound attachments are now scanned.** The entity
+  scanner only walked `cases → runs → plans`; result-bound files were
+  reachable solely via `get_attachments_for_test/{test_id}` and were
+  silently skipped. A new tests walk enumerates every run
+  (project-level + plan entries) → tests → attachments, and
+  `--entity-type result|test` now route to it.
+- **Mapping change:** `EntityScannerOptionsFromTypes` no longer
+  conflates `result`/`test` with the case walk. The new
+  `EntityScannerOptions.WalkTests` flag drives the dedicated walk.
+  Default behavior (no `--entity-type` filter) walks **all four**
+  kinds (cases, runs, plans, tests). v3.5.1 is impacted; deletion
+  runs that omitted `--entity-type` would have missed run/result
+  attachments — re-run cleanup on v3.5.2 if you relied on that path.
+- **Regression tests:** `TestEntityScanner_StampsRunIDOnRunBoundAttachments`,
+  `TestEntityScanner_WalksTestsForResultBoundAttachments`,
+  `TestEntityScanner_CollectRunIDsFromPlanEntries`,
+  `TestEntityScanner_WalksPlanEntriesForEntryBoundAttachments` lock
+  every fix.
+- **Plan-entry attachments are now scanned.** The plan walk previously
+  only called `get_attachments_for_plan/{id}`, so attachments uploaded
+  via `add_attachment_to_plan_entry/{plan_id}/{entry_id}` were
+  unreachable for `--entity-type plan_entry`. The walk now expands
+  every plan via `GetPlan` and fetches
+  `get_attachments_for_plan_entry/{plan_id}/{entry_id}` per entry,
+  stamping `plan_id` + `entry_id` on each result.
+
+### Changed — `attachments cleanup --entity-type` default is now ALL kinds
+
+- **Default scope is the full set** `case,run,plan,plan_entry,result,test`
+  (was `result` only). This matches the entity-scanner fix above so
+  invocations without `--entity-type` no longer silently skip run/case/
+  plan-bound attachments.
+- **Mandatory scope notice** is printed before scanning. When the
+  resolved scope covers ALL kinds the notice is rendered as a ⚠️
+  warning with a hint on how to narrow with `--entity-type`. Narrower
+  scopes get a one-line ℹ️ confirmation.
+- **Interactive prompt** now warns before asking and offers the
+  presets `all` / `case` / `run` / `plan,plan_entry` / `result,test` /
+  `custom` so users can correct the scope in one keystroke.
+- The pre-flight summary table and the final `Proceed with deletion?`
+  confirmation already exist and continue to gate destructive runs.
+
+### Removed
+
+- **v3.5.1 release** is withdrawn from GitHub Releases after v3.5.2
+  binaries are published — the v3.5.1 entity scanner skipped
+  run/result attachments. Use v3.5.2.
+
+---
+
 ## [3.5.1] - 2026-05-05
 
 ### Fixed — emit cleanup deletion report

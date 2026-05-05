@@ -34,12 +34,14 @@ func TestPromptCleanupOptions_NoOpWithoutPrompter(t *testing.T) {
 
 func TestPromptCleanupOptions_AllProjectsHappyPath(t *testing.T) {
 	mock := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 0, Value: "All visible projects"}).
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 0, Value: "All visible projects"},
+			interactive.SelectResponse{Index: 3, Value: "result"}, // entity-type preset
+		).
 		WithInputResponses(
-			"result",     // entity types
-			"3M",         // older-than
-			"6",          // concurrency
-			"7d",         // snapshot retention
+			"3M", // older-than
+			"6",  // concurrency
+			"7d", // snapshot retention
 		).
 		WithConfirmResponses(
 			true,  // take snapshot
@@ -78,10 +80,13 @@ func TestPromptCleanupOptions_AllProjectsHappyPath(t *testing.T) {
 
 func TestPromptCleanupOptions_SpecificProjects(t *testing.T) {
 	mock := interactive.NewMockPrompter().
-		WithSelectResponses(interactive.SelectResponse{Index: 1, Value: "Specific project IDs"}).
+		WithSelectResponses(
+			interactive.SelectResponse{Index: 1, Value: "Specific project IDs"},
+			interactive.SelectResponse{Index: 5, Value: "custom (comma-separated)"},
+		).
 		WithInputResponses(
-			"42, 7,  9", // project IDs
-			"result,run", // entity types
+			"42, 7,  9",  // project IDs
+			"result,run", // entity types (custom)
 			"30d",        // older-than
 			"",           // concurrency (keep default)
 			"7d",         // retention
@@ -120,8 +125,8 @@ func TestParseEntityTypeList_Validation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("empty input err: %v", err)
 	}
-	if len(got) != 1 || got[0] != "result" {
-		t.Fatalf("empty input default: %v", got)
+	if len(got) != len(validCleanupEntityTypes) {
+		t.Fatalf("empty input default should cover all kinds, got %v", got)
 	}
 }
 

@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -43,6 +44,10 @@ Workflow:
      ~/.gotr/snaps/cleanup-attachments/<id>/  (default: ON, retention 7 days).
   5. Delete in parallel via the TestRail API.
 
+WARNING: by default the cleanup targets ALL attachment kinds
+(case, run, plan, plan_entry, result, test). A scope notice is printed
+before scanning so you can abort and narrow with --entity-type.
+
 Rollback re-uploads each binary to its original parent. TestRail assigns
 new attachment IDs on re-upload — the rollback report records the
 old_id → new_id mapping. Attachments bound to entity_type=test cannot be
@@ -62,7 +67,8 @@ as Skipped.`,
 	cmd.Flags().Int64Slice("project", nil, "Project ID(s); repeat or comma-separate. Mutually exclusive with --all-projects")
 	cmd.Flags().Bool("all-projects", false, "Walk every visible project")
 	cmd.Flags().String("older-than", "", "Age cutoff (e.g. 7d, 3M, 1y). Required unless --dry-run on a small set")
-	cmd.Flags().StringSlice("entity-type", []string{"result"}, "Parent kinds: case,run,plan,plan_entry,result,test")
+	cmd.Flags().StringSlice("entity-type", append([]string(nil), validCleanupEntityTypes...),
+		"Parent kinds to clean (DEFAULT: ALL — case,run,plan,plan_entry,result,test). Narrow scope to avoid touching unrelated data.")
 	cmd.Flags().Bool("dry-run", false, "Preview only; no snapshot, no deletes")
 	cmd.Flags().Int("concurrency", 4, "Worker count for list and delete phases")
 	cmd.Flags().Int("limit", 0, "Hard cap on the number of attachments to delete (0 = no cap)")
@@ -113,6 +119,8 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		if err := promptCleanupOptions(ctx, cmd, opts); err != nil {
 			return fmt.Errorf("interactive: %w", err)
 		}
+
+		printEntityScopeNotice(cmd, opts)
 
 		if !opts.AllProjects && len(opts.ProjectIDs) == 0 {
 			return fmt.Errorf("either --project or --all-projects is required")
@@ -288,6 +296,47 @@ func toEntityTypeSet(types []string) map[string]struct{} {
 		out[t] = struct{}{}
 	}
 	return out
+}
+
+// entityTypesCoversAll reports whether the provided slice covers every
+// supported parent kind (case, run, plan, plan_entry, result, test).
+// An empty slice also counts as "covers all" because downstream filters
+// treat nil EntityTypes as "allow any kind".
+func entityTypesCoversAll(types []string) bool {
+	if len(types) == 0 {
+		return true
+	}
+	seen := make(map[string]struct{}, len(types))
+	for _, t := range types {
+		seen[strings.ToLower(strings.TrimSpace(t))] = struct{}{}
+	}
+	for _, want := range validCleanupEntityTypes {
+		if _, ok := seen[want]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+// printEntityScopeNotice prints a one-time pre-scan notice describing
+// which attachment kinds the cleanup is about to touch. When the
+// resolved scope covers ALL kinds the notice is rendered as a WARNING
+// so the user can abort and rerun with a narrower --entity-type. When
+// the scope is narrower the notice is informational only.
+func printEntityScopeNotice(cmd *cobra.Command, opts *cleanupOptions) {
+	w := cmd.ErrOrStderr()
+	if entityTypesCoversAll(opts.EntityTypes) {
+		fmt.Fprintln(w, "⚠️  Cleanup scope: ALL attachment kinds (case, run, plan, plan_entry, result, test)")
+		fmt.Fprintln(w, "   This will scan and delete attachments attached to test cases, test runs,")
+		fmt.Fprintln(w, "   test plans / plan entries, individual test results, and tests.")
+		fmt.Fprintln(w, "   To narrow the scope use --entity-type, e.g.:")
+		fmt.Fprintln(w, "       gotr attachments cleanup --entity-type result")
+		fmt.Fprintln(w, "       gotr attachments cleanup --entity-type case,run")
+		return
+	}
+	scoped := append([]string(nil), opts.EntityTypes...)
+	sort.Strings(scoped)
+	fmt.Fprintf(w, "ℹ️  Cleanup scope: %s\n", strings.Join(scoped, ", "))
 }
 
 // parseHumanDuration accepts shorthand suffixes Go's time.ParseDuration

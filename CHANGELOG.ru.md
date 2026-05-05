@@ -15,6 +15,64 @@ _Пока без изменений._
 
 ---
 
+## [3.5.2] - 2026-05-05
+
+### Fixed — entity-сканер: полное покрытие run/result-вложений
+
+- **Run-bound вложения больше не теряются.** TestRail Server (особенно
+  self-hosted < 7.5) возвращает в `get_attachments_for_run/{id}`
+  поля `run_id`/`case_id`/`result_id` равными `null`. Прежний сканер
+  опирался на эти поля, в итоге `InferredEntityType()` возвращал пустую
+  строку и фильтр `--entity-type run` отбрасывал все run-bound
+  вложения. Теперь сканер штампует parent ID после каждого вызова.
+- **Result/test-bound вложения теперь сканируются.** Entity-сканер
+  ходил только по `cases → runs → plans`; result-bound вложения
+  достижимы только через `get_attachments_for_test/{test_id}` и
+  молча игнорировались. Добавлен walk по тестам: все runs (project +
+  plan entries) → tests → attachments. `--entity-type result|test`
+  теперь маршрутизируются в этот walk.
+- **Изменение маппинга:** `EntityScannerOptionsFromTypes` больше не
+  смешивает `result`/`test` с walk-ом по cases. Новый флаг
+  `EntityScannerOptions.WalkTests` управляет отдельным проходом.
+  Поведение по умолчанию (без `--entity-type`) обходит **все четыре**
+  типа (cases, runs, plans, tests). v3.5.1 затронут; запуски без
+  `--entity-type` могли пропустить run/result вложения — повторите
+  очистку на v3.5.2, если использовали этот путь.
+- **Регрессионные тесты:** `TestEntityScanner_StampsRunIDOnRunBoundAttachments`,
+  `TestEntityScanner_WalksTestsForResultBoundAttachments`,
+  `TestEntityScanner_CollectRunIDsFromPlanEntries`,
+  `TestEntityScanner_WalksPlanEntriesForEntryBoundAttachments` фиксируют все правки.
+- **Вложения plan-entry теперь сканируются.** Walk по планам ранее
+  вызывал только `get_attachments_for_plan/{id}`, поэтому вложения,
+  загруженные через `add_attachment_to_plan_entry/{plan_id}/{entry_id}`,
+  были недостижимы для `--entity-type plan_entry`. Теперь walk
+  раскрывает каждый план через `GetPlan` и вызывает
+  `get_attachments_for_plan_entry/{plan_id}/{entry_id}` для каждой
+  записи, проставляя `plan_id` + `entry_id`.
+
+### Changed — `attachments cleanup --entity-type` по умолчанию очищает ВСЕ типы
+
+- **Дефолтный scope — полный набор** `case,run,plan,plan_entry,result,test`
+  (было только `result`). Это согласовано с фиксом entity-сканера:
+  запуски без `--entity-type` больше не пропускают run/case/plan-вложения.
+- **Обязательное уведомление о scope** печатается перед сканированием.
+  Если результирующий scope покрывает ВСЕ типы — это ⚠️-предупреждение
+  с подсказкой, как сузить через `--entity-type`. Для более узкого
+  scope печатается короткая ℹ️-плашка.
+- **Интерактивный режим** показывает предупреждение перед вопросом и
+  предлагает пресеты `all` / `case` / `run` / `plan,plan_entry` /
+  `result,test` / `custom`, чтобы скорректировать scope в один клик.
+- Сводная таблица перед удалением и финальный
+  `Proceed with deletion?` уже были и продолжают защищать запуск.
+
+### Removed
+
+- **Релиз v3.5.1** будет снят с GitHub Releases после публикации
+  бинарников v3.5.2 — entity-сканер v3.5.1 пропускал run/result
+  вложения. Используйте v3.5.2.
+
+---
+
 ## [3.5.1] - 2026-05-05
 
 ### Fixed — отчёт об удалении после очистки вложений

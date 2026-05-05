@@ -54,15 +54,42 @@ func promptCleanupOptions(ctx context.Context, cmd *cobra.Command, opts *cleanup
 		}
 	}
 
-	// 2. Entity types — multi-select via comma-separated input with
-	//    inline help. Empty answer keeps the flag default.
+	// 2. Entity types — show a scope warning + preset picker so the
+	//    user can avoid the "DELETE EVERYTHING" default in one step.
 	if !flagExplicit(cmd, "entity-type") {
-		raw, err := p.Input(
-			"Parent kinds to clean (comma-separated: case,run,plan,plan_entry,result,test)",
-			strings.Join(opts.EntityTypes, ","),
+		out := cmd.ErrOrStderr()
+		fmt.Fprintln(out, "⚠️  By default cleanup targets ALL attachment kinds:")
+		fmt.Fprintln(out, "       case, run, plan, plan_entry, result, test")
+		fmt.Fprintln(out, "   Narrow the scope now to avoid touching unrelated data.")
+
+		const (
+			presetAll    = "all (case,run,plan,plan_entry,result,test)"
+			presetCase   = "case"
+			presetRun    = "run"
+			presetPlans  = "plan,plan_entry"
+			presetResult = "result,test"
+			presetCustom = "custom (comma-separated)"
 		)
+		_, choice, err := p.Select("Parent kinds to clean", []string{
+			presetAll, presetCase, presetRun, presetPlans, presetResult, presetCustom,
+		})
 		if err != nil {
 			return fmt.Errorf("entity types: %w", err)
+		}
+		var raw string
+		switch choice {
+		case presetAll:
+			raw = strings.Join(validCleanupEntityTypes, ",")
+		case presetCustom:
+			raw, err = p.Input(
+				"Parent kinds (comma-separated: case,run,plan,plan_entry,result,test)",
+				strings.Join(opts.EntityTypes, ","),
+			)
+			if err != nil {
+				return fmt.Errorf("entity types: %w", err)
+			}
+		default:
+			raw = choice
 		}
 		types, err := parseEntityTypeList(raw)
 		if err != nil {
@@ -191,7 +218,7 @@ func parseInt64List(raw string) ([]int64, error) {
 
 func parseEntityTypeList(raw string) ([]string, error) {
 	if strings.TrimSpace(raw) == "" {
-		return []string{"result"}, nil
+		return append([]string(nil), validCleanupEntityTypes...), nil
 	}
 	parts := strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == ' ' || r == '\t' })
 	out := make([]string, 0, len(parts))

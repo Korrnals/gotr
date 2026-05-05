@@ -185,7 +185,6 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		if err != nil {
 			return fmt.Errorf("build plan: %w", err)
 		}
-		_ = runID
 
 		if err := printCleanupSummary(cmd, plan, opts); err != nil {
 			return err
@@ -243,7 +242,9 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		_ = opts.SnapshotRetention
 
 		printCleanupResult(cmd, res)
-		writeCleanupReport(cmd, plan, res, opts)
+		printCleanupSummaryDetailed(cmd, plan)
+		reportPaths := writeCleanupReport(cmd, plan, res, opts)
+		printCleanupFinalBlock(cmd, plan, res, opts, runID, reportPaths)
 		if res.DeleteErrors > 0 {
 			return fmt.Errorf("%d delete(s) failed; snapshot is preserved for rollback", res.DeleteErrors)
 		}

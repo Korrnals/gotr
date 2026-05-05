@@ -5,7 +5,6 @@ package attachments
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -23,19 +22,21 @@ import (
 // writeCleanupReport persists a deletion-audit report under
 // ~/.gotr/reports/cleanup-attachments/ unless --no-report is set.
 // Failures are reported as warnings — they never abort the cleanup.
-func writeCleanupReport(cmd *cobra.Command, plan *cleanup.Plan, res *cleanup.ExecuteResult, opts *cleanupOptions) {
+// Returns absolute paths of generated report files (empty when skipped
+// or on error).
+func writeCleanupReport(cmd *cobra.Command, plan *cleanup.Plan, res *cleanup.ExecuteResult, opts *cleanupOptions) []string {
 	if opts.NoReport {
-		return
+		return nil
 	}
 	if plan == nil || plan.TotalCount == 0 {
 		// Nothing to report on.
-		return
+		return nil
 	}
 
 	reportsDir, err := paths.ReportsDirPath()
 	if err != nil {
 		ui.Warningf(os.Stderr, "report: resolve reports dir: %v", err)
-		return
+		return nil
 	}
 
 	user := viper.GetString("username")
@@ -67,14 +68,9 @@ func writeCleanupReport(cmd *cobra.Command, plan *cleanup.Plan, res *cleanup.Exe
 	out, err := cleanupreport.Write(context.Background(), reportsDir, rep, wopts)
 	if err != nil {
 		ui.Warningf(os.Stderr, "report: write cleanup report: %v", err)
-		return
+		return nil
 	}
-
-	w := cmd.OutOrStdout()
-	fmt.Fprintln(w, "\nCleanup report:")
-	for _, p := range out.Files() {
-		fmt.Fprintln(w, "  -", p)
-	}
+	return out.Files()
 }
 
 // rootVersionFromCmd extracts the gotr version from the root command's

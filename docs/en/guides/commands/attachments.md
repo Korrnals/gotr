@@ -154,7 +154,7 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | --- | --- |
 | `--project <ids>` / `--all-projects` | Required scope selector (mutually exclusive). |
 | `--older-than <dur>` | Cutoff (e.g. `7d`, `3M`, `1y`, `720h`). Required unless `--dry-run`. |
-| `--entity-type` | Filter by parent kind: `case`, `run`, `plan`, `plan_entry`, `result`, `test` (default `result`). |
+| `--entity-type` | Filter by parent kind: `case`, `run`, `plan`, `plan_entry`, `result`, `test`. **Default since v3.5.2: all six kinds.** When the resolved scope covers ALL kinds, the command prints a ⚠️ pre-scan warning to stderr; narrow scopes get a one-line `ℹ️` confirmation. Pass an explicit list (e.g. `--entity-type result`) to limit the walk. |
 | `--dry-run` | Preview only; no snapshot, no deletes. |
 | `--no-snapshot` | Skip the safety-net snapshot. |
 | `--snapshot-retention <dur>` | Override snapshot TTL (default `7d`; honored by `gotr snap gc`). |
@@ -172,7 +172,7 @@ The bulk endpoint `get_attachments_for_project` was added in **TestRail 7.5**. O
 | Strategy | How attachments are listed | Works on |
 | --- | --- | --- |
 | `project` | Single bulk call to `get_attachments_for_project`. | TestRail 7.5+ / Cloud |
-| `entities` | Walk `get_suites → get_cases → get_attachments_for_case` (and optionally `get_runs` / `get_plans` based on `--entity-type`). Results are deduplicated by attachment ID. | TestRail 5.7+ |
+| `entities` | Walk `get_suites → get_cases → get_attachments_for_case` plus (when enabled by `--entity-type`) `get_runs → get_attachments_for_run`, `get_plans → get_attachments_for_plan` + per-entry `get_attachments_for_plan_entry`, and `get_runs → get_tests → get_attachments_for_test` (the only path to result-bound attachments on Server &lt; 7.5). Results are deduplicated by attachment ID. | TestRail 5.7+ |
 | `auto` (default) | Probe the project endpoint once on the first project; fall back to `entities` only when the canonical `404 Unknown method` is returned. Any other error aborts the run — no silent fallback. | both |
 
 When the auto-probe falls back, an `INFO:` line is printed to stderr explaining the switch. In CI/non-interactive flows you can pin the strategy explicitly with `--scan-strategy=entities` or `--scan-strategy=project` to skip the probe call entirely.

@@ -215,7 +215,9 @@ gotr sync suites
 gotr attachments cleanup
 # → Область: Все проекты / Конкретные проекты
 #   (конкретные) → ID проектов (через запятую):
-# → Типы сущностей (через запятую, по умолчанию: result):
+# → Пресет типов сущностей:
+#     all (case,run,plan,plan_entry,result,test)  ← по умолчанию, печатает ⚠️
+#     case · run · plan,plan_entry · result,test · custom (через запятую)
 # → Старше (например, 90d, 3M, 1y):
 # → Concurrency:
 # → 📦 Создать снапшот перед удалением? (рекомендуется) [Y/n]

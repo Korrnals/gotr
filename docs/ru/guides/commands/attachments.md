@@ -154,7 +154,7 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | --- | --- |
 | `--project <ids>` / `--all-projects` | Обязательный селектор охвата (взаимоисключающие). |
 | `--older-than <dur>` | Граница возраста (`7d`, `3M`, `1y`, `720h`). Обязателен, если не задан `--dry-run`. |
-| `--entity-type` | Фильтр по родителю: `case`, `run`, `plan`, `plan_entry`, `result`, `test` (по умолчанию `result`). |
+| `--entity-type` | Фильтр по родителю: `case`, `run`, `plan`, `plan_entry`, `result`, `test`. **Дефолт с v3.5.2: все шесть типов.** Если итоговый scope покрывает ВСЕ типы, перед сканированием в stderr печатается ⚠️ предупреждение; для суженного scope — однострочное `ℹ️`. Чтобы сузить обход, передайте явный список (например, `--entity-type result`). |
 | `--dry-run` | Только предпросмотр, без снапшота и удалений. |
 | `--no-snapshot` | Отключить страховочный снапшот. |
 | `--snapshot-retention <dur>` | Переопределить TTL снапшота (по умолчанию `7d`; учитывается в `gotr snap gc`). |
@@ -172,7 +172,7 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | Стратегия | Как перечисляются вложения | Работает на |
 | --- | --- | --- |
 | `project` | Один bulk-вызов `get_attachments_for_project`. | TestRail 7.5+ / Cloud |
-| `entities` | Обход `get_suites → get_cases → get_attachments_for_case` (плюс опционально `get_runs` / `get_plans` в зависимости от `--entity-type`). Результаты дедуплицируются по ID вложения. | TestRail 5.7+ |
+| `entities` | Обход `get_suites → get_cases → get_attachments_for_case`; плюс (если разрешено `--entity-type`) `get_runs → get_attachments_for_run`, `get_plans → get_attachments_for_plan` + по entry `get_attachments_for_plan_entry`, и `get_runs → get_tests → get_attachments_for_test` (единственный путь к result-bound вложениям на Server &lt; 7.5). Результаты дедуплицируются по ID вложения. | TestRail 5.7+ |
 | `auto` (по умолчанию) | Один пробный вызов project-эндпоинта на первом проекте; переключение на `entities` происходит **только** при канонической ошибке `404 Unknown method`. Любая другая ошибка прерывает запуск — без молчаливого fallback. | оба варианта |
 
 При срабатывании fallback в stderr выводится строка `INFO:` с причиной переключения. В CI и неинтерактивных сценариях стратегию можно зафиксировать явно: `--scan-strategy=entities` или `--scan-strategy=project` — это полностью отключает probe-вызов.

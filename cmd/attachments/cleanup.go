@@ -80,6 +80,10 @@ as Skipped.`,
 	cmd.Flags().Bool("force", false, "Bypass --max-size-gb and the interactive confirmation prompt")
 	cmd.Flags().String("scan-strategy", "auto", "How to enumerate attachments: auto|project|entities. auto probes get_attachments_for_project once and falls back to a suites→cases/runs/plans walk on TestRail Server < 7.5.")
 	cmd.Flags().Bool("no-report", false, "Skip emitting the deletion-audit report under ~/.gotr/reports/cleanup-attachments/")
+	cmd.Flags().Int("chunk-size", 10, "Projects scanned per chunk; checkpoint is persisted after each chunk")
+	cmd.Flags().String("resume", "", "Resume an interrupted run by its run-id (mutually exclusive with --project/--all-projects/--older-than/--entity-type)")
+	cmd.Flags().String("scan-timeout-per-project", "10m", "Per-project Scan() timeout (e.g. 30s, 5m, 0 to disable)")
+	cmd.Flags().Bool("list-checkpoints", false, "List existing cleanup checkpoints and exit")
 	output.AddFlag(cmd)
 
 	return cmd
@@ -105,6 +109,11 @@ type cleanupOptions struct {
 	OlderThanRaw      string
 	CutoffUnix        int64
 	NoReport          bool
+	ChunkSize         int
+	ResumeRunID       string
+	ScanTimeoutRaw    string
+	ScanTimeout       time.Duration
+	ListCheckpoints   bool
 }
 
 //nolint:gocyclo // Sequential pre-flight stages (parse → prompt → validate → plan → confirm → execute) are clearer kept together than artificially split.
@@ -116,6 +125,24 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		}
 
 		ctx := cmd.Context()
+
+		// --list-checkpoints short-circuits the entire workflow.
+		if opts.ListCheckpoints {
+			if err := assertListCheckpointsExclusive(cmd); err != nil {
+				return err
+			}
+			return runListCheckpoints(cmd)
+		}
+
+		if opts.ResumeRunID != "" {
+			if err := assertResumeExclusive(cmd); err != nil {
+				return err
+			}
+			if err := loadOptsFromCheckpoint(opts); err != nil {
+				return fmt.Errorf("resume: %w", err)
+			}
+		}
+
 		if err := promptCleanupOptions(ctx, cmd, opts); err != nil {
 			return fmt.Errorf("interactive: %w", err)
 		}
@@ -154,10 +181,11 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 			return fmt.Errorf("resolve scan strategy: %w", err)
 		}
 
-		plan, err := buildPlanWithStatus(ctx, cmd, api, scanner, opts, filter)
+		plan, runID, err := buildPlanWithChunkingStatus(ctx, cmd, api, scanner, opts, filter)
 		if err != nil {
 			return fmt.Errorf("build plan: %w", err)
 		}
+		_ = runID
 
 		if err := printCleanupSummary(cmd, plan, opts); err != nil {
 			return err
@@ -240,6 +268,10 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 	opts.Force, _ = cmd.Flags().GetBool("force")
 	opts.ScanStrategy, _ = cmd.Flags().GetString("scan-strategy")
 	opts.NoReport, _ = cmd.Flags().GetBool("no-report")
+	opts.ChunkSize, _ = cmd.Flags().GetInt("chunk-size")
+	opts.ResumeRunID, _ = cmd.Flags().GetString("resume")
+	opts.ScanTimeoutRaw, _ = cmd.Flags().GetString("scan-timeout-per-project")
+	opts.ListCheckpoints, _ = cmd.Flags().GetBool("list-checkpoints")
 	opts.OlderThanRaw = rawAge
 	opts.ScanStrategy = strings.ToLower(strings.TrimSpace(opts.ScanStrategy))
 	switch opts.ScanStrategy {
@@ -274,6 +306,16 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 	}
 	if opts.Concurrency < 1 {
 		opts.Concurrency = 4
+	}
+	if opts.ChunkSize <= 0 {
+		opts.ChunkSize = 10
+	}
+	if strings.TrimSpace(opts.ScanTimeoutRaw) != "" && opts.ScanTimeoutRaw != "0" {
+		d, err := parseHumanDuration(opts.ScanTimeoutRaw)
+		if err != nil {
+			return nil, fmt.Errorf("--scan-timeout-per-project %q: %w", opts.ScanTimeoutRaw, err)
+		}
+		opts.ScanTimeout = d
 	}
 	return opts, nil
 }
@@ -369,21 +411,6 @@ func parseHumanDuration(s string) (time.Duration, error) {
 	default:
 		return time.ParseDuration(s)
 	}
-}
-
-func buildPlanWithStatus(ctx context.Context, cmd *cobra.Command, lister cleanup.ProjectLister, scanner cleanup.AttachmentScanner, opts *cleanupOptions, filter cleanup.AttachmentFilter) (*cleanup.Plan, error) {
-	quiet, _ := cmd.Flags().GetBool("quiet")
-	var ids []int64
-	if !opts.AllProjects {
-		ids = opts.ProjectIDs
-	}
-	return ui.RunWithStatus(ctx, ui.StatusConfig{
-		Title:  "Scanning attachments",
-		Writer: os.Stderr,
-		Quiet:  quiet,
-	}, func(ctx context.Context) (*cleanup.Plan, error) {
-		return cleanup.BuildPlanWithScanner(ctx, lister, scanner, ids, filter, opts.Concurrency)
-	})
 }
 
 // resolveScannerWithStatus picks the scan strategy honoring

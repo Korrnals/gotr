@@ -273,14 +273,17 @@ func HumanBytes(n int64) string {
 		kb = 1024
 		mb = 1024 * kb
 		gb = 1024 * mb
+		tb = 1024 * gb
 	)
 	switch {
+	case n >= tb:
+		return fmt.Sprintf("%.2f TiB (%d B)", float64(n)/float64(tb), n)
 	case n >= gb:
-		return fmt.Sprintf("%.2f GiB", float64(n)/float64(gb))
+		return fmt.Sprintf("%.2f GiB (%d B)", float64(n)/float64(gb), n)
 	case n >= mb:
-		return fmt.Sprintf("%.2f MiB", float64(n)/float64(mb))
+		return fmt.Sprintf("%.2f MiB (%d B)", float64(n)/float64(mb), n)
 	case n >= kb:
-		return fmt.Sprintf("%.2f KiB", float64(n)/float64(kb))
+		return fmt.Sprintf("%.2f KiB (%d B)", float64(n)/float64(kb), n)
 	default:
 		return fmt.Sprintf("%d B", n)
 	}

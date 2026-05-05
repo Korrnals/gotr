@@ -41,10 +41,14 @@ func (g *CleanupGenerator) Render(r *cleanupreport.Report) ([]byte, error) {
 	writeCleanupTitle(pdf, r)
 	writeCleanupRun(pdf, r)
 	writeCleanupFilters(pdf, r)
+	writeCleanupChunking(pdf, r)
 	writeCleanupSummary(pdf, r)
 	writeCleanupProjects(pdf, r)
+	writeCleanupEntityBreakdown(pdf, r)
 	writeCleanupItems(pdf, r)
 	writeCleanupFailures(pdf, r)
+	writeCleanupSnapshotArtifacts(pdf, r)
+	writeCleanupFilesOnDisk(pdf, r)
 	writeCleanupReferences(pdf, r)
 
 	var buf bytes.Buffer
@@ -87,12 +91,17 @@ func writeCleanupRun(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 	sectionHeader(pdf, "Run")
 	rows := [][2]string{
 		{"Report ID", r.ID},
-		{"Server", nonEmpty(r.Server, "—")},
-		{"gotr version", nonEmpty(r.GotrVer, "—")},
-		{"Label", nonEmpty(r.Label, "—")},
-		{"User", nonEmpty(r.User, "—")},
-		{"Dry-run", boolStr(r.DryRun)},
 	}
+	if r.RunID != "" {
+		rows = append(rows, [2]string{"Run ID", r.RunID})
+	}
+	rows = append(rows,
+		[2]string{"Server", nonEmpty(r.Server, "—")},
+		[2]string{"gotr version", nonEmpty(r.GotrVer, "—")},
+		[2]string{"Label", nonEmpty(r.Label, "—")},
+		[2]string{"User", nonEmpty(r.User, "—")},
+		[2]string{"Dry-run", boolStr(r.DryRun)},
+	)
 	if len(r.CLIArgs) > 0 {
 		rows = append(rows, [2]string{"CLI", "gotr " + strings.Join(r.CLIArgs, " ")})
 	}
@@ -134,6 +143,7 @@ func writeCleanupSummary(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 		{"Backed up", fmt.Sprintf("%d (%s)", r.Summary.BackedUp, humanBytes(r.Summary.BackupBytes))},
 		{"Deleted", fmt.Sprintf("%d", r.Summary.Deleted)},
 		{"Failed", fmt.Sprintf("%d", r.Summary.Failed)},
+		{"Freed on server", humanBytes(r.Summary.FreedBytes)},
 	}
 	renderKeyValue(pdf, rows)
 }
@@ -301,4 +311,192 @@ func humanBytes(n int64) string {
 	default:
 		return fmt.Sprintf("%d B", n)
 	}
+}
+
+// writeCleanupChunking renders the chunked-execution & concurrency
+// profile of the run. No-op when no ChunkingInfo is attached.
+func writeCleanupChunking(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
+	if r.Chunking == nil {
+		return
+	}
+	c := r.Chunking
+	sectionHeader(pdf, "Execution & concurrency")
+	rows := [][2]string{}
+	if c.ChunkSize > 0 {
+		rows = append(rows, [2]string{"Chunk size", fmt.Sprintf("%d", c.ChunkSize)})
+	}
+	if c.ChunksTotal > 0 {
+		rows = append(rows, [2]string{"Chunks", fmt.Sprintf("%d / %d", c.ChunksCompleted, c.ChunksTotal)})
+	}
+	if c.ScanTimeoutPerProject != "" {
+		rows = append(rows, [2]string{"Scan timeout / project", c.ScanTimeoutPerProject})
+	}
+	if c.DeleteConcurrency > 0 {
+		rows = append(rows, [2]string{"Delete concurrency", fmt.Sprintf("%d", c.DeleteConcurrency)})
+	}
+	if c.BackupConcurrency > 0 {
+		rows = append(rows, [2]string{"Backup concurrency", fmt.Sprintf("%d", c.BackupConcurrency)})
+	}
+	if c.ResumedFrom != "" {
+		rows = append(rows, [2]string{"Resumed from", c.ResumedFrom})
+	}
+	rows = append(rows,
+		[2]string{"Reference scan", boolStr(!c.SkipReferences)},
+		[2]string{"Compress binaries", boolStr(c.Compress)},
+	)
+	renderKeyValue(pdf, rows)
+}
+
+// writeCleanupEntityBreakdown renders a per-project × entity-type
+// matrix using the canonical column order.
+func writeCleanupEntityBreakdown(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
+	if len(r.EntityBreakdown) == 0 {
+		return
+	}
+	sectionHeader(pdf, "Per-project × entity-type breakdown")
+	colsKinds := []string{"case", "run", "plan", "plan_entry", "result", "test"}
+	widths := []float64{45, 14, 14, 14, 22, 16, 14, 16, 25}
+	headers := []string{"Project", "case", "run", "plan", "p_entry", "result", "test", "Total", "Bytes"}
+	pdfTableHeader(pdf, widths, headers)
+	pdf.SetFont(FontFamily, "", 9)
+	totals := make(map[string]int, len(colsKinds))
+	var grandTotal int
+	var grandBytes int64
+	for _, row := range r.EntityBreakdown {
+		name := truncatePDF(fmt.Sprintf("%s (%d)", row.ProjectName, row.ProjectID), 28)
+		cells := []string{name}
+		for _, k := range colsKinds {
+			n := row.Counts[k]
+			totals[k] += n
+			cells = append(cells, fmt.Sprintf("%d", n))
+		}
+		cells = append(cells, fmt.Sprintf("%d", row.Total), humanBytes(row.Bytes))
+		pdfTableRow(pdf, widths, cells)
+		grandTotal += row.Total
+		grandBytes += row.Bytes
+	}
+	footer := []string{"TOTAL"}
+	for _, k := range colsKinds {
+		footer = append(footer, fmt.Sprintf("%d", totals[k]))
+	}
+	footer = append(footer, fmt.Sprintf("%d", grandTotal), humanBytes(grandBytes))
+	pdf.SetFont(FontFamily, "B", 9)
+	pdfTableRow(pdf, widths, footer)
+	pdf.Ln(2)
+}
+
+// writeCleanupSnapshotArtifacts renders the snapshot-directory file
+// inventory + counters (mapping/integrity/references). No-op on
+// dry-run or when no snapshot was produced.
+func writeCleanupSnapshotArtifacts(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
+	if r.Snapshot == nil || r.SnapshotID == "" || r.DryRun {
+		return
+	}
+	sectionHeader(pdf, "Snapshot artifacts")
+	pdf.SetFont(FontFamily, "", 10)
+	pdf.MultiCell(contentWidth, lineHeight, "Files written to the snapshot directory and their role:", "", "L", false)
+	pdf.Ln(1)
+	writeCleanupSnapshotFileTable(pdf, r.Snapshot)
+	writeCleanupSnapshotCounters(pdf, r.Snapshot)
+}
+
+// writeCleanupSnapshotFileTable renders the file→role→path table.
+func writeCleanupSnapshotFileTable(pdf *fpdf.Fpdf, s *cleanupreport.SnapshotInfo) {
+	cols := []float64{36, 78, 66}
+	pdfTableHeader(pdf, cols, []string{"File", "Role", "Path"})
+	pdf.SetFont(FontFamily, "", 8)
+	rows := [][3]string{}
+	if s.MetaPath != "" {
+		rows = append(rows, [3]string{"meta.json", "Snapshot metadata", s.MetaPath})
+	}
+	if s.MappingPath != "" {
+		rows = append(rows, [3]string{
+			"attachments.json",
+			fmt.Sprintf("v3.6 mapping schema=%d, sha256 per file", s.MappingSchemaVersion),
+			s.MappingPath,
+		})
+	}
+	if s.ReferencesPath != "" {
+		rows = append(rows, [3]string{"references.json", "Markdown URL refs in entity bodies", s.ReferencesPath})
+	}
+	if s.IntegrityPath != "" {
+		rows = append(rows, [3]string{"integrity.json", "Per-file sha256 + Merkle root", s.IntegrityPath})
+	}
+	if s.FilesDir != "" {
+		rows = append(rows, [3]string{"files/", "Backed-up attachment binaries", s.FilesDir})
+	}
+	for _, row := range rows {
+		pdfTableRow(pdf, cols, []string{
+			truncatePDF(row[0], 24),
+			truncatePDF(row[1], 52),
+			truncatePDF(row[2], 44),
+		})
+	}
+	pdf.Ln(2)
+}
+
+// writeCleanupSnapshotCounters renders the key/value counter block.
+func writeCleanupSnapshotCounters(pdf *fpdf.Fpdf, s *cleanupreport.SnapshotInfo) {
+	rows := [][2]string{}
+	if s.MappingTotal > 0 {
+		rows = append(rows,
+			[2]string{"Mapping entries", fmt.Sprintf("%d", s.MappingTotal)},
+			[2]string{"Restorable entries", fmt.Sprintf("%d / %d", s.MappingRestorable, s.MappingTotal)},
+		)
+	}
+	if s.FilesCount > 0 {
+		rows = append(rows, [2]string{"Files in files/", fmt.Sprintf("%d (%s)", s.FilesCount, humanBytes(s.FilesBytes))})
+	}
+	if s.ReferencesSkipped {
+		rows = append(rows, [2]string{"Reference scan", "skipped (--skip-references)"})
+	} else {
+		rows = append(rows,
+			[2]string{"Entities with references", fmt.Sprintf("%d", s.EntitiesScanned)},
+			[2]string{"Markdown URL refs indexed", fmt.Sprintf("%d", s.RefsIndexed)},
+		)
+	}
+	if s.IntegrityRoot != "" {
+		rows = append(rows, [2]string{"Integrity Merkle root", truncatePDF(s.IntegrityRoot, 64)})
+	}
+	if s.IntegrityFiles > 0 {
+		rows = append(rows, [2]string{"Integrity files covered", fmt.Sprintf("%d", s.IntegrityFiles)})
+	}
+	if len(rows) > 0 {
+		renderKeyValue(pdf, rows)
+	}
+}
+
+// writeCleanupFilesOnDisk renders the artifact-paths inventory: audit
+// reports, snapshot dir, and checkpoint cache used by --resume.
+func writeCleanupFilesOnDisk(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
+	if r.Artifacts == nil {
+		return
+	}
+	a := r.Artifacts
+	if len(a.ReportPaths) == 0 && a.SnapshotPath == "" && a.CheckpointDir == "" {
+		return
+	}
+	sectionHeader(pdf, "Files on disk")
+	pdf.SetFont(FontFamily, "", 9)
+	if len(a.ReportPaths) > 0 {
+		pdf.SetFont(FontFamily, "B", 9)
+		pdf.CellFormat(contentWidth, lineHeight, "Audit reports:", "", 1, "L", false, 0, "")
+		pdf.SetFont(FontFamily, "", 9)
+		for _, p := range a.ReportPaths {
+			pdf.CellFormat(contentWidth, lineHeight, "  · "+truncatePDF(p, 130), "", 1, "L", false, 0, "")
+		}
+	}
+	if a.SnapshotPath != "" {
+		pdf.SetFont(FontFamily, "B", 9)
+		pdf.CellFormat(contentWidth, lineHeight, "Snapshot directory:", "", 1, "L", false, 0, "")
+		pdf.SetFont(FontFamily, "", 9)
+		pdf.CellFormat(contentWidth, lineHeight, "  "+truncatePDF(a.SnapshotPath, 130), "", 1, "L", false, 0, "")
+	}
+	if a.CheckpointDir != "" {
+		pdf.SetFont(FontFamily, "B", 9)
+		pdf.CellFormat(contentWidth, lineHeight, "Checkpoint cache (used by --resume):", "", 1, "L", false, 0, "")
+		pdf.SetFont(FontFamily, "", 9)
+		pdf.CellFormat(contentWidth, lineHeight, "  "+truncatePDF(a.CheckpointDir, 130), "", 1, "L", false, 0, "")
+	}
+	pdf.Ln(2)
 }

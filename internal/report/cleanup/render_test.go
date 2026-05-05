@@ -121,6 +121,86 @@ func TestRenderMarkdown_DryRunMarker(t *testing.T) {
 	}
 }
 
+// TestRenderMarkdown_V36Sections exercises the v3.6.0 sections added on
+// top of the legacy report shape: chunking/concurrency, per-project ×
+// entity-type breakdown, snapshot artifacts, and "Files on disk".
+func TestRenderMarkdown_V36Sections(t *testing.T) {
+	r := fixedReport(t)
+	r.RunID = "run_2026-05-05_120000"
+	r.Chunking = &ChunkingInfo{
+		ChunkSize:             50,
+		ChunksTotal:           4,
+		ChunksCompleted:       4,
+		ScanTimeoutPerProject: "5m",
+		DeleteConcurrency:     8,
+		BackupConcurrency:     4,
+		ResumedFrom:           "run_2026-05-04_180000",
+		SkipReferences:        false,
+		Compress:              true,
+	}
+	r.Snapshot = &SnapshotInfo{
+		Path:                 "/home/u/.gotr/snaps/cleanup-attachments/snap_abc",
+		MetaPath:             "/home/u/.gotr/snaps/cleanup-attachments/snap_abc/meta.json",
+		MappingPath:          "/home/u/.gotr/snaps/cleanup-attachments/snap_abc/attachments.json",
+		MappingSchemaVersion: 2,
+		MappingTotal:         3,
+		MappingRestorable:    3,
+		ReferencesPath:       "/home/u/.gotr/snaps/cleanup-attachments/snap_abc/references.json",
+		IntegrityPath:        "/home/u/.gotr/snaps/cleanup-attachments/snap_abc/integrity.json",
+		IntegrityRoot:        "deadbeef",
+		IntegrityFiles:       6,
+		FilesDir:             "/home/u/.gotr/snaps/cleanup-attachments/snap_abc/files",
+		FilesCount:           3,
+		FilesBytes:           4096,
+		EntitiesScanned:      120,
+		RefsIndexed:          7,
+	}
+	r.Artifacts = &Artifacts{
+		ReportPaths: []string{
+			"/home/u/.gotr/reports/cleanup-attachments/audit-2026-05/2026-05/cleanup-attachments-T-snap_abc.md",
+			"/home/u/.gotr/reports/cleanup-attachments/audit-2026-05/2026-05/cleanup-attachments-T-snap_abc.json",
+		},
+		SnapshotPath:  "/home/u/.gotr/snaps/cleanup-attachments/snap_abc",
+		CheckpointDir: "/home/u/.gotr/cache/cleanup-attachments/run_2026-05-05_120000",
+	}
+
+	got := RenderMarkdown(r)
+	mustContain := []string{
+		"| Run ID | `run_2026-05-05_120000` |",
+		"## Execution & concurrency",
+		"| Chunk size | 50 |",
+		"| Chunks | 4 / 4 |",
+		"| Scan timeout / project | 5m |",
+		"| Delete concurrency | 8 |",
+		"| Backup concurrency | 4 |",
+		"| Resumed from | `run_2026-05-04_180000` |",
+		"| Compress binaries | yes |",
+		"## Per-project × entity-type breakdown",
+		"| case | run | plan | plan_entry | result | test |",
+		"| **TOTAL** |",
+		"## Snapshot artifacts",
+		"| `attachments.json` | v3.6 mapping schema=2",
+		"| `integrity.json` |",
+		"| `files/` |",
+		"| Mapping entries | 3 |",
+		"| Restorable entries | 3 / 3 |",
+		"| Files in `files/` | 3 (",
+		"| Integrity Merkle root | `deadbeef` |",
+		"| Integrity files covered | 6 |",
+		"## Files on disk",
+		"**Audit reports**",
+		"cleanup-attachments-T-snap_abc.md`",
+		"**Snapshot directory**:",
+		"**Checkpoint cache**",
+		"--verify-integrity",
+	}
+	for _, want := range mustContain {
+		if !strings.Contains(got, want) {
+			t.Errorf("v3.6 markdown missing %q\n--- output ---\n%s", want, got)
+		}
+	}
+}
+
 func TestRenderJSON_RoundTrip(t *testing.T) {
 	r := fixedReport(t)
 	b, err := RenderJSON(r)

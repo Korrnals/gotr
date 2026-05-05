@@ -200,22 +200,40 @@ gotr snap rollback <snap-id> --skip-references
 
 **🔐 Полнота снапшота (с v3.6.0):**
 
-Каждый снапшот cleanup теперь содержит артефакты, необходимые для полного отката удаления, включая markdown-тексты, ссылавшиеся на удалённые бинарники:
+Каждый снапшот cleanup теперь содержит артефакты, необходимые для полного отката удаления, включая аудит-индекс markdown-текстов, ссылавшихся на удалённые бинарники:
 
 ```
 <snap_id>/
-├── meta.json            # метаданные снапшота (существовал до v3.6.0)
-├── data.json            # legacy v1 ledger, оставлен для обратной совместимости
-├── mapping.json         # v2 ledger: SHA-256 + флаг restorable на каждое вложение
-├── references.json      # markdown-URL'ы, ссылавшиеся на удалённые вложения
+├── meta.json            # метаданные снапшота
+├── attachments.json     # v2 ledger: SHA-256 + флаг restorable + поле new_id на каждое вложение
+├── references.json      # аудит-индекс markdown-URL'ов в других сущностях, ссылавшихся на удалённые вложения
 ├── integrity.json       # SHA-256 на файл + merkle-style root по всему снапшоту
 └── files/<id>(.gz)      # двоичные данные, опционально gzip-сжатые
 ```
 
-- **`mapping.json`** содержит запись на каждое вложение: исходный ID, SHA-256 файла на диске, родительская сущность и флаг `restorable` (`false` для test-bound вложений, поскольку TestRail не имеет endpoint `add_attachment_to_test`). Схема версионируется через `schema_version`; v1-снапшоты без `mapping.json` восстанавливаются по legacy-пути через `data.json`.
-- **`references.json`** — индекс всех markdown-URL'ов, ссылающихся на удаляемые вложения. Сканируются поля описаний `case`, `run`, `plan`, `milestone` плюс `case.custom_steps_separated`. При откате числовые ID переписываются на месте через `update_case`/`update_run`/`update_plan`/`update_milestone`. Ссылки внутри `result.comment` и URL'ы только с md5 помечаются как **не переписанные**, поскольку TestRail не имеет endpoint `update_result`, а новый md5 сервер вычисляет на стороне TestRail при загрузке.
+- **`attachments.json`** содержит запись на каждое вложение: исходный ID, SHA-256 файла на диске, родительская сущность, флаг `restorable` (`false` для test-bound вложений, поскольку TestRail не имеет endpoint `add_attachment_to_test`) и поле `new_id`, заполняемое при rollback'е новым ID, выданным TestRail.
+- **`references.json`** — аудит-индекс всех markdown-URL'ов, ссылающихся на удаляемые вложения. Сканируются поля описаний `case`, `run`, `plan`, `milestone` плюс `case.custom_steps_separated`. **В v3.6.0 индекс только записывается; тела внешних сущностей НЕ модифицируются** — ни на cleanup, ни на rollback. После cleanup ссылки вида `[label](.../attachments/get/<old_id>)` в других сущностях вернут 404; после rollback вложения восстановятся под **новыми** TestRail ID, и старые ссылки останутся битыми. Ручная переписка возможна по сохранённому индексу. Автоматическая переписка — на roadmap (отложена из v3.6.0 из-за риска read-modify-write race на разделяемых сущностях TestRail).
 - **`integrity.json`** содержит SHA-256 каждого файла снапшота и merkle-style root, считаемый по отсортированным строкам `<path>|<sha256>`. Передайте `--verify-integrity` в `gotr snap rollback`, чтобы выполнить сверку до любого API-вызова.
 - Скачивание бинарников при бэкапе распараллелено через `--backup-concurrency`; SHA-256 считается на лету, без второго прохода.
+
+**⚠️ Известные ограничения cleanup + rollback (v3.6.0):**
+
+Даже после успешного rollback с `--verify-integrity` восстановленное состояние **не байт-в-байт** идентично тому, что было до cleanup. API TestRail вынуждает следующие отличия:
+
+| Поле | До cleanup | После rollback | Причина |
+| --- | --- | --- | --- |
+| `attachment_id` | исходный | **новый** (мапится в `attachments.json` через `new_id`) | `add_attachment_to_*` всегда выдаёт свежий ID |
+| `created_on` | исходное время | **время выполнения rollback** | API не принимает back-dated значение |
+| `created_by` | исходный загрузчик | **API-пользователь, выполняющий rollback** | API не принимает back-dated пользователя |
+| URL | `.../attachments/get/<old_id>` | `.../attachments/get/<new_id>` | следствие нового ID |
+| Markdown-ссылки в ДРУГИХ сущностях | указывали на `<old_id>` | **по-прежнему указывают на `<old_id>` → 404** | gotr не модифицирует внешние сущности; см. `references.json` |
+| Test-bound вложения | присутствовали | **пропускаются** | нет endpoint `add_attachment_to_test` |
+
+Практические следствия:
+
+- Для аудита/комплаенса, опирающихся на исходные `created_on`/`created_by`, рассматривайте rollback как инструмент **восстановления контента**, а не машину времени.
+- Для целостности markdown в телах case/run/plan/milestone используйте `references.json` из снапшота для ручной или скриптовой переписки. Аудит-отчёт об удалении содержит секцию `Known limitations: markdown references` с разбивкой по типам сущностей.
+- Если битые внешние ссылки неприемлемы — лучше использовать `--dry-run` и ручной архив вместо `cleanup` для соответствующих проектов до выхода автоматической переписки.
 
 **📑 Аудит-отчёт об удалении (с v3.5.1):**
 

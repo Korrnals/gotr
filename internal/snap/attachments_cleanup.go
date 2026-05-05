@@ -1,15 +1,26 @@
+// Copyright (c) 2025 Igor "Breezefall" Vasilenko
+// See LICENSE.md for details
+
 package snap
 
 import (
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
+	"sync"
+	"time"
 
+	"github.com/Korrnals/gotr/internal/concurrent"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"github.com/Korrnals/gotr/internal/snap/refs"
 	"go.uber.org/zap"
 )
 
@@ -17,8 +28,23 @@ import (
 // attachment-cleanup operations.
 const EntityTypeAttachments = "attachments"
 
-// CleanupAttachmentsAPI is the API surface required to back up and restore
-// bulk-deleted attachments. It is satisfied by *client.HTTPClient.
+// MappingSchemaVersion is the schema_version emitted in attachments.json.
+// Bump this constant whenever the on-disk shape changes in a way that
+// requires migration logic on the rollback side.
+const MappingSchemaVersion = 2
+
+// cleanupFilesDir is the subdirectory under <snap>/ that stores
+// attachment binaries (one file per backed-up attachment).
+const cleanupFilesDir = "files"
+
+// notRestorableTestReason is the static reason recorded for test-bound
+// attachments. TestRail has no add_attachment_to_test endpoint, so
+// these binaries can be downloaded for manual recovery but cannot be
+// re-uploaded by the rollback workflow.
+const notRestorableTestReason = "test-bound attachment cannot be re-uploaded via TestRail API"
+
+// CleanupAttachmentsAPI is the API surface required to back up and
+// restore bulk-deleted attachments. It is satisfied by *client.HTTPClient.
 type CleanupAttachmentsAPI interface {
 	DownloadAttachment(ctx context.Context, attachmentID int64) (io.ReadCloser, error)
 	AddAttachmentToCase(ctx context.Context, caseID int64, filePath string) (*data.AttachmentResponse, error)
@@ -28,62 +54,53 @@ type CleanupAttachmentsAPI interface {
 	AddAttachmentToRun(ctx context.Context, runID int64, filePath string) (*data.AttachmentResponse, error)
 }
 
-// CleanupAttachmentEntry is a single attachment record stored in
-// data.json of an attachments-cleanup snapshot. It carries everything
-// needed to re-upload the file to its original parent on rollback.
-type CleanupAttachmentEntry struct {
-	ID           int64  `json:"id"`
-	Name         string `json:"name"`
-	Size         int64  `json:"size"`
-	ContentType  string `json:"content_type,omitempty"`
-	CreatedOn    int64  `json:"created_on"`
-	EntityType   string `json:"entity_type"`            // "case"|"plan"|"plan_entry"|"result"|"run"|"test"
-	EntityID     int64  `json:"entity_id"`              // parent entity ID (0 for plan_entry — see ParentPlanID/EntryID)
-	ParentPlanID int64  `json:"parent_plan_id,omitempty"`
-	EntryID      string `json:"entry_id,omitempty"`
-	File         string `json:"file"`                   // relative path under <snap>/files/
-	Compressed   bool   `json:"compressed"`
+// Mapping is the on-disk shape of <snap>/attachments.json. It records one
+// MappingEntry per attachment with cryptographic integrity (SHA-256),
+// the original parent binding, and a slot for the new ID assigned
+// during restore.
+type Mapping struct {
+	SchemaVersion int            `json:"schema_version"`
+	SnapID        string         `json:"snap_id"`
+	GeneratedAt   time.Time      `json:"generated_at"`
+	Total         int            `json:"total"`
+	Entries       []MappingEntry `json:"entries"`
 }
 
-// CleanupAttachmentsData is the on-disk shape of data.json for an
-// attachments-cleanup snapshot.
-type CleanupAttachmentsData struct {
-	Attachments []CleanupAttachmentEntry `json:"attachments"`
+// MappingEntry is the per-attachment record inside attachments.json.
+type MappingEntry struct {
+	OriginalID    int64  `json:"original_id"`
+	NewID         int64  `json:"new_id,omitempty"`
+	SHA256        string `json:"sha256"`
+	Size          int64  `json:"size"`
+	Name          string `json:"name"`
+	EntityType    string `json:"entity_type"`
+	EntityID      int64  `json:"entity_id"`
+	ParentPlanID  int64  `json:"parent_plan_id,omitempty"`
+	EntryID       string `json:"entry_id,omitempty"`
+	File          string `json:"file"`
+	Compressed    bool   `json:"compressed"`
+	Restorable    bool   `json:"restorable"`
+	NotRestorable string `json:"not_restorable_reason,omitempty"`
 }
 
-// cleanupFilesDir is the subdirectory that stores attachment binaries
-// inside an attachments-cleanup snapshot.
-const cleanupFilesDir = "files"
-
-// BackupAttachmentsForCleanup is the v1-compatible entry point for
-// downloading every attachment binary into the snapshot directory. It
-// now delegates to BackupAttachmentsForCleanupV2 with sequential
-// downloads (Concurrency=1) so legacy callers transparently gain
-// SHA-256 integrity and mapping.json without any signature change.
-//
-// Returns the number of saved attachments and the total bytes written.
-func BackupAttachmentsForCleanup(
-	ctx context.Context,
-	api CleanupAttachmentsAPI,
-	store *Store,
-	snapID string,
-	atts []data.Attachment,
-	compress bool,
-) (saved int, totalBytes int64, err error) {
-	return BackupAttachmentsForCleanupV2(ctx, api, store, snapID, atts, BackupOptions{
-		Compress:    compress,
-		Concurrency: 1,
-	})
+// BackupOptions parameterises BackupAttachmentsForCleanup. Zero
+// values pick safe defaults: Concurrency=1, no compression.
+type BackupOptions struct {
+	// Compress enables gzip compression on every stored binary.
+	Compress bool
+	// Concurrency is the number of parallel downloads. Values <= 0
+	// fall back to 1 (sequential).
+	Concurrency int
 }
 
 // CleanupRollbackResult holds the per-entry rollback outcome plus an
 // old-id → new-id mapping populated when re-upload succeeded.
 type CleanupRollbackResult struct {
-	Restored   int
-	Skipped    int
-	Failed     int
-	Mapping    map[int64]int64
-	Failures   []CleanupRollbackFailure
+	Restored int
+	Skipped  int
+	Failed   int
+	Mapping  map[int64]int64
+	Failures []CleanupRollbackFailure
 }
 
 // CleanupRollbackFailure records a single failed restore.
@@ -98,13 +115,270 @@ type CleanupRollbackFailure struct {
 // entry references an entity kind without an Add* endpoint (e.g. test).
 var ErrCleanupRollbackUnsupportedEntity = errors.New("attachment entity type does not support rollback re-upload")
 
-// RestoreCleanupAttachments re-uploads every attachment recorded in the
-// snapshot. It prefers the v2 mapping.json layout (which carries
-// SHA-256 + Restorable flag) and falls back to the v1 data.json layout
-// for snapshots taken before the v2 schema was introduced.
+// BackupAttachmentsForCleanup downloads every attachment binary,
+// computes its SHA-256 inline (single pass via io.MultiWriter), and
+// persists a versioned attachments.json incrementally. Returns the number
+// of saved attachments and the total bytes written.
 //
-// When dryRun is true, no API calls are performed but the result still
-// reports how many entries would be processed.
+//nolint:gocyclo // Multi-stage backup pipeline (download → hash → write file → atomic mapping commit) is more readable kept as a single orchestrator.
+func BackupAttachmentsForCleanup(
+	ctx context.Context,
+	api CleanupAttachmentsAPI,
+	store *Store,
+	snapID string,
+	atts []data.Attachment,
+	opts BackupOptions,
+) (saved int, totalBytes int64, err error) {
+	if len(atts) == 0 {
+		return 0, 0, nil
+	}
+
+	dir := filepath.Join(store.SnapDir(snapID), cleanupFilesDir)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return 0, 0, fmt.Errorf("create cleanup files dir: %w", err)
+	}
+
+	concurrency := opts.Concurrency
+	if concurrency <= 0 {
+		concurrency = 1
+	}
+
+	mapping := &Mapping{
+		SchemaVersion: MappingSchemaVersion,
+		SnapID:        snapID,
+		GeneratedAt:   time.Now().UTC(),
+		Total:         len(atts),
+	}
+	var mappingMu sync.Mutex
+	var saveErrMu sync.Mutex
+	var saveErr error
+	dirty := 0
+
+	persistMapping := func(force bool) {
+		mappingMu.Lock()
+		defer mappingMu.Unlock()
+		if !force && dirty < 16 {
+			return
+		}
+		dirty = 0
+		// Snapshot a stable copy: sort by original_id for determinism.
+		entries := append([]MappingEntry(nil), mapping.Entries...)
+		sort.Slice(entries, func(i, j int) bool { return entries[i].OriginalID < entries[j].OriginalID })
+		snap := *mapping
+		snap.Entries = entries
+		if _, err := store.SaveData(snapID, "attachments.json", snap); err != nil {
+			saveErrMu.Lock()
+			if saveErr == nil {
+				saveErr = err
+			}
+			saveErrMu.Unlock()
+		}
+	}
+
+	// Periodic committer so a long-running backup keeps attachments.json
+	// fresh even when individual download slots are slow.
+	flushCtx, cancelFlush := context.WithCancel(ctx)
+	flushDone := make(chan struct{})
+	go func() {
+		defer close(flushDone)
+		t := time.NewTicker(2 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-flushCtx.Done():
+				return
+			case <-t.C:
+				persistMapping(true)
+			}
+		}
+	}()
+
+	results, _ := concurrent.ParallelMap(ctx, atts, concurrency, func(att data.Attachment, _ int) (MappingEntry, error) {
+		if err := ctx.Err(); err != nil {
+			return MappingEntry{}, err
+		}
+		entry, err := backupOneCleanup(ctx, api, dir, att, opts.Compress)
+		if err != nil {
+			return MappingEntry{}, err
+		}
+		mappingMu.Lock()
+		mapping.Entries = append(mapping.Entries, *entry)
+		dirty++
+		shouldFlush := dirty >= 16
+		mappingMu.Unlock()
+		if shouldFlush {
+			persistMapping(true)
+		}
+		if !entry.Restorable && entry.EntityType == "test" {
+			log.Warn("attachment is test-bound and non-restorable on rollback",
+				zap.Int64("attachment_id", entry.OriginalID),
+				zap.String("name", entry.Name),
+				zap.Int64("test_id", entry.EntityID))
+		}
+		return *entry, nil
+	})
+
+	cancelFlush()
+	<-flushDone
+
+	for _, r := range results {
+		if r.Error != nil {
+			persistMapping(true)
+			return saved, totalBytes, fmt.Errorf("backup attachment: %w", r.Error)
+		}
+	}
+	persistMapping(true)
+	if saveErr != nil {
+		return saved, totalBytes, fmt.Errorf("persist attachments.json: %w", saveErr)
+	}
+
+	saved = len(mapping.Entries)
+	for _, e := range mapping.Entries {
+		totalBytes += e.Size
+	}
+	return saved, totalBytes, nil
+}
+
+// backupOneCleanup downloads a single attachment, hashes it inline
+// during streaming via io.MultiWriter, and returns a populated
+// MappingEntry. The optional gzip wrapper sits between the hasher and
+// the on-disk file so the SHA-256 reflects the post-compression bytes
+// (i.e. exactly what is stored under <snap>/files/).
+func backupOneCleanup(
+	ctx context.Context,
+	api CleanupAttachmentsAPI,
+	dir string,
+	att data.Attachment,
+	compress bool,
+) (*MappingEntry, error) {
+	body, err := api.DownloadAttachment(ctx, att.ID)
+	if err != nil {
+		return nil, fmt.Errorf("download %d: %w", att.ID, err)
+	}
+	defer body.Close()
+
+	name := sanitizeAttachName(att.Name, att.ID)
+	filename := name
+	if compress {
+		filename += ".gz"
+	}
+	outPath := filepath.Join(dir, filename)
+
+	hasher := sha256.New()
+	written, closeErr, copyErr := streamToFileWithHash(outPath, body, hasher, compress)
+	if copyErr != nil {
+		_ = os.Remove(outPath)
+		return nil, fmt.Errorf("write %d: %w", att.ID, copyErr)
+	}
+	if closeErr != nil {
+		_ = os.Remove(outPath)
+		return nil, fmt.Errorf("close %d: %w", att.ID, closeErr)
+	}
+
+	entityType := att.InferredEntityType()
+	entry := &MappingEntry{
+		OriginalID: att.ID,
+		Name:       att.Name,
+		Size:       written,
+		SHA256:     hex.EncodeToString(hasher.Sum(nil)),
+		File:       filename,
+		Compressed: compress,
+		EntityType: entityType,
+		Restorable: true,
+	}
+	switch entityType {
+	case "case":
+		entry.EntityID = att.CaseID
+	case "run":
+		entry.EntityID = att.RunID
+	case "plan":
+		entry.EntityID = att.PlanID
+	case "plan_entry":
+		entry.ParentPlanID = att.PlanID
+		entry.EntryID = att.EntryID
+	case "result":
+		entry.EntityID = att.ResultID
+	case "test":
+		entry.EntityID = att.TestID
+		entry.Restorable = false
+		entry.NotRestorable = notRestorableTestReason
+	}
+	return entry, nil
+}
+
+// streamToFileWithHash writes body to outPath while feeding the same
+// bytes into hasher via io.MultiWriter. When compress is true the
+// gzip writer is layered between the hasher and the file so the hash
+// matches the on-disk (compressed) bytes.
+func streamToFileWithHash(outPath string, body io.Reader, hasher io.Writer, compress bool) (written int64, closeErr, copyErr error) {
+	f, err := os.Create(outPath) //nolint:gosec // outPath rooted under the cleanup-snap dir.
+	if err != nil {
+		return 0, nil, err
+	}
+	mw := io.MultiWriter(f, hasher)
+	if compress {
+		gz := gzip.NewWriter(mw)
+		written, copyErr = io.Copy(gz, body)
+		if cerr := gz.Close(); closeErr == nil {
+			closeErr = cerr
+		}
+	} else {
+		written, copyErr = io.Copy(mw, body)
+	}
+	if cerr := f.Close(); closeErr == nil {
+		closeErr = cerr
+	}
+	return written, closeErr, copyErr
+}
+
+// LoadMapping reads <snap>/attachments.json.
+func LoadMapping(store *Store, snapID string) (*Mapping, error) {
+	var m Mapping
+	if err := store.LoadData(snapID, "attachments.json", &m); err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// SaveMapping persists attachments.json atomically. Used after restore
+// updates NewID on each entry.
+func SaveMapping(store *Store, snapID string, m *Mapping) error {
+	if _, err := store.SaveData(snapID, "attachments.json", m); err != nil {
+		return err
+	}
+	return nil
+}
+
+// WriteReferencesSidecar persists <snap>/references.json containing
+// the per-entity reference index. It tolerates an empty input by
+// writing an empty array so the absence of the file unambiguously
+// means "scan was skipped" rather than "scan found nothing".
+func WriteReferencesSidecar(store *Store, snapID string, entries []refs.EntityRefs) error {
+	if entries == nil {
+		entries = []refs.EntityRefs{}
+	}
+	if _, err := store.SaveData(snapID, "references.json", entries); err != nil {
+		return fmt.Errorf("save references.json: %w", err)
+	}
+	return nil
+}
+
+// LoadReferencesSidecar reads <snap>/references.json. Returns
+// os.ErrNotExist when the snapshot was created with --skip-references.
+func LoadReferencesSidecar(store *Store, snapID string) ([]refs.EntityRefs, error) {
+	var on []refs.EntityRefs
+	if err := store.LoadData(snapID, "references.json", &on); err != nil {
+		return nil, err
+	}
+	return on, nil
+}
+
+// RestoreCleanupAttachments re-uploads every attachment recorded in
+// the snapshot mapping. Successful re-uploads patch MappingEntry.NewID
+// and the mapping is persisted again so a partial restore retains the
+// assignments already made. When dryRun is true, no API calls are
+// performed but the result still reports how many entries would be
+// processed.
 func RestoreCleanupAttachments(
 	ctx context.Context,
 	api CleanupAttachmentsAPI,
@@ -113,34 +387,14 @@ func RestoreCleanupAttachments(
 	dryRun bool,
 ) (*CleanupRollbackResult, error) {
 	mapping, err := LoadMapping(store, snapID)
-	if err == nil && mapping.SchemaVersion >= MappingSchemaVersion {
-		return restoreFromMapping(ctx, api, store, snapID, mapping, dryRun)
+	if err != nil {
+		return nil, fmt.Errorf("load attachments.json: %w", err)
 	}
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		// A real I/O error reading mapping.json is not the same as
-		// "missing"; surface it instead of silently falling back.
-		var pathErr *os.PathError
-		if !errors.As(err, &pathErr) {
-			return nil, fmt.Errorf("load mapping.json: %w", err)
-		}
+	if mapping.SchemaVersion < MappingSchemaVersion {
+		return nil, fmt.Errorf("attachments.json schema_version=%d unsupported (want >= %d)",
+			mapping.SchemaVersion, MappingSchemaVersion)
 	}
-	log.Info("legacy snapshot detected; reference rewrite skipped",
-		zap.String("snap_id", snapID))
-	return restoreFromLegacyData(ctx, api, store, snapID, dryRun)
-}
 
-// restoreFromMapping is the v2 restore path. Each successful re-upload
-// updates the corresponding MappingEntry.NewID and the mapping is
-// persisted again so a partial restore retains the assignments
-// already made.
-func restoreFromMapping(
-	ctx context.Context,
-	api CleanupAttachmentsAPI,
-	store *Store,
-	snapID string,
-	mapping *Mapping,
-	dryRun bool,
-) (*CleanupRollbackResult, error) {
 	res := &CleanupRollbackResult{Mapping: map[int64]int64{}}
 	if len(mapping.Entries) == 0 {
 		return res, nil
@@ -165,17 +419,7 @@ func restoreFromMapping(
 			res.Restored++
 			continue
 		}
-		legacy := CleanupAttachmentEntry{
-			ID:           entry.OriginalID,
-			Name:         entry.Name,
-			EntityType:   entry.EntityType,
-			EntityID:     entry.EntityID,
-			ParentPlanID: entry.ParentPlanID,
-			EntryID:      entry.EntryID,
-			File:         entry.File,
-			Compressed:   entry.Compressed,
-		}
-		newID, err := restoreOneCleanup(ctx, api, dir, legacy)
+		newID, err := restoreOneCleanup(ctx, api, dir, entry)
 		if err != nil {
 			res.Failed++
 			res.Failures = append(res.Failures, CleanupRollbackFailure{
@@ -195,7 +439,7 @@ func restoreFromMapping(
 		// after the operator fixes a broken parent can pick up where
 		// we left off.
 		if err := SaveMapping(store, snapID, mapping); err != nil {
-			log.Warn("failed to persist updated mapping.json after restore",
+			log.Warn("failed to persist updated attachments.json after restore",
 				zap.String("snap_id", snapID),
 				zap.Error(err))
 		}
@@ -203,80 +447,24 @@ func restoreFromMapping(
 	return res, nil
 }
 
-// restoreFromLegacyData implements the v1 path used when only data.json
-// exists (snapshots taken before the v2 schema rolled out).
-func restoreFromLegacyData(
-	ctx context.Context,
-	api CleanupAttachmentsAPI,
-	store *Store,
-	snapID string,
-	dryRun bool,
-) (*CleanupRollbackResult, error) {
-	var dataFile CleanupAttachmentsData
-	if err := store.LoadData(snapID, "data.json", &dataFile); err != nil {
-		return nil, fmt.Errorf("load cleanup data.json: %w", err)
-	}
-
-	res := &CleanupRollbackResult{Mapping: map[int64]int64{}}
-	if len(dataFile.Attachments) == 0 {
-		return res, nil
-	}
-
-	dir := filepath.Join(store.SnapDir(snapID), cleanupFilesDir)
-	for _, entry := range dataFile.Attachments {
-		if err := ctx.Err(); err != nil {
-			return res, err
-		}
-		if dryRun {
-			res.Restored++
-			continue
-		}
-
-		newID, err := restoreOneCleanup(ctx, api, dir, entry)
-		if err != nil {
-			if errors.Is(err, ErrCleanupRollbackUnsupportedEntity) {
-				res.Skipped++
-				res.Failures = append(res.Failures, CleanupRollbackFailure{
-					OriginalID: entry.ID,
-					EntityType: entry.EntityType,
-					EntityID:   entry.EntityID,
-					Error:      err.Error(),
-				})
-				continue
-			}
-			res.Failed++
-			res.Failures = append(res.Failures, CleanupRollbackFailure{
-				OriginalID: entry.ID,
-				EntityType: entry.EntityType,
-				EntityID:   entry.EntityID,
-				Error:      err.Error(),
-			})
-			continue
-		}
-		res.Mapping[entry.ID] = newID
-		res.Restored++
-	}
-	return res, nil
-}
-
+// restoreOneCleanup re-uploads a single mapping entry. Compressed
+// binaries are decompressed to a temp file before upload.
 func restoreOneCleanup(
 	ctx context.Context,
 	api CleanupAttachmentsAPI,
 	dir string,
-	entry CleanupAttachmentEntry,
+	entry *MappingEntry,
 ) (int64, error) {
 	srcPath := filepath.Join(dir, entry.File)
 
 	uploadPath := srcPath
-	tmpPath := ""
 	if entry.Compressed {
 		tmp, err := decompressToTemp(srcPath, entry.Name)
 		if err != nil {
 			return 0, fmt.Errorf("decompress: %w", err)
 		}
 		uploadPath = tmp
-		tmpPath = tmp
-		defer os.Remove(tmpPath)
+		defer os.Remove(tmp)
 	}
 
 	switch entry.EntityType {

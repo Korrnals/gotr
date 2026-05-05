@@ -322,7 +322,11 @@ type ExecuteResult struct {
 	BackupBytes  int64
 	Deleted      int
 	DeleteErrors int
-	Failures     []DeleteFailure
+	// FreedBytes is the sum of sizes of attachments that the server
+	// confirmed deleted (i.e. failures excluded). Equals BackupBytes
+	// when DeleteErrors == 0. Always 0 on dry-run.
+	FreedBytes int64
+	Failures   []DeleteFailure
 	// EntitiesScanned is the number of (entity_type, entity_id) tuples
 	// walked during the reference scan. 0 when SkipReferences=true.
 	EntitiesScanned int
@@ -390,12 +394,12 @@ func Execute(
 		)
 		meta.Timestamp = time.Now().UTC()
 		meta.Status = snap.StatusAvailable
-		meta.DataFile = "data.json"
+		meta.DataFile = "attachments.json"
 
 		if err := store.SaveMeta(&meta); err != nil {
 			return res, fmt.Errorf("snapshot: save meta: %w", err)
 		}
-		saved, bytes, err := snap.BackupAttachmentsForCleanupV2(ctx, api, store, meta.ID, atts, snap.BackupOptions{
+		saved, bytes, err := snap.BackupAttachmentsForCleanup(ctx, api, store, meta.ID, atts, snap.BackupOptions{
 			Compress:    opts.CompressBinaries,
 			Concurrency: resolveBackupConcurrency(opts),
 		})
@@ -414,7 +418,7 @@ func Execute(
 		res.BackupBytes = bytes
 
 		// 1b. Reference scan: walk every entity that owned a deleted
-		// attachment and persist references.json next to data.json.
+		// attachment and persist references.json next to attachments.json.
 		// Best-effort — partial indexing is preferable to aborting the
 		// cleanup. Empty array means "scanned, found nothing", which
 		// is distinct from "scan was skipped" (no file written).
@@ -441,11 +445,12 @@ func Execute(
 	type item struct {
 		ID        int64
 		ProjectID int64
+		Size      int64
 	}
 	deleteItems := make([]item, 0, len(atts))
 	for _, sel := range plan.Projects {
 		for _, a := range sel.Attachments {
-			deleteItems = append(deleteItems, item{ID: a.ID, ProjectID: sel.ProjectID})
+			deleteItems = append(deleteItems, item{ID: a.ID, ProjectID: sel.ProjectID, Size: a.Size})
 		}
 	}
 
@@ -469,6 +474,7 @@ func Execute(
 			continue
 		}
 		res.Deleted++
+		res.FreedBytes += deleteItems[i].Size
 	}
 	return res, nil
 }

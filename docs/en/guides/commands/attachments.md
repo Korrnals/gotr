@@ -200,22 +200,40 @@ gotr snap rollback <snap-id> --skip-references
 
 **🔐 Snapshot completeness (since v3.6.0):**
 
-Every cleanup snapshot now ships with the artifacts required to fully reverse the deletion, including the markdown bodies that referenced the deleted binaries:
+Every cleanup snapshot now ships with the artifacts required to fully reverse the deletion, including an audit index of markdown bodies that referenced the deleted binaries:
 
 ```
 <snap_id>/
-├── meta.json            # snapshot metadata (existed before v3.6.0)
-├── data.json            # legacy v1 ledger, kept for back-compat
-├── mapping.json         # v2 ledger: per-attachment SHA-256 + restorability flag
-├── references.json      # markdown URLs that pointed at the deleted attachments
+├── meta.json            # snapshot metadata
+├── attachments.json     # v2 ledger: per-attachment SHA-256 + restorability flag + new_id slot
+├── references.json      # audit index: markdown URLs in other entities that pointed at the deleted attachments
 ├── integrity.json       # per-file SHA-256 + merkle-style root over the whole snapshot
 └── files/<id>(.gz)      # binary payloads, optionally gzip-compressed
 ```
 
-- **`mapping.json`** carries one entry per attachment: original ID, on-disk SHA-256, parent entity, and a `restorable` flag (`false` for test-bound attachments, since TestRail has no `add_attachment_to_test` endpoint). Schema is versioned via `schema_version`; v1 snapshots without `mapping.json` continue to restore via the legacy `data.json` path.
-- **`references.json`** is the index of every markdown URL pointing at one of the deleted attachments, scanned across `case`, `run`, `plan`, and `milestone` description fields plus `case.custom_steps_separated`. On restore, numeric IDs are rewritten in place via `update_case`/`update_run`/`update_plan`/`update_milestone`. References inside `result.comment` and md5-only URLs are reported as **not rewritten** because TestRail has no `update_result` endpoint and we cannot recover the new md5 server-side.
+- **`attachments.json`** carries one entry per attachment: original ID, on-disk SHA-256, parent entity, a `restorable` flag (`false` for test-bound attachments, since TestRail has no `add_attachment_to_test` endpoint), and a `new_id` slot populated on rollback with the freshly issued TestRail ID.
+- **`references.json`** is the audit index of every markdown URL pointing at one of the deleted attachments, scanned across `case`, `run`, `plan`, and `milestone` description fields plus `case.custom_steps_separated`. **In v3.6.0 the index is recorded but external entity bodies are NOT modified** — neither on cleanup nor on rollback. After a cleanup, links of the form `[label](.../attachments/get/<old_id>)` inside other entities will return 404; after a rollback the attachments come back under **new** TestRail IDs, so the old links remain broken. Manual rewrite is supported via the saved index. Automatic rewrite is on the roadmap (deferred from v3.6.0 due to read-modify-write race risk on shared TestRail entities).
 - **`integrity.json`** records SHA-256 for every file inside the snapshot directory and a merkle-style root computed over the sorted `<path>|<sha256>` lines. Pass `--verify-integrity` to `gotr snap rollback` to re-verify before any API call.
 - Backup downloads are parallelized via `--backup-concurrency`; the SHA-256 is computed inline so no second pass is needed.
+
+**⚠️ Known limitations of cleanup + rollback (v3.6.0):**
+
+Even after a successful `--verify-integrity` rollback, the restored state is **not byte-identical** to the pre-cleanup state. TestRail's API forces the following deltas:
+
+| Field | Before cleanup | After rollback | Why |
+| --- | --- | --- | --- |
+| `attachment_id` | original | **new** (mapped in `attachments.json` `new_id`) | `add_attachment_to_*` always issues a fresh ID |
+| `created_on` | original timestamp | **rollback timestamp** | API does not accept a back-dated value |
+| `created_by` | original uploader | **API user running rollback** | API does not accept a back-dated user |
+| URL | `.../attachments/get/<old_id>` | `.../attachments/get/<new_id>` | follows from the new ID |
+| Markdown refs in OTHER entity bodies | pointed at `<old_id>` | **still point at `<old_id>` → 404** | gotr does not modify external entities; see `references.json` |
+| Test-bound attachments | present | **skipped** | no `add_attachment_to_test` endpoint |
+
+Practical consequences:
+
+- For audit/compliance flows that rely on original `created_on`/`created_by`, treat rollback as a **content-recovery** tool, not a time-machine.
+- For markdown integrity inside case/run/plan/milestone bodies, use `references.json` from the snapshot to drive a manual or scripted rewrite. The deletion-audit report includes a `Known limitations: markdown references` section enumerating the per-entity-type counts.
+- If broken external links are unacceptable, prefer `--dry-run` + manual archival over `cleanup` for those projects until automatic rewrite ships.
 
 **📑 Deletion-audit report (since v3.5.1):**
 

@@ -5,6 +5,8 @@ package snap
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"io"
 	"os"
@@ -95,6 +97,58 @@ func scratchStore(t *testing.T, snapID string) *Store {
 	return store
 }
 
+// TestBackup_PersistsMappingWithSHA256 asserts that the backup emits
+// attachments.json with one entry per attachment, each carrying the
+// inline-computed SHA-256 of the on-disk file.
+func TestBackup_PersistsMappingWithSHA256(t *testing.T) {
+	api := newFakeCleanupAPI()
+	api.seed(11, "case-payload")
+	api.seed(22, "result-payload")
+
+	atts := []data.Attachment{
+		{ID: 11, Name: "a.txt", CaseID: 5},
+		{ID: 22, Name: "b.bin", ResultID: 9},
+	}
+	snapID := "cleanup-attachments/mapping"
+	store := scratchStore(t, snapID)
+
+	saved, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{Concurrency: 2})
+	if err != nil {
+		t.Fatalf("backup: %v", err)
+	}
+	if saved != 2 {
+		t.Fatalf("saved=%d", saved)
+	}
+
+	m, err := LoadMapping(store, snapID)
+	if err != nil {
+		t.Fatalf("load mapping: %v", err)
+	}
+	if m.SchemaVersion != MappingSchemaVersion {
+		t.Errorf("schema_version=%d want %d", m.SchemaVersion, MappingSchemaVersion)
+	}
+	if len(m.Entries) != 2 {
+		t.Fatalf("entries=%d", len(m.Entries))
+	}
+	for _, e := range m.Entries {
+		if e.SHA256 == "" {
+			t.Errorf("entry %d missing sha256", e.OriginalID)
+		}
+		fp := filepath.Join(store.SnapDir(snapID), cleanupFilesDir, e.File)
+		raw, err := os.ReadFile(fp) //nolint:gosec // test scratch
+		if err != nil {
+			t.Fatalf("read %s: %v", fp, err)
+		}
+		sum := sha256.Sum256(raw)
+		want := hex.EncodeToString(sum[:])
+		if e.SHA256 != want {
+			t.Errorf("entry %d sha256 mismatch: got %s want %s", e.OriginalID, e.SHA256, want)
+		}
+	}
+}
+
+// TestBackupAndRestoreCleanupAttachments_RoundTrip exercises the full
+// backup → restore lifecycle with three different parent entity kinds.
 func TestBackupAndRestoreCleanupAttachments_RoundTrip(t *testing.T) {
 	api := newFakeCleanupAPI()
 	api.seed(11, "case-payload")
@@ -107,10 +161,10 @@ func TestBackupAndRestoreCleanupAttachments_RoundTrip(t *testing.T) {
 		{ID: 33, Name: "run.log", Size: 11, RunID: 7},
 	}
 
-	snapID := "cleanup-attachments/test-snap-1"
+	snapID := "cleanup-attachments/round-trip"
 	store := scratchStore(t, snapID)
 
-	saved, total, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, false)
+	saved, total, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{})
 	if err != nil {
 		t.Fatalf("backup: %v", err)
 	}
@@ -118,23 +172,20 @@ func TestBackupAndRestoreCleanupAttachments_RoundTrip(t *testing.T) {
 		t.Fatalf("unexpected saved=%d total=%d", saved, total)
 	}
 
-	// data.json must be present and parseable.
-	var on CleanupAttachmentsData
-	if err := store.LoadData(snapID, "data.json", &on); err != nil {
-		t.Fatalf("load data.json: %v", err)
+	m, err := LoadMapping(store, snapID)
+	if err != nil {
+		t.Fatalf("load mapping: %v", err)
 	}
-	if len(on.Attachments) != 3 {
-		t.Fatalf("expected 3 entries, got %d", len(on.Attachments))
+	if len(m.Entries) != 3 {
+		t.Fatalf("expected 3 entries, got %d", len(m.Entries))
 	}
-	// Files must exist on disk.
-	for _, e := range on.Attachments {
+	for _, e := range m.Entries {
 		p := filepath.Join(store.SnapDir(snapID), cleanupFilesDir, e.File)
 		if _, err := os.Stat(p); err != nil {
 			t.Fatalf("missing binary %s: %v", p, err)
 		}
 	}
 
-	// Restore re-uploads each entry.
 	res, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false)
 	if err != nil {
 		t.Fatalf("restore: %v", err)
@@ -150,40 +201,53 @@ func TestBackupAndRestoreCleanupAttachments_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestRestoreCleanupAttachments_SkipsTestEntity(t *testing.T) {
+// TestRestore_TestBoundNonRestorable verifies that test-bound
+// attachments are flagged Restorable=false with the documented reason
+// and skipped by the restore phase.
+func TestRestore_TestBoundNonRestorable(t *testing.T) {
 	api := newFakeCleanupAPI()
-	api.seed(77, "test-payload")
-
-	atts := []data.Attachment{{ID: 77, Name: "trace.txt", Size: 12, TestID: 42}}
-
-	snapID := "cleanup-attachments/test-snap-2"
+	api.seed(77, "trace")
+	atts := []data.Attachment{{ID: 77, Name: "trace.txt", TestID: 42}}
+	snapID := "cleanup-attachments/testbound"
 	store := scratchStore(t, snapID)
 
-	if _, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, false); err != nil {
+	if _, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
 		t.Fatalf("backup: %v", err)
+	}
+	m, err := LoadMapping(store, snapID)
+	if err != nil {
+		t.Fatalf("load mapping: %v", err)
+	}
+	if len(m.Entries) != 1 || m.Entries[0].Restorable {
+		t.Fatalf("expected non-restorable, got %+v", m.Entries)
+	}
+	if !strings.Contains(m.Entries[0].NotRestorable, "test-bound") {
+		t.Errorf("reason=%q", m.Entries[0].NotRestorable)
 	}
 
 	res, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false)
 	if err != nil {
 		t.Fatalf("restore: %v", err)
 	}
-	if res.Skipped != 1 || res.Restored != 0 {
-		t.Fatalf("expected 1 skipped, got %+v", res)
+	if res.Skipped != 1 || res.Restored != 0 || res.Failed != 0 {
+		t.Errorf("res=%+v", res)
 	}
 	if len(res.Failures) != 1 || res.Failures[0].EntityType != "test" {
 		t.Fatalf("expected test failure record, got %+v", res.Failures)
 	}
 }
 
-func TestBackupAttachmentsForCleanup_WithCompression(t *testing.T) {
+// TestBackupCompression_RoundTrip exercises gzip-on-disk and confirms
+// rollback can decompress and re-upload the original bytes.
+func TestBackupCompression_RoundTrip(t *testing.T) {
 	api := newFakeCleanupAPI()
 	api.seed(1, strings.Repeat("hello ", 200))
 
 	atts := []data.Attachment{{ID: 1, Name: "big.txt", Size: 1200, CaseID: 1}}
-	snapID := "cleanup-attachments/test-snap-3"
+	snapID := "cleanup-attachments/compressed"
 	store := scratchStore(t, snapID)
 
-	saved, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, true)
+	saved, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{Compress: true})
 	if err != nil {
 		t.Fatalf("backup: %v", err)
 	}
@@ -191,20 +255,95 @@ func TestBackupAttachmentsForCleanup_WithCompression(t *testing.T) {
 		t.Fatalf("saved=%d", saved)
 	}
 
-	var on CleanupAttachmentsData
-	if err := store.LoadData(snapID, "data.json", &on); err != nil {
-		t.Fatalf("load: %v", err)
+	m, err := LoadMapping(store, snapID)
+	if err != nil {
+		t.Fatalf("load mapping: %v", err)
 	}
-	if !on.Attachments[0].Compressed || !strings.HasSuffix(on.Attachments[0].File, ".gz") {
-		t.Fatalf("expected compressed .gz, got %+v", on.Attachments[0])
+	if !m.Entries[0].Compressed || !strings.HasSuffix(m.Entries[0].File, ".gz") {
+		t.Fatalf("expected compressed .gz, got %+v", m.Entries[0])
 	}
 
-	// Roundtrip restore should still succeed (decompresses to a temp file).
 	res, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false)
 	if err != nil {
 		t.Fatalf("restore: %v", err)
 	}
 	if res.Restored != 1 {
 		t.Fatalf("restore: %+v", res)
+	}
+}
+
+// TestIntegrity_BuildAndVerify_Roundtrip writes a snapshot, builds
+// integrity.json, then re-verifies it. Files unchanged → no error.
+// Mutate one file and verify must surface a clear mismatch.
+func TestIntegrity_BuildAndVerify_Roundtrip(t *testing.T) {
+	api := newFakeCleanupAPI()
+	api.seed(1, "alpha")
+	api.seed(2, "beta")
+	snapID := "cleanup-attachments/integrity-rt"
+	store := scratchStore(t, snapID)
+
+	atts := []data.Attachment{
+		{ID: 1, Name: "a.txt", CaseID: 1},
+		{ID: 2, Name: "b.txt", CaseID: 1},
+	}
+	if _, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
+		t.Fatalf("backup: %v", err)
+	}
+	idx, err := WriteIntegrityIndex(store, snapID)
+	if err != nil {
+		t.Fatalf("write integrity: %v", err)
+	}
+	if idx.Root == "" || len(idx.Files) == 0 {
+		t.Fatalf("integrity empty: %+v", idx)
+	}
+	if err := VerifyIntegrityIndex(store, snapID); err != nil {
+		t.Fatalf("verify: %v", err)
+	}
+
+	first := filepath.Join(store.SnapDir(snapID), idx.Files[0].Path)
+	if err := os.WriteFile(first, []byte("tampered"), 0o600); err != nil {
+		t.Fatalf("tamper: %v", err)
+	}
+	if err := VerifyIntegrityIndex(store, snapID); err == nil {
+		t.Fatalf("expected verify failure after tamper")
+	}
+}
+
+// TestRestore_MappingUpdatesNewID asserts that successful re-uploads
+// patch MappingEntry.NewID and persist the mapping back to disk.
+func TestRestore_MappingUpdatesNewID(t *testing.T) {
+	api := newFakeCleanupAPI()
+	api.seed(11, "p")
+	atts := []data.Attachment{{ID: 11, Name: "n.txt", CaseID: 5}}
+	snapID := "cleanup-attachments/mapping-newid"
+	store := scratchStore(t, snapID)
+	if _, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
+		t.Fatalf("backup: %v", err)
+	}
+	if _, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false); err != nil {
+		t.Fatalf("restore: %v", err)
+	}
+	m, err := LoadMapping(store, snapID)
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if len(m.Entries) != 1 || m.Entries[0].NewID == 0 {
+		t.Errorf("expected new_id populated, got %+v", m.Entries)
+	}
+}
+
+// TestRestore_MissingMappingFails verifies that a snapshot directory
+// without attachments.json produces a clear error (no v1 fallback).
+func TestRestore_MissingMappingFails(t *testing.T) {
+	api := newFakeCleanupAPI()
+	snapID := "cleanup-attachments/no-mapping"
+	store := scratchStore(t, snapID)
+
+	_, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false)
+	if err == nil {
+		t.Fatalf("expected error when attachments.json is missing")
+	}
+	if !strings.Contains(err.Error(), "attachments.json") {
+		t.Errorf("error must mention attachments.json: %v", err)
 	}
 }

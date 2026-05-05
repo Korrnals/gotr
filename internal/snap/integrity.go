@@ -18,7 +18,7 @@ import (
 const IntegritySchemaVersion = 2
 
 // IntegrityIndex is the top-level Merkle integrity manifest written
-// next to data.json/mapping.json/references.json. The file enumerates
+// next to attachments.json/references.json. The file enumerates
 // every artifact in the snapshot directory together with its SHA-256
 // and a Merkle root computed over the sorted "path|sha256\n" lines.
 type IntegrityIndex struct {

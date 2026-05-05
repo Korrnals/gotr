@@ -58,6 +58,33 @@ func (r WriteResult) Files() []string {
 	return out
 }
 
+// PredictPaths returns the absolute paths the writer would produce for
+// rep when called with the given reportsDir and opts. The directory is
+// not created. Useful for self-referencing the output paths inside the
+// report itself (e.g. the "Artifacts" section).
+func PredictPaths(reportsDir string, rep *Report, opts WriteOptions) []string {
+	if rep == nil || reportsDir == "" {
+		return nil
+	}
+	base := buildBaseFilename(rep)
+	cls := report.ClassifyReportWithLabel(base+".md", rep.Label)
+	dir := filepath.Join(reportsDir, cls.RelDir())
+	var out []string
+	if opts.Markdown {
+		out = append(out, filepath.Join(dir, base+".md"))
+	}
+	if opts.JSON {
+		out = append(out, filepath.Join(dir, base+".json"))
+	}
+	if opts.CSV {
+		out = append(out, filepath.Join(dir, base+".csv"))
+	}
+	if opts.PDF && opts.PDFRenderer != nil {
+		out = append(out, filepath.Join(dir, base+".pdf"))
+	}
+	return out
+}
+
 // Write persists the report under
 //
 //	<reportsDir>/cleanup-attachments/<label>/<YYYY-MM>/cleanup-<id>-<ts>.<ext>

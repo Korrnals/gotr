@@ -73,6 +73,7 @@ as Skipped.`,
 	cmd.Flags().Bool("compress", false, "Gzip-compress stored binaries inside the snapshot")
 	cmd.Flags().Bool("force", false, "Bypass --max-size-gb and the interactive confirmation prompt")
 	cmd.Flags().String("scan-strategy", "auto", "How to enumerate attachments: auto|project|entities. auto probes get_attachments_for_project once and falls back to a suites→cases/runs/plans walk on TestRail Server < 7.5.")
+	cmd.Flags().Bool("no-report", false, "Skip emitting the deletion-audit report under ~/.gotr/reports/cleanup-attachments/")
 	output.AddFlag(cmd)
 
 	return cmd
@@ -95,6 +96,9 @@ type cleanupOptions struct {
 	Compress          bool
 	Force             bool
 	ScanStrategy      string
+	OlderThanRaw      string
+	CutoffUnix        int64
+	NoReport          bool
 }
 
 //nolint:gocyclo // Sequential pre-flight stages (parse → prompt → validate → plan → confirm → execute) are clearer kept together than artificially split.
@@ -203,6 +207,7 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		_ = opts.SnapshotRetention
 
 		printCleanupResult(cmd, res)
+		writeCleanupReport(cmd, plan, res, opts)
 		if res.DeleteErrors > 0 {
 			return fmt.Errorf("%d delete(s) failed; snapshot is preserved for rollback", res.DeleteErrors)
 		}
@@ -226,6 +231,8 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 	opts.Compress, _ = cmd.Flags().GetBool("compress")
 	opts.Force, _ = cmd.Flags().GetBool("force")
 	opts.ScanStrategy, _ = cmd.Flags().GetString("scan-strategy")
+	opts.NoReport, _ = cmd.Flags().GetBool("no-report")
+	opts.OlderThanRaw = rawAge
 	opts.ScanStrategy = strings.ToLower(strings.TrimSpace(opts.ScanStrategy))
 	switch opts.ScanStrategy {
 	case "", "auto", "project", "entities":
@@ -239,6 +246,7 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 			return nil, fmt.Errorf("--older-than %q: %w", rawAge, err)
 		}
 		opts.OlderThan = d
+		opts.CutoffUnix = time.Now().Add(-d).Unix()
 	}
 
 	if rawRet != "" {

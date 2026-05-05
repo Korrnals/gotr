@@ -13,6 +13,39 @@ _No unreleased changes yet._
 
 ---
 
+## [3.5.1] - 2026-05-05
+
+### Fixed — emit cleanup deletion report
+
+- **`gotr attachments cleanup` now writes an audit report.** After every
+  invocation (including `--dry-run`) the command emits the deletion
+  audit in four formats — Markdown, JSON, CSV and PDF — under
+  `~/.gotr/reports/cleanup-attachments/<label>/<YYYY-MM>/`. The report
+  contains the run header (snapshot ID, label, CLI args, gotr version),
+  the applied filters, a summary, a per-project breakdown, the full
+  list of deleted attachments (id, name, size, parent, created date)
+  and any per-attachment failures. The Markdown rendition includes the
+  rollback command, and `INDEX.md` is refreshed automatically.
+- **`--no-report`** opts out of writing the report files (useful for
+  CI pipelines that capture stdout only).
+- **Dry-run reports** are flagged with a `DRY-RUN` marker in the
+  Markdown header and `dry_run=true,deleted=false` in CSV rows so they
+  cannot be confused with the real artefact.
+- **Backward compatible.** Default behaviour change is the addition of
+  four files per cleanup run; no existing flags or output paths
+  changed.
+
+### Internal
+
+- New package `internal/report/cleanup` (types + Markdown / JSON / CSV
+  renderers + writer) and a `pdf.NewCleanupGenerator()` PDF generator
+  reusing the embedded NotoSans fonts.
+- New report category `cleanup-attachments` added to
+  `internal/report/paths.go` and `internal/retention/exports.go` (with
+  `.csv` extension support).
+
+---
+
 ## [3.5.0] - 2026-05-04
 
 ### Added — bulk attachments cleanup with snapshot + rollback

@@ -24,6 +24,8 @@ const (
 	CategoryRollbacks Category = "rollbacks"
 	// CategoryNoSnapshot — migrations that ran without creating a snapshot.
 	CategoryNoSnapshot Category = "no-snapshot"
+	// CategoryCleanupAttachments — `gotr attachments cleanup` deletion reports.
+	CategoryCleanupAttachments Category = "cleanup-attachments"
 	// CategoryTestrail — raw TestRail API dumps (gotr reports/plans/... list output).
 	CategoryTestrail Category = "testrail"
 	// CategoryUnclassified — filenames that do not match any known pattern.
@@ -119,6 +121,9 @@ func ClassifyReportWithLabel(filename, explicitLabel string) Classification {
 
 	case strings.HasPrefix(low, "rollback-"):
 		return Classification{Category: CategoryRollbacks, Label: label, YearMonth: ym}
+
+	case strings.HasPrefix(low, "cleanup-attachments-"):
+		return Classification{Category: CategoryCleanupAttachments, Label: label, YearMonth: ym}
 
 	case strings.HasPrefix(low, "gotr_migration_"):
 		// gotr_migration_<TAG>_p<A>_to_p<B>.pdf → TAG becomes the label when caller did not override.
@@ -243,7 +248,7 @@ func RecursiveListReports(baseDir string) ([]ReportEntry, error) {
 
 func reportLikeExt(name string) bool {
 	switch strings.ToLower(filepath.Ext(name)) {
-	case ".md", ".pdf", ".json", ".txt":
+	case ".md", ".pdf", ".json", ".txt", ".csv":
 		return true
 	}
 	return false

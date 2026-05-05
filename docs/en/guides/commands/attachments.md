@@ -162,6 +162,7 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | `--concurrency <n>` | Parallel delete workers (default `4`). |
 | `--limit <n>` | Cap total attachments processed across all projects. |
 | `--scan-strategy` | How to enumerate attachments: `auto` (default), `project`, `entities`. See **Compatibility** below. |
+| `--no-report` | Skip emitting the deletion-audit report (Markdown + JSON + CSV + PDF). See **Deletion-audit report** below. |
 | `--force` | Skip the final confirmation prompt. |
 
 **🧭 Compatibility (TestRail Server vs Cloud):**
@@ -184,6 +185,29 @@ gotr snap rollback <snap-id>
 ```
 
 ⚠️ TestRail's API has no `add_attachment_to_test` endpoint, so attachments whose only parent is a `test` are reported as **Skipped** during rollback — clean them up only when re-upload of test-bound binaries is acceptable.
+
+**📑 Deletion-audit report (since v3.5.1):**
+
+Every `attachments cleanup` run — including `--dry-run` — automatically writes a deletion-audit report under:
+
+```
+~/.gotr/reports/cleanup-attachments/<label>/<YYYY-MM>/cleanup-attachments-<UTC-timestamp>-<snapshot-id>.<ext>
+```
+
+Four formats are produced in lockstep:
+
+| Format | Use case |
+| --- | --- |
+| `.md` | Human review. Contains the run header, applied filters, summary, per-project breakdown, the full list of deleted attachments and the rollback command. |
+| `.json` | Machine consumption / audit pipelines. Stable schema (`internal/report/cleanup.Report`). |
+| `.csv` | Spreadsheet review of every removed attachment (`project_id, attachment_id, name, size_bytes, parent_kind, parent_id, created_unix, deleted, dry_run, snapshot_id, …`). |
+| `.pdf` | Self-contained handover artifact (NotoSans embedded). |
+
+`INDEX.md` in the reports root is regenerated automatically after each run.
+
+Dry-run reports carry a `DRY-RUN` marker in the Markdown title and `dry_run=true,deleted=false` in CSV rows so they cannot be confused with the real artifact.
+
+Pass `--no-report` to suppress the four files entirely (useful for CI flows that already capture stdout).
 
 ✅ **Why this matters:** bulk cleanup without a snapshot is irreversible. The default flow keeps a one-week recovery window so you can roll back any over-eager deletion before the snapshot is GC'd.
 

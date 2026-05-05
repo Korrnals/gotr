@@ -1,7 +1,6 @@
 package snap
 
 import (
-	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -9,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
+	"go.uber.org/zap"
 )
 
 // EntityTypeAttachments is the snap.Meta.EntityType used for bulk
@@ -54,11 +55,11 @@ type CleanupAttachmentsData struct {
 // inside an attachments-cleanup snapshot.
 const cleanupFilesDir = "files"
 
-// BackupAttachmentsForCleanup downloads each attachment binary into the
-// snapshot directory and persists the metadata index to data.json. The
-// caller is responsible for creating the snapshot Meta (with
-// EntityType=EntityTypeAttachments and Operation=OpDelete) and for
-// writing the manifest entry afterwards.
+// BackupAttachmentsForCleanup is the v1-compatible entry point for
+// downloading every attachment binary into the snapshot directory. It
+// now delegates to BackupAttachmentsForCleanupV2 with sequential
+// downloads (Concurrency=1) so legacy callers transparently gain
+// SHA-256 integrity and mapping.json without any signature change.
 //
 // Returns the number of saved attachments and the total bytes written.
 func BackupAttachmentsForCleanup(
@@ -69,117 +70,10 @@ func BackupAttachmentsForCleanup(
 	atts []data.Attachment,
 	compress bool,
 ) (saved int, totalBytes int64, err error) {
-	if len(atts) == 0 {
-		return 0, 0, nil
-	}
-
-	dir := filepath.Join(store.SnapDir(snapID), cleanupFilesDir)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return 0, 0, fmt.Errorf("create cleanup files dir: %w", err)
-	}
-
-	entries := make([]CleanupAttachmentEntry, 0, len(atts))
-	for _, att := range atts {
-		if err := ctx.Err(); err != nil {
-			return saved, totalBytes, err
-		}
-		entry, written, err := backupOneCleanup(ctx, api, dir, att, compress)
-		if err != nil {
-			return saved, totalBytes, fmt.Errorf("backup attachment %d (%s): %w", att.ID, att.Name, err)
-		}
-		entries = append(entries, *entry)
-		saved++
-		totalBytes += written
-	}
-
-	if _, err := store.SaveData(snapID, "data.json", CleanupAttachmentsData{Attachments: entries}); err != nil {
-		return saved, totalBytes, fmt.Errorf("save cleanup data.json: %w", err)
-	}
-	return saved, totalBytes, nil
-}
-
-//nolint:gocyclo // Backup pipeline: download → (optional) gzip → stat → entity-type fan-out is more readable inline than split into helpers.
-func backupOneCleanup(
-	ctx context.Context,
-	api CleanupAttachmentsAPI,
-	dir string,
-	att data.Attachment,
-	compress bool,
-) (*CleanupAttachmentEntry, int64, error) {
-	body, err := api.DownloadAttachment(ctx, att.ID)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer body.Close()
-
-	name := sanitizeAttachName(att.Name, att.ID)
-	filename := name
-	if compress {
-		filename += ".gz"
-	}
-
-	outPath := filepath.Join(dir, filename)
-	f, err := os.Create(outPath)
-	if err != nil {
-		return nil, 0, fmt.Errorf("create file: %w", err)
-	}
-
-	var w io.Writer = f
-	var gw *gzip.Writer
-	if compress {
-		gw = gzip.NewWriter(f)
-		w = gw
-	}
-
-	written, copyErr := io.Copy(w, body)
-	var closeErr error
-	if gw != nil {
-		closeErr = gw.Close()
-	}
-	if cerr := f.Close(); closeErr == nil {
-		closeErr = cerr
-	}
-	if copyErr != nil {
-		_ = os.Remove(outPath)
-		return nil, 0, fmt.Errorf("write: %w", copyErr)
-	}
-	if closeErr != nil {
-		_ = os.Remove(outPath)
-		return nil, 0, fmt.Errorf("close: %w", closeErr)
-	}
-
-	info, statErr := os.Stat(outPath)
-	if statErr != nil {
-		return nil, 0, fmt.Errorf("stat: %w", statErr)
-	}
-
-	entry := &CleanupAttachmentEntry{
-		ID:          att.ID,
-		Name:        att.Name,
-		Size:        att.Size,
-		ContentType: att.ContentType,
-		CreatedOn:   att.CreatedOn,
-		EntityType:  att.InferredEntityType(),
-		File:        filename,
-		Compressed:  compress,
-	}
-	switch entry.EntityType {
-	case "case":
-		entry.EntityID = att.CaseID
-	case "run":
-		entry.EntityID = att.RunID
-	case "plan":
-		entry.EntityID = att.PlanID
-	case "plan_entry":
-		entry.ParentPlanID = att.PlanID
-		entry.EntryID = att.EntryID
-	case "result":
-		entry.EntityID = att.ResultID
-	case "test":
-		entry.EntityID = att.TestID
-	}
-	_ = written // size is taken from final file (post-compression)
-	return entry, info.Size(), nil
+	return BackupAttachmentsForCleanupV2(ctx, api, store, snapID, atts, BackupOptions{
+		Compress:    compress,
+		Concurrency: 1,
+	})
 }
 
 // CleanupRollbackResult holds the per-entry rollback outcome plus an
@@ -205,10 +99,115 @@ type CleanupRollbackFailure struct {
 var ErrCleanupRollbackUnsupportedEntity = errors.New("attachment entity type does not support rollback re-upload")
 
 // RestoreCleanupAttachments re-uploads every attachment recorded in the
-// snapshot's data.json to its original parent entity. When dryRun is
-// true, no API calls are performed but the result still reports how
-// many entries would be processed.
+// snapshot. It prefers the v2 mapping.json layout (which carries
+// SHA-256 + Restorable flag) and falls back to the v1 data.json layout
+// for snapshots taken before the v2 schema was introduced.
+//
+// When dryRun is true, no API calls are performed but the result still
+// reports how many entries would be processed.
 func RestoreCleanupAttachments(
+	ctx context.Context,
+	api CleanupAttachmentsAPI,
+	store *Store,
+	snapID string,
+	dryRun bool,
+) (*CleanupRollbackResult, error) {
+	mapping, err := LoadMapping(store, snapID)
+	if err == nil && mapping.SchemaVersion >= MappingSchemaVersion {
+		return restoreFromMapping(ctx, api, store, snapID, mapping, dryRun)
+	}
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		// A real I/O error reading mapping.json is not the same as
+		// "missing"; surface it instead of silently falling back.
+		var pathErr *os.PathError
+		if !errors.As(err, &pathErr) {
+			return nil, fmt.Errorf("load mapping.json: %w", err)
+		}
+	}
+	log.Info("legacy snapshot detected; reference rewrite skipped",
+		zap.String("snap_id", snapID))
+	return restoreFromLegacyData(ctx, api, store, snapID, dryRun)
+}
+
+// restoreFromMapping is the v2 restore path. Each successful re-upload
+// updates the corresponding MappingEntry.NewID and the mapping is
+// persisted again so a partial restore retains the assignments
+// already made.
+//
+//nolint:gocyclo // Restore loop with branching by Restorable + dryRun + per-entry fallback is more readable kept inline.
+func restoreFromMapping(
+	ctx context.Context,
+	api CleanupAttachmentsAPI,
+	store *Store,
+	snapID string,
+	mapping *Mapping,
+	dryRun bool,
+) (*CleanupRollbackResult, error) {
+	res := &CleanupRollbackResult{Mapping: map[int64]int64{}}
+	if len(mapping.Entries) == 0 {
+		return res, nil
+	}
+	dir := filepath.Join(store.SnapDir(snapID), cleanupFilesDir)
+	for i := range mapping.Entries {
+		entry := &mapping.Entries[i]
+		if err := ctx.Err(); err != nil {
+			return res, err
+		}
+		if !entry.Restorable {
+			res.Skipped++
+			res.Failures = append(res.Failures, CleanupRollbackFailure{
+				OriginalID: entry.OriginalID,
+				EntityType: entry.EntityType,
+				EntityID:   entry.EntityID,
+				Error:      entry.NotRestorable,
+			})
+			continue
+		}
+		if dryRun {
+			res.Restored++
+			continue
+		}
+		legacy := CleanupAttachmentEntry{
+			ID:           entry.OriginalID,
+			Name:         entry.Name,
+			EntityType:   entry.EntityType,
+			EntityID:     entry.EntityID,
+			ParentPlanID: entry.ParentPlanID,
+			EntryID:      entry.EntryID,
+			File:         entry.File,
+			Compressed:   entry.Compressed,
+		}
+		newID, err := restoreOneCleanup(ctx, api, dir, legacy)
+		if err != nil {
+			res.Failed++
+			res.Failures = append(res.Failures, CleanupRollbackFailure{
+				OriginalID: entry.OriginalID,
+				EntityType: entry.EntityType,
+				EntityID:   entry.EntityID,
+				Error:      err.Error(),
+			})
+			continue
+		}
+		entry.NewID = newID
+		res.Mapping[entry.OriginalID] = newID
+		res.Restored++
+	}
+	if !dryRun {
+		// Persist updated NewIDs even on partial failure so a re-run
+		// after the operator fixes a broken parent can pick up where
+		// we left off.
+		if err := SaveMapping(store, snapID, mapping); err != nil {
+			log.Warn("failed to persist updated mapping.json after restore",
+				zap.String("snap_id", snapID),
+				zap.Error(err))
+		}
+	}
+	return res, nil
+}
+
+// restoreFromLegacyData implements the v1 path used when only data.json
+// exists (snapshots taken before the v2 schema rolled out).
+func restoreFromLegacyData(
 	ctx context.Context,
 	api CleanupAttachmentsAPI,
 	store *Store,

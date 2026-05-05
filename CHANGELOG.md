@@ -9,7 +9,42 @@
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Added — `attachments cleanup`: chunked execution, checkpoints, resume
+
+- **Chunked plan-build with crash-safe checkpoints.** Long entity-walk
+  scans across many projects are now broken into chunks of
+  `--chunk-size` (default `10`). After every chunk the run state is
+  flushed to `~/.gotr/cache/cleanup-attachments/<RUN_ID>/checkpoint.json`
+  plus `partial-plan.json` via `tmp + fsync + rename`, so a Ctrl-C,
+  network failure, or OS crash leaves a recoverable artifact instead
+  of a half-built plan. Closes [#73].
+- **`--resume <RUN_ID>`** picks up an interrupted run, restoring the
+  original scope, filters, scan strategy, limit, and chunk size from
+  the checkpoint and only retrying projects in `pending`/`retry_pending`.
+  Mutually exclusive with scope/filter flags — those are restored from
+  the checkpoint, not re-supplied. Filter mismatches abort with a
+  `checkpoint mismatch` error rather than silently mixing two filters.
+- **`--scan-timeout-per-project <dur>`** (default `10m`) caps each
+  per-project scan; on timeout the project is recorded as `timeout`
+  in the checkpoint and the run continues. `--resume` re-tries it.
+  Pass `0` to disable the deadline.
+- **`--list-checkpoints`** prints a table of all known checkpoints
+  (RUN_ID, started, updated, totals, done, pending, failed, timeout)
+  and the `--resume` hint. Mutually exclusive with every other flag.
+- **Auto-cleanup on success.** A run that completes with every project
+  in `done` automatically removes its checkpoint directory; otherwise
+  the artifacts are preserved and a `WARN:` summary is printed.
+- **Per-chunk progress.** `INFO: chunk N/M done — running totals: X
+  projects with hits, Y attachments, Z bytes` is logged to stderr
+  after every flushed chunk.
+
+### Documentation
+
+- New "Recovery & resume" section in `docs/en/guides/commands/attachments.md`
+  and `docs/ru/guides/commands/attachments.md` covering run-id format,
+  checkpoint location, atomic write semantics, and the resume contract.
+
+[#73]: https://github.com/Korrnals/gotr/issues/73
 
 ---
 

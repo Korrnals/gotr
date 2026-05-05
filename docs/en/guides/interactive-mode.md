@@ -215,7 +215,9 @@ line are never overwritten by the wizard.
 gotr attachments cleanup
 # → Scope: All projects / Specific projects
 #   (specific) → Project IDs (comma-separated):
-# → Entity types (comma-separated, default: result):
+# → Parent kinds preset:
+#     all (case,run,plan,plan_entry,result,test)  ← default, prints ⚠️ warning
+#     case · run · plan,plan_entry · result,test · custom (comma-separated)
 # → Older than (e.g. 90d, 3M, 1y):
 # → Concurrency:
 # → 📦 Create snapshot before deletion? (recommended) [Y/n]

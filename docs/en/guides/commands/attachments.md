@@ -162,6 +162,10 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | `--concurrency <n>` | Parallel delete workers (default `4`). |
 | `--limit <n>` | Cap total attachments processed across all projects. |
 | `--scan-strategy` | How to enumerate attachments: `auto` (default), `project`, `entities`. See **Compatibility** below. |
+| `--chunk-size <n>` | Number of projects scanned per chunk; the checkpoint file is flushed atomically after every chunk. Default `10`. See **Recovery & resume** below. |
+| `--scan-timeout-per-project <dur>` | Per-project scan deadline (default `10m`). On timeout, that project is marked `timeout` in the checkpoint and the run continues; resume re-tries it. Pass `0` to disable. |
+| `--resume <RUN_ID>` | Resume an interrupted run from its checkpoint. Cannot be combined with scope/filter flags — they are restored from the checkpoint. |
+| `--list-checkpoints` | Print all known checkpoints and exit. Mutually exclusive with every other flag. |
 | `--no-report` | Skip emitting the deletion-audit report (Markdown + JSON + CSV + PDF). See **Deletion-audit report** below. |
 | `--force` | Skip the final confirmation prompt. |
 
@@ -210,6 +214,20 @@ Dry-run reports carry a `DRY-RUN` marker in the Markdown title and `dry_run=true
 Pass `--no-report` to suppress the four files entirely (useful for CI flows that already capture stdout).
 
 ✅ **Why this matters:** bulk cleanup without a snapshot is irreversible. The default flow keeps a one-week recovery window so you can roll back any over-eager deletion before the snapshot is GC'd.
+
+**🔁 Recovery & resume (since v3.6.0):**
+
+Long entity-walk scans across many projects can fail mid-flight (network blip, Ctrl-C, OS reboot). To make those runs recoverable, `cleanup` chunks the project set and persists progress between chunks:
+
+- **Run id:** every run gets a stable id (e.g. `20260324T204109-3f9a12`) printed once at start: `INFO: cleanup run-id=<RUN_ID> (resume with --resume <RUN_ID>)`.
+- **Checkpoint location:** `~/.gotr/cache/cleanup-attachments/<RUN_ID>/checkpoint.json` plus `partial-plan.json`.
+- **Chunking:** projects are processed in groups of `--chunk-size` (default `10`). After each chunk finishes, both files are written via `tmp + fsync + rename` (atomic, crash-safe).
+- **Per-project timeout:** `--scan-timeout-per-project` (default `10m`) caps each project's scan. Timed-out and failed projects are recorded in the checkpoint and skipped from the produced plan, but the run continues.
+- **Clean completion:** when every project reaches `done`, the checkpoint directory is removed automatically. Otherwise it is preserved with a `WARN:` summary listing the affected project ids.
+- **Listing checkpoints:** `gotr attachments cleanup --list-checkpoints` prints a table (RUN_ID, started, updated, totals, done, pending, failed, timeout) and the resume hint.
+- **Resuming:** `gotr attachments cleanup --resume <RUN_ID>` restores the original scope, filters, scan strategy, limit, and chunk size from the checkpoint and only retries projects in `pending`/`retry_pending` (failures and timeouts). The resume command rejects mutually-exclusive scope/filter flags — change the cutoff or scope by starting a fresh run instead.
+
+> The `--resume` invocation must match the original filter set. If the cached `FilterSnapshot` no longer matches what the CLI would build, the run aborts with `checkpoint mismatch` rather than silently mixing two filters.
 
 ---
 

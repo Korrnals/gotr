@@ -229,6 +229,24 @@ Long entity-walk scans across many projects can fail mid-flight (network blip, C
 
 > The `--resume` invocation must match the original filter set. If the cached `FilterSnapshot` no longer matches what the CLI would build, the run aborts with `checkpoint mismatch` rather than silently mixing two filters.
 
+**📊 Progress reporting (since v3.6.1):**
+
+The scan phase emits a 5-line live block on stderr when stderr is a TTY (and `--quiet` is not set):
+
+```
+Scanning attachments — entity
+   project 4/12  →  Demo project
+   phase: cases      ████░░░░░░ 28 / 70
+   found: 137  eligible: 89  size: 24.50 MiB
+   ⏱ 1m12s  ETA ~3m05s
+```
+
+- **Phase progression:** `project → suites → cases → runs → plans → tests`. Each phase shows its own done/total counter and a 10-character bar; counts come from the API responses (number of suites, cases per suite, runs, plans, tests per run).
+- **Throttling:** progress events are throttled to ~50 ms to avoid stalling the scanner during high-concurrency phases.
+- **Non-TTY / `--quiet`:** the multiline UI is suppressed and the command falls back to `INFO: project X/Y done: …` and `INFO: chunk N/M done — running totals: …` lines so logs stay grep-friendly in CI.
+- **Per-project × per-entity-type table:** after the executor finishes, a breakdown table is printed under `Breakdown by project × entity type:` with one row per project and per-entity-type columns (`case run plan plan_entry result test`) plus a `Total` / `Size` per row and a `Total` footer.
+- **Final summary block:** a `Final summary:` section follows with the absolute path of every audit report file, the snapshot id and absolute path under `~/.gotr/snaps/cleanup-attachments/<id>/`, and a `Next steps:` block with copy-pasteable rollback (`gotr snap rollback <id>`) and resume (`gotr attachments cleanup --resume <run-id>`) commands.
+
 ---
 
 ## ⚡ Quick Start (30 seconds)

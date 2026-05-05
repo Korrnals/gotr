@@ -11,6 +11,40 @@
 
 ## [Unreleased]
 
+### Added — `attachments cleanup`: прогресс-UI и подробная сводка по сущностям
+
+- **Многострочный live-UI сканирования.** Однострочный спиннер заменён
+  5-строчным прогресс-блоком в stderr (если stderr — TTY и не задан
+  `--quiet`): project N/M, текущая фаза
+  (`project → suites → cases → runs → plans → tests`) с 10-символьным
+  баром и счётчиком done/total, бегущие итоги (`found`, `eligible`,
+  размер) и elapsed + ETA. События прогресса агрегируются раз в
+  ~50 мс, чтобы не тормозить сканер на высоких уровнях параллелизма.
+  Закрывает [#72].
+- **`INFO`-фолбэк** для не-TTY / `--quiet`: построчные
+  `INFO: project X/Y done: …` и `INFO: chunk N/M done — running totals: …`
+  сохраняют те же данные в виде, удобном для grep в CI-логах.
+- **Таблица «проект × тип сущности»** печатается после удаления
+  (`Breakdown by project × entity type:`) со столбцами
+  `case run plan plan_entry result test`, итоговой Total/Size по строке
+  и финальной строкой-агрегатом по всему запуску.
+- **Финальный блок** перечисляет абсолютные пути всех файлов
+  audit-отчёта, snapshot id и абсолютный путь
+  `~/.gotr/snaps/cleanup-attachments/<id>/`, а также блок `Next steps:`
+  с готовыми командами для отката (`gotr snap rollback <id>`) и
+  возобновления (`gotr attachments cleanup --resume <run-id>`).
+- Новый интерфейс `internal/cleanup.ScanProgress` и capability
+  `ScanProgressReceiver` позволяют `ProjectScanner` и `EntityScanner`
+  испускать события по фазам, не утягивая UI в слой сканирования.
+  Новые точки входа: `BuildPlanWithScannerProgress` и
+  `ChunkConfig.Progress`.
+- Новый компонент `internal/ui.MultilineStatus` с TTY-aware рендером
+  (`golang.org/x/term`), перерисовкой ANSI cursor-up, детерминированным
+  хелпером `RenderForTest` для golden-тестов и форматтерами
+  `HumanBytes`/`fmtDurationShort`.
+
+[#72]: https://github.com/Korrnals/gotr/issues/72
+
 ### Added — `attachments cleanup`: chunked-выполнение, чекпоинты, resume
 
 - **Сборка плана чанками с crash-safe чекпоинтами.** Длительные

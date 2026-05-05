@@ -160,6 +160,8 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | `--snapshot-retention <dur>` | Override snapshot TTL (default `7d`; honored by `gotr snap gc`). |
 | `--max-size-gb <n>` | Abort if estimated snapshot exceeds this size unless `--force`. |
 | `--concurrency <n>` | Parallel delete workers (default `4`). |
+| `--backup-concurrency <n>` | Worker count for snapshot downloads (default `0` = auto: `min(8, --concurrency)`). Since v3.6.0. |
+| `--skip-references` | Disable the markdown reference scan during backup. References that point at the deleted attachments will not be rewritten on restore. Use only when the entity API is unhealthy. Since v3.6.0. |
 | `--limit <n>` | Cap total attachments processed across all projects. |
 | `--scan-strategy` | How to enumerate attachments: `auto` (default), `project`, `entities`. See **Compatibility** below. |
 | `--chunk-size <n>` | Number of projects scanned per chunk; the checkpoint file is flushed atomically after every chunk. Default `10`. See **Recovery & resume** below. |
@@ -186,9 +188,34 @@ When the auto-probe falls back, an `INFO:` line is printed to stderr explaining 
 ```bash
 gotr snap list --category cleanup-attachments
 gotr snap rollback <snap-id>
+
+# Verify SHA-256 of every snapshot file before restore (since v3.6.0).
+gotr snap rollback <snap-id> --verify-integrity
+
+# Skip the markdown reference rewrite step (since v3.6.0).
+gotr snap rollback <snap-id> --skip-references
 ```
 
 ⚠️ TestRail's API has no `add_attachment_to_test` endpoint, so attachments whose only parent is a `test` are reported as **Skipped** during rollback — clean them up only when re-upload of test-bound binaries is acceptable.
+
+**🔐 Snapshot completeness (since v3.6.0):**
+
+Every cleanup snapshot now ships with the artifacts required to fully reverse the deletion, including the markdown bodies that referenced the deleted binaries:
+
+```
+<snap_id>/
+├── meta.json            # snapshot metadata (existed before v3.6.0)
+├── data.json            # legacy v1 ledger, kept for back-compat
+├── mapping.json         # v2 ledger: per-attachment SHA-256 + restorability flag
+├── references.json      # markdown URLs that pointed at the deleted attachments
+├── integrity.json       # per-file SHA-256 + merkle-style root over the whole snapshot
+└── files/<id>(.gz)      # binary payloads, optionally gzip-compressed
+```
+
+- **`mapping.json`** carries one entry per attachment: original ID, on-disk SHA-256, parent entity, and a `restorable` flag (`false` for test-bound attachments, since TestRail has no `add_attachment_to_test` endpoint). Schema is versioned via `schema_version`; v1 snapshots without `mapping.json` continue to restore via the legacy `data.json` path.
+- **`references.json`** is the index of every markdown URL pointing at one of the deleted attachments, scanned across `case`, `run`, `plan`, and `milestone` description fields plus `case.custom_steps_separated`. On restore, numeric IDs are rewritten in place via `update_case`/`update_run`/`update_plan`/`update_milestone`. References inside `result.comment` and md5-only URLs are reported as **not rewritten** because TestRail has no `update_result` endpoint and we cannot recover the new md5 server-side.
+- **`integrity.json`** records SHA-256 for every file inside the snapshot directory and a merkle-style root computed over the sorted `<path>|<sha256>` lines. Pass `--verify-integrity` to `gotr snap rollback` to re-verify before any API call.
+- Backup downloads are parallelized via `--backup-concurrency`; the SHA-256 is computed inline so no second pass is needed.
 
 **📑 Deletion-audit report (since v3.5.1):**
 

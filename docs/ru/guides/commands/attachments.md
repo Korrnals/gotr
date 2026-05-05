@@ -160,6 +160,8 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | `--snapshot-retention <dur>` | Переопределить TTL снапшота (по умолчанию `7d`; учитывается в `gotr snap gc`). |
 | `--max-size-gb <n>` | Прервать запуск, если оценка размера снапшота больше указанного значения (если не задан `--force`). |
 | `--concurrency <n>` | Количество параллельных воркеров удаления (по умолчанию `4`). |
+| `--backup-concurrency <n>` | Воркеры скачивания снапшота (по умолчанию `0` = авто: `min(8, --concurrency)`). С v3.6.0. |
+| `--skip-references` | Отключить сканирование markdown-ссылок при бэкапе. Ссылки на удаляемые вложения не будут переписаны при откате. С v3.6.0. |
 | `--limit <n>` | Ограничение общего числа обрабатываемых вложений по всем проектам. |
 | `--scan-strategy` | Стратегия перечисления вложений: `auto` (по умолчанию), `project`, `entities`. См. раздел **Совместимость** ниже. |
 | `--chunk-size <n>` | Сколько проектов сканируется в одном чанке; чекпойнт записывается атомарно после каждого чанка. По умолчанию `10`. См. раздел **Восстановление и resume** ниже. |
@@ -186,9 +188,34 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 ```bash
 gotr snap list --category cleanup-attachments
 gotr snap rollback <snap-id>
+
+# Проверить SHA-256 каждого файла снапшота перед откатом (с v3.6.0).
+gotr snap rollback <snap-id> --verify-integrity
+
+# Пропустить шаг переписывания markdown-ссылок (с v3.6.0).
+gotr snap rollback <snap-id> --skip-references
 ```
 
 ⚠️ В TestRail API нет endpoint `add_attachment_to_test`, поэтому вложения, родителем которых является только `test`, при откате помечаются как **Skipped** — учитывайте это, если такие вложения важны.
+
+**🔐 Полнота снапшота (с v3.6.0):**
+
+Каждый снапшот cleanup теперь содержит артефакты, необходимые для полного отката удаления, включая markdown-тексты, ссылавшиеся на удалённые бинарники:
+
+```
+<snap_id>/
+├── meta.json            # метаданные снапшота (существовал до v3.6.0)
+├── data.json            # legacy v1 ledger, оставлен для обратной совместимости
+├── mapping.json         # v2 ledger: SHA-256 + флаг restorable на каждое вложение
+├── references.json      # markdown-URL'ы, ссылавшиеся на удалённые вложения
+├── integrity.json       # SHA-256 на файл + merkle-style root по всему снапшоту
+└── files/<id>(.gz)      # двоичные данные, опционально gzip-сжатые
+```
+
+- **`mapping.json`** содержит запись на каждое вложение: исходный ID, SHA-256 файла на диске, родительская сущность и флаг `restorable` (`false` для test-bound вложений, поскольку TestRail не имеет endpoint `add_attachment_to_test`). Схема версионируется через `schema_version`; v1-снапшоты без `mapping.json` восстанавливаются по legacy-пути через `data.json`.
+- **`references.json`** — индекс всех markdown-URL'ов, ссылающихся на удаляемые вложения. Сканируются поля описаний `case`, `run`, `plan`, `milestone` плюс `case.custom_steps_separated`. При откате числовые ID переписываются на месте через `update_case`/`update_run`/`update_plan`/`update_milestone`. Ссылки внутри `result.comment` и URL'ы только с md5 помечаются как **не переписанные**, поскольку TestRail не имеет endpoint `update_result`, а новый md5 сервер вычисляет на стороне TestRail при загрузке.
+- **`integrity.json`** содержит SHA-256 каждого файла снапшота и merkle-style root, считаемый по отсортированным строкам `<path>|<sha256>`. Передайте `--verify-integrity` в `gotr snap rollback`, чтобы выполнить сверку до любого API-вызова.
+- Скачивание бинарников при бэкапе распараллелено через `--backup-concurrency`; SHA-256 считается на лету, без второго прохода.
 
 **📑 Аудит-отчёт об удалении (с v3.5.1):**
 

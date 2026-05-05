@@ -9,6 +9,42 @@
 
 ## [Unreleased]
 
+### Added — `attachments cleanup`: snapshot completeness (v2 layout)
+
+- **SHA-256 integrity per attachment.** Every downloaded binary is
+  hashed inline during streaming; the digest is persisted in
+  `mapping.json` and verified at restore.
+- **`mapping.json` (schema_version=2).** Versioned, incremental ledger
+  written atomically after each successful download. Records original
+  ID, sha256, size, parent entity, file path, compressed flag, and the
+  `restorable` boolean (test-bound attachments are flagged
+  non-restorable with reason).
+- **`references.json` sidecar.** During backup, markdown fields of the
+  referencing entities (case `custom_steps*`, `comment`, `description`;
+  result `comment`; run/plan/milestone `description`/`comment`) are
+  scanned for `index.php?/attachments/get/<id|md5>` links. Matches are
+  persisted with their dotted field path so restore can rewrite them.
+- **`integrity.json`.** Top-level Merkle index over `data.json`,
+  `mapping.json`, `references.json` and every binary under `files/`.
+  Restore recomputes and verifies the root before any re-upload.
+- **Reference rewrite on rollback.** After re-uploading attachments,
+  the rollback fetches each affected case/result/run/plan/milestone,
+  substitutes `attachments/get/<old_id>` → `<new_id>` in the recorded
+  fields, and pushes the update. Numeric IDs are rewritten; md5-only
+  refs are reported `not_rewritten`.
+- **`--backup-concurrency N`** flag (default `min(8, --concurrency)`):
+  parallelises download+hash+write while a single committer goroutine
+  drains journal entries and persists `mapping.json` atomically.
+- **`--skip-references`** flag on both backup and `gotr snap rollback`:
+  short-circuits both the reference scan and the restore-time rewrite.
+- **`--verify-integrity`** flag on rollback: recomputes the Merkle root
+  before re-uploading; aborts on mismatch unless `--force`.
+- **Backward compat.** Old snapshots (only `data.json`, no
+  `mapping.json`/`references.json`/`integrity.json`) restore via the
+  legacy v1 path; an `INFO` line announces the downgrade. New
+  snapshots set `meta.json.schema_version = 2`.
+- Closes [#74].
+
 ### Added — `attachments cleanup`: progress UI and per-entity-type summary
 
 - **Multiline live scan UI.** The single-line spinner is replaced by a

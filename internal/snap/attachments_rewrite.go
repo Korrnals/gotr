@@ -50,6 +50,8 @@ type ReferenceRewriteAPI interface {
 // resolved via the parent plan, milestones and tests are not walked
 // here (milestones don't appear as attachment parents in practice; tests
 // are non-restorable anyway).
+//
+//nolint:gocyclo // Per-attachment entity-type dispatch is more readable as a single switch than fan-out helpers.
 func ScanReferencesForAttachments(
 	ctx context.Context,
 	api ReferenceFetchAPI,
@@ -128,7 +130,7 @@ func ScanReferencesForAttachments(
 	return out
 }
 
-// ReferenceRewriteResult summarises the per-entity rewrite phase.
+// ReferenceRewriteResult summarizes the per-entity rewrite phase.
 type ReferenceRewriteResult struct {
 	// EntitiesRewritten is the count of entities that received an
 	// Update* call with at least one substituted reference.
@@ -162,8 +164,6 @@ type ReferenceRewriteFailure struct {
 //
 // Best-effort: per-entity errors are recorded and execution
 // continues. Returns nil error only on context cancellation.
-//
-//nolint:gocyclo // Per-entity dispatch (case/run/plan/milestone) is more readable as a single switch than fan-out helpers.
 func RewriteReferences(
 	ctx context.Context,
 	api ReferenceRewriteAPI,
@@ -224,6 +224,7 @@ func fieldSet(refsList []refs.Reference) map[string]bool {
 	return out
 }
 
+//nolint:gocyclo // Per-field branching (preconds/steps/expected/refs/steps_separated) is clearer kept inline than split.
 func rewriteOneCase(ctx context.Context, api ReferenceRewriteAPI, e *refs.EntityRefs, idMap map[int64]int64, res *ReferenceRewriteResult) {
 	c, err := api.GetCase(ctx, e.EntityID)
 	if err != nil {

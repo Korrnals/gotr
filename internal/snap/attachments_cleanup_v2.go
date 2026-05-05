@@ -68,7 +68,7 @@ type BackupOptions struct {
 	// Compress enables gzip compression on every stored binary.
 	Compress bool
 	// Concurrency is the number of parallel downloads. Values <= 0
-	// fall back to 1 (sequential) which preserves the v1 behaviour.
+	// fall back to 1 (sequential) which preserves the v1 behavior.
 	Concurrency int
 }
 

@@ -15,7 +15,7 @@ import (
 //
 // Returns the new text, the number of successful substitutions, and
 // the number of refs left untouched (md5 or unmapped numeric IDs).
-func Rewrite(text string, idMap map[int64]int64) (out string, rewritten int, skipped int) {
+func Rewrite(text string, idMap map[int64]int64) (out string, rewritten, skipped int) {
 	if text == "" {
 		return text, 0, 0
 	}

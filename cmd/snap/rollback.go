@@ -65,6 +65,15 @@ Subcommands:
 			// Parse options.
 			opts := snaplib.RollbackOpts{}
 			opts.DryRun, _ = cmd.Flags().GetBool("dry-run")
+			opts.SkipReferences, _ = cmd.Flags().GetBool("skip-references")
+			opts.VerifyIntegrity, _ = cmd.Flags().GetBool("verify-integrity")
+			// The cleanup-attachments rollback can rewrite markdown
+			// references in case/run/plan/milestone bodies; the *HTTPClient
+			// already implements every required Update*. Wiring it
+			// unconditionally is safe — the rewrite phase is a no-op when
+			// references.json is absent or the snapshot is for another
+			// entity type.
+			opts.RewriteAPI = cli
 
 			if raw, _ := cmd.Flags().GetString("entity-ids"); raw != "" {
 				ids, err := parseEntityIDs(raw)
@@ -114,6 +123,8 @@ Subcommands:
 
 	cmd.Flags().Bool("dry-run", false, "Preview changes without applying them")
 	cmd.Flags().String("entity-ids", "", "Limit rollback to specific entity IDs (comma-separated)")
+	cmd.Flags().Bool("skip-references", false, "Skip markdown reference rewrite during attachments-cleanup rollback")
+	cmd.Flags().Bool("verify-integrity", false, "Verify SHA-256 of every snapshot file against integrity.json before restore")
 	cmd.Flags().BoolP("yes", "y", false, "Skip the interactive confirmation prompt")
 
 	cmd.AddCommand(newRollbackListCmd(getClient))

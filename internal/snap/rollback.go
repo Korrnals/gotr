@@ -1182,6 +1182,7 @@ func buildSyncPreview(sd *SyncData, filterIDs []int64) []DiffEntry {
 // re-upload, so the per-entry mapping is recorded in the rollback log.
 // Attachments bound to a "test" entity cannot be restored — TestRail has
 // no add_attachment_to_test endpoint — and are reported as skipped.
+//nolint:gocyclo // Two-phase restore (binaries + reference rewrite) with three branching outcomes (full success, partial, failure) plus optional integrity verify is clearer kept inline.
 func rollbackAttachmentsCleanup(ctx context.Context, api RollbackAPI, store *Store, meta *Meta, result *RollbackResult, opt RollbackOpts) error {
 	if meta.Operation != OpDelete {
 		return fmt.Errorf("unsupported operation for attachments rollback: %q (only delete is supported)", meta.Operation)

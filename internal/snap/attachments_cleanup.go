@@ -133,8 +133,6 @@ func RestoreCleanupAttachments(
 // updates the corresponding MappingEntry.NewID and the mapping is
 // persisted again so a partial restore retains the assignments
 // already made.
-//
-//nolint:gocyclo // Restore loop with branching by Restorable + dryRun + per-entry fallback is more readable kept inline.
 func restoreFromMapping(
 	ctx context.Context,
 	api CleanupAttachmentsAPI,

@@ -77,6 +77,8 @@ as Skipped.`,
 	cmd.Flags().String("snap-label", "", "Optional human-readable label for the snapshot")
 	cmd.Flags().Float64("max-size-gb", 0, "Refuse if the snapshot would exceed N GB (0 = no cap); use --force to override")
 	cmd.Flags().Bool("compress", false, "Gzip-compress stored binaries inside the snapshot")
+	cmd.Flags().Int("backup-concurrency", 0, "Worker count for snapshot downloads (0 = auto: min(8, --concurrency))")
+	cmd.Flags().Bool("skip-references", false, "Disable markdown reference scan; restore will not rewrite case/run/plan/milestone bodies")
 	cmd.Flags().Bool("force", false, "Bypass --max-size-gb and the interactive confirmation prompt")
 	cmd.Flags().String("scan-strategy", "auto", "How to enumerate attachments: auto|project|entities. auto probes get_attachments_for_project once and falls back to a suites→cases/runs/plans walk on TestRail Server < 7.5.")
 	cmd.Flags().Bool("no-report", false, "Skip emitting the deletion-audit report under ~/.gotr/reports/cleanup-attachments/")
@@ -104,6 +106,8 @@ type cleanupOptions struct {
 	SnapshotLabel     string
 	MaxSizeGB         float64
 	Compress          bool
+	BackupConcurrency int
+	SkipReferences    bool
 	Force             bool
 	ScanStrategy      string
 	OlderThanRaw      string
@@ -215,13 +219,15 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		}
 
 		execOpts := cleanup.ExecuteOptions{
-			DryRun:           opts.DryRun,
-			SkipSnapshot:     opts.SkipSnapshot,
-			SnapshotLabel:    opts.SnapshotLabel,
-			CompressBinaries: opts.Compress,
-			Concurrency:      opts.Concurrency,
-			CLIArgs:          cliArgsFor(cmd),
-			ServerURL:        snap.CurrentServerURL(),
+			DryRun:            opts.DryRun,
+			SkipSnapshot:      opts.SkipSnapshot,
+			SnapshotLabel:     opts.SnapshotLabel,
+			CompressBinaries:  opts.Compress,
+			Concurrency:       opts.Concurrency,
+			BackupConcurrency: opts.BackupConcurrency,
+			SkipReferences:    opts.SkipReferences,
+			CLIArgs:           cliArgsFor(cmd),
+			ServerURL:         snap.CurrentServerURL(),
 		}
 
 		quiet, _ := cmd.Flags().GetBool("quiet")
@@ -266,6 +272,8 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 	opts.SnapshotLabel, _ = cmd.Flags().GetString("snap-label")
 	opts.MaxSizeGB, _ = cmd.Flags().GetFloat64("max-size-gb")
 	opts.Compress, _ = cmd.Flags().GetBool("compress")
+	opts.BackupConcurrency, _ = cmd.Flags().GetInt("backup-concurrency")
+	opts.SkipReferences, _ = cmd.Flags().GetBool("skip-references")
 	opts.Force, _ = cmd.Flags().GetBool("force")
 	opts.ScanStrategy, _ = cmd.Flags().GetString("scan-strategy")
 	opts.NoReport, _ = cmd.Flags().GetBool("no-report")

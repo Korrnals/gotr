@@ -42,7 +42,7 @@ type EntityRefs struct {
 	Refs       []Reference `json:"refs"`
 }
 
-// attachmentURLRe matches every flavour of TestRail attachment URL we
+// attachmentURLRe matches every flavor of TestRail attachment URL we
 // expect inside markdown text: absolute (https://host/...), root-relative
 // (/index.php?...) and bare (index.php?...). The capture group returns
 // either a numeric ID or a 32-character hex MD5. A single regex avoids

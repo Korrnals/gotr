@@ -4,8 +4,8 @@
 package snap
 
 import (
-	"context"
 	"compress/gzip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"

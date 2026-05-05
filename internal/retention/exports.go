@@ -51,7 +51,7 @@ func (r *ExportResult) Summary() string {
 
 // CleanupExports prunes files under baseDir (recursively) according to
 // policy. Only regular files with bundle-like extensions are considered:
-// .zip, .tar.gz, .pdf, .md, .json. Empty directories are not removed.
+// .zip, .tar.gz, .pdf, .md, .json, .csv. Empty directories are not removed.
 func CleanupExports(baseDir string, policy Policy, now time.Time) (*ExportResult, error) {
 	res := &ExportResult{DryRun: policy.DryRun}
 	if !policy.Enabled {
@@ -111,7 +111,7 @@ func exportLikeExt(name string) bool {
 		return true
 	}
 	switch filepath.Ext(lower) {
-	case ".zip", ".pdf", ".md", ".json":
+	case ".zip", ".pdf", ".md", ".json", ".csv":
 		return true
 	}
 	return false

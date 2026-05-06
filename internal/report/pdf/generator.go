@@ -276,16 +276,127 @@ func sectionHeader(pdf *fpdf.Fpdf, title string) {
 }
 
 func renderKeyValue(pdf *fpdf.Fpdf, rows [][2]string) {
-	keyWidth := 55.0
+	kvRows := make([]kvRow, len(rows))
+	for i, r := range rows {
+		kvRows[i] = kvRow{Key: r[0], Value: r[1], Kind: detectKVKind(r[1])}
+	}
+	renderKVTyped(pdf, kvRows)
+}
+
+// kvRow is a single key→value row used by the styled renderer.
+type kvRow struct {
+	Key   string
+	Value string
+	// Kind drives the value styling. Recognized values:
+	//   ""    — plain text (default)
+	//   "cmd" — shell command (italic, faint yellow background)
+	//   "path"— filesystem path (italic, faint grey background)
+	//   "url" — URL (blue text)
+	// Any other value is treated as plain text.
+	Kind string
+}
+
+// renderKVTyped renders a styled key/value block:
+//   - zebra-striped row backgrounds for readability,
+//   - key column rendered in bold with a slightly darker accent fill,
+//   - value column rendered with style hints based on Kind,
+//   - long values are wrapped onto multiple lines and the row height
+//     grows to fit them.
+func renderKVTyped(pdf *fpdf.Fpdf, rows []kvRow) {
+	const (
+		keyWidth = 58.0
+		lineH    = 6.0
+		padX     = 2.0
+	)
 	valWidth := contentWidth - keyWidth
-	pdf.SetFont(FontFamily, "", 10)
-	for _, row := range rows {
-		pdf.SetFont(FontFamily, "B", 10)
-		pdf.CellFormat(keyWidth, lineHeight, row[0], "", 0, "L", false, 0, "")
+
+	// Disable auto-page-break so rows don't get split mid-cell.
+	prevAuto, prevMargin := pdf.GetAutoPageBreak()
+	pdf.SetAutoPageBreak(false, prevMargin)
+	defer pdf.SetAutoPageBreak(prevAuto, prevMargin)
+
+	for i, row := range rows {
+		// Pre-compute wrapped value lines and row height.
 		pdf.SetFont(FontFamily, "", 10)
-		pdf.CellFormat(valWidth, lineHeight, row[1], "", 1, "L", false, 0, "")
+		valLines := pdf.SplitLines([]byte(row.Value), valWidth-padX*2)
+		if len(valLines) == 0 {
+			valLines = [][]byte{[]byte("")}
+		}
+		rowH := float64(len(valLines)) * lineH
+
+		// Manual page-break to keep the whole row intact.
+		_, pageH := pdf.GetPageSize()
+		_, _, _, bottomMargin := pdf.GetMargins()
+		if pdf.GetY()+rowH > pageH-bottomMargin {
+			pdf.AddPage()
+		}
+
+		startX := pdf.GetX()
+		startY := pdf.GetY()
+
+		// Zebra stripe for the entire row (very light grey on every
+		// other row).
+		if i%2 == 1 {
+			pdf.SetFillColor(247, 247, 250)
+			pdf.Rect(startX, startY, contentWidth, rowH, "F")
+		}
+
+		// Key column accent fill (slightly darker than the zebra).
+		pdf.SetFillColor(232, 234, 240)
+		pdf.Rect(startX, startY, keyWidth, rowH, "F")
+
+		// Key text — vertically centered when the row is multi-line.
+		pdf.SetXY(startX+1.5, startY)
+		pdf.SetFont(FontFamily, "B", 10)
+		pdf.SetTextColor(60, 60, 80)
+		pdf.CellFormat(keyWidth-1.5, rowH, row.Key, "", 0, "L", false, 0, "")
+
+		// Value column background per Kind.
+		switch row.Kind {
+		case "cmd":
+			pdf.SetFillColor(255, 248, 220)
+			pdf.Rect(startX+keyWidth, startY, valWidth, rowH, "F")
+			pdf.SetTextColor(120, 70, 0)
+		case "path":
+			pdf.SetFillColor(240, 240, 240)
+			pdf.Rect(startX+keyWidth, startY, valWidth, rowH, "F")
+			pdf.SetTextColor(70, 70, 70)
+		case "url":
+			pdf.SetTextColor(20, 70, 180)
+		default:
+			pdf.SetTextColor(20, 20, 20)
+		}
+		pdf.SetFont(FontFamily, "", 10)
+
+		// Render each wrapped line of the value.
+		for li, ln := range valLines {
+			pdf.SetXY(startX+keyWidth+padX, startY+float64(li)*lineH)
+			pdf.CellFormat(valWidth-padX*2, lineH, string(ln), "", 0, "L", false, 0, "")
+		}
+
+		// Reset state for next row.
+		pdf.SetTextColor(0, 0, 0)
+		pdf.SetXY(startX, startY+rowH)
 	}
 	pdf.Ln(2)
+}
+
+// detectKVKind heuristically classifies a KV value to pick a style.
+// Used by the legacy [][2]string callers.
+func detectKVKind(v string) string {
+	if v == "" || v == "—" || v == "n/a" {
+		return ""
+	}
+	if strings.HasPrefix(v, "http://") || strings.HasPrefix(v, "https://") {
+		return "url"
+	}
+	if strings.HasPrefix(v, "gotr ") || strings.HasPrefix(v, "$ ") {
+		return "cmd"
+	}
+	if strings.HasPrefix(v, "/") || strings.HasPrefix(v, "~/") || strings.HasPrefix(v, "./") {
+		return "path"
+	}
+	return ""
 }
 
 func sortedKeys(m map[string]*report.ResourceStats) []string {

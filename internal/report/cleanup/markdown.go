@@ -102,7 +102,7 @@ func writeMDSummary(sb *strings.Builder, r *Report) {
 	sb.WriteString("|--------|-------|\n")
 	row(sb, "Total selected", fmt.Sprintf("%d", r.Summary.TotalSelected))
 	row(sb, "Backed up (count)", fmt.Sprintf("%d", r.Summary.BackedUp))
-	row(sb, "Backed up (bytes)", humanBytes(r.Summary.BackupBytes))
+	row(sb, "Backed up (size)", humanBytes(r.Summary.BackupBytes))
 	row(sb, "Deleted", fmt.Sprintf("%d", r.Summary.Deleted))
 	row(sb, "Failed", fmt.Sprintf("%d", r.Summary.Failed))
 	row(sb, "Freed on server", humanBytes(r.Summary.FreedBytes))
@@ -116,7 +116,7 @@ func writeMDProjects(sb *strings.Builder, r *Report) {
 		return
 	}
 	sb.WriteString("## Per-project breakdown\n\n")
-	sb.WriteString("| Project | Name | Count | Bytes | Oldest |\n")
+	sb.WriteString("| Project | Name | Count | Total Size | Oldest |\n")
 	sb.WriteString("|---------|------|-------|-------|--------|\n")
 	for _, p := range r.Projects {
 		oldest := "—"
@@ -249,7 +249,7 @@ func writeMDEntityBreakdown(sb *strings.Builder, r *Report) {
 	for _, c := range cols {
 		fmt.Fprintf(sb, " %s |", c)
 	}
-	sb.WriteString(" Total | Bytes |\n|---------|")
+	sb.WriteString(" Total | Size |\n|---------|")
 	for range cols {
 		sb.WriteString("------|")
 	}
@@ -449,13 +449,13 @@ func humanBytes(n int64) string {
 	)
 	switch {
 	case n >= tb:
-		return fmt.Sprintf("%.2f TB (%d B)", float64(n)/float64(tb), n)
+		return fmt.Sprintf("%.2f TB", float64(n)/float64(tb))
 	case n >= gb:
-		return fmt.Sprintf("%.2f GB (%d B)", float64(n)/float64(gb), n)
+		return fmt.Sprintf("%.2f GB", float64(n)/float64(gb))
 	case n >= mb:
-		return fmt.Sprintf("%.2f MB (%d B)", float64(n)/float64(mb), n)
+		return fmt.Sprintf("%.2f MB", float64(n)/float64(mb))
 	case n >= kb:
-		return fmt.Sprintf("%.2f KB (%d B)", float64(n)/float64(kb), n)
+		return fmt.Sprintf("%.2f KB", float64(n)/float64(kb))
 	default:
 		return fmt.Sprintf("%d B", n)
 	}

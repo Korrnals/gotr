@@ -44,8 +44,10 @@ func (g *CleanupGenerator) Render(r *cleanupreport.Report) ([]byte, error) {
 	writeCleanupChunking(pdf, r)
 	writeCleanupSummary(pdf, r)
 	writeCleanupProjects(pdf, r)
-	writeCleanupEntityBreakdown(pdf, r)
-	writeCleanupItems(pdf, r)
+	withLandscape(pdf, func() {
+		writeCleanupEntityBreakdown(pdf, r)
+		writeCleanupItems(pdf, r)
+	})
 	writeCleanupFailures(pdf, r)
 	writeCleanupSnapshotArtifacts(pdf, r)
 	writeCleanupFilesOnDisk(pdf, r)
@@ -76,14 +78,24 @@ func writeCleanupTitle(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 		title += "  (DRY-RUN)"
 	}
 	pdf.SetFont(FontFamily, "B", 20)
+	pdf.SetTextColor(30, 40, 90)
 	pdf.CellFormat(contentWidth, 10, title, "", 1, "L", false, 0, "")
+	pdf.SetTextColor(0, 0, 0)
 
-	pdf.SetFont(FontFamily, "", 10)
-	subtitle := fmt.Sprintf("Snapshot: %s   |   %s",
-		nonEmpty(r.SnapshotID, "—"),
-		r.Timestamp.UTC().Format(time.RFC3339),
-	)
-	pdf.CellFormat(contentWidth, lineHeight, subtitle, "", 1, "L", false, 0, "")
+	// Subtitle with two badges: Snapshot ID and timestamp.
+	pdf.SetFont(FontFamily, "B", 9)
+	pdf.SetTextColor(80, 80, 100)
+	pdf.CellFormat(20, lineHeight, "Snapshot:", "", 0, "L", false, 0, "")
+	pdf.SetFont(FontFamily, "", 9)
+	pdf.SetTextColor(50, 50, 50)
+	pdf.CellFormat(45, lineHeight, nonEmpty(r.SnapshotID, "\u2014"), "", 0, "L", false, 0, "")
+	pdf.SetFont(FontFamily, "B", 9)
+	pdf.SetTextColor(80, 80, 100)
+	pdf.CellFormat(22, lineHeight, "Timestamp:", "", 0, "L", false, 0, "")
+	pdf.SetFont(FontFamily, "", 9)
+	pdf.SetTextColor(50, 50, 50)
+	pdf.CellFormat(contentWidth-87, lineHeight, r.Timestamp.UTC().Format(time.RFC3339), "", 1, "L", false, 0, "")
+	pdf.SetTextColor(0, 0, 0)
 	pdf.Ln(4)
 }
 
@@ -155,7 +167,7 @@ func writeCleanupProjects(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 	sectionHeader(pdf, "Per-project breakdown")
 
 	cols := []float64{20, 70, 20, 30, 40}
-	headers := []string{"Project", "Name", "Count", "Bytes", "Oldest"}
+	headers := []string{"Project", "Name", "Count", "Total Size", "Oldest"}
 	pdfTableHeader(pdf, cols, headers)
 	pdf.SetFont(FontFamily, "", 9)
 	for _, p := range r.Projects {
@@ -165,12 +177,12 @@ func writeCleanupProjects(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 		}
 		row := []string{
 			fmt.Sprintf("%d", p.ProjectID),
-			truncatePDF(p.ProjectName, 50),
+			p.ProjectName,
 			fmt.Sprintf("%d", p.Count),
 			humanBytes(p.TotalBytes),
 			oldest,
 		}
-		pdfTableRow(pdf, cols, row)
+		pdfTableRowMulti(pdf, cols, row)
 	}
 	pdf.Ln(2)
 }
@@ -181,7 +193,8 @@ func writeCleanupItems(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 	}
 	sectionHeader(pdf, "Deleted attachments")
 
-	cols := []float64{14, 28, 18, 40, 18, 24, 28, 22}
+	// Total width: 267mm (landscape A4 minus margins).
+	cols := []float64{18, 45, 22, 70, 25, 28, 35, 24}
 	headers := []string{"Proj.", "Project Name", "Att. ID", "Name", "Size", "Parent", "Parent Name", "Created"}
 	pdfTableHeader(pdf, cols, headers)
 	pdf.SetFont(FontFamily, "", 9)
@@ -201,19 +214,19 @@ func writeCleanupItems(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 			}
 			parentName := "—"
 			if it.ParentName != "" {
-				parentName = truncatePDF(it.ParentName, 22)
+				parentName = it.ParentName
 			}
 			row := []string{
 				fmt.Sprintf("%d", p.ProjectID),
-				truncatePDF(p.ProjectName, 22),
+				p.ProjectName,
 				fmt.Sprintf("%d", it.AttachmentID),
-				truncatePDF(it.Name, 28),
+				it.Name,
 				humanBytes(it.Size),
-				truncatePDF(parent, 18),
+				parent,
 				parentName,
 				created,
 			}
-			pdfTableRow(pdf, cols, row)
+			pdfTableRowMulti(pdf, cols, row)
 		}
 	}
 	pdf.Ln(2)
@@ -229,10 +242,10 @@ func writeCleanupFailures(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 	pdfTableHeader(pdf, cols, []string{"Att. ID", "Project", "Error"})
 	pdf.SetFont(FontFamily, "", 9)
 	for _, f := range r.Failures {
-		pdfTableRow(pdf, cols, []string{
+		pdfTableRowMulti(pdf, cols, []string{
 			fmt.Sprintf("%d", f.AttachmentID),
 			fmt.Sprintf("%d", f.ProjectID),
-			truncatePDF(f.Error, 90),
+			f.Error,
 		})
 	}
 	pdf.Ln(2)
@@ -240,14 +253,17 @@ func writeCleanupFailures(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 
 func writeCleanupReferences(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 	sectionHeader(pdf, "References")
-	pdf.SetFont(FontFamily, "", 10)
+	rows := []kvRow{}
 	if r.SnapshotID != "" && !r.DryRun {
-		pdf.CellFormat(contentWidth, lineHeight, "Snapshot: ~/.gotr/snaps/cleanup-attachments/"+r.SnapshotID, "", 1, "L", false, 0, "")
-		pdf.CellFormat(contentWidth, lineHeight, "Rollback: gotr snap rollback "+r.SnapshotID, "", 1, "L", false, 0, "")
+		rows = append(rows,
+			kvRow{Key: "Snapshot", Value: "~/.gotr/snaps/cleanup-attachments/" + r.SnapshotID, Kind: "path"},
+			kvRow{Key: "Rollback", Value: "gotr snap rollback " + r.SnapshotID, Kind: "cmd"},
+		)
 	} else if r.DryRun {
-		pdf.CellFormat(contentWidth, lineHeight, "No snapshot was taken (dry-run).", "", 1, "L", false, 0, "")
+		rows = append(rows, kvRow{Key: "Snapshot", Value: "— (dry-run, no snapshot taken)"})
 	}
-	pdf.CellFormat(contentWidth, lineHeight, "Report directory: ~/.gotr/reports/cleanup-attachments", "", 1, "L", false, 0, "")
+	rows = append(rows, kvRow{Key: "Report directory", Value: "~/.gotr/reports/cleanup-attachments", Kind: "path"})
+	renderKVTyped(pdf, rows)
 }
 
 // --- table primitives ---
@@ -266,6 +282,117 @@ func pdfTableRow(pdf *fpdf.Fpdf, cols []float64, row []string) {
 		pdf.CellFormat(cols[i], lineHeight, v, "1", 0, "L", false, 0, "")
 	}
 	pdf.Ln(-1)
+}
+
+// withLandscape adds a landscape A4 page, runs fn, then switches back
+// to a fresh portrait page so subsequent sections lay out normally.
+// Effective content width during fn is `landscapeContentWidth`.
+//
+// fpdf swaps Wd/Ht when orientation="L", so we pass the portrait
+// dimensions and let it rotate.
+func withLandscape(pdf *fpdf.Fpdf, fn func()) {
+	pdf.AddPageFormat("L", fpdf.SizeType{Wd: 210, Ht: 297})
+	fn()
+	pdf.AddPageFormat("P", fpdf.SizeType{Wd: 210, Ht: 297})
+}
+
+// landscapeContentWidth is the printable horizontal extent of a
+// landscape A4 page with the standard margins applied.
+const landscapeContentWidth = 297.0 - marginLeft - marginRight
+
+
+// cell. Each cell's text is split into lines that fit within its
+// column width using the current font metrics; explicit "\n" in the
+// text is also honored. All cells share the same total height — the
+// max of the per-cell line counts — so vertical borders stay aligned.
+//
+// Manually handles page breaks: if the row doesn't fit on the
+// remaining page space, a new page is started before rendering. This
+// avoids fpdf's auto-page-break splitting a multi-line row mid-cell
+// (which would corrupt the table layout).
+func pdfTableRowMulti(pdf *fpdf.Fpdf, cols []float64, row []string) {
+	cells := make([][]string, len(row))
+	maxLines := 1
+	for i, v := range row {
+		lines := wrapCellLines(pdf, v, cols[i])
+		cells[i] = lines
+		if len(lines) > maxLines {
+			maxLines = len(lines)
+		}
+	}
+	rowH := lineHeight * float64(maxLines)
+
+	// Manual page-break: if the row would overflow, start a new page
+	// before drawing anything.
+	_, pageH := pdf.GetPageSize()
+	_, _, _, bottomMargin := pdf.GetMargins()
+	pageBreakTrigger := pageH - bottomMargin
+	if pdf.GetY()+rowH > pageBreakTrigger {
+		pdf.AddPage()
+	}
+
+	// Disable auto page break while drawing the row so SetXY-driven
+	// per-line rendering can't accidentally trigger one mid-row.
+	autoBreak, autoMargin := pdf.GetAutoPageBreak()
+	pdf.SetAutoPageBreak(false, autoMargin)
+	defer pdf.SetAutoPageBreak(autoBreak, autoMargin)
+
+	startX := pdf.GetX()
+	startY := pdf.GetY()
+	for i, lines := range cells {
+		x := startX
+		for k := 0; k < i; k++ {
+			x += cols[k]
+		}
+		// Border rectangle for the cell.
+		pdf.Rect(x, startY, cols[i], rowH, "D")
+		for li := 0; li < maxLines; li++ {
+			text := ""
+			if li < len(lines) {
+				text = lines[li]
+			}
+			pdf.SetXY(x, startY+float64(li)*lineHeight)
+			pdf.CellFormat(cols[i], lineHeight, text, "", 0, "L", false, 0, "")
+		}
+	}
+	pdf.SetXY(startX, startY+rowH)
+}
+
+// wrapCellLines splits text so each line fits within the given column
+// width (minus a small horizontal padding) at the current font.
+// Honors explicit "\n" in the input. Falls back to a single line when
+// pdf is nil (defensive — never expected at runtime).
+func wrapCellLines(pdf *fpdf.Fpdf, text string, colWidth float64) []string {
+	if text == "" {
+		return []string{""}
+	}
+	if pdf == nil {
+		return strings.Split(text, "\n")
+	}
+	const pad = 2.0 // mm of horizontal padding inside the cell border
+	avail := colWidth - pad
+	if avail <= 0 {
+		avail = colWidth
+	}
+	var out []string
+	for _, paragraph := range strings.Split(text, "\n") {
+		if paragraph == "" {
+			out = append(out, "")
+			continue
+		}
+		split := pdf.SplitLines([]byte(paragraph), avail)
+		if len(split) == 0 {
+			out = append(out, paragraph)
+			continue
+		}
+		for _, b := range split {
+			out = append(out, string(b))
+		}
+	}
+	if len(out) == 0 {
+		return []string{""}
+	}
+	return out
 }
 
 func cleanupHasItems(r *cleanupreport.Report) bool {
@@ -310,13 +437,13 @@ func humanBytes(n int64) string {
 	)
 	switch {
 	case n >= tb:
-		return fmt.Sprintf("%.2f TB (%d B)", float64(n)/float64(tb), n)
+		return fmt.Sprintf("%.2f TB", float64(n)/float64(tb))
 	case n >= gb:
-		return fmt.Sprintf("%.2f GB (%d B)", float64(n)/float64(gb), n)
+		return fmt.Sprintf("%.2f GB", float64(n)/float64(gb))
 	case n >= mb:
-		return fmt.Sprintf("%.2f MB (%d B)", float64(n)/float64(mb), n)
+		return fmt.Sprintf("%.2f MB", float64(n)/float64(mb))
 	case n >= kb:
-		return fmt.Sprintf("%.2f KB (%d B)", float64(n)/float64(kb), n)
+		return fmt.Sprintf("%.2f KB", float64(n)/float64(kb))
 	default:
 		return fmt.Sprintf("%d B", n)
 	}
@@ -364,15 +491,16 @@ func writeCleanupEntityBreakdown(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 	}
 	sectionHeader(pdf, "Per-project × entity-type breakdown")
 	colsKinds := []string{"case", "run", "plan", "plan_entry", "result", "test"}
-	widths := []float64{45, 14, 14, 14, 22, 16, 14, 16, 25}
-	headers := []string{"Project", "case", "run", "plan", "p_entry", "result", "test", "Total", "Bytes"}
+	// Total width: 267mm (landscape A4 minus margins).
+	widths := []float64{75, 20, 20, 20, 30, 22, 20, 22, 38}
+	headers := []string{"Project", "case", "run", "plan", "p_entry", "result", "test", "Total", "Size"}
 	pdfTableHeader(pdf, widths, headers)
 	pdf.SetFont(FontFamily, "", 9)
 	totals := make(map[string]int, len(colsKinds))
 	var grandTotal int
 	var grandBytes int64
 	for _, row := range r.EntityBreakdown {
-		name := truncatePDF(fmt.Sprintf("%s (%d)", row.ProjectName, row.ProjectID), 28)
+		name := fmt.Sprintf("%s (%d)", row.ProjectName, row.ProjectID)
 		cells := []string{name}
 		for _, k := range colsKinds {
 			n := row.Counts[k]
@@ -380,7 +508,7 @@ func writeCleanupEntityBreakdown(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 			cells = append(cells, fmt.Sprintf("%d", n))
 		}
 		cells = append(cells, fmt.Sprintf("%d", row.Total), humanBytes(row.Bytes))
-		pdfTableRow(pdf, widths, cells)
+		pdfTableRowMulti(pdf, widths, cells)
 		grandTotal += row.Total
 		grandBytes += row.Bytes
 	}
@@ -435,11 +563,7 @@ func writeCleanupSnapshotFileTable(pdf *fpdf.Fpdf, s *cleanupreport.SnapshotInfo
 		rows = append(rows, [3]string{"files/", "Backed-up attachment binaries", s.FilesDir})
 	}
 	for _, row := range rows {
-		pdfTableRow(pdf, cols, []string{
-			truncatePDF(row[0], 24),
-			truncatePDF(row[1], 52),
-			truncatePDF(row[2], 44),
-		})
+		pdfTableRowMulti(pdf, cols, []string{row[0], row[1], row[2]})
 	}
 	pdf.Ln(2)
 }
@@ -486,26 +610,22 @@ func writeCleanupFilesOnDisk(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 		return
 	}
 	sectionHeader(pdf, "Files on disk")
-	pdf.SetFont(FontFamily, "", 9)
+	rows := []kvRow{}
 	if len(a.ReportPaths) > 0 {
-		pdf.SetFont(FontFamily, "B", 9)
-		pdf.CellFormat(contentWidth, lineHeight, "Audit reports:", "", 1, "L", false, 0, "")
-		pdf.SetFont(FontFamily, "", 9)
-		for _, p := range a.ReportPaths {
-			pdf.CellFormat(contentWidth, lineHeight, "  · "+truncatePDF(p, 130), "", 1, "L", false, 0, "")
+		for i, p := range a.ReportPaths {
+			label := "Audit report"
+			if len(a.ReportPaths) > 1 {
+				label = fmt.Sprintf("Audit report #%d", i+1)
+			}
+			rows = append(rows, kvRow{Key: label, Value: p, Kind: "path"})
 		}
 	}
 	if a.SnapshotPath != "" {
-		pdf.SetFont(FontFamily, "B", 9)
-		pdf.CellFormat(contentWidth, lineHeight, "Snapshot directory:", "", 1, "L", false, 0, "")
-		pdf.SetFont(FontFamily, "", 9)
-		pdf.CellFormat(contentWidth, lineHeight, "  "+truncatePDF(a.SnapshotPath, 130), "", 1, "L", false, 0, "")
+		rows = append(rows, kvRow{Key: "Snapshot directory", Value: a.SnapshotPath, Kind: "path"})
 	}
 	if a.CheckpointDir != "" {
-		pdf.SetFont(FontFamily, "B", 9)
-		pdf.CellFormat(contentWidth, lineHeight, "Checkpoint cache (used by --resume):", "", 1, "L", false, 0, "")
-		pdf.SetFont(FontFamily, "", 9)
-		pdf.CellFormat(contentWidth, lineHeight, "  "+truncatePDF(a.CheckpointDir, 130), "", 1, "L", false, 0, "")
+		rows = append(rows, kvRow{Key: "Checkpoint cache", Value: a.CheckpointDir, Kind: "path"})
+		rows = append(rows, kvRow{Key: "Resume command", Value: "gotr attachments cleanup --resume <run-id>", Kind: "cmd"})
 	}
-	pdf.Ln(2)
+	renderKVTyped(pdf, rows)
 }

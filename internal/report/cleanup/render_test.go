@@ -88,11 +88,11 @@ func TestRenderMarkdown_StableSections(t *testing.T) {
 		"| Deleted | 2 |",
 		"| Failed | 1 |",
 		"## Per-project breakdown",
-		"| 30 | Acme | 2 | 3.00 KB (3072 B) |",
-		`| 31 | Beta \| Pipe | 1 | 1.00 KB (1024 B) |`, // pipe escape
+		"| 30 | Acme | 2 | 3.00 KB |",
+		`| 31 | Beta \| Pipe | 1 | 1.00 KB |`, // pipe escape
 		"## Deleted attachments",
 		"| 30 | Acme | 100 | screen.png |",
-		"| 31 | Beta \\| Pipe | 200 | x.bin | 1.00 KB (1024 B) | case:c-42 | — |",
+		"| 31 | Beta \\| Pipe | 200 | x.bin | 1.00 KB | case:c-42 | — |",
 		"## Failures",
 		"| 101 | 30 | boom |",
 		"## Rollback",

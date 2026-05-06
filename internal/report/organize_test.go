@@ -44,8 +44,8 @@ func TestMigrateFlatLayout_Apply(t *testing.T) {
 	}
 	// Files must be under categorized hierarchy now.
 	for _, want := range []string{
-		filepath.Join(dir, "migrations", "default", "2026-01", "migration-20260101T120000Z-sync_full_p48.md"),
-		filepath.Join(dir, "rollbacks", "default", "2026-01", "rollback-20260101T120500Z-suite_1.md"),
+		filepath.Join(dir, "migrations", "default", "2026-01-01", "migration-20260101T120000Z-sync_full_p48.md"),
+		filepath.Join(dir, "rollbacks", "default", "2026-01-01", "rollback-20260101T120500Z-suite_1.md"),
 	} {
 		if _, err := os.Stat(want); err != nil {
 			t.Errorf("expected %s, err=%v", want, err)

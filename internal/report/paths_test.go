@@ -15,7 +15,7 @@ func TestClassifyReport(t *testing.T) {
 		explicit  string
 		wantCat   Category
 		wantLabel string
-		wantYM    string
+		wantDate  string
 		wantProj  int
 	}{
 		{
@@ -24,14 +24,14 @@ func TestClassifyReport(t *testing.T) {
 			explicit:  "q2-run",
 			wantCat:   CategoryMigrations,
 			wantLabel: "q2-run",
-			wantYM:    "2026-04",
+			wantDate:  "2026-04-24",
 		},
 		{
 			name:      "migration sync_full default label",
 			filename:  "migration-20260424T020240Z-sync_full_suite_42.pdf",
 			wantCat:   CategoryMigrations,
 			wantLabel: DefaultLabel,
-			wantYM:    "2026-04",
+			wantDate:  "2026-04-24",
 		},
 		{
 			name:      "no snapshot always default label",
@@ -39,21 +39,21 @@ func TestClassifyReport(t *testing.T) {
 			explicit:  "ignored",
 			wantCat:   CategoryNoSnapshot,
 			wantLabel: DefaultLabel,
-			wantYM:    "2026-01",
+			wantDate:  "2026-01-01",
 		},
 		{
 			name:      "rollback",
 			filename:  "rollback-20260215T101010Z-suite_1.md",
 			wantCat:   CategoryRollbacks,
 			wantLabel: DefaultLabel,
-			wantYM:    "2026-02",
+			wantDate:  "2026-02-15",
 		},
 		{
 			name:      "coverage with tag",
 			filename:  "gotr_migration_shared-steps_p48_to_p49.pdf",
 			wantCat:   CategoryCoverage,
 			wantLabel: "shared-steps",
-			wantYM:    "",
+			wantDate:  "",
 		},
 		{
 			name:      "coverage with explicit label overrides tag",
@@ -83,8 +83,8 @@ func TestClassifyReport(t *testing.T) {
 			if tt.wantCat != CategoryTestrail && tt.wantCat != CategoryUnclassified && got.Label != tt.wantLabel {
 				t.Errorf("Label = %q, want %q", got.Label, tt.wantLabel)
 			}
-			if tt.wantYM != "" && got.YearMonth != tt.wantYM {
-				t.Errorf("YearMonth = %q, want %q", got.YearMonth, tt.wantYM)
+			if tt.wantDate != "" && got.Date != tt.wantDate {
+				t.Errorf("Date = %q, want %q", got.Date, tt.wantDate)
 			}
 			if tt.wantProj != 0 && got.Project != tt.wantProj {
 				t.Errorf("Project = %d, want %d", got.Project, tt.wantProj)
@@ -100,24 +100,24 @@ func TestClassificationRelDir(t *testing.T) {
 		want string
 	}{
 		{
-			name: "migrations with label and ym",
-			in:   Classification{Category: CategoryMigrations, Label: "q2", YearMonth: "2026-04"},
-			want: filepath.Join("migrations", "q2", "2026-04"),
+			name: "migrations with label and date",
+			in:   Classification{Category: CategoryMigrations, Label: "q2", Date: "2026-04-15"},
+			want: filepath.Join("migrations", "q2", "2026-04-15"),
 		},
 		{
 			name: "migrations empty label -> default",
-			in:   Classification{Category: CategoryMigrations, YearMonth: "2026-04"},
-			want: filepath.Join("migrations", DefaultLabel, "2026-04"),
+			in:   Classification{Category: CategoryMigrations, Date: "2026-04-15"},
+			want: filepath.Join("migrations", DefaultLabel, "2026-04-15"),
 		},
 		{
 			name: "testrail with project",
-			in:   Classification{Category: CategoryTestrail, Project: 48, YearMonth: "2026-04"},
-			want: filepath.Join("testrail", "p48", "2026-04"),
+			in:   Classification{Category: CategoryTestrail, Project: 48, Date: "2026-04-15"},
+			want: filepath.Join("testrail", "p48", "2026-04-15"),
 		},
 		{
 			name: "testrail no project",
-			in:   Classification{Category: CategoryTestrail, YearMonth: "2026-04"},
-			want: filepath.Join("testrail", "p0", "2026-04"),
+			in:   Classification{Category: CategoryTestrail, Date: "2026-04-15"},
+			want: filepath.Join("testrail", "p0", "2026-04-15"),
 		},
 		{
 			name: "unclassified",

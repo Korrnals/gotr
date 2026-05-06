@@ -31,7 +31,7 @@ func TestClientOptions_DefaultsAndInvalidURL(t *testing.T) {
 		c, err := NewClient("https://example.com", "u", "k", false)
 		assert.NoError(t, err)
 		assert.NotNil(t, c)
-		assert.Equal(t, 30*time.Second, c.client.Timeout)
+		assert.Equal(t, 90*time.Second, c.client.Timeout)
 	})
 
 	t.Run("invalid base url", func(t *testing.T) {

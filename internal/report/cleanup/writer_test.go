@@ -44,7 +44,7 @@ func TestWrite_AllFormats(t *testing.T) {
 		if _, err := os.Stat(p); err != nil {
 			t.Errorf("expected file at %s: %v", p, err)
 		}
-		if !strings.Contains(p, filepath.Join("cleanup-attachments", "audit-2026-05", "2026-05")) {
+		if !strings.Contains(p, filepath.Join("cleanup-attachments", "audit-2026-05", "2026-05-05")) {
 			t.Errorf("file outside expected hierarchy: %s", p)
 		}
 	}

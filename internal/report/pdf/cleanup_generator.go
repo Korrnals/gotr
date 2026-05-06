@@ -296,11 +296,6 @@ func withLandscape(pdf *fpdf.Fpdf, fn func()) {
 	pdf.AddPageFormat("P", fpdf.SizeType{Wd: 210, Ht: 297})
 }
 
-// landscapeContentWidth is the printable horizontal extent of a
-// landscape A4 page with the standard margins applied.
-const landscapeContentWidth = 297.0 - marginLeft - marginRight
-
-
 // cell. Each cell's text is split into lines that fit within its
 // column width using the current font metrics; explicit "\n" in the
 // text is also honored. All cells share the same total height — the
@@ -624,8 +619,10 @@ func writeCleanupFilesOnDisk(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 		rows = append(rows, kvRow{Key: "Snapshot directory", Value: a.SnapshotPath, Kind: "path"})
 	}
 	if a.CheckpointDir != "" {
-		rows = append(rows, kvRow{Key: "Checkpoint cache", Value: a.CheckpointDir, Kind: "path"})
-		rows = append(rows, kvRow{Key: "Resume command", Value: "gotr attachments cleanup --resume <run-id>", Kind: "cmd"})
+		rows = append(rows,
+			kvRow{Key: "Checkpoint cache", Value: a.CheckpointDir, Kind: "path"},
+			kvRow{Key: "Resume command", Value: "gotr attachments cleanup --resume <run-id>", Kind: "cmd"},
+		)
 	}
 	renderKVTyped(pdf, rows)
 }

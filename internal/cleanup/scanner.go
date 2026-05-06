@@ -77,6 +77,7 @@ type EntityAttachmentsAPI interface {
 	GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error)
 	GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error)
 	GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error)
+	GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error)
 }
 
 // ScannerAPI is the union required by ResolveScanner: both endpoints
@@ -150,6 +151,7 @@ type entityScanner struct {
 	walkRuns    bool
 	walkPlans   bool
 	walkTests   bool
+	walkResults bool
 	concurrency int
 
 	progMu   sync.Mutex
@@ -185,6 +187,17 @@ type EntityScannerOptions struct {
 	WalkRuns    bool
 	WalkPlans   bool
 	WalkTests   bool
+	// WalkResults enables the results-driven walk for result-bound
+	// attachments. For each run, the scanner first probes
+	// get_attachments_for_run; if it returns a non-empty list (modern
+	// TestRail Cloud / Server >= 7.5) those attachments are taken
+	// directly. Otherwise (legacy TestRail Server where the endpoint
+	// returns an empty array) it falls back to get_results_for_run and
+	// fetches get_attachments_for_test only for tests whose results
+	// carry non-empty attachment_ids. This avoids the prohibitively
+	// expensive get_tests fan-out (legacy servers ignore limit and
+	// return the full ~MB-sized test list per run).
+	WalkResults bool
 	Concurrency int
 }
 
@@ -195,11 +208,15 @@ type EntityScannerOptions struct {
 func NewEntityScanner(api EntityAttachmentsAPI, opts EntityScannerOptions) AttachmentScanner {
 	// If no walk is requested, fall back to walking every entity kind:
 	// the AttachmentFilter still narrows the result downstream.
-	if !opts.WalkCases && !opts.WalkRuns && !opts.WalkPlans && !opts.WalkTests {
+	if !opts.WalkCases && !opts.WalkRuns && !opts.WalkPlans && !opts.WalkTests && !opts.WalkResults {
 		opts.WalkCases = true
 		opts.WalkRuns = true
 		opts.WalkPlans = true
-		opts.WalkTests = true
+		// Default scan uses the new results-driven path for result-bound
+		// attachments. WalkTests (the legacy get_tests fan-out) is left
+		// disabled by default because it duplicates WalkResults at much
+		// higher cost on legacy TestRail Server installations.
+		opts.WalkResults = true
 	}
 	if opts.Concurrency <= 0 {
 		opts.Concurrency = 4
@@ -210,27 +227,32 @@ func NewEntityScanner(api EntityAttachmentsAPI, opts EntityScannerOptions) Attac
 		walkRuns:    opts.WalkRuns,
 		walkPlans:   opts.WalkPlans,
 		walkTests:   opts.WalkTests,
+		walkResults: opts.WalkResults,
 		concurrency: opts.Concurrency,
 		progress:    NoProgress,
 	}
 }
 
 // EntityScannerOptionsFromTypes translates AttachmentFilter.EntityTypes
-// into the entity-walk plan. "case" implies the case walk;
-// "result"/"test" imply the tests walk (TestRail exposes result-bound
-// attachments via get_attachments_for_test, not under the parent case).
+// into the entity-walk plan. "case" implies the case walk; "result"
+// implies the results-driven walk (probe get_attachments_for_run and
+// fall back to get_results_for_run + per-test attachments — see
+// WalkResults). "test" implies the legacy get_tests fan-out walk
+// (expensive on legacy servers; kept for explicit opt-in only).
 // "plan_entry" implies the plan walk because plan entries are reached
 // through their parent plan.
 func EntityScannerOptionsFromTypes(types map[string]struct{}, concurrency int) EntityScannerOptions {
 	if len(types) == 0 {
-		return EntityScannerOptions{WalkCases: true, WalkRuns: true, WalkPlans: true, WalkTests: true, Concurrency: concurrency}
+		return EntityScannerOptions{WalkCases: true, WalkRuns: true, WalkPlans: true, WalkResults: true, Concurrency: concurrency}
 	}
 	opts := EntityScannerOptions{Concurrency: concurrency}
 	for t := range types {
 		switch t {
 		case "case":
 			opts.WalkCases = true
-		case "result", "test":
+		case "result":
+			opts.WalkResults = true
+		case "test":
 			opts.WalkTests = true
 		case "run":
 			opts.WalkRuns = true
@@ -421,6 +443,100 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 				return nil, r.Error
 			}
 			collect(r.Data)
+		}
+	}
+
+	if s.walkResults {
+		runIDs, err := s.collectRunIDs(ctx, projectID)
+		if err != nil {
+			prog.OnError(projectID, err)
+			return nil, err
+		}
+		// Phase 1: per run, probe get_attachments_for_run. If
+		// non-empty, take it (modern server returns all entity-bound
+		// attachments here including result-bound). Otherwise collect
+		// the results list to extract distinct test_ids whose results
+		// carry attachment_ids — those are the only tests we need to
+		// visit on legacy TestRail Server.
+		type runProbe struct {
+			fromRun []data.Attachment
+			testIDs []int64
+		}
+		prog.OnPhase(projectID, PhaseRuns, len(runIDs))
+		var runProcessed int64
+		runEmit := newPhaseEmitter(prog, projectID, PhaseRuns)
+		probes, _ := concurrent.ParallelMap(ctx, runIDs, s.concurrency, func(runID int64, _ int) (runProbe, error) {
+			defer runEmit.bump(atomic.AddInt64(&runProcessed, 1))
+			atts, err := s.api.GetAttachmentsForRun(ctx, runID)
+			if err != nil {
+				return runProbe{}, fmt.Errorf("get_attachments_for_run %d: %w", runID, err)
+			}
+			if len(atts) > 0 {
+				stampParent(atts, "run", runID, "")
+				return runProbe{fromRun: atts}, nil
+			}
+			results, err := s.api.GetResultsForRun(ctx, runID)
+			if err != nil {
+				return runProbe{}, fmt.Errorf("get_results_for_run %d: %w", runID, err)
+			}
+			seenTest := make(map[int64]struct{}, len(results))
+			var testIDs []int64
+			for _, r := range results {
+				if len(r.AttachmentIDs) == 0 || r.TestID == 0 {
+					continue
+				}
+				if _, ok := seenTest[r.TestID]; ok {
+					continue
+				}
+				seenTest[r.TestID] = struct{}{}
+				testIDs = append(testIDs, r.TestID)
+			}
+			return runProbe{testIDs: testIDs}, nil
+		})
+		runEmit.flush(atomic.LoadInt64(&runProcessed))
+		// Aggregate run-level hits and the test_id worklist.
+		var pendingTestIDs []int64
+		seenTestGlobal := make(map[int64]struct{})
+		for _, r := range probes {
+			if r.Error != nil {
+				prog.OnError(projectID, r.Error)
+				return nil, r.Error
+			}
+			if len(r.Data.fromRun) > 0 {
+				collect(r.Data.fromRun)
+			}
+			for _, tid := range r.Data.testIDs {
+				if _, ok := seenTestGlobal[tid]; ok {
+					continue
+				}
+				seenTestGlobal[tid] = struct{}{}
+				pendingTestIDs = append(pendingTestIDs, tid)
+			}
+		}
+		// Phase 2: only fetch attachments for tests that have at least
+		// one result with non-empty attachment_ids. This is the bulk
+		// of the savings vs. the legacy walkTests path.
+		if len(pendingTestIDs) > 0 {
+			prog.OnPhase(projectID, PhaseTests, len(pendingTestIDs))
+			var processed int64
+			emit := newPhaseEmitter(prog, projectID, PhaseTests)
+			attsPerTest, _ := concurrent.ParallelMap(ctx, pendingTestIDs, s.concurrency, func(testID int64, _ int) ([]data.Attachment, error) {
+				atts, err := s.api.GetAttachmentsForTest(ctx, testID)
+				if err != nil {
+					return nil, fmt.Errorf("get_attachments_for_test %d: %w", testID, err)
+				}
+				stampParent(atts, "test", testID, "")
+				emit.bump(atomic.AddInt64(&processed, 1))
+				return atts, nil
+			})
+			emit.flush(atomic.LoadInt64(&processed))
+			for _, r := range attsPerTest {
+				if r.Error != nil {
+					prog.OnError(projectID, r.Error)
+					return nil, r.Error
+				}
+				collect(r.Data)
+			}
 		}
 	}
 

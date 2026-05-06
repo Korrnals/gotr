@@ -25,6 +25,7 @@ type fakeScannerAPI struct {
 	getAttachmentsForPlanEntry func(planID int64, entryID string) (data.GetAttachmentsResponse, error)
 	getTests                   func(runID int64) ([]data.Test, error)
 	getAttachmentsForTest      func(int64) (data.GetAttachmentsResponse, error)
+	getResultsForRun           func(int64) (data.GetResultsResponse, error)
 }
 
 func (f *fakeScannerAPI) GetAttachmentsForProject(_ context.Context, id int64) (data.GetAttachmentsResponse, error) {
@@ -96,6 +97,13 @@ func (f *fakeScannerAPI) GetTests(_ context.Context, runID int64, _ map[string]s
 func (f *fakeScannerAPI) GetAttachmentsForTest(_ context.Context, id int64) (data.GetAttachmentsResponse, error) {
 	if f.getAttachmentsForTest != nil {
 		return f.getAttachmentsForTest(id)
+	}
+	return nil, nil
+}
+
+func (f *fakeScannerAPI) GetResultsForRun(_ context.Context, id int64) (data.GetResultsResponse, error) {
+	if f.getResultsForRun != nil {
+		return f.getResultsForRun(id)
 	}
 	return nil, nil
 }
@@ -252,21 +260,21 @@ func TestEntityScannerOptionsFromTypes(t *testing.T) {
 	cases := []struct {
 		name              string
 		types             map[string]struct{}
-		wantCases, wantRuns, wantPlans, wantTests bool
+		wantCases, wantRuns, wantPlans, wantTests, wantResults bool
 	}{
-		{"empty -> all", nil, true, true, true, true},
-		{"case", map[string]struct{}{"case": {}}, true, false, false, false},
-		{"result implies tests", map[string]struct{}{"result": {}}, false, false, false, true},
-		{"test implies tests", map[string]struct{}{"test": {}}, false, false, false, true},
-		{"run only", map[string]struct{}{"run": {}}, false, true, false, false},
-		{"plan_entry implies plan", map[string]struct{}{"plan_entry": {}}, false, false, true, false},
-		{"mixed", map[string]struct{}{"case": {}, "run": {}, "result": {}}, true, true, false, true},
+		{"empty -> all", nil, true, true, true, false, true},
+		{"case", map[string]struct{}{"case": {}}, true, false, false, false, false},
+		{"result implies results-driven walk", map[string]struct{}{"result": {}}, false, false, false, false, true},
+		{"test implies legacy tests walk", map[string]struct{}{"test": {}}, false, false, false, true, false},
+		{"run only", map[string]struct{}{"run": {}}, false, true, false, false, false},
+		{"plan_entry implies plan", map[string]struct{}{"plan_entry": {}}, false, false, true, false, false},
+		{"mixed", map[string]struct{}{"case": {}, "run": {}, "result": {}}, true, true, false, false, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := EntityScannerOptionsFromTypes(tc.types, 4)
-			if got.WalkCases != tc.wantCases || got.WalkRuns != tc.wantRuns || got.WalkPlans != tc.wantPlans || got.WalkTests != tc.wantTests {
-				t.Fatalf("got %+v, want cases=%v runs=%v plans=%v tests=%v", got, tc.wantCases, tc.wantRuns, tc.wantPlans, tc.wantTests)
+			if got.WalkCases != tc.wantCases || got.WalkRuns != tc.wantRuns || got.WalkPlans != tc.wantPlans || got.WalkTests != tc.wantTests || got.WalkResults != tc.wantResults {
+				t.Fatalf("got %+v, want cases=%v runs=%v plans=%v tests=%v results=%v", got, tc.wantCases, tc.wantRuns, tc.wantPlans, tc.wantTests, tc.wantResults)
 			}
 		})
 	}
@@ -376,6 +384,95 @@ func TestEntityScanner_CollectRunIDsFromPlanEntries(t *testing.T) {
 		if !ids[want] {
 			t.Fatalf("missing attachment from test %d (ids=%v)", want, ids)
 		}
+	}
+}
+
+// TestEntityScanner_WalksResults_ProbeFastPath verifies that when
+// get_attachments_for_run returns a non-empty list (modern TestRail
+// Cloud / Server >= 7.5), the results-driven walk takes that result
+// directly and skips the get_results_for_run + per-test fallback.
+func TestEntityScanner_WalksResults_ProbeFastPath(t *testing.T) {
+	resultsCalled := 0
+	api := &fakeScannerAPI{
+		getRuns: func(int64) (data.GetRunsResponse, error) {
+			return data.GetRunsResponse{{ID: 42}}, nil
+		},
+		getAttachmentsForRun: func(runID int64) (data.GetAttachmentsResponse, error) {
+			return data.GetAttachmentsResponse{{ID: 5001, Size: 100, ResultID: 9001}}, nil
+		},
+		getResultsForRun: func(int64) (data.GetResultsResponse, error) {
+			resultsCalled++
+			return nil, nil
+		},
+	}
+	sc := NewEntityScanner(api, EntityScannerOptions{WalkResults: true, Concurrency: 2})
+	got, err := sc.Scan(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 1 || got[0].ID != 5001 {
+		t.Fatalf("got %+v, want one attachment id=5001", got)
+	}
+	if got[0].RunID != 42 {
+		t.Fatalf("RunID = %d, want 42 (stamp missing)", got[0].RunID)
+	}
+	if resultsCalled != 0 {
+		t.Fatalf("get_results_for_run called %d times, want 0 (fast path)", resultsCalled)
+	}
+}
+
+// TestEntityScanner_WalksResults_FallbackToResults verifies that on
+// legacy TestRail Server (where get_attachments_for_run returns empty),
+// the scanner falls back to get_results_for_run and only fetches
+// attachments for tests whose results carry non-empty attachment_ids.
+// Crucially: tests without attachment_ids must NOT trigger
+// get_attachments_for_test calls.
+func TestEntityScanner_WalksResults_FallbackToResults(t *testing.T) {
+	testAttCalls := map[int64]int{}
+	api := &fakeScannerAPI{
+		getRuns: func(int64) (data.GetRunsResponse, error) {
+			return data.GetRunsResponse{{ID: 42}}, nil
+		},
+		getAttachmentsForRun: func(int64) (data.GetAttachmentsResponse, error) {
+			return data.GetAttachmentsResponse{}, nil // legacy: empty
+		},
+		getResultsForRun: func(runID int64) (data.GetResultsResponse, error) {
+			return data.GetResultsResponse{
+				{ID: 1, TestID: 100, AttachmentIDs: []int64{7001}},
+				{ID: 2, TestID: 100, AttachmentIDs: []int64{7002}}, // dup test_id, must dedup
+				{ID: 3, TestID: 200},                                 // no attachments → skip
+				{ID: 4, TestID: 300, AttachmentIDs: []int64{7003}},
+			}, nil
+		},
+		getAttachmentsForTest: func(testID int64) (data.GetAttachmentsResponse, error) {
+			testAttCalls[testID]++
+			switch testID {
+			case 100:
+				return data.GetAttachmentsResponse{{ID: 7001, Size: 10, ResultID: 1}, {ID: 7002, Size: 20, ResultID: 2}}, nil
+			case 300:
+				return data.GetAttachmentsResponse{{ID: 7003, Size: 30, ResultID: 4}}, nil
+			}
+			return nil, nil
+		},
+	}
+	sc := NewEntityScanner(api, EntityScannerOptions{WalkResults: true, Concurrency: 2})
+	got, err := sc.Scan(context.Background(), 1)
+	if err != nil {
+		t.Fatalf("scan: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d attachments, want 3: %+v", len(got), got)
+	}
+	// Test 100 must be called exactly once (deduped), test 200 must
+	// not be called at all (no attachment_ids), test 300 once.
+	if testAttCalls[100] != 1 {
+		t.Fatalf("get_attachments_for_test(100) called %d times, want 1 (dedup)", testAttCalls[100])
+	}
+	if testAttCalls[200] != 0 {
+		t.Fatalf("get_attachments_for_test(200) called %d times, want 0 (no attachment_ids)", testAttCalls[200])
+	}
+	if testAttCalls[300] != 1 {
+		t.Fatalf("get_attachments_for_test(300) called %d times, want 1", testAttCalls[300])
 	}
 }
 

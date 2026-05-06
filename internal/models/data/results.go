@@ -18,6 +18,12 @@ type Result struct {
 	Elapsed      string          `json:"elapsed,omitempty"`       // The amount of time it took to execute the test (e.g., "30m" or "1h 30m")
 	Defects      string          `json:"defects,omitempty"`       // A comma-separated list of defects linked to the test result
 	CustomFields json.RawMessage `json:"custom_fields,omitempty"` // Custom fields (varies by project configuration)
+	// AttachmentIDs lists the attachment IDs bound to this result.
+	// Populated by TestRail Server >= 6.4 in get_results / get_results_for_run
+	// payloads, allowing the cleanup scanner to skip the expensive
+	// get_tests + per-test get_attachments_for_test fan-out: only tests
+	// whose results have non-empty AttachmentIDs need to be visited.
+	AttachmentIDs []int64 `json:"attachment_ids,omitempty"`
 }
 
 // GetResultsResponse is the response for get_results (array of results).

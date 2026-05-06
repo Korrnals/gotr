@@ -100,11 +100,19 @@ func writeConfiguration(pdf *fpdf.Fpdf, r *report.MigrationReport) {
 	sectionHeader(pdf, "Configuration")
 	rows := [][2]string{
 		{"Source project", fmt.Sprintf("%d", r.SourceProjectID)},
-		{"Target project", fmt.Sprintf("%d", r.TargetProjectID)},
-		{"Migration type", nonEmpty(r.MigrationType, "n/a")},
-		{"User", nonEmpty(r.User, "n/a")},
-		{"Report ID", nonEmpty(r.ID, "n/a")},
 	}
+	if r.SourceProjectName != "" {
+		rows = append(rows, [2]string{"Source project name", r.SourceProjectName})
+	}
+	rows = append(rows, [2]string{"Target project", fmt.Sprintf("%d", r.TargetProjectID)})
+	if r.TargetProjectName != "" {
+		rows = append(rows, [2]string{"Target project name", r.TargetProjectName})
+	}
+	rows = append(rows,
+		[2]string{"Migration type", nonEmpty(r.MigrationType, "n/a")},
+		[2]string{"User", nonEmpty(r.User, "n/a")},
+		[2]string{"Report ID", nonEmpty(r.ID, "n/a")},
+	)
 	renderKeyValue(pdf, rows)
 }
 

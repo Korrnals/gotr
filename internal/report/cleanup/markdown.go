@@ -136,8 +136,8 @@ func writeMDItems(sb *strings.Builder, r *Report) {
 		return
 	}
 	sb.WriteString("## Deleted attachments\n\n")
-	sb.WriteString("| Project | Attachment ID | Name | Size | Parent | Created (UTC) |\n")
-	sb.WriteString("|---------|---------------|------|------|--------|---------------|\n")
+	sb.WriteString("| Project | Project Name | Attachment ID | Name | Size | Parent | Parent Name | Created (UTC) |\n")
+	sb.WriteString("|---------|--------------|---------------|------|------|--------|-------------|---------------|\n")
 	for _, p := range r.Projects {
 		for _, it := range p.Items {
 			created := "—"
@@ -151,9 +151,13 @@ func writeMDItems(sb *strings.Builder, r *Report) {
 					parent = parent + ":" + it.ParentID
 				}
 			}
-			fmt.Fprintf(sb, "| %d | %d | %s | %s | %s | %s |\n",
-				p.ProjectID, it.AttachmentID, escapePipe(it.Name),
-				humanBytes(it.Size), parent, created)
+			parentName := "—"
+			if it.ParentName != "" {
+				parentName = escapePipe(it.ParentName)
+			}
+			fmt.Fprintf(sb, "| %d | %s | %d | %s | %s | %s | %s | %s |\n",
+				p.ProjectID, escapePipe(p.ProjectName), it.AttachmentID, escapePipe(it.Name),
+				humanBytes(it.Size), parent, parentName, created)
 		}
 	}
 	sb.WriteString("\n")

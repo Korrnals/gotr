@@ -9,6 +9,7 @@ import (
 	"github.com/Korrnals/gotr/internal/paths"
 	intreport "github.com/Korrnals/gotr/internal/report"
 	"github.com/Korrnals/gotr/internal/report/pdf"
+	"github.com/Korrnals/gotr/internal/resolver"
 	"github.com/Korrnals/gotr/internal/service/migration"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
@@ -48,6 +49,14 @@ func saveMigrationReport(ctx context.Context, cmd *cobra.Command, migrationType 
 
 	reportObj := intreport.NewMigrationReport(snapshotID, srcProject, dstProject, migrationType, user)
 	reportObj.Label = resolveSnapLabel(hook)
+	// Resolve human-readable project names for the report. Failures
+	// are silent — names are best-effort and never block report
+	// persistence.
+	if cli := getClientInterface(cmd); cli != nil {
+		nr := resolver.New(cli)
+		reportObj.SourceProjectName = nr.Project(ctx, srcProject)
+		reportObj.TargetProjectName = nr.Project(ctx, dstProject)
+	}
 	for _, s := range stats {
 		reportObj.AddResourceStats(s.Resource, s.Source, s.Created, s.Updated, s.Skipped, s.Failed)
 	}

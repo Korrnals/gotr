@@ -4,17 +4,19 @@ import "time"
 
 // MigrationReport represents a complete migration summary
 type MigrationReport struct {
-	ID              string
-	SnapshotID      string
-	Timestamp       time.Time
-	Duration        time.Duration
-	Status          string // "success", "partial", "failed"
+	ID         string
+	SnapshotID string
+	Timestamp  time.Time
+	Duration   time.Duration
+	Status     string // "success", "partial", "failed"
 
-	SourceProjectID int64
-	TargetProjectID int64
-	MigrationType   string // "sync_full", "sync_cases", "sync_shared_steps", etc
-	User            string
-	Label           string // Optional classification label (inherited from snapshot).
+	SourceProjectID   int64
+	SourceProjectName string
+	TargetProjectID   int64
+	TargetProjectName string
+	MigrationType     string // "sync_full", "sync_cases", "sync_shared_steps", etc
+	User              string
+	Label             string // Optional classification label (inherited from snapshot).
 
 	Summary     map[string]*ResourceStats // "cases", "shared_steps", "sections", "suites", "attachments"
 	Skipped     map[string][]SkipReason

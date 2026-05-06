@@ -161,7 +161,11 @@ type Record struct {
 	Size         int64  `json:"size"`
 	ParentKind   string `json:"parent_kind,omitempty"`
 	ParentID     string `json:"parent_id,omitempty"`
-	CreatedUnix  int64  `json:"created_unix,omitempty"`
+	// ParentName is the human-readable name/title of the parent
+	// entity (case title, run name, plan name, ...). Populated by
+	// EnrichNames; empty when not yet resolved or unavailable.
+	ParentName  string `json:"parent_name,omitempty"`
+	CreatedUnix int64  `json:"created_unix,omitempty"`
 }
 
 // Failure is a single failed delete call.

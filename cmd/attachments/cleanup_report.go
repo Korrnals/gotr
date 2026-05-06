@@ -18,6 +18,7 @@ import (
 	"github.com/Korrnals/gotr/internal/paths"
 	cleanupreport "github.com/Korrnals/gotr/internal/report/cleanup"
 	"github.com/Korrnals/gotr/internal/report/pdf"
+	"github.com/Korrnals/gotr/internal/resolver"
 	"github.com/Korrnals/gotr/internal/snap"
 	"github.com/Korrnals/gotr/internal/ui"
 )
@@ -27,7 +28,11 @@ import (
 // Failures are reported as warnings — they never abort the cleanup.
 // Returns absolute paths of generated report files (empty when skipped
 // or on error).
-func writeCleanupReport(cmd *cobra.Command, plan *cleanup.Plan, res *cleanup.ExecuteResult, opts *cleanupOptions, runID string) []string {
+//
+// cli is used to lazily resolve human-readable names for the IDs in
+// the report (project, run, plan, case, ...). When nil, the report is
+// still written but without enrichment.
+func writeCleanupReport(cmd *cobra.Command, cli any, plan *cleanup.Plan, res *cleanup.ExecuteResult, opts *cleanupOptions, runID string) []string {
 	if opts.NoReport {
 		return nil
 	}
@@ -84,6 +89,13 @@ func writeCleanupReport(cmd *cobra.Command, plan *cleanup.Plan, res *cleanup.Exe
 	}
 
 	rep := cleanupreport.Build(in)
+
+	// Enrich IDs with human-readable names (project / parent entity)
+	// when the underlying client implements the resolver surface.
+	// Failures are silent — names are best-effort.
+	if nr, ok := cli.(resolver.Client); ok && nr != nil {
+		cleanupreport.EnrichNames(context.Background(), rep, resolver.New(nr))
+	}
 
 	wopts := cleanupreport.AllFormats()
 	wopts.PDFRenderer = pdf.NewCleanupGenerator()

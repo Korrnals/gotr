@@ -91,8 +91,8 @@ func TestRenderMarkdown_StableSections(t *testing.T) {
 		"| 30 | Acme | 2 | 3.00 KB (3072 B) |",
 		`| 31 | Beta \| Pipe | 1 | 1.00 KB (1024 B) |`, // pipe escape
 		"## Deleted attachments",
-		"| 30 | 100 | screen.png |",
-		"| 31 | 200 | x.bin | 1.00 KB (1024 B) | case:c-42 |",
+		"| 30 | Acme | 100 | screen.png |",
+		"| 31 | Beta \\| Pipe | 200 | x.bin | 1.00 KB (1024 B) | case:c-42 | — |",
 		"## Failures",
 		"| 101 | 30 | boom |",
 		"## Rollback",
@@ -235,7 +235,7 @@ func TestRenderCSV_HeaderAndRows(t *testing.T) {
 		t.Fatalf("RenderCSV: %v", err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(b)), "\n")
-	wantHeader := "project_id,project_name,attachment_id,name,size_bytes,parent_kind,parent_id,created_unix,created_utc,deleted,dry_run,snapshot_id"
+	wantHeader := "project_id,project_name,attachment_id,name,size_bytes,parent_kind,parent_id,parent_name,created_unix,created_utc,deleted,dry_run,snapshot_id"
 	if lines[0] != wantHeader {
 		t.Errorf("csv header mismatch:\n got: %s\nwant: %s", lines[0], wantHeader)
 	}

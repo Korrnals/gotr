@@ -181,8 +181,8 @@ func writeCleanupItems(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 	}
 	sectionHeader(pdf, "Deleted attachments")
 
-	cols := []float64{18, 22, 56, 22, 30, 32}
-	headers := []string{"Project", "Att. ID", "Name", "Size", "Parent", "Created"}
+	cols := []float64{14, 28, 18, 40, 18, 24, 28, 22}
+	headers := []string{"Proj.", "Project Name", "Att. ID", "Name", "Size", "Parent", "Parent Name", "Created"}
 	pdfTableHeader(pdf, cols, headers)
 	pdf.SetFont(FontFamily, "", 9)
 
@@ -199,12 +199,18 @@ func writeCleanupItems(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 					parent = parent + ":" + it.ParentID
 				}
 			}
+			parentName := "—"
+			if it.ParentName != "" {
+				parentName = truncatePDF(it.ParentName, 22)
+			}
 			row := []string{
 				fmt.Sprintf("%d", p.ProjectID),
+				truncatePDF(p.ProjectName, 22),
 				fmt.Sprintf("%d", it.AttachmentID),
-				truncatePDF(it.Name, 38),
+				truncatePDF(it.Name, 28),
 				humanBytes(it.Size),
-				truncatePDF(parent, 22),
+				truncatePDF(parent, 18),
+				parentName,
 				created,
 			}
 			pdfTableRow(pdf, cols, row)

@@ -9,7 +9,113 @@
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Added — `attachments cleanup`: snapshot completeness (v2 layout)
+
+- **SHA-256 integrity per attachment.** Every downloaded binary is
+  hashed inline during streaming; the digest is persisted in
+  `mapping.json` and verified at restore.
+- **`mapping.json` (schema_version=2).** Versioned, incremental ledger
+  written atomically after each successful download. Records original
+  ID, sha256, size, parent entity, file path, compressed flag, and the
+  `restorable` boolean (test-bound attachments are flagged
+  non-restorable with reason).
+- **`references.json` sidecar.** During backup, markdown fields of the
+  referencing entities (case `custom_steps*`, `comment`, `description`;
+  result `comment`; run/plan/milestone `description`/`comment`) are
+  scanned for `index.php?/attachments/get/<id|md5>` links. Matches are
+  persisted with their dotted field path so restore can rewrite them.
+- **`integrity.json`.** Top-level Merkle index over `data.json`,
+  `mapping.json`, `references.json` and every binary under `files/`.
+  Restore recomputes and verifies the root before any re-upload.
+- **Reference rewrite on rollback.** After re-uploading attachments,
+  the rollback fetches each affected case/result/run/plan/milestone,
+  substitutes `attachments/get/<old_id>` → `<new_id>` in the recorded
+  fields, and pushes the update. Numeric IDs are rewritten; md5-only
+  refs are reported `not_rewritten`.
+- **`--backup-concurrency N`** flag (default `min(8, --concurrency)`):
+  parallelises download+hash+write while a single committer goroutine
+  drains journal entries and persists `mapping.json` atomically.
+- **`--skip-references`** flag on both backup and `gotr snap rollback`:
+  short-circuits both the reference scan and the restore-time rewrite.
+- **`--verify-integrity`** flag on rollback: recomputes the Merkle root
+  before re-uploading; aborts on mismatch unless `--force`.
+- **Backward compat.** Old snapshots (only `data.json`, no
+  `mapping.json`/`references.json`/`integrity.json`) restore via the
+  legacy v1 path; an `INFO` line announces the downgrade. New
+  snapshots set `meta.json.schema_version = 2`.
+- Closes [#74].
+
+### Added — `attachments cleanup`: progress UI and per-entity-type summary
+
+- **Multiline live scan UI.** The single-line spinner is replaced by a
+  5-line progress block on stderr (when stderr is a TTY and `--quiet`
+  is not set) covering project N/M, the current phase
+  (`project → suites → cases → runs → plans → tests`) with a 10-char
+  bar and a done/total counter, running totals (`found`, `eligible`,
+  size), and elapsed time + ETA. Progress events are throttled to
+  ~50 ms to avoid stalling the scanner during high-concurrency phases.
+  Closes [#72].
+- **`INFO`-line fallback** on non-TTY writers / `--quiet`: per-project
+  `INFO: project X/Y done: …` and per-chunk
+  `INFO: chunk N/M done — running totals: …` lines keep CI logs
+  grep-friendly while preserving the same data.
+- **Per-project × per-entity-type summary table** is printed after the
+  executor finishes (`Breakdown by project × entity type:`) with
+  `case run plan plan_entry result test` columns, per-row Total/Size
+  and a footer aggregating across the whole run.
+- **Final summary block** lists the absolute paths of every audit
+  report file, the snapshot id with its absolute path under
+  `~/.gotr/snaps/cleanup-attachments/<id>/`, and a `Next steps:`
+  section with copy-pasteable rollback (`gotr snap rollback <id>`)
+  and resume (`gotr attachments cleanup --resume <run-id>`) hints.
+- New `internal/cleanup.ScanProgress` interface +
+  `ScanProgressReceiver` capability lets both `ProjectScanner` and
+  `EntityScanner` emit per-phase events without leaking UI concerns
+  into the scan layer; `BuildPlanWithScannerProgress` and
+  `ChunkConfig.Progress` are the new public entry points.
+- New `internal/ui.MultilineStatus` component with TTY-aware rendering
+  (`golang.org/x/term`), ANSI cursor-up redraw, deterministic
+  `RenderForTest` helper for golden tests, and `HumanBytes` /
+  `fmtDurationShort` formatters.
+
+[#72]: https://github.com/Korrnals/gotr/issues/72
+
+### Added — `attachments cleanup`: chunked execution, checkpoints, resume
+
+- **Chunked plan-build with crash-safe checkpoints.** Long entity-walk
+  scans across many projects are now broken into chunks of
+  `--chunk-size` (default `10`). After every chunk the run state is
+  flushed to `~/.gotr/cache/cleanup-attachments/<RUN_ID>/checkpoint.json`
+  plus `partial-plan.json` via `tmp + fsync + rename`, so a Ctrl-C,
+  network failure, or OS crash leaves a recoverable artifact instead
+  of a half-built plan. Closes [#73].
+- **`--resume <RUN_ID>`** picks up an interrupted run, restoring the
+  original scope, filters, scan strategy, limit, and chunk size from
+  the checkpoint and only retrying projects in `pending`/`retry_pending`.
+  Mutually exclusive with scope/filter flags — those are restored from
+  the checkpoint, not re-supplied. Filter mismatches abort with a
+  `checkpoint mismatch` error rather than silently mixing two filters.
+- **`--scan-timeout-per-project <dur>`** (default `10m`) caps each
+  per-project scan; on timeout the project is recorded as `timeout`
+  in the checkpoint and the run continues. `--resume` re-tries it.
+  Pass `0` to disable the deadline.
+- **`--list-checkpoints`** prints a table of all known checkpoints
+  (RUN_ID, started, updated, totals, done, pending, failed, timeout)
+  and the `--resume` hint. Mutually exclusive with every other flag.
+- **Auto-cleanup on success.** A run that completes with every project
+  in `done` automatically removes its checkpoint directory; otherwise
+  the artifacts are preserved and a `WARN:` summary is printed.
+- **Per-chunk progress.** `INFO: chunk N/M done — running totals: X
+  projects with hits, Y attachments, Z bytes` is logged to stderr
+  after every flushed chunk.
+
+### Documentation
+
+- New "Recovery & resume" section in `docs/en/guides/commands/attachments.md`
+  and `docs/ru/guides/commands/attachments.md` covering run-id format,
+  checkpoint location, atomic write semantics, and the resume contract.
+
+[#73]: https://github.com/Korrnals/gotr/issues/73
 
 ---
 

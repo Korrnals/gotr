@@ -20,8 +20,9 @@ const apiPrefix = "index.php?/api/v2/"
 
 // HTTPClient wraps HTTP transport and base URL handling for TestRail API calls.
 type HTTPClient struct {
-	client  *http.Client
-	baseURL *url.URL
+	client      *http.Client
+	baseURL     *url.URL
+	retryPolicy RetryPolicy
 }
 
 // options holds internal client configuration (unexported).
@@ -30,6 +31,7 @@ type options struct {
 	timeout             time.Duration
 	tlsHandshakeTimeout time.Duration
 	caBundlePath        string
+	retryPolicy         RetryPolicy
 }
 
 // authTransport automatically injects Basic Auth into every outgoing request.
@@ -55,10 +57,18 @@ func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 // defaultOptions holds the default client configuration values.
+//
+// timeout: 300s — heavy legacy TestRail endpoints (get_results_for_run on
+// huge runs) occasionally take 1–2 minutes to first byte. Most calls return
+// in under a second. This is the single source of truth for the request
+// timeout: there is intentionally no CLI flag, so transient slow-server
+// behavior is handled here and by the retry policy rather than by user
+// tuning.
 var defaultOptions = options{
 	insecure:            false,
-	timeout:             30 * time.Second,
+	timeout:             300 * time.Second,
 	tlsHandshakeTimeout: 10 * time.Second,
+	retryPolicy:         DefaultRetryPolicy(),
 }
 
 // ClientOption is a functional option for configuring NewClient.
@@ -75,6 +85,15 @@ func WithSkipTlsVerify(insecure bool) ClientOption {
 func WithTimeout(duration time.Duration) ClientOption {
 	return func(o *options) {
 		o.timeout = duration
+	}
+}
+
+// WithRetryPolicy overrides the automatic retry policy for transient GET
+// failures (network timeouts, HTTP 5xx, 429). Pass RetryPolicy{MaxAttempts: 1}
+// to disable retries entirely.
+func WithRetryPolicy(p RetryPolicy) ClientOption {
+	return func(o *options) {
+		o.retryPolicy = p
 	}
 }
 
@@ -152,7 +171,8 @@ func NewClient(baseURLStr, username, apiKey string, debugMode bool, opts ...Clie
 			Transport: auth,
 			Timeout:   cfg.timeout,
 		},
-		baseURL: cleanURL,
+		baseURL:     cleanURL,
+		retryPolicy: cfg.retryPolicy,
 	}, nil
 }
 
@@ -204,19 +224,55 @@ func (c *HTTPClient) DoRequest(ctx context.Context, method, endpoint string, bod
 	return c.client.Do(req)
 }
 
-// Get performs a GET request with automatic non-200 error handling.
+// Get performs a GET request with automatic non-200 error handling and
+// transparent retry on transient failures (network timeouts, HTTP 5xx, 429).
+//
+// Retries respect the parent context: cancellation aborts the loop
+// immediately. Non-retryable errors (4xx other than 429, caller cancellation)
+// short-circuit on the first attempt.
 func (c *HTTPClient) Get(ctx context.Context, endpoint string, queryParams map[string]string) (*http.Response, error) {
-	resp, err := c.DoRequest(ctx, "GET", endpoint, nil, queryParams)
-	if err != nil {
-		return nil, err
+	p := c.retryPolicy
+	if p.MaxAttempts < 1 {
+		p.MaxAttempts = 1
 	}
 
-	// Non-200 status — return a formatted API error
-	if resp.StatusCode != http.StatusOK {
-		return nil, c.formatAPIError(resp)
-	}
+	var lastErr error
+	for attempt := 0; attempt < p.MaxAttempts; attempt++ {
+		resp, err := c.DoRequest(ctx, "GET", endpoint, nil, queryParams)
 
-	return resp, nil
+		// Success path.
+		if err == nil && resp.StatusCode == http.StatusOK {
+			return resp, nil
+		}
+
+		isLast := attempt == p.MaxAttempts-1
+		switch {
+		case err != nil:
+			if !isRetryableErr(err) || isLast {
+				return nil, err
+			}
+			lastErr = err
+		case isRetryableStatus(resp.StatusCode):
+			// Drain & close body so the connection can be reused.
+			_, _ = io.Copy(io.Discard, resp.Body)
+			_ = resp.Body.Close()
+			if isLast {
+				return nil, fmt.Errorf("API returned %s after %d attempts", resp.Status, p.MaxAttempts)
+			}
+			lastErr = fmt.Errorf("transient %s", resp.Status)
+		default:
+			// Non-retryable HTTP status — hand off to the existing formatter
+			// which reads the body for the diagnostic message.
+			return nil, c.formatAPIError(resp)
+		}
+
+		delay := nextBackoff(attempt, p)
+		logRetry(endpoint, attempt, p.MaxAttempts, delay, lastErr.Error())
+		if sleepErr := sleepWithCtx(ctx, delay); sleepErr != nil {
+			return nil, sleepErr
+		}
+	}
+	return nil, lastErr
 }
 
 // Post performs a POST request with automatic non-200 error handling.

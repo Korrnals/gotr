@@ -238,9 +238,9 @@ store, snapID := newStoreWithSnap(t)
 // Build a reports/ tree that contains one matching and two non-matching
 // reports; the matcher is plain substring match on the basename.
 reportsDir := t.TempDir()
-match := filepath.Join(reportsDir, "migrations", "default", "2026-01",
+match := filepath.Join(reportsDir, "migrations", "default", "2026-01-01",
 "migration-20260101T000000Z-"+filepath.Base(snapID)+".md")
-other := filepath.Join(reportsDir, "migrations", "default", "2026-01",
+other := filepath.Join(reportsDir, "migrations", "default", "2026-01-01",
 "migration-20260101T000000Z-OTHER.md")
 unrelated := filepath.Join(reportsDir, "coverage", "default", "gotr_migration_foo_p1_to_p2.pdf")
 for _, p := range []string{match, other, unrelated} {

@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
@@ -24,6 +25,10 @@ type AttachmentsAPI interface {
 	GetAttachmentsForProject(ctx context.Context, projectID int64) (data.GetAttachmentsResponse, error)
 	DeleteAttachment(ctx context.Context, attachmentID int64) error
 	snap.CleanupAttachmentsAPI
+	// ReferenceFetchAPI is required so Execute can index markdown
+	// references that point at the about-to-be-deleted attachments.
+	// Disabled when ExecuteOptions.SkipReferences is true.
+	snap.ReferenceFetchAPI
 }
 
 // AttachmentFilter narrows the candidate set for an attachments cleanup.
@@ -108,7 +113,6 @@ func BuildPlan(
 // BuildPlanWithScanner is BuildPlan parameterised by an explicit
 // AttachmentScanner. The scanner decides HOW each project's
 // attachments are listed (single bulk call vs entity walk).
-//nolint:gocyclo // Plan walker: project resolution + parallel fetch + filter + limit are best read top-to-bottom.
 func BuildPlanWithScanner(
 	ctx context.Context,
 	lister ProjectLister,
@@ -117,6 +121,27 @@ func BuildPlanWithScanner(
 	filter AttachmentFilter,
 	concurrency int,
 ) (*Plan, error) {
+	return BuildPlanWithScannerProgress(ctx, lister, scanner, projectIDs, filter, concurrency, NoProgress)
+}
+
+// BuildPlanWithScannerProgress is BuildPlanWithScanner with an
+// explicit progress sink. nil sink → NoProgress.
+func BuildPlanWithScannerProgress(
+	ctx context.Context,
+	lister ProjectLister,
+	scanner AttachmentScanner,
+	projectIDs []int64,
+	filter AttachmentFilter,
+	concurrency int,
+	progress ScanProgress,
+) (*Plan, error) {
+	if progress == nil {
+		progress = NoProgress
+	}
+	if r, ok := scanner.(ScanProgressReceiver); ok {
+		r.SetProgress(progress)
+		defer r.SetProgress(NoProgress)
+	}
 	projects, err := resolveProjectsViaLister(ctx, lister, projectIDs)
 	if err != nil {
 		return nil, err
@@ -125,26 +150,24 @@ func BuildPlanWithScanner(
 		return &Plan{}, nil
 	}
 
+	total := len(projects)
+	var startMu sync.Mutex
+	var startedIdx int
 	results, _ := concurrent.ParallelMap(ctx, projects, concurrency, func(p data.Project, _ int) (ProjectSelection, error) {
-		atts, err := scanner.Scan(ctx, p.ID)
-		if err != nil {
-			return ProjectSelection{}, fmt.Errorf("project %d: %w", p.ID, err)
+		startMu.Lock()
+		startedIdx++
+		idx := startedIdx
+		startMu.Unlock()
+		progress.OnProjectStart(idx, total, p.ID, p.Name)
+		start := time.Now()
+		sel, scanErr := scanProject(ctx, scanner, p, filter, 0)
+		elapsed := time.Since(start)
+		if scanErr != nil {
+			progress.OnError(p.ID, scanErr)
+		} else {
+			progress.OnProjectDone(p.ID, len(sel.Attachments), len(sel.Attachments), sel.TotalBytes, elapsed)
 		}
-		sel := ProjectSelection{ProjectID: p.ID, ProjectName: p.Name}
-		for _, att := range atts {
-			if !filter.Allowed(att) {
-				continue
-			}
-			sel.Attachments = append(sel.Attachments, att)
-			sel.TotalBytes += att.Size
-			if sel.OldestUnix == 0 || (att.CreatedOn != 0 && att.CreatedOn < sel.OldestUnix) {
-				sel.OldestUnix = att.CreatedOn
-			}
-		}
-		sort.SliceStable(sel.Attachments, func(i, j int) bool {
-			return sel.Attachments[i].ID < sel.Attachments[j].ID
-		})
-		return sel, nil
+		return sel, scanErr
 	})
 
 	plan := &Plan{}
@@ -276,6 +299,14 @@ type ExecuteOptions struct {
 	CompressBinaries bool
 	// Concurrency sets the worker count for the delete phase.
 	Concurrency int
+	// BackupConcurrency sets the worker count for the snapshot
+	// download phase. 0 means auto: min(8, Concurrency).
+	BackupConcurrency int
+	// SkipReferences disables the reference scan (markdown bodies that
+	// point at the deleted attachments will not be indexed and cannot
+	// be rewritten on restore). Use only when the entity API is
+	// unhealthy and you accept lossy restore.
+	SkipReferences bool
 	// CLIArgs is propagated into the snapshot meta for traceability.
 	CLIArgs []string
 	// ServerURL is propagated into the snapshot meta. Empty = use
@@ -288,10 +319,24 @@ type ExecuteResult struct {
 	SnapshotID   string
 	DryRun       bool
 	BackedUp     int
+	BackupSkipped int // ghost attachments skipped during backup
 	BackupBytes  int64
 	Deleted      int
 	DeleteErrors int
-	Failures     []DeleteFailure
+	// FreedBytes is the sum of sizes of attachments that the server
+	// confirmed deleted (i.e. failures excluded). Equals BackupBytes
+	// when DeleteErrors == 0. Always 0 on dry-run.
+	FreedBytes int64
+	Failures   []DeleteFailure
+	// EntitiesScanned is the number of (entity_type, entity_id) tuples
+	// walked during the reference scan. 0 when SkipReferences=true.
+	EntitiesScanned int
+	// RefsIndexed is the number of attachment URLs persisted into
+	// references.json.
+	RefsIndexed int
+	// IntegrityRoot is the merkle-style root hash recorded in
+	// integrity.json. Empty when no snapshot was taken.
+	IntegrityRoot string
 }
 
 // DeleteFailure is a single failed DeleteAttachment call.
@@ -350,16 +395,19 @@ func Execute(
 		)
 		meta.Timestamp = time.Now().UTC()
 		meta.Status = snap.StatusAvailable
-		meta.DataFile = "data.json"
+		meta.DataFile = "attachments.json"
 
 		if err := store.SaveMeta(&meta); err != nil {
 			return res, fmt.Errorf("snapshot: save meta: %w", err)
 		}
-		saved, bytes, err := snap.BackupAttachmentsForCleanup(ctx, api, store, meta.ID, atts, opts.CompressBinaries)
+		backupRes, err := snap.BackupAttachmentsForCleanup(ctx, api, store, meta.ID, atts, snap.BackupOptions{
+			Compress:    opts.CompressBinaries,
+			Concurrency: resolveBackupConcurrency(opts),
+		})
 		if err != nil {
 			return res, fmt.Errorf("snapshot: backup binaries: %w", err)
 		}
-		meta.DataSizeBytes = bytes
+		meta.DataSizeBytes = backupRes.TotalBytes
 		if err := store.SaveMeta(&meta); err != nil {
 			return res, fmt.Errorf("snapshot: rewrite meta: %w", err)
 		}
@@ -367,19 +415,44 @@ func Execute(
 			return res, fmt.Errorf("snapshot: manifest add: %w", err)
 		}
 		res.SnapshotID = meta.ID
-		res.BackedUp = saved
-		res.BackupBytes = bytes
+		res.BackedUp = backupRes.Saved
+		res.BackupSkipped = backupRes.Skipped
+		res.BackupBytes = backupRes.TotalBytes
+
+		// 1b. Reference scan: walk every entity that owned a deleted
+		// attachment and persist references.json next to attachments.json.
+		// Best-effort — partial indexing is preferable to aborting the
+		// cleanup. Empty array means "scanned, found nothing", which
+		// is distinct from "scan was skipped" (no file written).
+		if !opts.SkipReferences {
+			refsList := snap.ScanReferencesForAttachments(ctx, api, atts)
+			if err := snap.WriteReferencesSidecar(store, meta.ID, refsList); err != nil {
+				return res, fmt.Errorf("snapshot: write references.json: %w", err)
+			}
+			res.EntitiesScanned = len(refsList)
+			for _, e := range refsList {
+				res.RefsIndexed += len(e.Refs)
+			}
+		}
+
+		// 1c. Integrity index over the entire snapshot directory.
+		idx, err := snap.WriteIntegrityIndex(store, meta.ID)
+		if err != nil {
+			return res, fmt.Errorf("snapshot: write integrity.json: %w", err)
+		}
+		res.IntegrityRoot = idx.Root
 	}
 
 	// 2. Delete phase (parallel).
 	type item struct {
 		ID        int64
 		ProjectID int64
+		Size      int64
 	}
 	deleteItems := make([]item, 0, len(atts))
 	for _, sel := range plan.Projects {
 		for _, a := range sel.Attachments {
-			deleteItems = append(deleteItems, item{ID: a.ID, ProjectID: sel.ProjectID})
+			deleteItems = append(deleteItems, item{ID: a.ID, ProjectID: sel.ProjectID, Size: a.Size})
 		}
 	}
 
@@ -403,9 +476,27 @@ func Execute(
 			continue
 		}
 		res.Deleted++
+		res.FreedBytes += deleteItems[i].Size
 	}
 	return res, nil
 }
 
 // Compile-time assertion that *client.HTTPClient satisfies AttachmentsAPI.
 var _ AttachmentsAPI = (*client.HTTPClient)(nil)
+
+// resolveBackupConcurrency picks the snapshot-download worker count.
+// 0 means "auto = min(8, Concurrency)" so tiny --concurrency values
+// don't accidentally enable a thundering herd of downloads.
+func resolveBackupConcurrency(opts ExecuteOptions) int {
+	if opts.BackupConcurrency > 0 {
+		return opts.BackupConcurrency
+	}
+	auto := opts.Concurrency
+	if auto > 8 {
+		auto = 8
+	}
+	if auto <= 0 {
+		auto = 1
+	}
+	return auto
+}

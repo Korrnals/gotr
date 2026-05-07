@@ -3,11 +3,18 @@ package cleanup
 import (
 	"context"
 	"fmt"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrent"
 	"github.com/Korrnals/gotr/internal/models/data"
 )
+
+// progressEmitInterval throttles OnUnit emissions inside the entity
+// scanner so high-concurrency phases don't drown the UI in events.
+const progressEmitInterval = 50 * time.Millisecond
 
 // ScanStrategy selects how a project's attachments are enumerated.
 //
@@ -70,6 +77,7 @@ type EntityAttachmentsAPI interface {
 	GetAttachmentsForPlanEntry(ctx context.Context, planID int64, entryID string) (data.GetAttachmentsResponse, error)
 	GetTests(ctx context.Context, runID int64, filters map[string]string) ([]data.Test, error)
 	GetAttachmentsForTest(ctx context.Context, testID int64) (data.GetAttachmentsResponse, error)
+	GetResultsForRun(ctx context.Context, runID int64) (data.GetResultsResponse, error)
 }
 
 // ScannerAPI is the union required by ResolveScanner: both endpoints
@@ -84,22 +92,54 @@ type ScannerAPI interface {
 // projectScanner wraps GetAttachmentsForProject. Single API call per
 // project (paginated internally by the client).
 type projectScanner struct {
-	api ProjectAttachmentsAPI
+	api      ProjectAttachmentsAPI
+	progMu   sync.Mutex
+	progress ScanProgress
 }
 
 // NewProjectScanner returns a scanner that uses the bulk
 // get_attachments_for_project endpoint.
 func NewProjectScanner(api ProjectAttachmentsAPI) AttachmentScanner {
-	return &projectScanner{api: api}
+	return &projectScanner{api: api, progress: NoProgress}
 }
 
 func (s *projectScanner) Name() string { return "project" }
 
+// SetProgress installs a progress sink for subsequent Scan calls.
+// Concurrent Scan calls share the same sink.
+func (s *projectScanner) SetProgress(p ScanProgress) {
+	s.progMu.Lock()
+	defer s.progMu.Unlock()
+	if p == nil {
+		s.progress = NoProgress
+		return
+	}
+	s.progress = p
+}
+
+func (s *projectScanner) currentProgress() ScanProgress {
+	s.progMu.Lock()
+	defer s.progMu.Unlock()
+	if s.progress == nil {
+		return NoProgress
+	}
+	return s.progress
+}
+
 func (s *projectScanner) Scan(ctx context.Context, projectID int64) ([]data.Attachment, error) {
+	prog := s.currentProgress()
+	prog.OnPhase(projectID, PhaseProject, 1)
 	atts, err := s.api.GetAttachmentsForProject(ctx, projectID)
 	if err != nil {
+		prog.OnError(projectID, err)
 		return nil, err
 	}
+	prog.OnUnit(projectID, PhaseProject, 1)
+	var bytes int64
+	for _, a := range atts {
+		bytes += a.Size
+	}
+	prog.OnAttachmentsFound(projectID, len(atts), len(atts), bytes)
 	return atts, nil
 }
 
@@ -111,7 +151,31 @@ type entityScanner struct {
 	walkRuns    bool
 	walkPlans   bool
 	walkTests   bool
+	walkResults bool
 	concurrency int
+
+	progMu   sync.Mutex
+	progress ScanProgress
+}
+
+// SetProgress installs a progress sink for subsequent Scan calls.
+func (s *entityScanner) SetProgress(p ScanProgress) {
+	s.progMu.Lock()
+	defer s.progMu.Unlock()
+	if p == nil {
+		s.progress = NoProgress
+		return
+	}
+	s.progress = p
+}
+
+func (s *entityScanner) currentProgress() ScanProgress {
+	s.progMu.Lock()
+	defer s.progMu.Unlock()
+	if s.progress == nil {
+		return NoProgress
+	}
+	return s.progress
 }
 
 // EntityScannerOptions narrows the entity walk. When all booleans are
@@ -123,6 +187,17 @@ type EntityScannerOptions struct {
 	WalkRuns    bool
 	WalkPlans   bool
 	WalkTests   bool
+	// WalkResults enables the results-driven walk for result-bound
+	// attachments. For each run, the scanner first probes
+	// get_attachments_for_run; if it returns a non-empty list (modern
+	// TestRail Cloud / Server >= 7.5) those attachments are taken
+	// directly. Otherwise (legacy TestRail Server where the endpoint
+	// returns an empty array) it falls back to get_results_for_run and
+	// fetches get_attachments_for_test only for tests whose results
+	// carry non-empty attachment_ids. This avoids the prohibitively
+	// expensive get_tests fan-out (legacy servers ignore limit and
+	// return the full ~MB-sized test list per run).
+	WalkResults bool
 	Concurrency int
 }
 
@@ -133,11 +208,15 @@ type EntityScannerOptions struct {
 func NewEntityScanner(api EntityAttachmentsAPI, opts EntityScannerOptions) AttachmentScanner {
 	// If no walk is requested, fall back to walking every entity kind:
 	// the AttachmentFilter still narrows the result downstream.
-	if !opts.WalkCases && !opts.WalkRuns && !opts.WalkPlans && !opts.WalkTests {
+	if !opts.WalkCases && !opts.WalkRuns && !opts.WalkPlans && !opts.WalkTests && !opts.WalkResults {
 		opts.WalkCases = true
 		opts.WalkRuns = true
 		opts.WalkPlans = true
-		opts.WalkTests = true
+		// Default scan uses the new results-driven path for result-bound
+		// attachments. WalkTests (the legacy get_tests fan-out) is left
+		// disabled by default because it duplicates WalkResults at much
+		// higher cost on legacy TestRail Server installations.
+		opts.WalkResults = true
 	}
 	if opts.Concurrency <= 0 {
 		opts.Concurrency = 4
@@ -148,26 +227,32 @@ func NewEntityScanner(api EntityAttachmentsAPI, opts EntityScannerOptions) Attac
 		walkRuns:    opts.WalkRuns,
 		walkPlans:   opts.WalkPlans,
 		walkTests:   opts.WalkTests,
+		walkResults: opts.WalkResults,
 		concurrency: opts.Concurrency,
+		progress:    NoProgress,
 	}
 }
 
 // EntityScannerOptionsFromTypes translates AttachmentFilter.EntityTypes
-// into the entity-walk plan. "case" implies the case walk;
-// "result"/"test" imply the tests walk (TestRail exposes result-bound
-// attachments via get_attachments_for_test, not under the parent case).
+// into the entity-walk plan. "case" implies the case walk; "result"
+// implies the results-driven walk (probe get_attachments_for_run and
+// fall back to get_results_for_run + per-test attachments — see
+// WalkResults). "test" implies the legacy get_tests fan-out walk
+// (expensive on legacy servers; kept for explicit opt-in only).
 // "plan_entry" implies the plan walk because plan entries are reached
 // through their parent plan.
 func EntityScannerOptionsFromTypes(types map[string]struct{}, concurrency int) EntityScannerOptions {
 	if len(types) == 0 {
-		return EntityScannerOptions{WalkCases: true, WalkRuns: true, WalkPlans: true, WalkTests: true, Concurrency: concurrency}
+		return EntityScannerOptions{WalkCases: true, WalkRuns: true, WalkPlans: true, WalkResults: true, Concurrency: concurrency}
 	}
 	opts := EntityScannerOptions{Concurrency: concurrency}
 	for t := range types {
 		switch t {
 		case "case":
 			opts.WalkCases = true
-		case "result", "test":
+		case "result":
+			opts.WalkResults = true
+		case "test":
 			opts.WalkTests = true
 		case "run":
 			opts.WalkRuns = true
@@ -231,6 +316,7 @@ func stampParent(atts []data.Attachment, kind string, parentID int64, entryID st
 func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attachment, error) {
 	seen := make(map[int64]struct{})
 	var out []data.Attachment
+	prog := s.currentProgress()
 
 	collect := func(items []data.Attachment) {
 		for _, a := range items {
@@ -245,45 +331,65 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 	if s.walkCases {
 		suites, err := s.api.GetSuites(ctx, projectID)
 		if err != nil {
+			prog.OnError(projectID, err)
 			return nil, fmt.Errorf("get_suites %d: %w", projectID, err)
 		}
-		for _, su := range suites {
+		// Collect the full case set to publish a stable phase total.
+		var allCases []data.Case
+		prog.OnPhase(projectID, PhaseSuites, len(suites))
+		for i, su := range suites {
 			cases, err := s.api.GetCases(ctx, projectID, su.ID, 0)
 			if err != nil {
+				prog.OnError(projectID, err)
 				return nil, fmt.Errorf("get_cases p%d/s%d: %w", projectID, su.ID, err)
 			}
-			res, _ := concurrent.ParallelMap(ctx, cases, s.concurrency, func(c data.Case, _ int) ([]data.Attachment, error) {
-				atts, err := s.api.GetAttachmentsForCase(ctx, c.ID)
-				if err != nil {
-					return nil, fmt.Errorf("get_attachments_for_case %d: %w", c.ID, err)
-				}
-				stampParent(atts, "case", c.ID, "")
-				return atts, nil
-			})
-			for _, r := range res {
-				if r.Error != nil {
-					return nil, r.Error
-				}
-				collect(r.Data)
+			allCases = append(allCases, cases...)
+			prog.OnUnit(projectID, PhaseSuites, i+1)
+		}
+		prog.OnPhase(projectID, PhaseCases, len(allCases))
+		var processed int64
+		emit := newPhaseEmitter(prog, projectID, PhaseCases)
+		res, _ := concurrent.ParallelMap(ctx, allCases, s.concurrency, func(c data.Case, _ int) ([]data.Attachment, error) {
+			atts, err := s.api.GetAttachmentsForCase(ctx, c.ID)
+			if err != nil {
+				return nil, fmt.Errorf("get_attachments_for_case %d: %w", c.ID, err)
 			}
+			stampParent(atts, "case", c.ID, "")
+			emit.bump(atomic.AddInt64(&processed, 1))
+			return atts, nil
+		})
+		emit.flush(atomic.LoadInt64(&processed))
+		for _, r := range res {
+			if r.Error != nil {
+				prog.OnError(projectID, r.Error)
+				return nil, r.Error
+			}
+			collect(r.Data)
 		}
 	}
 
 	if s.walkRuns {
 		runs, err := s.api.GetRuns(ctx, projectID)
 		if err != nil {
+			prog.OnError(projectID, err)
 			return nil, fmt.Errorf("get_runs %d: %w", projectID, err)
 		}
+		prog.OnPhase(projectID, PhaseRuns, len(runs))
+		var processed int64
+		emit := newPhaseEmitter(prog, projectID, PhaseRuns)
 		res, _ := concurrent.ParallelMap(ctx, runs, s.concurrency, func(r data.Run, _ int) ([]data.Attachment, error) {
 			atts, err := s.api.GetAttachmentsForRun(ctx, r.ID)
 			if err != nil {
 				return nil, fmt.Errorf("get_attachments_for_run %d: %w", r.ID, err)
 			}
 			stampParent(atts, "run", r.ID, "")
+			emit.bump(atomic.AddInt64(&processed, 1))
 			return atts, nil
 		})
+		emit.flush(atomic.LoadInt64(&processed))
 		for _, r := range res {
 			if r.Error != nil {
+				prog.OnError(projectID, r.Error)
 				return nil, r.Error
 			}
 			collect(r.Data)
@@ -293,8 +399,12 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 	if s.walkPlans {
 		plans, err := s.api.GetPlans(ctx, projectID)
 		if err != nil {
+			prog.OnError(projectID, err)
 			return nil, fmt.Errorf("get_plans %d: %w", projectID, err)
 		}
+		prog.OnPhase(projectID, PhasePlans, len(plans))
+		var processed int64
+		emit := newPhaseEmitter(prog, projectID, PhasePlans)
 		res, _ := concurrent.ParallelMap(ctx, plans, s.concurrency, func(p data.Plan, _ int) ([]data.Attachment, error) {
 			var acc []data.Attachment
 			atts, err := s.api.GetAttachmentsForPlan(ctx, p.ID)
@@ -323,19 +433,117 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 					acc = append(acc, eAtts...)
 				}
 			}
+			emit.bump(atomic.AddInt64(&processed, 1))
 			return acc, nil
 		})
+		emit.flush(atomic.LoadInt64(&processed))
 		for _, r := range res {
 			if r.Error != nil {
+				prog.OnError(projectID, r.Error)
 				return nil, r.Error
 			}
 			collect(r.Data)
 		}
 	}
 
+	if s.walkResults {
+		runIDs, err := s.collectRunIDs(ctx, projectID)
+		if err != nil {
+			prog.OnError(projectID, err)
+			return nil, err
+		}
+		// Phase 1: per run, probe get_attachments_for_run. If
+		// non-empty, take it (modern server returns all entity-bound
+		// attachments here including result-bound). Otherwise collect
+		// the results list to extract distinct test_ids whose results
+		// carry attachment_ids — those are the only tests we need to
+		// visit on legacy TestRail Server.
+		type runProbe struct {
+			fromRun []data.Attachment
+			testIDs []int64
+		}
+		prog.OnPhase(projectID, PhaseRuns, len(runIDs))
+		var runProcessed int64
+		runEmit := newPhaseEmitter(prog, projectID, PhaseRuns)
+		probes, _ := concurrent.ParallelMap(ctx, runIDs, s.concurrency, func(runID int64, _ int) (runProbe, error) {
+			defer runEmit.bump(atomic.AddInt64(&runProcessed, 1))
+			atts, err := s.api.GetAttachmentsForRun(ctx, runID)
+			if err != nil {
+				return runProbe{}, fmt.Errorf("get_attachments_for_run %d: %w", runID, err)
+			}
+			if len(atts) > 0 {
+				stampParent(atts, "run", runID, "")
+				return runProbe{fromRun: atts}, nil
+			}
+			results, err := s.api.GetResultsForRun(ctx, runID)
+			if err != nil {
+				return runProbe{}, fmt.Errorf("get_results_for_run %d: %w", runID, err)
+			}
+			seenTest := make(map[int64]struct{}, len(results))
+			var testIDs []int64
+			for _, r := range results {
+				if len(r.AttachmentIDs) == 0 || r.TestID == 0 {
+					continue
+				}
+				if _, ok := seenTest[r.TestID]; ok {
+					continue
+				}
+				seenTest[r.TestID] = struct{}{}
+				testIDs = append(testIDs, r.TestID)
+			}
+			return runProbe{testIDs: testIDs}, nil
+		})
+		runEmit.flush(atomic.LoadInt64(&runProcessed))
+		// Aggregate run-level hits and the test_id worklist.
+		var pendingTestIDs []int64
+		seenTestGlobal := make(map[int64]struct{})
+		for _, r := range probes {
+			if r.Error != nil {
+				prog.OnError(projectID, r.Error)
+				return nil, r.Error
+			}
+			if len(r.Data.fromRun) > 0 {
+				collect(r.Data.fromRun)
+			}
+			for _, tid := range r.Data.testIDs {
+				if _, ok := seenTestGlobal[tid]; ok {
+					continue
+				}
+				seenTestGlobal[tid] = struct{}{}
+				pendingTestIDs = append(pendingTestIDs, tid)
+			}
+		}
+		// Phase 2: only fetch attachments for tests that have at least
+		// one result with non-empty attachment_ids. This is the bulk
+		// of the savings vs. the legacy walkTests path.
+		if len(pendingTestIDs) > 0 {
+			prog.OnPhase(projectID, PhaseTests, len(pendingTestIDs))
+			var processed int64
+			emit := newPhaseEmitter(prog, projectID, PhaseTests)
+			attsPerTest, _ := concurrent.ParallelMap(ctx, pendingTestIDs, s.concurrency, func(testID int64, _ int) ([]data.Attachment, error) {
+				atts, err := s.api.GetAttachmentsForTest(ctx, testID)
+				if err != nil {
+					return nil, fmt.Errorf("get_attachments_for_test %d: %w", testID, err)
+				}
+				stampParent(atts, "test", testID, "")
+				emit.bump(atomic.AddInt64(&processed, 1))
+				return atts, nil
+			})
+			emit.flush(atomic.LoadInt64(&processed))
+			for _, r := range attsPerTest {
+				if r.Error != nil {
+					prog.OnError(projectID, r.Error)
+					return nil, r.Error
+				}
+				collect(r.Data)
+			}
+		}
+	}
+
 	if s.walkTests {
 		runIDs, err := s.collectRunIDs(ctx, projectID)
 		if err != nil {
+			prog.OnError(projectID, err)
 			return nil, err
 		}
 		// Enumerate tests per run, then attachments per test. Two
@@ -351,27 +559,80 @@ func (s *entityScanner) Scan(ctx context.Context, projectID int64) ([]data.Attac
 		var allTests []data.Test
 		for _, r := range testsPerRun {
 			if r.Error != nil {
+				prog.OnError(projectID, r.Error)
 				return nil, r.Error
 			}
 			allTests = append(allTests, r.Data...)
 		}
+		prog.OnPhase(projectID, PhaseTests, len(allTests))
+		var processed int64
+		emit := newPhaseEmitter(prog, projectID, PhaseTests)
 		attsPerTest, _ := concurrent.ParallelMap(ctx, allTests, s.concurrency, func(t data.Test, _ int) ([]data.Attachment, error) {
 			atts, err := s.api.GetAttachmentsForTest(ctx, t.ID)
 			if err != nil {
 				return nil, fmt.Errorf("get_attachments_for_test %d: %w", t.ID, err)
 			}
 			stampParent(atts, "test", t.ID, "")
+			emit.bump(atomic.AddInt64(&processed, 1))
 			return atts, nil
 		})
+		emit.flush(atomic.LoadInt64(&processed))
 		for _, r := range attsPerTest {
 			if r.Error != nil {
+				prog.OnError(projectID, r.Error)
 				return nil, r.Error
 			}
 			collect(r.Data)
 		}
 	}
 
+	var totalBytes int64
+	for _, a := range out {
+		totalBytes += a.Size
+	}
+	prog.OnAttachmentsFound(projectID, len(out), len(out), totalBytes)
 	return out, nil
+}
+
+// phaseEmitter throttles per-unit progress emissions to one event every
+// progressEmitInterval, so high-fanout phases (thousands of cases on a
+// large project) don't drown the consumer in events. The final value is
+// always flushed via flush().
+type phaseEmitter struct {
+	prog      ScanProgress
+	projectID int64
+	phase     ScanPhase
+	mu        sync.Mutex
+	last      time.Time
+	lastVal   int64
+}
+
+func newPhaseEmitter(prog ScanProgress, projectID int64, phase ScanPhase) *phaseEmitter {
+	return &phaseEmitter{prog: prog, projectID: projectID, phase: phase}
+}
+
+func (e *phaseEmitter) bump(processed int64) {
+	e.mu.Lock()
+	now := time.Now()
+	if now.Sub(e.last) < progressEmitInterval && processed != 1 {
+		e.mu.Unlock()
+		return
+	}
+	e.last = now
+	e.lastVal = processed
+	e.mu.Unlock()
+	e.prog.OnUnit(e.projectID, e.phase, int(processed))
+}
+
+func (e *phaseEmitter) flush(final int64) {
+	e.mu.Lock()
+	if e.lastVal == final {
+		e.mu.Unlock()
+		return
+	}
+	e.lastVal = final
+	e.mu.Unlock()
+	e.prog.OnUnit(e.projectID, e.phase, int(final))
 }
 
 // collectRunIDs returns the union of project-level run IDs (GetRuns)

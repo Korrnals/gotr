@@ -67,6 +67,7 @@ func decodeListResponse[T any](body []byte, itemsField string) (items []T, pageL
 func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, baseQuery map[string]string, itemsField string) ([]T, error) {
 	var all []T
 	offset := 0
+	const limit = paginationLimit
 
 	for {
 		// Build query by appending offset/limit to base parameters
@@ -75,11 +76,11 @@ func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, b
 			query[k] = v
 		}
 		query["offset"] = fmt.Sprintf("%d", offset)
-		query["limit"] = fmt.Sprintf("%d", paginationLimit)
+		query["limit"] = fmt.Sprintf("%d", limit)
 
 		resp, err := c.Get(ctx, endpoint, query)
 		if err != nil {
-			return nil, fmt.Errorf("fetchAllPages %s (offset=%d): %w", endpoint, offset, err)
+			return nil, fmt.Errorf("fetchAllPages %s (offset=%d, limit=%d): %w", endpoint, offset, limit, err)
 		}
 
 		// Explicit close inside loop body — avoids defer accumulation
@@ -98,17 +99,17 @@ func fetchAllPages[T any](ctx context.Context, c *HTTPClient, endpoint string, b
 
 		// Backward-compat mode: flat array responses are not paginated by TestRail.
 		// If the payload starts with '[', stop after the first successful request,
-		// even when len(page) >= paginationLimit.
+		// even when len(page) >= limit.
 		if isJSONArrayBody(body) {
 			break
 		}
 
-		// Fewer items than limit means no more pages
-		if pageLen < paginationLimit {
+		// Fewer items than the current limit means no more pages.
+		if pageLen < limit {
 			break
 		}
 
-		offset += paginationLimit
+		offset += limit
 	}
 
 	return all, nil

@@ -11,7 +11,116 @@
 
 ## [Unreleased]
 
-_Пока без изменений._
+### Added — `attachments cleanup`: полнота снапшотов (формат v2)
+
+- **SHA-256 для каждого вложения.** Хэш считается потоком при загрузке
+  и сохраняется в `mapping.json`; восстановление проверяет его.
+- **`mapping.json` (schema_version=2).** Версионируемый журнал, который
+  пополняется после каждой успешной загрузки атомарной записью.
+  Содержит исходный ID, sha256, размер, родительскую сущность, путь к
+  файлу, флаг компрессии и `restorable` (вложения теста помечены как
+  невосстановимые с причиной).
+- **Сайдкар `references.json`.** При бэкапе сканируются markdown-поля
+  ссылающихся сущностей (case `custom_steps*`, `comment`,
+  `description`; result `comment`; run/plan/milestone
+  `description`/`comment`) на наличие `index.php?/attachments/get/<id|md5>`.
+  Найденные ссылки сохраняются с точечным путём поля, чтобы откат смог
+  их переписать.
+- **`integrity.json`.** Меркл-индекс верхнего уровня по `data.json`,
+  `mapping.json`, `references.json` и всем бинарникам в `files/`.
+  Откат пересчитывает корень и сверяет его до начала загрузки.
+- **Перезапись ссылок при откате.** После повторной загрузки вложений
+  откат подгружает каждую затронутую case/result/run/plan/milestone,
+  заменяет `attachments/get/<старый_id>` на `<новый_id>` в записанных
+  полях и обновляет сущность. Перезаписываются числовые ID; ссылки по
+  md5 помечаются как `not_rewritten`.
+- **Флаг `--backup-concurrency N`** (по умолчанию `min(8, --concurrency)`):
+  параллелит загрузку, хэширование и запись; отдельный коммиттер пишет
+  `mapping.json` атомарно.
+- **Флаг `--skip-references`** для бэкапа и `gotr snap rollback`:
+  отключает и сканирование, и перезапись ссылок при восстановлении.
+- **Флаг `--verify-integrity`** для отката: пересчёт меркл-корня перед
+  повторной загрузкой; ошибка при расхождении (если не указан
+  `--force`).
+- **Обратная совместимость.** Старые снапшоты (только `data.json`,
+  без `mapping.json`/`references.json`/`integrity.json`) откатываются
+  по legacy-пути v1 с `INFO`-логом. Новые снапшоты получают
+  `meta.json.schema_version = 2`.
+- Closes [#74].
+
+### Added — `attachments cleanup`: прогресс-UI и подробная сводка по сущностям
+
+- **Многострочный live-UI сканирования.** Однострочный спиннер заменён
+  5-строчным прогресс-блоком в stderr (если stderr — TTY и не задан
+  `--quiet`): project N/M, текущая фаза
+  (`project → suites → cases → runs → plans → tests`) с 10-символьным
+  баром и счётчиком done/total, бегущие итоги (`found`, `eligible`,
+  размер) и elapsed + ETA. События прогресса агрегируются раз в
+  ~50 мс, чтобы не тормозить сканер на высоких уровнях параллелизма.
+  Закрывает [#72].
+- **`INFO`-фолбэк** для не-TTY / `--quiet`: построчные
+  `INFO: project X/Y done: …` и `INFO: chunk N/M done — running totals: …`
+  сохраняют те же данные в виде, удобном для grep в CI-логах.
+- **Таблица «проект × тип сущности»** печатается после удаления
+  (`Breakdown by project × entity type:`) со столбцами
+  `case run plan plan_entry result test`, итоговой Total/Size по строке
+  и финальной строкой-агрегатом по всему запуску.
+- **Финальный блок** перечисляет абсолютные пути всех файлов
+  audit-отчёта, snapshot id и абсолютный путь
+  `~/.gotr/snaps/cleanup-attachments/<id>/`, а также блок `Next steps:`
+  с готовыми командами для отката (`gotr snap rollback <id>`) и
+  возобновления (`gotr attachments cleanup --resume <run-id>`).
+- Новый интерфейс `internal/cleanup.ScanProgress` и capability
+  `ScanProgressReceiver` позволяют `ProjectScanner` и `EntityScanner`
+  испускать события по фазам, не утягивая UI в слой сканирования.
+  Новые точки входа: `BuildPlanWithScannerProgress` и
+  `ChunkConfig.Progress`.
+- Новый компонент `internal/ui.MultilineStatus` с TTY-aware рендером
+  (`golang.org/x/term`), перерисовкой ANSI cursor-up, детерминированным
+  хелпером `RenderForTest` для golden-тестов и форматтерами
+  `HumanBytes`/`fmtDurationShort`.
+
+[#72]: https://github.com/Korrnals/gotr/issues/72
+
+### Added — `attachments cleanup`: chunked-выполнение, чекпоинты, resume
+
+- **Сборка плана чанками с crash-safe чекпоинтами.** Длительные
+  entity-walk сканирования по большому количеству проектов теперь
+  разбиваются на чанки по `--chunk-size` (по умолчанию `10`). После
+  каждого чанка состояние запуска атомарно записывается в
+  `~/.gotr/cache/cleanup-attachments/<RUN_ID>/checkpoint.json` плюс
+  `partial-plan.json` через `tmp + fsync + rename` — Ctrl-C, сетевые
+  сбои или падение ОС оставляют пригодный к восстановлению артефакт
+  вместо наполовину построенного плана. Закрывает [#73].
+- **`--resume <RUN_ID>`** возобновляет прерванный запуск, восстанавливая
+  scope, фильтры, scan strategy, limit и chunk size из чекпоинта и
+  повторяя только проекты в состоянии `pending`/`retry_pending`.
+  Несовместим с флагами scope/фильтра — они берутся из чекпоинта.
+  Несоответствие фильтра завершает запуск с ошибкой `checkpoint mismatch`,
+  а не молча смешивает два набора условий.
+- **`--scan-timeout-per-project <dur>`** (по умолчанию `10m`) ограничивает
+  сканирование одного проекта; при срабатывании проект помечается
+  `timeout` в чекпоинте, запуск продолжается, а `--resume` повторяет его.
+  Передайте `0`, чтобы отключить дедлайн.
+- **`--list-checkpoints`** выводит таблицу всех чекпоинтов (RUN_ID,
+  started, updated, totals, done, pending, failed, timeout) и подсказку
+  `--resume`. Несовместим с любыми другими флагами.
+- **Автоудаление при успехе.** Если запуск завершён с состоянием `done`
+  для всех проектов, директория чекпоинта удаляется автоматически;
+  иначе артефакты сохраняются и в stderr печатается `WARN:` со списком
+  проблемных project id.
+- **Прогресс по чанкам.** После каждого зафиксированного чанка в stderr
+  печатается `INFO: chunk N/M done — running totals: X projects with
+  hits, Y attachments, Z bytes`.
+
+### Documentation
+
+- Новый раздел «Восстановление и resume» в
+  `docs/en/guides/commands/attachments.md` и
+  `docs/ru/guides/commands/attachments.md`: формат run-id, расположение
+  чекпоинта, семантика атомарной записи, контракт resume.
+
+[#73]: https://github.com/Korrnals/gotr/issues/73
 
 ---
 

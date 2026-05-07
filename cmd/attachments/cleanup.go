@@ -77,9 +77,15 @@ as Skipped.`,
 	cmd.Flags().String("snap-label", "", "Optional human-readable label for the snapshot")
 	cmd.Flags().Float64("max-size-gb", 0, "Refuse if the snapshot would exceed N GB (0 = no cap); use --force to override")
 	cmd.Flags().Bool("compress", false, "Gzip-compress stored binaries inside the snapshot")
+	cmd.Flags().Int("backup-concurrency", 0, "Worker count for snapshot downloads (0 = auto: min(8, --concurrency))")
+	cmd.Flags().Bool("skip-references", false, "Disable markdown reference scan; restore will not rewrite case/run/plan/milestone bodies")
 	cmd.Flags().Bool("force", false, "Bypass --max-size-gb and the interactive confirmation prompt")
 	cmd.Flags().String("scan-strategy", "auto", "How to enumerate attachments: auto|project|entities. auto probes get_attachments_for_project once and falls back to a suites→cases/runs/plans walk on TestRail Server < 7.5.")
 	cmd.Flags().Bool("no-report", false, "Skip emitting the deletion-audit report under ~/.gotr/reports/cleanup-attachments/")
+	cmd.Flags().Int("chunk-size", 10, "Projects scanned per chunk; checkpoint is persisted after each chunk")
+	cmd.Flags().String("resume", "", "Resume an interrupted run by its run-id (mutually exclusive with --project/--all-projects/--older-than/--entity-type)")
+	cmd.Flags().String("scan-timeout-per-project", "10m", "Per-project Scan() timeout (e.g. 30s, 5m, 0 to disable)")
+	cmd.Flags().Bool("list-checkpoints", false, "List existing cleanup checkpoints and exit")
 	output.AddFlag(cmd)
 
 	return cmd
@@ -100,11 +106,18 @@ type cleanupOptions struct {
 	SnapshotLabel     string
 	MaxSizeGB         float64
 	Compress          bool
+	BackupConcurrency int
+	SkipReferences    bool
 	Force             bool
 	ScanStrategy      string
 	OlderThanRaw      string
 	CutoffUnix        int64
 	NoReport          bool
+	ChunkSize         int
+	ResumeRunID       string
+	ScanTimeoutRaw    string
+	ScanTimeout       time.Duration
+	ListCheckpoints   bool
 }
 
 //nolint:gocyclo // Sequential pre-flight stages (parse → prompt → validate → plan → confirm → execute) are clearer kept together than artificially split.
@@ -116,6 +129,24 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		}
 
 		ctx := cmd.Context()
+
+		// --list-checkpoints short-circuits the entire workflow.
+		if opts.ListCheckpoints {
+			if err := assertListCheckpointsExclusive(cmd); err != nil {
+				return err
+			}
+			return runListCheckpoints(cmd)
+		}
+
+		if opts.ResumeRunID != "" {
+			if err := assertResumeExclusive(cmd); err != nil {
+				return err
+			}
+			if err := loadOptsFromCheckpoint(opts); err != nil {
+				return fmt.Errorf("resume: %w", err)
+			}
+		}
+
 		if err := promptCleanupOptions(ctx, cmd, opts); err != nil {
 			return fmt.Errorf("interactive: %w", err)
 		}
@@ -154,7 +185,7 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 			return fmt.Errorf("resolve scan strategy: %w", err)
 		}
 
-		plan, err := buildPlanWithStatus(ctx, cmd, api, scanner, opts, filter)
+		plan, runID, err := buildPlanWithChunkingStatus(ctx, cmd, api, scanner, opts, filter)
 		if err != nil {
 			return fmt.Errorf("build plan: %w", err)
 		}
@@ -188,13 +219,15 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		}
 
 		execOpts := cleanup.ExecuteOptions{
-			DryRun:           opts.DryRun,
-			SkipSnapshot:     opts.SkipSnapshot,
-			SnapshotLabel:    opts.SnapshotLabel,
-			CompressBinaries: opts.Compress,
-			Concurrency:      opts.Concurrency,
-			CLIArgs:          cliArgsFor(cmd),
-			ServerURL:        snap.CurrentServerURL(),
+			DryRun:            opts.DryRun,
+			SkipSnapshot:      opts.SkipSnapshot,
+			SnapshotLabel:     opts.SnapshotLabel,
+			CompressBinaries:  opts.Compress,
+			Concurrency:       opts.Concurrency,
+			BackupConcurrency: opts.BackupConcurrency,
+			SkipReferences:    opts.SkipReferences,
+			CLIArgs:           cliArgsFor(cmd),
+			ServerURL:         snap.CurrentServerURL(),
 		}
 
 		quiet, _ := cmd.Flags().GetBool("quiet")
@@ -206,6 +239,10 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 			return cleanup.Execute(ctx, api, store, manifest, plan, execOpts)
 		})
 		if err != nil {
+			if runID != "" {
+				fmt.Fprintf(os.Stderr, "\n⚠️  Cleanup interrupted. To resume from where it left off, run:\n")
+				fmt.Fprintf(os.Stderr, "   gotr attachments cleanup --resume %s\n\n", runID)
+			}
 			return fmt.Errorf("execute: %w", err)
 		}
 
@@ -215,7 +252,9 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 		_ = opts.SnapshotRetention
 
 		printCleanupResult(cmd, res)
-		writeCleanupReport(cmd, plan, res, opts)
+		printCleanupSummaryDetailed(cmd, plan)
+		reportPaths := writeCleanupReport(cmd, getClient(cmd), plan, res, opts, runID)
+		printCleanupFinalBlock(cmd, plan, res, opts, runID, reportPaths)
 		if res.DeleteErrors > 0 {
 			return fmt.Errorf("%d delete(s) failed; snapshot is preserved for rollback", res.DeleteErrors)
 		}
@@ -237,9 +276,15 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 	opts.SnapshotLabel, _ = cmd.Flags().GetString("snap-label")
 	opts.MaxSizeGB, _ = cmd.Flags().GetFloat64("max-size-gb")
 	opts.Compress, _ = cmd.Flags().GetBool("compress")
+	opts.BackupConcurrency, _ = cmd.Flags().GetInt("backup-concurrency")
+	opts.SkipReferences, _ = cmd.Flags().GetBool("skip-references")
 	opts.Force, _ = cmd.Flags().GetBool("force")
 	opts.ScanStrategy, _ = cmd.Flags().GetString("scan-strategy")
 	opts.NoReport, _ = cmd.Flags().GetBool("no-report")
+	opts.ChunkSize, _ = cmd.Flags().GetInt("chunk-size")
+	opts.ResumeRunID, _ = cmd.Flags().GetString("resume")
+	opts.ScanTimeoutRaw, _ = cmd.Flags().GetString("scan-timeout-per-project")
+	opts.ListCheckpoints, _ = cmd.Flags().GetBool("list-checkpoints")
 	opts.OlderThanRaw = rawAge
 	opts.ScanStrategy = strings.ToLower(strings.TrimSpace(opts.ScanStrategy))
 	switch opts.ScanStrategy {
@@ -274,6 +319,16 @@ func parseCleanupFlags(cmd *cobra.Command) (*cleanupOptions, error) {
 	}
 	if opts.Concurrency < 1 {
 		opts.Concurrency = 4
+	}
+	if opts.ChunkSize <= 0 {
+		opts.ChunkSize = 10
+	}
+	if strings.TrimSpace(opts.ScanTimeoutRaw) != "" && opts.ScanTimeoutRaw != "0" {
+		d, err := parseHumanDuration(opts.ScanTimeoutRaw)
+		if err != nil {
+			return nil, fmt.Errorf("--scan-timeout-per-project %q: %w", opts.ScanTimeoutRaw, err)
+		}
+		opts.ScanTimeout = d
 	}
 	return opts, nil
 }
@@ -369,21 +424,6 @@ func parseHumanDuration(s string) (time.Duration, error) {
 	default:
 		return time.ParseDuration(s)
 	}
-}
-
-func buildPlanWithStatus(ctx context.Context, cmd *cobra.Command, lister cleanup.ProjectLister, scanner cleanup.AttachmentScanner, opts *cleanupOptions, filter cleanup.AttachmentFilter) (*cleanup.Plan, error) {
-	quiet, _ := cmd.Flags().GetBool("quiet")
-	var ids []int64
-	if !opts.AllProjects {
-		ids = opts.ProjectIDs
-	}
-	return ui.RunWithStatus(ctx, ui.StatusConfig{
-		Title:  "Scanning attachments",
-		Writer: os.Stderr,
-		Quiet:  quiet,
-	}, func(ctx context.Context) (*cleanup.Plan, error) {
-		return cleanup.BuildPlanWithScanner(ctx, lister, scanner, ids, filter, opts.Concurrency)
-	})
 }
 
 // resolveScannerWithStatus picks the scan strategy honoring
@@ -520,14 +560,17 @@ func humanBytes(n int64) string {
 		kb = 1024
 		mb = 1024 * kb
 		gb = 1024 * mb
+		tb = 1024 * gb
 	)
 	switch {
+	case n >= tb:
+		return fmt.Sprintf("%.2f TB (%d B)", float64(n)/float64(tb), n)
 	case n >= gb:
-		return fmt.Sprintf("%.2f GB", float64(n)/float64(gb))
+		return fmt.Sprintf("%.2f GB (%d B)", float64(n)/float64(gb), n)
 	case n >= mb:
-		return fmt.Sprintf("%.2f MB", float64(n)/float64(mb))
+		return fmt.Sprintf("%.2f MB (%d B)", float64(n)/float64(mb), n)
 	case n >= kb:
-		return fmt.Sprintf("%.2f KB", float64(n)/float64(kb))
+		return fmt.Sprintf("%.2f KB (%d B)", float64(n)/float64(kb), n)
 	default:
 		return fmt.Sprintf("%d B", n)
 	}

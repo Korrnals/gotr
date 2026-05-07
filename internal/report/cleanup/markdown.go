@@ -5,6 +5,7 @@ package cleanup
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -16,10 +17,15 @@ func RenderMarkdown(r *Report) string {
 	writeMDTitle(&sb, r)
 	writeMDRun(&sb, r)
 	writeMDFilters(&sb, r)
+	writeMDChunking(&sb, r)
 	writeMDSummary(&sb, r)
 	writeMDProjects(&sb, r)
+	writeMDEntityBreakdown(&sb, r)
 	writeMDItems(&sb, r)
 	writeMDFailures(&sb, r)
+	writeMDSnapshot(&sb, r)
+	writeMDReferenceLimitations(&sb, r)
+	writeMDArtifacts(&sb, r)
 	writeMDRollback(&sb, r)
 	return sb.String()
 }
@@ -45,6 +51,9 @@ func writeMDRun(sb *strings.Builder, r *Report) {
 	sb.WriteString("| Field | Value |\n")
 	sb.WriteString("|-------|-------|\n")
 	row(sb, "Report ID", code(r.ID))
+	if r.RunID != "" {
+		row(sb, "Run ID", code(r.RunID))
+	}
 	row(sb, "Snapshot ID", code(notEmpty(r.SnapshotID, "—")))
 	row(sb, "Timestamp (UTC)", r.Timestamp.UTC().Format(time.RFC3339))
 	row(sb, "Server", notEmpty(r.Server, "—"))
@@ -93,9 +102,13 @@ func writeMDSummary(sb *strings.Builder, r *Report) {
 	sb.WriteString("|--------|-------|\n")
 	row(sb, "Total selected", fmt.Sprintf("%d", r.Summary.TotalSelected))
 	row(sb, "Backed up (count)", fmt.Sprintf("%d", r.Summary.BackedUp))
-	row(sb, "Backed up (bytes)", humanBytes(r.Summary.BackupBytes))
+	if r.Summary.BackupSkipped > 0 {
+		row(sb, "Skipped (ghost)", fmt.Sprintf("%d", r.Summary.BackupSkipped))
+	}
+	row(sb, "Backed up (size)", humanBytes(r.Summary.BackupBytes))
 	row(sb, "Deleted", fmt.Sprintf("%d", r.Summary.Deleted))
 	row(sb, "Failed", fmt.Sprintf("%d", r.Summary.Failed))
+	row(sb, "Freed on server", humanBytes(r.Summary.FreedBytes))
 	sb.WriteString("\n")
 }
 
@@ -106,7 +119,7 @@ func writeMDProjects(sb *strings.Builder, r *Report) {
 		return
 	}
 	sb.WriteString("## Per-project breakdown\n\n")
-	sb.WriteString("| Project | Name | Count | Bytes | Oldest |\n")
+	sb.WriteString("| Project | Name | Count | Total Size | Oldest |\n")
 	sb.WriteString("|---------|------|-------|-------|--------|\n")
 	for _, p := range r.Projects {
 		oldest := "—"
@@ -126,8 +139,8 @@ func writeMDItems(sb *strings.Builder, r *Report) {
 		return
 	}
 	sb.WriteString("## Deleted attachments\n\n")
-	sb.WriteString("| Project | Attachment ID | Name | Size | Parent | Created (UTC) |\n")
-	sb.WriteString("|---------|---------------|------|------|--------|---------------|\n")
+	sb.WriteString("| Project | Project Name | Attachment ID | Name | Size | Parent | Parent Name | Created (UTC) |\n")
+	sb.WriteString("|---------|--------------|---------------|------|------|--------|-------------|---------------|\n")
 	for _, p := range r.Projects {
 		for _, it := range p.Items {
 			created := "—"
@@ -141,9 +154,13 @@ func writeMDItems(sb *strings.Builder, r *Report) {
 					parent = parent + ":" + it.ParentID
 				}
 			}
-			fmt.Fprintf(sb, "| %d | %d | %s | %s | %s | %s |\n",
-				p.ProjectID, it.AttachmentID, escapePipe(it.Name),
-				humanBytes(it.Size), parent, created)
+			parentName := "—"
+			if it.ParentName != "" {
+				parentName = escapePipe(it.ParentName)
+			}
+			fmt.Fprintf(sb, "| %d | %s | %d | %s | %s | %s | %s | %s |\n",
+				p.ProjectID, escapePipe(p.ProjectName), it.AttachmentID, escapePipe(it.Name),
+				humanBytes(it.Size), parent, parentName, created)
 		}
 	}
 	sb.WriteString("\n")
@@ -172,12 +189,209 @@ func writeMDRollback(sb *strings.Builder, r *Report) {
 	sb.WriteString("## Rollback\n\n")
 	switch {
 	case r.SnapshotID != "" && !r.DryRun:
-		fmt.Fprintf(sb, "Snapshot is preserved under `~/.gotr/snaps/cleanup-attachments/%s/`.\n\n", r.SnapshotID)
-		fmt.Fprintf(sb, "Restore with:\n\n```\ngotr snap rollback %s\n```\n", r.SnapshotID)
+		path := "~/.gotr/snaps/cleanup-attachments/" + r.SnapshotID
+		if r.Snapshot != nil && r.Snapshot.Path != "" {
+			path = r.Snapshot.Path
+		}
+		fmt.Fprintf(sb, "Snapshot is preserved under `%s/`.\n\n", path)
+		sb.WriteString("Restore with:\n\n```\ngotr snap rollback ")
+		sb.WriteString(r.SnapshotID)
+		sb.WriteString("\n```\n\n")
+		sb.WriteString("Recommended (verifies integrity.json before re-uploading):\n\n```\ngotr snap rollback ")
+		sb.WriteString(r.SnapshotID)
+		sb.WriteString(" --verify-integrity\n```\n")
 	case r.DryRun:
 		sb.WriteString("_No snapshot was taken (dry-run)._\n")
 	default:
 		sb.WriteString("_No snapshot reference recorded._\n")
+	}
+}
+
+// writeMDChunking emits the chunked-execution & concurrency profile
+// of this run. Skipped when no chunking metadata is attached.
+func writeMDChunking(sb *strings.Builder, r *Report) {
+	if r.Chunking == nil {
+		return
+	}
+	c := r.Chunking
+	sb.WriteString("## Execution & concurrency\n\n")
+	sb.WriteString("| Field | Value |\n")
+	sb.WriteString("|-------|-------|\n")
+	if c.ChunkSize > 0 {
+		row(sb, "Chunk size", fmt.Sprintf("%d", c.ChunkSize))
+	}
+	if c.ChunksTotal > 0 {
+		row(sb, "Chunks", fmt.Sprintf("%d / %d", c.ChunksCompleted, c.ChunksTotal))
+	}
+	if c.ScanTimeoutPerProject != "" {
+		row(sb, "Scan timeout / project", c.ScanTimeoutPerProject)
+	}
+	if c.DeleteConcurrency > 0 {
+		row(sb, "Delete concurrency", fmt.Sprintf("%d", c.DeleteConcurrency))
+	}
+	if c.BackupConcurrency > 0 {
+		row(sb, "Backup concurrency", fmt.Sprintf("%d", c.BackupConcurrency))
+	}
+	if c.ResumedFrom != "" {
+		row(sb, "Resumed from", code(c.ResumedFrom))
+	}
+	row(sb, "Reference scan", boolStr(!c.SkipReferences))
+	row(sb, "Compress binaries", boolStr(c.Compress))
+	sb.WriteString("\n")
+}
+
+// writeMDEntityBreakdown emits the per-project × entity-type matrix
+// using the canonical column order. Skipped when the matrix is empty.
+func writeMDEntityBreakdown(sb *strings.Builder, r *Report) {
+	if len(r.EntityBreakdown) == 0 {
+		return
+	}
+	cols := []string{"case", "run", "plan", "plan_entry", "result", "test"}
+	sb.WriteString("## Per-project × entity-type breakdown\n\n")
+	sb.WriteString("| Project |")
+	for _, c := range cols {
+		fmt.Fprintf(sb, " %s |", c)
+	}
+	sb.WriteString(" Total | Size |\n|---------|")
+	for range cols {
+		sb.WriteString("------|")
+	}
+	sb.WriteString("-------|-------|\n")
+	totals := make(map[string]int, len(cols))
+	var grandTotal int
+	var grandBytes int64
+	for _, row := range r.EntityBreakdown {
+		name := fmt.Sprintf("%s (%d)", escapePipe(row.ProjectName), row.ProjectID)
+		fmt.Fprintf(sb, "| %s |", name)
+		for _, c := range cols {
+			n := row.Counts[c]
+			totals[c] += n
+			fmt.Fprintf(sb, " %d |", n)
+		}
+		fmt.Fprintf(sb, " %d | %s |\n", row.Total, humanBytes(row.Bytes))
+		grandTotal += row.Total
+		grandBytes += row.Bytes
+	}
+	sb.WriteString("| **TOTAL** |")
+	for _, c := range cols {
+		fmt.Fprintf(sb, " **%d** |", totals[c])
+	}
+	fmt.Fprintf(sb, " **%d** | **%s** |\n\n", grandTotal, humanBytes(grandBytes))
+}
+
+// writeMDSnapshot emits the snapshot-artifacts inventory: file paths
+// inside the snapshot directory and their counters (mapping/integrity
+// /references). Skipped on dry-run or when no snapshot was taken.
+func writeMDSnapshot(sb *strings.Builder, r *Report) {
+	if r.Snapshot == nil || r.SnapshotID == "" || r.DryRun {
+		return
+	}
+	s := r.Snapshot
+	sb.WriteString("## Snapshot artifacts\n\n")
+	sb.WriteString("Files written to the snapshot directory and their role:\n\n")
+	sb.WriteString("| File | Role | Path |\n|------|------|------|\n")
+	if s.MetaPath != "" {
+		fmt.Fprintf(sb, "| `meta.json` | Snapshot metadata (id, op, entity_ids, label) | `%s` |\n", s.MetaPath)
+	}
+	if s.MappingPath != "" {
+		fmt.Fprintf(sb, "| `attachments.json` | v3.6 mapping schema=%d, sha256 per file | `%s` |\n",
+			s.MappingSchemaVersion, s.MappingPath)
+	}
+	if s.ReferencesPath != "" {
+		fmt.Fprintf(sb, "| `references.json` | Markdown URL refs in case/run/plan/milestone bodies | `%s` |\n", s.ReferencesPath)
+	}
+	if s.IntegrityPath != "" {
+		fmt.Fprintf(sb, "| `integrity.json` | Per-file sha256 + Merkle root over the snapshot dir | `%s` |\n", s.IntegrityPath)
+	}
+	if s.FilesDir != "" {
+		fmt.Fprintf(sb, "| `files/` | Backed-up attachment binaries (one per attachment) | `%s` |\n", s.FilesDir)
+	}
+	sb.WriteString("\n")
+
+	sb.WriteString("Counters:\n\n| Metric | Value |\n|--------|-------|\n")
+	if s.MappingTotal > 0 {
+		row(sb, "Mapping entries", fmt.Sprintf("%d", s.MappingTotal))
+		row(sb, "Restorable entries", fmt.Sprintf("%d / %d", s.MappingRestorable, s.MappingTotal))
+	}
+	if s.FilesCount > 0 {
+		row(sb, "Files in `files/`", fmt.Sprintf("%d (%s)", s.FilesCount, humanBytes(s.FilesBytes)))
+	}
+	if s.ReferencesSkipped {
+		row(sb, "Reference scan", "skipped (--skip-references)")
+	} else {
+		row(sb, "Entities with references", fmt.Sprintf("%d", s.EntitiesScanned))
+		row(sb, "Markdown URL refs indexed", fmt.Sprintf("%d", s.RefsIndexed))
+	}
+	if s.IntegrityRoot != "" {
+		row(sb, "Integrity Merkle root", code(s.IntegrityRoot))
+	}
+	if s.IntegrityFiles > 0 {
+		row(sb, "Integrity files covered", fmt.Sprintf("%d", s.IntegrityFiles))
+	}
+	sb.WriteString("\n")
+}
+
+// writeMDReferenceLimitations emits the audit-only "Known limitations"
+// callout for indexed-but-not-rewritten markdown URL references. v3.6.0
+// records refs in references.json but does NOT modify external entity
+// bodies. The section is skipped on dry-run, when the index is empty,
+// or when the reference scan was disabled.
+func writeMDReferenceLimitations(sb *strings.Builder, r *Report) {
+	if r.Snapshot == nil || r.DryRun {
+		return
+	}
+	s := r.Snapshot
+	if s.ReferencesSkipped || s.RefsIndexed == 0 {
+		return
+	}
+	sb.WriteString("## Known limitations: markdown references\n\n")
+	fmt.Fprintf(sb, "**%d markdown URL reference(s)** to deleted attachments were indexed in `references.json` "+
+		"across %d entity(ies), but **NOT rewritten** in v3.6.0.\n\n", s.RefsIndexed, s.EntitiesScanned)
+	if len(s.ReferencesByEntity) > 0 {
+		sb.WriteString("Distribution by entity type:\n\n")
+		sb.WriteString("| Entity type | Refs indexed |\n|-------------|--------------|\n")
+		// Stable order.
+		keys := make([]string, 0, len(s.ReferencesByEntity))
+		for k := range s.ReferencesByEntity {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			fmt.Fprintf(sb, "| %s | %d |\n", k, s.ReferencesByEntity[k])
+		}
+		sb.WriteString("\n")
+	}
+	sb.WriteString("After this cleanup, any markdown link of the form ")
+	sb.WriteString("`[label](.../attachments/get/<old_id>)` inside another entity's body will return 404. ")
+	sb.WriteString("On rollback the attachments are restored under **new** TestRail IDs, so the old links remain broken even after a successful restore.\n\n")
+	sb.WriteString("Mitigation: the full ref index is preserved in `references.json` for manual rewrite. ")
+	sb.WriteString("Automatic rewrite is tracked for a future release (out of v3.6.0 scope due to read-modify-write race risk on shared TestRail entities).\n\n")
+}
+
+// writeMDArtifacts lists every file produced by this run on the local
+// file system: audit reports (md/json/csv/pdf), snapshot directory,
+// and the checkpoint cache (used by --resume).
+func writeMDArtifacts(sb *strings.Builder, r *Report) {
+	if r.Artifacts == nil {
+		return
+	}
+	a := r.Artifacts
+	if len(a.ReportPaths) == 0 && a.SnapshotPath == "" && a.CheckpointDir == "" {
+		return
+	}
+	sb.WriteString("## Files on disk\n\n")
+	if len(a.ReportPaths) > 0 {
+		sb.WriteString("**Audit reports** (this report in every supported format):\n\n")
+		for _, p := range a.ReportPaths {
+			fmt.Fprintf(sb, "- `%s`\n", p)
+		}
+		sb.WriteString("\n")
+	}
+	if a.SnapshotPath != "" {
+		fmt.Fprintf(sb, "**Snapshot directory**: `%s`\n\n", a.SnapshotPath)
+	}
+	if a.CheckpointDir != "" {
+		fmt.Fprintf(sb, "**Checkpoint cache** (used by `--resume`): `%s`\n\n", a.CheckpointDir)
 	}
 }
 
@@ -234,8 +448,11 @@ func humanBytes(n int64) string {
 		kb = 1024
 		mb = 1024 * kb
 		gb = 1024 * mb
+		tb = 1024 * gb
 	)
 	switch {
+	case n >= tb:
+		return fmt.Sprintf("%.2f TB", float64(n)/float64(tb))
 	case n >= gb:
 		return fmt.Sprintf("%.2f GB", float64(n)/float64(gb))
 	case n >= mb:

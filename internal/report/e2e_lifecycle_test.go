@@ -96,10 +96,10 @@ func TestE2E_FlatToHierarchy_RoundTrip(t *testing.T) {
 
 	// 6. Expected categorized destinations exist.
 	expectedRel := []string{
-		"migrations/default/2026-04/migration-20260401T120000Z-sync_20260401T120000_full_p1_to_p2.md",
+		"migrations/default/2026-04-01/migration-20260401T120000Z-sync_20260401T120000_full_p1_to_p2.md",
 		"coverage/foo/gotr_migration_foo_p1_to_p2.md",
-		"rollbacks/default/2026-03/rollback-20260315T030000Z-sync_abc.md",
-		"no-snapshot/default/2026-04/migration-20260410T080000Z-no_snapshot_p1.md",
+		"rollbacks/default/2026-03-15/rollback-20260315T030000Z-sync_abc.md",
+		"no-snapshot/default/2026-04-10/migration-20260410T080000Z-no_snapshot_p1.md",
 		"testrail/p7/testrail_cases_p7_20260420.json",
 		"_unclassified/weird-report.md",
 	}

@@ -20,3 +20,18 @@ func IsAPIMethodNotFound(err error) bool {
 	s := err.Error()
 	return strings.Contains(s, "404") && strings.Contains(s, "Unknown method")
 }
+
+// IsAttachmentNotFound reports whether err is a TestRail 400/404
+// response indicating the attachment no longer exists (race between
+// listing and downloading, or permission loss). These are treated as
+// "ghost" attachments during backup: skip with a warning instead of
+// aborting the entire cleanup.
+func IsAttachmentNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := err.Error()
+	// TestRail returns 400 with "Вложение не существует" or 404.
+	return (strings.Contains(s, "400") && strings.Contains(s, "не существует")) ||
+		strings.Contains(s, "404")
+}

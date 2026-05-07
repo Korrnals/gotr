@@ -160,8 +160,14 @@ gotr attachments cleanup --project 7,9 --older-than 30d --concurrency 8 --no-sna
 | `--snapshot-retention <dur>` | Override snapshot TTL (default `7d`; honored by `gotr snap gc`). |
 | `--max-size-gb <n>` | Abort if estimated snapshot exceeds this size unless `--force`. |
 | `--concurrency <n>` | Parallel delete workers (default `4`). |
+| `--backup-concurrency <n>` | Worker count for snapshot downloads (default `0` = auto: `min(8, --concurrency)`). Since v3.6.0. |
+| `--skip-references` | Disable the markdown reference scan during backup. References that point at the deleted attachments will not be rewritten on restore. Use only when the entity API is unhealthy. Since v3.6.0. |
 | `--limit <n>` | Cap total attachments processed across all projects. |
 | `--scan-strategy` | How to enumerate attachments: `auto` (default), `project`, `entities`. See **Compatibility** below. |
+| `--chunk-size <n>` | Number of projects scanned per chunk; the checkpoint file is flushed atomically after every chunk. Default `10`. See **Recovery & resume** below. |
+| `--scan-timeout-per-project <dur>` | Per-project scan deadline (default `10m`). On timeout, that project is marked `timeout` in the checkpoint and the run continues; resume re-tries it. Pass `0` to disable. |
+| `--resume <RUN_ID>` | Resume an interrupted run from its checkpoint. Cannot be combined with scope/filter flags — they are restored from the checkpoint. |
+| `--list-checkpoints` | Print all known checkpoints and exit. Mutually exclusive with every other flag. |
 | `--no-report` | Skip emitting the deletion-audit report (Markdown + JSON + CSV + PDF). See **Deletion-audit report** below. |
 | `--force` | Skip the final confirmation prompt. |
 
@@ -182,9 +188,52 @@ When the auto-probe falls back, an `INFO:` line is printed to stderr explaining 
 ```bash
 gotr snap list --category cleanup-attachments
 gotr snap rollback <snap-id>
+
+# Verify SHA-256 of every snapshot file before restore (since v3.6.0).
+gotr snap rollback <snap-id> --verify-integrity
+
+# Skip the markdown reference rewrite step (since v3.6.0).
+gotr snap rollback <snap-id> --skip-references
 ```
 
 ⚠️ TestRail's API has no `add_attachment_to_test` endpoint, so attachments whose only parent is a `test` are reported as **Skipped** during rollback — clean them up only when re-upload of test-bound binaries is acceptable.
+
+**🔐 Snapshot completeness (since v3.6.0):**
+
+Every cleanup snapshot now ships with the artifacts required to fully reverse the deletion, including an audit index of markdown bodies that referenced the deleted binaries:
+
+```
+<snap_id>/
+├── meta.json            # snapshot metadata
+├── attachments.json     # v2 ledger: per-attachment SHA-256 + restorability flag + new_id slot
+├── references.json      # audit index: markdown URLs in other entities that pointed at the deleted attachments
+├── integrity.json       # per-file SHA-256 + merkle-style root over the whole snapshot
+└── files/<id>(.gz)      # binary payloads, optionally gzip-compressed
+```
+
+- **`attachments.json`** carries one entry per attachment: original ID, on-disk SHA-256, parent entity, a `restorable` flag (`false` for test-bound attachments, since TestRail has no `add_attachment_to_test` endpoint), and a `new_id` slot populated on rollback with the freshly issued TestRail ID.
+- **`references.json`** is the audit index of every markdown URL pointing at one of the deleted attachments, scanned across `case`, `run`, `plan`, and `milestone` description fields plus `case.custom_steps_separated`. **In v3.6.0 the index is recorded but external entity bodies are NOT modified** — neither on cleanup nor on rollback. After a cleanup, links of the form `[label](.../attachments/get/<old_id>)` inside other entities will return 404; after a rollback the attachments come back under **new** TestRail IDs, so the old links remain broken. Manual rewrite is supported via the saved index. Automatic rewrite is on the roadmap (deferred from v3.6.0 due to read-modify-write race risk on shared TestRail entities).
+- **`integrity.json`** records SHA-256 for every file inside the snapshot directory and a merkle-style root computed over the sorted `<path>|<sha256>` lines. Pass `--verify-integrity` to `gotr snap rollback` to re-verify before any API call.
+- Backup downloads are parallelized via `--backup-concurrency`; the SHA-256 is computed inline so no second pass is needed.
+
+**⚠️ Known limitations of cleanup + rollback (v3.6.0):**
+
+Even after a successful `--verify-integrity` rollback, the restored state is **not byte-identical** to the pre-cleanup state. TestRail's API forces the following deltas:
+
+| Field | Before cleanup | After rollback | Why |
+| --- | --- | --- | --- |
+| `attachment_id` | original | **new** (mapped in `attachments.json` `new_id`) | `add_attachment_to_*` always issues a fresh ID |
+| `created_on` | original timestamp | **rollback timestamp** | API does not accept a back-dated value |
+| `created_by` | original uploader | **API user running rollback** | API does not accept a back-dated user |
+| URL | `.../attachments/get/<old_id>` | `.../attachments/get/<new_id>` | follows from the new ID |
+| Markdown refs in OTHER entity bodies | pointed at `<old_id>` | **still point at `<old_id>` → 404** | gotr does not modify external entities; see `references.json` |
+| Test-bound attachments | present | **skipped** | no `add_attachment_to_test` endpoint |
+
+Practical consequences:
+
+- For audit/compliance flows that rely on original `created_on`/`created_by`, treat rollback as a **content-recovery** tool, not a time-machine.
+- For markdown integrity inside case/run/plan/milestone bodies, use `references.json` from the snapshot to drive a manual or scripted rewrite. The deletion-audit report includes a `Known limitations: markdown references` section enumerating the per-entity-type counts.
+- If broken external links are unacceptable, prefer `--dry-run` + manual archival over `cleanup` for those projects until automatic rewrite ships.
 
 **📑 Deletion-audit report (since v3.5.1):**
 
@@ -210,6 +259,38 @@ Dry-run reports carry a `DRY-RUN` marker in the Markdown title and `dry_run=true
 Pass `--no-report` to suppress the four files entirely (useful for CI flows that already capture stdout).
 
 ✅ **Why this matters:** bulk cleanup without a snapshot is irreversible. The default flow keeps a one-week recovery window so you can roll back any over-eager deletion before the snapshot is GC'd.
+
+**🔁 Recovery & resume (since v3.6.0):**
+
+Long entity-walk scans across many projects can fail mid-flight (network blip, Ctrl-C, OS reboot). To make those runs recoverable, `cleanup` chunks the project set and persists progress between chunks:
+
+- **Run id:** every run gets a stable id (e.g. `20260324T204109-3f9a12`) printed once at start: `INFO: cleanup run-id=<RUN_ID> (resume with --resume <RUN_ID>)`.
+- **Checkpoint location:** `~/.gotr/cache/cleanup-attachments/<RUN_ID>/checkpoint.json` plus `partial-plan.json`.
+- **Chunking:** projects are processed in groups of `--chunk-size` (default `10`). After each chunk finishes, both files are written via `tmp + fsync + rename` (atomic, crash-safe).
+- **Per-project timeout:** `--scan-timeout-per-project` (default `10m`) caps each project's scan. Timed-out and failed projects are recorded in the checkpoint and skipped from the produced plan, but the run continues.
+- **Clean completion:** when every project reaches `done`, the checkpoint directory is removed automatically. Otherwise it is preserved with a `WARN:` summary listing the affected project ids.
+- **Listing checkpoints:** `gotr attachments cleanup --list-checkpoints` prints a table (RUN_ID, started, updated, totals, done, pending, failed, timeout) and the resume hint.
+- **Resuming:** `gotr attachments cleanup --resume <RUN_ID>` restores the original scope, filters, scan strategy, limit, and chunk size from the checkpoint and only retries projects in `pending`/`retry_pending` (failures and timeouts). The resume command rejects mutually-exclusive scope/filter flags — change the cutoff or scope by starting a fresh run instead.
+
+> The `--resume` invocation must match the original filter set. If the cached `FilterSnapshot` no longer matches what the CLI would build, the run aborts with `checkpoint mismatch` rather than silently mixing two filters.
+
+**📊 Progress reporting (since v3.6.1):**
+
+The scan phase emits a 5-line live block on stderr when stderr is a TTY (and `--quiet` is not set):
+
+```
+Scanning attachments — entity
+   project 4/12  →  Demo project
+   phase: cases      ████░░░░░░ 28 / 70
+   found: 137  eligible: 89  size: 24.50 MiB
+   ⏱ 1m12s  ETA ~3m05s
+```
+
+- **Phase progression:** `project → suites → cases → runs → plans → tests`. Each phase shows its own done/total counter and a 10-character bar; counts come from the API responses (number of suites, cases per suite, runs, plans, tests per run).
+- **Throttling:** progress events are throttled to ~50 ms to avoid stalling the scanner during high-concurrency phases.
+- **Non-TTY / `--quiet`:** the multiline UI is suppressed and the command falls back to `INFO: project X/Y done: …` and `INFO: chunk N/M done — running totals: …` lines so logs stay grep-friendly in CI.
+- **Per-project × per-entity-type table:** after the executor finishes, a breakdown table is printed under `Breakdown by project × entity type:` with one row per project and per-entity-type columns (`case run plan plan_entry result test`) plus a `Total` / `Size` per row and a `Total` footer.
+- **Final summary block:** a `Final summary:` section follows with the absolute path of every audit report file, the snapshot id and absolute path under `~/.gotr/snaps/cleanup-attachments/<id>/`, and a `Next steps:` block with copy-pasteable rollback (`gotr snap rollback <id>`) and resume (`gotr attachments cleanup --resume <run-id>`) commands.
 
 ---
 

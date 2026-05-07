@@ -82,6 +82,22 @@ func (f *fakeAPI) AddAttachmentToRun(context.Context, int64, string) (*data.Atta
 	return &data.AttachmentResponse{AttachmentID: 1}, nil
 }
 
+// Reference-fetch stubs: the cleanup pipeline now invokes a reference
+// scan after backup. Tests don't care about the bodies, so return
+// empty entities to keep the scan a no-op.
+func (f *fakeAPI) GetCase(context.Context, int64) (*data.Case, error) {
+	return &data.Case{}, nil
+}
+func (f *fakeAPI) GetRun(context.Context, int64) (*data.Run, error) {
+	return &data.Run{}, nil
+}
+func (f *fakeAPI) GetPlan(context.Context, int64) (*data.Plan, error) {
+	return &data.Plan{}, nil
+}
+func (f *fakeAPI) GetMilestone(context.Context, int64) (*data.Milestone, error) {
+	return &data.Milestone{}, nil
+}
+
 func TestAttachmentFilter_AllowedByAge(t *testing.T) {
 	cutoff := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	f := AttachmentFilter{OlderThan: cutoff}

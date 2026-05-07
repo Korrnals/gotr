@@ -48,7 +48,7 @@ func TestE2E_OrganizeThenExportImport_WithReports(t *testing.T) {
 	}
 
 	// Verify the reports were categorized.
-	catMatch := filepath.Join(reportsDir, "migrations", "default", "2026-01",
+	catMatch := filepath.Join(reportsDir, "migrations", "default", "2026-01-01",
 		"migration-20260101T000000Z-"+snapBase+".md")
 	if _, err := os.Stat(catMatch); err != nil {
 		t.Fatalf("expected categorized match report at %s: %v", catMatch, err)
@@ -69,7 +69,7 @@ func TestE2E_OrganizeThenExportImport_WithReports(t *testing.T) {
 			len(res.IncludedReports), res.IncludedReports)
 	}
 	embedded := res.IncludedReports[0]
-	if !strings.HasPrefix(embedded, "reports/migrations/default/2026-01/") {
+	if !strings.HasPrefix(embedded, "reports/migrations/default/2026-01-01/") {
 		t.Errorf("embedded archive path = %q, want reports/migrations/... prefix",
 			embedded)
 	}
@@ -96,12 +96,12 @@ func TestE2E_OrganizeThenExportImport_WithReports(t *testing.T) {
 		t.Errorf("fresh store missing imported snapshot %s", snapID)
 	}
 	// The embedded report must land in the scratch reports dir under its
-	// categorized path (migrations/default/2026-01/<basename>.md).
+	// categorized path (migrations/default/2026-01-01/<basename>.md).
 	if len(imp.IncludedReports) != 1 {
 		t.Fatalf("expected 1 restored report, got %d: %v",
 			len(imp.IncludedReports), imp.IncludedReports)
 	}
-	wantRel := "migrations/default/2026-01/migration-20260101T000000Z-" + snapBase + ".md"
+	wantRel := "migrations/default/2026-01-01/migration-20260101T000000Z-" + snapBase + ".md"
 	if imp.IncludedReports[0] != wantRel {
 		t.Errorf("restored report rel = %q, want %q", imp.IncludedReports[0], wantRel)
 	}
@@ -132,7 +132,7 @@ func TestImport_SkipReportsOptOut(t *testing.T) {
 	snapBase := filepath.Base(snapID)
 
 	reportsDir := t.TempDir()
-	match := filepath.Join(reportsDir, "migrations", "default", "2026-01",
+	match := filepath.Join(reportsDir, "migrations", "default", "2026-01-01",
 		"migration-20260101T000000Z-"+snapBase+".md")
 	if err := os.MkdirAll(filepath.Dir(match), 0o755); err != nil {
 		t.Fatalf("mkdir: %v", err)

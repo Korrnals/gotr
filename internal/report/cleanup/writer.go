@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/Korrnals/gotr/internal/report"
@@ -58,12 +59,43 @@ func (r WriteResult) Files() []string {
 	return out
 }
 
+// PredictPaths returns the absolute paths the writer would produce for
+// rep when called with the given reportsDir and opts. The directory is
+// not created. Useful for self-referencing the output paths inside the
+// report itself (e.g. the "Artifacts" section).
+func PredictPaths(reportsDir string, rep *Report, opts WriteOptions) []string {
+	if rep == nil || reportsDir == "" {
+		return nil
+	}
+	base := buildBaseFilename(rep)
+	cls := report.ClassifyReportWithSubdir(base+".md", rep.Label, entitySubdir(rep.Filters.EntityTypes))
+	dir := filepath.Join(reportsDir, cls.RelDir())
+	var out []string
+	if opts.Markdown {
+		out = append(out, filepath.Join(dir, base+".md"))
+	}
+	if opts.JSON {
+		out = append(out, filepath.Join(dir, base+".json"))
+	}
+	if opts.CSV {
+		out = append(out, filepath.Join(dir, base+".csv"))
+	}
+	if opts.PDF && opts.PDFRenderer != nil {
+		out = append(out, filepath.Join(dir, base+".pdf"))
+	}
+	return out
+}
+
 // Write persists the report under
 //
-//	<reportsDir>/cleanup-attachments/<label>/<YYYY-MM>/cleanup-<id>-<ts>.<ext>
+//	<reportsDir>/cleanup-attachments/<entity-group>/<label>/<YYYY-MM-DD>/cleanup-<id>-<ts>.<ext>
 //
-// using the existing report.ClassifyReportWithLabel hierarchy. INDEX.md
-// is refreshed via report.Reindex on success. Failures during PDF
+// where <entity-group> is derived from rep.EntityTypes (single type → its
+// name, multiple → "group-entity", empty → "all-entity"). This keeps
+// reports from different scopes from colliding when the same label is
+// reused.
+//
+// INDEX.md is refreshed via report.Reindex on success. Failures during PDF
 // rendering are reported but do not roll back already-written formats.
 func Write(ctx context.Context, reportsDir string, rep *Report, opts WriteOptions) (WriteResult, error) {
 	_ = ctx
@@ -78,7 +110,7 @@ func Write(ctx context.Context, reportsDir string, rep *Report, opts WriteOption
 	}
 
 	base := buildBaseFilename(rep)
-	cls := report.ClassifyReportWithLabel(base+".md", rep.Label)
+	cls := report.ClassifyReportWithSubdir(base+".md", rep.Label, entitySubdir(rep.Filters.EntityTypes))
 	dir := filepath.Join(reportsDir, cls.RelDir())
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return WriteResult{}, fmt.Errorf("cleanup-report: create dir: %w", err)
@@ -173,4 +205,37 @@ func sanitizeFilenameSegment(s string) string {
 		return ""
 	}
 	return unsafeFilenameChars.ReplaceAllString(s, "_")
+}
+
+// entitySubdir returns a directory segment that buckets cleanup reports
+// by the entity types they cover. Single-type runs get a clean name
+// ("result", "run", "plan", …). Multi-type or "all" runs get
+// "group-entity" so they don't collide with single-type reports and
+// are easy to spot.
+func entitySubdir(types []string) string {
+	if len(types) == 0 {
+		return "all-entity"
+	}
+	// Normalize: lowercase, sort, dedupe.
+	seen := make(map[string]struct{}, len(types))
+	uniq := make([]string, 0, len(types))
+	for _, t := range types {
+		t = strings.ToLower(strings.TrimSpace(t))
+		if t == "" {
+			continue
+		}
+		if _, ok := seen[t]; ok {
+			continue
+		}
+		seen[t] = struct{}{}
+		uniq = append(uniq, t)
+	}
+	if len(uniq) == 0 {
+		return "all-entity"
+	}
+	if len(uniq) == 1 {
+		return uniq[0]
+	}
+	sort.Strings(uniq)
+	return "group-entity"
 }

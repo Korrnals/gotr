@@ -85,7 +85,13 @@ func (s *Service) generateMarkdown(report *MigrationReport) string {
 	sb.WriteString("| Parameter | Value |\n")
 	sb.WriteString("|-----------|-------|\n")
 	fmt.Fprintf(&sb, "| Source Project | %d |\n", report.SourceProjectID)
+	if report.SourceProjectName != "" {
+		fmt.Fprintf(&sb, "| Source Project Name | %s |\n", report.SourceProjectName)
+	}
 	fmt.Fprintf(&sb, "| Target Project | %d |\n", report.TargetProjectID)
+	if report.TargetProjectName != "" {
+		fmt.Fprintf(&sb, "| Target Project Name | %s |\n", report.TargetProjectName)
+	}
 	fmt.Fprintf(&sb, "| Migration Type | `%s` |\n", report.MigrationType)
 	fmt.Fprintf(&sb, "| User | %s |\n\n", report.User)
 

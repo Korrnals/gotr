@@ -23,6 +23,7 @@ import (
 	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
 
@@ -46,6 +47,10 @@ const (
 func NewTable(cmd *cobra.Command) table.Writer {
 	t := table.NewWriter()
 	t.SetStyle(table.StyleRounded)
+	// Disable footer auto-uppercase so that pre-formatted byte sizes
+	// like "6.57 MiB (... B)" keep their case in TOTAL rows.
+	st := t.Style()
+	st.Format.Footer = text.FormatDefault
 	return t
 }
 

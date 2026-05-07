@@ -58,13 +58,14 @@ func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // defaultOptions holds the default client configuration values.
 //
-// timeout: 180s — heavy legacy endpoints (get_results_for_run on huge runs)
-// have a fixed server-side overhead of ~30–60s independent of page size, so
-// reducing the limit does not help. p99 measured at ~56s with limit=250;
-// 180s leaves a 3× headroom for retry bursts under concurrent load.
+// timeout: 300s — heavy legacy endpoints (get_results_for_run on huge runs)
+// have a fixed server-side overhead of ~30–60s independent of page size, and
+// the server visibly degrades under sustained load (TTFB grows past 180s on
+// 7th–10th sequential request). p99 measured at ~56s with limit=250;
+// 300s leaves a 5× headroom and absorbs server-side queueing bursts.
 var defaultOptions = options{
 	insecure:            false,
-	timeout:             180 * time.Second,
+	timeout:             300 * time.Second,
 	tlsHandshakeTimeout: 10 * time.Second,
 	retryPolicy:         DefaultRetryPolicy(),
 }

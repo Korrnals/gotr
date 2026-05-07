@@ -9,6 +9,32 @@
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-05-07
+
+### Added — `attachments cleanup`: resume-aware backup and ghost tolerance
+
+- **Resume-aware backup.** When a cleanup is restarted via
+  `--resume <RUN_ID>`, the backup phase now reads the existing
+  `mapping.json`/`attachments.json` of the in-progress snapshot and
+  skips attachments that were already downloaded and hashed in the
+  previous attempt. Only the remaining IDs are fetched, hashed and
+  appended; partial snapshots are no longer re-downloaded from scratch.
+- **Ghost-attachment tolerance.** TestRail occasionally reports an
+  attachment ID in listings that immediately returns
+  `400 "attachment does not exist"` (or `404`) when fetched — a race
+  between listing and a concurrent deletion. Such IDs are now classified
+  as **ghosts** via `client.IsAttachmentNotFound`, skipped with a
+  `WARN: ghost attachment <id> skipped` line, and recorded in the new
+  `BackupResult.GhostIDs` slice so the rest of the run is not aborted.
+- **`Skipped` / `Ghost` counters in summaries.** The Markdown and PDF
+  cleanup reports gained a `Backed up (skipped, ghosts)` row in the
+  Summary block, and `ExecuteResult` exposes `BackupSkipped` and
+  `GhostIDs` for downstream tooling.
+- **Resume hint on interrupted Execute.** When `attachments cleanup`
+  fails after a `RUN_ID` has been issued, the CLI now prints
+  `⚠️ Cleanup interrupted. To resume from where it left off, run: gotr attachments cleanup --resume <run-id>`
+  before exiting non-zero.
+
 ### Added — `attachments cleanup`: snapshot completeness (v2 layout)
 
 - **SHA-256 integrity per attachment.** Every downloaded binary is

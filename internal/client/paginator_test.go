@@ -266,3 +266,4 @@ func TestFetchAllPages_BaseQueryPreserved(t *testing.T) {
 		t.Errorf("offset = %q, want %q", receivedParams["offset"], "0")
 	}
 }
+

@@ -58,13 +58,13 @@ func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // defaultOptions holds the default client configuration values.
 //
-// timeout: 90s — legacy TestRail Server endpoints (e.g. get_results_for_run
-// on huge runs) can take 30–60s to assemble JSON; a tight 30s budget caused
-// frequent first-attempt failures. Combined with RetryPolicy below this gives
-// callers a robust effective budget while still bounding stuck requests.
+// timeout: 180s — heavy legacy endpoints (get_results_for_run on huge runs)
+// have a fixed server-side overhead of ~30–60s independent of page size, so
+// reducing the limit does not help. p99 measured at ~56s with limit=250;
+// 180s leaves a 3× headroom for retry bursts under concurrent load.
 var defaultOptions = options{
 	insecure:            false,
-	timeout:             90 * time.Second,
+	timeout:             180 * time.Second,
 	tlsHandshakeTimeout: 10 * time.Second,
 	retryPolicy:         DefaultRetryPolicy(),
 }

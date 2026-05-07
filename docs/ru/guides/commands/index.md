@@ -92,7 +92,7 @@ Language: Русский | [English](../../../en/guides/commands/index.md)
 - [result](result.md) — добавление и просмотр результатов тестов.
 - [test](test.md) — операции с отдельными тестами run.
 - [tests](tests.md) — массовые операции с набором тестов.
-- [attachments](attachments.md) — загрузка и получение вложений.
+- [attachments](attachments.md) — загрузка, скачивание, листинг и **массовая очистка** старых вложений со снапшотом и откатом.
 - [plans](plans.md) — работа с test plans.
 - [reports](reports.md) — доступ к отчётам TestRail.
 

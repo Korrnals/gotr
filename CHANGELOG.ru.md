@@ -11,6 +11,33 @@
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-05-07
+
+### Added — `attachments cleanup`: resume-aware бэкап и устойчивость к ghost-вложениям
+
+- **Resume-aware бэкап.** При перезапуске cleanup через `--resume <RUN_ID>`
+  фаза бэкапа теперь читает существующие `mapping.json`/`attachments.json`
+  незавершённого снапшота и пропускает вложения, уже скачанные и
+  хэшированные на прошлой попытке. Скачиваются, хэшируются и
+  дописываются только оставшиеся ID; частичные снапшоты больше не
+  перезаливаются с нуля.
+- **Устойчивость к ghost-вложениям.** TestRail иногда возвращает в
+  листинге ID вложения, которое сразу же отдаёт `400 "attachment does
+  not exist"` (или `404`) при загрузке — гонка между листингом и
+  параллельным удалением. Такие ID теперь классифицируются как
+  **ghost** через `client.IsAttachmentNotFound`, пропускаются с
+  предупреждением `WARN: ghost attachment <id> skipped` и фиксируются
+  в новом поле `BackupResult.GhostIDs`, не прерывая весь запуск.
+- **Счётчики `Skipped` / `Ghost` в сводках.** Отчёты cleanup в
+  Markdown и PDF получили строку `Backed up (skipped, ghosts)` в
+  блоке Summary, а `ExecuteResult` экспортирует `BackupSkipped` и
+  `GhostIDs` для интеграций.
+- **Подсказка resume при прерванном Execute.** При падении
+  `attachments cleanup` после того, как `RUN_ID` уже выдан, CLI
+  печатает
+  `⚠️ Cleanup interrupted. To resume from where it left off, run: gotr attachments cleanup --resume <run-id>`
+  и выходит с ненулевым кодом.
+
 ### Added — `attachments cleanup`: полнота снапшотов (формат v2)
 
 - **SHA-256 для каждого вложения.** Хэш считается потоком при загрузке

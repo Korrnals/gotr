@@ -274,6 +274,12 @@ Dry-run отчёты содержат маркер `DRY-RUN` в шапке Markd
 
 > Запуск `--resume` обязан совпадать с исходным фильтром. Если сохранённый `FilterSnapshot` не совпадает с тем, что построил CLI, запуск аварийно завершается с ошибкой `checkpoint mismatch`, а не молча смешивает два фильтра.
 
+**🧱 Resume-aware бэкап и устойчивость к ghost-вложениям (с v3.6.0):**
+
+- **Resume-aware бэкап.** Когда `--resume <RUN_ID>` переиспользует частично завершённый снапшот, фаза бэкапа читает существующие `mapping.json`/`attachments.json` и **пропускает вложения, которые уже были скачаны и хешированы** на прошлой попытке. Скачиваются только оставшиеся ID. Markdown- и PDF-блок Summary показывает количество в строке `Backed up (skipped, ghosts)`.
+- **Ghost-вложения.** TestRail иногда отдаёт в листинге ID, который тут же возвращает `400 "attachment does not exist"` (или `404`) при загрузке бинарника — гонка между листингом и параллельным удалением. Такие ID детектируются через `IsAttachmentNotFound`, логируются как `WARN: ghost attachment <id> skipped`, фиксируются в `BackupResult.GhostIDs` / `ExecuteResult.GhostIDs` и **не прерывают запуск**. Та же строка Summary их агрегирует.
+- **Подсказка resume при прерывании.** При падении `attachments cleanup` после выдачи `RUN_ID` CLI печатает `⚠️  Cleanup interrupted. To resume from where it left off, run: gotr attachments cleanup --resume <run-id>` перед ненулевым exit-кодом — возобновление всегда в одном copy-paste.
+
 **📊 Отчётность о прогрессе (начиная с v3.6.1):**
 
 На фазе сканирования в stderr выводится 5-строчный «живой» блок (если stderr — TTY и не указан `--quiet`):

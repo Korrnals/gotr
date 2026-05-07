@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.5.2-blue.svg" alt="Latest Release"/></a>
+  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.6.0-blue.svg" alt="Latest Release"/></a>
   <a href="go.mod"><img src="https://img.shields.io/badge/go-1.25-00ADD8.svg?logo=go" alt="Go"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"/></a>
   <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-EN%20%7C%20RU-purple.svg" alt="Docs"/></a>
@@ -63,7 +63,7 @@ Each row links to the dedicated reference page; the link label matches the actua
 | 🔄 **Cross-project synchronization** | [`sync`](docs/en/guides/commands/sync.md) | Migrate cases, shared steps, suites, and sections between projects with intelligent dedup, mapping, and `--verify-coverage`. |
 | 🆚 **Project comparison** | [`compare`](docs/en/guides/commands/compare.md) | Diff cases, suites, plans, milestones, datasets, and more between two projects; export to JSON / YAML / table. |
 | 📸 **Snapshots & rollback** | [`snap`](docs/en/guides/commands/snap.md) | Snapshot any mutation, list, restore, garbage-collect by per-category TTL. Every destructive op produces a snapshot by default. |
-| 📎 **Attachments** *(incl. bulk cleanup)* | [`attachments`](docs/en/guides/commands/attachments.md) | Upload, download, list — and **bulk-clean** old attachments with default snapshot + rollback safety net (`cleanup-attachments` category, 7-day retention). |
+| 📎 **Attachments** *(upload · download · list · **cleanup**)* | [`attachments`](docs/en/guides/commands/attachments.md) | Upload, download, list — and **bulk-clean** old attachments with default snapshot + rollback safety net (`cleanup-attachments` category, 7-day retention). |
 | 🧹 **Retention & cleanup** | [`cleanup`](docs/en/guides/commands/cleanup.md) | Configurable retention for reports / snaps / exports with `--dry-run` preview and auto-cleanup hooks. |
 | 📊 **Test runs & results** | [`run`](docs/en/guides/commands/run.md) · [`result`](docs/en/guides/commands/result.md) | Create runs, add results in bulk, track execution. |
 | ✅ **Test-level operations** | [`test`](docs/en/guides/commands/test.md) · [`tests`](docs/en/guides/commands/tests.md) | Inspect individual run-tests and batch sets. |

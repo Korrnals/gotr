@@ -274,6 +274,12 @@ Long entity-walk scans across many projects can fail mid-flight (network blip, C
 
 > The `--resume` invocation must match the original filter set. If the cached `FilterSnapshot` no longer matches what the CLI would build, the run aborts with `checkpoint mismatch` rather than silently mixing two filters.
 
+**🧱 Resume-aware backup & ghost tolerance (since v3.6.0):**
+
+- **Resume-aware backup.** When `--resume <RUN_ID>` reuses a partially-finished snapshot, the backup phase reads the existing `mapping.json`/`attachments.json` and **skips attachments that were already downloaded and hashed** in the previous attempt. Only the remaining IDs are fetched. The Markdown / PDF Summary block reports the count under `Backed up (skipped, ghosts)`.
+- **Ghost attachments.** TestRail occasionally lists an attachment id that immediately returns `400 "attachment does not exist"` (or `404`) when the binary is fetched — a race between listing and a concurrent deletion. Such IDs are detected via `IsAttachmentNotFound`, logged as `WARN: ghost attachment <id> skipped`, recorded in `BackupResult.GhostIDs` / `ExecuteResult.GhostIDs`, and **do not abort the run**. The same Summary row aggregates them.
+- **Interrupted Execute hint.** When `attachments cleanup` fails after a `RUN_ID` has been issued, the CLI prints `⚠️  Cleanup interrupted. To resume from where it left off, run: gotr attachments cleanup --resume <run-id>` before exiting non-zero, so resuming is always one copy-paste away.
+
 **📊 Progress reporting (since v3.6.1):**
 
 The scan phase emits a 5-line live block on stderr when stderr is a TTY (and `--quiet` is not set):

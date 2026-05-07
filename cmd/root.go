@@ -19,9 +19,9 @@ import (
 
 var (
 	// Version is populated at build time via -ldflags.
-	Version = "3.5.2" // default value for local development
-	Commit  = "unknown"
-	Date    = "unknown"
+	Version = "3.6.0" // default value for local development
+	Commit  = "389c59e"
+	Date    = "2026-05-07"
 	userHomeDir = os.UserHomeDir
 	// processExit is the exit function; overridable in tests.
 	processExit = os.Exit

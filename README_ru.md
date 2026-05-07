@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.5.2-blue.svg" alt="Latest Release"/></a>
+  <a href="https://github.com/Korrnals/gotr/releases/latest"><img src="https://img.shields.io/badge/release-v3.6.0-blue.svg" alt="Latest Release"/></a>
   <a href="go.mod"><img src="https://img.shields.io/badge/go-1.25-00ADD8.svg?logo=go" alt="Go"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License"/></a>
   <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-EN%20%7C%20RU-purple.svg" alt="Docs"/></a>
@@ -63,7 +63,7 @@ gotr get projects
 | 🔄 **Кросс-проектная синхронизация** | [`sync`](docs/ru/guides/commands/sync.md) | Миграция кейсов, shared steps, сьютов и секций между проектами с дедупликацией, маппингом и `--verify-coverage`. |
 | 🆚 **Сравнение проектов** | [`compare`](docs/ru/guides/commands/compare.md) | Diff кейсов, сьютов, планов, майлстоунов, датасетов; экспорт в JSON / YAML / table. |
 | 📸 **Снапшоты и откат** | [`snap`](docs/ru/guides/commands/snap.md) | Снапшот любой мутации, list, restore, GC по per-category TTL. Каждое деструктивное действие по умолчанию делает снапшот. |
-| 📎 **Вложения** *(включая массовую очистку)* | [`attachments`](docs/ru/guides/commands/attachments.md) | Загрузка, скачивание, листинг — и **массовая очистка** старых вложений со снапшотом и откатом по умолчанию (категория `cleanup-attachments`, retention 7 дней). |
+| 📎 **Вложения** *(загрузка · скачивание · листинг · **очистка**)* | [`attachments`](docs/ru/guides/commands/attachments.md) | Загрузка, скачивание, листинг — и **массовая очистка** старых вложений со снапшотом и откатом по умолчанию (категория `cleanup-attachments`, retention 7 дней). |
 | 🧹 **Retention и cleanup** | [`cleanup`](docs/ru/guides/commands/cleanup.md) | Настраиваемый retention для отчётов / снапов / экспортов с `--dry-run` и авто-cleanup-хуками. |
 | 📊 **Тест-раны и результаты** | [`run`](docs/ru/guides/commands/run.md) · [`result`](docs/ru/guides/commands/result.md) | Создание ранов, массовая загрузка результатов, отслеживание выполнения. |
 | ✅ **Операции на уровне теста** | [`test`](docs/ru/guides/commands/test.md) · [`tests`](docs/ru/guides/commands/tests.md) | Просмотр одиночных run-test'ов и батч-операции. |

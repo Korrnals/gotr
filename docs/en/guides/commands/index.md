@@ -90,7 +90,7 @@ Domain-oriented namespace commands for daily TestRail workflows.
 - [result](result.md) — add and inspect test results.
 - [test](test.md) — operations with individual run tests.
 - [tests](tests.md) — batch operations with sets of tests.
-- [attachments](attachments.md) — upload and fetch attachments.
+- [attachments](attachments.md) — upload, download, list, and **bulk cleanup** of old attachments with snapshot + rollback safety.
 - [plans](plans.md) — work with test plans.
 - [reports](reports.md) — access TestRail reporting endpoints.
 

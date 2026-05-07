@@ -112,12 +112,12 @@ func TestBackup_PersistsMappingWithSHA256(t *testing.T) {
 	snapID := "cleanup-attachments/mapping"
 	store := scratchStore(t, snapID)
 
-	saved, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{Concurrency: 2})
+	res, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{Concurrency: 2})
 	if err != nil {
 		t.Fatalf("backup: %v", err)
 	}
-	if saved != 2 {
-		t.Fatalf("saved=%d", saved)
+	if res.Saved != 2 {
+		t.Fatalf("saved=%d", res.Saved)
 	}
 
 	m, err := LoadMapping(store, snapID)
@@ -164,12 +164,12 @@ func TestBackupAndRestoreCleanupAttachments_RoundTrip(t *testing.T) {
 	snapID := "cleanup-attachments/round-trip"
 	store := scratchStore(t, snapID)
 
-	saved, total, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{})
+	res, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{})
 	if err != nil {
 		t.Fatalf("backup: %v", err)
 	}
-	if saved != 3 || total <= 0 {
-		t.Fatalf("unexpected saved=%d total=%d", saved, total)
+	if res.Saved != 3 || res.TotalBytes <= 0 {
+		t.Fatalf("unexpected saved=%d total=%d", res.Saved, res.TotalBytes)
 	}
 
 	m, err := LoadMapping(store, snapID)
@@ -186,15 +186,15 @@ func TestBackupAndRestoreCleanupAttachments_RoundTrip(t *testing.T) {
 		}
 	}
 
-	res, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false)
+	restoreRes, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false)
 	if err != nil {
 		t.Fatalf("restore: %v", err)
 	}
-	if res.Restored != 3 || res.Failed != 0 || res.Skipped != 0 {
-		t.Fatalf("restore stats: %+v", res)
+	if restoreRes.Restored != 3 || restoreRes.Failed != 0 || restoreRes.Skipped != 0 {
+		t.Fatalf("restore stats: %+v", restoreRes)
 	}
-	if len(res.Mapping) != 3 {
-		t.Fatalf("expected 3 id mappings, got %d", len(res.Mapping))
+	if len(restoreRes.Mapping) != 3 {
+		t.Fatalf("expected 3 id mappings, got %d", len(restoreRes.Mapping))
 	}
 	if len(api.uploads) != 3 {
 		t.Fatalf("expected 3 uploads, got %d", len(api.uploads))
@@ -211,7 +211,7 @@ func TestRestore_TestBoundNonRestorable(t *testing.T) {
 	snapID := "cleanup-attachments/testbound"
 	store := scratchStore(t, snapID)
 
-	if _, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
+	if _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
 		t.Fatalf("backup: %v", err)
 	}
 	m, err := LoadMapping(store, snapID)
@@ -247,12 +247,12 @@ func TestBackupCompression_RoundTrip(t *testing.T) {
 	snapID := "cleanup-attachments/compressed"
 	store := scratchStore(t, snapID)
 
-	saved, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{Compress: true})
+	backupRes, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{Compress: true})
 	if err != nil {
 		t.Fatalf("backup: %v", err)
 	}
-	if saved != 1 {
-		t.Fatalf("saved=%d", saved)
+	if backupRes.Saved != 1 {
+		t.Fatalf("saved=%d", backupRes.Saved)
 	}
 
 	m, err := LoadMapping(store, snapID)
@@ -286,7 +286,7 @@ func TestIntegrity_BuildAndVerify_Roundtrip(t *testing.T) {
 		{ID: 1, Name: "a.txt", CaseID: 1},
 		{ID: 2, Name: "b.txt", CaseID: 1},
 	}
-	if _, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
+	if _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
 		t.Fatalf("backup: %v", err)
 	}
 	idx, err := WriteIntegrityIndex(store, snapID)
@@ -317,7 +317,7 @@ func TestRestore_MappingUpdatesNewID(t *testing.T) {
 	atts := []data.Attachment{{ID: 11, Name: "n.txt", CaseID: 5}}
 	snapID := "cleanup-attachments/mapping-newid"
 	store := scratchStore(t, snapID)
-	if _, _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
+	if _, err := BackupAttachmentsForCleanup(context.Background(), api, store, snapID, atts, BackupOptions{}); err != nil {
 		t.Fatalf("backup: %v", err)
 	}
 	if _, err := RestoreCleanupAttachments(context.Background(), api, store, snapID, false); err != nil {

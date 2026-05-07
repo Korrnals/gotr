@@ -158,6 +158,9 @@ func writeCleanupSummary(pdf *fpdf.Fpdf, r *cleanupreport.Report) {
 		{"Failed", fmt.Sprintf("%d", r.Summary.Failed)},
 		{"Freed on server", humanBytes(r.Summary.FreedBytes)},
 	}
+	if r.Summary.BackupSkipped > 0 {
+		rows = append(rows, [2]string{"Skipped (ghost)", fmt.Sprintf("%d", r.Summary.BackupSkipped)})
+	}
 	renderKeyValue(pdf, rows)
 }
 

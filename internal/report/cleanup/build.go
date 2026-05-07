@@ -104,11 +104,12 @@ func Build(in BuildInput) *Report {
 		rep.SnapshotID = in.Result.SnapshotID
 		rep.DryRun = in.Result.DryRun
 		rep.Summary = Summary{
-			BackedUp:    in.Result.BackedUp,
-			BackupBytes: in.Result.BackupBytes,
-			Deleted:     in.Result.Deleted,
-			Failed:      in.Result.DeleteErrors,
-			FreedBytes:  in.Result.FreedBytes,
+			BackedUp:      in.Result.BackedUp,
+			BackupSkipped: in.Result.BackupSkipped,
+			BackupBytes:   in.Result.BackupBytes,
+			Deleted:       in.Result.Deleted,
+			Failed:        in.Result.DeleteErrors,
+			FreedBytes:    in.Result.FreedBytes,
 		}
 		for _, f := range in.Result.Failures {
 			rep.Failures = append(rep.Failures, Failure{

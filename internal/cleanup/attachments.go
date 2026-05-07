@@ -319,6 +319,7 @@ type ExecuteResult struct {
 	SnapshotID   string
 	DryRun       bool
 	BackedUp     int
+	BackupSkipped int // ghost attachments skipped during backup
 	BackupBytes  int64
 	Deleted      int
 	DeleteErrors int
@@ -399,14 +400,14 @@ func Execute(
 		if err := store.SaveMeta(&meta); err != nil {
 			return res, fmt.Errorf("snapshot: save meta: %w", err)
 		}
-		saved, bytes, err := snap.BackupAttachmentsForCleanup(ctx, api, store, meta.ID, atts, snap.BackupOptions{
+		backupRes, err := snap.BackupAttachmentsForCleanup(ctx, api, store, meta.ID, atts, snap.BackupOptions{
 			Compress:    opts.CompressBinaries,
 			Concurrency: resolveBackupConcurrency(opts),
 		})
 		if err != nil {
 			return res, fmt.Errorf("snapshot: backup binaries: %w", err)
 		}
-		meta.DataSizeBytes = bytes
+		meta.DataSizeBytes = backupRes.TotalBytes
 		if err := store.SaveMeta(&meta); err != nil {
 			return res, fmt.Errorf("snapshot: rewrite meta: %w", err)
 		}
@@ -414,8 +415,9 @@ func Execute(
 			return res, fmt.Errorf("snapshot: manifest add: %w", err)
 		}
 		res.SnapshotID = meta.ID
-		res.BackedUp = saved
-		res.BackupBytes = bytes
+		res.BackedUp = backupRes.Saved
+		res.BackupSkipped = backupRes.Skipped
+		res.BackupBytes = backupRes.TotalBytes
 
 		// 1b. Reference scan: walk every entity that owned a deleted
 		// attachment and persist references.json next to attachments.json.

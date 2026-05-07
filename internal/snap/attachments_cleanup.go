@@ -14,15 +14,21 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/Korrnals/gotr/internal/client"
 	"github.com/Korrnals/gotr/internal/concurrent"
 	"github.com/Korrnals/gotr/internal/log"
 	"github.com/Korrnals/gotr/internal/models/data"
 	"github.com/Korrnals/gotr/internal/snap/refs"
 	"go.uber.org/zap"
 )
+
+// errGhostAttachment is returned by backupOneCleanup when the
+// attachment disappeared between listing and download (404/400 race).
+var errGhostAttachment = errors.New("attachment no longer exists on server")
 
 // EntityTypeAttachments is the snap.Meta.EntityType used for bulk
 // attachment-cleanup operations.
@@ -93,6 +99,14 @@ type BackupOptions struct {
 	Concurrency int
 }
 
+// BackupResult summarises a BackupAttachmentsForCleanup call.
+type BackupResult struct {
+	Saved        int
+	Skipped      int // ghost attachments (404/400 race) skipped without error
+	TotalBytes   int64
+	GhostIDs     []int64
+}
+
 // CleanupRollbackResult holds the per-entry rollback outcome plus an
 // old-id → new-id mapping populated when re-upload succeeded.
 type CleanupRollbackResult struct {
@@ -120,6 +134,15 @@ var ErrCleanupRollbackUnsupportedEntity = errors.New("attachment entity type doe
 // persists a versioned attachments.json incrementally. Returns the number
 // of saved attachments and the total bytes written.
 //
+// Resume behaviour: if <snap>/attachments.json already exists, its
+// entries are loaded and any attachment whose ID is already present
+// is skipped (no re-download). This makes interrupted cleanups
+// resumable without re-transferring already-backed-up data.
+//
+// Ghost tolerance: if an attachment returns 400/404 during download
+// (race between listing and backup), it is logged as a warning and
+// counted in BackupResult.Skipped instead of aborting the run.
+//
 //nolint:gocyclo // Multi-stage backup pipeline (download → hash → write file → atomic mapping commit) is more readable kept as a single orchestrator.
 func BackupAttachmentsForCleanup(
 	ctx context.Context,
@@ -128,14 +151,15 @@ func BackupAttachmentsForCleanup(
 	snapID string,
 	atts []data.Attachment,
 	opts BackupOptions,
-) (saved int, totalBytes int64, err error) {
+) (BackupResult, error) {
+	res := BackupResult{}
 	if len(atts) == 0 {
-		return 0, 0, nil
+		return res, nil
 	}
 
 	dir := filepath.Join(store.SnapDir(snapID), cleanupFilesDir)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return 0, 0, fmt.Errorf("create cleanup files dir: %w", err)
+		return res, fmt.Errorf("create cleanup files dir: %w", err)
 	}
 
 	concurrency := opts.Concurrency
@@ -143,12 +167,36 @@ func BackupAttachmentsForCleanup(
 		concurrency = 1
 	}
 
+	// --- Resume: load existing mapping if present ---
 	mapping := &Mapping{
 		SchemaVersion: MappingSchemaVersion,
 		SnapID:        snapID,
 		GeneratedAt:   time.Now().UTC(),
 		Total:         len(atts),
 	}
+	existingIDs := map[int64]struct{}{}
+	if existing, err := LoadMapping(store, snapID); err == nil && existing != nil {
+		mapping.Entries = append([]MappingEntry(nil), existing.Entries...)
+		for _, e := range existing.Entries {
+			existingIDs[e.OriginalID] = struct{}{}
+		}
+		res.Saved = len(existing.Entries)
+		for _, e := range existing.Entries {
+			res.TotalBytes += e.Size
+		}
+	}
+
+	// Filter out already-backed-up attachments.
+	var toDownload []data.Attachment
+	for _, att := range atts {
+		if _, ok := existingIDs[att.ID]; !ok {
+			toDownload = append(toDownload, att)
+		}
+	}
+	if len(toDownload) == 0 {
+		return res, nil
+	}
+
 	var mappingMu sync.Mutex
 	var saveErrMu sync.Mutex
 	var saveErr error
@@ -193,7 +241,7 @@ func BackupAttachmentsForCleanup(
 		}
 	}()
 
-	results, _ := concurrent.ParallelMap(ctx, atts, concurrency, func(att data.Attachment, _ int) (MappingEntry, error) {
+	results, _ := concurrent.ParallelMap(ctx, toDownload, concurrency, func(att data.Attachment, _ int) (MappingEntry, error) {
 		if err := ctx.Err(); err != nil {
 			return MappingEntry{}, err
 		}
@@ -223,20 +271,40 @@ func BackupAttachmentsForCleanup(
 
 	for _, r := range results {
 		if r.Error != nil {
+			if errors.Is(r.Error, errGhostAttachment) {
+				res.Skipped++
+				// Extract the attachment ID from the error message for logging.
+				var ghostID int64
+				fmt.Sscanf(r.Error.Error(), "ghost attachment %d", &ghostID)
+				if ghostID == 0 {
+					// Fallback: try to parse from the wrapped error text.
+					parts := strings.Split(r.Error.Error(), " ")
+					for _, p := range parts {
+						if id, err := fmt.Sscanf(p, "%d", &ghostID); err == nil && id == 1 && ghostID > 0 {
+							break
+						}
+					}
+				}
+				if ghostID > 0 {
+					res.GhostIDs = append(res.GhostIDs, ghostID)
+				}
+				log.Warn("attachment disappeared during backup (race); skipping",
+					zap.Int64("attachment_id", ghostID),
+					zap.Error(r.Error))
+				continue
+			}
 			persistMapping(true)
-			return saved, totalBytes, fmt.Errorf("backup attachment: %w", r.Error)
+			return res, fmt.Errorf("backup attachment: %w", r.Error)
 		}
+		res.Saved++
+		res.TotalBytes += r.Data.Size
 	}
 	persistMapping(true)
 	if saveErr != nil {
-		return saved, totalBytes, fmt.Errorf("persist attachments.json: %w", saveErr)
+		return res, fmt.Errorf("persist attachments.json: %w", saveErr)
 	}
 
-	saved = len(mapping.Entries)
-	for _, e := range mapping.Entries {
-		totalBytes += e.Size
-	}
-	return saved, totalBytes, nil
+	return res, nil
 }
 
 // backupOneCleanup downloads a single attachment, hashes it inline
@@ -253,6 +321,9 @@ func backupOneCleanup(
 ) (*MappingEntry, error) {
 	body, err := api.DownloadAttachment(ctx, att.ID)
 	if err != nil {
+		if client.IsAttachmentNotFound(err) {
+			return nil, fmt.Errorf("ghost attachment %d: %w", att.ID, errGhostAttachment)
+		}
 		return nil, fmt.Errorf("download %d: %w", att.ID, err)
 	}
 	defer body.Close()

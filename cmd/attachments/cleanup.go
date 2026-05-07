@@ -239,6 +239,10 @@ func runCleanup(getClient GetClientFunc) func(*cobra.Command, []string) error {
 			return cleanup.Execute(ctx, api, store, manifest, plan, execOpts)
 		})
 		if err != nil {
+			if runID != "" {
+				fmt.Fprintf(os.Stderr, "\n⚠️  Cleanup interrupted. To resume from where it left off, run:\n")
+				fmt.Fprintf(os.Stderr, "   gotr attachments cleanup --resume %s\n\n", runID)
+			}
 			return fmt.Errorf("execute: %w", err)
 		}
 

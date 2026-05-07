@@ -142,6 +142,7 @@ type Filters struct {
 type Summary struct {
 	TotalSelected int   `json:"total_selected"`
 	BackedUp      int   `json:"backed_up"`
+	BackupSkipped int   `json:"backup_skipped,omitempty"` // ghost attachments (404/400 race)
 	BackupBytes   int64 `json:"backup_bytes"`
 	Deleted       int   `json:"deleted"`
 	Failed        int   `json:"failed"`

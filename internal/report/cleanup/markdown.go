@@ -102,6 +102,9 @@ func writeMDSummary(sb *strings.Builder, r *Report) {
 	sb.WriteString("|--------|-------|\n")
 	row(sb, "Total selected", fmt.Sprintf("%d", r.Summary.TotalSelected))
 	row(sb, "Backed up (count)", fmt.Sprintf("%d", r.Summary.BackedUp))
+	if r.Summary.BackupSkipped > 0 {
+		row(sb, "Skipped (ghost)", fmt.Sprintf("%d", r.Summary.BackupSkipped))
+	}
 	row(sb, "Backed up (size)", humanBytes(r.Summary.BackupBytes))
 	row(sb, "Deleted", fmt.Sprintf("%d", r.Summary.Deleted))
 	row(sb, "Failed", fmt.Sprintf("%d", r.Summary.Failed))

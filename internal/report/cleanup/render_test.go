@@ -157,8 +157,8 @@ func TestRenderMarkdown_V36Sections(t *testing.T) {
 	}
 	r.Artifacts = &Artifacts{
 		ReportPaths: []string{
-			"/home/u/.gotr/reports/cleanup-attachments/audit-2026-05/2026-05-05/cleanup-attachments-T-snap_abc.md",
-			"/home/u/.gotr/reports/cleanup-attachments/audit-2026-05/2026-05-05/cleanup-attachments-T-snap_abc.json",
+			"/home/u/.gotr/reports/cleanup-attachments/group-entity/audit-2026-05/2026-05-05/cleanup-attachments-T-snap_abc.md",
+			"/home/u/.gotr/reports/cleanup-attachments/group-entity/audit-2026-05/2026-05-05/cleanup-attachments-T-snap_abc.json",
 		},
 		SnapshotPath:  "/home/u/.gotr/snaps/cleanup-attachments/snap_abc",
 		CheckpointDir: "/home/u/.gotr/cache/cleanup-attachments/run_2026-05-05_120000",

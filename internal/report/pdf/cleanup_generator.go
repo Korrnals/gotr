@@ -319,12 +319,18 @@ func pdfTableRowMulti(pdf *fpdf.Fpdf, cols []float64, row []string) {
 	rowH := lineHeight * float64(maxLines)
 
 	// Manual page-break: if the row would overflow, start a new page
-	// before drawing anything.
-	_, pageH := pdf.GetPageSize()
+	// before drawing anything. Preserve the current orientation
+	// (portrait vs landscape) so a landscape table doesn't suddenly
+	// switch to portrait mid-table and get clipped.
+	pageW, pageH := pdf.GetPageSize()
 	_, _, _, bottomMargin := pdf.GetMargins()
 	pageBreakTrigger := pageH - bottomMargin
 	if pdf.GetY()+rowH > pageBreakTrigger {
-		pdf.AddPage()
+		if pageW > pageH {
+			pdf.AddPageFormat("L", fpdf.SizeType{Wd: 210, Ht: 297})
+		} else {
+			pdf.AddPage()
+		}
 	}
 
 	// Disable auto page break while drawing the row so SetXY-driven

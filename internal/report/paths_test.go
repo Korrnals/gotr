@@ -110,6 +110,11 @@ func TestClassificationRelDir(t *testing.T) {
 			want: filepath.Join("migrations", DefaultLabel, "2026-04-15"),
 		},
 		{
+			name: "migrations with subdir",
+			in:   Classification{Category: CategoryMigrations, Label: "q2", Date: "2026-04-15", Subdir: "result"},
+			want: filepath.Join("migrations", "result", "q2", "2026-04-15"),
+		},
+		{
 			name: "testrail with project",
 			in:   Classification{Category: CategoryTestrail, Project: 48, Date: "2026-04-15"},
 			want: filepath.Join("testrail", "p48", "2026-04-15"),

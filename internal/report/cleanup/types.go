@@ -5,7 +5,14 @@
 // cleanup`. The report is emitted in four formats — Markdown, JSON,
 // CSV, and PDF — under
 //
-//	~/.gotr/reports/cleanup-attachments/<label>/<YYYY-MM-DD>/cleanup-<id>-<ts>.<ext>
+//	~/.gotr/reports/cleanup-attachments/<entity-group>/<label>/<YYYY-MM-DD>/cleanup-<id>-<ts>.<ext>
+//
+// where <entity-group> is the normalized entity-type scope:
+//   - single type  → "result", "run", "plan", …
+//   - multiple types or "all" → "group-entity"
+//
+// This prevents reports from different scopes from overwriting each other
+// when the same label is reused.
 //
 // The Markdown rendition is the human-readable artifact, JSON is the
 // machine-readable mirror, CSV is a flat per-attachment table, and PDF

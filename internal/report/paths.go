@@ -37,12 +37,13 @@ const (
 
 // Classification is the result of inspecting a report filename.
 // Path returns the directory (relative to the reports root) where the report
-// should live: <Category>[/p<Project>]/<Label>/<Date>/.
+// should live: <Category>[/<Subdir>]/<Label>/<Date>/.
 type Classification struct {
 	Category Category
 	Label    string // "default" when not provided
 	Date     string // e.g. "2026-04-15"; empty if indeterminable
 	Project  int    // >0 for CategoryTestrail; otherwise 0
+	Subdir   string // optional extra segment between Category and Label (e.g. entity-group)
 }
 
 // RelDir returns the relative directory for a classified report, without the
@@ -65,10 +66,14 @@ func (c Classification) RelDir() string {
 		if label == "" {
 			label = DefaultLabel
 		}
-		if c.Date == "" {
-			return filepath.Join(string(c.Category), label)
+		parts := []string{string(c.Category)}
+		if c.Subdir != "" {
+			parts = append(parts, c.Subdir)
 		}
-		return filepath.Join(string(c.Category), label, c.Date)
+		if c.Date == "" {
+			return filepath.Join(append(parts, label)...)
+		}
+		return filepath.Join(append(parts, label, c.Date)...)
 	}
 }
 
@@ -102,6 +107,16 @@ func ClassifyReport(filename string) Classification {
 // the filename itself doesn't carry a label. An empty explicitLabel falls back
 // to DefaultLabel.
 func ClassifyReportWithLabel(filename, explicitLabel string) Classification {
+	return ClassifyReportWithSubdir(filename, explicitLabel, "")
+}
+
+// ClassifyReportWithSubdir is like ClassifyReportWithLabel but also accepts
+// an optional subdir segment that is inserted between the category and the
+// label in the resulting path. This is used by cleanup-attachments to
+// bucket reports by entity-type group (e.g. "result", "run", "plan",
+// "group-entity" for mixed runs) so that reports from different scopes do
+// not overwrite each other.
+func ClassifyReportWithSubdir(filename, explicitLabel, subdir string) Classification {
 	name := filepath.Base(filename)
 	low := strings.ToLower(name)
 
@@ -117,13 +132,13 @@ func ClassifyReportWithLabel(filename, explicitLabel string) Classification {
 		return Classification{Category: CategoryNoSnapshot, Label: DefaultLabel, Date: date}
 
 	case strings.HasPrefix(low, "migration-"):
-		return Classification{Category: CategoryMigrations, Label: label, Date: date}
+		return Classification{Category: CategoryMigrations, Label: label, Date: date, Subdir: subdir}
 
 	case strings.HasPrefix(low, "rollback-"):
-		return Classification{Category: CategoryRollbacks, Label: label, Date: date}
+		return Classification{Category: CategoryRollbacks, Label: label, Date: date, Subdir: subdir}
 
 	case strings.HasPrefix(low, "cleanup-attachments-"):
-		return Classification{Category: CategoryCleanupAttachments, Label: label, Date: date}
+		return Classification{Category: CategoryCleanupAttachments, Label: label, Date: date, Subdir: subdir}
 
 	case strings.HasPrefix(low, "gotr_migration_"):
 		// gotr_migration_<TAG>_p<A>_to_p<B>.pdf → TAG becomes the label when caller did not override.
@@ -131,7 +146,7 @@ func ClassifyReportWithLabel(filename, explicitLabel string) Classification {
 		if explicitLabel == "" && tag != "" {
 			label = tag
 		}
-		return Classification{Category: CategoryCoverage, Label: label, Date: date}
+		return Classification{Category: CategoryCoverage, Label: label, Date: date, Subdir: subdir}
 
 	case strings.HasPrefix(low, "testrail_") || projectRe.MatchString(low):
 		proj := extractProjectID(low)

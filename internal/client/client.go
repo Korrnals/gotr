@@ -58,11 +58,12 @@ func (t authTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // defaultOptions holds the default client configuration values.
 //
-// timeout: 300s — heavy legacy endpoints (get_results_for_run on huge runs)
-// have a fixed server-side overhead of ~30–60s independent of page size, and
-// the server visibly degrades under sustained load (TTFB grows past 180s on
-// 7th–10th sequential request). p99 measured at ~56s with limit=250;
-// 300s leaves a 5× headroom and absorbs server-side queueing bursts.
+// timeout: 300s — heavy legacy TestRail endpoints (get_results_for_run on
+// huge runs) occasionally take 1–2 minutes to first byte. Most calls return
+// in under a second. This is the single source of truth for the request
+// timeout: there is intentionally no CLI flag, so transient slow-server
+// behavior is handled here and by the retry policy rather than by user
+// tuning.
 var defaultOptions = options{
 	insecure:            false,
 	timeout:             300 * time.Second,

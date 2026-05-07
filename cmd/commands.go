@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/Korrnals/gotr/cmd/attachments"
 	"github.com/Korrnals/gotr/cmd/bdds"
@@ -123,10 +122,6 @@ func initGlobalFlags() {
 	must(viper.BindPFlag("insecure", rootCmd.PersistentFlags().Lookup("insecure")))
 	must(viper.BindPFlag("debug", rootCmd.PersistentFlags().Lookup("debug")))
 	must(viper.BindPFlag("show_warnings", rootCmd.PersistentFlags().Lookup("show-warnings")))
-
-	// HTTP timeout (default 30s matches the built-in default in client.go)
-	rootCmd.PersistentFlags().Duration("http-timeout", 30*time.Second, "HTTP request timeout (e.g. 60s, 2m)")
-	must(viper.BindPFlag("http_timeout", rootCmd.PersistentFlags().Lookup("http-timeout")))
 }
 
 

@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/go-pdf/fpdf"
 
@@ -357,7 +358,19 @@ func pdfTableRowMulti(pdf *fpdf.Fpdf, cols []float64, row []string) {
 // width (minus a small horizontal padding) at the current font.
 // Honors explicit "\n" in the input. Falls back to a single line when
 // pdf is nil (defensive — never expected at runtime).
+//
+// The wrapping is rune-aware (not byte-aware): we never split a UTF-8
+// multi-byte sequence in the middle. fpdf's own SplitLines indexes the
+// input by bytes and breaks Cyrillic/CJK strings at sub-character byte
+// boundaries; passing the resulting fragments back to CellFormat causes
+// utf8toutf16 to read past end of string and panic with "index out of
+// range". This implementation measures widths via pdf.GetStringWidth on
+// rune boundaries so the produced lines are always valid UTF-8.
 func wrapCellLines(pdf *fpdf.Fpdf, text string, colWidth float64) []string {
+	// Defensive sanitization: replace invalid UTF-8 sequences (e.g.
+	// truncated names from upstream) with U+FFFD so fpdf never receives
+	// a malformed string.
+	text = strings.ToValidUTF8(text, "\uFFFD")
 	if text == "" {
 		return []string{""}
 	}
@@ -375,19 +388,140 @@ func wrapCellLines(pdf *fpdf.Fpdf, text string, colWidth float64) []string {
 			out = append(out, "")
 			continue
 		}
-		split := pdf.SplitLines([]byte(paragraph), avail)
-		if len(split) == 0 {
-			out = append(out, paragraph)
-			continue
-		}
-		for _, b := range split {
-			out = append(out, string(b))
-		}
+		out = append(out, wrapParagraphRunes(pdf, paragraph, avail)...)
 	}
 	if len(out) == 0 {
 		return []string{""}
 	}
 	return out
+}
+
+// wrapParagraphRunes performs rune-safe greedy word wrapping of a single
+// paragraph (no embedded "\n"). Words longer than avail are broken at
+// rune boundaries.
+func wrapParagraphRunes(pdf *fpdf.Fpdf, paragraph string, avail float64) []string {
+	if paragraph == "" {
+		return []string{""}
+	}
+	if pdf.GetStringWidth(paragraph) <= avail {
+		return []string{paragraph}
+	}
+	var lines []string
+	var current strings.Builder
+	currentWidth := 0.0
+	flush := func() {
+		lines = append(lines, current.String())
+		current.Reset()
+		currentWidth = 0
+	}
+	// Tokenise into words preserving single spaces between them; this
+	// avoids losing whitespace when a wrap occurs at a word boundary.
+	tokens := splitWithSpaces(paragraph)
+	for _, tok := range tokens {
+		w := pdf.GetStringWidth(tok)
+		if currentWidth+w <= avail {
+			current.WriteString(tok)
+			currentWidth += w
+			continue
+		}
+		// Token doesn't fit on current line.
+		if current.Len() > 0 {
+			// Drop a trailing space before wrapping for a cleaner break.
+			line := strings.TrimRight(current.String(), " ")
+			lines = append(lines, line)
+			current.Reset()
+			currentWidth = 0
+			if tok == " " {
+				continue
+			}
+		}
+		if w <= avail {
+			current.WriteString(tok)
+			currentWidth = w
+			continue
+		}
+		// Token alone is wider than avail — break by runes.
+		for _, line := range breakRunes(pdf, tok, avail) {
+			lw := pdf.GetStringWidth(line)
+			if currentWidth+lw <= avail && current.Len() > 0 {
+				current.WriteString(line)
+				currentWidth += lw
+				continue
+			}
+			if current.Len() > 0 {
+				flush()
+			}
+			lines = append(lines, line)
+		}
+	}
+	if current.Len() > 0 {
+		lines = append(lines, current.String())
+	}
+	if len(lines) == 0 {
+		return []string{""}
+	}
+	return lines
+}
+
+// splitWithSpaces returns the input split into alternating word/space
+// tokens (single spaces), preserving the original spacing structure
+// closely enough for cell wrapping.
+func splitWithSpaces(s string) []string {
+	if s == "" {
+		return nil
+	}
+	var out []string
+	var b strings.Builder
+	inSpace := false
+	for _, r := range s {
+		if r == ' ' || r == '\t' {
+			if !inSpace {
+				if b.Len() > 0 {
+					out = append(out, b.String())
+					b.Reset()
+				}
+				inSpace = true
+			}
+			b.WriteRune(' ')
+			continue
+		}
+		if inSpace {
+			out = append(out, b.String())
+			b.Reset()
+			inSpace = false
+		}
+		b.WriteRune(r)
+	}
+	if b.Len() > 0 {
+		out = append(out, b.String())
+	}
+	return out
+}
+
+// breakRunes splits a single token into chunks each fitting within
+// avail, breaking at rune boundaries only. Always produces at least
+// one chunk; an oversized single rune is emitted on its own line.
+func breakRunes(pdf *fpdf.Fpdf, tok string, avail float64) []string {
+	var lines []string
+	var current strings.Builder
+	currentWidth := 0.0
+	for _, r := range tok {
+		if !utf8.ValidRune(r) {
+			r = '\uFFFD'
+		}
+		rw := pdf.GetStringWidth(string(r))
+		if currentWidth+rw > avail && current.Len() > 0 {
+			lines = append(lines, current.String())
+			current.Reset()
+			currentWidth = 0
+		}
+		current.WriteRune(r)
+		currentWidth += rw
+	}
+	if current.Len() > 0 {
+		lines = append(lines, current.String())
+	}
+	return lines
 }
 
 func cleanupHasItems(r *cleanupreport.Report) bool {

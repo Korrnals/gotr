@@ -99,7 +99,7 @@ type BackupOptions struct {
 	Concurrency int
 }
 
-// BackupResult summarises a BackupAttachmentsForCleanup call.
+// BackupResult summarizes a BackupAttachmentsForCleanup call.
 type BackupResult struct {
 	Saved        int
 	Skipped      int // ghost attachments (404/400 race) skipped without error
@@ -134,7 +134,7 @@ var ErrCleanupRollbackUnsupportedEntity = errors.New("attachment entity type doe
 // persists a versioned attachments.json incrementally. Returns the number
 // of saved attachments and the total bytes written.
 //
-// Resume behaviour: if <snap>/attachments.json already exists, its
+// Resume behavior: if <snap>/attachments.json already exists, its
 // entries are loaded and any attachment whose ID is already present
 // is skipped (no re-download). This makes interrupted cleanups
 // resumable without re-transferring already-backed-up data.
@@ -275,7 +275,7 @@ func BackupAttachmentsForCleanup(
 				res.Skipped++
 				// Extract the attachment ID from the error message for logging.
 				var ghostID int64
-				fmt.Sscanf(r.Error.Error(), "ghost attachment %d", &ghostID)
+				_, _ = fmt.Sscanf(r.Error.Error(), "ghost attachment %d", &ghostID)
 				if ghostID == 0 {
 					// Fallback: try to parse from the wrapped error text.
 					parts := strings.Split(r.Error.Error(), " ")
